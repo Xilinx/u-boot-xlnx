@@ -238,6 +238,9 @@ int checkcpu (void)
 
 	get_sys_info(&sys_info);
 
+#if defined(CONFIG_XILINX_VIRTEX5_FXT)
+        puts("Xilinx PowerPC 440");
+#else
 	puts("AMCC PowerPC 4");
 
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || \
@@ -247,6 +250,7 @@ int checkcpu (void)
 #if defined(CONFIG_440)
 	puts("40");
 #endif
+#endif /* CONFIG_XILINX_VIRTEX5_FXT */
 
 	switch (pvr) {
 	case PVR_405GP_RB:
@@ -416,15 +420,27 @@ int checkcpu (void)
 		strcpy(addstr, "No RAID 6 support");
 		break;
 
+	case PVR_440x5_R1x:
+		puts(" Rev 1.x in Virtex-5 FXT FPGA");
+		break;
+
+	case PVR_440x5_R20:
+		puts(" Rev 2.0 in Virtex-5 FXT FPGA");
+		break;
+
 	default:
 		printf (" UNKNOWN (PVR=%08x)", pvr);
 		break;
 	}
 
+#if defined(CONFIG_XILINX_VIRTEX5_FXT)
+	printf (" at %s MHz\n", strmhz(buf, clock));
+#else
 	printf (" at %s MHz (PLB=%lu, OPB=%lu, EBC=%lu MHz)\n", strmhz(buf, clock),
 		sys_info.freqPLB / 1000000,
 		get_OPB_freq() / 1000000,
 		FREQ_EBC / 1000000);
+#endif
 
 	if (addstr[0] != 0)
 		printf("       %s\n", addstr);

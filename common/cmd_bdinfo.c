@@ -63,7 +63,8 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
     defined(CONFIG_405EP) || defined(CONFIG_XILINX_ML300) || \
     defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) ||	\
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_XILINX_VIRTEX5_FXT)
 	print_str ("procfreq",	    strmhz(buf, bd->bi_procfreq));
 	print_str ("plb_busfreq",   strmhz(buf, bd->bi_plb_busfreq));
 #if defined(CONFIG_405GP) || defined(CONFIG_405EP) || defined(CONFIG_XILINX_ML300) || \
@@ -82,7 +83,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	print_str ("cpmfreq",	    strmhz(buf, bd->bi_cpmfreq));
 #endif
 	print_str ("busfreq",	    strmhz(buf, bd->bi_busfreq));
-#endif /* CONFIG_405GP, CONFIG_405CR, CONFIG_405EP, CONFIG_XILINX_ML300, CONFIG_440EP CONFIG_440GR */
+#endif /* CONFIG_405GP, CONFIG_405CR, CONFIG_405EP, CONFIG_XILINX_ML300, CONFIG_440EP CONFIG_440GR CONFIG_XILINX_VIRTEX5_FXT*/
 #if defined(CONFIG_MPC8220)
 	print_str ("inpfreq",	    strmhz(buf, bd->bi_inpfreq));
 	print_str ("flbfreq",	    strmhz(buf, bd->bi_flbfreq));

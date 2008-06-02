@@ -50,6 +50,8 @@
 #include <405_mal.h>
 #include <miiphy.h>
 
+#if !defined(CONFIG_XILINX_VIRTEX5_FXT)
+
 #undef ET_DEBUG
 /***********************************************************/
 /* Dump out to the screen PHY regs			   */
@@ -291,3 +293,5 @@ int emac4xx_miiphy_write (char *devname, unsigned char addr,
 	return 0;
 
 }				/* phy_write */
+
+#endif /* CONFIG_XILINX_VIRTEX5_FXT */

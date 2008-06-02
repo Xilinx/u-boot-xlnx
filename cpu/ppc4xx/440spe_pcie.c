@@ -20,10 +20,10 @@
  *
  */
 
+#include <common.h>
 #include <asm/processor.h>
 #include <asm-ppc/io.h>
 #include <ppc4xx.h>
-#include <common.h>
 #include <pci.h>
 
 #if defined(CONFIG_440SPE) && defined(CONFIG_PCI)

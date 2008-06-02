@@ -66,8 +66,8 @@
 			      writeb(val>>8, CFG_SYSTEMACE_BASE+off+1);}
 #endif
 #else
-#define ace_readw(off) (in16(CFG_SYSTEMACE_BASE+off))
-#define ace_writew(val, off) (out16(CFG_SYSTEMACE_BASE+off,val))
+#define ace_readw(off) (in_le16(CFG_SYSTEMACE_BASE+off))
+#define ace_writew(val, off) (out_le16(CFG_SYSTEMACE_BASE+off,val))
 #endif
 
 /* */

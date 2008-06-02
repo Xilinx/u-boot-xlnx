@@ -266,7 +266,7 @@ int serial_tstc ()
 /*****************************************************************************/
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || \
     defined(CONFIG_405EP) || defined(CONFIG_405EZ) || \
-    defined(CONFIG_440)
+    (defined(CONFIG_440)  && !defined(CONFIG_XILINX_VIRTEX5_FXT))
 
 #if defined(CONFIG_440)
 #if defined(CONFIG_440EP) || defined(CONFIG_440GR) || \

@@ -483,7 +483,10 @@ start_ram:
 #endif /* CONFIG_NAND_SPL */
 
 	bl	3f
-	b	_start
+	lis	r0,_start@h
+	ori	r0,r0,_start@l
+	mtlr	r0
+	blr
 
 3:	li	r0,0
 	mtspr	srr1,r0		/* Keep things disabled for now */

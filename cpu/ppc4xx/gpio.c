@@ -26,6 +26,8 @@
 #include <asm/io.h>
 #include <asm/gpio.h>
 
+#if !defined(CONFIG_XILINX_VIRTEX5_FXT)
+
 #if defined(CFG_440_GPIO_TABLE)
 gpio_param_s gpio_tab[GPIO_GROUP_MAX][GPIO_MAX] = CFG_440_GPIO_TABLE;
 #endif
@@ -252,3 +254,5 @@ void gpio_set_chip_configuration(void)
 	}
 }
 #endif /* CFG_440_GPIO_TABLE */
+
+#endif /* CONFIG_XILINX_VIRTEX5_FXT */

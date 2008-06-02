@@ -94,7 +94,8 @@
  * network support enabled.
  * Remark: CONFIG_405 describes Xilinx PPC405 FPGA without EMAC controller!
  */
-#if defined(CONFIG_CMD_NET) && !defined(CONFIG_405) && !defined(CONFIG_IOP480)
+#if  defined(CONFIG_CMD_NET) && !defined(CONFIG_405) && \
+    !defined(CONFIG_IOP480)  && !defined(CONFIG_XILINX_VIRTEX5_FXT) 
 
 #if !(defined(CONFIG_MII) || defined(CONFIG_CMD_MII))
 #error "CONFIG_MII has to be defined!"

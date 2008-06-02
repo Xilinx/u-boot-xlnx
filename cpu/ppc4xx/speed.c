@@ -288,6 +288,10 @@ ulong get_PCI_freq (void)
 	return sys_info.freqPCI;
 }
 
+#elif defined(CONFIG_XILINX_VIRTEX5_FXT)
+extern void get_sys_info (sys_info_t * sysInfo);
+extern ulong get_PCI_freq (void);
+
 #elif !defined(CONFIG_440GX) && !defined(CONFIG_440SP) && !defined(CONFIG_440SPE)
 void get_sys_info (sys_info_t * sysInfo)
 {
