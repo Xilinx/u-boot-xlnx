@@ -1,4 +1,3 @@
-/* $Id: xdma_channel_sg.c,v 1.6 2003/02/03 19:50:33 moleres Exp $ */
 /******************************************************************************
 *
 *     Author: Xilinx, Inc.
@@ -49,7 +48,7 @@
 *
 * The DMA channel may support scatter gather operations. A scatter gather
 * operation automates the DMA channel such that multiple buffers can be
-* sent or received with minimal software interaction with the hardware.	 Buffer
+* sent or received with minimal software interaction with the hardware.  Buffer
 * descriptors, contained in the XBufDescriptor component, are used by the
 * scatter gather operations of the DMA channel to describe the buffers to be
 * processed.
@@ -58,7 +57,7 @@
 *
 * A scatter gather list may be supported by each DMA channel.  The scatter
 * gather list allows buffer descriptors to be put into the list by a device
-* driver which requires scatter gather.	 The hardware processes the buffer
+* driver which requires scatter gather.  The hardware processes the buffer
 * descriptors which are contained in the list and modifies the buffer
 * descriptors to reflect the status of the DMA operations.  The device driver
 * is notified by interrupt that specific DMA events occur including scatter
@@ -188,7 +187,7 @@
 * Special Test Conditions:
 *
 * The scatter gather list processing must be thoroughly tested if changes are
-* made.	 Testing should include putting and committing single descriptors and
+* made.  Testing should include putting and committing single descriptors and
 * putting multiple descriptors followed by a single commit.  There are some
 * conditions in the code which handle the exception conditions.
 *
@@ -198,7 +197,7 @@
 * have a traverse the list after the hardware has finished processing some
 * number of descriptors.  The Commit Pointer points to the descriptor in the
 * list which is to be committed.  It is also used to determine that no
-* descriptor is waiting to be commited (NULL).	The Last Pointer points to
+* descriptor is waiting to be commited (NULL).  The Last Pointer points to
 * the last descriptor that was put into the list.  It typically points
 * to the previous descriptor to the one pointed to by the Put Pointer.
 * Comparisons are done between these pointers to determine when the following
@@ -224,17 +223,17 @@
 * The 1st Put Following A Commit
 *
 * The commit caused the commit pointer to be NULL indicating that there are no
-* descriptors waiting to be committed.	It is necessary for the next put to set
+* descriptors waiting to be committed.  It is necessary for the next put to set
 * the commit pointer so that a commit must follow the put for the hardware to
 * use the descriptor.
 *
 * <pre>
 * MODIFICATION HISTORY:
 *
-* Ver	Who  Date     Changes
+* Ver   Who  Date     Changes
 * ----- ---- -------- ------------------------------------------------------
 * 1.00a rpm  02/03/03 Removed the XST_DMA_SG_COUNT_EXCEEDED return code
-*		      from SetPktThreshold.
+*                     from SetPktThreshold.
 * </pre>
 *
 ******************************************************************************/
@@ -246,6 +245,17 @@
 #include "xio.h"
 #include "xbuf_descriptor.h"
 #include "xstatus.h"
+
+/* simple virt<-->phy pointer conversions for a single dma channel */
+#define P_TO_V(p) \
+    ((p) ? \
+     (InstancePtr->VirtPtr + ((u32)(p) - (u32)InstancePtr->PhyPtr)) : \
+     0)
+
+#define V_TO_P(v) \
+    ((v) ? \
+     (InstancePtr->PhyPtr + ((u32)(v) - (u32)InstancePtr->VirtPtr)) : \
+     0)
 
 /************************** Constant Definitions *****************************/
 
@@ -260,26 +270,26 @@
  * was moved here since it is only used internally to this component and since
  * it does not copy all fields
  */
-#define CopyBufferDescriptor(InstancePtr, DestinationPtr)	   \
-{								   \
-    *((u32 *)DestinationPtr + XBD_CONTROL_OFFSET) =	       \
-	*((u32 *)InstancePtr + XBD_CONTROL_OFFSET);	       \
-    *((u32 *)DestinationPtr + XBD_SOURCE_OFFSET) =	       \
-	*((u32 *)InstancePtr + XBD_SOURCE_OFFSET);	       \
-    *((u32 *)DestinationPtr + XBD_DESTINATION_OFFSET) =	       \
-	*((u32 *)InstancePtr + XBD_DESTINATION_OFFSET);	       \
-    *((u32 *)DestinationPtr + XBD_LENGTH_OFFSET) =	       \
-	*((u32 *)InstancePtr + XBD_LENGTH_OFFSET);	       \
-    *((u32 *)DestinationPtr + XBD_STATUS_OFFSET) =	       \
-	*((u32 *)InstancePtr + XBD_STATUS_OFFSET);	       \
+#define CopyBufferDescriptor(InstancePtr, DestinationPtr)          \
+{                                                                  \
+    *((u32 *)DestinationPtr + XBD_CONTROL_OFFSET) =            \
+        *((u32 *)InstancePtr + XBD_CONTROL_OFFSET);            \
+    *((u32 *)DestinationPtr + XBD_SOURCE_OFFSET) =             \
+        *((u32 *)InstancePtr + XBD_SOURCE_OFFSET);             \
+    *((u32 *)DestinationPtr + XBD_DESTINATION_OFFSET) =        \
+        *((u32 *)InstancePtr + XBD_DESTINATION_OFFSET);        \
+    *((u32 *)DestinationPtr + XBD_LENGTH_OFFSET) =             \
+        *((u32 *)InstancePtr + XBD_LENGTH_OFFSET);             \
+    *((u32 *)DestinationPtr + XBD_STATUS_OFFSET) =             \
+        *((u32 *)InstancePtr + XBD_STATUS_OFFSET);             \
     *((u32 *)DestinationPtr + XBD_DEVICE_STATUS_OFFSET) =      \
-	*((u32 *)InstancePtr + XBD_DEVICE_STATUS_OFFSET);      \
-    *((u32 *)DestinationPtr + XBD_ID_OFFSET) =		       \
-	*((u32 *)InstancePtr + XBD_ID_OFFSET);		       \
-    *((u32 *)DestinationPtr + XBD_FLAGS_OFFSET) =	       \
-	*((u32 *)InstancePtr + XBD_FLAGS_OFFSET);	       \
+        *((u32 *)InstancePtr + XBD_DEVICE_STATUS_OFFSET);      \
+    *((u32 *)DestinationPtr + XBD_ID_OFFSET) =                 \
+        *((u32 *)InstancePtr + XBD_ID_OFFSET);                 \
+    *((u32 *)DestinationPtr + XBD_FLAGS_OFFSET) =              \
+        *((u32 *)InstancePtr + XBD_FLAGS_OFFSET);              \
     *((u32 *)DestinationPtr + XBD_RQSTED_LENGTH_OFFSET) =      \
-	*((u32 *)InstancePtr + XBD_RQSTED_LENGTH_OFFSET);      \
+        *((u32 *)InstancePtr + XBD_RQSTED_LENGTH_OFFSET);      \
 }
 
 /************************** Variable Definitions *****************************/
@@ -295,7 +305,7 @@
 * DESCRIPTION:
 *
 * This function starts a scatter gather operation for a scatter gather
-* DMA channel.	The first buffer descriptor in the buffer descriptor list
+* DMA channel.  The first buffer descriptor in the buffer descriptor list
 * will be started with the scatter gather operation.  A scatter gather list
 * should have previously been created for the DMA channel and buffer
 * descriptors put into the scatter gather list such that there are scatter
@@ -339,8 +349,7 @@
 * buffer descriptors may be processed by the hardware more than once.
 *
 ******************************************************************************/
-XStatus
-XDmaChannel_SgStart(XDmaChannel * InstancePtr)
+int XDmaChannel_SgStart(XDmaChannel * InstancePtr)
 {
 	u32 Register;
 	XBufDescriptor *LastDescriptorPtr;
@@ -374,9 +383,9 @@ XDmaChannel_SgStart(XDmaChannel * InstancePtr)
 	/* get the address of the last buffer descriptor which the DMA hardware
 	 * finished processing
 	 */
-	LastDescriptorPtr =
-	    (XBufDescriptor *) XIo_In32(InstancePtr->RegBaseAddress +
-					XDC_BDA_REG_OFFSET);
+	LastDescriptorPtr = (XBufDescriptor *)
+		P_TO_V(XIo_In32
+		       (InstancePtr->RegBaseAddress + XDC_BDA_REG_OFFSET));
 
 	/* setup the first buffer descriptor that will be sent when the scatter
 	 * gather channel is enabled, this is only necessary one time since
@@ -385,8 +394,9 @@ XDmaChannel_SgStart(XDmaChannel * InstancePtr)
 	 */
 	if (LastDescriptorPtr == NULL) {
 		XIo_Out32(InstancePtr->RegBaseAddress + XDC_BDA_REG_OFFSET,
-			  (u32) InstancePtr->GetPtr);
-	} else {
+			  (u32) V_TO_P(InstancePtr->GetPtr));
+	}
+	else {
 		XBufDescriptor *NextDescriptorPtr;
 
 		/* get the next descriptor to be started, if the status indicates it
@@ -395,7 +405,7 @@ XDmaChannel_SgStart(XDmaChannel * InstancePtr)
 		 * the busy when it is complete
 		 */
 		NextDescriptorPtr =
-		    XBufDescriptor_GetNextPtr(LastDescriptorPtr);
+			P_TO_V(XBufDescriptor_GetNextPtr(LastDescriptorPtr));
 
 		if ((XBufDescriptor_GetStatus(NextDescriptorPtr) &
 		     XDC_DMASR_BUSY_MASK) == 0) {
@@ -486,7 +496,7 @@ XDmaChannel_SgStart(XDmaChannel * InstancePtr)
 * may never return.
 *
 ******************************************************************************/
-XStatus
+int
 XDmaChannel_SgStop(XDmaChannel * InstancePtr,
 		   XBufDescriptor ** BufDescriptorPtr)
 {
@@ -508,13 +518,6 @@ XDmaChannel_SgStop(XDmaChannel * InstancePtr,
 		return XST_DMA_SG_IS_STOPPED;
 	}
 
-	/* Ensure the interrupt status for the scatter gather is cleared such
-	 * that this function will wait til the disable has occurred, writing
-	 * a 1 to only that bit in the register will clear only it
-	 */
-	XIo_Out32(InstancePtr->RegBaseAddress + XDC_IS_REG_OFFSET,
-		  XDC_IXR_SG_DISABLE_ACK_MASK);
-
 	/* disable scatter gather by writing to the software control register
 	 * without modifying any other bits of the register
 	 */
@@ -527,21 +530,17 @@ XDmaChannel_SgStop(XDmaChannel * InstancePtr,
 	 */
 	do {
 		Register =
-		    XIo_In32(InstancePtr->RegBaseAddress + XDC_IS_REG_OFFSET);
-	} while ((Register & XDC_IXR_SG_DISABLE_ACK_MASK) == 0);
-
-	/* Ensure the interrupt status for the scatter gather disable is cleared,
-	 * writing a 1 to only that bit in the register will clear only it
-	 */
-	XIo_Out32(InstancePtr->RegBaseAddress + XDC_IS_REG_OFFSET,
-		  XDC_IXR_SG_DISABLE_ACK_MASK);
+			XIo_In32(InstancePtr->RegBaseAddress +
+				 XDC_DMAS_REG_OFFSET);
+	}
+	while (Register & XDC_DMASR_SG_BUSY_MASK);
 
 	/* set the specified buffer descriptor pointer to point to the buffer
 	 * descriptor that the scatter gather DMA channel was processing
 	 */
-	*BufDescriptorPtr =
-	    (XBufDescriptor *) XIo_In32(InstancePtr->RegBaseAddress +
-					XDC_BDA_REG_OFFSET);
+	*BufDescriptorPtr = (XBufDescriptor *)
+		P_TO_V(XIo_In32
+		       (InstancePtr->RegBaseAddress + XDC_BDA_REG_OFFSET));
 
 	return XST_SUCCESS;
 }
@@ -571,10 +570,12 @@ XDmaChannel_SgStop(XDmaChannel * InstancePtr,
 * to be called.
 *
 * MemoryPtr contains a pointer to the memory which is to be used for buffer
-* descriptors and must not be cached.
+* descriptors and must not be cached (virtual).
 *
 * ByteCount contains the number of bytes for the specified memory to be used
 * for buffer descriptors.
+*
+* PhyPtr contains a pointer to the physical memory use for buffer descriptors.
 *
 * RETURN VALUE:
 *
@@ -589,9 +590,9 @@ XDmaChannel_SgStop(XDmaChannel * InstancePtr,
 * None.
 *
 ******************************************************************************/
-XStatus
+int
 XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
-			 u32 * MemoryPtr, u32 ByteCount)
+			 u32 *MemoryPtr, u32 ByteCount, void *PhyPtr)
 {
 	XBufDescriptor *BufferDescriptorPtr = (XBufDescriptor *) MemoryPtr;
 	XBufDescriptor *PreviousDescriptorPtr = NULL;
@@ -606,7 +607,7 @@ XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
 	XASSERT_NONVOID(MemoryPtr != NULL);
 	XASSERT_NONVOID(((u32) MemoryPtr & 3) == 0);
 	XASSERT_NONVOID(ByteCount != 0);
-	XASSERT_NONVOID(ByteCount >= sizeof (XBufDescriptor));
+	XASSERT_NONVOID(ByteCount >= sizeof(XBufDescriptor));
 	XASSERT_NONVOID(InstancePtr->IsReady == XCOMPONENT_IS_READY);
 
 	/* if the scatter gather list has already been created, then return
@@ -616,13 +617,17 @@ XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
 		return XST_DMA_SG_LIST_EXISTS;
 	}
 
+	/* save this up front so V_TO_P() works correctly */
+	InstancePtr->VirtPtr = MemoryPtr;
+	InstancePtr->PhyPtr = PhyPtr;
+
 	/* loop thru the specified memory block and create as many buffer
 	 * descriptors as possible putting each into the list which is
 	 * implemented as a ring buffer, make sure not to use any memory which
 	 * is not large enough for a complete buffer descriptor
 	 */
 	UsedByteCount = 0;
-	while ((UsedByteCount + sizeof (XBufDescriptor)) <= ByteCount) {
+	while ((UsedByteCount + sizeof(XBufDescriptor)) <= ByteCount) {
 		/* setup a pointer to the next buffer descriptor in the memory and
 		 * update # of used bytes to know when all of memory is used
 		 */
@@ -639,7 +644,7 @@ XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
 		 */
 		if (PreviousDescriptorPtr != NULL) {
 			XBufDescriptor_SetNextPtr(PreviousDescriptorPtr,
-						  BufferDescriptorPtr);
+						  V_TO_P(BufferDescriptorPtr));
 		}
 
 		/* always keep a pointer to the last created buffer descriptor such
@@ -652,13 +657,13 @@ XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
 		 */
 		InstancePtr->TotalDescriptorCount++;
 
-		UsedByteCount += sizeof (XBufDescriptor);
+		UsedByteCount += sizeof(XBufDescriptor);
 	}
 
 	/* connect the last buffer descriptor created and inserted in the list
 	 * to the first such that a ring buffer is created
 	 */
-	XBufDescriptor_SetNextPtr(BufferDescriptorPtr, StartOfListPtr);
+	XBufDescriptor_SetNextPtr(BufferDescriptorPtr, V_TO_P(StartOfListPtr));
 
 	/* initialize the ring buffer to indicate that there are no
 	 * buffer descriptors in the list which point to valid data buffers
@@ -668,6 +673,8 @@ XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
 	InstancePtr->CommitPtr = NULL;
 	InstancePtr->LastPtr = BufferDescriptorPtr;
 	InstancePtr->ActiveDescriptorCount = 0;
+	InstancePtr->ActivePacketCount = 0;
+	InstancePtr->Committed = FALSE;
 
 	/* indicate the scatter gather list was successfully created */
 
@@ -702,8 +709,7 @@ XDmaChannel_CreateSgList(XDmaChannel * InstancePtr,
 * None.
 *
 ******************************************************************************/
-u32
-XDmaChannel_IsSgListEmpty(XDmaChannel * InstancePtr)
+u32 XDmaChannel_IsSgListEmpty(XDmaChannel * InstancePtr)
 {
 	/* assert to verify valid input arguments */
 
@@ -732,7 +738,7 @@ XDmaChannel_IsSgListEmpty(XDmaChannel * InstancePtr)
 * list pointers on the fly).
 *
 * After buffer descriptors are put into the list, they must also be committed
-* by calling another function.	This allows multiple buffer descriptors which
+* by calling another function.  This allows multiple buffer descriptors which
 * span a single packet to be put into the list while preventing the hardware
 * from starting the first buffer descriptor of the packet.
 *
@@ -767,7 +773,7 @@ XDmaChannel_IsSgListEmpty(XDmaChannel * InstancePtr)
 * putting buffer descriptors into it.
 *
 ******************************************************************************/
-XStatus
+int
 XDmaChannel_PutDescriptor(XDmaChannel * InstancePtr,
 			  XBufDescriptor * BufferDescriptorPtr)
 {
@@ -825,6 +831,11 @@ XDmaChannel_PutDescriptor(XDmaChannel * InstancePtr,
 	 */
 	CopyBufferDescriptor(BufferDescriptorPtr, InstancePtr->PutPtr);
 
+	/* End of a packet is reached. Bump the packet counter */
+	if (XBufDescriptor_IsLastControl(InstancePtr->PutPtr)) {
+		InstancePtr->ActivePacketCount++;
+	}
+
 	/* only the last in the list and the one to be committed have scatter gather
 	 * disabled in the control word, a commit requires only one descriptor
 	 * to be changed, when # of descriptors to commit > 2 all others except the
@@ -854,7 +865,8 @@ XDmaChannel_PutDescriptor(XDmaChannel * InstancePtr,
 	 * the commit pointer to track the correct descriptor to be committed
 	 */
 	InstancePtr->LastPtr = InstancePtr->PutPtr;
-	InstancePtr->PutPtr = XBufDescriptor_GetNextPtr(InstancePtr->PutPtr);
+	InstancePtr->PutPtr =
+		P_TO_V(XBufDescriptor_GetNextPtr(InstancePtr->PutPtr));
 
 	return XST_SUCCESS;
 }
@@ -895,8 +907,7 @@ XDmaChannel_PutDescriptor(XDmaChannel * InstancePtr,
 * None.
 *
 ******************************************************************************/
-XStatus
-XDmaChannel_CommitPuts(XDmaChannel * InstancePtr)
+int XDmaChannel_CommitPuts(XDmaChannel * InstancePtr)
 {
 	/* assert to verify input arguments */
 
@@ -922,6 +933,10 @@ XDmaChannel_CommitPuts(XDmaChannel * InstancePtr)
 		XBufDescriptor_SetControl(InstancePtr->CommitPtr, Control &
 					  ~XDC_DMACR_SG_DISABLE_MASK);
 	}
+
+	/* Buffer Descriptors are committed. DMA is ready to be enabled */
+	InstancePtr->Committed = TRUE;
+
 	/* Update the commit pointer to indicate that there is nothing to be
 	 * committed, this state is used by start processing to know that the
 	 * buffer descriptor to start is not waiting to be committed
@@ -955,7 +970,7 @@ XDmaChannel_CommitPuts(XDmaChannel * InstancePtr)
 * to be called.
 *
 * BufDescriptorPtr is a pointer to a pointer to the buffer descriptor which
-* was retrieved from the list.	The buffer descriptor is not really removed
+* was retrieved from the list.  The buffer descriptor is not really removed
 * from the list, but it is changed to a state such that the hardware will not
 * use it again until it is put into the scatter gather list of the DMA channel.
 *
@@ -979,7 +994,7 @@ XDmaChannel_CommitPuts(XDmaChannel * InstancePtr)
 * None.
 *
 ******************************************************************************/
-XStatus
+int
 XDmaChannel_GetDescriptor(XDmaChannel * InstancePtr,
 			  XBufDescriptor ** BufDescriptorPtr)
 {
@@ -1020,7 +1035,8 @@ XDmaChannel_GetDescriptor(XDmaChannel * InstancePtr,
 	 * was retrieved from the list by setting it to the next buffer descriptor
 	 * in the list and indicate one less descriptor in the list now
 	 */
-	InstancePtr->GetPtr = XBufDescriptor_GetNextPtr(InstancePtr->GetPtr);
+	InstancePtr->GetPtr =
+		P_TO_V(XBufDescriptor_GetNextPtr(InstancePtr->GetPtr));
 	InstancePtr->ActiveDescriptorCount--;
 
 	return XST_SUCCESS;
@@ -1055,8 +1071,7 @@ XDmaChannel_GetDescriptor(XDmaChannel * InstancePtr,
 * None.
 *
 ******************************************************************************/
-u32
-XDmaChannel_GetPktCount(XDmaChannel * InstancePtr)
+u32 XDmaChannel_GetPktCount(XDmaChannel * InstancePtr)
 {
 	/* assert to verify input arguments */
 
@@ -1096,8 +1111,7 @@ XDmaChannel_GetPktCount(XDmaChannel * InstancePtr)
 * None.
 *
 ******************************************************************************/
-void
-XDmaChannel_DecrementPktCount(XDmaChannel * InstancePtr)
+void XDmaChannel_DecrementPktCount(XDmaChannel * InstancePtr)
 {
 	u32 Register;
 
@@ -1127,7 +1141,7 @@ XDmaChannel_DecrementPktCount(XDmaChannel * InstancePtr)
 * DESCRIPTION:
 *
 * This function sets the value of the packet count threshold register of the
-* DMA channel.	It reflects the number of packets that must be sent or
+* DMA channel.  It reflects the number of packets that must be sent or
 * received before generating an interrupt.  This value helps implement
 * a concept called "interrupt coalescing", which is used to reduce the number
 * of interrupts from devices with high data rates.
@@ -1157,8 +1171,7 @@ XDmaChannel_DecrementPktCount(XDmaChannel * InstancePtr)
 * caused confustion.
 *
 ******************************************************************************/
-XStatus
-XDmaChannel_SetPktThreshold(XDmaChannel * InstancePtr, u8 Threshold)
+int XDmaChannel_SetPktThreshold(XDmaChannel * InstancePtr, u8 Threshold)
 {
 	/* assert to verify input arguments, don't assert the threshold since
 	 * it's range is unknown
@@ -1187,7 +1200,7 @@ XDmaChannel_SetPktThreshold(XDmaChannel * InstancePtr, u8 Threshold)
 * DESCRIPTION:
 *
 * This function gets the value of the packet count threshold register of the
-* DMA channel.	This value reflects the number of packets that must be sent or
+* DMA channel.  This value reflects the number of packets that must be sent or
 * received before generating an interrupt.  This value helps implement a concept
 * called "interrupt coalescing", which is used to reduce the number of
 * interrupts from devices with high data rates.
@@ -1209,8 +1222,7 @@ XDmaChannel_SetPktThreshold(XDmaChannel * InstancePtr, u8 Threshold)
 * None.
 *
 ******************************************************************************/
-u8
-XDmaChannel_GetPktThreshold(XDmaChannel * InstancePtr)
+u8 XDmaChannel_GetPktThreshold(XDmaChannel * InstancePtr)
 {
 	/* assert to verify input arguments */
 
@@ -1232,7 +1244,7 @@ XDmaChannel_GetPktThreshold(XDmaChannel * InstancePtr)
 * DESCRIPTION:
 *
 * This function sets the value of the packet wait bound register of the
-* DMA channel.	This value reflects the timer value used to trigger an
+* DMA channel.  This value reflects the timer value used to trigger an
 * interrupt when not enough packets have been received to reach the packet
 * count threshold.
 *
@@ -1257,8 +1269,7 @@ XDmaChannel_GetPktThreshold(XDmaChannel * InstancePtr)
 * None.
 *
 ******************************************************************************/
-void
-XDmaChannel_SetPktWaitBound(XDmaChannel * InstancePtr, u32 WaitBound)
+void XDmaChannel_SetPktWaitBound(XDmaChannel * InstancePtr, u32 WaitBound)
 {
 	/* assert to verify input arguments */
 
@@ -1282,7 +1293,7 @@ XDmaChannel_SetPktWaitBound(XDmaChannel * InstancePtr, u32 WaitBound)
 * DESCRIPTION:
 *
 * This function gets the value of the packet wait bound register of the
-* DMA channel.	This value contains the timer value used to trigger an
+* DMA channel.  This value contains the timer value used to trigger an
 * interrupt when not enough packets have been received to reach the packet
 * count threshold.
 *
@@ -1303,8 +1314,7 @@ XDmaChannel_SetPktWaitBound(XDmaChannel * InstancePtr, u32 WaitBound)
 * None.
 *
 ******************************************************************************/
-u32
-XDmaChannel_GetPktWaitBound(XDmaChannel * InstancePtr)
+u32 XDmaChannel_GetPktWaitBound(XDmaChannel * InstancePtr)
 {
 	/* assert to verify input arguments */
 

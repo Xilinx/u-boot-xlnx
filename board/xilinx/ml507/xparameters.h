@@ -203,6 +203,7 @@
 #define XPAR_CPU_PPC440_CORE_CLOCK_FREQ_HZ 400000000
 #define XPAR_CPU_PPC440_IDCR_BASEADDR 0x00000000
 #define XPAR_XLLDMA_USE_DCR
+//#define CONFIG_XILINX_LLDMA_USE_DCR
 
 /******************************************************************/
 

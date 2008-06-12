@@ -526,7 +526,8 @@ int eth_initialize(bd_t *bis)
 	at91rm9200_miiphy_initialize(bis);
 #endif
 #if defined(CONFIG_4xx) && !defined(CONFIG_IOP480) \
-	&& !defined(CONFIG_AP1000) && !defined(CONFIG_405)
+	&& !defined(CONFIG_AP1000) && !defined(CONFIG_405) \
+	&& !defined(CONFIG_XILINX_VIRTEX5_FXT) 
 	emac4xx_miiphy_initialize(bis);
 #endif
 #if defined(CONFIG_MCF52x2)

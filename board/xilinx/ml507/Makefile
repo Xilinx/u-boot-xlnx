@@ -31,21 +31,16 @@ OBJS-y			:=
 OBJS-n			:=
 
 # Conditionally add Ethernet
-OBJS-$(XPAR_EMAC)  	+= ../xilinx_enet/emac_adapter.o \
-			   ../xilinx_enet/xemac.o \
-			   ../xilinx_enet/xemac_options.o \
-			   ../xilinx_enet/xemac_polled.o \
-			   ../xilinx_enet/xemac_intr.o \
-			   ../xilinx_enet/xemac_g.o \
-			   ../xilinx_enet/xemac_intr_dma.o \
-			   ../common/xdma_channel.o \
-			   ../common/xdma_channel_sg.o \
+OBJS-$(XPAR_LLTEMAC)  	+= ../xilinx_lltemac/xlltemac_adapter.o \
+			   ../xilinx_lltemac/xlltemac.o \
+			   ../xilinx_lltemac/xlltemac_control.o \
+			   ../common/xlldma.o \
+			   ../common/xlldma_bdring.o \
 			   ../common/xipif_v1_23_b.o \
 			   ../common/xbasic_types.o \
-			   ../common/xpacket_fifo_l_v2_00_a.o \
-			   ../common/xpacket_fifo_v2_00_a.o \
-			   ../common/xversion.o
-CFLAGS-$(XPAR_EMAC)	+= -I../xilinx_enet
+			   ../common/xversion.o \
+			   ../common/xio_dcr.o
+CFLAGS-$(XPAR_LLTEMAC)	+= -I../xilinx_lltemac
 
 # Conditionally add IIC
 OBJS-$(XPAR_IIC)  	+= ../xilinx_iic/iic_adapter.o \

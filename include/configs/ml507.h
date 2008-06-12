@@ -76,7 +76,7 @@
 #define SYSTEMACE_CONFIG_FPGA   1
 #endif
 
-#if 1  /* for the moment assume that we do have Flash */
+#if 0  /* for the moment assume that we do have Flash */
 #define CFG_ENV_IS_IN_FLASH	1	/* environment is in FLASH */
 #else
 #define CFG_NO_FLASH            1
@@ -114,8 +114,8 @@
 
 /* following are used only if env is in Flash */
 #ifdef CFG_ENV_IS_IN_FLASH
-//#define CFG_FLASH_BASE		0xf0000000
-#define CFG_FLASH_BASE		0xFE000000
+#define CFG_FLASH_BASE		0xf0000000
+//#define CFG_FLASH_BASE		0xFE000000
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks        */
 #define CFG_MAX_FLASH_SECT	259	/* max number of sectors on one chip */
 #define CFG_FLASH_CFI
@@ -124,8 +124,8 @@
 #define CFG_ENV_OFFSET          0x01F80000
 #define CFG_ENV_SIZE            0x00040000
 #define CONFIG_ENV_OVERWRITE    1       /* writable ethaddr and serial# */
-//#define CFG_MONITOR_BASE	0x02000000
-#define CFG_MONITOR_BASE	0xFFFC0000
+#define CFG_MONITOR_BASE	0x02000000
+//#define CFG_MONITOR_BASE	0xFFFC0000
 #endif
 
 #define CONFIG_BAUDRATE         9600
@@ -147,6 +147,8 @@
 #undef CONFIG_CMD_LOADS
 #undef CONFIG_CMD_IMLS
 
+#define CONFIG_CMD_PING
+
 /*  Make some configuration choices based on the hardware design
  *  specified in xparameters.h.
  */
@@ -157,7 +159,7 @@
 #undef  CONFIG_CMD_FAT
 #endif
 
-#if 0  /* for the moment assume that we have Flash */
+#if 1  /* for the moment assume that we have Flash */
 #undef  CONFIG_CMD_FLASH
 #endif
 
@@ -167,7 +169,7 @@
 #undef  CONFIG_CMD_I2C
 #endif
 
-#ifdef XPAR_EMAC_0_DEVICE_ID
+#ifdef XPAR_XLLTEMAC_0_DEVICE_ID
 #define CONFIG_CMD_NET          1
 #define CONFIG_CMD_DHCP         1
 #else
