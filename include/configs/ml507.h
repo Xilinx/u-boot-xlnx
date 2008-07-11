@@ -64,6 +64,15 @@
 
 #include "../board/xilinx/ml507/xparameters.h"
 
+/* for testing only, handy for when there's no non-volatile environment 
+
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"ipaddr=172.16.40.227\0"	\
+	"ethaddr=00:00:00:80:80:80\0"	\
+	"serverip=172.16.40.98\0"	
+*/
+#define CONFIG_OF_LIBFDT	1
+
 /*  Make some configuration choices based on the hardware design
  *  specified in xparameters.h.
  */
@@ -169,7 +178,7 @@
 #undef  CONFIG_CMD_I2C
 #endif
 
-#ifdef XPAR_XLLTEMAC_0_DEVICE_ID
+#ifdef XPAR_LLTEMAC_0_DEVICE_ID
 #define CONFIG_CMD_NET          1
 #define CONFIG_CMD_DHCP         1
 #else

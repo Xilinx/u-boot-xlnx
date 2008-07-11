@@ -51,7 +51,7 @@
 #endif
 
 #if USE_CHAN1
-const NS16550_t COM_PORTS[] = { (NS16550_t) (XPAR_UARTNS550_0_BASEADDR + 3)
+const NS16550_t COM_PORTS[] = { (NS16550_t) (XPAR_UARTNS550_0_BASEADDR + 0x1003)
 };
 #endif
 
