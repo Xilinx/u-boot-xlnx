@@ -143,7 +143,11 @@ else
 LDSCRIPT := $(TOPDIR)/board/$(BOARDDIR)/u-boot.lds
 endif
 endif
-OBJCFLAGS += --gap-fill=0xff
+# 
+# removed --gap-fill=0xff from OBJCFLAGS
+# it prevents build of srec file when .bootpg sections is very high
+#
+OBJCFLAGS += 
 
 gccincdir := $(shell $(CC) -print-file-name=include)
 
