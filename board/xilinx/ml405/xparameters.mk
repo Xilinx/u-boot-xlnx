@@ -1,0 +1,3 @@
+XPAR_IIC		:= y
+XPAR_LLTEMAC		:= y
+XPAR_SYSACE		:= n

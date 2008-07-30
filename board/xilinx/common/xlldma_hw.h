@@ -57,17 +57,15 @@ extern "C" {
 
 #include "xbasic_types.h"
 
-#define CONFIG_XILINX_LLDMA_USE_DCR // JHL HACK !!!!!
-
 /** @name Device Bus Type definition The constant
- * CONFIG_XILINX_LLDMA_USE_DCR is used to inform this driver the type
+ * XPAR_LLDMA_USE_DCR is used to inform this driver the type
  * of the BUS the DMA device is on. If the DMA core is on DCR BUS
  * using indirect addressing, which currently only happens on V5FX,
  * then this option must be set.  On other architectures where dma
  * ports are accessed through memory mapped io, this must not be set.
  *@{
  */
-#ifdef CONFIG_XILINX_LLDMA_USE_DCR
+#ifdef XPAR_XLLDMA_USE_DCR 
 #include "xio_dcr.h"
 #else
 #include "xio.h"
@@ -89,7 +87,7 @@ extern "C" {
 /* Register offset definitions. Unless otherwise noted, register access is
  * 32 bit.
  */
-#ifdef CONFIG_XILINX_LLDMA_USE_DCR
+#ifdef XPAR_XLLDMA_USE_DCR
 
 /* DMA core is on DCR BUS */
 
@@ -146,7 +144,7 @@ extern "C" {
 
 /*@}*/
 
-#endif /* #ifdef CONFIG_XILINX_LLDMA_USE_DCR */
+#endif /* #ifdef XPAR_XLLDMA_USE_DCR */
 
 /** @name Buffer Descriptor register offsets
  *  USR fields are defined by higher level IP. For example, checksum offload
@@ -314,7 +312,7 @@ extern "C" {
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
-#ifdef CONFIG_XILINX_LLDMA_USE_DCR
+#ifdef XPAR_XLLDMA_USE_DCR
 
 /* DCR interface is used */
 

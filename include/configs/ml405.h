@@ -1,12 +1,11 @@
 /*
- * ML403.h: ML403 specific config options
  *
- * http://www.xilinx.com/ml403
+ * See file CREDITS for list of people who contributed to this
+ * project.
  *
- * Derived from : ml300.h
+ * http://www.xilinx.com/ml405
  *
  *     Author: Xilinx, Inc.
- *
  *
  *     This program is free software; you can redistribute it and/or modify it
  *     under the terms of the GNU General Public License as published by the
@@ -14,24 +13,10 @@
  *     option) any later version.
  *
  *
- *     XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A
- *     COURTESY TO YOU. BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS
- *     ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE, APPLICATION OR STANDARD,
- *     XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION IS FREE
- *     FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE FOR
- *     OBTAINING ANY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.
- *     XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO
- *     THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY
- *     WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM
- *     CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND
- *     FITNESS FOR A PARTICULAR PURPOSE.
- *
- *
  *     Xilinx products are not intended for use in life support appliances,
  *     devices, or systems. Use in such applications is expressly prohibited.
  *
- *
- *     (c) Copyright 2002-2005 Xilinx Inc.
+ *     (c) Copyright 2008 Xilinx Inc.
  *     All rights reserved.
  *
  *
@@ -41,22 +26,35 @@
  *
  */
 
+/************************************************************************
+ * ml405.h - configuration for Xilinx ML405/403 board based on
+ *           Virtex-4 FX FPGA with embedded PowerPC 405
+ ***********************************************************************/
+
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-/* #define DEBUG */
-/* #define ET_DEBUG 1 */
+// #define DEBUG
+// #define ET_DEBUG 1
 
-/*
+/*-----------------------------------------------------------------------
  * High Level Configuration Options
- * (easy to change)
- */
+ *----------------------------------------------------------------------*/
 
-#define CONFIG_405		1	/* This is a PPC405 CPU		*/
-#define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
-#define CONFIG_XILINX_ML403	1	/* ...on a Xilinx ML403 board	*/
+#define CONFIG_405		   1	    /* ... PPC405 CPU		    */
+#define CONFIG_4xx		   1	    /* ... PPC4xx family	    */
+#define CONFIG_XILINX_ML405	   1	    /* ... on a Xilinx ML405/403 board  */
 
-#include "../board/xilinx/ml403/xparameters.h"
+#include "../board/xilinx/ml405/xparameters.h"
+
+/* for testing only, handy for when there's no non-volatile environment 
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"ipaddr=172.16.40.227\0"	\
+	"ethaddr=00:00:00:80:80:80\0"	\
+	"serverip=172.16.40.98\0"	
+*/
+
+#define CONFIG_OF_LIBFDT	1
 
 /*  Make some configuration choices based on the hardware design
  *  specified in xparameters.h.
@@ -67,44 +65,27 @@
 #define CONFIG_DOS_PARTITION	1
 #define CFG_SYSTEMACE_BASE	XPAR_SYSACE_0_BASEADDR
 #define CFG_SYSTEMACE_WIDTH	XPAR_SYSACE_0_MEM_WIDTH
-#define ADD_SYSTEMACE_CMDS      | CFG_CMD_FAT
-#define RM_SYSTEMACE_CMDS
-#else
-#define ADD_SYSTEMACE_CMDS
-#define RM_SYSTEMACE_CMDS       | CFG_CMD_FAT
+#define SYSTEMACE_CONFIG_FPGA   1
 #endif
 
-#if 1  /* for the moment assume that we have Flash */
+#if 0  /* for the moment assume that we do not have Flash */
 #define CFG_ENV_IS_IN_FLASH	1	/* environment is in FLASH */
-#define ADD_FLASH_CMDS          | CFG_CMD_FLASH
-#define RM_FLASH_CMDS
 #else
-#define ADD_FLASH_CMDS
-#define RM_FLASH_CMDS           | CFG_CMD_FLASH
 #define CFG_NO_FLASH            1
 #endif
 
 #ifdef XPAR_IIC_0_DEVICE_ID
 #if ! defined(CFG_ENV_IS_IN_FLASH)
-#define CFG_ENV_IS_IN_EEPROM	1	/* environment is in IIC EEPROM */
+#define CFG_ENV_IS_IN_EEPROMXPAR_LLTEMAC_0_DEVICE_ID	1	/* environment is in IIC EEPROM */
 #endif
-#define ADD_IIC_CMDS            | CFG_CMD_I2C
-#define RM_IIC_CMDS
-#else
-#define ADD_IIC_CMDS
-#define RM_IIC_CMDS             | CFG_CMD_I2C
 #endif
 
+#undef XPAR_EMAC_0_DEVICE_IDXPAR_LLTEMAC_0_DEVICE_ID
 #ifdef XPAR_EMAC_0_DEVICE_ID
 #define CONFIG_ETHADDR          00:0a:35:00:22:01
-#define ADD_NET_CMDS            | CFG_CMD_NET | CFG_CMD_DHCP
-#define RM_NET_CMDS
-#else
-#define ADD_NET_CMDS
-#define RM_NET_CMDS             | CFG_CMD_NET | CFG_CMD_DHCP
 #endif
 
-#if ! (defined(CFG_ENV_IS_IN_FLASH) || defined(CFG_ENV_IS_IN_EEPROM))
+#if ! (defined(CFG_ENV_IS_INXPAR_LLTEMAC_0_DEVICE_ID_FLASH) || defined(CFG_ENV_IS_IN_EEPROM))
 #define CFG_ENV_IS_NOWHERE      1       /* no space to store environment */
 #define CFG_ENV_SIZE		1024
 #define CFG_MONITOR_BASE	0x02000000
@@ -114,10 +95,10 @@
 #ifdef	CFG_ENV_IS_IN_EEPROM
 #define CFG_I2C_EEPROM_ADDR             (0xA0 >> 1)
 #define CFG_I2C_EEPROM_ADDR_LEN         1
-#define CFG_I2C_EEPROM_ADDR_OVERFLOW    0x1
+#define CFG_I2C_EEPROM_ADDR_OVERFLOW    0x3
 #define CFG_ENV_OFFSET                  0
 #define CFG_ENV_SIZE                    256
-#define CFG_EEPROM_PAGE_WRITE_BITS      5
+#define CFG_EEPROM_PAGE_WRITE_BITS      4
 #define CFG_EEPROM_PAGE_WRITE_DELAY_MS  5
 #define CONFIG_ENV_OVERWRITE            1  /* writable ethaddr and serial# */
 #define CFG_MONITOR_BASE                0x02000000
@@ -125,23 +106,24 @@
 
 /* following are used only if env is in Flash */
 #ifdef CFG_ENV_IS_IN_FLASH
-#define CFG_FLASH_BASE		0xFF800000
+#define CFG_FLASH_BASE		0xf0000000
+//#define CFG_FLASH_BASE		0xFE000000
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks        */
-#define CFG_MAX_FLASH_SECT	256	/* max number of sectors on one chip */
-#define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)   */
-#define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)   */
+#define CFG_MAX_FLASH_SECT	259	/* max number of sectors on one chip */
 #define CFG_FLASH_CFI
 #define CFG_FLASH_CFI_DRIVER
-#define CFG_ENV_OFFSET          0x00780000
+#define CFG_FLASH_PROTECTION    1
+#define CFG_ENV_OFFSET          0x01F80000
 #define CFG_ENV_SIZE            0x00040000
 #define CONFIG_ENV_OVERWRITE    1       /* writable ethaddr and serial# */
-#define CFG_MONITOR_BASE	0xFFFC0000
+#define CFG_MONITOR_BASE	0x02000000
+//#define CFG_MONITOR_BASE	0xFFFC0000
 #endif
 
 #define CONFIG_BAUDRATE         9600
 #define CONFIG_BOOTDELAY        5       /* autoboot after 5 seconds	*/
 
-#define CONFIG_BOOTCOMMAND      "bootm ffe00000" /* autoboot command	*/
+#define CONFIG_BOOTCOMMAND      "" /* autoboot command	*/
 
 #define CONFIG_BOOTARGS         "console=ttyS0,9600 ip=off " \
                                 "root=/dev/xsysace/disc0/part2 rw"
@@ -149,21 +131,44 @@
 #define CONFIG_LOADS_ECHO       1       /* echo on for serial download	*/
 #define CFG_LOADS_BAUD_CHANGE   1       /* allow baudrate change	*/
 
-#define REMOVE_COMMANDS	       (CFG_CMD_LOADS | \
-                                CFG_CMD_IMLS \
-                                RM_IIC_CMDS \
-                                RM_SYSTEMACE_CMDS \
-                                RM_NET_CMDS \
-                                RM_FLASH_CMDS)
-#define CONFIG_COMMANDS	       ((CONFIG_CMD_DFL \
-                                 ADD_IIC_CMDS \
-                                 ADD_SYSTEMACE_CMDS \
-                                 ADD_NET_CMDS \
-                                 ADD_FLASH_CMDS) \
-				& ~REMOVE_COMMANDS)
+/*
+ * Command line configuration.
+ */
+#include <config_cmd_default.h>
 
-/* this must be included AFTER the definition of CONFIG_COMMANDS (if any) */
-#include <cmd_confdefs.h>
+#undef CONFIG_CMD_LOADS
+#undef CONFIG_CMD_IMLS
+
+#define CONFIG_CMD_PING
+
+/*  Make some configuration choices based on the hardware design
+ *  specified in xparameters.h.
+ */
+
+#ifdef XPAR_SYSACE_0_DEVICE_ID
+#define CONFIG_CMD_FAT          1
+#else
+#undef  CONFIG_CMD_FAT
+#endif
+
+#if 1  /* for the moment assume that we have Flash */
+#undef  CONFIG_CMD_FLASH
+#endif
+
+#ifdef XPAR_IIC_0_DEVICE_ID
+#define CONFIG_CMD_I2C          1
+#else
+#undef  CONFIG_CMD_I2C
+#endif
+
+#ifdef XPAR_LLTEMAC_0_DEVICE_ID
+#define CONFIG_CMD_NET          1
+#define CONFIG_CMD_DHCP         1
+#else
+#undef  CONFIG_CMD_NET
+#undef  CONFIG_CMD_DHCP
+#endif
+
 
 /*
  * Miscellaneous configurable options
@@ -213,7 +218,7 @@
 /*-----------------------------------------------------------------------
  * Cache Configuration
  */
-#define CFG_DCACHE_SIZE		16384	/* Virtex-II Pro PPC 405 CPUs	*/
+#define CFG_DCACHE_SIZE		16384	/* V2Pro and V4 PPC 405 CPUs	*/
 #define CFG_CACHELINE_SIZE	32	/* ...			        */
 
 /*-----------------------------------------------------------------------
