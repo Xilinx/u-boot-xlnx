@@ -71,6 +71,106 @@ static char RxFrame[LLTEMAC_MAX_MTU_ALIGNED] __attribute__ ((aligned(8)));
 
 static XLlTemac LlTemac;
 static XLlDma LlDma;
+static u8 gmii_addr;		/* The GMII address of the PHY */
+
+
+/* function prototypes */
+
+static int detect_phy();
+static void set_mac_speed();
+static void phy_setup();
+
+/* Detect the PHY address by scanning addresses 0 to 31 and
+ * looking at the MII status register (register 1) and assuming
+ * the PHY supports 10Mbps full/half duplex. Feel free to change
+ * this code to match your PHY, or hardcode the address if needed.
+ */
+/* Use MII register 1 (MII status register) to detect PHY */
+#define PHY_DETECT_REG  1
+
+/* Mask used to verify certain PHY features (or register contents)
+ * in the register above:
+ *  0x1000: 10Mbps full duplex support
+ *  0x0800: 10Mbps half duplex support
+ *  0x0008: Auto-negotiation support
+ */
+#define PHY_DETECT_MASK 0x1808
+
+static int detect_phy()
+{
+	u16 phy_reg;
+	u32 phy_addr;
+
+	for (phy_addr = 31; phy_addr > 0; phy_addr--) {
+		XLlTemac_PhyRead(&LlTemac, phy_addr, PHY_DETECT_REG, &phy_reg);
+
+		if ((phy_reg != 0xFFFF) &&
+		    ((phy_reg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
+			/* Found a valid PHY address */
+			debug_printf("XTemac: PHY detected at address %d.\n", phy_addr);
+			return phy_addr;
+		}
+	}
+
+	debug_printf("XTemac: No PHY detected.  Assuming a PHY at address 0\n");
+	return 0;		/* default to zero */
+}
+
+#define CONFIG_XILINX_LLTEMAC_MARVELL_88E1111_GMII
+
+/*
+ * This function sets up MAC's speed according to link speed of PHY
+ */
+static void set_mac_speed()
+{
+	u16 phylinkspeed;
+
+#ifdef CONFIG_XILINX_LLTEMAC_MARVELL_88E1111_GMII
+	/*
+	 * This function is specific to MARVELL 88E1111 PHY chip on
+	 * many Xilinx boards and assumes GMII interface is being used
+	 * by the TEMAC.
+	 */
+
+#define MARVELL_88E1111_PHY_SPECIFIC_STATUS_REG_OFFSET  17
+#define MARVELL_88E1111_LINKSPEED_MARK                  0xC000
+#define MARVELL_88E1111_LINKSPEED_SHIFT                 14
+#define MARVELL_88E1111_LINKSPEED_1000M                 0x0002
+#define MARVELL_88E1111_LINKSPEED_100M                  0x0001
+#define MARVELL_88E1111_LINKSPEED_10M                   0x0000
+	u16 RegValue;
+
+	XLlTemac_PhyRead(&LlTemac, gmii_addr,
+	 		MARVELL_88E1111_PHY_SPECIFIC_STATUS_REG_OFFSET,
+			&RegValue);
+	/* Get current link speed */
+	phylinkspeed = (RegValue & MARVELL_88E1111_LINKSPEED_MARK)
+		>> MARVELL_88E1111_LINKSPEED_SHIFT;
+
+	/* Update TEMAC speed accordingly */
+	switch (phylinkspeed) {
+	case (MARVELL_88E1111_LINKSPEED_1000M):
+		XLlTemac_SetOperatingSpeed(&LlTemac, 1000);
+		debug_printf("XLlTemac: speed set to 1000Mb/s\n");
+		break;
+	case (MARVELL_88E1111_LINKSPEED_100M):
+		XLlTemac_SetOperatingSpeed(&LlTemac, 100);
+		debug_printf("XLlTemac: speed set to 100Mb/s\n");
+		break;
+	case (MARVELL_88E1111_LINKSPEED_10M):
+		XLlTemac_SetOperatingSpeed(&LlTemac, 10);
+		debug_printf("XLlTemac: speed set to 10Mb/s\n");
+		break;
+	default:
+		XLlTemac_SetOperatingSpeed(&LlTemac, 1000);
+		debug_printf("XLlTemac: speed defaults to 1000Mb/s\n");
+		break;
+	}
+#else
+	/* add your PHY specific code here for other PHYs*/
+#endif
+
+}
 
 void
 eth_halt(void)
@@ -113,6 +213,13 @@ eth_init(bd_t * bis)
 		debug_printf("Error in initialize\r\n");
 		return XST_FAILURE;
 	}
+
+	/* now we can reset the device */
+	XLlTemac_Reset(&LlTemac, XTE_RESET_HARD);
+
+	/* Reset on TEMAC also resets PHY. Give it some time to finish negotiation
+	 * before we move on */
+	udelay(2 * 1000000);
 
 	debug_printf("Initializing DMA...\r\n");
 
@@ -193,8 +300,8 @@ eth_init(bd_t * bis)
 	/*
 	 * Set PHY<-->MAC data clock
 	 */
-	XLlTemac_SetOperatingSpeed(&LlTemac, 100);
-
+	gmii_addr = detect_phy();
+	set_mac_speed();
 	/*
  	 * Setting the operating speed of the MAC needs a delay.  There
 	 * doesn't seem to be register to poll, so please consider this

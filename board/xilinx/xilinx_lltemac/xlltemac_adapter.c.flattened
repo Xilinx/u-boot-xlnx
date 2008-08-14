@@ -1,0 +1,373 @@
+/*
+ *
+ * Xilinx xps_ll_temac ethernet driver for u-boot
+ *
+ * Author: Yoshio Kashiwagi kashiwagi@co-nss.co.jp
+ *
+ * This polled driver has been tested on V4 with the ML405 but still 
+ * needs work for V5 on the ML507 board (dma is dcr).
+ *
+ * Copyright (c) 2008 Nissin Systems Co.,Ltd.
+ *
+ * March 2008 created
+ *
+ * This program is free software; you can redistribute	it and/or modify it
+ * under  the terms of	the GNU General  Public License as published by the
+ * Free Software Foundation;  either version 2 of the  License, or (at your
+ * option) any later version.
+ *
+*/
+#include <config.h>
+#include <common.h>
+#include <net.h>
+#include <malloc.h>
+#include <asm/errno.h>
+#include <asm/processor.h>
+
+#define S_DMA_CTRL_BASEADDR	XPAR_LLTEMAC_0_LLINK_CONNECTED_BASEADDR
+#define XPS_LLTEMAC_BASEADDR	XPAR_LLTEMAC_0_BASEADDR
+
+/* XPS_LL_TEMAC SDMA registers definition */
+
+#define TX_NXTDESC_PTR		(S_DMA_CTRL_BASEADDR + 0x00)
+#define TX_CURBUF_ADDR		(S_DMA_CTRL_BASEADDR + 0x04)
+#define TX_CURBUF_LENGTH	(S_DMA_CTRL_BASEADDR + 0x08)
+#define TX_CURDESC_PTR		(S_DMA_CTRL_BASEADDR + 0x0c)
+#define TX_TAILDESC_PTR		(S_DMA_CTRL_BASEADDR + 0x10)
+#define TX_CHNL_CTRL		(S_DMA_CTRL_BASEADDR + 0x14)
+#define TX_IRQ_REG		(S_DMA_CTRL_BASEADDR + 0x18)
+#define TX_CHNL_STS		(S_DMA_CTRL_BASEADDR + 0x1c)
+
+#define RX_NXTDESC_PTR		(S_DMA_CTRL_BASEADDR + 0x20)
+#define RX_CURBUF_ADDR		(S_DMA_CTRL_BASEADDR + 0x24)
+#define RX_CURBUF_LENGTH	(S_DMA_CTRL_BASEADDR + 0x28)
+#define RX_CURDESC_PTR		(S_DMA_CTRL_BASEADDR + 0x2c)
+#define RX_TAILDESC_PTR		(S_DMA_CTRL_BASEADDR + 0x30)
+#define RX_CHNL_CTRL		(S_DMA_CTRL_BASEADDR + 0x34)
+#define RX_IRQ_REG		(S_DMA_CTRL_BASEADDR + 0x38)
+#define RX_CHNL_STS		(S_DMA_CTRL_BASEADDR + 0x3c)
+
+#define DMA_CONTROL_REG		(S_DMA_CTRL_BASEADDR + 0x40)
+
+/* XPS_LL_TEMAC direct registers definition */
+
+#define TEMAC_RAF0		(XPS_LLTEMAC_BASEADDR + 0x00)
+#define TEMAC_TPF0		(XPS_LLTEMAC_BASEADDR + 0x04)
+#define TEMAC_IFGP0		(XPS_LLTEMAC_BASEADDR + 0x08)
+#define TEMAC_IS0		(XPS_LLTEMAC_BASEADDR + 0x0c)
+#define TEMAC_IP0		(XPS_LLTEMAC_BASEADDR + 0x10)
+#define TEMAC_IE0		(XPS_LLTEMAC_BASEADDR + 0x14)
+
+#define TEMAC_MSW0		(XPS_LLTEMAC_BASEADDR + 0x20)
+#define TEMAC_LSW0		(XPS_LLTEMAC_BASEADDR + 0x24)
+#define TEMAC_CTL0		(XPS_LLTEMAC_BASEADDR + 0x28)
+#define TEMAC_RDY0		(XPS_LLTEMAC_BASEADDR + 0x2c)
+
+#define XTE_RSE_MIIM_RR_MASK      0x0002
+#define XTE_RSE_MIIM_WR_MASK      0x0004
+#define XTE_RSE_CFG_RR_MASK       0x0020
+#define XTE_RSE_CFG_WR_MASK       0x0040
+
+/* XPS_LL_TEMAC indirect registers offset definition */
+
+#define RCW0	0x200
+#define RCW1	0x240
+#define TC	0x280
+#define FCC	0x2c0
+#define EMMC	0x300
+#define PHYC	0x320
+#define MC	0x340
+#define UAW0	0x380
+#define UAW1	0x384
+#define MAW0	0x388
+#define MAW1	0x38c
+#define AFM	0x390
+#define TIS	0x3a0
+#define TIE	0x3a4
+#define MIIMWD	0x3b0
+#define MIIMAI	0x3b4
+
+#define CNTLREG_WRITE_ENABLE_MASK	0x8000
+#define CNTLREG_EMAC1SEL_MASK		0x0400
+#define CNTLREG_ADDRESSCODE_MASK	0x03ff
+
+#define MDIO_ENABLE_MASK	0x40
+#define MDIO_CLOCK_DIV_MASK	0x3F
+#define MDIO_CLOCK_DIV_100MHz	0x28
+
+#define ETHER_MTU		1520
+#define CACHE_LINE_SIZE		32
+
+/* SDMA descriptor status bit definitions */
+
+#define BDSTAT_ERROR_MASK       0x80
+#define BDSTAT_INT_ON_END_MASK  0x40
+#define BDSTAT_STOP_ON_END_MASK 0x20
+#define BDSTAT_COMPLETED_MASK   0x10
+#define BDSTAT_SOP_MASK         0x08
+#define BDSTAT_EOP_MASK         0x04
+#define BDSTAT_CHANBUSY_MASK    0x02
+#define BDSTAT_CHANRESET_MASK   0x01
+
+/* SDMA Buffer Descriptor */
+
+typedef struct cdmac_bd_t {
+	struct cdmac_bd_t *next_p;
+	unsigned char *phys_buf_p;
+	unsigned long buf_len;
+	unsigned char stat;
+	unsigned char app1_1;
+	unsigned short app1_2;
+	unsigned long app2;
+	unsigned long app3;
+	unsigned long app4;
+	unsigned long app5;
+} cdmac_bd __attribute((aligned(32))) ;
+
+static cdmac_bd	tx_bd;
+static cdmac_bd	rx_bd;
+static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(32)));
+static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
+
+struct xps_ll_temac_private {
+	int idx;
+	unsigned char dev_addr[6];
+};
+
+static void flush_dcache_range(unsigned int addr, unsigned size)
+{
+	unsigned int end = addr + size;
+
+	if(size) {
+		addr = addr & ~(CACHE_LINE_SIZE - 1);
+		while(addr < end) {
+			__asm__ __volatile__("dcbf 0,%0; sync;" : : "r" (addr));
+			addr += CACHE_LINE_SIZE;
+		}
+	}
+}
+
+static void invalidate_dcache_range(unsigned int addr, unsigned size)
+{
+	unsigned int end = addr + size;
+
+	if(size) {
+		addr = addr & ~(CACHE_LINE_SIZE - 1);
+		while(addr < end) {
+			__asm__ __volatile__("dcbi 0,%0; sync;" : : "r" (addr));
+			addr += CACHE_LINE_SIZE;
+		}
+	}
+}
+
+static unsigned int xps_ll_temac_hostif_get(int emac, int phy_addr, int reg_addr)
+{
+	*(unsigned int *)TEMAC_LSW0 = phy_addr << 5 | reg_addr;
+	*(unsigned int *)TEMAC_CTL0 = MIIMAI | emac << 10;
+
+	while(! (*(volatile unsigned int *)TEMAC_RDY0 & XTE_RSE_MIIM_RR_MASK));
+	return *(unsigned int *)TEMAC_LSW0;
+}
+
+static void xps_ll_temac_indirect_set(int emac, int reg_offset, int reg_data)
+{
+	*(unsigned int *)TEMAC_LSW0 = reg_data;
+	*(unsigned int *)TEMAC_CTL0 = CNTLREG_WRITE_ENABLE_MASK | emac << 10 | reg_offset;
+	while(! (*(volatile unsigned int *)TEMAC_RDY0 & XTE_RSE_CFG_WR_MASK));
+}
+
+static int xps_ll_temac_phy_ctrl(void)
+{
+	static int phy_addr = -1;
+	static int link = 0;
+	int i;
+	unsigned int result;
+
+	if(phy_addr == -1) {
+		for(i = 0;i < 32;i++) {
+			result = xps_ll_temac_hostif_get(0, i, 1);
+			if((result & 0x0ffff) != 0x0ffff) {
+				phy_addr = i;
+				break;
+			}
+		}
+	} else {
+		result = xps_ll_temac_hostif_get(0, phy_addr, 1);
+	}
+	if((result & 0x24) != 0x24) {
+		if(link) {
+			link = 0;
+			printf("Link down\n");
+		}
+		return 0;
+	}
+	if(link == 0) {
+		link = 1;
+	} else {
+		return 1;
+	}
+
+	result = xps_ll_temac_hostif_get(0, phy_addr, 10);
+	if((result & 0x0800) == 0x0800) {
+		xps_ll_temac_indirect_set(0, EMMC, 0x80000000);
+		printf("1000BASE-T/FD\n");
+		return 1;
+	}
+	result = xps_ll_temac_hostif_get(0, phy_addr, 5);
+	if((result & 0x0100) == 0x0100) {
+		xps_ll_temac_indirect_set(0, EMMC, 0x40000000);
+		printf("100BASE-T/FD\n");
+	} else if((result & 0x0040) == 0x0040) {
+		xps_ll_temac_indirect_set(0, EMMC, 0x00000000);
+		printf("10BASE-T/FD\n");
+	} else {
+		printf("Half Duplex not supported\n");
+	}
+	return 1;
+}
+
+static void xps_ll_temac_bd_init(void)
+{
+	memset((void *)&tx_bd, 0, sizeof(cdmac_bd));
+	memset((void *)&rx_bd, 0, sizeof(cdmac_bd));
+	
+	rx_bd.phys_buf_p = &rx_buffer[0];
+	rx_bd.next_p = &rx_bd;
+	rx_bd.buf_len = ETHER_MTU;
+	flush_dcache_range((unsigned int)&rx_bd, sizeof(cdmac_bd));
+	*(unsigned int *)RX_CURDESC_PTR = (unsigned int)&rx_bd;
+	*(unsigned int *)RX_TAILDESC_PTR = (unsigned int)&rx_bd;
+
+	tx_bd.phys_buf_p = &tx_buffer[0];
+	tx_bd.next_p = &tx_bd;
+	flush_dcache_range((unsigned int)&tx_bd, sizeof(cdmac_bd));
+	*(unsigned int *)TX_CURDESC_PTR = (unsigned int)&tx_bd;
+}
+
+static int xps_ll_temac_send(unsigned char *buffer, int length)
+{
+	if(xps_ll_temac_phy_ctrl() == 0) return 0;
+
+	memcpy(tx_buffer, buffer, length);
+	flush_dcache_range((unsigned int)tx_buffer, length);
+
+	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK | BDSTAT_STOP_ON_END_MASK;
+	tx_bd.buf_len = length;
+	flush_dcache_range((unsigned int)&tx_bd, sizeof(cdmac_bd));
+
+	*(unsigned int *)TX_CURDESC_PTR	= (unsigned int)&tx_bd;
+	*(unsigned int *)TX_TAILDESC_PTR = (unsigned int)&tx_bd; /* DMA start */
+
+	do {
+		invalidate_dcache_range((unsigned int)&tx_bd, sizeof(cdmac_bd));
+	} while(!((volatile int)tx_bd.stat & BDSTAT_COMPLETED_MASK));
+
+	return length;
+}
+
+static int xps_ll_temac_recv(void)
+{
+	int length;
+
+	invalidate_dcache_range((unsigned int)&rx_bd, sizeof(cdmac_bd));
+	if(!(rx_bd.stat & BDSTAT_COMPLETED_MASK)) return 0;
+
+	length = rx_bd.app5;
+	invalidate_dcache_range((unsigned int)rx_bd.phys_buf_p, length);
+
+	rx_bd.buf_len = ETHER_MTU;
+	rx_bd.stat = 0;
+	rx_bd.app5 = 0;
+	flush_dcache_range((unsigned int)&rx_bd, sizeof(cdmac_bd));
+	*(unsigned int *)RX_TAILDESC_PTR = (unsigned int)&rx_bd;
+
+	if(length > 0) {
+		NetReceive(rx_bd.phys_buf_p, length);
+	}
+
+	return length;
+}
+
+static int xps_ll_temac_addr_setup(struct xps_ll_temac_private * lp)
+{
+        char * env_p;
+        char * end;
+        int    i, val;
+
+        env_p = getenv("ethaddr");
+        if (env_p == NULL) {
+                printf("cannot get enviroment for \"ethaddr\".\n");
+                return -1;
+        }
+
+        for (i = 0; i < 6; i++) {
+                lp->dev_addr[i] = env_p ? simple_strtoul(env_p, &end, 16) : 0;
+                if (env_p) env_p = (*end) ? end + 1 : end;
+        }
+
+        /* set up unicast MAC address filter */
+        val = lp->dev_addr[3] << 24 | lp->dev_addr[2] << 16 |
+               lp->dev_addr[1] <<  8 | lp->dev_addr[0];
+	xps_ll_temac_indirect_set(0, UAW0, val);
+        val = lp->dev_addr[5] << 8 |  lp->dev_addr[4];
+	xps_ll_temac_indirect_set(0, UAW1, val);
+
+        return 0;
+}
+
+static void xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
+{
+	struct xps_ll_temac_private *lp = (struct xps_ll_temac_private *)dev->priv;
+
+	xps_ll_temac_bd_init();
+	xps_ll_temac_indirect_set(0, MC, MDIO_ENABLE_MASK | MDIO_CLOCK_DIV_100MHz);
+	
+	xps_ll_temac_addr_setup(lp);
+	xps_ll_temac_indirect_set(0, AFM, 0x00000000);	/* Promiscuos mode disable */
+	xps_ll_temac_indirect_set(0, RCW1, 0x10000000);	/* Enable Receiver */
+	xps_ll_temac_indirect_set(0, TC, 0x10000000);	/* Enable Transmitter */
+
+}
+
+int eth_init(bd_t *bis)
+{
+	static int first = 1;
+	struct eth_device *dev;
+	struct xps_ll_temac_private *lp;
+	int i;
+
+	if(!first) return 0;
+	first = 0;
+        dev = (struct eth_device *) calloc(1, sizeof(struct eth_device));
+        if (NULL == dev) return 0;
+
+        lp = (struct xps_ll_temac_private *) calloc(1, sizeof(struct xps_ll_temac_private));
+        if (lp == NULL) return 0;
+	dev->priv = lp;
+	sprintf(dev->name, "eth0");
+
+	xps_ll_temac_init(dev, bis);
+
+	printf("%s: Xilinx XPS LocalLink Tri-Mode Ether MAC #%d at 0x%08X.\n",
+		dev->name, 0, XPS_LLTEMAC_BASEADDR);
+
+	for(i = 0;i < 3;i++) {		
+		if(xps_ll_temac_phy_ctrl()) break;
+		udelay(10000);		/* wait second */
+	}
+	return 1;
+}
+
+int eth_send(volatile void *packet, int length)
+{
+	return xps_ll_temac_send((unsigned char *)packet, length);
+}
+
+int eth_rx(void)
+{
+	return xps_ll_temac_recv();
+}
+
+void eth_halt(void)
+{
+}
