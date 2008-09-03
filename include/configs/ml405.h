@@ -47,13 +47,12 @@
 
 #include "../board/xilinx/ml405/xparameters.h"
 
-/* for testing only, handy for when there's no non-volatile environment 
+/* for testing only, handy for when there's no non-volatile environment
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"ipaddr=172.16.40.227\0"	\
 	"ethaddr=00:00:00:80:80:80\0"	\
 	"serverip=172.16.40.98\0"	
 */
-
 #define CONFIG_OF_LIBFDT	1
 
 /*  Make some configuration choices based on the hardware design
@@ -76,16 +75,16 @@
 
 #ifdef XPAR_IIC_0_DEVICE_ID
 #if ! defined(CFG_ENV_IS_IN_FLASH)
-#define CFG_ENV_IS_IN_EEPROMXPAR_LLTEMAC_0_DEVICE_ID	1	/* environment is in IIC EEPROM */
+#define CFG_ENV_IS_IN_EEPROM	/* environment is in IIC EEPROM */
 #endif
 #endif
 
-#undef XPAR_EMAC_0_DEVICE_IDXPAR_LLTEMAC_0_DEVICE_ID
+#undef XPAR_EMAC_0_DEVICE_ID
 #ifdef XPAR_EMAC_0_DEVICE_ID
 #define CONFIG_ETHADDR          00:0a:35:00:22:01
 #endif
 
-#if ! (defined(CFG_ENV_IS_INXPAR_LLTEMAC_0_DEVICE_ID_FLASH) || defined(CFG_ENV_IS_IN_EEPROM))
+#if ! (defined(CFG_ENV_IS_IN_FLASH) || defined(CFG_ENV_IS_IN_EEPROM))
 #define CFG_ENV_IS_NOWHERE      1       /* no space to store environment */
 #define CFG_ENV_SIZE		1024
 #define CFG_MONITOR_BASE	0x02000000
@@ -96,8 +95,9 @@
 #define CFG_I2C_EEPROM_ADDR             (0xA0 >> 1)
 #define CFG_I2C_EEPROM_ADDR_LEN         1
 #define CFG_I2C_EEPROM_ADDR_OVERFLOW    0x3
-#define CFG_ENV_OFFSET                  0
-#define CFG_ENV_SIZE                    256
+#define CFD_I2C_EEPROM_SIZE		4096
+#define CFG_ENV_OFFSET                  256
+#define CFG_ENV_SIZE                    1024
 #define CFG_EEPROM_PAGE_WRITE_BITS      4
 #define CFG_EEPROM_PAGE_WRITE_DELAY_MS  5
 #define CONFIG_ENV_OVERWRITE            1  /* writable ethaddr and serial# */

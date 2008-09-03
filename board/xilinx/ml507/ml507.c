@@ -37,10 +37,50 @@
  *     675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
-
 #include <common.h>
+#include <i2c.h>
 #include <asm/processor.h>
 #include "xparameters.h"
+
+/*-----------------------------------------------------------------------------
+ * aschex_to_byte --
+ *-----------------------------------------------------------------------------
+ */
+static unsigned char aschex_to_byte (unsigned char *cp)
+{
+	u_char byte, c;
+
+	c = *cp++;
+
+	if ((c >= 'A') && (c <= 'F')) {
+		c -= 'A';
+		c += 10;
+	} else if ((c >= 'a') && (c <= 'f')) {
+		c -= 'a';
+		c += 10;
+	} else {
+		c -= '0';
+	}
+
+	byte = c * 16;
+
+	c = *cp;
+
+	if ((c >= 'A') && (c <= 'F')) {
+		c -= 'A';
+		c += 10;
+	} else if ((c >= 'a') && (c <= 'f')) {
+		c -= 'a';
+		c += 10;
+	} else {
+		c -= '0';
+	}
+
+	byte += c;
+
+	return (byte);
+}
+
 
 int
 board_pre_init(void)
@@ -97,4 +137,52 @@ get_sys_info(sys_info_t * sysInfo)
 
 	sysInfo->freqPLB = XPAR_UARTNS550_0_CLOCK_FREQ_HZ;
 	sysInfo->freqPCI = 0;
+}
+
+/*-----------------------------------------------------------------------------
+ * board_get_enetaddr -- Read the MAC Address in the I2C EEPROM
+ *-----------------------------------------------------------------------------
+ */
+void board_get_enetaddr (uchar * enet)
+{
+	int i;
+	char buff[12];
+
+	/* read the mac address from the i2c eeprom, the address 0x37
+	   appears to be off by 1 according to factory documentation,
+	   but not according to contents read?
+	*/
+
+	i2c_read(0x50, 0x37, 1, buff, 12);
+
+	/* if the emac address in the i2c eeprom is not valid, then
+	   then initialize it to a valid address, all xilinx addresses
+	   have a known 1st several digits
+	*/
+	if ((buff[0] != 0x30) || (buff[1] != 0x30) || (buff[2] != 0x30) ||
+	    (buff[3] != 0x41) || (buff[4] != 0x33) || (buff[5] != 0x35))
+	{
+		enet[0] = 0x00;
+		enet[1] = 0x0A;
+		enet[2] = 0x35;
+		enet[3] = 0x01;
+		enet[4] = 0x02;		
+		enet[5] = 0x03;
+		printf("MAC address not valid from I2C EEPROM, set to default\n");
+	}
+	else
+	{
+		/* convert the mac address from i2c eeprom from ascii hex to 
+		   binary */
+
+		for (i = 0; i < 6; i++) {
+			enet[i] = aschex_to_byte ((unsigned char *)&buff[i*2]);
+		}
+		printf("MAC address valid from I2C EEPROM\n");
+	}
+
+	printf ("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		enet[0], enet[1], enet[2], enet[3], enet[4], enet[5]);
+
+	return;
 }

@@ -104,7 +104,7 @@
 
 #if ! (defined(CFG_ENV_IS_IN_FLASH) || defined(CFG_ENV_IS_IN_EEPROM))
 #define CFG_ENV_IS_NOWHERE      1       /* no space to store environment */
-#define CFG_ENV_SIZE		1024
+#define CFG_ENV_SIZE		256
 #define CFG_MONITOR_BASE	0x02000000
 #endif
 
@@ -113,8 +113,9 @@
 #define CFG_I2C_EEPROM_ADDR             (0xA0 >> 1)
 #define CFG_I2C_EEPROM_ADDR_LEN         1
 #define CFG_I2C_EEPROM_ADDR_OVERFLOW    0x3
-#define CFG_ENV_OFFSET                  0
-#define CFG_ENV_SIZE                    256
+#define CFD_I2C_EEPROM_SIZE		8192
+#define CFG_ENV_OFFSET                  256
+#define CFG_ENV_SIZE                    1024
 #define CFG_EEPROM_PAGE_WRITE_BITS      4
 #define CFG_EEPROM_PAGE_WRITE_DELAY_MS  5
 #define CONFIG_ENV_OVERWRITE            1  /* writable ethaddr and serial# */
@@ -140,7 +141,7 @@
 #define CONFIG_BAUDRATE         9600
 #define CONFIG_BOOTDELAY        5       /* autoboot after 5 seconds	*/
 
-#define CONFIG_BOOTCOMMAND      "" /* autoboot command	*/
+//#define CONFIG_BOOTCOMMAND      "" /* autoboot command	*/
 
 #define CONFIG_BOOTARGS         "console=ttyS0,9600 ip=off " \
                                 "root=/dev/xsysace/disc0/part2 rw"

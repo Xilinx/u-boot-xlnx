@@ -43,7 +43,7 @@
 #include <i2c.h>
 #include "xiic_l.h"
 
-#if defined(CONFIG_CMD_I2C) || CFG_ENV_IS_IN_EEPROM
+#if defined(CONFIG_CMD_I2C) || defined(CFG_ENV_IS_IN_EEPROM)
 
 /************************************************************************
  * Send data to a device on i2c bus
