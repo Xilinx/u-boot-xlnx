@@ -40,7 +40,7 @@ extern struct onenand_chip onenand_chip;
 /* References to names in env_common.c */
 extern uchar default_environment[];
 
-#define ONENAND_ENV_SIZE(mtd)	(mtd.oobblock - ENV_HEADER_SIZE)
+#define ONENAND_ENV_SIZE(mtd)	(mtd.writesize - ENV_HEADER_SIZE)
 
 char *env_name_spec = "OneNAND";
 
@@ -52,30 +52,28 @@ static unsigned char onenand_env[MAX_ONENAND_PAGESIZE];
 env_t *env_ptr = (env_t *) onenand_env;
 #endif /* ENV_IS_EMBEDDED */
 
+DECLARE_GLOBAL_DATA_PTR;
+
 uchar env_get_char_spec(int index)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	return (*((uchar *) (gd->env_addr + index)));
 }
 
 void env_relocate_spec(void)
 {
-	DECLARE_GLOBAL_DATA_PTR;
 	unsigned long env_addr;
 	int use_default = 0;
-	int retlen;
+	size_t retlen;
 
 	env_addr = CFG_ENV_ADDR;
-	env_addr -= (unsigned long)onenand_chip.base;
 
 	/* Check OneNAND exist */
-	if (onenand_mtd.oobblock)
+	if (onenand_mtd.writesize)
 		/* Ignore read fail */
-		onenand_read(&onenand_mtd, env_addr, onenand_mtd.oobblock,
+		onenand_read(&onenand_mtd, env_addr, onenand_mtd.writesize,
 			     &retlen, (u_char *) env_ptr);
 	else
-		onenand_mtd.oobblock = MAX_ONENAND_PAGESIZE;
+		onenand_mtd.writesize = MAX_ONENAND_PAGESIZE;
 
 	if (crc32(0, env_ptr->data, ONENAND_ENV_SIZE(onenand_mtd)) !=
 	    env_ptr->crc)
@@ -95,23 +93,23 @@ void env_relocate_spec(void)
 int saveenv(void)
 {
 	unsigned long env_addr = CFG_ENV_ADDR;
-	struct erase_info instr;
-	int retlen;
+	struct erase_info instr = {
+		.callback	= NULL,
+	};
+	size_t retlen;
 
 	instr.len = CFG_ENV_SIZE;
 	instr.addr = env_addr;
-	instr.addr -= (unsigned long)onenand_chip.base;
 	if (onenand_erase(&onenand_mtd, &instr)) {
-		printf("OneNAND: erase failed at 0x%08x\n", env_addr);
+		printf("OneNAND: erase failed at 0x%08lx\n", env_addr);
 		return 1;
 	}
 
 	/* update crc */
 	env_ptr->crc =
-	    crc32(0, env_ptr->data, onenand_mtd.oobblock - ENV_HEADER_SIZE);
+	    crc32(0, env_ptr->data, ONENAND_ENV_SIZE(onenand_mtd));
 
-	env_addr -= (unsigned long)onenand_chip.base;
-	if (onenand_write(&onenand_mtd, env_addr, onenand_mtd.oobblock, &retlen,
+	if (onenand_write(&onenand_mtd, env_addr, onenand_mtd.writesize, &retlen,
 	     (u_char *) env_ptr)) {
 		printf("OneNAND: write failed at 0x%08x\n", instr.addr);
 		return 2;
@@ -122,8 +120,6 @@ int saveenv(void)
 
 int env_init(void)
 {
-	DECLARE_GLOBAL_DATA_PTR;
-
 	/* use default */
 	gd->env_addr = (ulong) & default_environment[0];
 	gd->env_valid = 1;

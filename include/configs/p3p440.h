@@ -118,7 +118,7 @@
  * Default configuration (environment varibles...)
  *----------------------------------------------------------------------*/
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -147,7 +147,7 @@
 	"update=protect off fffc0000 ffffffff;era fffc0000 ffffffff;"	\
 		"cp.b 100000 fffc0000 40000;"			        \
 		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"unlock=yes\0"							\
 	""
 #define CONFIG_BOOTCOMMAND	"run net_nfs"
@@ -279,7 +279,7 @@
  * FLASH related
  *----------------------------------------------------------------------*/
 #define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
 
 #define CFG_FLASH_BANKS_LIST { CFG_FLASH3, CFG_FLASH2, CFG_FLASH1, CFG_FLASH0 }
 
@@ -311,14 +311,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		(32<<10)	/* For AMCC 405 CPUs		*/
-#define CFG_CACHELINE_SIZE	32	/* ...					*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Internal Definitions

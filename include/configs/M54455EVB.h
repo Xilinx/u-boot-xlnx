@@ -27,8 +27,8 @@
  * board/config.h - configuration options, board specific
  */
 
-#ifndef _JAMICA54455_H
-#define _JAMICA54455_H
+#ifndef _M54455EVB_H
+#define _M54455EVB_H
 
 /*
  * High Level Configuration Options
@@ -37,8 +37,6 @@
 #define CONFIG_MCF5445x		/* define processor family */
 #define CONFIG_M54455		/* define processor type */
 #define CONFIG_M54455EVB	/* M54455EVB board */
-
-#undef DEBUG
 
 #define CONFIG_MCFUART
 #define CFG_UART_PORT		(0)
@@ -75,9 +73,11 @@
 #define CONFIG_CMD_MISC
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_NET
-#define CONFIG_CMD_PCI
+#undef CONFIG_CMD_PCI
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_REGINFO
+#define CONFIG_CMD_SPI
+#define CONFIG_CMD_SF
 
 #undef CONFIG_CMD_LOADB
 #undef CONFIG_CMD_LOADS
@@ -85,9 +85,9 @@
 /* Network configuration */
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
-#	define CONFIG_NET_MULTI	1
+#	define CONFIG_NET_MULTI		1
 #	define CONFIG_MII		1
-#	define CONFIG_CF_DOMII
+#	define CONFIG_MII_INIT		1
 #	define CFG_DISCOVER_PHY
 #	define CFG_RX_ETH_BUFFER	8
 #	define CFG_FAULT_ECHO_LINK_DOWN
@@ -122,18 +122,45 @@
 #endif
 
 #define CONFIG_HOSTNAME		M54455EVB
+#ifdef CFG_STMICRO_BOOT
+/* ST Micro serial flash */
+#define	CFG_LOAD_ADDR2		0x40010013
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"netdev=eth0\0"				\
 	"inpclk=" MK_STR(CFG_INPUT_CLKSRC) "\0"	\
-	"loadaddr=40010000\0"			\
-	"u-boot=u-boot.bin\0"			\
-	"load=tftp ${loadaddr) ${u-boot}\0"	\
+	"loadaddr=0x40010000\0"			\
+	"sbfhdr=sbfhdr.bin\0"			\
+	"uboot=u-boot.bin\0"			\
+	"load=tftp ${loadaddr} ${sbfhdr};"	\
+	"tftp " MK_STR(CFG_LOAD_ADDR2) " ${uboot} \0"	\
 	"upd=run load; run prog\0"		\
-	"prog=prot off 0 2ffff;"		\
-	"era 0 2ffff;"				\
-	"cp.b ${loadaddr} 0 ${filesize};"	\
+	"prog=sf probe 0:1 10000 1;"		\
+	"sf erase 0 30000;"			\
+	"sf write ${loadaddr} 0 0x30000;"	\
 	"save\0"				\
 	""
+#else
+/* Atmel and Intel */
+#ifdef CFG_ATMEL_BOOT
+#	define CFG_UBOOT_END	0x0403FFFF
+#elif defined(CFG_INTEL_BOOT)
+#	define CFG_UBOOT_END	0x3FFFF
+#endif
+#define CONFIG_EXTRA_ENV_SETTINGS		\
+	"netdev=eth0\0"				\
+	"inpclk=" MK_STR(CFG_INPUT_CLKSRC) "\0"	\
+	"loadaddr=0x40010000\0"			\
+	"uboot=u-boot.bin\0"			\
+	"load=tftp ${loadaddr} ${uboot}\0"	\
+	"upd=run load; run prog\0"		\
+	"prog=prot off " MK_STR(CFG_FLASH_BASE)	\
+	" " MK_STR(CFG_UBOOT_END) ";"		\
+	"era " MK_STR(CFG_FLASH_BASE) " "	\
+	MK_STR(CFG_UBOOT_END) ";"		\
+	"cp.b ${loadaddr} " MK_STR(CFG_FLASH_BASE)	\
+	" ${filesize}; save\0"			\
+	""
+#endif
 
 /* ATA configuration */
 #define CONFIG_ISO_PARTITION
@@ -173,8 +200,35 @@
 #define CFG_I2C_OFFSET		0x58000
 #define CFG_IMMR		CFG_MBAR
 
+/* DSPI and Serial Flash */
+#define CONFIG_CF_DSPI
+#define CONFIG_HARD_SPI
+#define CFG_SER_FLASH_BASE	0x01000000
+#define CFG_SBFHDR_SIZE		0x13
+#ifdef CONFIG_CMD_SPI
+#	define CONFIG_SPI_FLASH
+#	define CONFIG_SPI_FLASH_STMICRO
+
+#	define CFG_DSPI_DCTAR0		(DSPI_DCTAR_TRSZ(7) | \
+					 DSPI_DCTAR_CPOL | \
+					 DSPI_DCTAR_CPHA | \
+					 DSPI_DCTAR_PCSSCK_1CLK | \
+					 DSPI_DCTAR_PASC(0) | \
+					 DSPI_DCTAR_PDT(0) | \
+					 DSPI_DCTAR_CSSCK(0) | \
+					 DSPI_DCTAR_ASC(0) | \
+					 DSPI_DCTAR_PBR(0) | \
+					 DSPI_DCTAR_DT(1) | \
+					 DSPI_DCTAR_BR(1))
+#endif
+
 /* PCI */
+#ifdef CONFIG_CMD_PCI
 #define CONFIG_PCI		1
+#define CONFIG_PCI_PNP		1
+#define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
+
+#define CFG_PCI_CACHE_LINE_SIZE	4
 
 #define CFG_PCI_MEM_BUS		0xA0000000
 #define CFG_PCI_MEM_PHYS	CFG_PCI_MEM_BUS
@@ -187,6 +241,7 @@
 #define CFG_PCI_CFG_BUS		0xB0000000
 #define CFG_PCI_CFG_PHYS	CFG_PCI_CFG_BUS
 #define CFG_PCI_CFG_SIZE	0x01000000
+#endif
 
 /* FPGA - Spartan 2 */
 /* experiment
@@ -199,7 +254,7 @@
 /* Input, PCI, Flexbus, and VCO */
 #define CONFIG_EXTRA_CLOCK
 
-#define CONFIG_PRAM		512	/* 512 KB */
+#define CONFIG_PRAM		2048	/* 2048 KB */
 
 #define CFG_PROMPT		"-> "
 #define CFG_LONGHELP		/* undef to save memory */
@@ -232,8 +287,9 @@
 #define CFG_INIT_RAM_END	0x8000	/* End of used area in internal SRAM */
 #define CFG_INIT_RAM_CTRL	0x221
 #define CFG_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
-#define CFG_GBL_DATA_OFFSET	((CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE) - 16)
+#define CFG_GBL_DATA_OFFSET	((CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE) - 32)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
+#define CFG_SBFHDR_DATA_OFFSET	(CFG_INIT_RAM_END - 32)
 
 /*-----------------------------------------------------------------------
  * Start addresses for the final memory configuration
@@ -248,11 +304,16 @@
 #define CFG_SDRAM_CTRL		0xEA0B2000
 #define CFG_SDRAM_EMOD		0x40010000
 #define CFG_SDRAM_MODE		0x00010033
+#define CFG_SDRAM_DRV_STRENGTH	0xAA
 
 #define CFG_MEMTEST_START	CFG_SDRAM_BASE + 0x400
 #define CFG_MEMTEST_END		((CFG_SDRAM_SIZE - 3) << 20)
 
-#define CFG_MONITOR_BASE	(CFG_FLASH_BASE + 0x400)
+#ifdef CONFIG_CF_SBF
+#	define CFG_MONITOR_BASE	(TEXT_BASE + 0x400)
+#else
+#	define CFG_MONITOR_BASE	(CFG_FLASH_BASE + 0x400)
+#endif
 #define CFG_BOOTPARAMS_LEN	64*1024
 #define CFG_MONITOR_LEN		(256 << 10)	/* Reserve 256 kB for Monitor */
 #define CFG_MALLOC_LEN		(128 << 10)	/* Reserve 128 kB for malloc() */
@@ -265,35 +326,51 @@
 /* Initial Memory map for Linux */
 #define CFG_BOOTMAPSZ		(CFG_SDRAM_BASE + (CFG_SDRAM_SIZE << 20))
 
-/* Configuration for environment
+/*
+ * Configuration for environment
  * Environment is embedded in u-boot in the second sector of the flash
  */
-#define CFG_ENV_OFFSET		0x4000
-#define CFG_ENV_SECT_SIZE	0x2000
-#define CFG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_OVERWRITE	1
+#ifdef CONFIG_CF_SBF
+#	define CFG_ENV_IS_IN_SPI_FLASH
+#	define CFG_ENV_SPI_CS		1
+#else
+#	define CFG_ENV_IS_IN_FLASH	1
+#endif
+#undef CONFIG_ENV_OVERWRITE
 #undef CFG_ENV_IS_EMBEDDED
 
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
+#ifdef CFG_STMICRO_BOOT
+#	define CFG_FLASH_BASE		CFG_SER_FLASH_BASE
+#	define CFG_FLASH0_BASE		CFG_SER_FLASH_BASE
+#	define CFG_FLASH1_BASE		CFG_CS0_BASE
+#	define CFG_FLASH2_BASE		CFG_CS1_BASE
+#	define CFG_ENV_OFFSET		0x30000
+#	define CFG_ENV_SIZE		0x2000
+#	define CFG_ENV_SECT_SIZE	0x10000
+#endif
 #ifdef CFG_ATMEL_BOOT
-#	define CFG_FLASH_BASE		0
+#	define CFG_FLASH_BASE		CFG_CS0_BASE
 #	define CFG_FLASH0_BASE		CFG_CS0_BASE
 #	define CFG_FLASH1_BASE		CFG_CS1_BASE
-#else
-#	define CFG_FLASH_BASE		CFG_FLASH0_BASE
-#	define CFG_FLASH0_BASE		CFG_CS1_BASE
-#	define CFG_FLASH1_BASE		CFG_CS0_BASE
+#	define CFG_ENV_ADDR		(CFG_FLASH_BASE + 0x4000)
+#	define CFG_ENV_SECT_SIZE	0x2000
+#endif
+#ifdef CFG_INTEL_BOOT
+#	define CFG_FLASH_BASE		CFG_CS0_BASE
+#	define CFG_FLASH0_BASE		CFG_CS0_BASE
+#	define CFG_FLASH1_BASE		CFG_CS1_BASE
+#	define CFG_ENV_ADDR		(CFG_FLASH_BASE + 0x40000)
+#	define CFG_ENV_SIZE		0x2000
+#	define CFG_ENV_SECT_SIZE	0x20000
 #endif
 
-/* M54455EVB has one non CFI flash, defined CFG_FLASH_CFI will cause the system
-/* M54455EVB has one non CFI flash, defined CFG_FLASH_CFI will cause the system
-   keep reset. */
-#undef CFG_FLASH_CFI
+#define CFG_FLASH_CFI
 #ifdef CFG_FLASH_CFI
 
-#	define CFG_FLASH_CFI_DRIVER	1
+#	define CONFIG_FLASH_CFI_DRIVER	1
 #	define CFG_FLASH_SIZE		0x1000000	/* Max size that the board might have */
 #	define CFG_FLASH_CFI_WIDTH	FLASH_CFI_8BIT
 #	define CFG_MAX_FLASH_BANKS	2	/* max number of memory banks */
@@ -301,40 +378,36 @@
 #	define CFG_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
 #	define CFG_FLASH_CHECKSUM
 #	define CFG_FLASH_BANKS_LIST	{ CFG_CS0_BASE, CFG_CS1_BASE }
+#	define CONFIG_FLASH_CFI_LEGACY
 
-#else
-
-#	define CFG_MAX_FLASH_BANKS	2	/* max number of memory banks */
-
+#ifdef CONFIG_FLASH_CFI_LEGACY
 #	define CFG_ATMEL_REGION		4
 #	define CFG_ATMEL_TOTALSECT	11
 #	define CFG_ATMEL_SECT		{1, 2, 1, 7}
 #	define CFG_ATMEL_SECTSZ		{0x4000, 0x2000, 0x8000, 0x10000}
-#	define CFG_INTEL_SECT		137
-
-/* max number of sectors on one chip */
-#	define CFG_MAX_FLASH_SECT	(CFG_ATMEL_TOTALSECT + CFG_INTEL_SECT)
-#	define CFG_FLASH_ERASE_TOUT	2000	/* Atmel needs longer timeout */
-#	define CFG_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (in ms)  */
-#	define CFG_FLASH_LOCK_TOUT	5	/* Timeout for Flash Set Lock Bit (in ms) */
-#	define CFG_FLASH_UNLOCK_TOUT	100	/* Timeout for Flash Clear Lock Bits (in ms) */
-#	define CFG_FLASH_PROTECTION	/* "Real" (hardware) sectors protection */
-#	define CFG_FLASH_CHECKSUM
-
+#endif
 #endif
 
 /*
  * This is setting for JFFS2 support in u-boot.
  * NOTE: Enable CONFIG_CMD_JFFS2 for JFFS2 support.
  */
-#ifdef CFG_ATMEL_BOOT
-#	define CONFIG_JFFS2_DEV		"nor0"
+#ifdef CONFIG_CMD_JFFS2
+#ifdef CF_STMICRO_BOOT
+#	define CONFIG_JFFS2_DEV		"nor1"
 #	define CONFIG_JFFS2_PART_SIZE	0x01000000
-#	define CONFIG_JFFS2_PART_OFFSET	CFG_FLASH1_BASE
-#else
+#	define CONFIG_JFFS2_PART_OFFSET	(CFG_FLASH2_BASE + 0x500000)
+#endif
+#ifdef CFG_ATMEL_BOOT
+#	define CONFIG_JFFS2_DEV		"nor1"
+#	define CONFIG_JFFS2_PART_SIZE	0x01000000
+#	define CONFIG_JFFS2_PART_OFFSET	(CFG_FLASH1_BASE + 0x500000)
+#endif
+#ifdef CFG_INTEL_BOOT
 #	define CONFIG_JFFS2_DEV		"nor0"
 #	define CONFIG_JFFS2_PART_SIZE	(0x01000000 - 0x500000)
 #	define CONFIG_JFFS2_PART_OFFSET	(CFG_FLASH0_BASE + 0x500000)
+#endif
 #endif
 
 /*-----------------------------------------------------------------------
@@ -354,22 +427,22 @@
  * CS5 - Available
  */
 
-#ifdef CFG_ATMEL_BOOT
+#if defined(CFG_ATMEL_BOOT) || defined(CFG_STMICRO_BOOT)
  /* Atmel Flash */
-#define CFG_CS0_BASE		0
+#define CFG_CS0_BASE		0x04000000
 #define CFG_CS0_MASK		0x00070001
 #define CFG_CS0_CTRL		0x00001140
 /* Intel Flash */
-#define CFG_CS1_BASE		0x04000000
+#define CFG_CS1_BASE		0x00000000
 #define CFG_CS1_MASK		0x01FF0001
-#define CFG_CS1_CTRL		0x003F3D60
+#define CFG_CS1_CTRL		0x00000D60
 
 #define CFG_ATMEL_BASE		CFG_CS0_BASE
 #else
 /* Intel Flash */
-#define CFG_CS0_BASE		0
+#define CFG_CS0_BASE		0x00000000
 #define CFG_CS0_MASK		0x01FF0001
-#define CFG_CS0_CTRL		0x003F3D60
+#define CFG_CS0_CTRL		0x00000D60
  /* Atmel Flash */
 #define CFG_CS1_BASE		0x04000000
 #define CFG_CS1_MASK		0x00070001
@@ -388,4 +461,4 @@
 #define CFG_CS3_MASK		0x00070001
 #define CFG_CS3_CTRL		0x00000020
 
-#endif				/* _JAMICA54455_H */
+#endif				/* _M54455EVB_H */

@@ -35,7 +35,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG		      /* General debug */
 #undef DEBUG_BOOTP_EXT	      /* Debug received vendor fields */
 
 #undef CONFIG_LOGBUFFER       /* External logbuffer support */
@@ -273,10 +272,14 @@
 
 #undef  SPI_INIT			/* no port initialization needed */
 #define SPI_READ        ((immr->im_ioport.iop_pdatd & I2C_MISO) != 0)
-#define SPI_SDA(bit)    if(bit) immr->im_ioport.iop_pdatd |=  I2C_MOSI; \
-			else    immr->im_ioport.iop_pdatd &= ~I2C_MOSI
-#define SPI_SCL(bit)    if(bit) immr->im_ioport.iop_pdatd |=  I2C_SCLK; \
-			else    immr->im_ioport.iop_pdatd &= ~I2C_SCLK
+#define SPI_SDA(bit)    do {						\
+			if(bit) immr->im_ioport.iop_pdatd |=  I2C_MOSI; \
+			else    immr->im_ioport.iop_pdatd &= ~I2C_MOSI;	\
+			} while (0)
+#define SPI_SCL(bit)    do {						\
+			if(bit) immr->im_ioport.iop_pdatd |=  I2C_SCLK; \
+			else    immr->im_ioport.iop_pdatd &= ~I2C_SCLK;	\
+			} while (0)
 #define SPI_DELAY                       /* No delay is needed */
 #endif /* CONFIG_SOFT_SPI */
 
@@ -433,7 +436,7 @@
  *     To stop	use: " "
  */
 #define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_PROMPT "Autobooting...\n"
+#define CONFIG_AUTOBOOT_PROMPT	"Autobooting...\n"
 #define CONFIG_AUTOBOOT_STOP_STR	" "
 #undef  CONFIG_AUTOBOOT_DELAY_STR
 #define CONFIG_ZERO_BOOTDELAY_CHECK
@@ -442,7 +445,7 @@
 /* Define a command string that is automatically executed when no character
  * is read on the console interface withing "Boot Delay" after reset.
  */
-#undef	CONFIG_BOOT_ROOT_INITRD 	/* Use ram disk for the root file system */
+#undef	CONFIG_BOOT_ROOT_INITRD		/* Use ram disk for the root file system */
 #define	CONFIG_BOOT_ROOT_NFS		/* Use a NFS mounted root file system */
 
 #ifdef CONFIG_BOOT_ROOT_INITRD

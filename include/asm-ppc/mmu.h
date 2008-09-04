@@ -140,11 +140,16 @@ extern void _tlbia(void);		/* invalidate all TLB entries */
 
 typedef enum {
 	IBAT0 = 0, IBAT1, IBAT2, IBAT3,
-	DBAT0, DBAT1, DBAT2, DBAT3
+	DBAT0, DBAT1, DBAT2, DBAT3,
+#ifdef CONFIG_HIGH_BATS
+	IBAT4, IBAT5, IBAT6, IBAT7,
+	DBAT4, DBAT5, DBAT6, DBAT7
+#endif
 } ppc_bat_t;
 
 extern int read_bat(ppc_bat_t bat, unsigned long *upper, unsigned long *lower);
 extern int write_bat(ppc_bat_t bat, unsigned long upper, unsigned long lower);
+extern void print_bats(void);
 
 #endif /* __ASSEMBLY__ */
 
@@ -336,55 +341,70 @@ extern int write_bat(ppc_bat_t bat, unsigned long upper, unsigned long lower);
  */
 
 /*
- * e500 support
+ * FSL Book-E support
  */
 
-#define MAS0_TLBSEL     0x10000000
-#define MAS0_ESEL       0x000F0000
-#define MAS0_NV         0x00000001
+#define MAS0_TLBSEL(x)	((x << 28) & 0x30000000)
+#define MAS0_ESEL(x)	((x << 16) & 0x0FFF0000)
+#define MAS0_NV(x)	((x) & 0x00000FFF)
 
-#define MAS1_VALID      0x80000000
-#define MAS1_IPROT      0x40000000
-#define MAS1_TID        0x00FF0000
-#define MAS1_TS         0x00001000
-#define MAS1_TSIZE   	0x00000F00
+#define MAS1_VALID	0x80000000
+#define MAS1_IPROT	0x40000000
+#define MAS1_TID(x)	((x << 16) & 0x3FFF0000)
+#define MAS1_TS		0x00001000
+#define MAS1_TSIZE(x)	((x << 8) & 0x00000F00)
 
-#define MAS2_EPN        0xFFFFF000
-#define MAS2_SHAREN     0x00000200
-#define MAS2_X0         0x00000040
-#define MAS2_X1         0x00000020
-#define MAS2_W          0x00000010
-#define MAS2_I          0x00000008
-#define MAS2_M          0x00000004
-#define MAS2_G          0x00000002
-#define MAS2_E          0x00000001
+#define MAS2_EPN	0xFFFFF000
+#define MAS2_X0		0x00000040
+#define MAS2_X1		0x00000020
+#define MAS2_W		0x00000010
+#define MAS2_I		0x00000008
+#define MAS2_M		0x00000004
+#define MAS2_G		0x00000002
+#define MAS2_E		0x00000001
 
-#define MAS3_RPN        0xFFFFF000
-#define MAS3_U0         0x00000200
-#define MAS3_U1         0x00000100
-#define MAS3_U2         0x00000080
-#define MAS3_U3         0x00000040
-#define MAS3_UX         0x00000020
-#define MAS3_SX         0x00000010
-#define MAS3_UW         0x00000008
-#define MAS3_SW         0x00000004
-#define MAS3_UR         0x00000002
-#define MAS3_SR         0x00000001
+#define MAS3_RPN	0xFFFFF000
+#define MAS3_U0		0x00000200
+#define MAS3_U1		0x00000100
+#define MAS3_U2		0x00000080
+#define MAS3_U3		0x00000040
+#define MAS3_UX		0x00000020
+#define MAS3_SX		0x00000010
+#define MAS3_UW		0x00000008
+#define MAS3_SW		0x00000004
+#define MAS3_UR		0x00000002
+#define MAS3_SR		0x00000001
 
-#define MAS4_TLBSELD    0x10000000
-#define MAS4_TIDDSEL    0x00030000
-#define MAS4_DSHAREN    0x00001000
-#define MAS4_TSIZED(x)  (x << 8)
-#define MAS4_X0D        0x00000040
-#define MAS4_X1D        0x00000020
-#define MAS4_WD         0x00000010
-#define MAS4_ID         0x00000008
-#define MAS4_MD         0x00000004
-#define MAS4_GD         0x00000002
-#define MAS4_ED         0x00000001
+#define MAS4_TLBSELD(x) MAS0_TLBSEL(x)
+#define MAS4_TIDDSEL	0x000F0000
+#define MAS4_TSIZED(x)	MAS1_TSIZE(x)
+#define MAS4_X0D	0x00000040
+#define MAS4_X1D	0x00000020
+#define MAS4_WD		0x00000010
+#define MAS4_ID		0x00000008
+#define MAS4_MD		0x00000004
+#define MAS4_GD		0x00000002
+#define MAS4_ED		0x00000001
 
-#define MAS6_SPID       0x00FF0000
-#define MAS6_SAS        0x00000001
+#define MAS6_SPID0	0x3FFF0000
+#define MAS6_SPID1	0x00007FFE
+#define MAS6_SAS	0x00000001
+#define MAS6_SPID	MAS6_SPID0
+
+#define MAS7_RPN	0xFFFFFFFF
+
+#define FSL_BOOKE_MAS0(tlbsel,esel,nv) \
+		(MAS0_TLBSEL(tlbsel) | MAS0_ESEL(esel) | MAS0_NV(nv))
+#define FSL_BOOKE_MAS1(v,iprot,tid,ts,tsize) \
+		((((v) << 31) & MAS1_VALID)             |\
+		(((iprot) << 30) & MAS1_IPROT)          |\
+		(MAS1_TID(tid))				|\
+		(((ts) << 12) & MAS1_TS)                |\
+		(MAS1_TSIZE(tsize)))
+#define FSL_BOOKE_MAS2(epn, wimge) \
+		(((epn) & MAS3_RPN) | (wimge))
+#define FSL_BOOKE_MAS3(rpn, user, perms) \
+		(((rpn) & MAS3_RPN) | (user) | (perms))
 
 #define BOOKE_PAGESZ_1K         0
 #define BOOKE_PAGESZ_4K         1
@@ -398,6 +418,41 @@ extern int write_bat(ppc_bat_t bat, unsigned long upper, unsigned long lower);
 #define BOOKE_PAGESZ_256M       9
 #define BOOKE_PAGESZ_1G		10
 #define BOOKE_PAGESZ_4G		11
+#define BOOKE_PAGESZ_16GB	12
+#define BOOKE_PAGESZ_64GB	13
+#define BOOKE_PAGESZ_256GB	14
+#define BOOKE_PAGESZ_1TB	15
+
+#ifdef CONFIG_E500
+#ifndef __ASSEMBLY__
+extern void set_tlb(u8 tlb, u32 epn, u64 rpn,
+		    u8 perms, u8 wimge,
+		    u8 ts, u8 esel, u8 tsize, u8 iprot);
+extern void disable_tlb(u8 esel);
+extern void invalidate_tlb(u8 tlb);
+extern void init_tlbs(void);
+extern unsigned int setup_ddr_tlbs(unsigned int memsize_in_meg);
+
+#define SET_TLB_ENTRY(_tlb, _epn, _rpn, _perms, _wimge, _ts, _esel, _sz, _iprot) \
+	{ .tlb = _tlb, .epn = _epn, .rpn = _rpn, .perms = _perms, \
+	  .wimge = _wimge, .ts = _ts, .esel = _esel, .tsize = _sz, .iprot = _iprot }
+
+struct fsl_e_tlb_entry {
+	u8	tlb;
+	u32	epn;
+	u64	rpn;
+	u8	perms;
+	u8	wimge;
+	u8	ts;
+	u8	esel;
+	u8	tsize;
+	u8	iprot;
+};
+
+extern struct fsl_e_tlb_entry tlb_table[];
+extern int num_tlb_entries;
+#endif
+#endif
 
 #if defined(CONFIG_MPC86xx)
 #define LAWBAR_BASE_ADDR	0x00FFFFFF
@@ -413,7 +468,9 @@ extern int write_bat(ppc_bat_t bat, unsigned long upper, unsigned long lower);
 #define LAWAR_TRGT_IF_PCI1	0x00000000
 #define LAWAR_TRGT_IF_PCIX	0x00000000
 #define LAWAR_TRGT_IF_PCI2	0x00100000
-#define LAWAR_TRGT_IF_PEX	0x00200000
+#define LAWAR_TRGT_IF_PCIE1	0x00200000
+#define LAWAR_TRGT_IF_PCIE2	0x00100000
+#define LAWAR_TRGT_IF_PCIE3	0x00300000
 #define LAWAR_TRGT_IF_LBC	0x00400000
 #define LAWAR_TRGT_IF_CCSR	0x00800000
 #define LAWAR_TRGT_IF_DDR_INTERLEAVED 0x00B00000
@@ -498,14 +555,14 @@ extern int write_bat(ppc_bat_t bat, unsigned long upper, unsigned long lower);
 /*----------------------------------------------------------------------------+
 | TLB specific defines.
 +----------------------------------------------------------------------------*/
-#define TLB_256MB_ALIGN_MASK 0xF0000000
-#define TLB_16MB_ALIGN_MASK  0xFF000000
-#define TLB_1MB_ALIGN_MASK   0xFFF00000
-#define TLB_256KB_ALIGN_MASK 0xFFFC0000
-#define TLB_64KB_ALIGN_MASK  0xFFFF0000
-#define TLB_16KB_ALIGN_MASK  0xFFFFC000
-#define TLB_4KB_ALIGN_MASK   0xFFFFF000
-#define TLB_1KB_ALIGN_MASK   0xFFFFFC00
+#define TLB_256MB_ALIGN_MASK 0xFF0000000ULL
+#define TLB_16MB_ALIGN_MASK  0xFFF000000ULL
+#define TLB_1MB_ALIGN_MASK   0xFFFF00000ULL
+#define TLB_256KB_ALIGN_MASK 0xFFFFC0000ULL
+#define TLB_64KB_ALIGN_MASK  0xFFFFF0000ULL
+#define TLB_16KB_ALIGN_MASK  0xFFFFFC000ULL
+#define TLB_4KB_ALIGN_MASK   0xFFFFFF000ULL
+#define TLB_1KB_ALIGN_MASK   0xFFFFFFC00ULL
 #define TLB_256MB_SIZE       0x10000000
 #define TLB_16MB_SIZE        0x01000000
 #define TLB_1MB_SIZE         0x00100000
@@ -634,7 +691,7 @@ extern int write_bat(ppc_bat_t bat, unsigned long upper, unsigned long lower);
 #define MSYNC				.long 0x7c000000|\
 					(598<<1)
 
-#define MBAR_INST 				.long 0x7c000000|\
+#define MBAR_INST				.long 0x7c000000|\
 					(854<<1)
 
 #ifndef __ASSEMBLY__
@@ -646,8 +703,9 @@ unsigned long mftlb1(unsigned long index);
 unsigned long mftlb2(unsigned long index);
 unsigned long mftlb3(unsigned long index);
 
-void program_tlb(u32 phys_addr, u32 virt_addr, u32 size, u32 tlb_word2_i_value);
+void program_tlb(u64 phys_addr, u32 virt_addr, u32 size, u32 tlb_word2_i_value);
 void remove_tlb(u32 vaddr, u32 size);
+void change_tlb(u32 vaddr, u32 size, u32 tlb_word2_i_value);
 #endif /* __ASSEMBLY__ */
 
 #endif /* CONFIG_440 */

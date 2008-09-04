@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2006
+ * (C) Copyright 2006-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -39,6 +39,8 @@
 
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH	*/
 #define BOOTFLAG_WARM		0x02	/* Software reboot			*/
+
+#define CONFIG_HIGH_BATS	1	/* High BATs supported			*/
 
 /*
  * Serial console configuration
@@ -120,7 +122,7 @@
 #define CONFIG_BOOTDELAY	1	/* autoboot after 1 second */
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -155,8 +157,8 @@
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
 		":${hostname}:${netdev}:off panic=1\0"			\
 	"addcons=setenv bootargs ${bootargs} "				\
-		"console=${console},${baudrate} "		\
-		"ubootver=${ubootver} board=${board}\0"	\
+		"console=${console},${baudrate} "			\
+		"ubootver=${ubootver} board=${board}\0"			\
 	"flash_nfs=run nfsargs addip addcons;"				\
 		"bootm ${kernel_addr}\0"				\
 	"flash_self=run ramargs addip addcons;"				\
@@ -209,7 +211,7 @@
 #define CFG_FLASH_SIZE		0x04000000
 
 #define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
 
 #define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE }
 

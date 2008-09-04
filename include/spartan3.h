@@ -47,7 +47,7 @@ typedef struct {
 	Xilinx_busy_fn	busy;
 	Xilinx_abort_fn	abort;
 	Xilinx_post_fn	post;
-	int           	relocated;
+	int		relocated;
 } Xilinx_Spartan3_Slave_Parallel_fns;
 
 /* Slave Serial Implementation function table */
@@ -58,20 +58,21 @@ typedef struct {
 	Xilinx_init_fn	init;
 	Xilinx_done_fn	done;
 	Xilinx_wr_fn	wr;
-	int           	relocated;
+	Xilinx_post_fn	post;
+	int		relocated;
 } Xilinx_Spartan3_Slave_Serial_fns;
 
 /* Device Image Sizes
  *********************************************************************/
 /* Spartan-III (1.2V) */
-#define XILINX_XC3S50_SIZE  	439264/8
-#define XILINX_XC3S200_SIZE  	1047616/8
-#define XILINX_XC3S400_SIZE  	1699136/8
-#define XILINX_XC3S1000_SIZE 	3223488/8
-#define XILINX_XC3S1500_SIZE 	5214784/8
-#define XILINX_XC3S2000_SIZE 	7673024/8
-#define XILINX_XC3S4000_SIZE 	11316864/8
-#define XILINX_XC3S5000_SIZE 	13271936/8
+#define XILINX_XC3S50_SIZE	439264/8
+#define XILINX_XC3S200_SIZE	1047616/8
+#define XILINX_XC3S400_SIZE	1699136/8
+#define XILINX_XC3S1000_SIZE	3223488/8
+#define XILINX_XC3S1500_SIZE	5214784/8
+#define XILINX_XC3S2000_SIZE	7673024/8
+#define XILINX_XC3S4000_SIZE	11316864/8
+#define XILINX_XC3S5000_SIZE	13271936/8
 
 /* Spartan-3E (v3.4) */
 #define	XILINX_XC3S100E_SIZE	581344/8
@@ -80,9 +81,12 @@ typedef struct {
 #define	XILINX_XC3S1200E_SIZE	3841184/8
 #define	XILINX_XC3S1600E_SIZE	5969696/8
 
+/* Spartan-IIIE (1.2V) */
+#define XILINX_XC3S1200E_SIZE	3841184/8
+
 /* Descriptor Macros
  *********************************************************************/
-/* Spartan-II devices */
+/* Spartan-III devices */
 #define XILINX_XC3S50_DESC(iface, fn_table, cookie) \
 { Xilinx_Spartan3, iface, XILINX_XC3S50_SIZE, fn_table, cookie }
 
@@ -123,5 +127,10 @@ typedef struct {
 
 #define XILINX_XC3S1600E_DESC(iface, fn_table, cookie) \
 { Xilinx_Spartan3, iface, XILINX_XC3S1600E_SIZE, fn_table, cookie }
+
+
+/* Spartan-IIIE devices */
+#define XILINX_XC3S1200E_DESC(iface, fn_table, cookie) \
+{ Xilinx_Spartan3, iface, XILINX_XC3S1200E_SIZE, fn_table, cookie }
 
 #endif /* _SPARTAN3_H_ */

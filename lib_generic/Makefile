@@ -25,12 +25,29 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)libgeneric.a
 
-COBJS	= bzlib.o bzlib_crctable.o bzlib_decompress.o \
-	  bzlib_randtable.o bzlib_huffman.o \
-	  crc32.o ctype.o display_options.o div64.o ldiv.o sha1.o \
-	  string.o vsprintf.o zlib.o
+COBJS-y += bzlib.o
+COBJS-y += bzlib_crctable.o
+COBJS-y += bzlib_decompress.o
+COBJS-y += bzlib_randtable.o
+COBJS-y += bzlib_huffman.o
+COBJS-y += crc16.o
+COBJS-y += crc32.o
+COBJS-y += ctype.o
+COBJS-y += display_options.o
+COBJS-y += div64.o
+COBJS-y += gunzip.o
+COBJS-y += lmb.o
+COBJS-y += ldiv.o
+COBJS-$(CONFIG_MD5) += md5.o
+COBJS-y += sha1.o
+COBJS-$(CONFIG_SHA256) += sha256.o
+COBJS-y += string.o
+COBJS-y	+= strmhz.o
+COBJS-y += vsprintf.o
+COBJS-y += zlib.o
 
-SRCS 	:= $(COBJS:.o=.c)
+COBJS	:= $(COBJS-y)
+SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 
 $(LIB):	$(obj).depend $(OBJS)

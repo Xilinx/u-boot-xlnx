@@ -1,7 +1,7 @@
 Notes on the the generic USB-OHCI driver
 ========================================
 
-This driver (drivers/usb_ohci.[ch]) is the result of the merge of
+This driver (drivers/usb/usb_ohci.[ch]) is the result of the merge of
 various existing OHCI drivers that were basically identical beside
 cpu/board dependant initalization. This initalization has been moved
 into cpu/board directories and are called via the hooks below.
@@ -50,6 +50,12 @@ PCI Controllers
 You'll need to define
 
 	CONFIG_PCI_OHCI
+
+If you have several USB PCI controllers, define
+
+	CONFIG_PCI_OHCI_DEVNO: number of the OHCI device in PCI list
+
+If undefined, the first instance found in PCI space will be used.
 
 PCI Controllers need to do byte swapping on register accesses, so they
 should to define:

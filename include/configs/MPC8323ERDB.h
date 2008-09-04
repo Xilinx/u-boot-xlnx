@@ -9,8 +9,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG
-
 /*
  * High Level Configuration Options
  */
@@ -68,6 +66,13 @@
 #define CFG_IMMR		0xE0000000
 
 /*
+ * System performance
+ */
+#define CFG_ACR_PIPE_DEP	3	/* Arbiter pipeline depth (0-3) */
+#define CFG_ACR_RPTCNT		3	/* Arbiter repeat count (0-7) */
+#define CFG_SPCR_OPT		1	/* (0-1) Optimize transactions between  CSB and the SEC and QUICC Engine block */
+
+/*
  * DDR Setup
  */
 #define CFG_DDR_BASE		0x00000000	/* DDR is system memory */
@@ -84,17 +89,51 @@
 /* Manually set up DDR parameters
  */
 #define CFG_DDR_SIZE		64	/* MB */
-#define CFG_DDR_CS0_CONFIG	0x80840101
-#define CFG_DDR_TIMING_0	0x00220802
-#define CFG_DDR_TIMING_1	0x3935d322
-#define CFG_DDR_TIMING_2	0x0f9048ca
+#define CFG_DDR_CS0_CONFIG	( CSCONFIG_EN \
+				| CSCONFIG_ODT_WR_ACS \
+				| CSCONFIG_ROW_BIT_13 | CSCONFIG_COL_BIT_9 )
+				/* 0x80010101 */
+#define CFG_DDR_TIMING_0	( ( 0 << TIMING_CFG0_RWT_SHIFT ) \
+				| ( 0 << TIMING_CFG0_WRT_SHIFT ) \
+				| ( 0 << TIMING_CFG0_RRT_SHIFT ) \
+				| ( 0 << TIMING_CFG0_WWT_SHIFT ) \
+				| ( 2 << TIMING_CFG0_ACT_PD_EXIT_SHIFT ) \
+				| ( 2 << TIMING_CFG0_PRE_PD_EXIT_SHIFT ) \
+				| ( 8 << TIMING_CFG0_ODT_PD_EXIT_SHIFT ) \
+				| ( 2 << TIMING_CFG0_MRS_CYC_SHIFT ) )
+				/* 0x00220802 */
+#define CFG_DDR_TIMING_1	( ( 2 << TIMING_CFG1_PRETOACT_SHIFT ) \
+				| ( 6 << TIMING_CFG1_ACTTOPRE_SHIFT ) \
+				| ( 2 << TIMING_CFG1_ACTTORW_SHIFT ) \
+				| ( 5 << TIMING_CFG1_CASLAT_SHIFT ) \
+				| ( 3 << TIMING_CFG1_REFREC_SHIFT ) \
+				| ( 2 << TIMING_CFG1_WRREC_SHIFT ) \
+				| ( 2 << TIMING_CFG1_ACTTOACT_SHIFT ) \
+				| ( 2 << TIMING_CFG1_WRTORD_SHIFT ) )
+				/* 0x26253222 */
+#define CFG_DDR_TIMING_2	( ( 1 << TIMING_CFG2_ADD_LAT_SHIFT ) \
+				| (31 << TIMING_CFG2_CPO_SHIFT ) \
+				| ( 2 << TIMING_CFG2_WR_LAT_DELAY_SHIFT ) \
+				| ( 2 << TIMING_CFG2_RD_TO_PRE_SHIFT ) \
+				| ( 2 << TIMING_CFG2_WR_DATA_DELAY_SHIFT ) \
+				| ( 3 << TIMING_CFG2_CKE_PLS_SHIFT ) \
+				| ( 7 << TIMING_CFG2_FOUR_ACT_SHIFT) )
+				/* 0x1f9048c7 */
 #define CFG_DDR_TIMING_3	0x00000000
-#define CFG_DDR_CLK_CNTL	0x02000000
-#define CFG_DDR_MODE		0x44400232
+#define CFG_DDR_CLK_CNTL	DDR_SDRAM_CLK_CNTL_CLK_ADJUST_05
+				/* 0x02000000 */
+#define CFG_DDR_MODE		( ( 0x4448 << SDRAM_MODE_ESD_SHIFT ) \
+				| ( 0x0232 << SDRAM_MODE_SD_SHIFT ) )
+				/* 0x44480232 */
 #define CFG_DDR_MODE2		0x8000c000
-#define CFG_DDR_INTERVAL	0x03200064
+#define CFG_DDR_INTERVAL	( ( 800 << SDRAM_INTERVAL_REFINT_SHIFT ) \
+				| ( 100 << SDRAM_INTERVAL_BSTOPRE_SHIFT ) )
+				/* 0x03200064 */
 #define CFG_DDR_CS0_BNDS	0x00000003
-#define CFG_DDR_SDRAM_CFG	0x43080000
+#define CFG_DDR_SDRAM_CFG	( SDRAM_CFG_SREN \
+				| SDRAM_CFG_SDRAM_TYPE_DDR2 \
+				| SDRAM_CFG_32_BE )
+				/* 0x43080000 */
 #define CFG_DDR_SDRAM_CFG2	0x00401000
 #endif
 
@@ -116,6 +155,7 @@
 #undef  CFG_RAMBOOT
 #endif
 
+/* CFG_MONITOR_LEN must be a multiple of CFG_ENV_SECT_SIZE */
 #define CFG_MONITOR_LEN		(256 * 1024)	/* Reserve 256 kB for Mon */
 #define CFG_MALLOC_LEN		(128 * 1024)	/* Reserved for malloc */
 
@@ -138,7 +178,7 @@
  * FLASH on the Local Bus
  */
 #define CFG_FLASH_CFI		/* use the Common Flash Interface */
-#define CFG_FLASH_CFI_DRIVER	/* use the CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER	/* use the CFI driver */
 #define CFG_FLASH_BASE		0xFE000000	/* FLASH base address */
 #define CFG_FLASH_SIZE		16	/* FLASH size is 16M */
 
@@ -269,12 +309,7 @@
 /* pass open firmware flat tree */
 #define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP	1
-
-#define OF_CPU			"PowerPC,8323@0"
-#define OF_SOC			"soc8323@e0000000"
-#define OF_QE			"qe@e0100000"
-#define OF_TBCLK		(bd->bi_busfreq / 4)
-#define OF_STDOUT_PATH		"/soc8323@e0000000/serial@4500"
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_HARD_I2C		/* I2C with hardware support */
@@ -286,10 +321,13 @@
 #define CFG_I2C_OFFSET	0x3000
 
 /*
- * Config on-board RTC
+ * Config on-board EEPROM
  */
-#define CONFIG_RTC_DS1374		/* use ds1374 rtc via i2c */
-#define CFG_I2C_RTC_ADDR	0x68	/* at address 0x68 */
+#define CFG_I2C_EEPROM_ADDR		0x50
+#define CFG_I2C_EEPROM_ADDR_LEN		2
+#define CFG_EEPROM_PAGE_WRITE_BITS	6
+#define CFG_EEPROM_PAGE_WRITE_DELAY_MS	10
+#define CFG_EEPROM_PAGE_WRITE_ENABLE
 
 /*
  * General PCI
@@ -306,7 +344,7 @@
 #define CFG_PCI1_IO_SIZE		0x04000000	/* 64M */
 
 #ifdef CONFIG_PCI
-
+#define CONFIG_PCI_SKIP_HOST_BRIDGE
 #define CONFIG_NET_MULTI
 #define CONFIG_PCI_PNP		/* do pci plug-and-play */
 
@@ -325,7 +363,7 @@
  * QE UEC ethernet configuration
  */
 #define CONFIG_UEC_ETH
-#define CONFIG_ETHPRIME		"Freescale GETH"
+#define CONFIG_ETHPRIME		"FSL UEC0"
 
 #define CONFIG_UEC_ETH1		/* ETH3 */
 
@@ -354,8 +392,8 @@
  */
 #ifndef CFG_RAMBOOT
 	#define CFG_ENV_IS_IN_FLASH	1
-	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + 0x40000)
-	#define CFG_ENV_SECT_SIZE	0x40000	/* 256K(one sector) for env */
+	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
+	#define CFG_ENV_SECT_SIZE	0x20000
 	#define CFG_ENV_SIZE		0x2000
 #else
 	#define CFG_NO_FLASH		1	/* Flash is not usable now */
@@ -382,6 +420,7 @@
 
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
+#define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_ASKENV
 
 #if defined(CONFIG_PCI)
@@ -427,17 +466,9 @@
 #define CFG_HID2		HID2_HBE
 
 /*
- * Cache Config
- */
-#define CFG_DCACHE_SIZE		16384
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value */
-#endif
-
-/*
  * MMU Setup
  */
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /* DDR: cache cacheable */
 #define CFG_IBAT0L	(CFG_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
@@ -517,9 +548,13 @@
  */
 #define CONFIG_ENV_OVERWRITE
 
+#define CONFIG_HAS_ETH0				/* add support for "ethaddr" */
 #define CONFIG_ETHADDR	00:04:9f:ef:03:01
 #define CONFIG_HAS_ETH1				/* add support for "eth1addr" */
 #define CONFIG_ETH1ADDR	00:04:9f:ef:03:02
+
+/* use mac_read_from_eeprom() to read ethaddr from I2C EEPROM (see CFG_I2C_EEPROM) */
+#define CFG_I2C_MAC_OFFSET	0x7f00	/* MAC address offset in I2C EEPROM */
 
 #define CONFIG_IPADDR		10.0.0.2
 #define CONFIG_SERVERIP		10.0.0.1
@@ -534,7 +569,7 @@
 #define CONFIG_UBOOTPATH	u-boot.bin	/* U-Boot image on TFTP server */
 #define CONFIG_FDTFILE		mpc832x_rdb.dtb
 
-#define CONFIG_LOADADDR		200000	/* default location for tftp and bootm */
+#define CONFIG_LOADADDR		500000	/* default location for tftp and bootm */
 #define CONFIG_BOOTDELAY	-1	/* -1 disables auto-boot */
 #define CONFIG_BAUDRATE		115200
 

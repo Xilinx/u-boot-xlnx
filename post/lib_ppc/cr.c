@@ -46,8 +46,6 @@
  * expected one.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include "cpu_asm.h"
 
@@ -250,6 +248,7 @@ int cpu_post_test_cr (void)
     int ret = 0;
     unsigned int i;
     unsigned long cr_sav;
+    int flag = disable_interrupts();
 
     asm ( "mfcr %0" : "=r" (cr_sav) : );
 
@@ -349,8 +348,10 @@ int cpu_post_test_cr (void)
 
     asm ( "mtcr %0" : : "r" (cr_sav));
 
+    if (flag)
+	enable_interrupts();
+
     return ret;
 }
 
-#endif
 #endif

@@ -64,11 +64,31 @@ int get_clocks (void)
 
 #endif				/* CONFIG_M5249 || CONFIG_M5253 */
 
+#if defined(CONFIG_M5275)
+	volatile pll_t *pll = (volatile pll_t *)(MMAP_PLL);
+
+	/* Setup PLL */
+	pll->syncr = 0x01080000;
+	while (!(pll->synsr & FMPLL_SYNSR_LOCK))
+		;
+	pll->syncr = 0x01000000;
+	while (!(pll->synsr & FMPLL_SYNSR_LOCK))
+		;
+#endif
+
 	gd->cpu_clk = CFG_CLK;
-#if defined(CONFIG_M5249) || defined(CONFIG_M5253)
+#if defined(CONFIG_M5249) || defined(CONFIG_M5253) || defined(CONFIG_M5275)
 	gd->bus_clk = gd->cpu_clk / 2;
 #else
 	gd->bus_clk = gd->cpu_clk;
 #endif
+
+#ifdef CONFIG_FSL_I2C
+	gd->i2c1_clk = gd->bus_clk;
+#ifdef CFG_I2C2_OFFSET
+	gd->i2c2_clk = gd->bus_clk;
+#endif
+#endif
+
 	return (0);
 }

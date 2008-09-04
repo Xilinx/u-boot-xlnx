@@ -154,10 +154,10 @@
 #define CFG_PCI_SUBSYS_DEVICEID 0x0156		/* PCI Device ID: 405GP		*/
 #define CFG_PCI_PTM1LA		0x00000000	/* point to sdram		*/
 #define CFG_PCI_PTM1MS		0x80000001	/* 2GB, enable hard-wired to 1	*/
-#define CFG_PCI_PTM1PCI 	0x00000000      /* Host: use this pci address   */
-#define CFG_PCI_PTM2LA		0x00000000	/* disabled		*/
-#define CFG_PCI_PTM2MS		0x00000000	/* disabled		*/
-#define CFG_PCI_PTM2PCI 	0x00000000      /* Host: use this pci address   */
+#define CFG_PCI_PTM1PCI		0x00000000      /* Host: use this pci address   */
+#define CFG_PCI_PTM2LA		0x00000000	/* disabled			*/
+#define CFG_PCI_PTM2MS		0x00000000	/* disabled			*/
+#define CFG_PCI_PTM2PCI		0x00000000      /* Host: use this pci address   */
 
 /*-----------------------------------------------------------------------
  * Set up values for external bus controller
@@ -289,15 +289,6 @@
  * (to get SDRAM settings)
  */
 #define SPD_EEPROM_ADDRESS      0x50	/* XXX conflicting address!!! XXX */
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		8192		/* For AMCC 405 CPUs			*/
-#define CFG_CACHELINE_SIZE	32		/* ...		*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5		/* log base 2 of the above val. */
-#endif
 
 /*
  * Init Memory Controller:

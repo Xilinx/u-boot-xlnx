@@ -51,7 +51,7 @@
 #define MC_ASR_VAL	0x00000000
 #define MC_AASR_VAL	0x00000000
 #define EBI_CFGR_VAL	0x00000000
-#define SMC2_CSR_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
+#define SMC_CSR0_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
 
 /* clocks */
 #define PLLAR_VAL	0x20263E04 /* 179.712000 MHz for PCK */
@@ -112,16 +112,11 @@
  */
 #include <config_cmd_default.h>
 
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_DHCP
+#define CONFIG_CMD_MII
+#define CONFIG_CMD_NAND
 
-#undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_AUTOSCRIPT
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_MISC
-#undef CONFIG_CMD_LOADS
-
+#define CONFIG_NAND_LEGACY
 
 #define CFG_MAX_NAND_DEVICE	1	/* Max number of NAND devices		*/
 #define SECTORSIZE 512
@@ -137,6 +132,7 @@
 #define AT91_SMART_MEDIA_ALE (1 << 22)	/* our ALE is AD22 */
 #define AT91_SMART_MEDIA_CLE (1 << 21)	/* our CLE is AD21 */
 
+#include <asm/arch/AT91RM9200.h>	/* needed for port definitions */
 #define NAND_DISABLE_CE(nand) do { *AT91C_PIOC_SODR = AT91C_PIO_PC0;} while(0)
 #define NAND_ENABLE_CE(nand) do { *AT91C_PIOC_CODR = AT91C_PIO_PC0;} while(0)
 
@@ -170,8 +166,8 @@
 
 #define CONFIG_HAS_DATAFLASH		1
 #define CFG_SPI_WRITE_TOUT		(5*CFG_HZ)
-#define CFG_MAX_DATAFLASH_BANKS 	2
-#define CFG_MAX_DATAFLASH_PAGES 	16384
+#define CFG_MAX_DATAFLASH_BANKS		2
+#define CFG_MAX_DATAFLASH_PAGES		16384
 #define CFG_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* Logical adress for CS0 */
 #define CFG_DATAFLASH_LOGIC_ADDR_CS3	0xD0000000	/* Logical adress for CS3 */
 
@@ -192,11 +188,11 @@
 #else
 #define CFG_ENV_IS_IN_FLASH		1
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
-#define CFG_ENV_ADDR			(PHYS_FLASH_1 + 0x60000)  /* after u-boot.bin */
-#define CFG_ENV_SIZE			0x10000 /* sectors are 64K here */
-#else
 #define CFG_ENV_ADDR			(PHYS_FLASH_1 + 0xe000)  /* between boot.bin and u-boot.bin.gz */
 #define CFG_ENV_SIZE			0x2000  /* 0x8000 */
+#else
+#define CFG_ENV_ADDR			(PHYS_FLASH_1 + 0x60000)  /* after u-boot.bin */
+#define CFG_ENV_SIZE			0x10000 /* sectors are 64K here */
 #endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
 #endif	/* CFG_ENV_IS_IN_DATAFLASH */
 
@@ -204,44 +200,25 @@
 #define CFG_LOAD_ADDR		0x21000000  /* default load address */
 
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
-#define CFG_BOOT_SIZE		0x00 /* 0 KBytes */
-#define CFG_U_BOOT_BASE		PHYS_FLASH_1
-#define CFG_U_BOOT_SIZE		0x60000 /* 384 KBytes */
-#else
 #define CFG_BOOT_SIZE		0x6000 /* 24 KBytes */
 #define CFG_U_BOOT_BASE		(PHYS_FLASH_1 + 0x10000)
 #define CFG_U_BOOT_SIZE		0x10000 /* 64 KBytes */
+#else
+#define CFG_BOOT_SIZE		0x00 /* 0 KBytes */
+#define CFG_U_BOOT_BASE		PHYS_FLASH_1
+#define CFG_U_BOOT_SIZE		0x60000 /* 384 KBytes */
 #endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
 
-#define CFG_BAUDRATE_TABLE	{115200 , 19200, 38400, 57600, 9600 }
+#define CFG_BAUDRATE_TABLE	{ 115200, 19200, 38400, 57600, 9600 }
 
 #define CFG_PROMPT		"U-Boot> "	/* Monitor Command Prompt */
 #define CFG_CBSIZE		256		/* Console I/O Buffer Size */
 #define CFG_MAXARGS		16		/* max number of command args */
 #define CFG_PBSIZE		(CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
 
-#ifndef __ASSEMBLY__
-/*-----------------------------------------------------------------------
- * Board specific extension for bd_info
- *
- * This structure is embedded in the global bd_info (bd_t) structure
- * and can be used by the board specific code (eg board/...)
- */
-
-struct bd_info_ext {
-	/* helper variable for board environment handling
-	 *
-	 * env_crc_valid == 0    =>   uninitialised
-	 * env_crc_valid  > 0    =>   environment crc in flash is valid
-	 * env_crc_valid  < 0    =>   environment crc in flash is invalid
-	 */
-	int env_crc_valid;
-};
-#endif
-
 #define CFG_HZ 1000
 #define CFG_HZ_CLOCK AT91C_MASTER_CLOCK/2	/* AT91C_TC0_CMR is implicitly set to */
-					/* AT91C_TC_TIMER_DIV1_CLOCK */
+						/* AT91C_TC_TIMER_DIV1_CLOCK */
 
 #define CONFIG_STACKSIZE	(32*1024)	/* regular stack */
 

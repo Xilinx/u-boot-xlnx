@@ -46,6 +46,8 @@
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
 #define BOOTFLAG_WARM		0x02	/* Software reboot */
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
+
 /*
  * Serial console configuration
  */
@@ -128,7 +130,7 @@
 #define CONFIG_BOOTDELAY	3	/* autoboot after 3 seconds */
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef CONFIG_BOOTARGS
@@ -199,7 +201,7 @@
  * Flash configuration - use CFI driver
  */
 #define CFG_FLASH_CFI		1		/* Flash is CFI conformant */
-#define CFG_FLASH_CFI_DRIVER	1		/* Use the common driver */
+#define CONFIG_FLASH_CFI_DRIVER	1		/* Use the common driver */
 #define CFG_FLASH_CFI_AMD_RESET	1
 #define CFG_FLASH_BASE		0xFF000000
 #define CFG_MAX_FLASH_BANKS	1		/* max num of flash banks */

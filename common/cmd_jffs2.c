@@ -93,18 +93,15 @@
 #include <jffs2/jffs2.h>
 #include <linux/list.h>
 #include <linux/ctype.h>
-
-#if defined(CONFIG_CMD_JFFS2)
-
 #include <cramfs/cramfs_fs.h>
 
 #if defined(CONFIG_CMD_NAND)
-#ifdef CFG_NAND_LEGACY
+#ifdef CONFIG_NAND_LEGACY
 #include <linux/mtd/nand_legacy.h>
-#else /* !CFG_NAND_LEGACY */
+#else /* !CONFIG_NAND_LEGACY */
 #include <linux/mtd/nand.h>
 #include <nand.h>
-#endif /* !CFG_NAND_LEGACY */
+#endif /* !CONFIG_NAND_LEGACY */
 #endif
 /* enable/disable debugging messages */
 #define	DEBUG_JFFS
@@ -170,10 +167,19 @@ struct list_head devices;
 static struct mtd_device *current_dev = NULL;
 static u8 current_partnum = 0;
 
+#if defined(CONFIG_CMD_CRAMFS)
 extern int cramfs_check (struct part_info *info);
 extern int cramfs_load (char *loadoffset, struct part_info *info, char *filename);
 extern int cramfs_ls (struct part_info *info, char *filename);
 extern int cramfs_info (struct part_info *info);
+#else
+/* defining empty macros for function names is ugly but avoids ifdef clutter
+ * all over the code */
+#define cramfs_check(x)		(0)
+#define cramfs_load(x,y,z)	(-1)
+#define cramfs_ls(x,y)		(0)
+#define cramfs_info(x)		(0)
+#endif
 
 static struct part_info* jffs2_part_info(struct mtd_device *dev, unsigned int part_num);
 
@@ -235,13 +241,13 @@ static void memsize_format(char *buf, u32 size)
 #define SIZE_KB ((u32)1024)
 
 	if ((size % SIZE_GB) == 0)
-		sprintf(buf, "%lug", size/SIZE_GB);
+		sprintf(buf, "%ug", size/SIZE_GB);
 	else if ((size % SIZE_MB) == 0)
-		sprintf(buf, "%lum", size/SIZE_MB);
+		sprintf(buf, "%um", size/SIZE_MB);
 	else if (size % SIZE_KB == 0)
-		sprintf(buf, "%luk", size/SIZE_KB);
+		sprintf(buf, "%uk", size/SIZE_KB);
 	else
-		sprintf(buf, "%lu", size);
+		sprintf(buf, "%u", size);
 }
 
 /**
@@ -410,7 +416,7 @@ static int part_validate(struct mtdids *id, struct part_info *part)
 		part->size = id->size - part->offset;
 
 	if (part->offset > id->size) {
-		printf("%s: offset %08lx beyond flash size %08lx\n",
+		printf("%s: offset %08x beyond flash size %08x\n",
 				id->mtd_id, part->offset, id->size);
 		return 1;
 	}
@@ -470,7 +476,7 @@ static int part_del(struct mtd_device *dev, struct part_info *part)
 		}
 	}
 
-#ifdef CFG_NAND_LEGACY
+#ifdef CONFIG_NAND_LEGACY
 	jffs2_free_cache(part);
 #endif
 	list_del(&part->link);
@@ -499,7 +505,7 @@ static void part_delall(struct list_head *head)
 	list_for_each_safe(entry, n, head) {
 		part_tmp = list_entry(entry, struct part_info, link);
 
-#ifdef CFG_NAND_LEGACY
+#ifdef CONFIG_NAND_LEGACY
 		jffs2_free_cache(part_tmp);
 #endif
 		list_del(entry);
@@ -735,7 +741,7 @@ static int device_validate(u8 type, u8 num, u32 *size)
 	} else if (type == MTD_DEV_TYPE_NAND) {
 #if defined(CONFIG_JFFS2_NAND) && defined(CONFIG_CMD_NAND)
 		if (num < CFG_MAX_NAND_DEVICE) {
-#ifndef CFG_NAND_LEGACY
+#ifndef CONFIG_NAND_LEGACY
 			*size = nand_info[num].size;
 #else
 			extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
@@ -1282,7 +1288,7 @@ static void list_partitions(void)
 	if (current_dev) {
 		part = jffs2_part_info(current_dev, current_partnum);
 		if (part) {
-			printf("\nactive partition: %s%d,%d - (%s) 0x%08lx @ 0x%08lx\n",
+			printf("\nactive partition: %s%d,%d - (%s) 0x%08x @ 0x%08x\n",
 					MTD_DEV_TYPE(current_dev->id->type),
 					current_dev->id->num, current_partnum,
 					part->name, part->size, part->offset);
@@ -2191,5 +2197,3 @@ U_BOOT_CMD(
 #endif /* #ifdef CONFIG_JFFS2_CMDLINE */
 
 /***************************************************/
-
-#endif

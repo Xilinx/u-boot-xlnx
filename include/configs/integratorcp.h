@@ -140,7 +140,7 @@ SIB at Block62 End Block62 address 0x24f80000
  */
 #define CONFIG_NR_DRAM_BANKS	1		/* we have 1 bank of DRAM */
 #define PHYS_SDRAM_1		0x00000000	/* SDRAM Bank #1 */
-#define PHYS_SDRAM_1_SIZE 	0x08000000	/* 128 MB */
+#define PHYS_SDRAM_1_SIZE	0x08000000	/* 128 MB */
 
 /*-----------------------------------------------------------------------
  * FLASH and environment organization
@@ -156,9 +156,9 @@ SIB at Block62 End Block62 address 0x24f80000
 
  */
 #define CFG_FLASH_BASE		0x24000000
-#define CFG_MAX_FLASH_SECT 	64
+#define CFG_MAX_FLASH_SECT	64
 #define CFG_MAX_FLASH_BANKS	1		/* max number of memory banks */
-#define PHYS_FLASH_SIZE 	0x01000000	/* 16MB */
+#define PHYS_FLASH_SIZE		0x01000000	/* 16MB */
 #define CFG_FLASH_ERASE_TOUT	(2*CFG_HZ)	/* Timeout for Flash Erase */
 #define CFG_FLASH_WRITE_TOUT	(2*CFG_HZ)	/* Timeout for Flash Write */
 
@@ -168,7 +168,7 @@ SIB at Block62 End Block62 address 0x24f80000
 /*
  * Move up the U-Boot & monitor area if more flash is fitted.
  * If this U-Boot is to be run on Integrators with varying flash sizes,
- * drivers/cfi_flash.c::flash_init() can read the Integrator CP_FLASHPROG
+ * drivers/mtd/cfi_flash.c::flash_init() can read the Integrator CP_FLASHPROG
  * register and dynamically assign CFG_ENV_ADDR & CFG_MONITOR_BASE
  * - CFG_MONITOR_BASE is set to indicate that the environment is not
  * embedded in the boot monitor(s) area

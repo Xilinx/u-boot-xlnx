@@ -323,14 +323,6 @@
 #define CFG_ENV_ADDR		\
 	(CFG_NVRAM_BASE_ADDR+CFG_NVRAM_SIZE-CFG_ENV_SIZE)	/* Env	*/
 #endif
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		8192	/* For AMCC 405 CPUs			*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Init Memory Controller:
@@ -338,7 +330,7 @@
  * BR0/1 and OR0/1 (FLASH)
  */
 
-#define FLASH_BASE0_PRELIM	0xFF800000	/* FLASH bank #0 8MB 	*/
+#define FLASH_BASE0_PRELIM	0xFF800000	/* FLASH bank #0 8MB	*/
 #define FLASH_BASE1_PRELIM	0		/* FLASH bank #1	*/
 
 

@@ -92,7 +92,7 @@ int misc_init_r (void)
 	gd->bd->bi_flashstart = 0 - gd->bd->bi_flashsize;
 	gd->bd->bi_flashoffset = 0;
 
- 	/*
+	/*
 	 * Setup and enable EEPROM write protection
 	 */
 	out_be32((void *)GPIO0_OR, in_be32((void *)GPIO0_OR) | CFG_EEPROM_WP);
@@ -141,7 +141,7 @@ int checkboard (void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	unsigned long val;
 

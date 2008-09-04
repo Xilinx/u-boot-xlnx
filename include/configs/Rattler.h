@@ -37,8 +37,6 @@
 
 #define CONFIG_RATTLER			/* Analogue&Micro Rattler board */
 
-#undef DEBUG
-
 /* Allow serial number (serial#) and MAC address (ethaddr) to be overwritten */
 #define CONFIG_ENV_OVERWRITE
 
@@ -189,7 +187,7 @@
 
 #define CFG_FLASH_BASE		0xFE000000
 #define CFG_FLASH_CFI
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_MAX_FLASH_BANKS	1	/* max num of flash banks	*/
 #define CFG_MAX_FLASH_SECT	256	/* max num of sects on one chip */
 
@@ -252,13 +250,13 @@
 /* Hard reset configuration word */
 #define CFG_HRCW_MASTER		0x0A06875A /* Not used - provided by FPGA */
 /* No slaves */
-#define CFG_HRCW_SLAVE1 	0
-#define CFG_HRCW_SLAVE2 	0
-#define CFG_HRCW_SLAVE3 	0
-#define CFG_HRCW_SLAVE4 	0
-#define CFG_HRCW_SLAVE5 	0
-#define CFG_HRCW_SLAVE6 	0
-#define CFG_HRCW_SLAVE7 	0
+#define CFG_HRCW_SLAVE1		0
+#define CFG_HRCW_SLAVE2		0
+#define CFG_HRCW_SLAVE3		0
+#define CFG_HRCW_SLAVE4		0
+#define CFG_HRCW_SLAVE5		0
+#define CFG_HRCW_SLAVE6		0
+#define CFG_HRCW_SLAVE7		0
 
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH */
 #define BOOTFLAG_WARM		0x02	/* Software reboot                  */

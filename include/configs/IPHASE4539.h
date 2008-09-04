@@ -30,8 +30,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG				/* General debug */
-
 /*-----------------------------------------------------------------------
  * High Level Configuration Options
  * (easy to change)
@@ -276,7 +274,7 @@
  * HID1 has only read-only information - nothing to set.
  */
 #define CFG_HID0_INIT	(HID0_ICE|HID0_DCE|HID0_ICFI|HID0_DCI|\
- 			 HID0_IFEM|HID0_ABE)
+			 HID0_IFEM|HID0_ABE)
 #define CFG_HID0_FINAL	(HID0_IFEM|HID0_ABE)
 #define CFG_HID2	0
 

@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2002
+ * (C) Copyright 2002-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -42,13 +42,13 @@
 #define CONFIG_BAUDRATE		115200
 #define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds	*/
 #define CONFIG_BOOTCOMMAND							\
-	"bootp; " 								\
-	"setenv bootargs root=/dev/nfs nfsroot=${serverip}:${rootpath} " 	\
-	"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off; " 	\
+	"bootp; "								\
+	"setenv bootargs root=/dev/nfs nfsroot=${serverip}:${rootpath} "	\
+	"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off; "	\
 	"bootm"
 
-extern		void  fw_printenv(int argc, char *argv[]);
-extern unsigned char *fw_getenv  (unsigned char *name);
-extern		int   fw_setenv  (int argc, char *argv[]);
+extern int   fw_printenv(int argc, char *argv[]);
+extern char *fw_getenv  (char *name);
+extern int fw_setenv  (int argc, char *argv[]);
 
 extern unsigned	long  crc32	 (unsigned long, const unsigned char *, unsigned);

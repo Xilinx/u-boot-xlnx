@@ -42,6 +42,7 @@
 #define	CONFIG_ETHER_ON_FEC2			/* Enable Ethernet on FEC2	*/
 #if defined(CONFIG_ETHER_ON_FEC1) || defined(CONFIG_ETHER_ON_FEC2)
 #define CFG_DISCOVER_PHY
+#define CONFIG_MII_INIT		1
 #define FEC_ENET
 #endif /* CONFIG_FEC_ENET */
 
@@ -137,13 +138,13 @@
  */
 #define CFG_FLASH_BASE		0xFC000000
 #define CFG_FLASH_CFI				/* The flash is CFI compatible  */
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver        */
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver        */
 #define CFG_MAX_FLASH_BANKS	1		/* Max number of flash banks	*/
 #define CFG_MAX_FLASH_SECT	512		/* Max num of sects on one chip */
 
 /* Environment is in flash */
 #define CFG_ENV_IS_IN_FLASH
-#define CFG_ENV_SECT_SIZE	0x20000 	/* We use one complete sector	*/
+#define CFG_ENV_SECT_SIZE	0x20000		/* We use one complete sector	*/
 #define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
 
 #define CFG_OR0_PRELIM		0xFC000160
@@ -191,13 +192,13 @@
 #define CFG_TBSCR		(TBSCR_TBF | TBSCR_TBE)
 
 /* PISCR - Periodic Interrupt Status and Control */
-#define CFG_PISCR       	PISCR_PS
+#define CFG_PISCR		PISCR_PS
 
 /* SCCR - System Clock and reset Control Register */
-#define SCCR_MASK       	SCCR_EBDF11
+#define SCCR_MASK		SCCR_EBDF11
 #define CFG_SCCR		SCCR_RTSEL
 
-#define CFG_DER         	0
+#define CFG_DER			0
 
 /*-----------------------------------------------------------------------
  * Cache Configuration

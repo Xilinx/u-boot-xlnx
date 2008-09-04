@@ -22,8 +22,6 @@
 
 #include <config.h>
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include <ppc_asm.tmpl>
 #include <ppc_defs.h>
@@ -308,7 +306,10 @@ cpu_post_exec_31:
 	lwz	r3, 0(r4)
 	lwz	r4, 0(r5)
 	mr	r6, r7
+
+	mfcr	r7
 	blrl
+	mtcr	r7
 
 	lwz	r7, 8(r1)
 	stw	r3, 0(r7)
@@ -354,5 +355,4 @@ cpu_post_complex_2_loop:
 	bdnz	cpu_post_complex_2_loop
 blr
 
-#endif
 #endif

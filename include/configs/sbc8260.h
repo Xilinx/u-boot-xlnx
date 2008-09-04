@@ -36,7 +36,6 @@
 #define __CONFIG_H
 
 /* Enable debug prints */
-#undef DEBUG		      /* General debug */
 #undef DEBUG_BOOTP_EXT	      /* Debug received vendor fields */
 
 /*****************************************************************************
@@ -307,7 +306,8 @@
  */
 #undef CONFIG_AUTOBOOT_KEYED
 #ifdef CONFIG_AUTOBOOT_KEYED
-#   define CONFIG_AUTOBOOT_PROMPT	"Autobooting in %d seconds, press \" \" to stop\n"
+#   define CONFIG_AUTOBOOT_PROMPT	\
+	"Autobooting in %d seconds, press \" \" to stop\n", bootdelay
 #   define CONFIG_AUTOBOOT_STOP_STR	" "
 #   undef  CONFIG_AUTOBOOT_DELAY_STR
 #   define DEBUG_BOOTKEYS		0
@@ -388,7 +388,7 @@
 /* Define a command string that is automatically executed when no character
  * is read on the console interface withing "Boot Delay" after reset.
  */
-#undef	CONFIG_BOOT_ROOT_INITRD 	/* Use ram disk for the root file system */
+#undef	CONFIG_BOOT_ROOT_INITRD		/* Use ram disk for the root file system */
 #define	CONFIG_BOOT_ROOT_NFS		/* Use a NFS mounted root file system */
 
 #ifdef CONFIG_BOOT_ROOT_INITRD

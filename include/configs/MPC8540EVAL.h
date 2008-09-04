@@ -30,18 +30,17 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 /* High Level Configuration Options */
-#define CONFIG_BOOKE		1	    /* BOOKE 			*/
+#define CONFIG_BOOKE		1	    /* BOOKE			*/
 #define CONFIG_E500		1	    /* BOOKE e500 family	*/
 #define CONFIG_MPC85xx		1	    /* MPC8540/MPC8560		*/
 #define CONFIG_MPC8540		1	    /* MPC8540 specific	        */
 #define CONFIG_MPC8540EVAL	1	    /* MPC8540EVAL board specific */
 
-#undef  CONFIG_PCI	         	    /* pci ethernet support	*/
-#define CONFIG_TSEC_ENET 		    /* tsec ethernet support  */
+#undef  CONFIG_PCI			    /* pci ethernet support	*/
+#define CONFIG_TSEC_ENET		    /* tsec ethernet support  */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_SPD_EEPROM                   /* Use SPD EEPROM for DDR setup */
-#undef  CONFIG_DDR_ECC			    /* only for ECC DDR module */
-#define CONFIG_DDR_DLL                      /* possible DLL fix needed */
+
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 /* Using Localbus SDRAM to emulate flash before we can program the flash,
  * normally you only need a flash-boot image(u-boot.bin),if unsure undef this.
@@ -61,7 +60,7 @@
 #endif
 
 /* below can be toggled for performance analysis. otherwise use default */
-#define CONFIG_L2_CACHE		    	    /* toggle L2 cache 	*/
+#define CONFIG_L2_CACHE			    /* toggle L2 cache	*/
 #undef  CONFIG_BTB			    /* toggle branch predition */
 #undef  CONFIG_ADDR_STREAMING		    /* toggle addr streaming   */
 
@@ -79,12 +78,11 @@
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  */
-#define CFG_CCSRBAR_DEFAULT 	0xff700000	/* CCSRBAR Default	*/
-#define CFG_CCSRBAR		0xe0000000	/* relocated CCSRBAR 	*/
+#define CFG_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default	*/
+#define CFG_CCSRBAR		0xe0000000	/* relocated CCSRBAR	*/
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR	*/
 
-#define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory  */
-#define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
 #define CFG_SDRAM_SIZE		256             /* DDR is now 256MB     */
 
 #if defined(CONFIG_RAM_AS_FLASH)
@@ -110,7 +108,7 @@
 #define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)*/
 #define CFG_FLASH_CFI		1
 
-#define CFG_MONITOR_BASE    	TEXT_BASE	/* start of monitor */
+#define CFG_MONITOR_BASE	TEXT_BASE	/* start of monitor */
 
 #if (CFG_MONITOR_BASE < CFG_FLASH_BASE)
 #define CFG_RAMBOOT
@@ -118,10 +116,27 @@
 #undef  CFG_RAMBOOT
 #endif
 
-#define SPD_EEPROM_ADDRESS	0x51		/* DDR DIMM */
+/* DDR Setup */
+#define CONFIG_FSL_DDR1
+#undef CONFIG_FSL_DDR_INTERACTIVE
+#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
+#define CONFIG_DDR_SPD
+#define CONFIG_DDR_DLL                      /* possible DLL fix needed */
 
-/* Here some DDR setting should be added */
+#undef  CONFIG_DDR_ECC			    /* only for ECC DDR module */
+#undef CONFIG_ECC_INIT_VIA_DDRCONTROLLER	/* DDR controller or DMA? */
+#define CONFIG_MEM_INIT_VALUE	0xDeadBeef
 
+#define CFG_DDR_SDRAM_BASE	0x00000000
+#define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
+#define CONFIG_VERY_BIG_RAM
+
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	2
+
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x51	/* CTLR 0 DIMM 0 */
 
 #undef CONFIG_CLOCKS_IN_MHZ
 
@@ -147,16 +162,16 @@
 #define CFG_BCSR                (CFG_BR4_PRELIM & 0xffff8000)
 
 #define CONFIG_L1_INIT_RAM
-#define CFG_INIT_RAM_LOCK 	1
-#define CFG_INIT_RAM_ADDR   	0x40000000 	/* Initial RAM address	*/
-#define CFG_INIT_RAM_END    	0x4000	    	/* End of used area in RAM */
+#define CFG_INIT_RAM_LOCK	1
+#define CFG_INIT_RAM_ADDR	0x40000000	/* Initial RAM address	*/
+#define CFG_INIT_RAM_END	0x4000		/* End of used area in RAM */
 
-#define CFG_GBL_DATA_SIZE  	128		/* num bytes initial data */
+#define CFG_GBL_DATA_SIZE	128		/* num bytes initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
 
-#define CFG_MONITOR_LEN	    	(256 * 1024)    /* Reserve 256 kB for Mon */
-#define CFG_MALLOC_LEN	    	(128 * 1024)    /* Reserved for malloc */
+#define CFG_MONITOR_LEN		(256 * 1024)    /* Reserve 256 kB for Mon */
+#define CFG_MALLOC_LEN		(128 * 1024)    /* Reserved for malloc */
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX     1
@@ -165,7 +180,7 @@
 #define CFG_NS16550_SERIAL
 #define CFG_NS16550_REG_SIZE    1
 #define CFG_NS16550_CLK		get_bus_freq(0)
-#define CONFIG_BAUDRATE	 	115200
+#define CONFIG_BAUDRATE		115200
 
 #define CFG_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
@@ -200,17 +215,17 @@
 #define CONFIG_NET_MULTI
 #undef CONFIG_EEPRO100
 #define CONFIG_TULIP
-#define CONFIG_PCI_PNP	               	/* do pci plug-and-play */
+#define CONFIG_PCI_PNP			/* do pci plug-and-play */
 #if !defined(CONFIG_PCI_PNP)
 #define PCI_ENET0_IOADDR      0xe0000000
 #define PCI_ENET0_MEMADDR     0xe0000000
-#define PCI_IDSEL_NUMBER      0x0c 	/*slot0->3(IDSEL)=12->15*/
+#define PCI_IDSEL_NUMBER      0x0c	/*slot0->3(IDSEL)=12->15*/
 #endif
 #define CONFIG_PCI_SCAN_SHOW    1       /* show pci devices on startup  */
 #define CFG_PCI_SUBSYS_VENDORID 0x1057  /* Motorola */
 #define CFG_PCI_SUBSYS_DEVICEID 0x0008
 #elif defined(CONFIG_TSEC_ENET)
-#define CONFIG_NET_MULTI 	1
+#define CONFIG_NET_MULTI	1
 #define CONFIG_MII		1	/* MII PHY management	*/
 #define CONFIG_TSEC1    1
 #define CONFIG_HAS_ETH0
@@ -238,8 +253,6 @@
 #define INTEL_LXT971_PHY	1
 #endif
 
-#undef DEBUG
-
 /* Environment */
 #ifndef CFG_RAMBOOT
 #if defined(CONFIG_RAM_AS_FLASH)
@@ -261,7 +274,7 @@
 
 #define CONFIG_BOOTARGS	"root=/dev/ram rw console=ttyS0,115200"
 #define CONFIG_BOOTCOMMAND	"bootm 0xff800000 0xffa00000"
-#define CONFIG_BOOTDELAY	3 	/* -1 disable autoboot */
+#define CONFIG_BOOTDELAY	3	/* -1 disable autoboot */
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
 #define CFG_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
@@ -317,14 +330,7 @@
  * have to be in the first 8 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CFG_BOOTMAPSZ	(8 << 20) 	/* Initial Memory map for Linux */
-
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE	32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value */
-#endif
+#define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux */
 
 /*
  * Internal Definitions

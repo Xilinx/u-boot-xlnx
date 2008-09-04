@@ -30,7 +30,7 @@ AFLAGS	+= -DCONFIG_NAND_SPL
 CFLAGS	+= -DCONFIG_NAND_SPL
 
 SOBJS	= start.o init.o resetvec.o
-COBJS	= nand_boot.o nand_ecc.o ndfc.o sdram.o
+COBJS	= denali_data_eye.o nand_boot.o nand_ecc.o ndfc.o sdram.o
 
 SRCS	:= $(addprefix $(obj),$(SOBJS:.o=.S) $(COBJS:.o=.c))
 OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
@@ -50,13 +50,17 @@ $(nandobj)u-boot-spl.bin:	$(nandobj)u-boot-spl
 	$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
 
 $(nandobj)u-boot-spl:	$(OBJS)
-	cd $(LNDIR) && $(LD) $(LDFLAGS) $$UNDEF_SYM $(__OBJS) \
+	cd $(LNDIR) && $(LD) $(LDFLAGS) $(__OBJS) \
 		-Map $(nandobj)u-boot-spl.map \
 		-o $(nandobj)u-boot-spl
 
 # create symbolic links for common files
 
 # from cpu directory
+$(obj)denali_data_eye.c:
+	@rm -f $(obj)denali_data_eye.c
+	ln -s $(SRCTREE)/cpu/ppc4xx/denali_data_eye.c $(obj)denali_data_eye.c
+
 $(obj)ndfc.c:
 	@rm -f $(obj)ndfc.c
 	ln -s $(SRCTREE)/cpu/ppc4xx/ndfc.c $(obj)ndfc.c
@@ -85,10 +89,10 @@ $(obj)nand_boot.c:
 	@rm -f $(obj)nand_boot.c
 	ln -s $(SRCTREE)/nand_spl/nand_boot.c $(obj)nand_boot.c
 
-# from drivers/nand directory
+# from drivers/mtd/nand directory
 $(obj)nand_ecc.c:
 	@rm -f $(obj)nand_ecc.c
-	ln -s $(SRCTREE)/drivers/nand/nand_ecc.c $(obj)nand_ecc.c
+	ln -s $(SRCTREE)/drivers/mtd/nand/nand_ecc.c $(obj)nand_ecc.c
 
 #########################################################################
 

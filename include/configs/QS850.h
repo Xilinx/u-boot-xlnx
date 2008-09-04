@@ -38,7 +38,6 @@
 #undef CFG_DEVICE_NULLDEV		/* null device */
 #undef CONFIG_SILENT_CONSOLE		/* silent console */
 #undef CFG_CONSOLE_INFO_QUIET		/* silent console ? */
-#undef DEBUG				/* debug output code */
 #undef DEBUG_FLASH			/* debug flash code */
 #undef FLASH_DEBUG			/* debug fash code */
 #undef DEBUG_ENV			/* debug environment code */
@@ -493,12 +492,12 @@
 
 /* For boards with 16M of SDRAM */
 #define SDRAM_16M_MAX_SIZE	0x01000000	/* max 16MB SDRAM */
-#define CFG_16M_MAMR 		(vMAMR_PTA | MAMR_AMA_TYPE_0 | MAMR_DSA_2_CYCL | MAMR_G0CLA_A11 |\
+#define CFG_16M_MAMR		(vMAMR_PTA | MAMR_AMA_TYPE_0 | MAMR_DSA_2_CYCL | MAMR_G0CLA_A11 |\
 MAMR_RLFA_1X | MAMR_WLFA_1X | MAMR_TLFA_4X)
 
 /* For boards with 32M of SDRAM */
 #define SDRAM_32M_MAX_SIZE	0x02000000	/* max 32MB SDRAM */
-#define CFG_32M_MAMR 		(vMAMR_PTA | MAMR_AMA_TYPE_1 | MAMR_DSA_2_CYCL | MAMR_G0CLA_A10 |\
+#define CFG_32M_MAMR		(vMAMR_PTA | MAMR_AMA_TYPE_1 | MAMR_DSA_2_CYCL | MAMR_G0CLA_A10 |\
 MAMR_RLFA_1X | MAMR_WLFA_1X | MAMR_TLFA_4X)
 
 

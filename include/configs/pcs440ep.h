@@ -27,6 +27,12 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+
+/* new uImage format support */
+#define CONFIG_FIT		1
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_FIT_VERBOSE	1 /* enable fit_format_{error,warning}() */
+
 /*-----------------------------------------------------------------------
  * High Level Configuration Options
  *----------------------------------------------------------------------*/
@@ -66,7 +72,7 @@
  *----------------------------------------------------------------------*/
 #define CFG_INIT_RAM_DCACHE	1		/* d-cache as init ram	*/
 #define CFG_INIT_RAM_ADDR	0x70000000		/* DCache       */
-#define CFG_INIT_RAM_END	(8 << 10)
+#define CFG_INIT_RAM_END	(4 << 10)
 #define CFG_GBL_DATA_SIZE	256			/* num bytes initial data*/
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
@@ -142,7 +148,7 @@
 #define CFG_EEPROM_PAGE_WRITE_DELAY_MS 10
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -172,7 +178,7 @@
 	"load=tftp 100000 /tftpboot/pcs440ep/u-boot.bin\0"		\
 	"update=protect off FFFA0000 FFFFFFFF;era FFFA0000 FFFFFFFF;"	\
 		"cp.b 100000 FFFA0000 60000\0"			        \
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	""
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
@@ -181,10 +187,6 @@
 #else
 #define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds	*/
 #endif
-
-#define CONFIG_PREBOOT	"echo;" \
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
-	"echo"
 
 /* check U-Boot image with SHA1 sum */
 #define CONFIG_SHA1_CHECK_UB_IMG	1
@@ -365,7 +367,7 @@
 /*-----------------------------------------------------------------------
  * PPC440 GPIO Configuration
  */
-#define CFG_440_GPIO_TABLE { /*	  Out		       GPIO	Alternate1	Alternate2   Alternate3 */ \
+#define CFG_4xx_GPIO_TABLE { /*	  Out		       GPIO	Alternate1	Alternate2   Alternate3 */ \
 {											\
 /* GPIO Core 0 */									\
 {GPIO0_BASE, GPIO_OUT, GPIO_SEL, GPIO_OUT_NO_CHG},  /* GPIO0	EBC_ADDR(7)	DMA_REQ(2)	*/ \
@@ -437,15 +439,6 @@
 {GPIO1_BASE, GPIO_IN,  GPIO_SEL, GPIO_OUT_NO_CHG},  /* GPIO63  Unselect via TraceSelect Bit	*/	\
 }											\
 }
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		(32<<10) /* For AMCC 440 CPUs			*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Internal Definitions

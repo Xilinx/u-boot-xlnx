@@ -29,7 +29,7 @@ LDFLAGS	= -Bstatic -T $(LDSCRIPT) -Ttext $(TEXT_BASE) $(PLATFORM_LDFLAGS)
 AFLAGS	+= -DCONFIG_NAND_SPL
 CFLAGS	+= -DCONFIG_NAND_SPL
 
-SOBJS	= start.o resetvec.o
+SOBJS	= start.o resetvec.o cache.o
 COBJS	= gpio.o nand_boot.o nand_ecc.o memory.o ndfc.o pll.o
 
 SRCS	:= $(addprefix $(obj),$(SOBJS:.o=.S) $(COBJS:.o=.c))
@@ -51,7 +51,7 @@ $(nandobj)u-boot-spl.bin:	$(nandobj)u-boot-spl
 	$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
 
 $(nandobj)u-boot-spl:	$(OBJS)
-	cd $(LNDIR) && $(LD) $(LDFLAGS) $$UNDEF_SYM $(__OBJS) \
+	cd $(LNDIR) && $(LD) $(LDFLAGS) $(__OBJS) \
 		-Map $(nandobj)u-boot-spl.map \
 		-o $(nandobj)u-boot-spl
 
@@ -63,6 +63,10 @@ $(nandobj)System.map:	$(nandobj)u-boot-spl
 # create symbolic links for common files
 
 # from cpu directory
+$(obj)cache.S:
+	@rm -f $(obj)cache.S
+	ln -s $(SRCTREE)/cpu/ppc4xx/cache.S $(obj)cache.S
+
 $(obj)gpio.c:
 	@rm -f $(obj)gpio.c
 	ln -s $(SRCTREE)/cpu/ppc4xx/gpio.c $(obj)gpio.c
@@ -93,10 +97,10 @@ $(obj)nand_boot.c:
 	@rm -f $(obj)nand_boot.c
 	ln -s $(SRCTREE)/nand_spl/nand_boot.c $(obj)nand_boot.c
 
-# from drivers/nand directory
+# from drivers/mtd/nand directory
 $(obj)nand_ecc.c:
 	@rm -f $(obj)nand_ecc.c
-	ln -s $(SRCTREE)/drivers/nand/nand_ecc.c $(obj)nand_ecc.c
+	ln -s $(SRCTREE)/drivers/mtd/nand/nand_ecc.c $(obj)nand_ecc.c
 
 #########################################################################
 

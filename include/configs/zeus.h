@@ -210,7 +210,7 @@
  * FLASH organization
  */
 #define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
 
 #define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE }
 
@@ -235,13 +235,6 @@
 #define CFG_ENV_ADDR_REDUND	(CFG_ENV_ADDR-CFG_ENV_SECT_SIZE)
 #define CFG_ENV_SIZE_REDUND	(CFG_ENV_SIZE)
 #endif
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		16384	/* For IBM 405EP CPU			*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
 
 /*-----------------------------------------------------------------------
  * Definitions for initial stack pointer and data area (in data cache)
@@ -340,7 +333,7 @@
 	"nfsargs=setenv bootargs root=/dev/nfs rw"			\
 		" nfsroot=${serverip}:${rootpath}\0"			\
 	"ramargs=setenv bootargs root=/dev/ram rw"			\
-		" ramdisk=${ramdisk_size}\0"				\
+		" ramdisk_size=${ramdisk_size}\0"			\
 	"addip=setenv bootargs ${bootargs} "				\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
 	        ":${hostname}:${netdev}:off panic=1\0"			\

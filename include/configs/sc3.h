@@ -97,7 +97,7 @@
 #define CONFIG_BOOTDELAY	3 /* autoboot after 3 seconds	      */
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -132,7 +132,8 @@
 
 #if 1	/* feel free to disable for development */
 #define CONFIG_AUTOBOOT_KEYED		/* Enable password protection	*/
-#define CONFIG_AUTOBOOT_PROMPT		"\nSC3 - booting... stop with ENTER\n"
+#define CONFIG_AUTOBOOT_PROMPT		\
+	"\nSC3 - booting... stop with ENTER\n"
 #define CONFIG_AUTOBOOT_DELAY_STR	"\r"	/* 1st "password"	*/
 #define CONFIG_AUTOBOOT_DELAY_STR2	"\n"	/* 1st "password"	*/
 #endif
@@ -396,7 +397,7 @@ extern unsigned long offsetOfEnvironment;
 #define CFG_MAX_FLASH_SECT	256	/* max number of sectors on one chip	*/
 
 #define CFG_FLASH_CFI			/* flash is CFI compat.	*/
-#define CFG_FLASH_CFI_DRIVER		/* Use common CFI driver*/
+#define CONFIG_FLASH_CFI_DRIVER		/* Use common CFI driver*/
 #define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector	*/
 #define CFG_FLASH_QUIET_TEST	1	/* don't warn upon unknown flash*/
 #define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
@@ -432,24 +433,6 @@ extern unsigned long offsetOfEnvironment;
 #define CONFIG_JFFS2_DEV		"nand0"
 #define CONFIG_JFFS2_PART_SIZE		0x01000000
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- *
- * CFG_DCACHE_SIZE -> size of data cache:
- * - 405GP 8k
- * - 405GPr 16k
- * How to handle the difference in chache size?
- * CFG_CACHELINE_SIZE -> size of one cache line: 32 bytes
- * (used in cpu/ppc4xx/start.S)
-*/
-#define CFG_DCACHE_SIZE    16384
-
-#define CFG_CACHELINE_SIZE 32
-
-#if defined(CONFIG_CMD_KGDB)
- #define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Init Memory Controller:

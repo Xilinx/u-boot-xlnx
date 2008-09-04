@@ -46,6 +46,7 @@
 #define LPCS6AW			0x003C
 #define LPCA7AW			0x0040
 #define SRAMBAR			0x00C4
+#define LAWBAR_BAR		0xFFFFF000	/* Base address mask */
 
 #define LPC_OFFSET		0x10000
 
@@ -57,6 +58,7 @@
 #define CS5_CONFIG		0x00014
 #define CS6_CONFIG		0x00018
 #define CS7_CONFIG		0x0001C
+#define CS_ALE_TIMING_CONFIG	0x00034
 
 #define CS_CTRL			0x00020
 #define CS_CTRL_ME		0x01000000	/* CS Master Enable bit */
@@ -185,9 +187,13 @@
 
 /* SCFR1 System Clock Frequency Register 1
  */
-#define SCFR1_IPS_DIV			0x2
+#define SCFR1_IPS_DIV			0x3
 #define SCFR1_IPS_DIV_MASK		0x03800000
 #define SCFR1_IPS_DIV_SHIFT		23
+
+#define SCFR1_PCI_DIV			0x6
+#define SCFR1_PCI_DIV_MASK		0x00700000
+#define SCFR1_PCI_DIV_SHIFT		20
 
 /* SCFR2 System Clock Frequency Register 2
  */
@@ -342,32 +348,226 @@
 
 /* IO Control Register
  */
+#define IOCTL_MEM		0x000
+#define IOCTL_GP		0x004
+#define IOCTL_LPC_CLK		0x008
+#define IOCTL_LPC_OE		0x00C
+#define IOCTL_LPC_RWB		0x010
+#define IOCTL_LPC_ACK		0x014
+#define IOCTL_LPC_CS0		0x018
+#define IOCTL_NFC_CE0		0x01C
+#define IOCTL_LPC_CS1		0x020
+#define IOCTL_LPC_CS2		0x024
+#define IOCTL_LPC_AX03		0x028
+#define IOCTL_EMB_AX02		0x02C
+#define IOCTL_EMB_AX01		0x030
+#define IOCTL_EMB_AX00		0x034
+#define IOCTL_EMB_AD31		0x038
+#define IOCTL_EMB_AD30		0x03C
+#define IOCTL_EMB_AD29		0x040
+#define IOCTL_EMB_AD28		0x044
+#define IOCTL_EMB_AD27		0x048
+#define IOCTL_EMB_AD26		0x04C
+#define IOCTL_EMB_AD25		0x050
+#define IOCTL_EMB_AD24		0x054
+#define IOCTL_EMB_AD23		0x058
+#define IOCTL_EMB_AD22		0x05C
+#define IOCTL_EMB_AD21		0x060
+#define IOCTL_EMB_AD20		0x064
+#define IOCTL_EMB_AD19		0x068
+#define IOCTL_EMB_AD18		0x06C
+#define IOCTL_EMB_AD17		0x070
+#define IOCTL_EMB_AD16		0x074
+#define IOCTL_EMB_AD15		0x078
+#define IOCTL_EMB_AD14		0x07C
+#define IOCTL_EMB_AD13		0x080
+#define IOCTL_EMB_AD12		0x084
+#define IOCTL_EMB_AD11		0x088
+#define IOCTL_EMB_AD10		0x08C
+#define IOCTL_EMB_AD09		0x090
+#define IOCTL_EMB_AD08		0x094
+#define IOCTL_EMB_AD07		0x098
+#define IOCTL_EMB_AD06		0x09C
+#define IOCTL_EMB_AD05		0x0A0
+#define IOCTL_EMB_AD04		0x0A4
+#define IOCTL_EMB_AD03		0x0A8
+#define IOCTL_EMB_AD02		0x0AC
+#define IOCTL_EMB_AD01		0x0B0
+#define IOCTL_EMB_AD00		0x0B4
+#define IOCTL_PATA_CE1		0x0B8
+#define IOCTL_PATA_CE2		0x0BC
+#define IOCTL_PATA_ISOLATE	0x0C0
+#define IOCTL_PATA_IOR		0x0C4
+#define IOCTL_PATA_IOW		0x0C8
+#define IOCTL_PATA_IOCHRDY	0x0CC
+#define IOCTL_PATA_INTRQ	0x0D0
+#define IOCTL_PATA_DRQ		0x0D4
+#define IOCTL_PATA_DACK		0x0D8
+#define IOCTL_NFC_WP		0x0DC
+#define IOCTL_NFC_RB		0x0E0
+#define IOCTL_NFC_ALE		0x0E4
+#define IOCTL_NFC_CLE		0x0E8
+#define IOCTL_NFC_WE		0x0EC
+#define IOCTL_NFC_RE		0x0F0
+#define IOCTL_PCI_AD31		0x0F4
+#define IOCTL_PCI_AD30		0x0F8
+#define IOCTL_PCI_AD29		0x0FC
+#define IOCTL_PCI_AD28		0x100
+#define IOCTL_PCI_AD27		0x104
+#define IOCTL_PCI_AD26		0x108
+#define IOCTL_PCI_AD25		0x10C
+#define IOCTL_PCI_AD24		0x110
+#define IOCTL_PCI_AD23		0x114
+#define IOCTL_PCI_AD22		0x118
+#define IOCTL_PCI_AD21		0x11C
+#define IOCTL_PCI_AD20		0x120
+#define IOCTL_PCI_AD19		0x124
+#define IOCTL_PCI_AD18		0x128
+#define IOCTL_PCI_AD17		0x12C
+#define IOCTL_PCI_AD16		0x130
+#define IOCTL_PCI_AD15		0x134
+#define IOCTL_PCI_AD14		0x138
+#define IOCTL_PCI_AD13		0x13C
+#define IOCTL_PCI_AD12		0x140
+#define IOCTL_PCI_AD11		0x144
+#define IOCTL_PCI_AD10		0x148
+#define IOCTL_PCI_AD09		0x14C
+#define IOCTL_PCI_AD08		0x150
+#define IOCTL_PCI_AD07		0x154
+#define IOCTL_PCI_AD06		0x158
+#define IOCTL_PCI_AD05		0x15C
+#define IOCTL_PCI_AD04		0x160
+#define IOCTL_PCI_AD03		0x164
+#define IOCTL_PCI_AD02		0x168
+#define IOCTL_PCI_AD01		0x16C
+#define IOCTL_PCI_AD00		0x170
+#define IOCTL_PCI_CBE0		0x174
+#define IOCTL_PCI_CBE1		0x178
+#define IOCTL_PCI_CBE2		0x17C
+#define IOCTL_PCI_CBE3		0x180
+#define IOCTL_PCI_GNT2		0x184
+#define IOCTL_PCI_REQ2		0x188
+#define IOCTL_PCI_GNT1		0x18C
+#define IOCTL_PCI_REQ1		0x190
+#define IOCTL_PCI_GNT0		0x194
+#define IOCTL_PCI_REQ0		0x198
+#define IOCTL_PCI_INTA		0x19C
+#define IOCTL_PCI_CLK		0x1A0
+#define IOCTL_PCI_RST_OUT	0x1A4
+#define IOCTL_PCI_FRAME		0x1A8
+#define IOCTL_PCI_IDSEL		0x1AC
+#define IOCTL_PCI_DEVSEL	0x1B0
+#define IOCTL_PCI_IRDY		0x1B4
+#define IOCTL_PCI_TRDY		0x1B8
+#define IOCTL_PCI_STOP		0x1BC
+#define IOCTL_PCI_PAR		0x1C0
+#define IOCTL_PCI_PERR		0x1C4
+#define IOCTL_PCI_SERR		0x1C8
+#define IOCTL_SPDIF_TXCLK	0x1CC
+#define IOCTL_SPDIF_TX		0x1D0
+#define IOCTL_SPDIF_RX		0x1D4
+#define IOCTL_I2C0_SCL		0x1D8
+#define IOCTL_I2C0_SDA		0x1DC
+#define IOCTL_I2C1_SCL		0x1E0
+#define IOCTL_I2C1_SDA		0x1E4
+#define IOCTL_I2C2_SCL		0x1E8
+#define IOCTL_I2C2_SDA		0x1EC
+#define IOCTL_IRQ0		0x1F0
+#define IOCTL_IRQ1		0x1F4
+#define IOCTL_CAN1_TX		0x1F8
+#define IOCTL_CAN2_TX		0x1FC
+#define IOCTL_J1850_TX		0x200
+#define IOCTL_J1850_RX		0x204
+#define IOCTL_PSC_MCLK_IN	0x208
+#define IOCTL_PSC0_0		0x20C
+#define IOCTL_PSC0_1		0x210
+#define IOCTL_PSC0_2		0x214
+#define IOCTL_PSC0_3		0x218
+#define IOCTL_PSC0_4		0x21C
+#define IOCTL_PSC1_0		0x220
+#define IOCTL_PSC1_1		0x224
+#define IOCTL_PSC1_2		0x228
+#define IOCTL_PSC1_3		0x22C
+#define IOCTL_PSC1_4		0x230
+#define IOCTL_PSC2_0		0x234
+#define IOCTL_PSC2_1		0x238
+#define IOCTL_PSC2_2		0x23C
+#define IOCTL_PSC2_3		0x240
+#define IOCTL_PSC2_4		0x244
+#define IOCTL_PSC3_0		0x248
+#define IOCTL_PSC3_1		0x24C
+#define IOCTL_PSC3_2		0x250
+#define IOCTL_PSC3_3		0x254
+#define IOCTL_PSC3_4		0x258
+#define IOCTL_PSC4_0		0x25C
+#define IOCTL_PSC4_1		0x260
+#define IOCTL_PSC4_2		0x264
+#define IOCTL_PSC4_3		0x268
+#define IOCTL_PSC4_4		0x26C
+#define IOCTL_PSC5_0		0x270
+#define IOCTL_PSC5_1		0x274
+#define IOCTL_PSC5_2		0x278
+#define IOCTL_PSC5_3		0x27C
+#define IOCTL_PSC5_4		0x280
+#define IOCTL_PSC6_0		0x284
+#define IOCTL_PSC6_1		0x288
+#define IOCTL_PSC6_2		0x28C
+#define IOCTL_PSC6_3		0x290
+#define IOCTL_PSC6_4		0x294
+#define IOCTL_PSC7_0		0x298
+#define IOCTL_PSC7_1		0x29C
+#define IOCTL_PSC7_2		0x2A0
+#define IOCTL_PSC7_3		0x2A4
+#define IOCTL_PSC7_4		0x2A8
+#define IOCTL_PSC8_0		0x2AC
+#define IOCTL_PSC8_1		0x2B0
+#define IOCTL_PSC8_2		0x2B4
+#define IOCTL_PSC8_3		0x2B8
+#define IOCTL_PSC8_4		0x2BC
+#define IOCTL_PSC9_0		0x2C0
+#define IOCTL_PSC9_1		0x2C4
+#define IOCTL_PSC9_2		0x2C8
+#define IOCTL_PSC9_3		0x2CC
+#define IOCTL_PSC9_4		0x2D0
+#define IOCTL_PSC10_0		0x2D4
+#define IOCTL_PSC10_1		0x2D8
+#define IOCTL_PSC10_2		0x2DC
+#define IOCTL_PSC10_3		0x2E0
+#define IOCTL_PSC10_4		0x2E4
+#define IOCTL_PSC11_0		0x2E8
+#define IOCTL_PSC11_1		0x2EC
+#define IOCTL_PSC11_2		0x2F0
+#define IOCTL_PSC11_3		0x2F4
+#define IOCTL_PSC11_4		0x2F8
+#define IOCTL_HRESET		0x2FC
+#define IOCTL_SRESET		0x300
+#define IOCTL_CKSTP_OUT		0x304
+#define IOCTL_USB2_VBUS_PWR_FAULT	0x308
+#define IOCTL_USB2_VBUS_PWR_SELECT	0x30C
+#define IOCTL_USB2_PHY_DRVV_BUS		0x310
+
+#ifndef __ASSEMBLY__
+
+
+/* IO pin fields */
+#define IO_PIN_FMUX(v)	((v) << 7)	/* pin function */
+#define IO_PIN_HOLD(v)	((v) << 5)	/* hold time, pci only */
+#define IO_PIN_PUD(v)	((v) << 4)	/* if PUE, 0=pull-down, 1=pull-up */
+#define IO_PIN_PUE(v)	((v) << 3)	/* pull up/down enable */
+#define IO_PIN_ST(v)	((v) << 2)	/* schmitt trigger */
+#define IO_PIN_DS(v)	((v))		/* slew rate */
+
+typedef struct iopin_t {
+	int p_offset;		/* offset from IOCTL_MEM_OFFSET */
+	int nr_pins;		/* number of pins to set this way */
+	int bit_or;		/* or in the value instead of overwrite */
+	u_long val;		/* value to write or or */
+}iopin_t;
+
+void iopin_initialize(iopin_t *,int);
+#endif
 
 /* Indexes in regs array */
-#define MEM_IDX			0x00
-#define SPDIF_TXCLOCK_IDX	0x73
-#define SPDIF_TX_IDX		0x74
-#define SPDIF_RX_IDX		0x75
-#define PSC0_0_IDX		0x83
-#define PSC0_1_IDX		0x84
-#define PSC0_2_IDX		0x85
-#define PSC0_3_IDX		0x86
-#define PSC0_4_IDX		0x87
-#define PSC1_0_IDX		0x88
-#define PSC1_1_IDX		0x89
-#define PSC1_2_IDX		0x8a
-#define PSC1_3_IDX		0x8b
-#define PSC1_4_IDX		0x8c
-#define PSC2_0_IDX		0x8d
-#define PSC2_1_IDX		0x8e
-#define PSC2_2_IDX		0x8f
-#define PSC2_3_IDX		0x90
-#define PSC2_4_IDX		0x91
-
-#define IOCTRL_FUNCMUX_SHIFT	7
-#define IOCTRL_FUNCMUX_FEC	1
-#define IOCTRL_MUX_FEC		(IOCTRL_FUNCMUX_FEC << IOCTRL_FUNCMUX_SHIFT)
-
 /* Set for DDR */
 #define IOCTRL_MUX_DDR		0x00000036
 
@@ -394,5 +594,84 @@
 #define I2C_SRW		0x04
 #define I2C_IF		0x02
 #define I2C_RXAK	0x01
+
+/* POTAR - PCI Outbound Translation Address Register
+ */
+#define POTAR_TA_MASK			0x000fffff
+
+/* POBAR - PCI Outbound Base Address Register
+ */
+#define POBAR_BA_MASK			0x000fffff
+
+/* POCMR - PCI Outbound Comparision Mask Register
+ */
+#define POCMR_EN	0x80000000
+#define POCMR_IO	0x40000000	/* 0-memory space 1-I/O space */
+#define POCMR_PRE	0x20000000	/* prefetch enable */
+#define POCMR_SBS	0x00100000	/* special byte swap enable */
+#define POCMR_CM_MASK	0x000fffff
+#define POCMR_CM_4G	0x00000000
+#define POCMR_CM_2G	0x00080000
+#define POCMR_CM_1G	0x000C0000
+#define POCMR_CM_512M	0x000E0000
+#define POCMR_CM_256M	0x000F0000
+#define POCMR_CM_128M	0x000F8000
+#define POCMR_CM_64M	0x000FC000
+#define POCMR_CM_32M	0x000FE000
+#define POCMR_CM_16M	0x000FF000
+#define POCMR_CM_8M	0x000FF800
+#define POCMR_CM_4M	0x000FFC00
+#define POCMR_CM_2M	0x000FFE00
+#define POCMR_CM_1M	0x000FFF00
+#define POCMR_CM_512K	0x000FFF80
+#define POCMR_CM_256K	0x000FFFC0
+#define POCMR_CM_128K	0x000FFFE0
+#define POCMR_CM_64K	0x000FFFF0
+#define POCMR_CM_32K	0x000FFFF8
+#define POCMR_CM_16K	0x000FFFFC
+#define POCMR_CM_8K	0x000FFFFE
+#define POCMR_CM_4K	0x000FFFFF
+
+/* PITAR - PCI Inbound Translation Address Register
+ */
+#define PITAR_TA_MASK			0x000fffff
+
+/* PIBAR - PCI Inbound Base/Extended Address Register
+ */
+#define PIBAR_MASK			0xffffffff
+#define PIEBAR_EBA_MASK			0x000fffff
+
+/* PIWAR - PCI Inbound Windows Attributes Register
+ */
+#define PIWAR_EN			0x80000000
+#define PIWAR_SBS			0x40000000
+#define PIWAR_PF			0x20000000
+#define PIWAR_RTT_MASK			0x000f0000
+#define PIWAR_RTT_NO_SNOOP		0x00040000
+#define PIWAR_RTT_SNOOP			0x00050000
+#define PIWAR_WTT_MASK			0x0000f000
+#define PIWAR_WTT_NO_SNOOP		0x00004000
+#define PIWAR_WTT_SNOOP			0x00005000
+#define PIWAR_IWS_MASK			0x0000003F
+#define PIWAR_IWS_4K			0x0000000B
+#define PIWAR_IWS_8K			0x0000000C
+#define PIWAR_IWS_16K			0x0000000D
+#define PIWAR_IWS_32K			0x0000000E
+#define PIWAR_IWS_64K			0x0000000F
+#define PIWAR_IWS_128K			0x00000010
+#define PIWAR_IWS_256K			0x00000011
+#define PIWAR_IWS_512K			0x00000012
+#define PIWAR_IWS_1M			0x00000013
+#define PIWAR_IWS_2M			0x00000014
+#define PIWAR_IWS_4M			0x00000015
+#define PIWAR_IWS_8M			0x00000016
+#define PIWAR_IWS_16M			0x00000017
+#define PIWAR_IWS_32M			0x00000018
+#define PIWAR_IWS_64M			0x00000019
+#define PIWAR_IWS_128M			0x0000001A
+#define PIWAR_IWS_256M			0x0000001B
+#define PIWAR_IWS_512M			0x0000001C
+#define PIWAR_IWS_1G			0x0000001D
+#define PIWAR_IWS_2G			0x0000001E
 
 #endif	/* __MPC512X_H__ */

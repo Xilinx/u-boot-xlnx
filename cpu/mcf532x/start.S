@@ -49,7 +49,7 @@
 _vectors:
 
 INITSP:		.long	0x00000000	/* Initial SP	*/
-INITPC:		.long	_START	/* Initial PC 		*/
+INITPC:		.long	_START	/* Initial PC		*/
 vector02:	.long	_FAULT	/* Access Error		*/
 vector03:	.long	_FAULT	/* Address Error	*/
 vector04:	.long	_FAULT	/* Illegal Instruction	*/
@@ -131,7 +131,7 @@ _start:
 	movec	%d0, %VBR
 
 	move.l	#(CFG_INIT_RAM_ADDR + CFG_INIT_RAM_CTRL), %d0
-	movec	%d0, %RAMBAR0
+	movec	%d0, %RAMBAR1
 
 	/* invalidate and disable cache */
 	move.l	#0x01000000, %d0		/* Invalidate cache cmd */
@@ -268,7 +268,7 @@ _int_handler:
 icache_enable:
 	move.l	#0x01000000, %d0		/* Invalidate cache cmd */
 	movec	%d0, %CACR			/* Invalidate cache */
-	move.l	#(CFG_SDRAM_BASE + 0xc000 + ((CFG_SDRAM_SIZE & 0x1fe0) << 11)), %d0
+	move.l	#(CFG_SDRAM_BASE + 0x1c000), %d0
 	movec	%d0, %ACR0			/* Enable cache */
 
 	move.l	#0x80000200, %d0		/* Setup cache mask */
@@ -333,3 +333,4 @@ version_string:
 	.ascii U_BOOT_VERSION
 	.ascii " (", __DATE__, " - ", __TIME__, ")"
 	.ascii CONFIG_IDENT_STRING, "\0"
+	.align 4

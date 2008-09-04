@@ -404,7 +404,7 @@ void check_ram(unsigned int addr, unsigned int size)
 	}
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *immap = (immap_t *) CFG_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
@@ -691,7 +691,7 @@ int last_stage_init(void)
 	i = CFG_HZ * 2;
 	while (i > 0) {
 
-	       	if (tstc()) {
+		if (tstc()) {
 			getc();
 			break;
 		}

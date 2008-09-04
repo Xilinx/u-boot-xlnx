@@ -92,7 +92,7 @@ static void flash_vpp(int on)
 	if (on)
 	    tmp |= VERSATILE_FLASHPROG_FLVPPEN;
 	else
-    	    tmp &= ~VERSATILE_FLASHPROG_FLVPPEN;
+	    tmp &= ~VERSATILE_FLASHPROG_FLVPPEN;
 
 	*(unsigned int *)(VERSATILE_FLASHCTRL) = tmp;
 }
@@ -476,7 +476,7 @@ static int write_data (flash_info_t * info, ulong dest, FPW data)
 
 	/* Check if Flash is (sufficiently) erased */
 	if ((*addr & data) != data) {
-		printf ("not erased at %08lx (%x)\n", (ulong) addr, *addr);
+		printf ("not erased at %08lx (%lx)\n", (ulong) addr, (ulong) *addr);
 		return (2);
 	}
 

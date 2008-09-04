@@ -27,9 +27,7 @@
 
 #define  CONFIG_EB_MCF_EV123
 
-#undef DEBUG
 #undef CFG_HALT_BEFOR_RAM_JUMP
-#undef ET_DEBUG
 
 /*
  * High Level Configuration Options (easy to change)
@@ -86,17 +84,20 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_NET
 
+#define CONFIG_MCFTMR
+
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_NET_MULTI		1
 #	define CONFIG_MII		1
+#	define CONFIG_MII_INIT		1
 #	define CFG_DISCOVER_PHY
 #	define CFG_RX_ETH_BUFFER	8
 #	define CFG_FAULT_ECHO_LINK_DOWN
 
 #	define CFG_FEC0_PINMUX		0
 #	define CFG_FEC0_MIIBASE		CFG_FEC0_IOBASE
-#	define MCFFEC_TOUT_LOOP 	50000
+#	define MCFFEC_TOUT_LOOP		50000
 /* If CFG_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CFG_DISCOVER_PHY
 #		define FECDUPLEX	FULL
@@ -158,7 +159,7 @@
  */
 #define CFG_INIT_RAM_ADDR       0x20000000
 #define CFG_INIT_RAM_END	0x10000		/* End of used area in internal SRAM	*/
-#define CFG_GBL_DATA_SIZE	64      	/* size in bytes reserved for initial data */
+#define CFG_GBL_DATA_SIZE	64		/* size in bytes reserved for initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
 
@@ -220,13 +221,13 @@
 #define CFG_CS0_BASE		CFG_FLASH_BASE
 #define CFG_CS0_SIZE		2*1024*1024
 #define CFG_CS0_WIDTH		16
-#define CFG_CS0_RO 		0
+#define CFG_CS0_RO		0
 #define CFG_CS0_WS		6
 
 #define CFG_CS3_BASE		0xE0000000
 #define CFG_CS3_SIZE		1*1024*1024
 #define CFG_CS3_WIDTH		16
-#define CFG_CS3_RO 		0
+#define CFG_CS3_RO		0
 #define CFG_CS3_WS		6
 
 /*-----------------------------------------------------------------------
@@ -251,7 +252,7 @@
 #define CFG_PEHLPAR		0xC0
 #define CFG_PUAPAR		0x0F		/* UA0..UA3 = Uart 0 +1 */
 #define CFG_DDRUA		0x05
-#define CFG_PJPAR 		0xFF;
+#define CFG_PJPAR		0xFF;
 
 /*-----------------------------------------------------------------------
  * CCM configuration

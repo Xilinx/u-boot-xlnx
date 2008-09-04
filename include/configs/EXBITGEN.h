@@ -33,7 +33,7 @@
  * (easy to change)
  */
 
-#define CONFIG_405GP		1	/* This is a PPC405GP CPU     	*/
+#define CONFIG_405GP		1	/* This is a PPC405GP CPU	*/
 #define CONFIG_4xx		1	/* ...member of PPC4xx family   */
 #define CONFIG_EXBITGEN		1	/* on a Exbit Generic board     */
 
@@ -204,10 +204,6 @@
 #define CFG_GBL_DATA_SIZE	128 /* size in bytes reserved for initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
-
-/* Cache configuration */
-#define CFG_DCACHE_SIZE		8192
-#define CFG_CACHELINE_SIZE	32
 
 /*
  * Internal Definitions

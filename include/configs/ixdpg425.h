@@ -139,7 +139,7 @@
  * Default configuration (environment varibles...)
  *----------------------------------------------------------------------*/
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -168,7 +168,7 @@
 	"update=protect off 50000000 5003ffff;era 50000000 5003ffff;"	\
 		"cp.b 100000 50000000 40000;"			        \
 		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	""
 #define CONFIG_BOOTCOMMAND	"run net_nfs"
 
@@ -201,16 +201,16 @@
  */
 #define CFG_SDR_CONFIG		0x18
 #define CFG_SDR_MODE_CONFIG	0x1
-#define CFG_SDRAM_REFRESH_CNT 	0x81a
+#define CFG_SDRAM_REFRESH_CNT	0x81a
 
 /*
  * FLASH and environment organization
  */
 #define CFG_MAX_FLASH_BANKS     1       /* max number of memory banks           */
-#define CFG_MAX_FLASH_SECT      128 	/* max number of sectors on one chip    */
+#define CFG_MAX_FLASH_SECT      128	/* max number of sectors on one chip    */
 
 #define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
 #define	CFG_ENV_IS_IN_FLASH	1
 
 #define CFG_FLASH_USE_BUFFER_WRITE 1	/* use buffered writes (20x faster)	*/
@@ -225,7 +225,7 @@
 
 #define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector on flinfo */
 
-#define CFG_ENV_SECT_SIZE	0x20000 	/* size of one complete sector	*/
+#define CFG_ENV_SECT_SIZE	0x20000	/* size of one complete sector	*/
 #define CFG_ENV_ADDR		(PHYS_FLASH_1 + 0x40000)
 #define	CFG_ENV_SIZE		0x2000	/* Total Size of Environment Sector	*/
 

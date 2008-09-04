@@ -122,6 +122,9 @@ extern void eth_set_enetaddr(int num, char* a);	/* Set new MAC address		*/
 
 extern int eth_init(bd_t *bis);			/* Initialize the device	*/
 extern int eth_send(volatile void *packet, int length);	   /* Send a packet	*/
+#ifdef CONFIG_API
+extern int eth_receive(volatile void *packet, int length); /* Receive a packet	*/
+#endif
 extern int eth_rx(void);			/* Check for received packets	*/
 extern void eth_halt(void);			/* stop SCC			*/
 extern char *eth_get_name(void);		/* get name of current device	*/
@@ -237,7 +240,7 @@ typedef struct
 /*
  * ICMP stuff (just enough to handle (host) redirect messages)
  */
-#define ICMP_ECHO_REPLY		0	/* Echo reply 			*/
+#define ICMP_ECHO_REPLY		0	/* Echo reply			*/
 #define ICMP_REDIRECT		5	/* Redirect (change route)	*/
 #define ICMP_ECHO_REQUEST	8	/* Echo request			*/
 
@@ -324,12 +327,12 @@ extern unsigned		NetIPID;		/* IP ID (counting)		*/
 extern uchar		NetBcastAddr[6];	/* Ethernet boardcast address	*/
 extern uchar		NetEtherNullAddr[6];
 
-#define VLAN_NONE	4095			/* untagged 			*/
-#define VLAN_IDMASK	0x0fff			/* mask of valid vlan id 	*/
-extern ushort		NetOurVLAN;		/* Our VLAN 			*/
-extern ushort		NetOurNativeVLAN;	/* Our Native VLAN 		*/
+#define VLAN_NONE	4095			/* untagged			*/
+#define VLAN_IDMASK	0x0fff			/* mask of valid vlan id	*/
+extern ushort		NetOurVLAN;		/* Our VLAN			*/
+extern ushort		NetOurNativeVLAN;	/* Our Native VLAN		*/
 
-extern uchar		NetCDPAddr[6]; 		/* Ethernet CDP address		*/
+extern uchar		NetCDPAddr[6];		/* Ethernet CDP address		*/
 extern ushort		CDPNativeVLAN;		/* CDP returned native VLAN	*/
 extern ushort		CDPApplianceVLAN;	/* CDP returned appliance VLAN	*/
 
@@ -349,7 +352,7 @@ typedef enum { BOOTP, RARP, ARP, TFTP, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP 
 extern char	BootFile[128];			/* Boot File name		*/
 
 #if defined(CONFIG_CMD_PING)
-extern IPaddr_t	NetPingIP;			/* the ip address to ping 		*/
+extern IPaddr_t	NetPingIP;			/* the ip address to ping		*/
 #endif
 
 #if defined(CONFIG_CMD_CDP)
@@ -359,7 +362,7 @@ extern ushort CDPApplianceVLAN;
 #endif
 
 #if defined(CONFIG_CMD_SNTP)
-extern IPaddr_t	NetNtpServerIP;			/* the ip address to NTP 	*/
+extern IPaddr_t	NetNtpServerIP;			/* the ip address to NTP	*/
 extern int NetTimeOffset;			/* offset time from UTC		*/
 #endif
 
@@ -373,7 +376,7 @@ extern void	NetStop(void);
 extern void	NetStartAgain(void);
 
 /* Get size of the ethernet header when we send */
-extern int 	NetEthHdrSize(void);
+extern int	NetEthHdrSize(void);
 
 /* Set ethernet header; returns the size of the header */
 extern int	NetSetEther(volatile uchar *, uchar *, uint);
@@ -409,10 +412,10 @@ extern void	print_IPaddr (IPaddr_t);
  * footprint in our tests.
  */
 /* return IP *in network byteorder* */
-static inline IPaddr_t NetReadIP(void *from)
+static inline IPaddr_t NetReadIP(volatile void *from)
 {
 	IPaddr_t ip;
-	memcpy((void*)&ip, from, sizeof(ip));
+	memcpy((void*)&ip, (void*)from, sizeof(ip));
 	return ip;
 }
 
@@ -431,9 +434,9 @@ static inline void NetWriteIP(void *to, IPaddr_t ip)
 }
 
 /* copy IP */
-static inline void NetCopyIP(void *to, void *from)
+static inline void NetCopyIP(volatile void *to, void *from)
 {
-	memcpy(to, from, sizeof(IPaddr_t));
+	memcpy((void*)to, from, sizeof(IPaddr_t));
 }
 
 /* copy ulong */

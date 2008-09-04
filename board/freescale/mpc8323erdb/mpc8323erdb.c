@@ -13,18 +13,13 @@
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <i2c.h>
-#include <spd.h>
 #include <miiphy.h>
 #include <command.h>
 #include <libfdt.h>
 #if defined(CONFIG_PCI)
 #include <pci.h>
 #endif
-#if defined(CONFIG_SPD_EEPROM)
-#include <spd_sdram.h>
-#else
 #include <asm/mmu.h>
-#endif
 
 const qe_iop_conf_t qe_iop_conf_tab[] = {
 	/* UCC3 */
@@ -78,7 +73,7 @@ int board_early_init_f(void)
 
 int fixed_sdram(void);
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (immap_t *) CFG_IMMR;
 	u32 msize = 0;
@@ -184,19 +179,43 @@ void pci_init_board(void)
 #if defined(CONFIG_OF_BOARD_SETUP)
 void ft_board_setup(void *blob, bd_t *bd)
 {
-#if defined(CONFIG_OF_FLAT_TREE)
-	u32 *p;
-	int len;
-
-	p = ft_get_prop(blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32(bd->bi_memstart);
-		*p = cpu_to_be32(bd->bi_memsize);
-	}
-#endif
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
 }
 #endif
+
+#if defined(CFG_I2C_MAC_OFFSET)
+int mac_read_from_eeprom(void)
+{
+	uchar buf[28];
+	char str[18];
+	int i = 0;
+	unsigned int crc = 0;
+	unsigned char enetvar[32];
+
+	/* Read MAC addresses from EEPROM */
+	if (eeprom_read(CFG_I2C_EEPROM_ADDR, CFG_I2C_MAC_OFFSET, buf, 28)) {
+		printf("\nEEPROM @ 0x%02x read FAILED!!!\n",
+		       CFG_I2C_EEPROM_ADDR);
+	} else {
+		if (crc32(crc, buf, 24) == *(unsigned int *)&buf[24]) {
+			printf("Reading MAC from EEPROM\n");
+			for (i = 0; i < 4; i++) {
+				if (memcmp(&buf[i * 6], "\0\0\0\0\0\0", 6)) {
+					sprintf(str,
+						"%02X:%02X:%02X:%02X:%02X:%02X",
+						buf[i * 6], buf[i * 6 + 1],
+						buf[i * 6 + 2], buf[i * 6 + 3],
+						buf[i * 6 + 4], buf[i * 6 + 5]);
+					sprintf((char *)enetvar,
+						i ? "eth%daddr" : "ethaddr", i);
+					setenv((char *)enetvar, str);
+				}
+			}
+		}
+	}
+	return 0;
+}
+#endif				/* CONFIG_I2C_MAC_OFFSET */

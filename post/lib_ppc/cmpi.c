@@ -36,8 +36,6 @@
  * the result in and the expected result.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include "cpu_asm.h"
 
@@ -104,11 +102,12 @@ int cpu_post_test_cmpi (void)
 {
     int ret = 0;
     unsigned int i;
+    int flag = disable_interrupts();
 
     for (i = 0; i < cpu_post_cmpi_size && ret == 0; i++)
     {
 	struct cpu_post_cmpi_s *test = cpu_post_cmpi_table + i;
-    	unsigned long code[] =
+	unsigned long code[] =
 	{
 	    ASM_1IC(test->cmd, test->cr, 3, test->op2),
 	    ASM_MFCR(3),
@@ -126,8 +125,10 @@ int cpu_post_test_cmpi (void)
 	}
     }
 
+    if (flag)
+	enable_interrupts();
+
     return ret;
 }
 
-#endif
 #endif

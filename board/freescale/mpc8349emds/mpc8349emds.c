@@ -27,14 +27,11 @@
 #include <mpc83xx.h>
 #include <asm/mpc8349_pci.h>
 #include <i2c.h>
-#include <spd.h>
+#include <spi.h>
 #include <miiphy.h>
-#if defined(CONFIG_SPD_EEPROM)
 #include <spd_sdram.h>
-#endif
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-#elif defined(CONFIG_OF_LIBFDT)
+
+#if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
 #endif
 
@@ -62,7 +59,7 @@ int board_early_init_f (void)
 
 #define ns2clk(ns) (ns / (1000000000 / CONFIG_8349_CLKIN) + 1)
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	volatile immap_t *im = (immap_t *)CFG_IMMR;
 	u32 msize = 0;
@@ -168,6 +165,15 @@ int fixed_sdram(void)
 
 int checkboard (void)
 {
+	/*
+	 * Warning: do not read the BCSR registers here
+	 *
+	 * There is a timing bug in the 8349E and 8349EA BCSR code
+	 * version 1.2 (read from BCSR 11) that will cause the CFI
+	 * flash initialization code to overwrite BCSR 0, disabling
+	 * the serial ports and gigabit ethernet
+	 */
+
 	puts("Board: Freescale MPC8349EMDS\n");
 	return 0;
 }
@@ -253,19 +259,36 @@ void sdram_init(void)
 }
 #endif
 
+/*
+ * The following are used to control the SPI chip selects for the SPI command.
+ */
+#ifdef CONFIG_MPC8XXX_SPI
+
+#define SPI_CS_MASK	0x80000000
+
+int spi_cs_is_valid(unsigned int bus, unsigned int cs)
+{
+	return bus == 0 && cs == 0;
+}
+
+void spi_cs_activate(struct spi_slave *slave)
+{
+	volatile gpio83xx_t *iopd = &((immap_t *)CFG_IMMR)->gpio[0];
+
+	iopd->dat &= ~SPI_CS_MASK;
+}
+
+void spi_cs_deactivate(struct spi_slave *slave)
+{
+	volatile gpio83xx_t *iopd = &((immap_t *)CFG_IMMR)->gpio[0];
+
+	iopd->dat |=  SPI_CS_MASK;
+}
+#endif /* CONFIG_HARD_SPI */
+
 #if defined(CONFIG_OF_BOARD_SETUP)
 void ft_board_setup(void *blob, bd_t *bd)
 {
-#if defined(CONFIG_OF_FLAT_TREE)
-	u32 *p;
-	int len;
-
-	p = ft_get_prop(blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32(bd->bi_memstart);
-		*p = cpu_to_be32(bd->bi_memsize);
-	}
-#endif
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);

@@ -77,7 +77,7 @@
 #define CONFIG_CMD_BSP
 
 
-#define CFG_NAND_LEGACY
+#define CONFIG_NAND_LEGACY
 
 #define	 CFG_HUSH_PARSER
 #define	 CFG_PROMPT_HUSH_PS2 "> "
@@ -123,7 +123,7 @@
 #define CONFIG_BOOTDELAY	5
 /* autoboot (do NOT change this set environment variable "bootdelay" to -1 instead) */
 /* #define CONFIG_BOOT_RETRY_TIME	-10	/XXX* feature is available but not enabled */
-#define CONFIG_ZERO_BOOTDELAY_CHECK  	/* check console even if bootdelay = 0 */
+#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check console even if bootdelay = 0 */
 
 
 #define CONFIG_BOOTCOMMAND	"diskboot 400000 0:1; bootm" /* autoboot command		*/
@@ -231,15 +231,6 @@
 #define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
 #define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)	*/
 
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		8192	/* For AMCC 405 CPUs			*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
-
 /*
  * Init Memory Controller:
  */
@@ -261,7 +252,7 @@
 #define CFG_TEMP_STACK_OCM	1
 #define CFG_OCM_DATA_ADDR	0xF0000000
 #define CFG_OCM_DATA_SIZE	0x1000
-#define CFG_INIT_RAM_ADDR	CFG_OCM_DATA_ADDR 	/* inside of On Chip SRAM    */
+#define CFG_INIT_RAM_ADDR	CFG_OCM_DATA_ADDR	/* inside of On Chip SRAM    */
 #define CFG_INIT_RAM_END	CFG_OCM_DATA_SIZE	/* End of On Chip SRAM	       */
 #define CFG_GBL_DATA_SIZE	64		/* size in bytes reserved for initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)

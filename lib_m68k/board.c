@@ -45,6 +45,7 @@
 #include <status_led.h>
 #endif
 #include <net.h>
+#include <serial.h>
 #if defined(CONFIG_CMD_BEDBUG)
 #include <cmd_bedbug.h>
 #endif
@@ -57,6 +58,12 @@
     defined(CONFIG_SOFT_I2C)
 #include <i2c.h>
 #endif
+
+#ifdef CONFIG_CMD_SPI
+#include <spi.h>
+#endif
+
+#include <nand.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -135,23 +142,6 @@ void *sbrk (ptrdiff_t increment)
 	return ((void *)old);
 }
 
-char *strmhz(char *buf, long hz)
-{
-	long l, n;
-	long m;
-
-	n = hz / 1000000L;
-
-	l = sprintf (buf, "%ld", n);
-
-	m = (hz % 1000000L) / 1000L;
-
-	if (m != 0)
-		sprintf (buf+l, ".%03ld", m);
-
-	return (buf);
-}
-
 /*
  * All attempts to come up with a "common" initialization sequence
  * that works for all boards and architectures failed: some of the
@@ -175,7 +165,7 @@ typedef int (init_fnc_t) (void);
 
 static int init_baudrate (void)
 {
-	uchar tmp[64];	/* long enough for environment variables */
+	char tmp[64];	/* long enough for environment variables */
 	int i = getenv_r ("baudrate", tmp, sizeof (tmp));
 
 	gd->baudrate = (i > 0)
@@ -211,6 +201,16 @@ static int init_func_i2c (void)
 }
 #endif
 
+#if defined(CONFIG_HARD_SPI)
+static int init_func_spi (void)
+{
+	puts ("SPI:   ");
+	spi_init ();
+	puts ("ready\n");
+	return (0);
+}
+#endif
+
 /***********************************************************************/
 
 /************************************************************************
@@ -229,6 +229,9 @@ init_fnc_t *init_sequence[] = {
 	checkboard,
 #if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
 	init_func_i2c,
+#endif
+#if defined(CONFIG_HARD_SPI)
+	init_func_spi,
 #endif
 	init_func_ram,
 #if defined(CFG_DRAM_TEST)
@@ -266,7 +269,7 @@ board_init_f (ulong bootflag)
 #ifdef CONFIG_PRAM
 	int i;
 	ulong reg;
-	uchar tmp[64];		/* long enough for environment variables */
+	char tmp[64];		/* long enough for environment variables */
 #endif
 
 	/* Pointer is writable since we allocated a register for it */
@@ -313,6 +316,16 @@ board_init_f (ulong bootflag)
 	debug ("Reserving %ldk for protected RAM at %08lx\n", reg, addr);
 #endif /* CONFIG_PRAM */
 
+	/* round down to next 4 kB limit */
+	addr &= ~(4096 - 1);
+	debug ("Top of RAM usable for U-Boot at: %08lx\n", addr);
+
+#ifdef CONFIG_LCD
+	/* reserve memory for LCD display (always full pages) */
+	addr = lcd_setmem (addr);
+	gd->fb_base = addr;
+#endif /* CONFIG_LCD */
+
 	/*
 	 * reserve memory for U-Boot code, data & bss
 	 * round down to next 4 kB limit
@@ -336,14 +349,14 @@ board_init_f (ulong bootflag)
 	addr_sp -= sizeof (bd_t);
 	bd = (bd_t *) addr_sp;
 	gd->bd = bd;
-	debug ("Reserving %d Bytes for Board Info at: %08lx\n",
+	debug ("Reserving %zu Bytes for Board Info at: %08lx\n",
 			sizeof (bd_t), addr_sp);
 	addr_sp -= sizeof (gd_t);
 	id = (gd_t *) addr_sp;
-	debug ("Reserving %d Bytes for Global Data at: %08lx\n",
+	debug ("Reserving %zu Bytes for Global Data at: %08lx\n",
 			sizeof (gd_t), addr_sp);
 
- 	/* Reserve memory for boot params. */
+	/* Reserve memory for boot params. */
 	addr_sp -= CFG_BOOTPARAMS_LEN;
 	bd->bi_boot_params = addr_sp;
 	debug ("Reserving %dk for boot parameters at: %08lx\n",
@@ -741,7 +754,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 */
 	{
 		ulong pram;
-		uchar memsz[32];
+		char memsz[32];
 #ifdef CONFIG_PRAM
 		char *s;
 

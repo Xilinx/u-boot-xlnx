@@ -38,8 +38,8 @@ static long int dram_size (void);
 
 /* ------------------------------------------------------------------------- */
 
-#define MBYTE 		(1024*1024)
-#define DRAM_DELAY  	0x00000379  /* DRAM delay count */
+#define MBYTE		(1024*1024)
+#define DRAM_DELAY	0x00000379  /* DRAM delay count */
 #define	_NOT_USED_	0xFFFFCC25
 
 const uint sdram_table[] =
@@ -90,7 +90,7 @@ int checkboard (void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
     volatile immap_t     *immap  = (immap_t *)CFG_IMMR;
     volatile memctl8xx_t *memctl = &immap->im_memctl;

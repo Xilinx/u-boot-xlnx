@@ -50,7 +50,7 @@ $(nandobj)u-boot-spl.bin:	$(nandobj)u-boot-spl
 	$(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
 
 $(nandobj)u-boot-spl:	$(OBJS)
-	cd $(LNDIR) && $(LD) $(LDFLAGS) $$UNDEF_SYM $(__OBJS) \
+	cd $(LNDIR) && $(LD) $(LDFLAGS) $(__OBJS) \
 		-Map $(nandobj)u-boot-spl.map \
 		-o $(nandobj)u-boot-spl
 
@@ -79,10 +79,10 @@ $(obj)nand_boot.c:
 	@rm -f $(obj)nand_boot.c
 	ln -s $(SRCTREE)/nand_spl/nand_boot.c $(obj)nand_boot.c
 
-# from drivers/nand directory
+# from drivers/mtd/nand directory
 $(obj)nand_ecc.c:
 	@rm -f $(obj)nand_ecc.c
-	ln -s $(SRCTREE)/drivers/nand/nand_ecc.c $(obj)nand_ecc.c
+	ln -s $(SRCTREE)/drivers/mtd/nand/nand_ecc.c $(obj)nand_ecc.c
 
 ifneq ($(OBJTREE), $(SRCTREE))
 $(obj)sdram.c:

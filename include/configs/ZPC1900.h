@@ -179,7 +179,7 @@
 #define CFG_FLSIMM_BASE		0xFF000000
 
 #define CFG_FLASH_CFI
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_MAX_FLASH_BANKS	2	/* max num of flash banks	*/
 #define CFG_MAX_FLASH_SECT	32	/* max num of sects on one chip */
 
@@ -200,13 +200,13 @@
 				 HRCW_MODCK_H0111                          \
 				) /* 0x16848207 */
 /* No slaves */
-#define CFG_HRCW_SLAVE1 	0
-#define CFG_HRCW_SLAVE2 	0
-#define CFG_HRCW_SLAVE3 	0
-#define CFG_HRCW_SLAVE4 	0
-#define CFG_HRCW_SLAVE5 	0
-#define CFG_HRCW_SLAVE6 	0
-#define CFG_HRCW_SLAVE7 	0
+#define CFG_HRCW_SLAVE1		0
+#define CFG_HRCW_SLAVE2		0
+#define CFG_HRCW_SLAVE3		0
+#define CFG_HRCW_SLAVE4		0
+#define CFG_HRCW_SLAVE5		0
+#define CFG_HRCW_SLAVE6		0
+#define CFG_HRCW_SLAVE7		0
 
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH */
 #define BOOTFLAG_WARM		0x02	/* Software reboot                  */

@@ -40,6 +40,8 @@
 
 #define CONFIG_BOARD_EARLY_INIT_R
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported 			*/
+
 /*
  * Serial console configuration
  */
@@ -91,7 +93,7 @@
 #define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds */
 
 #define CONFIG_PREBOOT	"echo;" \
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -166,7 +168,7 @@
 #define CFG_FLASH_ERASE_TOUT	240000	/* Flash Erase Timeout (in ms)	*/
 #define CFG_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (in ms)	*/
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_FLASH_EMPTY_INFO
 #define CFG_FLASH_CFI_AMD_RESET
@@ -297,7 +299,7 @@
 
 /* 8Mbit SRAM @0x80100000 */
 #define CFG_CS1_START		CFG_SRAM_BASE
-#define CFG_CS1_SIZE		0x00100000
+#define CFG_CS1_SIZE		0x00200000
 #define CFG_CS1_CFG		0x21D00
 
 /* Display H1, Status Inputs, EPLD @0x80600000 8 Bit */

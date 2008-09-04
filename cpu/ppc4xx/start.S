@@ -3,6 +3,8 @@
  *  Copyright (C) 1999	Magnus Damm <kieraypc01.p.y.kie.era.ericsson.se>
  *  Copyright (C) 2000,2001,2002 Wolfgang Denk <wd@denx.de>
  *  Copyright (C) 2007 Stefan Roese <sr@denx.de>, DENX Software Engineering
+ *  Copyright (c) 2008 Nuovation System Designs, LLC
+ *    Grant Erickson <gerickson@nuovations.com>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -79,36 +81,127 @@
 # if (CFG_INIT_DCACHE_CS == 0)
 #  define PBxAP pb0ap
 #  define PBxCR pb0cr
+#  if (defined(CFG_EBC_PB0AP) && defined(CFG_EBC_PB0CR))
+#   define PBxAP_VAL CFG_EBC_PB0AP
+#   define PBxCR_VAL CFG_EBC_PB0CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 1)
 #  define PBxAP pb1ap
 #  define PBxCR pb1cr
+#  if (defined(CFG_EBC_PB1AP) && defined(CFG_EBC_PB1CR))
+#   define PBxAP_VAL CFG_EBC_PB1AP
+#   define PBxCR_VAL CFG_EBC_PB1CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 2)
 #  define PBxAP pb2ap
 #  define PBxCR pb2cr
+#  if (defined(CFG_EBC_PB2AP) && defined(CFG_EBC_PB2CR))
+#   define PBxAP_VAL CFG_EBC_PB2AP
+#   define PBxCR_VAL CFG_EBC_PB2CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 3)
 #  define PBxAP pb3ap
 #  define PBxCR pb3cr
+#  if (defined(CFG_EBC_PB3AP) && defined(CFG_EBC_PB3CR))
+#   define PBxAP_VAL CFG_EBC_PB3AP
+#   define PBxCR_VAL CFG_EBC_PB3CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 4)
 #  define PBxAP pb4ap
 #  define PBxCR pb4cr
+#  if (defined(CFG_EBC_PB4AP) && defined(CFG_EBC_PB4CR))
+#   define PBxAP_VAL CFG_EBC_PB4AP
+#   define PBxCR_VAL CFG_EBC_PB4CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 5)
 #  define PBxAP pb5ap
 #  define PBxCR pb5cr
+#  if (defined(CFG_EBC_PB5AP) && defined(CFG_EBC_PB5CR))
+#   define PBxAP_VAL CFG_EBC_PB5AP
+#   define PBxCR_VAL CFG_EBC_PB5CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 6)
 #  define PBxAP pb6ap
 #  define PBxCR pb6cr
+#  if (defined(CFG_EBC_PB6AP) && defined(CFG_EBC_PB6CR))
+#   define PBxAP_VAL CFG_EBC_PB6AP
+#   define PBxCR_VAL CFG_EBC_PB6CR
+#  endif
 # endif
 # if (CFG_INIT_DCACHE_CS == 7)
 #  define PBxAP pb7ap
 #  define PBxCR pb7cr
+#  if (defined(CFG_EBC_PB7AP) && defined(CFG_EBC_PB7CR))
+#   define PBxAP_VAL CFG_EBC_PB7AP
+#   define PBxCR_VAL CFG_EBC_PB7CR
+#  endif
+# endif
+# ifndef PBxAP_VAL
+#  define PBxAP_VAL	0
+# endif
+# ifndef PBxCR_VAL
+#  define PBxCR_VAL	0
+# endif
+/*
+ * Memory Bank x (nothingness) initialization CFG_INIT_RAM_ADDR + 64 MiB
+ * used as temporary stack pointer for the primordial stack
+ */
+# ifndef CFG_INIT_DCACHE_PBxAR
+#  define CFG_INIT_DCACHE_PBxAR	(EBC_BXAP_BME_DISABLED			| \
+				 EBC_BXAP_TWT_ENCODE(7)			| \
+				 EBC_BXAP_BCE_DISABLE			| \
+				 EBC_BXAP_BCT_2TRANS			| \
+				 EBC_BXAP_CSN_ENCODE(0)			| \
+				 EBC_BXAP_OEN_ENCODE(0)			| \
+				 EBC_BXAP_WBN_ENCODE(0)			| \
+				 EBC_BXAP_WBF_ENCODE(0)			| \
+				 EBC_BXAP_TH_ENCODE(2)			| \
+				 EBC_BXAP_RE_DISABLED			| \
+				 EBC_BXAP_SOR_NONDELAYED		| \
+				 EBC_BXAP_BEM_WRITEONLY			| \
+				 EBC_BXAP_PEN_DISABLED)
+# endif /* CFG_INIT_DCACHE_PBxAR */
+# ifndef CFG_INIT_DCACHE_PBxCR
+#  define CFG_INIT_DCACHE_PBxCR	(EBC_BXCR_BAS_ENCODE(CFG_INIT_RAM_ADDR)	| \
+				 EBC_BXCR_BS_64MB			| \
+				 EBC_BXCR_BU_RW				| \
+				 EBC_BXCR_BW_16BIT)
+# endif /* CFG_INIT_DCACHE_PBxCR */
+# ifndef CFG_INIT_RAM_PATTERN
+#  define CFG_INIT_RAM_PATTERN	0xDEADDEAD
 # endif
 #endif /* CFG_INIT_DCACHE_CS */
+
+#if (defined(CFG_INIT_RAM_DCACHE) && (CFG_INIT_RAM_END > (4 << 10)))
+#error Only 4k of init-ram is supported - please adjust CFG_INIT_RAM_END!
+#endif
+
+/*
+ * Unless otherwise overriden, enable two 128MB cachable instruction regions
+ * at CFG_SDRAM_BASE and another 128MB cacheable instruction region covering
+ * NOR flash at CFG_FLASH_BASE. Disable all cacheable data regions.
+ */
+#if !defined(CFG_FLASH_BASE)
+/* If not already defined, set it to the "last" 128MByte region */
+# define CFG_FLASH_BASE		0xf8000000
+#endif
+#if !defined(CFG_ICACHE_SACR_VALUE)
+# define CFG_ICACHE_SACR_VALUE		\
+		(PPC_128MB_SACR_VALUE(CFG_SDRAM_BASE + (  0 << 20)) | \
+		 PPC_128MB_SACR_VALUE(CFG_SDRAM_BASE + (128 << 20)) | \
+		 PPC_128MB_SACR_VALUE(CFG_FLASH_BASE))
+#endif /* !defined(CFG_ICACHE_SACR_VALUE) */
+
+#if !defined(CFG_DCACHE_SACR_VALUE)
+# define CFG_DCACHE_SACR_VALUE		\
+		(0x00000000)
+#endif /* !defined(CFG_DCACHE_SACR_VALUE) */
 
 #define function_prolog(func_name)	.text; \
 					.align 2; \
@@ -124,7 +217,6 @@
 
 
 	.extern ext_bus_cntlr_init
-	.extern sdram_init
 #ifdef CONFIG_NAND_U_BOOT
 	.extern reconfig_tlb0
 #endif
@@ -397,91 +489,6 @@ rsttlb:	tlbwe	r0,r1,0x0000	/* Invalidate all entries (V=0)*/
 	/* Continue from 'normal' start */
 	/*----------------------------------------------------------------*/
 2:
-
-#if defined(CONFIG_NAND_SPL)
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
-	/*
-	 * Enable internal SRAM (only on 440EPx/GRx, 440EP/GR have no OCM)
-	 */
-	lis	r2,0x7fff
-	ori	r2,r2,0xffff
-	mfdcr	r1,isram0_dpc
-	and	r1,r1,r2		/* Disable parity check */
-	mtdcr	isram0_dpc,r1
-	mfdcr	r1,isram0_pmeg
-	and	r1,r1,r2		/* Disable pwr mgmt */
-	mtdcr	isram0_pmeg,r1
-#endif
-#if defined(CONFIG_440EP)
-	/*
-	 * On 440EP with no internal SRAM, we setup SDRAM very early
-	 * and copy the NAND_SPL to SDRAM and jump to it
-	 */
-	/* Clear Dcache to use as RAM */
-	addis	r3,r0,CFG_INIT_RAM_ADDR@h
-	ori	r3,r3,CFG_INIT_RAM_ADDR@l
-	addis	r4,r0,CFG_INIT_RAM_END@h
-	ori	r4,r4,CFG_INIT_RAM_END@l
-	rlwinm. r5,r4,0,27,31
-	rlwinm	r5,r4,27,5,31
-	beq	..d_ran3
-	addi	r5,r5,0x0001
-..d_ran3:
-	mtctr	r5
-..d_ag3:
-	dcbz	r0,r3
-	addi	r3,r3,32
-	bdnz	..d_ag3
-	/*----------------------------------------------------------------*/
-	/* Setup the stack in internal SRAM */
-	/*----------------------------------------------------------------*/
-	lis	r1,CFG_INIT_RAM_ADDR@h
-	ori	r1,r1,CFG_INIT_SP_OFFSET@l
-	li	r0,0
-	stwu	r0,-4(r1)
-	stwu	r0,-4(r1)		/* Terminate call chain */
-
-	stwu	r1,-8(r1)		/* Save back chain and move SP */
-	lis	r0,RESET_VECTOR@h	/* Address of reset vector */
-	ori	r0,r0, RESET_VECTOR@l
-	stwu	r1,-8(r1)		/* Save back chain and move SP */
-	stw	r0,+12(r1)		/* Save return addr (underflow vect) */
-	sync
-	bl	early_sdram_init
-	sync
-#endif /* CONFIG_440EP */
-
-	/*
-	 * Copy SPL from cache into internal SRAM
-	 */
-	li	r4,(CFG_NAND_BOOT_SPL_SIZE >> 2) - 1
-	mtctr	r4
-	lis	r2,CFG_NAND_BOOT_SPL_SRC@h
-	ori	r2,r2,CFG_NAND_BOOT_SPL_SRC@l
-	lis	r3,CFG_NAND_BOOT_SPL_DST@h
-	ori	r3,r3,CFG_NAND_BOOT_SPL_DST@l
-spl_loop:
-	lwzu	r4,4(r2)
-	stwu	r4,4(r3)
-	bdnz	spl_loop
-
-	/*
-	 * Jump to code in RAM
-	 */
-	bl	00f
-00:	mflr	r10
-	lis	r3,(CFG_NAND_BOOT_SPL_SRC - CFG_NAND_BOOT_SPL_DST)@h
-	ori	r3,r3,(CFG_NAND_BOOT_SPL_SRC - CFG_NAND_BOOT_SPL_DST)@l
-	sub	r10,r10,r3
-	addi	r10,r10,28
-	mtlr	r10
-	blr
-
-start_ram:
-	sync
-	isync
-#endif /* CONFIG_NAND_SPL */
-
 	bl	3f
 	lis	r0,_start@h
 	ori	r0,r0,_start@l
@@ -639,12 +646,42 @@ _start:
 	dcbz	r0,r3
 	addi	r3,r3,32
 	bdnz	..d_ag
+
+	/*
+	 * Lock the init-ram/stack in d-cache, so that other regions
+	 * may use d-cache as well
+	 * Note, that this current implementation locks exactly 4k
+	 * of d-cache, so please make sure that you don't define a
+	 * bigger init-ram area. Take a look at the lwmon5 440EPx
+	 * implementation as a reference.
+	 */
+	msync
+	isync
+	/* 8. set TFLOOR/NFLOOR to 8 (-> 8*16*32 bytes locked -> 4k) */
+	lis	r1,0x0201
+	ori	r1,r1,0xf808
+	mtspr	dvlim,r1
+	lis	r1,0x0808
+	ori	r1,r1,0x0808
+	mtspr	dnv0,r1
+	mtspr	dnv1,r1
+	mtspr	dnv2,r1
+	mtspr	dnv3,r1
+	mtspr	dtv0,r1
+	mtspr	dtv1,r1
+	mtspr	dtv2,r1
+	mtspr	dtv3,r1
+	msync
+	isync
 #endif /* CFG_INIT_RAM_DCACHE */
 
 	/* 440EP & 440GR are only 440er PPC's without internal SRAM */
 #if !defined(CONFIG_440EP) && !defined(CONFIG_440GR)
 	/* not all PPC's have internal SRAM usable as L2-cache */
-#if defined(CONFIG_440GX) || defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+#if defined(CONFIG_440GX) || \
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_460SX)
 	mtdcr	l2_cache_cfg,r0		/* Ensure L2 Cache is off */
 #endif
 
@@ -683,6 +720,23 @@ _start:
 	lis	r1, 0x0003
 	ori	r1,r1, 0x0984		/* fourth 64k */
 	mtdcr	isram0_sb3cr,r1
+#elif defined(CONFIG_460EX) || defined(CONFIG_460GT)
+	lis	r1,0x4000		/* BAS = 8000_0000 */
+	ori	r1,r1,0x4580		/* 16k */
+	mtdcr	isram0_sb0cr,r1
+#elif defined(CONFIG_460SX)
+	lis     r1,0x0000               /* BAS = 0000_0000 */
+	ori     r1,r1,0x0B84            /* first 128k */
+	mtdcr   isram0_sb0cr,r1
+	lis     r1,0x0001
+	ori     r1,r1,0x0B84            /* second 128k */
+	mtdcr   isram0_sb1cr,r1
+	lis     r1, 0x0002
+	ori     r1,r1, 0x0B84           /* third 128k */
+	mtdcr   isram0_sb2cr,r1
+	lis     r1, 0x0003
+	ori     r1,r1, 0x0B84           /* fourth 128k */
+	mtdcr   isram0_sb3cr,r1
 #elif defined(CONFIG_440GP)
 	ori	r1,r1,0x0380		/* 8k rw */
 	mtdcr	isram0_sb0cr,r1
@@ -706,7 +760,7 @@ _start:
 	stw	r0,+12(r1)		/* Save return addr (underflow vect) */
 
 #ifdef CONFIG_NAND_SPL
-	bl	nand_boot		/* will not return */
+	bl	nand_boot_common	/* will not return */
 #else
 	GET_GOT
 
@@ -800,19 +854,19 @@ _start:
 	/* make sure above stores all comlete before going on */
 	sync
 
-	/*----------------------------------------------------------------------- */
-	/* Enable two 128MB cachable regions. */
-	/*----------------------------------------------------------------------- */
-	addis	r1,r0,0x8000
-	addi	r1,r1,0x0001
-	mticcr	r1			/* instruction cache */
+	/* Set-up icache cacheability. */
+	lis	r1, CFG_ICACHE_SACR_VALUE@h
+	ori	r1, r1, CFG_ICACHE_SACR_VALUE@l
+	mticcr	r1
+	isync
 
-	addis	r1,r0,0x0000
-	addi	r1,r1,0x0000
-	mtdccr	r1			/* data cache */
+	/* Set-up dcache cacheability. */
+	lis	r1, CFG_DCACHE_SACR_VALUE@h
+	ori	r1, r1, CFG_DCACHE_SACR_VALUE@l
+	mtdccr	r1
 
 	addis	r1,r0,CFG_INIT_RAM_ADDR@h
-	ori	r1,r1,CFG_INIT_SP_OFFSET	  /* set up the stack to SDRAM */
+	ori	r1,r1,CFG_INIT_SP_OFFSET /* set up the stack to SDRAM */
 	li	r0, 0			/* Make room for stack frame header and */
 	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
 	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
@@ -826,12 +880,23 @@ _start:
 /*****************************************************************************/
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || \
     defined(CONFIG_405EP) || defined(CONFIG_405EZ) || \
-    defined(CONFIG_405)
+    defined(CONFIG_405EX) || defined(CONFIG_405)
 	/*----------------------------------------------------------------------- */
 	/* Clear and set up some registers. */
 	/*----------------------------------------------------------------------- */
 	addi	r4,r0,0x0000
+#if !defined(CONFIG_405EX)
 	mtspr	sgr,r4
+#else
+	/*
+	 * On 405EX, completely clearing the SGR leads to PPC hangup
+	 * upon PCIe configuration access. The PCIe memory regions
+	 * need to be guarded!
+	 */
+	lis	r3,0x0000
+	ori	r3,r3,0x7FFC
+	mtspr	sgr,r3
+#endif
 	mtspr	dcwr,r4
 	mtesr	r4			/* clear Exception Syndrome Reg */
 	mttcr	r4			/* clear Timer Control Reg */
@@ -841,27 +906,20 @@ _start:
 					/* dbsr is cleared by setting bits to 1) */
 	mtdbsr	r4			/* clear/reset the dbsr */
 
-	/*----------------------------------------------------------------------- */
-	/* Invalidate I and D caches. Enable I cache for defined memory regions */
-	/* to speed things up. Leave the D cache disabled for now. It will be */
-	/* enabled/left disabled later based on user selected menu options. */
-	/* Be aware that the I cache may be disabled later based on the menu */
-	/* options as well. See miscLib/main.c. */
-	/*----------------------------------------------------------------------- */
+	/* Invalidate the i- and d-caches. */
 	bl	invalidate_icache
 	bl	invalidate_dcache
 
-	/*----------------------------------------------------------------------- */
-	/* Enable two 128MB cachable regions. */
-	/*----------------------------------------------------------------------- */
-	lis	r4,0x8000
-	ori	r4,r4,0x0001
-	mticcr	r4			/* instruction cache */
+	/* Set-up icache cacheability. */
+	lis	r4, CFG_ICACHE_SACR_VALUE@h
+	ori	r4, r4, CFG_ICACHE_SACR_VALUE@l
+	mticcr	r4
 	isync
 
-	lis	r4,0x0000
-	ori	r4,r4,0x0000
-	mtdccr	r4			/* data cache */
+	/* Set-up dcache cacheability. */
+	lis	r4, CFG_DCACHE_SACR_VALUE@h
+	ori	r4, r4, CFG_DCACHE_SACR_VALUE@l
+	mtdccr	r4
 
 #if !(defined(CFG_EBC_PB0AP) && defined(CFG_EBC_PB0CR))
 	/*----------------------------------------------------------------------- */
@@ -870,15 +928,38 @@ _start:
 	bl	ext_bus_cntlr_init
 #endif
 
+#if !(defined(CFG_INIT_DCACHE_CS) || defined(CFG_TEMP_STACK_OCM))
+	/*
+	 * For boards that don't have OCM and can't use the data cache
+	 * for their primordial stack, setup stack here directly after the
+	 * SDRAM is initialized in ext_bus_cntlr_init.
+	 */
+	lis	r1, CFG_INIT_RAM_ADDR@h
+	ori	r1,r1,CFG_INIT_SP_OFFSET /* set up the stack in SDRAM */
+
+	li	r0, 0			/* Make room for stack frame header and */
+	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
+	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
+	/*
+	 * Set up a dummy frame to store reset vector as return address.
+	 * this causes stack underflow to reset board.
+	 */
+	stwu	r1, -8(r1)		/* Save back chain and move SP */
+	lis	r0, RESET_VECTOR@h	/* Address of reset vector */
+	ori	r0, r0, RESET_VECTOR@l
+	stwu	r1, -8(r1)		/* Save back chain and move SP */
+	stw	r0, +12(r1)		/* Save return addr (underflow vect) */
+#endif /* !(CFG_INIT_DCACHE_CS	|| !CFG_TEM_STACK_OCM) */
+
 #if defined(CONFIG_405EP)
 	/*----------------------------------------------------------------------- */
 	/* DMA Status, clear to come up clean */
 	/*----------------------------------------------------------------------- */
-	addis	r3,r0, 0xFFFF	      /* Clear all existing DMA status */
+	addis	r3,r0, 0xFFFF		/* Clear all existing DMA status */
 	ori	r3,r3, 0xFFFF
 	mtdcr	dmasr, r3
 
-	bl	ppc405ep_init	      /* do ppc405ep specific init */
+	bl	ppc405ep_init		/* do ppc405ep specific init */
 #endif /* CONFIG_405EP */
 
 #if defined(CFG_OCM_DATA_ADDR) && defined(CFG_OCM_DATA_SIZE)
@@ -934,83 +1015,90 @@ _start:
 #endif /* CONFIG_405EZ */
 #endif
 
-#ifdef CONFIG_NAND_SPL
-	/*
-	 * Copy SPL from cache into internal SRAM
-	 */
-	li	r4,(CFG_NAND_BOOT_SPL_SIZE >> 2) - 1
-	mtctr	r4
-	lis	r2,CFG_NAND_BOOT_SPL_SRC@h
-	ori	r2,r2,CFG_NAND_BOOT_SPL_SRC@l
-	lis	r3,CFG_NAND_BOOT_SPL_DST@h
-	ori	r3,r3,CFG_NAND_BOOT_SPL_DST@l
-spl_loop:
-	lwzu	r4,4(r2)
-	stwu	r4,4(r3)
-	bdnz	spl_loop
-
-	/*
-	 * Jump to code in RAM
-	 */
-	bl	00f
-00:	mflr	r10
-	lis	r3,(CFG_NAND_BOOT_SPL_SRC - CFG_NAND_BOOT_SPL_DST)@h
-	ori	r3,r3,(CFG_NAND_BOOT_SPL_SRC - CFG_NAND_BOOT_SPL_DST)@l
-	sub	r10,r10,r3
-	addi	r10,r10,28
-	mtlr	r10
-	blr
-
-start_ram:
-	sync
-	isync
-#endif /* CONFIG_NAND_SPL */
-
 	/*----------------------------------------------------------------------- */
 	/* Setup temporary stack in DCACHE or OCM if needed for SDRAM SPD. */
 	/*----------------------------------------------------------------------- */
 #ifdef CFG_INIT_DCACHE_CS
-	/*----------------------------------------------------------------------- */
-	/* Memory Bank x (nothingness) initialization 1GB+64MEG */
-	/* used as temporary stack pointer for stage0  */
-	/*----------------------------------------------------------------------- */
-	li	r4,PBxAP
-	mtdcr	ebccfga,r4
-	lis	r4,0x0380
-	ori	r4,r4,0x0480
-	mtdcr	ebccfgd,r4
+	li	r4, PBxAP
+	mtdcr	ebccfga, r4
+	lis	r4, CFG_INIT_DCACHE_PBxAR@h
+	ori	r4, r4, CFG_INIT_DCACHE_PBxAR@l
+	mtdcr	ebccfgd, r4
 
-	addi	r4,0,PBxCR
-	mtdcr	ebccfga,r4
-	lis	r4,0x400D
-	ori	r4,r4,0xa000
-	mtdcr	ebccfgd,r4
+	addi	r4, 0, PBxCR
+	mtdcr	ebccfga, r4
+	lis	r4, CFG_INIT_DCACHE_PBxCR@h
+	ori	r4, r4, CFG_INIT_DCACHE_PBxCR@l
+	mtdcr	ebccfgd, r4
 
-	/* turn on data chache for this region */
-	lis	r4,0x0080
+	/*
+	 * Enable the data cache for the 128MB storage access control region
+	 * at CFG_INIT_RAM_ADDR.
+	 */
+	mfdccr	r4
+	oris	r4, r4, PPC_128MB_SACR_VALUE(CFG_INIT_RAM_ADDR)@h
+	ori	r4, r4, PPC_128MB_SACR_VALUE(CFG_INIT_RAM_ADDR)@l
 	mtdccr	r4
 
-	/* set stack pointer and clear stack to known value */
+	/*
+	 * Preallocate data cache lines to be used to avoid a subsequent
+	 * cache miss and an ensuing machine check exception when exceptions
+	 * are enabled.
+	 */
+	li	r0, 0
 
-	lis	r1,CFG_INIT_RAM_ADDR@h
-	ori	r1,r1,CFG_INIT_SP_OFFSET@l
+	lis	r3, CFG_INIT_RAM_ADDR@h
+	ori	r3, r3, CFG_INIT_RAM_ADDR@l
 
-	li	r4,2048			/* we store 2048 words to stack */
+	lis	r4, CFG_INIT_RAM_END@h
+	ori	r4, r4, CFG_INIT_RAM_END@l
+
+	/*
+	 * Convert the size, in bytes, to the number of cache lines/blocks
+	 * to preallocate.
+	 */
+	clrlwi. r5, r4, (32 - L1_CACHE_SHIFT)
+	srwi	r5, r4, L1_CACHE_SHIFT
+	beq	..load_counter
+	addi	r5, r5, 0x0001
+..load_counter:
+	mtctr	r5
+
+	/* Preallocate the computed number of cache blocks. */
+..alloc_dcache_block:
+	dcba	r0, r3
+	addi	r3, r3, L1_CACHE_BYTES
+	bdnz	..alloc_dcache_block
+	sync
+
+	/*
+	 * Load the initial stack pointer and data area and convert the size,
+	 * in bytes, to the number of words to initialize to a known value.
+	 */
+	lis	r1, CFG_INIT_RAM_ADDR@h
+	ori	r1, r1, CFG_INIT_SP_OFFSET@l
+
+	lis	r4, (CFG_INIT_RAM_END >> 2)@h
+	ori	r4, r4, (CFG_INIT_RAM_END >> 2)@l
 	mtctr	r4
 
-	lis	r2,CFG_INIT_RAM_ADDR@h		/* we also clear data area */
-	ori	r2,r2,CFG_INIT_RAM_END@l	/* so cant copy value from r1 */
+	lis	r2, CFG_INIT_RAM_ADDR@h
+	ori	r2, r2, CFG_INIT_RAM_END@l
 
-	lis	r4,0xdead		/* we store 0xdeaddead in the stack */
-	ori	r4,r4,0xdead
+	lis	r4, CFG_INIT_RAM_PATTERN@h
+	ori	r4, r4, CFG_INIT_RAM_PATTERN@l
 
 ..stackloop:
-	stwu	r4,-4(r2)
+	stwu	r4, -4(r2)
 	bdnz	..stackloop
 
-	li	r0, 0			/* Make room for stack frame header and */
-	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
-	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
+	/*
+	 * Make room for stack frame header and clear final stack frame so
+	 * that stack backtraces terminate cleanly.
+	 */
+	stwu	r0, -4(r1)
+	stwu	r0, -4(r1)
+
 	/*
 	 * Set up a dummy frame to store reset vector as return address.
 	 * this causes stack underflow to reset board.
@@ -1047,37 +1135,8 @@ start_ram:
 	stw	r0, +12(r1)		/* Save return addr (underflow vect) */
 #endif /* CFG_INIT_DCACHE_CS */
 
-	/*----------------------------------------------------------------------- */
-	/* Initialize SDRAM Controller	*/
-	/*----------------------------------------------------------------------- */
-	bl	sdram_init
-
-	/*
-	 * Setup temporary stack pointer only for boards
-	 * that do not use SDRAM SPD I2C stuff since it
-	 * is already initialized to use DCACHE or OCM
-	 * stacks.
-	 */
-#if !(defined(CFG_INIT_DCACHE_CS) || defined(CFG_TEMP_STACK_OCM))
-	lis	r1, CFG_INIT_RAM_ADDR@h
-	ori	r1,r1,CFG_INIT_SP_OFFSET /* set up the stack in SDRAM */
-
-	li	r0, 0			/* Make room for stack frame header and */
-	stwu	r0, -4(r1)		/* clear final stack frame so that	*/
-	stwu	r0, -4(r1)		/* stack backtraces terminate cleanly	*/
-	/*
-	 * Set up a dummy frame to store reset vector as return address.
-	 * this causes stack underflow to reset board.
-	 */
-	stwu	r1, -8(r1)		/* Save back chain and move SP */
-	lis	r0, RESET_VECTOR@h	/* Address of reset vector */
-	ori	r0, r0, RESET_VECTOR@l
-	stwu	r1, -8(r1)		/* Save back chain and move SP */
-	stw	r0, +12(r1)		/* Save return addr (underflow vect) */
-#endif /* !(CFG_INIT_DCACHE_CS	|| !CFG_TEM_STACK_OCM) */
-
 #ifdef CONFIG_NAND_SPL
-	bl	nand_boot		/* will not return */
+	bl	nand_boot_common	/* will not return */
 #else
 	GET_GOT			/* initialize GOT access			*/
 
@@ -1214,111 +1273,6 @@ mck_return:
 #endif /* CONFIG_440 */
 
 
-/*
- * Cache functions.
- *
- * NOTE: currently the 440s run with dcache _disabled_ once relocated to DRAM,
- * although for some cache-ralated calls stubs have to be provided to satisfy
- * symbols resolution.
- * Icache-related functions are used in POST framework.
- *
- */
-#ifdef CONFIG_440
-       .globl  dcache_disable
-       .globl  icache_disable
-       .globl  icache_enable
-dcache_disable:
-icache_disable:
-icache_enable:
-	blr
-
-	.globl	dcache_status
-	.globl	icache_status
-dcache_status:
-icache_status:
-	mr	r3,  0
-	blr
-#else
-flush_dcache:
-	addis	r9,r0,0x0002		/* set mask for EE and CE msr bits */
-	ori	r9,r9,0x8000
-	mfmsr	r12			/* save msr */
-	andc	r9,r12,r9
-	mtmsr	r9			/* disable EE and CE */
-	addi	r10,r0,0x0001		/* enable data cache for unused memory */
-	mfdccr	r9			/* region 0xF8000000-0xFFFFFFFF via */
-	or	r10,r10,r9		/* bit 31 in dccr */
-	mtdccr	r10
-
-	/* do loop for # of congruence classes. */
-	lis	r10,(CFG_DCACHE_SIZE / CFG_CACHELINE_SIZE / 2)@ha	/* TBS: for large cache sizes */
-	ori	r10,r10,(CFG_DCACHE_SIZE / CFG_CACHELINE_SIZE / 2)@l
-	lis	r11,(CFG_DCACHE_SIZE / 2)@ha /* D cache set size - 2 way sets */
-	ori	r11,r11,(CFG_DCACHE_SIZE / 2)@l /* D cache set size - 2 way sets */
-	mtctr	r10
-	addi	r10,r0,(0xE000-0x10000) /* start at 0xFFFFE000 */
-	add	r11,r10,r11		/* add to get to other side of cache line */
-..flush_dcache_loop:
-	lwz	r3,0(r10)		/* least recently used side */
-	lwz	r3,0(r11)		/* the other side */
-	dccci	r0,r11			/* invalidate both sides */
-	addi	r10,r10,CFG_CACHELINE_SIZE /* bump to next line */
-	addi	r11,r11,CFG_CACHELINE_SIZE /* bump to next line */
-	bdnz	..flush_dcache_loop
-	sync				/* allow memory access to complete */
-	mtdccr	r9			/* restore dccr */
-	mtmsr	r12			/* restore msr */
-	blr
-
-	.globl	icache_enable
-icache_enable:
-	mflr	r8
-	bl	invalidate_icache
-	mtlr	r8
-	isync
-	addis	r3,r0, 0x8000	      /* set bit 0 */
-	mticcr	r3
-	blr
-
-	.globl	icache_disable
-icache_disable:
-	addis	r3,r0, 0x0000	      /* clear bit 0 */
-	mticcr	r3
-	isync
-	blr
-
-	.globl	icache_status
-icache_status:
-	mficcr	r3
-	srwi	r3, r3, 31	/* >>31 => select bit 0 */
-	blr
-
-	.globl	dcache_enable
-dcache_enable:
-	mflr	r8
-	bl	invalidate_dcache
-	mtlr	r8
-	isync
-	addis	r3,r0, 0x8000	      /* set bit 0 */
-	mtdccr	r3
-	blr
-
-	.globl	dcache_disable
-dcache_disable:
-	mflr	r8
-	bl	flush_dcache
-	mtlr	r8
-	addis	r3,r0, 0x0000	      /* clear bit 0 */
-	mtdccr	r3
-	blr
-
-	.globl	dcache_status
-dcache_status:
-	mfdccr	r3
-	srwi	r3, r3, 31	/* >>31 => select bit 0 */
-	blr
-#endif
-
 	.globl get_pvr
 get_pvr:
 	mfspr	r3, PVR
@@ -1378,55 +1332,108 @@ in32r:
 	lwbrx	r3,r0,r3
 	blr
 
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcDcbf */
-/* Description:	 Data Cache block flush */
-/* Input:	 r3 = effective address */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcDcbf
-ppcDcbf:
-	dcbf	r0,r3
-	blr
-
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcDcbi */
-/* Description:	 Data Cache block Invalidate */
-/* Input:	 r3 = effective address */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcDcbi
-ppcDcbi:
-	dcbi	r0,r3
-	blr
-
-/*------------------------------------------------------------------------------- */
-/* Function:	 ppcSync */
-/* Description:	 Processor Synchronize */
-/* Input:	 none. */
-/* Output:	 none. */
-/*------------------------------------------------------------------------------- */
-	.globl	ppcSync
-ppcSync:
-	sync
-	blr
-
 /*
  * void relocate_code (addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
  * after relocating the monitor code.
  *
- * r3 = dest
- * r4 = src
- * r5 = length in bytes
- * r6 = cachelinesize
+ * r3 = Relocated stack pointer
+ * r4 = Relocated global data pointer
+ * r5 = Relocated text pointer
  */
 	.globl	relocate_code
 relocate_code:
+#if defined(CONFIG_4xx_DCACHE) || defined(CFG_INIT_DCACHE_CS)
+	/*
+	 * We need to flush the initial global data (gd_t) before the dcache
+	 * will be invalidated.
+	 */
+
+	/* Save registers */
+	mr	r9, r3
+	mr	r10, r4
+	mr	r11, r5
+
+	/* Flush initial global data range */
+	mr	r3, r4
+	addi	r4, r4, CFG_GBL_DATA_SIZE@l
+	bl	flush_dcache_range
+
+#if defined(CFG_INIT_DCACHE_CS)
+	/*
+	 * Undo the earlier data cache set-up for the primordial stack and
+	 * data area. First, invalidate the data cache and then disable data
+	 * cacheability for that area. Finally, restore the EBC values, if
+	 * any.
+	 */
+
+	/* Invalidate the primordial stack and data area in cache */
+	lis	r3, CFG_INIT_RAM_ADDR@h
+	ori	r3, r3, CFG_INIT_RAM_ADDR@l
+
+	lis	r4, CFG_INIT_RAM_END@h
+	ori	r4, r4, CFG_INIT_RAM_END@l
+	add	r4, r4, r3
+
+	bl	invalidate_dcache_range
+
+	/* Disable cacheability for the region */
+	mfdccr	r3
+	lis     r4, ~PPC_128MB_SACR_VALUE(CFG_INIT_RAM_ADDR)@h
+	ori     r4, r4, ~PPC_128MB_SACR_VALUE(CFG_INIT_RAM_ADDR)@l
+	and     r3, r3, r4
+	mtdccr  r3
+
+	/* Restore the EBC parameters */
+	li	r3, PBxAP
+	mtdcr	ebccfga, r3
+	lis	r3, PBxAP_VAL@h
+	ori	r3, r3, PBxAP_VAL@l
+	mtdcr	ebccfgd, r3
+
+	li	r3, PBxCR
+	mtdcr	ebccfga, r3
+	lis	r3, PBxCR_VAL@h
+	ori	r3, r3, PBxCR_VAL@l
+	mtdcr	ebccfgd, r3
+#endif /* defined(CFG_INIT_DCACHE_CS) */
+
+	/* Restore registers */
+	mr	r3, r9
+	mr	r4, r10
+	mr	r5, r11
+#endif /* defined(CONFIG_4xx_DCACHE) || defined(CFG_INIT_DCACHE_CS) */
+
+#ifdef CFG_INIT_RAM_DCACHE
+	/*
+	 * Unlock the previously locked d-cache
+	 */
+	msync
+	isync
+	/* set TFLOOR/NFLOOR to 0 again */
+	lis	r6,0x0001
+	ori	r6,r6,0xf800
+	mtspr	dvlim,r6
+	lis	r6,0x0000
+	ori	r6,r6,0x0000
+	mtspr	dnv0,r6
+	mtspr	dnv1,r6
+	mtspr	dnv2,r6
+	mtspr	dnv3,r6
+	mtspr	dtv0,r6
+	mtspr	dtv1,r6
+	mtspr	dtv2,r6
+	mtspr	dtv3,r6
+	msync
+	isync
+#endif /* CFG_INIT_RAM_DCACHE */
+
 #if defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_460SX)
 	/*
 	 * On some 440er platforms the cache is enabled in the first TLB (Boot-CS)
 	 * to speed up the boot process. Now this cache needs to be disabled.
@@ -1435,13 +1442,17 @@ relocate_code:
 	dccci	0,0			/* Invalidate data cache, now no longer our stack */
 	sync
 	isync
-	addi	r1,r0,0x0000		/* TLB entry #0 */
+#ifdef CFG_TLB_FOR_BOOT_FLASH
+	addi	r1,r0,CFG_TLB_FOR_BOOT_FLASH	/* Use defined TLB */
+#else
+	addi	r1,r0,0x0000		/* Default TLB entry is #0 */
+#endif /* CFG_TLB_FOR_BOOT_FLASH */
 	tlbre	r0,r1,0x0002		/* Read contents */
 	ori	r0,r0,0x0c00		/* Or in the inhibit, write through bit */
 	tlbwe	r0,r1,0x0002		/* Save it out */
 	sync
 	isync
-#endif
+#endif /* defined(CONFIG_440EP) || ... || defined(CONFIG_460GT) */
 	mr	r1,  r3		/* Set new stack pointer		*/
 	mr	r9,  r4		/* Save copy of Init Data pointer	*/
 	mr	r10, r5		/* Save copy of Destination Address	*/
@@ -1451,7 +1462,7 @@ relocate_code:
 	ori	r4, r4, CFG_MONITOR_BASE@l
 	lwz	r5, GOT(__init_end)
 	sub	r5, r5, r4
-	li	r6, CFG_CACHELINE_SIZE		/* Cache Line Size	*/
+	li	r6, L1_CACHE_BYTES		/* Cache Line Size	*/
 
 	/*
 	 * Fix GOT pointer:
@@ -1464,7 +1475,7 @@ relocate_code:
 
 	/* First our own GOT */
 	add	r14, r14, r15
-	/* the the one used by the C code */
+	/* then the one used by the C code */
 	add	r30, r30, r15
 
 	/*
@@ -1569,16 +1580,25 @@ clear_bss:
 	lwz	r4,GOT(_end)
 
 	cmplw	0, r3, r4
-	beq	6f
+	beq	7f
 
 	li	r0, 0
-5:
+
+	andi.	r5, r4, 3
+	beq	6f
+	sub	r4, r4, r5
+	mtctr	r5
+	mr	r5, r4
+5:	stb	r0, 0(r5)
+	addi	r5, r5, 1
+	bdnz	5b
+6:
 	stw	r0, 0(r3)
 	addi	r3, r3, 4
 	cmplw	0, r3, r4
-	bne	5b
-6:
+	bne	6b
 
+7:
 	mr	r3, r9		/* Init Data pointer		*/
 	mr	r4, r10		/* Destination Address		*/
 	bl	board_init_r
@@ -1705,33 +1725,6 @@ trap_reloc:
 	sync
 	blr
 	function_epilog(dcbz_area)
-
-/*----------------------------------------------------------------------------+
-| dflush.  Assume 32K at vector address is cachable.
-+----------------------------------------------------------------------------*/
-	function_prolog(dflush)
-	mfmsr	r9
-	rlwinm	r8,r9,0,15,13
-	rlwinm	r8,r8,0,17,15
-	mtmsr	r8
-	addi	r3,r0,0x0000
-	mtspr	dvlim,r3
-	mfspr	r3,ivpr
-	addi	r4,r0,1024
-	mtctr	r4
-..dflush_loop:
-	lwz	r6,0x0(r3)
-	addi	r3,r3,32
-	bdnz	..dflush_loop
-	addi	r3,r3,-32
-	mtctr	r4
-..ag:	dcbf	r0,r3
-	addi	r3,r3,-32
-	bdnz	..ag
-	sync
-	mtmsr	r9
-	blr
-	function_epilog(dflush)
 #endif /* CONFIG_440 */
 #endif /* CONFIG_NAND_SPL */
 
@@ -1769,23 +1762,6 @@ out32:
 	.globl	in32
 in32:
 	lwz	3,0x0000(3)
-	blr
-
-invalidate_icache:
-	iccci	r0,r0			/* for 405, iccci invalidates the */
-	blr				/*   entire I cache */
-
-invalidate_dcache:
-	addi	r6,0,0x0000		/* clear GPR 6 */
-	/* Do loop for # of dcache congruence classes. */
-	lis	r7, (CFG_DCACHE_SIZE / CFG_CACHELINE_SIZE / 2)@ha	/* TBS for large sized cache */
-	ori	r7, r7, (CFG_DCACHE_SIZE / CFG_CACHELINE_SIZE / 2)@l
-					/* NOTE: dccci invalidates both */
-	mtctr	r7			/* ways in the D cache */
-..dcloop:
-	dccci	0,r6			/* invalidate line */
-	addi	r6,r6, CFG_CACHELINE_SIZE /* bump to next line */
-	bdnz	..dcloop
 	blr
 
 /**************************************************************************/
@@ -1883,13 +1859,13 @@ ppc405ep_init:
 	!-----------------------------------------------------------------------
 	*/
 	mfdcr	r5, CPC0_PLLMR1
-	rlwinm	r4,r5,1,0x1	       /* get system clock source (SSCS) */
+	rlwinm	r4,r5,1,0x1		/* get system clock source (SSCS) */
 	cmpi	cr0,0,r4,0x1
 
-	beq    pll_done			  /* if SSCS =b'1' then PLL has */
-					  /* already been set */
-					  /* and CPU has been reset */
-					  /* so skip to next section */
+	beq    pll_done			/* if SSCS =b'1' then PLL has */
+					/* already been set */
+					/* and CPU has been reset */
+					/* so skip to next section */
 
 #ifdef CONFIG_BUBINGA
 	/*
@@ -1911,13 +1887,13 @@ ppc405ep_init:
 	lwz	r4, 0(r3)
 	addis	r5,0,NVRVFY1@h
 	addi	r5,r5,NVRVFY1@l
-	cmp	cr0,0,r4,r5	       /* Compare 1st NVRAM Magic number*/
+	cmp	cr0,0,r4,r5		/* Compare 1st NVRAM Magic number*/
 	bne	..no_pllset
 	addi	r3,r3,4
 	lwz	r4, 0(r3)
 	addis	r5,0,NVRVFY2@h
 	addi	r5,r5,NVRVFY2@l
-	cmp	cr0,0,r4,r5	       /* Compare 2 NVRAM Magic number */
+	cmp	cr0,0,r4,r5		/* Compare 2 NVRAM Magic number */
 	bne	..no_pllset
 	addi	r3,r3,8			/* Skip over conf_size */
 	lwz	r4, 4(r3)		/* Load PLLMR1 value from NVRAM */
@@ -1941,7 +1917,7 @@ ppc405ep_init:
 #if defined(CONFIG_ZEUS)
 	mfdcr	r4, CPC0_BOOT
 	andi.	r5, r4, CPC0_BOOT_SEP@l
-	bne	strap_1  	/* serial eeprom present */
+	bne	strap_1			/* serial eeprom present */
 	lis	r3,0x0000
 	addi	r3,r3,0x3030
 	lis	r4,0x8042
@@ -1953,10 +1929,10 @@ strap_1:
 	b	1f
 #endif
 
-	addis	r3,0,PLLMR0_DEFAULT@h	    /* PLLMR0 default value */
-	ori	r3,r3,PLLMR0_DEFAULT@l	   /* */
-	addis	r4,0,PLLMR1_DEFAULT@h	    /* PLLMR1 default value */
-	ori	r4,r4,PLLMR1_DEFAULT@l	   /* */
+	addis	r3,0,PLLMR0_DEFAULT@h	/* PLLMR0 default value */
+	ori	r3,r3,PLLMR0_DEFAULT@l	/* */
+	addis	r4,0,PLLMR1_DEFAULT@h	/* PLLMR1 default value */
+	ori	r4,r4,PLLMR1_DEFAULT@l	/* */
 
 #ifdef CONFIG_TAIHU
 	b	1f
@@ -1972,7 +1948,7 @@ strap_1:
 #endif /* CONFIG_TAIHU */
 
 1:
-	b	pll_write		  /* Write the CPC0_PLLMR with new value */
+	b	pll_write		/* Write the CPC0_PLLMR with new value */
 
 pll_done:
 	/*
@@ -1989,7 +1965,7 @@ pll_done:
 pci_wait:
 	bdnz	pci_wait
 
-	blr				  /* return to main code */
+	blr				/* return to main code */
 
 /*
 !-----------------------------------------------------------------------------
@@ -2010,20 +1986,20 @@ pci_wait:
 pll_write:
 	mfdcr  r5, CPC0_UCR
 	andis. r5,r5,0xFFFF
-	ori    r5,r5,0x0101		 /* Stop the UART clocks */
-	mtdcr  CPC0_UCR,r5		 /* Before changing PLL */
+	ori    r5,r5,0x0101		/* Stop the UART clocks */
+	mtdcr  CPC0_UCR,r5		/* Before changing PLL */
 
 	mfdcr  r5, CPC0_PLLMR1
-	rlwinm r5,r5,0,0x7FFFFFFF	 /* Disable PLL */
+	rlwinm r5,r5,0,0x7FFFFFFF	/* Disable PLL */
 	mtdcr	CPC0_PLLMR1,r5
-	oris   r5,r5,0x4000		 /* Set PLL Reset */
+	oris   r5,r5,0x4000		/* Set PLL Reset */
 	mtdcr	CPC0_PLLMR1,r5
 
-	mtdcr	CPC0_PLLMR0,r3		 /* Set clock dividers */
-	rlwinm r5,r4,0,0x3FFFFFFF	 /* Reset & Bypass new PLL dividers */
-	oris   r5,r5,0x4000		 /* Set PLL Reset */
-	mtdcr	CPC0_PLLMR1,r5		 /* Set clock dividers */
-	rlwinm r5,r5,0,0xBFFFFFFF	 /* Clear PLL Reset */
+	mtdcr	CPC0_PLLMR0,r3		/* Set clock dividers */
+	rlwinm r5,r4,0,0x3FFFFFFF	/* Reset & Bypass new PLL dividers */
+	oris   r5,r5,0x4000		/* Set PLL Reset */
+	mtdcr	CPC0_PLLMR1,r5		/* Set clock dividers */
+	rlwinm r5,r5,0,0xBFFFFFFF	/* Clear PLL Reset */
 	mtdcr	CPC0_PLLMR1,r5
 
 		/*
@@ -2044,9 +2020,9 @@ pll_wait:
 	 * Not sure if this is needed...
 	 */
 	addis r3,0,0x1000
-	mtspr dbcr0,r3		     /* This will cause a CPU core reset, and */
-				     /* execution will continue from the poweron */
-				     /* vector of 0xfffffffc */
+	mtspr dbcr0,r3			/* This will cause a CPU core reset, and */
+					/* execution will continue from the poweron */
+					/* vector of 0xfffffffc */
 #endif /* CONFIG_405EP */
 
 #if defined(CONFIG_440)
@@ -2098,3 +2074,75 @@ pll_wait:
 	blr
 	function_epilog(mftlb1)
 #endif /* CONFIG_440 */
+
+#if defined(CONFIG_NAND_SPL)
+/*
+ * void nand_boot_relocate(dst, src, bytes)
+ *
+ * r3 = Destination address to copy code to (in SDRAM)
+ * r4 = Source address to copy code from
+ * r5 = size to copy in bytes
+ */
+nand_boot_relocate:
+	mr	r6,r3
+	mr	r7,r4
+	mflr	r8
+
+	/*
+	 * Copy SPL from icache into SDRAM
+	 */
+	subi	r3,r3,4
+	subi	r4,r4,4
+	srwi	r5,r5,2
+	mtctr	r5
+..spl_loop:
+	lwzu	r0,4(r4)
+	stwu	r0,4(r3)
+	bdnz	..spl_loop
+
+	/*
+	 * Calculate "corrected" link register, so that we "continue"
+	 * in execution in destination range
+	 */
+	sub	r3,r7,r6	/* r3 = src - dst */
+	sub	r8,r8,r3	/* r8 = link-reg - (src - dst) */
+	mtlr	r8
+	blr
+
+nand_boot_common:
+	/*
+	 * First initialize SDRAM. It has to be available *before* calling
+	 * nand_boot().
+	 */
+	lis	r3,CFG_SDRAM_BASE@h
+	ori	r3,r3,CFG_SDRAM_BASE@l
+	bl	initdram
+
+	/*
+	 * Now copy the 4k SPL code into SDRAM and continue execution
+	 * from there.
+	 */
+	lis	r3,CFG_NAND_BOOT_SPL_DST@h
+	ori	r3,r3,CFG_NAND_BOOT_SPL_DST@l
+	lis	r4,CFG_NAND_BOOT_SPL_SRC@h
+	ori	r4,r4,CFG_NAND_BOOT_SPL_SRC@l
+	lis	r5,CFG_NAND_BOOT_SPL_SIZE@h
+	ori	r5,r5,CFG_NAND_BOOT_SPL_SIZE@l
+	bl	nand_boot_relocate
+
+	/*
+	 * We're running from SDRAM now!!!
+	 *
+	 * It is necessary for 4xx systems to relocate from running at
+	 * the original location (0xfffffxxx) to somewhere else (SDRAM
+	 * preferably). This is because CS0 needs to be reconfigured for
+	 * NAND access. And we can't reconfigure this CS when currently
+	 * "running" from it.
+	 */
+
+	/*
+	 * Finally call nand_boot() to load main NAND U-Boot image from
+	 * NAND and jump to it.
+	 */
+	bl	nand_boot		/* will not return */
+#endif /* CONFIG_NAND_SPL */

@@ -52,7 +52,7 @@
  * for a bootloader as small and simple as possible. Instead of worring about
  * unneccesary data copies, node scans, etc, I just optimized for the known
  * common case, a kernel, which looks like:
- * 	(1) most pages are 4096 bytes
+ *	(1) most pages are 4096 bytes
  *	(2) version numbers are somewhat sorted in acsending order
  *	(3) multiple compressed blocks making up one page is uncommon
  *
@@ -116,22 +116,20 @@
 #include <malloc.h>
 #include <linux/stat.h>
 #include <linux/time.h>
-
-#if defined(CONFIG_CMD_JFFS2)
-
+#include <watchdog.h>
 #include <jffs2/jffs2.h>
 #include <jffs2/jffs2_1pass.h>
 
 #include "jffs2_private.h"
 
 
-#define	NODE_CHUNK  	1024	/* size of memory allocation chunk in b_nodes */
-#define	SPIN_BLKSIZE	18  	/* spin after having scanned 1<<BLKSIZE bytes */
+#define	NODE_CHUNK	1024	/* size of memory allocation chunk in b_nodes */
+#define	SPIN_BLKSIZE	18	/* spin after having scanned 1<<BLKSIZE bytes */
 
 /* Debugging switches */
 #undef	DEBUG_DIRENTS		/* print directory entry list after scan */
 #undef	DEBUG_FRAGMENTS		/* print fragment list after scan */
-#undef	DEBUG   			/* enable debugging messages */
+#undef	DEBUG			/* enable debugging messages */
 
 
 #ifdef  DEBUG
@@ -145,7 +143,7 @@ static struct part_info *current_part;
 
 #if (defined(CONFIG_JFFS2_NAND) && \
      defined(CONFIG_CMD_NAND) )
-#if defined(CFG_NAND_LEGACY)
+#if defined(CONFIG_NAND_LEGACY)
 #include <linux/mtd/nand_legacy.h>
 #else
 #include <nand.h>
@@ -160,13 +158,10 @@ static struct part_info *current_part;
  *
  */
 
-#if defined(CFG_NAND_LEGACY)
+#if defined(CONFIG_NAND_LEGACY)
 /* this one defined in nand_legacy.c */
 int read_jffs2_nand(size_t start, size_t len,
 		size_t * retlen, u_char * buf, int nanddev);
-#else
-/* info for NAND chips, defined in drivers/nand/nand.c */
-extern nand_info_t nand_info[];
 #endif
 
 #define NAND_PAGE_SIZE 512
@@ -185,11 +180,7 @@ static int read_nand_cached(u32 off, u32 size, u_char *buf)
 {
 	struct mtdids *id = current_part->dev->id;
 	u32 bytes_read = 0;
-#if defined(CFG_NAND_LEGACY)
 	size_t retlen;
-#else
-	ulong retlen;
-#endif
 	int cpy_bytes;
 
 	while (bytes_read < size) {
@@ -207,7 +198,7 @@ static int read_nand_cached(u32 off, u32 size, u_char *buf)
 				}
 			}
 
-#if defined(CFG_NAND_LEGACY)
+#if defined(CONFIG_NAND_LEGACY)
 			if (read_jffs2_nand(nand_cache_off, NAND_CACHE_SIZE,
 						&retlen, nand_cache, id->num) < 0 ||
 					retlen != NAND_CACHE_SIZE) {
@@ -745,7 +736,7 @@ jffs2_1pass_find_inode(struct b_lists * pL, const char *name, u32 pino)
 			}
 
 			if (jDir->version == version && inode != 0) {
-			    	/* I'm pretty sure this isn't legal */
+				/* I'm pretty sure this isn't legal */
 				putstr(" ** ERROR ** ");
 				putnstr(jDir->name, jDir->nsize);
 				putLabeledWord(" has dup version =", version);
@@ -963,13 +954,13 @@ jffs2_1pass_resolve_inode(struct b_lists * pL, u32 ino)
 	for(b = pL->dir.listHead; b; b = b->next) {
 		jDir = (struct jffs2_raw_dirent *) get_node_mem(b->offset);
 		if (ino == jDir->ino) {
-		    	if (jDir->version < version) {
+			if (jDir->version < version) {
 				put_fl_mem(jDir);
 				continue;
 			}
 
 			if (jDir->version == version && jDirFoundType) {
-			    	/* I'm pretty sure this isn't legal */
+				/* I'm pretty sure this isn't legal */
 				putstr(" ** ERROR ** ");
 				putnstr(jDir->name, jDir->nsize);
 				putLabeledWord(" has dup version (resolve) = ",
@@ -1155,7 +1146,7 @@ dump_dirents(struct b_lists *pL)
 		putLabeledWord("\tbuild_list: type = ", jDir->type);
 		putLabeledWord("\tbuild_list: node_crc = ", jDir->node_crc);
 		putLabeledWord("\tbuild_list: name_crc = ", jDir->name_crc);
-		putLabeledWord("\tbuild_list: offset = ", b->offset); 	/* FIXME: ? [RS] */
+		putLabeledWord("\tbuild_list: offset = ", b->offset);	/* FIXME: ? [RS] */
 		b = b->next;
 		put_fl_mem(jDir);
 	}
@@ -1187,10 +1178,12 @@ jffs2_1pass_build_lists(struct part_info * part)
 
 	/* start at the beginning of the partition */
 	while (offset < max) {
-	    	if ((oldoffset >> SPIN_BLKSIZE) != (offset >> SPIN_BLKSIZE)) {
+		if ((oldoffset >> SPIN_BLKSIZE) != (offset >> SPIN_BLKSIZE)) {
 			printf("\b\b%c ", spinner[counter++ % sizeof(spinner)]);
 			oldoffset = offset;
 		}
+
+		WATCHDOG_RESET();
 
 		node = (struct jffs2_unknown_node *) get_node_mem((u32)part->offset + offset);
 		if (node->magic == JFFS2_MAGIC_BITMASK && hdr_crc(node)) {
@@ -1217,16 +1210,18 @@ jffs2_1pass_build_lists(struct part_info * part)
 			} else if (node->nodetype == JFFS2_NODETYPE_CLEANMARKER) {
 				if (node->totlen != sizeof(struct jffs2_unknown_node))
 					printf("OOPS Cleanmarker has bad size "
-						"%d != %d\n", node->totlen,
+						"%d != %zu\n",
+						node->totlen,
 						sizeof(struct jffs2_unknown_node));
 			} else if (node->nodetype == JFFS2_NODETYPE_PADDING) {
 				if (node->totlen < sizeof(struct jffs2_unknown_node))
 					printf("OOPS Padding has bad size "
-						"%d < %d\n", node->totlen,
+						"%d < %zu\n",
+						node->totlen,
 						sizeof(struct jffs2_unknown_node));
 			} else {
-				printf("Unknown node type: %x len %d "
-					"offset 0x%x\n", node->nodetype,
+				printf("Unknown node type: %x len %d offset 0x%x\n",
+					node->nodetype,
 					node->totlen, offset);
 			}
 			offset += ((node->totlen + 3) & ~3);
@@ -1396,5 +1391,3 @@ jffs2_1pass_info(struct part_info * part)
 	}
 	return 1;
 }
-
-#endif

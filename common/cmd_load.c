@@ -423,9 +423,6 @@ write_record (char *buf)
 #define tochar(x) ((char) (((x) + SPACE) & 0xff))
 #define untochar(x) ((int) (((x) - SPACE) & 0xff))
 
-extern int os_data_count;
-extern int os_data_header[8];
-
 static void set_kerm_bin_mode(unsigned long *);
 static int k_recv(void);
 static ulong load_serial_bin (ulong offset);
@@ -521,8 +518,15 @@ int do_load_serial_bin (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		char *s;
 
 		if (((s = getenv("autoscript")) != NULL) && (strcmp(s,"yes") == 0)) {
-			printf("Running autoscript at addr 0x%08lX ...\n", load_addr);
-			rcode = autoscript (load_addr);
+			printf ("Running autoscript at addr 0x%08lX", load_addr);
+
+			s = getenv ("autoscript_uname");
+			if (s)
+				printf (":%s ...\n", s);
+			else
+				puts (" ...\n");
+
+			rcode = autoscript (load_addr, s);
 		}
 	}
 #endif
@@ -624,46 +628,39 @@ void send_nack (int n)
 }
 
 
-/* os_data_* takes an OS Open image and puts it into memory, and
-   puts the boot header in an array named os_data_header
-
-   if image is binary, no header is stored in os_data_header.
-*/
 void (*os_data_init) (void);
 void (*os_data_char) (char new_char);
 static int os_data_state, os_data_state_saved;
-int os_data_count;
-static int os_data_count_saved;
 static char *os_data_addr, *os_data_addr_saved;
 static char *bin_start_address;
-int os_data_header[8];
+
 static void bin_data_init (void)
 {
 	os_data_state = 0;
-	os_data_count = 0;
 	os_data_addr = bin_start_address;
 }
+
 static void os_data_save (void)
 {
 	os_data_state_saved = os_data_state;
-	os_data_count_saved = os_data_count;
 	os_data_addr_saved = os_data_addr;
 }
+
 static void os_data_restore (void)
 {
 	os_data_state = os_data_state_saved;
-	os_data_count = os_data_count_saved;
 	os_data_addr = os_data_addr_saved;
 }
+
 static void bin_data_char (char new_char)
 {
 	switch (os_data_state) {
 	case 0:					/* data */
 		*os_data_addr++ = new_char;
-		--os_data_count;
 		break;
 	}
 }
+
 static void set_kerm_bin_mode (unsigned long *addr)
 {
 	bin_start_address = (char *) addr;
@@ -679,16 +676,19 @@ void k_data_init (void)
 	k_data_escape = 0;
 	os_data_init ();
 }
+
 void k_data_save (void)
 {
 	k_data_escape_saved = k_data_escape;
 	os_data_save ();
 }
+
 void k_data_restore (void)
 {
 	k_data_escape = k_data_escape_saved;
 	os_data_restore ();
 }
+
 void k_data_char (char new_char)
 {
 	if (k_data_escape) {
@@ -807,7 +807,6 @@ static int k_recv (void)
 	int done;
 	int length;
 	int n, last_n;
-	int z = 0;
 	int len_lo, len_hi;
 
 	/* initialize some protocol parameters */
@@ -972,7 +971,6 @@ START:
 			if (k_state == BREAK_TYPE)
 				done = 1;
 		}
-		++z;
 	}
 	return ((ulong) os_data_addr - (ulong) bin_start_address);
 }

@@ -228,7 +228,8 @@
  *     To stop	use: " "
  */
 # define CONFIG_AUTOBOOT_KEYED
-# define CONFIG_AUTOBOOT_PROMPT "Autobooting in %d seconds, press \" \" to stop\n"
+# define CONFIG_AUTOBOOT_PROMPT \
+	"Autobooting in %d seconds, press \" \" to stop\n", bootdelay
 # define CONFIG_AUTOBOOT_STOP_STR	" "
 # undef CONFIG_AUTOBOOT_DELAY_STR
 # define DEBUG_BOOTKEYS		0
@@ -237,7 +238,7 @@
 /* Define a command string that is automatically executed when no character
  * is read on the console interface withing "Boot Delay" after reset.
  */
-#undef	CONFIG_BOOT_ROOT_INITRD 	/* Use ram disk for the root file system */
+#undef	CONFIG_BOOT_ROOT_INITRD		/* Use ram disk for the root file system */
 #define	CONFIG_BOOT_ROOT_NFS		/* Use a NFS mounted root file system */
 
 #ifdef CONFIG_BOOT_ROOT_INITRD
@@ -451,7 +452,7 @@
  */
 
 #define CFG_FLASH_CFI		1	/* Flash is CFI conformant		*/
-#define CFG_FLASH_CFI_DRIVER	1	/* Use the common driver		*/
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver		*/
 #define CFG_MAX_FLASH_SECT	128	/* max number of sectors on one chip	*/
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
 #define CFG_FLASH_INCREMENT	0	/* there is only one bank		*/

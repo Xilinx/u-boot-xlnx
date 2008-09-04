@@ -44,23 +44,18 @@
 #include <devices.h>
 #include <version.h>
 #include <net.h>
+#include <serial.h>
+#include <nand.h>
+#include <onenand_uboot.h>
 
 #ifdef CONFIG_DRIVER_SMC91111
-#include "../drivers/smc91111.h"
+#include "../drivers/net/smc91111.h"
 #endif
 #ifdef CONFIG_DRIVER_LAN91C96
-#include "../drivers/lan91c96.h"
+#include "../drivers/net/lan91c96.h"
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#if defined(CONFIG_CMD_NAND)
-void nand_init (void);
-#endif
-
-#if defined(CONFIG_CMD_ONENAND)
-void onenand_init(void);
-#endif
 
 ulong monitor_flash_len;
 
@@ -82,6 +77,11 @@ extern void cs8900_get_enetaddr (uchar * addr);
 
 #ifdef CONFIG_DRIVER_RTL8019
 extern void rtl8019_get_enetaddr (uchar * addr);
+#endif
+
+#if defined(CONFIG_HARD_I2C) || \
+    defined(CONFIG_SOFT_I2C)
+#include <i2c.h>
 #endif
 
 /*
@@ -114,6 +114,7 @@ void *sbrk (ptrdiff_t increment)
 
 	return ((void *) old);
 }
+
 
 /************************************************************************
  * Coloured LED functionality
@@ -209,6 +210,28 @@ static void display_flash_config (ulong size)
 }
 #endif /* CFG_NO_FLASH */
 
+#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
+static int init_func_i2c (void)
+{
+	puts ("I2C:   ");
+	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	puts ("ready\n");
+	return (0);
+}
+#endif
+
+#ifdef CONFIG_SKIP_RELOCATE_UBOOT
+/*
+ * This routine sets the relocation done flag, because even if
+ * relocation is skipped, the flag is used by other generic code.
+ */
+static int reloc_init(void)
+{
+	gd->flags |= GD_FLG_RELOC;
+	return 0;
+}
+#endif
+
 /*
  * Breathe some life into the board...
  *
@@ -238,6 +261,11 @@ int print_cpuinfo (void); /* test-only */
 
 init_fnc_t *init_sequence[] = {
 	cpu_init,		/* basic cpu dependent setup */
+#if defined(CONFIG_SKIP_RELOCATE_UBOOT)
+	reloc_init,		/* Set the relocation done flag, must
+				   do this AFTER cpu_init(), but as soon
+				   as possible */
+#endif
 	board_init,		/* basic board dependent setup */
 	interrupt_init,		/* set up exceptions */
 	env_init,		/* initialize environment */
@@ -251,6 +279,9 @@ init_fnc_t *init_sequence[] = {
 #if defined(CONFIG_DISPLAY_BOARDINFO)
 	checkboard,		/* display board info */
 #endif
+#if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
+	init_func_i2c,
+#endif
 	dram_init,		/* configure available RAM banks */
 	display_dram_config,
 	NULL,
@@ -260,7 +291,7 @@ void start_armboot (void)
 {
 	init_fnc_t **init_fnc_ptr;
 	char *s;
-#ifndef CFG_NO_FLASH
+#if !defined(CFG_NO_FLASH) || defined (CONFIG_VFD) || defined(CONFIG_LCD)
 	ulong size;
 #endif
 #if defined(CONFIG_VFD) || defined(CONFIG_LCD)
@@ -304,16 +335,19 @@ void start_armboot (void)
 #endif /* CONFIG_VFD */
 
 #ifdef CONFIG_LCD
-#	ifndef PAGE_SIZE
-#	  define PAGE_SIZE 4096
-#	endif
-	/*
-	 * reserve memory for LCD display (always full pages)
-	 */
-	/* bss_end is defined in the board-specific linker script */
-	addr = (_bss_end + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
-	size = lcd_setmem (addr);
-	gd->fb_base = addr;
+	/* board init may have inited fb_base */
+	if (!gd->fb_base) {
+#		ifndef PAGE_SIZE
+#		  define PAGE_SIZE 4096
+#		endif
+		/*
+		 * reserve memory for LCD display (always full pages)
+		 */
+		/* bss_end is defined in the board-specific linker script */
+		addr = (_bss_end + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
+		size = lcd_setmem (addr);
+		gd->fb_base = addr;
+	}
 #endif /* CONFIG_LCD */
 
 	/* armboot_start is defined in the board-specific linker script */
@@ -396,9 +430,9 @@ void start_armboot (void)
 
 	/* Perform network card initialisation if necessary */
 #ifdef CONFIG_DRIVER_TI_EMAC
-extern void dm644x_eth_set_mac_addr (const u_int8_t *addr);
+extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
 	if (getenv ("ethaddr")) {
-		dm644x_eth_set_mac_addr(gd->bd->bi_enetaddr);
+		davinci_eth_set_mac_addr(gd->bd->bi_enetaddr);
 	}
 #endif
 
@@ -430,6 +464,10 @@ extern void dm644x_eth_set_mac_addr (const u_int8_t *addr);
 	puts ("Net:   ");
 #endif
 	eth_initialize(gd->bd);
+#if defined(CONFIG_RESET_PHY_R)
+	debug ("Reset Ethernet PHY\n");
+	reset_phy();
+#endif
 #endif
 	/* main_loop() can return to retry autoboot, if so just run it again. */
 	for (;;) {

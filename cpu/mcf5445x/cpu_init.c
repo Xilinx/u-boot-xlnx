@@ -61,10 +61,12 @@ void cpu_init_f(void)
 	    GPIO_PAR_FBCTL_OE | GPIO_PAR_FBCTL_TA_TA | GPIO_PAR_FBCTL_RW_RW |
 	    GPIO_PAR_FBCTL_TS_TS;
 
+#if !defined(CONFIG_CF_SBF)
 #if (defined(CFG_CS0_BASE) && defined(CFG_CS0_MASK) && defined(CFG_CS0_CTRL))
 	fbcs->csar0 = CFG_CS0_BASE;
 	fbcs->cscr0 = CFG_CS0_CTRL;
 	fbcs->csmr0 = CFG_CS0_MASK;
+#endif
 #endif
 
 #if (defined(CFG_CS1_BASE) && defined(CFG_CS1_MASK) && defined(CFG_CS1_CTRL))
@@ -110,10 +112,9 @@ void cpu_init_f(void)
  */
 int cpu_init_r(void)
 {
-#ifdef CONFIG_MCFTMR
+#ifdef CONFIG_MCFRTC
 	volatile rtc_t *rtc = (volatile rtc_t *)(CFG_MCFRTC_BASE);
 	volatile rtcex_t *rtcex = (volatile rtcex_t *)&rtc->extended;
-	u32 oscillator = CFG_RTC_OSCILLATOR;
 
 	rtcex->gocu = (CFG_RTC_OSCILLATOR >> 16) & 0xFFFF;
 	rtcex->gocl = CFG_RTC_OSCILLATOR & 0xFFFF;

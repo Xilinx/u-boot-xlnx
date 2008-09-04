@@ -1,9 +1,15 @@
 /*
  * cpu/ppc4xx/44x_spd_ddr2.c
  * This SPD SDRAM detection code supports AMCC PPC44x cpu's with a
- * DDR2 controller (non Denali Core). Those are 440SP/SPe.
+ * DDR2 controller (non Denali Core). Those currently are:
  *
- * (C) Copyright 2007
+ * 405:		405EX(r)
+ * 440/460:	440SP/440SPe/460EX/460GT
+ *
+ * Copyright (c) 2008 Nuovation System Designs, LLC
+ *   Grant Erickson <gerickson@nuovations.com>
+
+ * (C) Copyright 2007-2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * COPYRIGHT   AMCC   CORPORATION 2004
@@ -40,9 +46,23 @@
 #include <asm/io.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
+#include <asm/cache.h>
 
-#if defined(CONFIG_SPD_EEPROM) &&				\
-	(defined(CONFIG_440SP) || defined(CONFIG_440SPE))
+#include "ecc.h"
+
+#if defined(CONFIG_SDRAM_PPC4xx_IBM_DDR2)
+
+#define PPC4xx_IBM_DDR2_DUMP_REGISTER(mnemonic)				\
+	do {								\
+		u32 data;						\
+		mfsdram(SDRAM_##mnemonic, data);			\
+		printf("%20s[%02x] = 0x%08X\n",				\
+		       "SDRAM_" #mnemonic, SDRAM_##mnemonic, data);	\
+	} while (0)
+
+static inline void ppc4xx_ibm_ddr2_register_dump(void);
+
+#if defined(CONFIG_SPD_EEPROM)
 
 /*-----------------------------------------------------------------------------+
  * Defines
@@ -98,6 +118,7 @@
 
 #define ODS_FULL	0x00000000
 #define ODS_REDUCED	0x00000002
+#define OCD_CALIB_DEF	0x00000380
 
 /* defines for ODT (On Die Termination) of the 440SP(e) DDR2 controller */
 #define ODT_EB0R	(0x80000000 >> 8)
@@ -111,8 +132,6 @@
 #define NUMMEMWORDS	8
 #define NUMLOOPS	64		/* memory test loops */
 
-#undef CONFIG_ECC_ERROR_RESET		/* test-only: see description below, at check_ecc() */
-
 /*
  * This DDR2 setup code can dynamically setup the TLB entries for the DDR2 memory
  * region. Right now the cache should still be disabled in U-Boot because of the
@@ -120,13 +139,27 @@
  * memory.
  *
  * If at some time this restriction doesn't apply anymore, just define
- * CFG_ENABLE_SDRAM_CACHE in the board config file and this code should setup
+ * CONFIG_4xx_DCACHE in the board config file and this code should setup
  * everything correctly.
  */
-#ifdef CFG_ENABLE_SDRAM_CACHE
+#ifdef CONFIG_4xx_DCACHE
 #define MY_TLB_WORD2_I_ENABLE	0			/* enable caching on SDRAM */
 #else
 #define MY_TLB_WORD2_I_ENABLE	TLB_WORD2_I_ENABLE	/* disable caching on SDRAM */
+#endif
+
+/*
+ * Newer PPC's like 440SPe, 460EX/GT can be equipped with more than 2GB of SDRAM.
+ * To support such configurations, we "only" map the first 2GB via the TLB's. We
+ * need some free virtual address space for the remaining peripherals like, SoC
+ * devices, FLASH etc.
+ *
+ * Note that ECC is currently not supported on configurations with more than 2GB
+ * SDRAM. This is because we only map the first 2GB on such systems, and therefore
+ * the ECC parity byte of the remaining area can't be written.
+ */
+#ifndef CONFIG_MAX_MEM_MAPPED
+#define CONFIG_MAX_MEM_MAPPED	((phys_size_t)2 << 30)
 #endif
 
 /*
@@ -173,7 +206,7 @@ typedef enum ddr_cas_id {
 /*-----------------------------------------------------------------------------+
  * Prototypes
  *-----------------------------------------------------------------------------*/
-static unsigned long sdram_memsize(void);
+static phys_size_t sdram_memsize(void);
 static void get_spd_info(unsigned long *dimm_populated,
 			 unsigned char *iic0_dimm_addr,
 			 unsigned long num_dimm_banks);
@@ -235,10 +268,8 @@ static void	test(void);
 #else
 static void	DQS_calibration_process(void);
 #endif
-static void ppc440sp_sdram_register_dump(void);
 int do_reset (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 void dcbz_area(u32 start_address, u32 num_bytes);
-void dflush(void);
 
 static u32 mfdcr_any(u32 dcr)
 {
@@ -299,9 +330,9 @@ static unsigned char spd_read(uchar chip, uint addr)
 /*-----------------------------------------------------------------------------+
  * sdram_memsize
  *-----------------------------------------------------------------------------*/
-static unsigned long sdram_memsize(void)
+static phys_size_t sdram_memsize(void)
 {
-	unsigned long mem_size;
+	phys_size_t mem_size;
 	unsigned long mcopt2;
 	unsigned long mcstat;
 	unsigned long mb0cf;
@@ -357,6 +388,8 @@ static unsigned long sdram_memsize(void)
 					mem_size+=4096;
 					break;
 				default:
+					printf("WARNING: Unsupported bank size (SDSZ=0x%lx)!\n"
+					       , sdsz);
 					mem_size=0;
 					break;
 				}
@@ -364,8 +397,7 @@ static unsigned long sdram_memsize(void)
 		}
 	}
 
-	mem_size *= 1024 * 1024;
-	return(mem_size);
+	return mem_size << 20;
 }
 
 /*-----------------------------------------------------------------------------+
@@ -382,18 +414,18 @@ static unsigned long sdram_memsize(void)
  *		 banks appropriately. If Auto Memory Configuration is
  *		 not used, it is assumed that no DIMM is plugged
  *-----------------------------------------------------------------------------*/
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	unsigned char iic0_dimm_addr[] = SPD_EEPROM_ADDRESS;
 	unsigned char spd0[MAX_SPD_BYTES];
 	unsigned char spd1[MAX_SPD_BYTES];
 	unsigned char *dimm_spd[MAXDIMMS];
 	unsigned long dimm_populated[MAXDIMMS];
-	unsigned long num_dimm_banks;		    /* on board dimm banks */
+	unsigned long num_dimm_banks;		/* on board dimm banks */
 	unsigned long val;
-	ddr_cas_id_t  selected_cas;
+	ddr_cas_id_t selected_cas = DDR_CAS_5;	/* preset to silence compiler */
 	int write_recovery;
-	unsigned long dram_size = 0;
+	phys_size_t dram_size = 0;
 
 	num_dimm_banks = sizeof(iic0_dimm_addr);
 
@@ -539,17 +571,32 @@ long int initdram(int board_type)
 	mtsdram(SDRAM_MCOPT2,
 		(val & ~(SDRAM_MCOPT2_SREN_MASK | SDRAM_MCOPT2_DCEN_MASK |
 			 SDRAM_MCOPT2_IPTR_MASK | SDRAM_MCOPT2_ISIE_MASK)) |
-		(SDRAM_MCOPT2_DCEN_ENABLE | SDRAM_MCOPT2_IPTR_EXECUTE));
+			 SDRAM_MCOPT2_IPTR_EXECUTE);
 
 	/*------------------------------------------------------------------
-	 * Wait for SDRAM_CFG0_DC_EN to complete.
+	 * Wait for IPTR_EXECUTE init sequence to complete.
 	 *-----------------------------------------------------------------*/
 	do {
 		mfsdram(SDRAM_MCSTAT, val);
 	} while ((val & SDRAM_MCSTAT_MIC_MASK) == SDRAM_MCSTAT_MIC_NOTCOMP);
 
+	/* enable the controller only after init sequence completes */
+	mfsdram(SDRAM_MCOPT2, val);
+	mtsdram(SDRAM_MCOPT2, (val | SDRAM_MCOPT2_DCEN_ENABLE));
+
+	/* Make sure delay-line calibration is done before proceeding */
+	do {
+		mfsdram(SDRAM_DLCR, val);
+	} while (!(val & SDRAM_DLCR_DLCS_COMPLETE));
+
 	/* get installed memory size */
 	dram_size = sdram_memsize();
+
+	/*
+	 * Limit size to 2GB
+	 */
+	if (dram_size > CONFIG_MAX_MEM_MAPPED)
+		dram_size = CONFIG_MAX_MEM_MAPPED;
 
 	/* and program tlb entries for this size (dynamic) */
 
@@ -579,9 +626,16 @@ long int initdram(int board_type)
 	remove_tlb(0, dram_size);
 	program_tlb(0, 0, dram_size, MY_TLB_WORD2_I_ENABLE);
 
-	ppc440sp_sdram_register_dump();
+	ppc4xx_ibm_ddr2_register_dump();
 
-	return dram_size;
+	/*
+	 * Clear potential errors resulting from auto-calibration.
+	 * If not done, then we could get an interrupt later on when
+	 * exceptions are enabled.
+	 */
+	set_mcsr(get_mcsr());
+
+	return sdram_memsize();
 }
 
 static void get_spd_info(unsigned long *dimm_populated,
@@ -623,7 +677,7 @@ static void get_spd_info(unsigned long *dimm_populated,
 
 void board_add_ram_info(int use_default)
 {
-	PPC440_SYS_INFO board_cfg;
+	PPC4xx_SYS_INFO board_cfg;
 	u32 val;
 
 	if (is_ecc_enabled())
@@ -741,7 +795,7 @@ static void check_frequency(unsigned long *dimm_populated,
 	unsigned long calc_cycle_time;
 	unsigned long sdram_freq;
 	unsigned long sdr_ddrpll;
-	PPC440_SYS_INFO board_cfg;
+	PPC4xx_SYS_INFO board_cfg;
 
 	/*------------------------------------------------------------------
 	 * Get the board configuration info.
@@ -825,8 +879,8 @@ static void check_rank_number(unsigned long *dimm_populated,
 
 
 			if (dimm_rank > MAXRANKS) {
-				printf("ERROR: DRAM DIMM detected with %d ranks in "
-				       "slot %d is not supported.\n", dimm_rank, dimm_num);
+				printf("ERROR: DRAM DIMM detected with %lu ranks in "
+				       "slot %lu is not supported.\n", dimm_rank, dimm_num);
 				printf("Only %d ranks are supported for all DIMM.\n", MAXRANKS);
 				printf("Replace the DIMM module with a supported DIMM.\n\n");
 				spd_ddr_init_hang ();
@@ -1027,7 +1081,7 @@ static void program_copt1(unsigned long *dimm_populated,
 				dimm_32bit = TRUE;
 				break;
 			default:
-				printf("WARNING: Detected a DIMM with a data width of %d bits.\n",
+				printf("WARNING: Detected a DIMM with a data width of %lu bits.\n",
 				       data_width);
 				printf("Only DIMMs with 32 or 64 bit DDR-SDRAM widths are supported.\n");
 				break;
@@ -1115,50 +1169,50 @@ static void program_codt(unsigned long *dimm_populated,
 	if (dimm_type == SDRAM_DDR2) {
 		codt |= SDRAM_CODT_DQS_1_8_V_DDR2;
 		if ((total_dimm == 1) && (firstSlot == TRUE)) {
-			if (total_rank == 1) {
+			if (total_rank == 1) {	/* PUUU */
 				codt |= CALC_ODT_R(0);
 				modt0 = CALC_ODT_W(0);
 				modt1 = 0x00000000;
 				modt2 = 0x00000000;
 				modt3 = 0x00000000;
 			}
-			if (total_rank == 2) {
+			if (total_rank == 2) {	/* PPUU */
 				codt |= CALC_ODT_R(0) | CALC_ODT_R(1);
-				modt0 = CALC_ODT_W(0);
-				modt1 = CALC_ODT_W(0);
+				modt0 = CALC_ODT_W(0) | CALC_ODT_W(1);
+				modt1 = 0x00000000;
 				modt2 = 0x00000000;
 				modt3 = 0x00000000;
 			}
 		} else if ((total_dimm == 1) && (firstSlot != TRUE)) {
-			if (total_rank == 1) {
+			if (total_rank == 1) {	/* UUPU */
 				codt |= CALC_ODT_R(2);
 				modt0 = 0x00000000;
 				modt1 = 0x00000000;
 				modt2 = CALC_ODT_W(2);
 				modt3 = 0x00000000;
 			}
-			if (total_rank == 2) {
+			if (total_rank == 2) {	/* UUPP */
 				codt |= CALC_ODT_R(2) | CALC_ODT_R(3);
 				modt0 = 0x00000000;
 				modt1 = 0x00000000;
-				modt2 = CALC_ODT_W(2);
-				modt3 = CALC_ODT_W(2);
+				modt2 = CALC_ODT_W(2) | CALC_ODT_W(3);
+				modt3 = 0x00000000;
 			}
 		}
 		if (total_dimm == 2) {
-			if (total_rank == 2) {
+			if (total_rank == 2) {	/* PUPU */
 				codt |= CALC_ODT_R(0) | CALC_ODT_R(2);
 				modt0 = CALC_ODT_RW(2);
 				modt1 = 0x00000000;
 				modt2 = CALC_ODT_RW(0);
 				modt3 = 0x00000000;
 			}
-			if (total_rank == 4) {
+			if (total_rank == 4) {	/* PPPP */
 				codt |= CALC_ODT_R(0) | CALC_ODT_R(1) |
 					CALC_ODT_R(2) | CALC_ODT_R(3);
-				modt0 = CALC_ODT_RW(2);
+				modt0 = CALC_ODT_RW(2) | CALC_ODT_RW(3);
 				modt1 = 0x00000000;
-				modt2 = CALC_ODT_RW(0);
+				modt2 = CALC_ODT_RW(0) | CALC_ODT_RW(1);
 				modt3 = 0x00000000;
 			}
 		}
@@ -1299,22 +1353,50 @@ static void program_initplr(unsigned long *dimm_populated,
 		emr = CMD_EMR | SELECT_EMR | odt | ods;
 		emr2 = CMD_EMR | SELECT_EMR2;
 		emr3 = CMD_EMR | SELECT_EMR3;
-		mtsdram(SDRAM_INITPLR0,  0xB5000000 | CMD_NOP);		/* NOP */
+		/* NOP - Wait 106 MemClk cycles */
+		mtsdram(SDRAM_INITPLR0, SDRAM_INITPLR_ENABLE | CMD_NOP |
+					SDRAM_INITPLR_IMWT_ENCODE(106));
 		udelay(1000);
-		mtsdram(SDRAM_INITPLR1,  0x82000400 | CMD_PRECHARGE);	/* precharge 8 DDR clock cycle */
-		mtsdram(SDRAM_INITPLR2,  0x80800000 | emr2);		/* EMR2 */
-		mtsdram(SDRAM_INITPLR3,  0x80800000 | emr3);		/* EMR3 */
-		mtsdram(SDRAM_INITPLR4,  0x80800000 | emr);		/* EMR DLL ENABLE */
-		mtsdram(SDRAM_INITPLR5,  0x80800000 | mr | DLL_RESET);	/* MR w/ DLL reset */
+		/* precharge 4 MemClk cycles */
+		mtsdram(SDRAM_INITPLR1, SDRAM_INITPLR_ENABLE | CMD_PRECHARGE |
+					SDRAM_INITPLR_IMWT_ENCODE(4));
+		/* EMR2 - Wait tMRD (2 MemClk cycles) */
+		mtsdram(SDRAM_INITPLR2, SDRAM_INITPLR_ENABLE | emr2 |
+					SDRAM_INITPLR_IMWT_ENCODE(2));
+		/* EMR3 - Wait tMRD (2 MemClk cycles) */
+		mtsdram(SDRAM_INITPLR3, SDRAM_INITPLR_ENABLE | emr3 |
+					SDRAM_INITPLR_IMWT_ENCODE(2));
+		/* EMR DLL ENABLE - Wait tMRD (2 MemClk cycles) */
+		mtsdram(SDRAM_INITPLR4, SDRAM_INITPLR_ENABLE | emr |
+					SDRAM_INITPLR_IMWT_ENCODE(2));
+		/* MR w/ DLL reset - 200 cycle wait for DLL reset */
+		mtsdram(SDRAM_INITPLR5, SDRAM_INITPLR_ENABLE | mr | DLL_RESET |
+					SDRAM_INITPLR_IMWT_ENCODE(200));
 		udelay(1000);
-		mtsdram(SDRAM_INITPLR6,  0x82000400 | CMD_PRECHARGE);	/* precharge 8 DDR clock cycle */
-		mtsdram(SDRAM_INITPLR7,  0x8a000000 | CMD_REFRESH);	/* Refresh  50 DDR clock cycle */
-		mtsdram(SDRAM_INITPLR8,  0x8a000000 | CMD_REFRESH);	/* Refresh  50 DDR clock cycle */
-		mtsdram(SDRAM_INITPLR9,  0x8a000000 | CMD_REFRESH);	/* Refresh  50 DDR clock cycle */
-		mtsdram(SDRAM_INITPLR10, 0x8a000000 | CMD_REFRESH);	/* Refresh  50 DDR clock cycle */
-		mtsdram(SDRAM_INITPLR11, 0x80000000 | mr);		/* MR w/o DLL reset */
-		mtsdram(SDRAM_INITPLR12, 0x80800380 | emr);		/* EMR OCD Default */
-		mtsdram(SDRAM_INITPLR13, 0x80800000 | emr);		/* EMR OCD Exit */
+		/* precharge 4 MemClk cycles */
+		mtsdram(SDRAM_INITPLR6, SDRAM_INITPLR_ENABLE | CMD_PRECHARGE |
+					SDRAM_INITPLR_IMWT_ENCODE(4));
+		/* Refresh 25 MemClk cycles */
+		mtsdram(SDRAM_INITPLR7, SDRAM_INITPLR_ENABLE | CMD_REFRESH |
+					SDRAM_INITPLR_IMWT_ENCODE(25));
+		/* Refresh 25 MemClk cycles */
+		mtsdram(SDRAM_INITPLR8, SDRAM_INITPLR_ENABLE | CMD_REFRESH |
+					SDRAM_INITPLR_IMWT_ENCODE(25));
+		/* Refresh 25 MemClk cycles */
+		mtsdram(SDRAM_INITPLR9, SDRAM_INITPLR_ENABLE | CMD_REFRESH |
+					SDRAM_INITPLR_IMWT_ENCODE(25));
+		/* Refresh 25 MemClk cycles */
+		mtsdram(SDRAM_INITPLR10, SDRAM_INITPLR_ENABLE | CMD_REFRESH |
+					 SDRAM_INITPLR_IMWT_ENCODE(25));
+		/* MR w/o DLL reset - Wait tMRD (2 MemClk cycles) */
+		mtsdram(SDRAM_INITPLR11, SDRAM_INITPLR_ENABLE | mr |
+					 SDRAM_INITPLR_IMWT_ENCODE(2));
+		/* EMR OCD Default - Wait tMRD (2 MemClk cycles) */
+		mtsdram(SDRAM_INITPLR12, SDRAM_INITPLR_ENABLE | OCD_CALIB_DEF |
+					 SDRAM_INITPLR_IMWT_ENCODE(2) | emr);
+		/* EMR OCD Exit */
+		mtsdram(SDRAM_INITPLR13, SDRAM_INITPLR_ENABLE | emr |
+					 SDRAM_INITPLR_IMWT_ENCODE(2));
 	} else {
 		printf("ERROR: ucode error as unknown DDR type in program_initplr");
 		spd_ddr_init_hang ();
@@ -1353,7 +1435,7 @@ static void program_mode(unsigned long *dimm_populated,
 	unsigned long max_4_0_tcyc_ns_x_100;
 	unsigned long max_5_0_tcyc_ns_x_100;
 	unsigned long cycle_time_ns_x_100[3];
-	PPC440_SYS_INFO board_cfg;
+	PPC4xx_SYS_INFO board_cfg;
 	unsigned char cas_2_0_available;
 	unsigned char cas_2_5_available;
 	unsigned char cas_3_0_available;
@@ -1580,7 +1662,7 @@ static void program_mode(unsigned long *dimm_populated,
 			printf("Make sure the PLB speed is within the supported range of the DIMMs.\n");
 			printf("cas3=%d cas4=%d cas5=%d\n",
 			       cas_3_0_available, cas_4_0_available, cas_5_0_available);
-			printf("sdram_freq=%d cycle3=%d cycle4=%d cycle5=%d\n\n",
+			printf("sdram_freq=%lu cycle3=%lu cycle4=%lu cycle5=%lu\n\n",
 			       sdram_freq, cycle_3_0_clk, cycle_4_0_clk, cycle_5_0_clk);
 			spd_ddr_init_hang ();
 		}
@@ -1640,7 +1722,7 @@ static void program_rtr(unsigned long *dimm_populated,
 			unsigned char *iic0_dimm_addr,
 			unsigned long num_dimm_banks)
 {
-	PPC440_SYS_INFO board_cfg;
+	PPC4xx_SYS_INFO board_cfg;
 	unsigned long max_refresh_rate;
 	unsigned long dimm_num;
 	unsigned long refresh_rate_type;
@@ -1737,7 +1819,7 @@ static void program_tr(unsigned long *dimm_populated,
 	unsigned long sdram_freq;
 	unsigned long sdr_ddrpll;
 
-	PPC440_SYS_INFO board_cfg;
+	PPC4xx_SYS_INFO board_cfg;
 
 	/*------------------------------------------------------------------
 	 * Get the board configuration info.
@@ -2048,14 +2130,10 @@ static void program_bxcf(unsigned long *dimm_populated,
 	/*------------------------------------------------------------------
 	 * Set the BxCF regs.  First, wipe out the bank config registers.
 	 *-----------------------------------------------------------------*/
-	mtdcr(SDRAMC_CFGADDR, SDRAM_MB0CF);
-	mtdcr(SDRAMC_CFGDATA, 0x00000000);
-	mtdcr(SDRAMC_CFGADDR, SDRAM_MB1CF);
-	mtdcr(SDRAMC_CFGDATA, 0x00000000);
-	mtdcr(SDRAMC_CFGADDR, SDRAM_MB2CF);
-	mtdcr(SDRAMC_CFGDATA, 0x00000000);
-	mtdcr(SDRAMC_CFGADDR, SDRAM_MB3CF);
-	mtdcr(SDRAMC_CFGDATA, 0x00000000);
+	mtsdram(SDRAM_MB0CF, 0x00000000);
+	mtsdram(SDRAM_MB1CF, 0x00000000);
+	mtsdram(SDRAM_MB2CF, 0x00000000);
+	mtsdram(SDRAM_MB3CF, 0x00000000);
 
 	mode = SDRAM_BXCF_M_BE_ENABLE;
 
@@ -2076,7 +2154,7 @@ static void program_bxcf(unsigned long *dimm_populated,
 				if (num_banks == 4)
 					ind = 0;
 				else
-					ind = 5;
+					ind = 5 << 8;
 				switch (num_col_addr) {
 				case 0x08:
 					mode |= (SDRAM_BXCF_M_AM_0 + ind);
@@ -2107,8 +2185,9 @@ static void program_bxcf(unsigned long *dimm_populated,
 				bank_0_populated = 1;
 
 			for (ind_rank = 0; ind_rank < num_ranks; ind_rank++) {
-				mtdcr(SDRAMC_CFGADDR, SDRAM_MB0CF + ((dimm_num + bank_0_populated + ind_rank) << 2));
-				mtdcr(SDRAMC_CFGDATA, mode);
+				mtsdram(SDRAM_MB0CF +
+					((dimm_num + bank_0_populated + ind_rank) << 2),
+					mode);
 			}
 		}
 	}
@@ -2122,14 +2201,15 @@ static void program_memory_queue(unsigned long *dimm_populated,
 				 unsigned long num_dimm_banks)
 {
 	unsigned long dimm_num;
-	unsigned long rank_base_addr;
+	phys_size_t rank_base_addr;
 	unsigned long rank_reg;
-	unsigned long rank_size_bytes;
+	phys_size_t rank_size_bytes;
 	unsigned long rank_size_id;
 	unsigned long num_ranks;
 	unsigned long baseadd_size;
 	unsigned long i;
 	unsigned long bank_0_populated = 0;
+	phys_size_t total_size = 0;
 
 	/*------------------------------------------------------------------
 	 * Reset the rank_base_address.
@@ -2152,28 +2232,38 @@ static void program_memory_queue(unsigned long *dimm_populated,
 			 * Set the sizes
 			 *-----------------------------------------------------------------*/
 			baseadd_size = 0;
-			rank_size_bytes = 4 * 1024 * 1024 * rank_size_id;
 			switch (rank_size_id) {
+			case 0x01:
+				baseadd_size |= SDRAM_RXBAS_SDSZ_1024;
+				total_size = 1024;
+				break;
 			case 0x02:
-				baseadd_size |= SDRAM_RXBAS_SDSZ_8;
+				baseadd_size |= SDRAM_RXBAS_SDSZ_2048;
+				total_size = 2048;
 				break;
 			case 0x04:
-				baseadd_size |= SDRAM_RXBAS_SDSZ_16;
+				baseadd_size |= SDRAM_RXBAS_SDSZ_4096;
+				total_size = 4096;
 				break;
 			case 0x08:
 				baseadd_size |= SDRAM_RXBAS_SDSZ_32;
+				total_size = 32;
 				break;
 			case 0x10:
 				baseadd_size |= SDRAM_RXBAS_SDSZ_64;
+				total_size = 64;
 				break;
 			case 0x20:
 				baseadd_size |= SDRAM_RXBAS_SDSZ_128;
+				total_size = 128;
 				break;
 			case 0x40:
 				baseadd_size |= SDRAM_RXBAS_SDSZ_256;
+				total_size = 256;
 				break;
 			case 0x80:
 				baseadd_size |= SDRAM_RXBAS_SDSZ_512;
+				total_size = 512;
 				break;
 			default:
 				printf("DDR-SDRAM: DIMM %d memory queue configuration.\n",
@@ -2183,6 +2273,7 @@ static void program_memory_queue(unsigned long *dimm_populated,
 				printf("Replace the DIMM module with a supported DIMM.\n\n");
 				spd_ddr_init_hang ();
 			}
+			rank_size_bytes = total_size << 20;
 
 			if ((dimm_populated[dimm_num] != SDRAM_NONE) && (dimm_num == 1))
 				bank_0_populated = 1;
@@ -2195,6 +2286,28 @@ static void program_memory_queue(unsigned long *dimm_populated,
 			}
 		}
 	}
+
+#if defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_460SX)
+	/*
+	 * Enable high bandwidth access
+	 * This is currently not used, but with this setup
+	 * it is possible to use it later on in e.g. the Linux
+	 * EMAC driver for performance gain.
+	 */
+	mtdcr(SDRAM_PLBADDULL, 0x00000000); /* MQ0_BAUL */
+	mtdcr(SDRAM_PLBADDUHB, 0x00000008); /* MQ0_BAUH */
+
+	/*
+	 * Set optimal value for Memory Queue HB/LL Configuration registers
+	 */
+	mtdcr(SDRAM_CONF1HB, mfdcr(SDRAM_CONF1HB) | SDRAM_CONF1HB_AAFR |
+	      SDRAM_CONF1HB_RPEN | SDRAM_CONF1HB_RFTE);
+	mtdcr(SDRAM_CONF1LL, mfdcr(SDRAM_CONF1LL) | SDRAM_CONF1LL_AAFR |
+	      SDRAM_CONF1LL_RPEN | SDRAM_CONF1LL_RFTE);
+	mtdcr(SDRAM_CONFPATHB, mfdcr(SDRAM_CONFPATHB) | SDRAM_CONFPATHB_TPEN);
+#endif
 }
 
 /*-----------------------------------------------------------------------------+
@@ -2253,6 +2366,11 @@ static void program_ecc(unsigned long *dimm_populated,
 	if (ecc == 0)
 		return;
 
+	if (sdram_memsize() > CONFIG_MAX_MEM_MAPPED) {
+		printf("\nWarning: Can't enable ECC on systems with more than 2GB of SDRAM!\n");
+		return;
+	}
+
 	mfsdram(SDRAM_MCOPT1, mcopt1);
 	mfsdram(SDRAM_MCOPT2, mcopt2);
 
@@ -2270,39 +2388,6 @@ static void program_ecc(unsigned long *dimm_populated,
 
 	return;
 }
-
-#ifdef CONFIG_ECC_ERROR_RESET
-/*
- * Check for ECC errors and reset board upon any error here
- *
- * On the Katmai 440SPe eval board, from time to time, the first
- * lword write access after DDR2 initializazion with ECC checking
- * enabled, leads to an ECC error. I couldn't find a configuration
- * without this happening. On my board with the current setup it
- * happens about 1 from 10 times.
- *
- * The ECC modules used for testing are:
- * - Kingston ValueRAM KVR667D2E5/512 (tested with 1 and 2 DIMM's)
- *
- * This has to get fixed for the Katmai and tested for the other
- * board (440SP/440SPe) that will eventually use this code in the
- * future.
- *
- * 2007-03-01, sr
- */
-static void check_ecc(void)
-{
-	u32 val;
-
-	mfsdram(SDRAM_ECCCR, val);
-	if (val != 0) {
-		printf("\nECC error: MCIF0_ECCES=%08lx MQ0_ESL=%08lx address=%08lx\n",
-		       val, mfdcr(0x4c), mfdcr(0x4e));
-		printf("ECC error occured, resetting board...\n");
-		do_reset(NULL, 0, 0, NULL);
-	}
-}
-#endif
 
 static void wait_ddr_idle(void)
 {
@@ -2360,7 +2445,8 @@ static void program_ecc_addr(unsigned long start_address,
 		} else {
 			/* ECC bit set method for cached memory */
 			dcbz_area(start_address, num_bytes);
-			dflush();
+			/* Write modified dcache lines back to memory */
+			clean_dcache_range(start_address, start_address + num_bytes);
 		}
 
 		blank_string(strlen(str));
@@ -2378,15 +2464,6 @@ static void program_ecc_addr(unsigned long start_address,
 		sync();
 		eieio();
 		wait_ddr_idle();
-
-#ifdef CONFIG_ECC_ERROR_RESET
-		/*
-		 * One write to 0 is enough to trigger this ECC error
-		 * (see description above)
-		 */
-		out_be32(0, 0x12345678);
-		check_ecc();
-#endif
 	}
 }
 #endif
@@ -2412,17 +2489,10 @@ static void program_DQS_calibration(unsigned long *dimm_populated,
 	 * Read sample cycle auto-update enable
 	 *-----------------------------------------------------------------*/
 
-	/*
-	 * Modified for the Katmai platform:  with some DIMMs, the DDR2
-	 * controller automatically selects the T2 read cycle, but this
-	 * proves unreliable.  Go ahead and force the DDR2 controller
-	 * to use the T4 sample and disable the automatic update of the
-	 * RDSS field.
-	 */
 	mfsdram(SDRAM_RDCC, val);
 	mtsdram(SDRAM_RDCC,
 		(val & ~(SDRAM_RDCC_RDSS_MASK | SDRAM_RDCC_RSAE_MASK))
-		| (SDRAM_RDCC_RDSS_T4 | SDRAM_RDCC_RSAE_DISABLE));
+		| SDRAM_RDCC_RSAE_ENABLE);
 
 	/*------------------------------------------------------------------
 	 * Program RQDC register
@@ -2434,12 +2504,13 @@ static void program_DQS_calibration(unsigned long *dimm_populated,
 	 * Program RFDC register
 	 * Set Feedback Fractional Oversample
 	 * Auto-detect read sample cycle enable
+	 * Set RFOS to 1/4 of memclk cycle (0x3f)
 	 *-----------------------------------------------------------------*/
 	mfsdram(SDRAM_RFDC, val);
 	mtsdram(SDRAM_RFDC,
 		(val & ~(SDRAM_RFDC_ARSE_MASK | SDRAM_RFDC_RFOS_MASK |
 			 SDRAM_RFDC_RFFD_MASK))
-		| (SDRAM_RFDC_ARSE_ENABLE | SDRAM_RFDC_RFOS_ENCODE(0) |
+		| (SDRAM_RFDC_ARSE_ENABLE | SDRAM_RFDC_RFOS_ENCODE(0x3f) |
 		   SDRAM_RFDC_RFFD_ENCODE(0)));
 
 	DQS_calibration_process();
@@ -2453,6 +2524,7 @@ static int short_mem_test(void)
 	u32 bxcf;
 	int i;
 	int j;
+	phys_size_t base_addr;
 	u32 test[NUMMEMTESTS][NUMMEMWORDS] = {
 		{0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF,
 		 0x00000000, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF},
@@ -2479,10 +2551,17 @@ static int short_mem_test(void)
 		if ((bxcf & SDRAM_BXCF_M_BE_MASK) == SDRAM_BXCF_M_BE_ENABLE) {
 			/* Bank is enabled */
 
+			/*
+			 * Only run test on accessable memory (below 2GB)
+			 */
+			base_addr = SDRAM_RXBAS_SDBA_DECODE(mfdcr_any(SDRAM_R0BAS+bxcr_num));
+			if (base_addr >= CONFIG_MAX_MEM_MAPPED)
+				continue;
+
 			/*------------------------------------------------------------------
 			 * Run the short memory test.
 			 *-----------------------------------------------------------------*/
-			membase = (u32 *)(SDRAM_RXBAS_SDBA_DECODE(mfdcr_any(SDRAM_R0BAS+bxcr_num)));
+			membase = (u32 *)(u32)base_addr;
 
 			for (i = 0; i < NUMMEMTESTS; i++) {
 				for (j = 0; j < NUMMEMWORDS; j++) {
@@ -2515,10 +2594,7 @@ static void DQS_calibration_process(void)
 {
 	unsigned long rfdc_reg;
 	unsigned long rffd;
-	unsigned long rqdc_reg;
-	unsigned long rqfd;
 	unsigned long val;
-	long rqfd_average;
 	long rffd_average;
 	long max_start;
 	long min_end;
@@ -2536,10 +2612,14 @@ static void DQS_calibration_process(void)
 	long max_end;
 	unsigned char fail_found;
 	unsigned char pass_found;
+#if !defined(CONFIG_DDR_RQDC_FIXED)
+	u32 rqdc_reg;
+	u32 rqfd;
 	u32 rqfd_start;
+	u32 rqfd_average;
+	int loopi = 0;
 	char str[] = "Auto calibration -";
 	char slash[] = "\\|/-\\|/-";
-	int loopi = 0;
 
 	/*------------------------------------------------------------------
 	 * Test to determine the best read clock delay tuning bits.
@@ -2574,6 +2654,16 @@ calibration_loop:
 	mfsdram(SDRAM_RQDC, rqdc_reg);
 	mtsdram(SDRAM_RQDC, (rqdc_reg & ~SDRAM_RQDC_RQFD_MASK) |
 		SDRAM_RQDC_RQFD_ENCODE(rqfd_start));
+#else /* CONFIG_DDR_RQDC_FIXED */
+	/*
+	 * On Katmai the complete auto-calibration somehow doesn't seem to
+	 * produce the best results, meaning optimal values for RQFD/RFFD.
+	 * This was discovered by GDA using a high bandwidth scope,
+	 * analyzing the DDR2 signals. GDA provided a fixed value for RQFD,
+	 * so now on Katmai "only" RFFD is auto-calibrated.
+	 */
+	mtsdram(SDRAM_RQDC, CONFIG_DDR_RQDC_FIXED);
+#endif /* CONFIG_DDR_RQDC_FIXED */
 
 	max_start = 0;
 	min_end = 0;
@@ -2658,6 +2748,7 @@ calibration_loop:
 	/* now fix RFDC[RFFD] found and find RQDC[RQFD] */
 	mtsdram(SDRAM_RFDC, rfdc_reg | SDRAM_RFDC_RFFD_ENCODE(rffd_average));
 
+#if !defined(CONFIG_DDR_RQDC_FIXED)
 	max_pass_length = 0;
 	max_start = 0;
 	max_end = 0;
@@ -2726,11 +2817,9 @@ calibration_loop:
 		printf("\nERROR: Cannot determine a common read delay for the "
 		       "DIMM(s) installed.\n");
 		debug("%s[%d] ERROR : \n", __FUNCTION__,__LINE__);
-		ppc440sp_sdram_register_dump();
+		ppc4xx_ibm_ddr2_register_dump();
 		spd_ddr_init_hang ();
 	}
-
-	blank_string(strlen(str));
 
 	if (rqfd_average < 0)
 		rqfd_average = 0;
@@ -2742,12 +2831,31 @@ calibration_loop:
 		(rqdc_reg & ~SDRAM_RQDC_RQFD_MASK) |
 		SDRAM_RQDC_RQFD_ENCODE(rqfd_average));
 
+	blank_string(strlen(str));
+#endif /* CONFIG_DDR_RQDC_FIXED */
+
+	/*
+	 * Now complete RDSS configuration as mentioned on page 7 of the AMCC
+	 * PowerPC440SP/SPe DDR2 application note:
+	 * "DDR1/DDR2 Initialization Sequence and Dynamic Tuning"
+	 */
+	mfsdram(SDRAM_RTSR, val);
+	if ((val & SDRAM_RTSR_TRK1SM_MASK) == SDRAM_RTSR_TRK1SM_ATPLS1) {
+		mfsdram(SDRAM_RDCC, val);
+		if ((val & SDRAM_RDCC_RDSS_MASK) != SDRAM_RDCC_RDSS_T4) {
+			val += 0x40000000;
+			mtsdram(SDRAM_RDCC, val);
+		}
+	}
+
 	mfsdram(SDRAM_DLCR, val);
 	debug("%s[%d] DLCR: 0x%08X\n", __FUNCTION__, __LINE__, val);
 	mfsdram(SDRAM_RQDC, val);
 	debug("%s[%d] RQDC: 0x%08X\n", __FUNCTION__, __LINE__, val);
 	mfsdram(SDRAM_RFDC, val);
 	debug("%s[%d] RFDC: 0x%08X\n", __FUNCTION__, __LINE__, val);
+	mfsdram(SDRAM_RDCC, val);
+	debug("%s[%d] RDCC: 0x%08X\n", __FUNCTION__, __LINE__, val);
 }
 #else /* calibration test with hardvalues */
 /*-----------------------------------------------------------------------------+
@@ -2895,166 +3003,211 @@ static void test(void)
 }
 #endif
 
-#if defined(DEBUG)
-static void ppc440sp_sdram_register_dump(void)
-{
-	unsigned int sdram_reg;
-	unsigned int sdram_data;
-	unsigned int dcr_data;
+#else /* CONFIG_SPD_EEPROM */
 
-	printf("\n  Register Dump:\n");
-	sdram_reg = SDRAM_MCSTAT;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MCSTAT    = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_MCOPT1;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MCOPT1    = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_MCOPT2;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MCOPT2    = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_MODT0;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MODT0     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_MODT1;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MODT1     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_MODT2;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MODT2     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_MODT3;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MODT3     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_CODT;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_CODT      = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_VVPR;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_VVPR      = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_OPARS;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_OPARS     = 0x%08X\n", sdram_data);
+/*-----------------------------------------------------------------------------
+ * Function:	initdram
+ * Description: Configures the PPC405EX(r) DDR1/DDR2 SDRAM memory
+ * 		banks. The configuration is performed using static, compile-
+ *		time parameters.
+ *---------------------------------------------------------------------------*/
+phys_size_t initdram(int board_type)
+{
 	/*
-	 * OPAR2 is only used as a trigger register.
-	 * No data is contained in this register, and reading or writing
-	 * to is can cause bad things to happen (hangs).  Just skip it
-	 * and report NA
-	 * sdram_reg = SDRAM_OPAR2;
-	 * mfsdram(sdram_reg, sdram_data);
-	 * printf("        SDRAM_OPAR2     = 0x%08X\n", sdram_data);
+	 * Only run this SDRAM init code once. For NAND booting
+	 * targets like Kilauea, we call initdram() early from the
+	 * 4k NAND booting image (CONFIG_NAND_SPL) from nand_boot().
+	 * Later on the NAND U-Boot image runs (CONFIG_NAND_U_BOOT)
+	 * which calls initdram() again. This time the controller
+	 * mustn't be reconfigured again since we're already running
+	 * from SDRAM.
 	 */
-	printf("        SDRAM_OPART     = N/A       ");
-	sdram_reg = SDRAM_RTR;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_RTR       = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_MB0CF;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MB0CF     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_MB1CF;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MB1CF     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_MB2CF;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MB2CF     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_MB3CF;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MB3CF     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR0;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR0  = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR1;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR1  = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR2;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR2  = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR3;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR3  = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR4;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR4  = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR5;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR5  = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR6;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR6  = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR7;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR7  = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR8;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR8  = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR9;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR9  = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR10;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR10 = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR11;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR11 = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR12;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR12 = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR13;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR13 = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_INITPLR14;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR14 = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_INITPLR15;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_INITPLR15 = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_RQDC;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_RQDC      = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_RFDC;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_RFDC      = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_RDCC;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_RDCC      = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_DLCR;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_DLCR      = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_CLKTR;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_CLKTR     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_WRDTR;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_WRDTR     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_SDTR1;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_SDTR1     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_SDTR2;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_SDTR2     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_SDTR3;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_SDTR3     = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_MMODE;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MMODE     = 0x%08X\n", sdram_data);
-	sdram_reg = SDRAM_MEMODE;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_MEMODE    = 0x%08X", sdram_data);
-	sdram_reg = SDRAM_ECCCR;
-	mfsdram(sdram_reg, sdram_data);
-	printf("        SDRAM_ECCCR     = 0x%08X\n\n", sdram_data);
+#if !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL)
+	unsigned long val;
 
-	dcr_data = mfdcr(SDRAM_R0BAS);
-	printf("        MQ0_B0BAS       = 0x%08X", dcr_data);
-	dcr_data = mfdcr(SDRAM_R1BAS);
-	printf("        MQ1_B0BAS       = 0x%08X\n", dcr_data);
-	dcr_data = mfdcr(SDRAM_R2BAS);
-	printf("        MQ2_B0BAS       = 0x%08X", dcr_data);
-	dcr_data = mfdcr(SDRAM_R3BAS);
-	printf("        MQ3_B0BAS       = 0x%08X\n", dcr_data);
+	/* Set Memory Bank Configuration Registers */
+
+	mtsdram(SDRAM_MB0CF, CFG_SDRAM0_MB0CF);
+	mtsdram(SDRAM_MB1CF, CFG_SDRAM0_MB1CF);
+	mtsdram(SDRAM_MB2CF, CFG_SDRAM0_MB2CF);
+	mtsdram(SDRAM_MB3CF, CFG_SDRAM0_MB3CF);
+
+	/* Set Memory Clock Timing Register */
+
+	mtsdram(SDRAM_CLKTR, CFG_SDRAM0_CLKTR);
+
+	/* Set Refresh Time Register */
+
+	mtsdram(SDRAM_RTR, CFG_SDRAM0_RTR);
+
+	/* Set SDRAM Timing Registers */
+
+	mtsdram(SDRAM_SDTR1, CFG_SDRAM0_SDTR1);
+	mtsdram(SDRAM_SDTR2, CFG_SDRAM0_SDTR2);
+	mtsdram(SDRAM_SDTR3, CFG_SDRAM0_SDTR3);
+
+	/* Set Mode and Extended Mode Registers */
+
+	mtsdram(SDRAM_MMODE, CFG_SDRAM0_MMODE);
+	mtsdram(SDRAM_MEMODE, CFG_SDRAM0_MEMODE);
+
+	/* Set Memory Controller Options 1 Register */
+
+	mtsdram(SDRAM_MCOPT1, CFG_SDRAM0_MCOPT1);
+
+	/* Set Manual Initialization Control Registers */
+
+	mtsdram(SDRAM_INITPLR0, CFG_SDRAM0_INITPLR0);
+	mtsdram(SDRAM_INITPLR1, CFG_SDRAM0_INITPLR1);
+	mtsdram(SDRAM_INITPLR2, CFG_SDRAM0_INITPLR2);
+	mtsdram(SDRAM_INITPLR3, CFG_SDRAM0_INITPLR3);
+	mtsdram(SDRAM_INITPLR4, CFG_SDRAM0_INITPLR4);
+	mtsdram(SDRAM_INITPLR5, CFG_SDRAM0_INITPLR5);
+	mtsdram(SDRAM_INITPLR6, CFG_SDRAM0_INITPLR6);
+	mtsdram(SDRAM_INITPLR7, CFG_SDRAM0_INITPLR7);
+	mtsdram(SDRAM_INITPLR8, CFG_SDRAM0_INITPLR8);
+	mtsdram(SDRAM_INITPLR9, CFG_SDRAM0_INITPLR9);
+	mtsdram(SDRAM_INITPLR10, CFG_SDRAM0_INITPLR10);
+	mtsdram(SDRAM_INITPLR11, CFG_SDRAM0_INITPLR11);
+	mtsdram(SDRAM_INITPLR12, CFG_SDRAM0_INITPLR12);
+	mtsdram(SDRAM_INITPLR13, CFG_SDRAM0_INITPLR13);
+	mtsdram(SDRAM_INITPLR14, CFG_SDRAM0_INITPLR14);
+	mtsdram(SDRAM_INITPLR15, CFG_SDRAM0_INITPLR15);
+
+	/* Set On-Die Termination Registers */
+
+	mtsdram(SDRAM_CODT, CFG_SDRAM0_CODT);
+	mtsdram(SDRAM_MODT0, CFG_SDRAM0_MODT0);
+	mtsdram(SDRAM_MODT1, CFG_SDRAM0_MODT1);
+
+	/* Set Write Timing Register */
+
+	mtsdram(SDRAM_WRDTR, CFG_SDRAM0_WRDTR);
+
+	/*
+	 * Start Initialization by SDRAM0_MCOPT2[SREN] = 0 and
+	 * SDRAM0_MCOPT2[IPTR] = 1
+	 */
+
+	mtsdram(SDRAM_MCOPT2, (SDRAM_MCOPT2_SREN_EXIT |
+			       SDRAM_MCOPT2_IPTR_EXECUTE));
+
+	/*
+	 * Poll SDRAM0_MCSTAT[MIC] for assertion to indicate the
+	 * completion of initialization.
+	 */
+
+	do {
+		mfsdram(SDRAM_MCSTAT, val);
+	} while ((val & SDRAM_MCSTAT_MIC_MASK) != SDRAM_MCSTAT_MIC_COMP);
+
+	/* Set Delay Control Registers */
+
+	mtsdram(SDRAM_DLCR, CFG_SDRAM0_DLCR);
+	mtsdram(SDRAM_RDCC, CFG_SDRAM0_RDCC);
+	mtsdram(SDRAM_RQDC, CFG_SDRAM0_RQDC);
+	mtsdram(SDRAM_RFDC, CFG_SDRAM0_RFDC);
+
+	/*
+	 * Enable Controller by SDRAM0_MCOPT2[DCEN] = 1:
+	 */
+
+	mfsdram(SDRAM_MCOPT2, val);
+	mtsdram(SDRAM_MCOPT2, val | SDRAM_MCOPT2_DCEN_ENABLE);
+
+#if defined(CONFIG_DDR_ECC)
+	ecc_init(CFG_SDRAM_BASE, CFG_MBYTES_SDRAM << 20);
+#endif /* defined(CONFIG_DDR_ECC) */
+
+	ppc4xx_ibm_ddr2_register_dump();
+#endif /* !defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL) */
+
+	return (CFG_MBYTES_SDRAM << 20);
 }
-#else
-static void ppc440sp_sdram_register_dump(void)
-{
-}
-#endif
 #endif /* CONFIG_SPD_EEPROM */
+
+static inline void ppc4xx_ibm_ddr2_register_dump(void)
+{
+#if defined(DEBUG)
+	printf("\nPPC4xx IBM DDR2 Register Dump:\n");
+
+#if (defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+     defined(CONFIG_460EX) || defined(CONFIG_460GT))
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(R0BAS);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(R1BAS);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(R2BAS);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(R3BAS);
+#endif /* (defined(CONFIG_440SP) || ... */
+#if defined(CONFIG_405EX)
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(BESR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(BEARL);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(BEARH);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(WMIRQ);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(PLBOPT);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(PUABA);
+#endif /* defined(CONFIG_405EX) */
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MB0CF);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MB1CF);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MB2CF);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MB3CF);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MCSTAT);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MCOPT1);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MCOPT2);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MODT0);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MODT1);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MODT2);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MODT3);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(CODT);
+#if (defined(CONFIG_440SP) || defined(CONFIG_440SPE) ||	\
+     defined(CONFIG_460EX) || defined(CONFIG_460GT))
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(VVPR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(OPARS);
+	/*
+	 * OPART is only used as a trigger register.
+	 *
+	 * No data is contained in this register, and reading or writing
+	 * to is can cause bad things to happen (hangs). Just skip it and
+	 * report "N/A".
+	 */
+	printf("%20s = N/A\n", "SDRAM_OPART");
+#endif /* defined(CONFIG_440SP) || ... */
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(RTR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR0);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR1);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR2);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR3);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR4);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR5);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR6);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR7);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR8);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR9);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR10);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR11);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR12);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR13);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR14);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(INITPLR15);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(RQDC);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(RFDC);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(RDCC);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(DLCR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(CLKTR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(WRDTR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(SDTR1);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(SDTR2);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(SDTR3);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MMODE);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(MEMODE);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(ECCCR);
+#if (defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+     defined(CONFIG_460EX) || defined(CONFIG_460GT))
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(CID);
+#endif /* defined(CONFIG_440SP) || ... */
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(RID);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(FCSR);
+	PPC4xx_IBM_DDR2_DUMP_REGISTER(RTSR);
+#endif /* defined(DEBUG) */
+}
+
+#endif /* CONFIG_SDRAM_PPC4xx_IBM_DDR2 */

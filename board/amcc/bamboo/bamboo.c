@@ -67,13 +67,13 @@ const unsigned char cfg_simulate_spd_eeprom[128] = {
 	0x00,    /* Module data width continued: +0 */
 	0x04,    /* 2.5 Volt */
 	0x75,    /* SDRAM Cycle Time (cas latency 2.5) = 7.5 ns */
+	0x00,    /* SDRAM Access from clock */
 #ifdef CONFIG_DDR_ECC
 	0x02,    /* ECC ON : 02 OFF : 00 */
 #else
 	0x00,    /* ECC ON : 02 OFF : 00 */
 #endif
-	0x82,    /* refresh Rate Type: Normal (15.625us) + Self refresh */
-	0,
+	0x82,    /* refresh Rate Type: Normal (7.8us) + Self refresh */
 	0,
 	0,
 	0x01,    /* wcsbc = 1 */
@@ -280,86 +280,86 @@ const unsigned char cfg_simulate_spd_eeprom[128] = {
 #define EBC0_BNAP_SMALL_FLASH				\
 	EBC0_BNAP_BME_DISABLED			|	\
 	EBC0_BNAP_TWT_ENCODE(6)			|	\
-	EBC0_BNAP_CSN_ENCODE(0)	    		|	\
-	EBC0_BNAP_OEN_ENCODE(1)	    		|	\
-	EBC0_BNAP_WBN_ENCODE(1)	    		|	\
-	EBC0_BNAP_WBF_ENCODE(3)	    		|	\
-	EBC0_BNAP_TH_ENCODE(1)	    		|	\
-	EBC0_BNAP_RE_ENABLED	    		|	\
-	EBC0_BNAP_SOR_DELAYED	    		|	\
-	EBC0_BNAP_BEM_WRITEONLY	    		|	\
+	EBC0_BNAP_CSN_ENCODE(0)			|	\
+	EBC0_BNAP_OEN_ENCODE(1)			|	\
+	EBC0_BNAP_WBN_ENCODE(1)			|	\
+	EBC0_BNAP_WBF_ENCODE(3)			|	\
+	EBC0_BNAP_TH_ENCODE(1)			|	\
+	EBC0_BNAP_RE_ENABLED			|	\
+	EBC0_BNAP_SOR_DELAYED			|	\
+	EBC0_BNAP_BEM_WRITEONLY			|	\
 	EBC0_BNAP_PEN_DISABLED
 
 #define EBC0_BNCR_SMALL_FLASH_CS0			\
-	EBC0_BNCR_BAS_ENCODE(0xFFF00000)    	| 	\
-	EBC0_BNCR_BS_1MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+	EBC0_BNCR_BAS_ENCODE(0xFFF00000)	|	\
+	EBC0_BNCR_BS_1MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_8BIT
 
 #define EBC0_BNCR_SMALL_FLASH_CS4			\
-	EBC0_BNCR_BAS_ENCODE(0x87F00000)    	| 	\
-	EBC0_BNCR_BS_1MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+	EBC0_BNCR_BAS_ENCODE(0x87F00000)	|	\
+	EBC0_BNCR_BS_1MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_8BIT
 
 /* Large Flash or SRAM */
 #define EBC0_BNAP_LARGE_FLASH_OR_SRAM			\
-	EBC0_BNAP_BME_DISABLED	    		|	\
-	EBC0_BNAP_TWT_ENCODE(8)	    		|	\
-	EBC0_BNAP_CSN_ENCODE(0)	    		|	\
-	EBC0_BNAP_OEN_ENCODE(1)	    		|	\
-	EBC0_BNAP_WBN_ENCODE(1)	    		|	\
-	EBC0_BNAP_WBF_ENCODE(1)	    		|	\
-	EBC0_BNAP_TH_ENCODE(2)	    		|	\
-	EBC0_BNAP_SOR_DELAYED	    		|	\
-	EBC0_BNAP_BEM_RW	    		|	\
+	EBC0_BNAP_BME_DISABLED			|	\
+	EBC0_BNAP_TWT_ENCODE(8)			|	\
+	EBC0_BNAP_CSN_ENCODE(0)			|	\
+	EBC0_BNAP_OEN_ENCODE(1)			|	\
+	EBC0_BNAP_WBN_ENCODE(1)			|	\
+	EBC0_BNAP_WBF_ENCODE(1)			|	\
+	EBC0_BNAP_TH_ENCODE(2)			|	\
+	EBC0_BNAP_SOR_DELAYED			|	\
+	EBC0_BNAP_BEM_RW			|	\
 	EBC0_BNAP_PEN_DISABLED
 
-#define EBC0_BNCR_LARGE_FLASH_OR_SRAM_CS0   		\
-	EBC0_BNCR_BAS_ENCODE(0xFF800000)	| 	\
-	EBC0_BNCR_BS_8MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+#define EBC0_BNCR_LARGE_FLASH_OR_SRAM_CS0		\
+	EBC0_BNCR_BAS_ENCODE(0xFF800000)	|	\
+	EBC0_BNCR_BS_8MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_16BIT
 
 
-#define EBC0_BNCR_LARGE_FLASH_OR_SRAM_CS4   		\
-	EBC0_BNCR_BAS_ENCODE(0x87800000)	| 	\
-	EBC0_BNCR_BS_8MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+#define EBC0_BNCR_LARGE_FLASH_OR_SRAM_CS4		\
+	EBC0_BNCR_BAS_ENCODE(0x87800000)	|	\
+	EBC0_BNCR_BS_8MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_16BIT
 
 /* NVRAM - FPGA */
 #define EBC0_BNAP_NVRAM_FPGA				\
-	EBC0_BNAP_BME_DISABLED	    		|	\
-	EBC0_BNAP_TWT_ENCODE(9)	    		|	\
-	EBC0_BNAP_CSN_ENCODE(0)	    		|	\
-	EBC0_BNAP_OEN_ENCODE(1)	    		|	\
-	EBC0_BNAP_WBN_ENCODE(1)	    		|	\
-	EBC0_BNAP_WBF_ENCODE(0)	    		|	\
-	EBC0_BNAP_TH_ENCODE(2)	    		|	\
-	EBC0_BNAP_RE_ENABLED	    		|	\
-	EBC0_BNAP_SOR_DELAYED	    		|	\
-	EBC0_BNAP_BEM_WRITEONLY	    		|	\
+	EBC0_BNAP_BME_DISABLED			|	\
+	EBC0_BNAP_TWT_ENCODE(9)			|	\
+	EBC0_BNAP_CSN_ENCODE(0)			|	\
+	EBC0_BNAP_OEN_ENCODE(1)			|	\
+	EBC0_BNAP_WBN_ENCODE(1)			|	\
+	EBC0_BNAP_WBF_ENCODE(0)			|	\
+	EBC0_BNAP_TH_ENCODE(2)			|	\
+	EBC0_BNAP_RE_ENABLED			|	\
+	EBC0_BNAP_SOR_DELAYED			|	\
+	EBC0_BNAP_BEM_WRITEONLY			|	\
 	EBC0_BNAP_PEN_DISABLED
 
 #define EBC0_BNCR_NVRAM_FPGA_CS5			\
-	EBC0_BNCR_BAS_ENCODE(0x80000000)    	| 	\
-	EBC0_BNCR_BS_1MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+	EBC0_BNCR_BAS_ENCODE(0x80000000)	|	\
+	EBC0_BNCR_BS_1MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_8BIT
 
 /* Nand Flash */
 #define EBC0_BNAP_NAND_FLASH				\
-	EBC0_BNAP_BME_DISABLED	    		|	\
-	EBC0_BNAP_TWT_ENCODE(3)	    		|	\
-	EBC0_BNAP_CSN_ENCODE(0)	    		|	\
-	EBC0_BNAP_OEN_ENCODE(0)	    		|	\
-	EBC0_BNAP_WBN_ENCODE(0)	    		|	\
-	EBC0_BNAP_WBF_ENCODE(0)	    		|	\
-	EBC0_BNAP_TH_ENCODE(1)	    		|	\
-	EBC0_BNAP_RE_ENABLED	    		|	\
-	EBC0_BNAP_SOR_NOT_DELAYED   		|	\
-	EBC0_BNAP_BEM_RW	    		|	\
+	EBC0_BNAP_BME_DISABLED			|	\
+	EBC0_BNAP_TWT_ENCODE(3)			|	\
+	EBC0_BNAP_CSN_ENCODE(0)			|	\
+	EBC0_BNAP_OEN_ENCODE(0)			|	\
+	EBC0_BNAP_WBN_ENCODE(0)			|	\
+	EBC0_BNAP_WBF_ENCODE(0)			|	\
+	EBC0_BNAP_TH_ENCODE(1)			|	\
+	EBC0_BNAP_RE_ENABLED			|	\
+	EBC0_BNAP_SOR_NOT_DELAYED		|	\
+	EBC0_BNAP_BEM_RW			|	\
 	EBC0_BNAP_PEN_DISABLED
 
 
@@ -367,22 +367,22 @@ const unsigned char cfg_simulate_spd_eeprom[128] = {
 
 /* NAND0 */
 #define EBC0_BNCR_NAND_FLASH_CS1			\
-	EBC0_BNCR_BAS_ENCODE(0x90000000)    	| 	\
-	EBC0_BNCR_BS_1MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+	EBC0_BNCR_BAS_ENCODE(0x90000000)	|	\
+	EBC0_BNCR_BS_1MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_32BIT
 /* NAND1 - Bank2 */
 #define EBC0_BNCR_NAND_FLASH_CS2			\
-	EBC0_BNCR_BAS_ENCODE(0x94000000)    	| 	\
-	EBC0_BNCR_BS_1MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+	EBC0_BNCR_BAS_ENCODE(0x94000000)	|	\
+	EBC0_BNCR_BS_1MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_32BIT
 
 /* NAND1 - Bank3 */
 #define EBC0_BNCR_NAND_FLASH_CS3			\
-	EBC0_BNCR_BAS_ENCODE(0x94000000)    	| 	\
-	EBC0_BNCR_BS_1MB		    	|	\
-	EBC0_BNCR_BU_RW			    	|	\
+	EBC0_BNCR_BAS_ENCODE(0x94000000)	|	\
+	EBC0_BNCR_BS_1MB			|	\
+	EBC0_BNCR_BU_RW				|	\
 	EBC0_BNCR_BW_32BIT
 
 int board_early_init_f(void)
@@ -453,7 +453,7 @@ int checkboard(void)
 }
 
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 #if !(defined(CONFIG_NAND_U_BOOT) || defined(CONFIG_NAND_SPL))
 	long dram_size;
@@ -465,73 +465,6 @@ long int initdram (int board_type)
 	return CFG_MBYTES_SDRAM << 20;
 #endif
 }
-
-#if defined(CFG_DRAM_TEST)
-int testdram(void)
-{
-	unsigned long *mem = (unsigned long *)0;
-	const unsigned long kend = (1024 / sizeof(unsigned long));
-	unsigned long k, n, *p32, ctr;
-	const unsigned long bend = CFG_MBYTES_SDRAM * 1024 * 1024;
-
-	mtmsr(0);
-
-	for (k = 0; k <	CFG_MBYTES_SDRAM*1024;
-	     ++k, mem += (1024 / sizeof(unsigned long))) {
-		if ((k & 1023) == 0) {
-			printf("%3d MB\r", k / 1024);
-		}
-
-		memset(mem, 0xaaaaaaaa, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0xaaaaaaaa) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-
-		memset(mem, 0x55555555, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0x55555555) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-	}
-
-	/*
-	 * Perform a sequence test to ensure that all
-	 * memory locations are uniquely addressable
-	 */
-	ctr = 0;
-	p32 = 0;
-	while ((unsigned long)p32 != bend) {
-		if (0 == ((unsigned long)p32 & ((1<<20)-1)))
-			printf("Writing	%3d MB\r", (unsigned long)p32 >> 20);
-		*p32++ = ctr++;
-	}
-
-	ctr = 0;
-	p32 = 0;
-	while ((unsigned long)p32 != bend) {
-		if (0 == ((unsigned long)p32 & ((1<<20)-1)))
-			printf("Verifying %3d MB\r", (unsigned long)p32 >> 20);
-
-		if (*p32 != ctr) {
-			printf("SDRAM test fails at: %08x\n", p32);
-			return 1;
-		}
-
-		ctr++;
-		p32++;
-	}
-
-	printf("SDRAM test passes\n");
-	return 0;
-}
-#endif
 
 /*************************************************************************
  *  pci_pre_init

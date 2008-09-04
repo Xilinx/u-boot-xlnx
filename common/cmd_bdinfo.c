@@ -30,10 +30,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if defined(CONFIG_CMD_BDI)
 static void print_num(const char *, ulong);
 
 #ifndef CONFIG_ARM	/* PowerPC and other */
+static void print_lnum(const char *, u64);
 
 #ifdef CONFIG_PPC
 static void print_str(const char *, const char *);
@@ -48,7 +48,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	print_num ("bd address",    (ulong)bd		);
 #endif
 	print_num ("memstart",	    bd->bi_memstart	);
-	print_num ("memsize",	    bd->bi_memsize	);
+	print_lnum ("memsize", 	    bd->bi_memsize	);
 	print_num ("flashstart",    bd->bi_flashstart	);
 	print_num ("flashsize",	    bd->bi_flashsize	);
 	print_num ("flashoffset",   bd->bi_flashoffset	);
@@ -60,19 +60,19 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #endif
 	print_num ("bootflags",	    bd->bi_bootflags	);
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || \
-    defined(CONFIG_405EP) || defined(CONFIG_XILINX_ML300) || \
+    defined(CONFIG_405EP) || defined(CONFIG_XILINX_405) || \
     defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) ||	\
     defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
     defined(CONFIG_XILINX_VIRTEX5_FXT)
 	print_str ("procfreq",	    strmhz(buf, bd->bi_procfreq));
 	print_str ("plb_busfreq",   strmhz(buf, bd->bi_plb_busfreq));
-#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || defined(CONFIG_XILINX_ML300) || \
+#if defined(CONFIG_405GP) || defined(CONFIG_405EP) || defined(CONFIG_XILINX_405) || \
     defined(CONFIG_440EP) || defined(CONFIG_440GR) || defined(CONFIG_440SPE) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 	print_str ("pci_busfreq",   strmhz(buf, bd->bi_pci_busfreq));
 #endif
-#else	/* ! CONFIG_405GP, CONFIG_405CR, CONFIG_405EP, CONFIG_XILINX_ML300, CONFIG_440EP CONFIG_440GR */
+#else	/* ! CONFIG_405GP, CONFIG_405CR, CONFIG_405EP, CONFIG_XILINX_405, CONFIG_440EP CONFIG_440GR */
 #if defined(CONFIG_CPM2)
 	print_str ("vco",	    strmhz(buf, bd->bi_vco));
 	print_str ("sccfreq",	    strmhz(buf, bd->bi_sccfreq));
@@ -134,7 +134,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	bd_t *bd = gd->bd;
 
 	print_num ("memstart",		(ulong)bd->bi_memstart);
-	print_num ("memsize",		(ulong)bd->bi_memsize);
+	print_lnum ("memsize",		(u64)bd->bi_memsize);
 	print_num ("flashstart",	(ulong)bd->bi_flashstart);
 	print_num ("flashsize",		(ulong)bd->bi_flashsize);
 	print_num ("flashoffset",	(ulong)bd->bi_flashoffset);
@@ -154,11 +154,13 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#if defined(CONFIG_CMD_NET)
 	int i;
+#endif
 	bd_t *bd = gd->bd;
 
 	print_num ("mem start",		(ulong)bd->bi_memstart);
-	print_num ("mem size",		(ulong)bd->bi_memsize);
+	print_lnum ("mem size",		(u64)bd->bi_memsize);
 	print_num ("flash start",	(ulong)bd->bi_flashstart);
 	print_num ("flash size",	(ulong)bd->bi_flashsize);
 	print_num ("flash offset",	(ulong)bd->bi_flashoffset);
@@ -188,7 +190,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int i;
 	bd_t *bd = gd->bd;
 	print_num ("mem start      ",	(ulong)bd->bi_memstart);
-	print_num ("mem size       ",	(ulong)bd->bi_memsize);
+	print_lnum ("mem size       ",	(u64)bd->bi_memsize);
 	print_num ("flash start    ",	(ulong)bd->bi_flashstart);
 	print_num ("flash size     ",	(ulong)bd->bi_flashsize);
 	print_num ("flash offset   ",	(ulong)bd->bi_flashoffset);
@@ -204,7 +206,46 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts ("\nip_addr     = ");
 	print_IPaddr (bd->bi_ip_addr);
 #endif
-	printf ("\nbaudrate    = %d bps\n", (ulong)bd->bi_baudrate);
+	printf ("\nbaudrate    = %ld bps\n", (ulong)bd->bi_baudrate);
+	return 0;
+}
+
+#elif defined(CONFIG_SPARC)	/* SPARC */
+int do_bdinfo(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+{
+	bd_t *bd = gd->bd;
+#if defined(CONFIG_CMD_NET)
+	int i;
+#endif
+
+#ifdef DEBUG
+	print_num("bd address             ", (ulong) bd);
+#endif
+	print_num("memstart               ", bd->bi_memstart);
+	print_lnum("memsize                ", bd->bi_memsize);
+	print_num("flashstart             ", bd->bi_flashstart);
+	print_num("CFG_MONITOR_BASE       ", CFG_MONITOR_BASE);
+	print_num("CFG_ENV_ADDR           ", CFG_ENV_ADDR);
+	printf("CFG_RELOC_MONITOR_BASE = 0x%lx (%d)\n", CFG_RELOC_MONITOR_BASE,
+	       CFG_MONITOR_LEN);
+	printf("CFG_MALLOC_BASE        = 0x%lx (%d)\n", CFG_MALLOC_BASE,
+	       CFG_MALLOC_LEN);
+	printf("CFG_INIT_SP_OFFSET     = 0x%lx (%d)\n", CFG_INIT_SP_OFFSET,
+	       CFG_STACK_SIZE);
+	printf("CFG_PROM_OFFSET        = 0x%lx (%d)\n", CFG_PROM_OFFSET,
+	       CFG_PROM_SIZE);
+	printf("CFG_GBL_DATA_OFFSET    = 0x%lx (%d)\n", CFG_GBL_DATA_OFFSET,
+	       CFG_GBL_DATA_SIZE);
+
+#if defined(CONFIG_CMD_NET)
+	puts("ethaddr                =");
+	for (i = 0; i < 6; ++i) {
+		printf("%c%02X", i ? ':' : ' ', bd->bi_enetaddr[i]);
+	}
+	puts("\nIP addr                = ");
+	print_IPaddr(bd->bi_ip_addr);
+#endif
+	printf("\nbaudrate               = %6ld bps\n", bd->bi_baudrate);
 	return 0;
 }
 
@@ -218,7 +259,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	char buf[32];
 
 	print_num ("memstart",		(ulong)bd->bi_memstart);
-	print_num ("memsize",		(ulong)bd->bi_memsize);
+	print_lnum ("memsize",		(u64)bd->bi_memsize);
 	print_num ("flashstart",	(ulong)bd->bi_flashstart);
 	print_num ("flashsize",		(ulong)bd->bi_flashsize);
 	print_num ("flashoffset",	(ulong)bd->bi_flashoffset);
@@ -273,6 +314,37 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
+#elif defined(CONFIG_BLACKFIN)
+
+int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	int i;
+	bd_t *bd = gd->bd;
+
+	printf("U-Boot      = %s\n", bd->bi_r_version);
+	printf("CPU         = %s\n", bd->bi_cpu);
+	printf("Board       = %s\n", bd->bi_board_name);
+	printf("VCO         = %lu MHz\n", bd->bi_vco / 1000000);
+	printf("CCLK        = %lu MHz\n", bd->bi_cclk / 1000000);
+	printf("SCLK        = %lu MHz\n", bd->bi_sclk / 1000000);
+
+	print_num("boot_params", (ulong)bd->bi_boot_params);
+	print_num("memstart",    (ulong)bd->bi_memstart);
+	print_lnum("memsize",    (u64)bd->bi_memsize);
+	print_num("flashstart",  (ulong)bd->bi_flashstart);
+	print_num("flashsize",   (ulong)bd->bi_flashsize);
+	print_num("flashoffset", (ulong)bd->bi_flashoffset);
+
+	puts("ethaddr     =");
+	for (i = 0; i < 6; ++i)
+		printf("%c%02X", i ? ':' : ' ', bd->bi_enetaddr[i]);
+	puts("\nip_addr     = ");
+	print_IPaddr(bd->bi_ip_addr);
+	printf("\nbaudrate    = %d bps\n", bd->bi_baudrate);
+
+	return 0;
+}
+
 #else /* ! PPC, which leaves MIPS */
 
 int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -282,7 +354,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	print_num ("boot_params",	(ulong)bd->bi_boot_params);
 	print_num ("memstart",		(ulong)bd->bi_memstart);
-	print_num ("memsize",		(ulong)bd->bi_memsize);
+	print_lnum ("memsize",		(u64)bd->bi_memsize);
 	print_num ("flashstart",	(ulong)bd->bi_flashstart);
 	print_num ("flashsize",		(ulong)bd->bi_flashsize);
 	print_num ("flashoffset",	(ulong)bd->bi_flashoffset);
@@ -316,6 +388,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		print_num("-> size",	bd->bi_dram[i].size);
 	}
 
+#if defined(CONFIG_CMD_NET)
 	puts ("ethaddr     =");
 	for (i=0; i<6; ++i) {
 		printf ("%c%02X", i ? ':' : ' ', bd->bi_enetaddr[i]);
@@ -323,6 +396,7 @@ int do_bdinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts  ( "\n"
 		"ip_addr     = ");
 	print_IPaddr (bd->bi_ip_addr);
+#endif
 	printf ("\n"
 		"baudrate    = %d bps\n", bd->bi_baudrate);
 
@@ -335,6 +409,13 @@ static void print_num(const char *name, ulong value)
 {
 	printf ("%-12s= 0x%08lX\n", name, value);
 }
+
+#ifndef CONFIG_ARM
+static void print_lnum(const char *name, u64 value)
+{
+	printf ("%-12s= 0x%.8llX\n", name, value);
+}
+#endif
 
 #if defined(CONFIG_PPC) || defined(CONFIG_M68K)
 static void print_str(const char *name, const char *str)
@@ -351,4 +432,3 @@ U_BOOT_CMD(
 	"bdinfo  - print Board Info structure\n",
 	NULL
 );
-#endif

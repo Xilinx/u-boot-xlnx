@@ -33,15 +33,13 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG
-
 /* Board Configuration Definitions */
 /* MPC7448HPC2 (High-Performance Computing II) (Taiga) board */
 
 #define CONFIG_MPC7448HPC2
 
 #define CONFIG_74xx
-#define CONFIG_750FX		/* this option to enable init of extended BATs */
+#define CONFIG_HIGH_BATS	/* High BATs supported */
 #define CONFIG_ALTIVEC		/* undef to disable */
 
 #define CFG_BOARD_NAME		"MPC7448 HPC II"
@@ -60,6 +58,7 @@
 #define CONFIG_BOARD_EARLY_INIT_R
 #define CONFIG_MISC_INIT_R
 
+#define CONFIG_HAS_ETH0
 #define CONFIG_HAS_ETH1
 
 #define CONFIG_ENV_OVERWRITE
@@ -77,7 +76,7 @@
 #define CFG_PROMPT_HUSH_PS2	"> "
 
 /* Pass open firmware flat tree */
-#define CONFIG_OF_FLAT_TREE	1
+#define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP	1
 
 #define OF_CPU			"PowerPC,7448@0"
@@ -109,8 +108,7 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 
 #undef CONFIG_BOOTARGS
-/* #define CONFIG_PREBOOT  "echo;echo Type \"run flash_nfs\"
- * to mount root filesystem over NFS;echo" */
+/* #define CONFIG_PREBOOT  "echo;echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;echo" */
 
 #if (CONFIG_BOOTDELAY >= 0)
 #define CONFIG_BOOTCOMMAND	"tftpboot 0x400000 zImage.initrd.elf;\
@@ -376,7 +374,7 @@
 #define FLASH_BANK_SIZE		0x01000000	/* 16 MB Total */
 #define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE, /* CFG_FLASH_BASE2 */ }
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_WRITE_SWAPPED_DATA
 

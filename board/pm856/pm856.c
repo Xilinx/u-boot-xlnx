@@ -28,16 +28,16 @@
 #include <common.h>
 #include <pci.h>
 #include <asm/processor.h>
+#include <asm/mmu.h>
 #include <asm/immap_85xx.h>
+#include <asm/fsl_ddr_sdram.h>
 #include <ioports.h>
-#include <spd.h>
+#include <spd_sdram.h>
 #include <miiphy.h>
 
 #if defined(CONFIG_DDR_ECC)
 extern void ddr_enable_ecc(unsigned int dram_size);
 #endif
-
-extern long int spd_sdram(void);
 
 void local_bus_init(void);
 long int fixed_sdram(void);
@@ -227,18 +227,17 @@ int checkboard (void)
 }
 
 
-long int
+phys_size_t
 initdram(int board_type)
 {
 	long dram_size = 0;
-	extern long spd_sdram (void);
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+
 
 	puts("Initializing\n");
 
 #if defined(CONFIG_DDR_DLL)
 	{
-	    volatile ccsr_gur_t *gur= &immap->im_gur;
+	    volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
 	    int i,x;
 
 	    x = 10;
@@ -251,7 +250,7 @@ initdram(int board_type)
 	    udelay (200);
 	    while (gur->ddrdllcr != 0x81000100)
 	    {
-	    	gur->devdisr = gur->devdisr | 0x00010000;
+		gur->devdisr = gur->devdisr | 0x00010000;
 		asm("sync;isync;msync");
 		for (i=0; i<x; i++)
 		    ;
@@ -263,7 +262,9 @@ initdram(int board_type)
 #endif
 
 #if defined(CONFIG_SPD_EEPROM)
-	dram_size = spd_sdram ();
+	dram_size = fsl_ddr_sdram();
+	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
+	dram_size *= 0x100000;
 #else
 	dram_size = fixed_sdram ();
 #endif
@@ -287,9 +288,8 @@ initdram(int board_type)
 void
 local_bus_init(void)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_gur_t *gur = &immap->im_gur;
-	volatile ccsr_lbc_t *lbc = &immap->im_lbc;
+	volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
+	volatile ccsr_lbc_t *lbc = (void *)(CFG_MPC85xx_LBC_ADDR);
 
 	uint clkdiv;
 	uint lbc_hz;
@@ -382,8 +382,7 @@ int testdram (void)
 long int fixed_sdram (void)
 {
   #ifndef CFG_RAMBOOT
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_ddr_t *ddr= &immap->im_ddr;
+	volatile ccsr_ddr_t *ddr= (void *)(CFG_MPC85xx_DDR_ADDR);
 
 	ddr->cs0_bnds = CFG_DDR_CS0_BNDS;
 	ddr->cs0_config = CFG_DDR_CS0_CONFIG;

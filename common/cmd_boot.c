@@ -28,9 +28,12 @@
 #include <command.h>
 #include <net.h>
 
-#if defined(CONFIG_I386)
-DECLARE_GLOBAL_DATA_PTR;
-#endif
+/* Allow ports to override the default behavior */
+__attribute__((weak))
+unsigned long do_go_exec (ulong (*entry)(int, char *[]), int argc, char *argv[])
+{
+	return entry (argc, argv);
+}
 
 int do_go (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
@@ -50,21 +53,7 @@ int do_go (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	 * pass address parameter as argv[0] (aka command name),
 	 * and all remaining args
 	 */
-#if defined(CONFIG_I386)
-	/*
-	 * x86 does not use a dedicated register to pass the pointer
-	 * to the global_data
-	 */
-	argv[0] = (char *)gd;
-#endif
-#if !defined(CONFIG_NIOS)
-	rc = ((ulong (*)(int, char *[]))addr) (--argc, &argv[1]);
-#else
-	/*
-	 * Nios function pointers are address >> 1
-	 */
-	rc = ((ulong (*)(int, char *[]))(addr>>1)) (--argc, &argv[1]);
-#endif
+	rc = do_go_exec ((void *)addr, argc - 1, argv + 1);
 	if (rc != 0) rcode = 1;
 
 	printf ("## Application terminated, rc = 0x%lX\n", rc);

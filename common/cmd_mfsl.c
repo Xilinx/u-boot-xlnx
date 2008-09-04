@@ -29,8 +29,6 @@
 #include <common.h>
 #include <config.h>
 #include <command.h>
-
-#if defined(CONFIG_CMD_MFSL)
 #include <asm/asm.h>
 
 int do_frd (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
@@ -185,7 +183,7 @@ int do_frd (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
-	printf ("%01x: 0x%08lx - %s %s read\n", fslnum, num,
+	printf ("%01x: 0x%08x - %s %s read\n", fslnum, num,
 		blocking < 2  ? "non blocking" : "blocking",
 		((blocking == 1) || (blocking == 3)) ? "control" : "data" );
 	return 0;
@@ -343,7 +341,7 @@ int do_fwr (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
-	printf ("%01x: 0x%08lx - %s %s write\n", fslnum, num,
+	printf ("%01x: 0x%08x - %s %s write\n", fslnum, num,
 		blocking < 2  ? "non blocking" : "blocking",
 		((blocking == 1) || (blocking == 3)) ? "control" : "data" );
 	return 0;
@@ -384,7 +382,7 @@ int do_rspr (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		puts ("Unsupported register\n");
 		return 1;
 	}
-	printf (": 0x%08lx\n", val);
+	printf (": 0x%08x\n", val);
 	return 0;
 }
 
@@ -413,5 +411,3 @@ U_BOOT_CMD (rspr, 3, 1, do_rspr,
 		" 1 - MSR - Machine status register\n"
 		" 3 - EAR - Exception address register\n"
 		" 5 - ESR - Exception status register\n");
-
-#endif

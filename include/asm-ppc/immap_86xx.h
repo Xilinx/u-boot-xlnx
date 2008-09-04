@@ -109,7 +109,7 @@ typedef struct ccsr_ddr {
 	uint	cs4_config;		/* 0x2090 - DDR Chip Select Configuration */
 	uint	cs5_config;		/* 0x2094 - DDR Chip Select Configuration */
 	char	res7[104];
-	uint    ext_refrec;             /* 0x2100 - DDR SDRAM extended refresh recovery */
+	uint	timing_cfg_3;		/* 0x2100 - DDR SDRAM Timing Configuration Register 3 */
 	uint	timing_cfg_0;		/* 0x2104 - DDR SDRAM Timing Configuration Register 0 */
 	uint	timing_cfg_1;		/* 0x2108 - DDR SDRAM Timing Configuration Register 1 */
 	uint	timing_cfg_2;		/* 0x210c - DDR SDRAM Timing Configuration Register 2 */
@@ -119,14 +119,14 @@ typedef struct ccsr_ddr {
 	uint    sdram_mode_2;		/* 0x211c - DDR SDRAM Mode Configuration 2 */
 	uint    sdram_mode_cntl;        /* 0x2120 - DDR SDRAM Mode Control */
 	uint	sdram_interval;		/* 0x2124 - DDR SDRAM Interval Configuration */
-	uint    sdram_data_init; 	/* 0x2128 - DDR SDRAM Data Initialization */
+	uint    sdram_data_init;	/* 0x2128 - DDR SDRAM Data Initialization */
 	char	res8[4];
 	uint	sdram_clk_cntl;		/* 0x2130 - DDR SDRAM Clock Control */
 	char    res9[12];
 	uint    sdram_ocd_cntl;		/* 0x2140 - DDR SDRAM OCD Control */
 	uint    sdram_ocd_status;	/* 0x2144 - DDR SDRAM OCD Status */
 	uint    init_addr;		/* 0x2148 - DDR training initialzation address */
-	uint    init_addr_ext;		/* 0x214C - DDR training initialzation extended address */
+	uint    init_ext_addr;		/* 0x214C - DDR training initialzation extended address */
 	char    res10[2728];
 	uint    ip_rev1;		/* 0x2BF8 - DDR IP Block Revision 1 */
 	uint    ip_rev2;		/* 0x2BFC - DDR IP Block Revision 2 */
@@ -464,7 +464,7 @@ typedef struct ccsr_dma {
 
 /* tsec1-4: 24000-28000 */
 typedef struct ccsr_tsec {
-	uint    id; 		/* 0x24000 - Controller ID Register */
+	uint    id;		/* 0x24000 - Controller ID Register */
 	char	res1[12];
 	uint	ievent;		/* 0x24010 - Interrupt Event Register */
 	uint	imask;		/* 0x24014 - Interrupt Mask Register */
@@ -538,7 +538,7 @@ typedef struct ccsr_tsec {
 	uint    rbifx;		/* 0x24330 - Receive bit field extract control Register */
 	uint    rqfar;		/* 0x24334 - Receive queue filing table address Register */
 	uint    rqfcr;		/* 0x24338 - Receive queue filing table control Register */
-	uint    rqfpr;      	/* 0x2433c - Receive queue filing table property Register */
+	uint    rqfpr;		/* 0x2433c - Receive queue filing table property Register */
 	uint	mrblr;		/* 0x24340 - Maximum Receive Buffer Length Register */
 	char	res28[56];
 	uint    rbdbph;		/* 0x2437C - Receive Data Buffer Pointer High */
@@ -1256,12 +1256,16 @@ typedef struct ccsr_rio {
 typedef struct ccsr_gur {
 	uint	porpllsr;	/* 0xe0000 - POR PLL ratio status register */
 	uint	porbmsr;	/* 0xe0004 - POR boot mode status register */
-#define MPC86xx_PORBMSR_HA      0x00060000
-#define MPC85xx_PORBMSR_HA		0x00070000
+#define MPC8610_PORBMSR_HA      0x00070000
+#define MPC8610_PORBMSR_HA_SHIFT	16
+#define MPC8641_PORBMSR_HA      0x00060000
+#define MPC8641_PORBMSR_HA_SHIFT	17
 	uint	porimpscr;	/* 0xe0008 - POR I/O impedance status and control register */
 	uint	pordevsr;	/* 0xe000c - POR I/O device status regsiter */
-#define MPC86xx_PORDEVSR_IO_SEL		0x000F0000
-#define MPC85xx_PORDEVSR_IO_SEL		0x00380000 /* 85xx platform type */
+#define MPC8610_PORDEVSR_IO_SEL		0x00380000
+#define MPC8610_PORDEVSR_IO_SEL_SHIFT		19
+#define MPC8641_PORDEVSR_IO_SEL		0x000F0000
+#define MPC8641_PORDEVSR_IO_SEL_SHIFT		16
 #define MPC86xx_PORDEVSR_CORE1TE	0x00000080 /* ASMP (Core1 addr trans) */
 	uint	pordbgmsr;	/* 0xe0010 - POR debug mode status register */
 	char	res1[12];
@@ -1300,8 +1304,20 @@ typedef struct ccsr_gur {
 	uint    lynxdcr1;        /* 0xe0f08 - Lynx debug control register 1*/
 	int     res14[6];
 	uint    ddrioovcr;      /* 0xe0f24 - DDR IO Overdrive Control register */
-	char	res15[61656];
+	char	res15[216];
 } ccsr_gur_t;
+
+/*
+ * Watchdog register block(0xe_4000-0xe_4fff)
+ */
+typedef struct ccsr_wdt {
+	uint	res0;
+	uint	swcrr; /* System watchdog control register */
+	uint	swcnr; /* System watchdog count register */
+	char	res1[2];
+	ushort	swsrr; /* System watchdog service register */
+	char	res2[4080];
+} ccsr_wdt_t;
 
 typedef struct immap {
 	ccsr_local_mcm_t	im_local_mcm;
@@ -1326,8 +1342,15 @@ typedef struct immap {
 	char                    res5[389120];
 	ccsr_rio_t		im_rio;
 	ccsr_gur_t		im_gur;
+	char			res6[12288];
+	ccsr_wdt_t		im_wdt;
 } immap_t;
 
 extern immap_t  *immr;
+
+#define CFG_MPC86xx_DDR_OFFSET	(0x2000)
+#define CFG_MPC86xx_DDR_ADDR	(CFG_IMMR + CFG_MPC86xx_DDR_OFFSET)
+#define CFG_MPC86xx_DDR2_OFFSET	(0x6000)
+#define CFG_MPC86xx_DDR2_ADDR	(CFG_IMMR + CFG_MPC86xx_DDR2_OFFSET)
 
 #endif /*__IMMAP_86xx__*/

@@ -36,11 +36,11 @@
 
 #ifdef CONFIG_PIP405
 #include "../pip405/pip405.h"
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 #endif
 #ifdef CONFIG_MIP405
 #include "../mip405/mip405.h"
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -56,9 +56,6 @@ extern int mem_test(ulong start, ulong ramsize, int quiet);
 #define IMAGE_SIZE CFG_MONITOR_LEN	/* ugly, but it works for now */
 
 extern flash_info_t flash_info[];	/* info for FLASH chips */
-
-static image_header_t header;
-
 
 static int
 mpl_prg(uchar *src, ulong size)
@@ -77,7 +74,7 @@ mpl_prg(uchar *src, ulong size)
 	info = &flash_info[0];
 
 #if defined(CONFIG_PIP405) || defined(CONFIG_MIP405) || defined(CONFIG_PATI)
-	if (ntohl(magic[0]) != IH_MAGIC) {
+	if (uimage_to_cpu (magic[0]) != IH_MAGIC) {
 		puts("Bad Magic number\n");
 		return -1;
 	}
@@ -179,52 +176,54 @@ mpl_prg(uchar *src, ulong size)
 static int
 mpl_prg_image(uchar *ld_addr)
 {
-	unsigned long len, checksum;
+	unsigned long len;
 	uchar *data;
-	image_header_t *hdr = &header;
+	image_header_t *hdr = (image_header_t *)ld_addr;
 	int rc;
 
-	/* Copy header so we can blank CRC field for re-calculation */
-	memcpy (&header, (char *)ld_addr, sizeof(image_header_t));
-	if (ntohl(hdr->ih_magic)  != IH_MAGIC) {
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
+
+	if (!image_check_magic (hdr)) {
 		puts("Bad Magic Number\n");
 		return 1;
 	}
-	print_image_hdr(hdr);
-	if (hdr->ih_os  != IH_OS_U_BOOT) {
+	image_print_contents (hdr);
+	if (!image_check_os (hdr, IH_OS_U_BOOT)) {
 		puts("No U-Boot Image\n");
 		return 1;
 	}
-	if (hdr->ih_type  != IH_TYPE_FIRMWARE) {
+	if (!image_check_type (hdr, IH_TYPE_FIRMWARE)) {
 		puts("No Firmware Image\n");
 		return 1;
 	}
-	data = (uchar *)&header;
-	len  = sizeof(image_header_t);
-	checksum = ntohl(hdr->ih_hcrc);
-	hdr->ih_hcrc = 0;
-	if (crc32 (0, (uchar *)data, len) != checksum) {
+	if (!image_check_hcrc (hdr)) {
 		puts("Bad Header Checksum\n");
 		return 1;
 	}
-	data = ld_addr + sizeof(image_header_t);
-	len  = ntohl(hdr->ih_size);
 	puts("Verifying Checksum ... ");
-	if (crc32 (0, (uchar *)data, len) != ntohl(hdr->ih_dcrc)) {
+	if (!image_check_dcrc (hdr)) {
 		puts("Bad Data CRC\n");
 		return 1;
 	}
 	puts("OK\n");
 
-	if (hdr->ih_comp != IH_COMP_NONE) {
+	data = (uchar *)image_get_data (hdr);
+	len = image_get_data_size (hdr);
+
+	if (image_get_comp (hdr) != IH_COMP_NONE) {
 		uchar *buf;
 		/* reserve space for uncompressed image */
 		if ((buf = malloc(IMAGE_SIZE)) == NULL) {
-		    	puts("Insufficient space for decompression\n");
+			puts("Insufficient space for decompression\n");
 			return 1;
 		}
 
-		switch (hdr->ih_comp) {
+		switch (image_get_comp (hdr)) {
 		case IH_COMP_GZIP:
 			puts("Uncompressing (GZIP) ... ");
 			rc = gunzip ((void *)(buf), IMAGE_SIZE, data, &len);
@@ -253,7 +252,8 @@ mpl_prg_image(uchar *ld_addr)
 			break;
 #endif
 		default:
-			printf ("Unimplemented compression type %d\n", hdr->ih_comp);
+			printf ("Unimplemented compression type %d\n",
+				image_get_comp (hdr));
 			free(buf);
 			return 1;
 		}
@@ -357,8 +357,8 @@ void copy_old_env(ulong size)
 	unsigned off;
 	uchar *name, *value;
 
-	name=&name_buf[0];
-	value=&value_buf[0];
+	name = &name_buf[0];
+	value = &value_buf[0];
 	len=size;
 	off = sizeof(long);
 	while (len > off) {
@@ -377,8 +377,8 @@ void copy_old_env(ulong size)
 				if(c == '\0')
 					break;
 			} while(len > off);
-			name=&name_buf[0];
-			value=&value_buf[0];
+			name = &name_buf[0];
+			value = &value_buf[0];
 			if(strncmp((char *)name,"baudrate",8)!=0) {
 				setenv((char *)name,(char *)value);
 			}
@@ -461,7 +461,7 @@ void show_stdio_dev(void)
 
 int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
- 	ulong size,src,ld_addr;
+	ulong size,src,ld_addr;
 	int result;
 #if !defined(CONFIG_PATI)
 	backup_t back;
@@ -473,11 +473,11 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	{
 #if defined(CONFIG_CMD_FDC)
 		if (strcmp(argv[2], "floppy") == 0) {
- 			char *local_args[3];
+			char *local_args[3];
 			extern int do_fdcboot (cmd_tbl_t *, int, int, char *[]);
 			puts("\nupdating bootloader image from floppy\n");
 			local_args[0] = argv[0];
-	    		if(argc==4) {
+			if(argc==4) {
 				local_args[1] = argv[3];
 				local_args[2] = NULL;
 				ld_addr=simple_strtoul(argv[3], NULL, 16);
@@ -493,7 +493,7 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		}
 #endif
 		if (strcmp(argv[2], "mem") == 0) {
-	    		if(argc==4) {
+			if(argc==4) {
 				ld_addr=simple_strtoul(argv[3], NULL, 16);
 			}
 			else {
@@ -524,7 +524,7 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	    src&=0xfff00000;
 	    size=0;
 	    do {
-	    	size++;
+		size++;
 			printf("\n\nPass %ld\n",size);
 			mem_test(CFG_MEMTEST_START,src,1);
 			if(ctrlc())
@@ -538,7 +538,7 @@ int do_mplcommon(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #if !defined(CONFIG_PATI)
 	if (strcmp(argv[1], "clearenvvalues") == 0)
 	{
- 		if (strcmp(argv[2], "yes") == 0)
+		if (strcmp(argv[2], "yes") == 0)
 		{
 			clear_env_values();
 			return 0;
@@ -587,7 +587,7 @@ extern int get_boot_mode(void);
 void video_get_info_str (int line_number, char *info)
 {
 	/* init video info strings for graphic console */
-	PPC405_SYS_INFO sys_info;
+	PPC4xx_SYS_INFO sys_info;
 	char rev;
 	int i,boot;
 	unsigned long pvr;
@@ -636,12 +636,12 @@ void video_get_info_str (int line_number, char *info)
 					++s;
 					break;
 				}
-				buf[i++]=*s;
+				buf[i++] = *s;
 			}
 			sprintf(&buf[i]," SN ");
 			i+=4;
 			for (; s < e; ++s) {
-				buf[i++]=*s;
+				buf[i++] = *s;
 			}
 			buf[i++]=0;
 		}

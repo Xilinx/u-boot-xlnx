@@ -39,6 +39,8 @@ extern flash_info_t flash_info[CFG_MAX_FLASH_BANKS]; /* info for FLASH chips */
  ************************************************************************/
 int board_early_init_f(void)
 {
+	u32 mfr;
+
 	mtebc( pb0ap,  0x03800000 );	/* set chip selects */
 	mtebc( pb0cr,  0xffc58000 );	/* ebc0_b0cr, 4MB at 0xffc00000 CS0 */
 	mtebc( pb1ap,  0x03800000 );
@@ -63,6 +65,10 @@ int board_early_init_f(void)
 	mtdcr( uic0vr, 0x00000001 );	/* Set Vect base=0,INT31 Highest priority */
 	mtdcr( uic0sr, 0x00000000 );	/* clear all interrupts */
 	mtdcr( uic0sr, 0xffffffff );
+
+	mfsdr(sdr_mfr, mfr);
+	mfr |= SDR0_MFR_FIXD;		/* Workaround for PCI/DMA */
+	mtsdr(sdr_mfr, mfr);
 
 	return  0;
 }
@@ -118,50 +124,6 @@ int checkboard(void)
 u32 ddr_clktr(u32 default_val) {
 	return (SDRAM_CLKTR_CLKP_180_DEG_ADV);
 }
-
-/*************************************************************************
- *  int testdram()
- *
- ************************************************************************/
-#if defined(CFG_DRAM_TEST)
-int testdram(void)
-{
-	unsigned long *mem = (unsigned long *) 0;
-	const unsigned long kend = (1024 / sizeof(unsigned long));
-	unsigned long k, n;
-
-	mtmsr(0);
-
-	for (k = 0; k < CFG_KBYTES_SDRAM;
-	     ++k, mem += (1024 / sizeof(unsigned long))) {
-		if ((k & 1023) == 0) {
-			printf("%3d MB\r", k / 1024);
-		}
-
-		memset(mem, 0xaaaaaaaa, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0xaaaaaaaa) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-
-		memset(mem, 0x55555555, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0x55555555) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-	}
-	printf("SDRAM test passes\n");
-
-	return  0;
-}
-#endif
-
 
 /*************************************************************************
  *  pci_pre_init

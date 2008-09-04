@@ -31,8 +31,6 @@
 #include <dataflash.h>
 #endif
 
-#if defined(CONFIG_CMD_FLASH)
-
 #if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
 #include <jffs2/jffs2.h>
 
@@ -43,6 +41,7 @@ int find_dev_and_part(const char *id, struct mtd_device **dev,
 		u8 *part_num, struct part_info **part);
 #endif
 
+#ifndef CFG_NO_FLASH
 extern flash_info_t flash_info[];	/* info for FLASH chips */
 
 /*
@@ -211,7 +210,7 @@ flash_fill_sect_ranges (ulong addr_first, ulong addr_last,
 		s_last [bank] = -1;	/* last  sector to erase	*/
 	}
 
-	for (bank=0,info=&flash_info[0];
+	for (bank=0,info = &flash_info[0];
 	     (bank < CFG_MAX_FLASH_BANKS) && (addr_first <= addr_last);
 	     ++bank, ++info) {
 		ulong b_end;
@@ -277,15 +276,19 @@ flash_fill_sect_ranges (ulong addr_first, ulong addr_last,
 
 	return rcode;
 }
+#endif /* CFG_NO_FLASH */
 
 int do_flinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#ifndef CFG_NO_FLASH
 	ulong bank;
+#endif
 
 #ifdef CONFIG_HAS_DATAFLASH
 	dataflash_print_info();
 #endif
 
+#ifndef CFG_NO_FLASH
 	if (argc == 1) {	/* print info for all FLASH banks */
 		for (bank=0; bank <CFG_MAX_FLASH_BANKS; ++bank) {
 			printf ("\nBank # %ld: ", bank+1);
@@ -303,11 +306,13 @@ int do_flinfo ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 	printf ("\nBank # %ld: ", bank);
 	flash_print_info (&flash_info[bank-1]);
+#endif /* CFG_NO_FLASH */
 	return 0;
 }
 
 int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#ifndef CFG_NO_FLASH
 	flash_info_t *info;
 	ulong bank, addr_first, addr_last;
 	int n, sect_first, sect_last;
@@ -337,7 +342,7 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			puts ("Bad sector specification\n");
 			return 1;
 		}
-		printf ("Erase Flash Sectors %d-%d in Bank # %d ",
+		printf ("Erase Flash Sectors %d-%d in Bank # %zu ",
 			sect_first, sect_last, (info-flash_info)+1);
 		rcode = flash_erase(info, sect_first, sect_last);
 		return rcode;
@@ -355,7 +360,7 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				addr_last = addr_first + part->size - 1;
 
 				printf ("Erase Flash Parition %s, "
-						"bank %d, 0x%08lx - 0x%08lx ",
+						"bank %ld, 0x%08lx - 0x%08lx ",
 						argv[1], bank, addr_first,
 						addr_last);
 
@@ -399,8 +404,12 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	rcode = flash_sect_erase(addr_first, addr_last);
 	return rcode;
+#else
+	return 0;
+#endif /* CFG_NO_FLASH */
 }
 
+#ifndef CFG_NO_FLASH
 int flash_sect_erase (ulong addr_first, ulong addr_last)
 {
 	flash_info_t *info;
@@ -418,7 +427,7 @@ int flash_sect_erase (ulong addr_first, ulong addr_last)
 					s_first, s_last, &planned );
 
 	if (planned && (rcode == 0)) {
-		for (bank=0,info=&flash_info[0];
+		for (bank=0,info = &flash_info[0];
 		     (bank < CFG_MAX_FLASH_BANKS) && (rcode == 0);
 		     ++bank, ++info) {
 			if (s_first[bank]>=0) {
@@ -441,12 +450,17 @@ int flash_sect_erase (ulong addr_first, ulong addr_last)
 	}
 	return rcode;
 }
+#endif /* CFG_NO_FLASH */
 
 int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
+#ifndef CFG_NO_FLASH
 	flash_info_t *info;
-	ulong bank, addr_first, addr_last;
-	int i, p, n, sect_first, sect_last;
+	ulong bank;
+	int i, n, sect_first, sect_last;
+#endif /* CFG_NO_FLASH */
+	ulong addr_first, addr_last;
+	int p;
 #if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
 	struct mtd_device *dev;
 	struct part_info *part;
@@ -489,6 +503,7 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 #endif
 
+#ifndef CFG_NO_FLASH
 	if (strcmp(argv[2], "all") == 0) {
 		for (bank=1; bank<=CFG_MAX_FLASH_BANKS; ++bank) {
 			info = &flash_info[bank-1];
@@ -519,7 +534,7 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			puts ("Bad sector specification\n");
 			return 1;
 		}
-		printf("%sProtect Flash Sectors %d-%d in Bank # %d\n",
+		printf("%sProtect Flash Sectors %d-%d in Bank # %zu\n",
 			p ? "" : "Un-", sect_first, sect_last,
 			(info-flash_info)+1);
 		for (i = sect_first; i <= sect_last; i++) {
@@ -551,7 +566,7 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				addr_last = addr_first + part->size - 1;
 
 				printf ("%sProtect Flash Parition %s, "
-						"bank %d, 0x%08lx - 0x%08lx\n",
+						"bank %ld, 0x%08lx - 0x%08lx\n",
 						p ? "" : "Un", argv[1],
 						bank, addr_first, addr_last);
 
@@ -613,10 +628,11 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 	rcode = flash_sect_protect (p, addr_first, addr_last);
+#endif /* CFG_NO_FLASH */
 	return rcode;
 }
 
-
+#ifndef CFG_NO_FLASH
 int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 {
 	flash_info_t *info;
@@ -635,7 +651,7 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 	protected = 0;
 
 	if (planned && (rcode == 0)) {
-		for (bank=0,info=&flash_info[0]; bank < CFG_MAX_FLASH_BANKS; ++bank, ++info) {
+		for (bank=0,info = &flash_info[0]; bank < CFG_MAX_FLASH_BANKS; ++bank, ++info) {
 			if (info->flash_id == FLASH_UNKNOWN) {
 				continue;
 			}
@@ -669,6 +685,7 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 	}
 	return rcode;
 }
+#endif /* CFG_NO_FLASH */
 
 
 /**************************************************/
@@ -731,5 +748,3 @@ U_BOOT_CMD(
 #undef	TMP_ERASE
 #undef	TMP_PROT_ON
 #undef	TMP_PROT_OFF
-
-#endif

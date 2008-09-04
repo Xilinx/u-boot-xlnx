@@ -337,7 +337,7 @@ void check_ram(unsigned int addr, unsigned int size)
 	}
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *immap = (immap_t *) CFG_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
@@ -555,7 +555,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
-#if defined(CONFIG_CMD_NAND) && defined(CFG_NAND_LEGACY)
+#if defined(CONFIG_CMD_NAND) && defined(CONFIG_NAND_LEGACY)
 
 #include <linux/mtd/nand_legacy.h>
 

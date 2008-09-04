@@ -19,8 +19,6 @@
 
 
 #include <common.h>
-#if defined(CONFIG_CMD_REISER)
-
 #include <config.h>
 #include <reiserfs.h>
 
@@ -35,7 +33,7 @@ int reiserfs_set_blk_dev(block_dev_desc_t *rbdd, int part)
 	reiserfs_block_dev_desc = rbdd;
 
 	if (part == 0) {
- 		/* disk doesn't use partition table */
+		/* disk doesn't use partition table */
 		part_info.start = 0;
 		part_info.size = rbdd->lba;
 		part_info.blksz = rbdd->blksz;
@@ -119,5 +117,3 @@ int reiserfs_devread (int sector, int byte_offset, int byte_len, char *buf)
 
 	return 1;
 }
-
-#endif

@@ -105,17 +105,26 @@ static int skip_atoi(const char **s)
 #define SPECIAL	32		/* 0x */
 #define LARGE	64		/* use 'ABCDEF' instead of 'abcdef' */
 
+#ifdef CFG_64BIT_VSPRINTF
 #define do_div(n,base) ({ \
-	int __res; \
-	__res = ((unsigned long) n) % (unsigned) base; \
-	n = ((unsigned long) n) / (unsigned) base; \
+	unsigned int __res; \
+	__res = ((unsigned long long) n) % base; \
+	n = ((unsigned long long) n) / base; \
 	__res; \
 })
+#else
+#define do_div(n,base) ({ \
+	int __res; \
+	__res = ((unsigned long) n) % base; \
+	n = ((unsigned long) n) / base; \
+	__res; \
+})
+#endif
 
 #ifdef CFG_64BIT_VSPRINTF
-static char * number(char * str, long long num, int base, int size, int precision ,int type)
+static char * number(char * str, long long num, unsigned int base, int size, int precision ,int type)
 #else
-static char * number(char * str, long num, int base, int size, int precision ,int type)
+static char * number(char * str, long num, unsigned int base, int size, int precision ,int type)
 #endif
 {
 	char c,sign,tmp[66];
@@ -253,8 +262,14 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 
 		/* get the conversion qualifier */
 		qualifier = -1;
-		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'q') {
+		if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L' ||
+		    *fmt == 'Z' || *fmt == 'z' || *fmt == 't' ||
+		    *fmt == 'q' ) {
 			qualifier = *fmt;
+			if (qualifier == 'l' && *(fmt+1) == 'l') {
+				qualifier = 'q';
+				++fmt;
+			}
 			++fmt;
 		}
 
@@ -342,9 +357,13 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 			num = va_arg(args, unsigned long long);
 		else
 #endif
-		if (qualifier == 'l')
+		if (qualifier == 'l') {
 			num = va_arg(args, unsigned long);
-		else if (qualifier == 'h') {
+		} else if (qualifier == 'Z' || qualifier == 'z') {
+			num = va_arg(args, size_t);
+		} else if (qualifier == 't') {
+			num = va_arg(args, ptrdiff_t);
+		} else if (qualifier == 'h') {
 			num = (unsigned short) va_arg(args, int);
 			if (flags & SIGN)
 				num = (short) num;

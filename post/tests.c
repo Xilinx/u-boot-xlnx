@@ -27,10 +27,9 @@
 
 #include <common.h>
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 
+extern int ocm_post_test (int flags);
 extern int cache_post_test (int flags);
 extern int watchdog_post_test (int flags);
 extern int i2c_post_test (int flags);
@@ -48,6 +47,13 @@ extern int dsp_post_test (int flags);
 extern int codec_post_test (int flags);
 extern int ecc_post_test (int flags);
 
+extern int dspic_init_post_test (int flags);
+extern int dspic_post_test (int flags);
+extern int gdc_post_test (int flags);
+extern int fpga_post_test (int flags);
+extern int lwmon5_watchdog_post_test(int flags);
+extern int sysmon1_post_test(int flags);
+
 extern int sysmon_init_f (void);
 
 extern void sysmon_reloc (void);
@@ -55,6 +61,18 @@ extern void sysmon_reloc (void);
 
 struct post_test post_list[] =
 {
+#if CONFIG_POST & CFG_POST_OCM
+    {
+	"OCM test",
+	"ocm",
+	"This test checks on chip memory (OCM).",
+	POST_ROM | POST_ALWAYS | POST_PREREL | POST_CRITICAL | POST_STOP,
+	&ocm_post_test,
+	NULL,
+	NULL,
+	CFG_POST_OCM
+    },
+#endif
 #if CONFIG_POST & CFG_POST_CACHE
     {
 	"Cache test",
@@ -68,6 +86,9 @@ struct post_test post_list[] =
     },
 #endif
 #if CONFIG_POST & CFG_POST_WATCHDOG
+#if defined(CONFIG_POST_WATCHDOG)
+	CONFIG_POST_WATCHDOG,
+#else
     {
 	"Watchdog timer test",
 	"watchdog",
@@ -78,6 +99,7 @@ struct post_test post_list[] =
 	NULL,
 	CFG_POST_WATCHDOG
     },
+#endif
 #endif
 #if CONFIG_POST & CFG_POST_I2C
     {
@@ -194,7 +216,7 @@ struct post_test post_list[] =
 	"SPR test",
 	"spr",
 	"This test checks SPR contents.",
-	POST_ROM | POST_ALWAYS | POST_PREREL,
+	POST_RAM | POST_ALWAYS,
 	&spr_post_test,
 	NULL,
 	NULL,
@@ -218,14 +240,14 @@ struct post_test post_list[] =
 	"DSP test",
 	"dsp",
 	"This test checks any connected DSP(s).",
-	POST_RAM | POST_MANUAL,
+	POST_RAM | POST_ALWAYS | POST_MANUAL,
 	&dsp_post_test,
 	NULL,
 	NULL,
 	CFG_POST_DSP
     },
 #endif
-#if CONFIG_POST & CFG_POST_DSP
+#if CONFIG_POST & CFG_POST_CODEC
     {
 	"CODEC test",
 	"codec",
@@ -241,16 +263,29 @@ struct post_test post_list[] =
     {
 	"ECC test",
 	"ecc",
-	"This test checks ECC facility of memory.",
-	POST_ROM | POST_ALWAYS,
+	"This test checks the ECC facility of memory.",
+	POST_ROM | POST_ALWAYS | POST_PREREL,
 	&ecc_post_test,
 	NULL,
 	NULL,
 	CFG_POST_ECC
     },
 #endif
+#if CONFIG_POST & CFG_POST_BSPEC1
+	CONFIG_POST_BSPEC1,
+#endif
+#if CONFIG_POST & CFG_POST_BSPEC2
+	CONFIG_POST_BSPEC2,
+#endif
+#if CONFIG_POST & CFG_POST_BSPEC3
+	CONFIG_POST_BSPEC3,
+#endif
+#if CONFIG_POST & CFG_POST_BSPEC4
+	CONFIG_POST_BSPEC4,
+#endif
+#if CONFIG_POST & CFG_POST_BSPEC5
+	CONFIG_POST_BSPEC5,
+#endif
 };
 
 unsigned int post_list_size = sizeof (post_list) / sizeof (struct post_test);
-
-#endif /* CONFIG_POST */

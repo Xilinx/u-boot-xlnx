@@ -28,13 +28,23 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(CPU).a
 
-START	= start.o #resetvec.o
+START	= start.o
 SOBJS	= cache.o
-COBJS	= traps.o cpu.o cpu_init.o speed.o interrupts.o \
-	  spd_sdram.o
 
-SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
+COBJS-y	+= traps.o
+COBJS-y	+= cpu.o
+COBJS-y	+= cpu_init.o
+COBJS-y	+= speed.o
+COBJS-y	+= interrupts.o
+
+COBJS-$(CONFIG_OF_LIBFDT) += fdt.o
+
+COBJS-$(CONFIG_MPC8641) += ddr-8641.o
+# 8610 & 8641 are identical w/regards to DDR
+COBJS-$(CONFIG_MPC8610) += ddr-8641.o
+
+SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
+OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS-y))
 START	:= $(addprefix $(obj),$(START))
 
 all:	$(obj).depend $(START) $(LIB)

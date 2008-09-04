@@ -259,7 +259,7 @@ char mpsc_getchar (void)
 int
 mpsc_test_char(void)
 {
-	volatile unsigned int *p=&rx_desc_base[rx_desc_index*8];
+	volatile unsigned int *p = &rx_desc_base[rx_desc_index*8];
 
 	INVALIDATE_DCACHE(&p[1], &p[2]);
 
@@ -309,9 +309,9 @@ mpsc_init(int baud)
 
 	/* COMM_MPSC CONFIG */
 #ifdef SOFTWARE_CACHE_MANAGEMENT
-	galmpsc_set_snoop(CHANNEL, 0);     				/* disable snoop */
+	galmpsc_set_snoop(CHANNEL, 0);				/* disable snoop */
 #else
-	galmpsc_set_snoop(CHANNEL, 1);     				/* enable snoop */
+	galmpsc_set_snoop(CHANNEL, 1);				/* enable snoop */
 #endif
 
 	return 0;

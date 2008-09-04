@@ -29,13 +29,10 @@
 #include <command.h>
 #include <asm/byteorder.h>
 #include <part.h>
-
-#if defined(CONFIG_CMD_USB)
-
 #include <usb.h>
 
 #ifdef CONFIG_USB_STORAGE
-static int usb_stor_curr_dev=-1; /* current device */
+static int usb_stor_curr_dev = -1; /* current device */
 #endif
 
 /* some display routines (info command) */
@@ -314,11 +311,13 @@ int do_usbboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	char *boot_device = NULL;
 	char *ep;
 	int dev, part=1, rcode;
-	ulong addr, cnt, checksum;
+	ulong addr, cnt;
 	disk_partition_t info;
 	image_header_t *hdr;
 	block_dev_desc_t *stor_dev;
-
+#if defined(CONFIG_FIT)
+	const void *fit_hdr = NULL;
+#endif
 
 	switch (argc) {
 	case 1:
@@ -389,25 +388,32 @@ int do_usbboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
-	hdr = (image_header_t *)addr;
+	switch (genimg_get_format ((void *)addr)) {
+	case IMAGE_FORMAT_LEGACY:
+		hdr = (image_header_t *)addr;
 
-	if (ntohl(hdr->ih_magic) != IH_MAGIC) {
-		printf("\n** Bad Magic Number **\n");
+		if (!image_check_hcrc (hdr)) {
+			puts ("\n** Bad Header Checksum **\n");
+			return 1;
+		}
+
+		image_print_contents (hdr);
+
+		cnt = image_get_image_size (hdr);
+		break;
+#if defined(CONFIG_FIT)
+	case IMAGE_FORMAT_FIT:
+		fit_hdr = (const void *)addr;
+		puts ("Fit image detected...\n");
+
+		cnt = fit_get_size (fit_hdr);
+		break;
+#endif
+	default:
+		puts ("** Unknown image type\n");
 		return 1;
 	}
 
-	checksum = ntohl(hdr->ih_hcrc);
-	hdr->ih_hcrc = 0;
-
-	if (crc32 (0, (uchar *)hdr, sizeof(image_header_t)) != checksum) {
-		puts ("\n** Bad Header Checksum **\n");
-		return 1;
-	}
-	hdr->ih_hcrc = htonl(checksum);	/* restore checksum for later use */
-
-	print_image_hdr (hdr);
-
-	cnt = (ntohl(hdr->ih_size) + sizeof(image_header_t));
 	cnt += info.blksz - 1;
 	cnt /= info.blksz;
 	cnt -= 1;
@@ -417,6 +423,18 @@ int do_usbboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		printf ("\n** Read error on %d:%d\n", dev, part);
 		return 1;
 	}
+
+#if defined(CONFIG_FIT)
+	/* This cannot be done earlier, we need complete FIT image in RAM first */
+	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
+		if (!fit_check_format (fit_hdr)) {
+			puts ("** Bad FIT image format\n");
+			return 1;
+		}
+		fit_print_contents (fit_hdr);
+	}
+#endif
+
 	/* Loading ok, update default load address */
 	load_addr = addr;
 
@@ -458,7 +476,7 @@ int do_usb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #ifdef CONFIG_USB_STORAGE
 		/* try to recognize storage devices immediately */
 		if (i >= 0)
-	 		usb_stor_curr_dev = usb_stor_scan(1);
+			usb_stor_curr_dev = usb_stor_scan(1);
 #endif
 		return 0;
 	}
@@ -532,18 +550,28 @@ int do_usb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 	if (strncmp(argv[1], "stor", 4) == 0) {
-		usb_stor_info();
-		return 0;
+		return usb_stor_info();
 	}
 
 	if (strncmp(argv[1],"part",4) == 0) {
-		int devno, ok;
-		for (ok=0, devno=0; devno<USB_MAX_STOR_DEV; ++devno) {
+		int devno, ok = 0;
+		if (argc==2) {
+			for (devno=0; devno<USB_MAX_STOR_DEV; ++devno) {
+				stor_dev=usb_stor_get_dev(devno);
+				if (stor_dev->type!=DEV_TYPE_UNKNOWN) {
+					ok++;
+					if (devno)
+						printf("\n");
+					printf("print_part of %x\n",devno);
+					print_part(stor_dev);
+				}
+			}
+		}
+		else {
+			devno=simple_strtoul(argv[2], NULL, 16);
 			stor_dev=usb_stor_get_dev(devno);
 			if (stor_dev->type!=DEV_TYPE_UNKNOWN) {
 				ok++;
-				if (devno)
-					printf("\n");
 				printf("print_part of %x\n",devno);
 				print_part(stor_dev);
 			}
@@ -608,12 +636,6 @@ int do_usb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 1;
 }
 
-
-#endif
-
-
-#if defined(CONFIG_CMD_USB)
-
 #ifdef CONFIG_USB_STORAGE
 U_BOOT_CMD(
 	usb,	5,	1,	do_usb,
@@ -644,5 +666,4 @@ U_BOOT_CMD(
 	"usb  tree  - show USB device tree\n"
 	"usb  info [dev] - show available USB devices\n"
 );
-#endif
 #endif

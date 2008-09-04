@@ -42,6 +42,7 @@
 
 #if defined (CONFIG_P3M750)
 #define CONFIG_750FX			/* 750GL/GX/FX			*/
+#define CONFIG_HIGH_BATS		/* High BATs supported		*/
 #define CFG_BOARD_NAME		"P3M750"
 #define CFG_BUS_HZ		100000000
 #define CFG_BUS_CLK		CFG_BUS_HZ
@@ -127,7 +128,7 @@
  * FLASH related
  *----------------------------------------------------------------------*/
 #define CFG_FLASH_CFI			/* The flash is CFI compatible		*/
-#define CFG_FLASH_CFI_DRIVER		/* Use common CFI driver		*/
+#define CONFIG_FLASH_CFI_DRIVER		/* Use common CFI driver		*/
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
 #define CFG_MAX_FLASH_SECT	512	/* max number of sectors on one chip	*/
 #define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
@@ -138,9 +139,9 @@
 
 #define CFG_ENV_IS_IN_FLASH     1	/* use FLASH for environment vars	*/
 #if defined (CONFIG_P3M750)
-#define CFG_ENV_SECT_SIZE	0x20000 	/* one sector (1 device)*/
+#define CFG_ENV_SECT_SIZE	0x20000	/* one sector (1 device)		*/
 #elif defined (CONFIG_P3M7448)
-#define CFG_ENV_SECT_SIZE	0x40000 	/* two sectors (2 devices parallel */
+#define CFG_ENV_SECT_SIZE	0x40000	/* two sectors (2 devices parallel	*/
 #endif
 #define	CFG_ENV_SIZE		0x2000	/* Total Size of Environment Sector	*/
 #define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
@@ -219,7 +220,7 @@
 	"update=protect off fff00000 fff3ffff;era fff00000 fff3ffff;"	\
 		"cp.b 100000 fff00000 40000;"			        \
 		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"serverip=11.0.0.152\0"
 
 #if defined (CONFIG_P3M750)

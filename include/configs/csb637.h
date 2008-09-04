@@ -51,7 +51,7 @@
 #define MC_ASR_VAL	0x00000000
 #define MC_AASR_VAL	0x00000000
 #define EBI_CFGR_VAL	0x00000000
-#define SMC2_CSR_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
+#define SMC_CSR0_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
 
 /* clocks */
 #define PLLAR_VAL	0x2031BE01 /* 184.320000 MHz for PCK */
@@ -114,17 +114,11 @@
  */
 #include <config_cmd_default.h>
 
-#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_DHCP
+#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_PING
 
-#undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_AUTOSCRIPT
-#undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_MISC
-#undef CONFIG_CMD_LOADS
-
+#ifdef	NAND_SUPPORT_HAS_BEEN_FIXED	/* NAND support is broken / unimplemented */
 
 #define CFG_MAX_NAND_DEVICE	1	/* Max number of NAND devices		*/
 #define SECTORSIZE 512
@@ -140,6 +134,7 @@
 #define AT91_SMART_MEDIA_ALE (1 << 22)	/* our ALE is AD22 */
 #define AT91_SMART_MEDIA_CLE (1 << 21)	/* our CLE is AD21 */
 
+#include <asm/arch/AT91RM9200.h>	/* needed for port definitions */
 #define NAND_DISABLE_CE(nand) do { *AT91C_PIOC_SODR = AT91C_PIO_PC0;} while(0)
 #define NAND_ENABLE_CE(nand) do { *AT91C_PIOC_CODR = AT91C_PIO_PC0;} while(0)
 
@@ -154,6 +149,8 @@
 #define NAND_CTL_SETALE(nandptr)
 #define NAND_CTL_CLRCLE(nandptr)
 #define NAND_CTL_SETCLE(nandptr)
+
+#endif	/* NAND_SUPPORT_HAS_BEEN_FIXED */
 
 #define CONFIG_NR_DRAM_BANKS 1
 #define PHYS_SDRAM			0x20000000
@@ -170,8 +167,8 @@
 
 #undef CONFIG_HAS_DATAFLASH
 #define CFG_SPI_WRITE_TOUT		(5*CFG_HZ)
-#define CFG_MAX_DATAFLASH_BANKS 	0
-#define CFG_MAX_DATAFLASH_PAGES 	16384
+#define CFG_MAX_DATAFLASH_BANKS		0
+#define CFG_MAX_DATAFLASH_PAGES		16384
 #define CFG_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* Logical adress for CS0 */
 #define CFG_DATAFLASH_LOGIC_ADDR_CS3	0xD0000000	/* Logical adress for CS3 */
 
@@ -182,7 +179,7 @@
 #define PHYS_FLASH_SIZE			0x800000  /* 8 megs main flash */
 #define CFG_FLASH_BASE			PHYS_FLASH_1
 #define CFG_FLASH_CFI		1	/* flash is CFI conformant	*/
-#define CFG_FLASH_CFI_DRIVER	1	/* use common cfi driver	*/
+#define CONFIG_FLASH_CFI_DRIVER	1	/* use common cfi driver	*/
 #define CFG_FLASH_EMPTY_INFO
 #define CFG_FLASH_USE_BUFFER_WRITE 1	/* use buffered writes (20x faster) */
 #define CFG_MAX_FLASH_BANKS	1	/* max # of memory banks	*/
@@ -209,35 +206,16 @@
 
 #define CFG_LOAD_ADDR		0x21000000  /* default load address */
 
-#define CFG_BAUDRATE_TABLE	{115200, 57600, 38400, 19200, 9600 }
+#define CFG_BAUDRATE_TABLE	{ 115200, 57600, 38400, 19200, 9600 }
 
 #define CFG_PROMPT		"U-Boot> "	/* Monitor Command Prompt */
 #define CFG_CBSIZE		256		/* Console I/O Buffer Size */
 #define CFG_MAXARGS		16		/* max number of command args */
 #define CFG_PBSIZE		(CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
 
-#ifndef __ASSEMBLY__
-/*-----------------------------------------------------------------------
- * Board specific extension for bd_info
- *
- * This structure is embedded in the global bd_info (bd_t) structure
- * and can be used by the board specific code (eg board/...)
- */
-
-struct bd_info_ext {
-	/* helper variable for board environment handling
-	 *
-	 * env_crc_valid == 0    =>   uninitialised
-	 * env_crc_valid  > 0    =>   environment crc in flash is valid
-	 * env_crc_valid  < 0    =>   environment crc in flash is invalid
-	 */
-	int env_crc_valid;
-};
-#endif
-
 #define CFG_HZ 1000
 #define CFG_HZ_CLOCK AT91C_MASTER_CLOCK/2	/* AT91C_TC0_CMR is implicitly set to */
-					/* AT91C_TC_TIMER_DIV1_CLOCK */
+						/* AT91C_TC_TIMER_DIV1_CLOCK */
 
 #define CONFIG_STACKSIZE	(32*1024)	/* regular stack */
 

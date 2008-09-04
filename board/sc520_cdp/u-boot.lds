@@ -33,7 +33,7 @@ SECTIONS
 	. = ALIGN(4);
 	.rodata : { *(.rodata) *(.rodata.str1.1) *(.rodata.str1.32) }
 
-	. = 0x400000; 	                    /* Ram data segment to use */
+	. = 0x400000;	                    /* Ram data segment to use */
 	_i386boot_romdata_dest = ABSOLUTE(.);
 	.data : AT ( LOADADDR(.rodata) + SIZEOF(.rodata) ) { *(.data) }
 	_i386boot_romdata_start = LOADADDR(.data);
@@ -45,7 +45,7 @@ SECTIONS
 
 	. = ALIGN(4);
 	_i386boot_bss_start = ABSOLUTE(.);
-	.bss : { *(.bss) }
+	.bss (NOLOAD) : { *(.bss) }
 	_i386boot_bss_size = SIZEOF(.bss);
 
 

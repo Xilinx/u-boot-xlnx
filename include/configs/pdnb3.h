@@ -140,7 +140,7 @@
  * Default configuration (environment varibles...)
  *----------------------------------------------------------------------*/
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -170,10 +170,10 @@
 	"update=protect off 50000000 5007dfff;era 50000000 5007dfff;"	\
 		"cp.b 100000 50000000 ${filesize};"			\
 		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"ipaddr=10.0.0.233\0"						\
 	"serverip=10.0.0.152\0"						\
-	"netmask=255.255.0.0\0"					\
+	"netmask=255.255.0.0\0"						\
 	"ethaddr=c6:6f:13:36:f3:81\0"					\
 	"eth1addr=c6:6f:13:36:f3:82\0"					\
 	"mtdparts=IXP4XX-Flash.0:504k@0(uboot),4k@504k(env),"		\
@@ -211,14 +211,14 @@
  */
 #define CFG_SDR_CONFIG		0x18
 #define CFG_SDR_MODE_CONFIG	0x1
-#define CFG_SDRAM_REFRESH_CNT 	0x81a
+#define CFG_SDRAM_REFRESH_CNT	0x81a
 
 /*
  * FLASH and environment organization
  */
 #if defined(CONFIG_SCPU)
 #define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
 #define CFG_FLASH_CFI_WIDTH	FLASH_CFI_16BIT	/* no byte writes on IXP4xx	*/
 #endif
 
@@ -251,7 +251,7 @@
 #define CFG_ENV_SECT_SIZE	0x20000 /* size of one complete sector		*/
 #define	CFG_ENV_SIZE		0x4000	/* Total Size of Environment Sector	*/
 #else
-#define CFG_ENV_SECT_SIZE	0x1000 	/* size of one complete sector		*/
+#define CFG_ENV_SECT_SIZE	0x1000	/* size of one complete sector		*/
 #define	CFG_ENV_SIZE		0x1000	/* Total Size of Environment Sector	*/
 
 /* Address and size of Redundant Environment Sector	*/

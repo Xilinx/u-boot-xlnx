@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2006-2007
+ * (C) Copyright 2006-2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * (C) Copyright 2006
@@ -22,45 +22,63 @@
  * MA 02111-1307 USA
  */
 
-/************************************************************************
+/*
  * sequoia.h - configuration for Sequoia & Rainier boards
- ***********************************************************************/
+ */
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-/*-----------------------------------------------------------------------
+/*
  * High Level Configuration Options
- *----------------------------------------------------------------------*/
+ */
 /* This config file is used for Sequoia (440EPx) and Rainier (440GRx)	*/
 #ifndef CONFIG_RAINIER
-#define CONFIG_440EPX		1		/* Specific PPC440EPx	*/
+#define CONFIG_440EPX		1	/* Specific PPC440EPx		*/
+#define CONFIG_HOSTNAME		sequoia
 #else
-#define CONFIG_440GRX		1		/* Specific PPC440GRx	*/
+#define CONFIG_440GRX		1	/* Specific PPC440GRx		*/
+#define CONFIG_HOSTNAME		rainier
 #endif
-#define CONFIG_440		1		/* ... PPC440 family	*/
-#define CONFIG_4xx		1		/* ... PPC4xx family	*/
+#define CONFIG_440		1	/* ... PPC440 family		*/
+#define CONFIG_4xx		1	/* ... PPC4xx family		*/
+
+/*
+ * Include common defines/options for all AMCC eval boards
+ */
+#include "amcc-common.h"
+
 /* Detect Sequoia PLL input clock automatically via CPLD bit		*/
 #define CONFIG_SYS_CLK_FREQ    ((in8(CFG_BCSR_BASE + 3) & 0x80) ? \
 				33333333 : 33000000)
 
-#define CONFIG_BOARD_EARLY_INIT_F 1		/* Call board_early_init_f */
-#define CONFIG_MISC_INIT_R	1		/* Call misc_init_r	*/
+/*
+ * Define this if you want support for video console with radeon 9200 pci card
+ * Also set TEXT_BASE to 0xFFF80000 in board/amcc/sequoia/config.mk in this case
+ */
+#undef CONFIG_VIDEO
 
-/*-----------------------------------------------------------------------
- * Base addresses -- Note these are effective addresses where the
- * actual resources get mapped (not physical addresses)
- *----------------------------------------------------------------------*/
-#define CFG_MONITOR_LEN		(384 * 1024)	/* Reserve 384 kB for Monitor	*/
-#define CFG_MALLOC_LEN		(256 * 1024)	/* Reserve 256 kB for malloc()	*/
+#ifdef CONFIG_VIDEO
+/*
+ * 44x dcache supported is working now on sequoia, but we don't enable
+ * it yet since it needs further testing
+ */
+#define CONFIG_4xx_DCACHE		/* enable dcache		*/
+#endif
 
+#define CONFIG_BOARD_EARLY_INIT_F 1	/* Call board_early_init_f	*/
+#define CONFIG_MISC_INIT_R	1	/* Call misc_init_r		*/
+
+/*
+ * Base addresses -- Note these are effective addresses where the actual
+ * resources get mapped (not physical addresses).
+ */
+#define CFG_TLB_FOR_BOOT_FLASH	0x0003
 #define CFG_BOOT_BASE_ADDR	0xf0000000
-#define CFG_SDRAM_BASE		0x00000000	/* _must_ be 0		*/
 #define CFG_FLASH_BASE		0xfc000000	/* start of FLASH	*/
-#define CFG_MONITOR_BASE	TEXT_BASE
-#define CFG_NAND_ADDR		0xd0000000      /* NAND Flash		*/
-#define CFG_OCM_BASE		0xe0010000      /* ocm			*/
+#define CFG_NAND_ADDR		0xd0000000	/* NAND Flash		*/
+#define CFG_OCM_BASE		0xe0010000	/* ocm			*/
 #define CFG_OCM_DATA_ADDR	CFG_OCM_BASE
-#define CFG_PCI_BASE		0xe0000000      /* Internal PCI regs	*/
+#define CFG_PCI_BASE		0xe0000000	/* Internal PCI regs	*/
 #define CFG_PCI_MEMBASE		0x80000000	/* mapped pci memory	*/
 #define CFG_PCI_MEMBASE1	CFG_PCI_MEMBASE  + 0x10000000
 #define CFG_PCI_MEMBASE2	CFG_PCI_MEMBASE1 + 0x10000000
@@ -74,62 +92,57 @@
 #define CFG_USB_HOST		0xe0000400
 #define CFG_BCSR_BASE		0xc0000000
 
-/*-----------------------------------------------------------------------
+/*
  * Initial RAM & stack pointer
- *----------------------------------------------------------------------*/
+ */
 /* 440EPx/440GRx have 16KB of internal SRAM, so no need for D-Cache	*/
 #define CFG_INIT_RAM_ADDR	CFG_OCM_BASE	/* OCM			*/
 #define CFG_INIT_RAM_END	(4 << 10)
-#define CFG_GBL_DATA_SIZE	256		/* num bytes initial data */
+#define CFG_GBL_DATA_SIZE	256	/* num bytes initial data	*/
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_POST_WORD_ADDR
 
-/*-----------------------------------------------------------------------
+/*
  * Serial Port
- *----------------------------------------------------------------------*/
+ */
 #define CFG_EXT_SERIAL_CLOCK	11059200	/* ext. 11.059MHz clk	*/
-#define CONFIG_BAUDRATE		115200
-#define CONFIG_SERIAL_MULTI     1
 /* define this if you want console on UART1 */
 #undef CONFIG_UART1_CONSOLE
 
-#define CFG_BAUDRATE_TABLE						\
-	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200}
-
-/*-----------------------------------------------------------------------
+/*
  * Environment
- *----------------------------------------------------------------------*/
+ */
 #if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
-#define CFG_ENV_IS_IN_FLASH     1	/* use FLASH for environment vars	*/
+#define CFG_ENV_IS_IN_FLASH	1	/* use FLASH for environ vars	*/
 #else
-#define CFG_ENV_IS_IN_NAND	1	/* use NAND for environment vars	*/
-#define CFG_ENV_IS_EMBEDDED	1	/* use embedded environment */
+#define CFG_ENV_IS_IN_NAND	1	/* use NAND for environ vars	*/
+#define CFG_ENV_IS_EMBEDDED	1	/* use embedded environment	*/
 #endif
 
-/*-----------------------------------------------------------------------
+/*
  * FLASH related
- *----------------------------------------------------------------------*/
-#define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+ */
+#define CFG_FLASH_CFI			/* The flash is CFI compatible	*/
+#define CONFIG_FLASH_CFI_DRIVER		/* Use common CFI driver	*/
 
 #define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE }
 
-#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
-#define CFG_MAX_FLASH_SECT	512	/* max number of sectors on one chip	*/
+#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks	      */
+#define CFG_MAX_FLASH_SECT	512	/* max number of sectors on one chip  */
 
-#define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
-#define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)	*/
+#define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)    */
+#define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)    */
 
-#define CFG_FLASH_USE_BUFFER_WRITE 1	/* use buffered writes (20x faster)	*/
-#define CFG_FLASH_PROTECTION	1	/* use hardware flash protection	*/
+#define CFG_FLASH_USE_BUFFER_WRITE 1	/* use buffered writes (20x faster)   */
+#define CFG_FLASH_PROTECTION	1	/* use hardware flash protection      */
 
-#define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector on flinfo */
-#define CFG_FLASH_QUIET_TEST	1	/* don't warn upon unknown flash	*/
+#define CFG_FLASH_EMPTY_INFO	      /* print 'E' for empty sector on flinfo */
+#define CFG_FLASH_QUIET_TEST	1	/* don't warn upon unknown flash      */
 
 #ifdef CFG_ENV_IS_IN_FLASH
-#define CFG_ENV_SECT_SIZE	0x20000	/* size of one complete sector		*/
+#define CFG_ENV_SECT_SIZE	0x20000	/* size of one complete sector	      */
 #define CFG_ENV_ADDR		((-CFG_MONITOR_LEN)-CFG_ENV_SECT_SIZE)
-#define	CFG_ENV_SIZE		0x2000	/* Total Size of Environment Sector	*/
+#define	CFG_ENV_SIZE		0x2000	/* Total Size of Environment Sector   */
 
 /* Address and size of Redundant Environment Sector	*/
 #define CFG_ENV_ADDR_REDUND	(CFG_ENV_ADDR-CFG_ENV_SECT_SIZE)
@@ -154,27 +167,28 @@
  * set up. While still running from cache, I experienced problems accessing
  * the NAND controller.	sr - 2006-08-25
  */
-#define CFG_NAND_BOOT_SPL_SRC	0xfffff000	/* SPL location			*/
-#define CFG_NAND_BOOT_SPL_SIZE	(4 << 10)	/* SPL size			*/
-#define CFG_NAND_BOOT_SPL_DST	(CFG_OCM_BASE + (12 << 10)) /* Copy SPL here	*/
-#define CFG_NAND_U_BOOT_DST	0x01000000	/* Load NUB to this addr	*/
-#define CFG_NAND_U_BOOT_START	CFG_NAND_U_BOOT_DST /* Start NUB from this addr	*/
+#define CFG_NAND_BOOT_SPL_SRC	0xfffff000	/* SPL location		      */
+#define CFG_NAND_BOOT_SPL_SIZE	(4 << 10)	/* SPL size		      */
+#define CFG_NAND_BOOT_SPL_DST	(CFG_OCM_BASE + (12 << 10)) /* Copy SPL here  */
+#define CFG_NAND_U_BOOT_DST	0x01000000	/* Load NUB to this addr      */
+#define CFG_NAND_U_BOOT_START	CFG_NAND_U_BOOT_DST	/* Start NUB from     */
+							/*   this addr	      */
 #define CFG_NAND_BOOT_SPL_DELTA	(CFG_NAND_BOOT_SPL_SRC - CFG_NAND_BOOT_SPL_DST)
 
 /*
  * Define the partitioning of the NAND chip (only RAM U-Boot is needed here)
  */
-#define CFG_NAND_U_BOOT_OFFS	(16 << 10)	/* Offset to RAM U-Boot image	*/
-#define CFG_NAND_U_BOOT_SIZE	(384 << 10)	/* Size of RAM U-Boot image	*/
+#define CFG_NAND_U_BOOT_OFFS	(16 << 10)	/* Offset to RAM U-Boot image */
+#define CFG_NAND_U_BOOT_SIZE	(512 << 10)	/* Size of RAM U-Boot image   */
 
 /*
  * Now the NAND chip has to be defined (no autodetection used!)
  */
-#define CFG_NAND_PAGE_SIZE	512		/* NAND chip page size		*/
-#define CFG_NAND_BLOCK_SIZE	(16 << 10)	/* NAND chip block size		*/
-#define CFG_NAND_PAGE_COUNT	32		/* NAND chip page count		*/
-#define CFG_NAND_BAD_BLOCK_POS	5		/* Location of bad block marker	*/
-#undef CFG_NAND_4_ADDR_CYCLE			/* No fourth addr used (<=32MB)	*/
+#define CFG_NAND_PAGE_SIZE	512		/* NAND chip page size	      */
+#define CFG_NAND_BLOCK_SIZE	(16 << 10)	/* NAND chip block size	      */
+#define CFG_NAND_PAGE_COUNT	32		/* NAND chip page count	      */
+#define CFG_NAND_BAD_BLOCK_POS	5	      /* Location of bad block marker */
+#undef CFG_NAND_4_ADDR_CYCLE		      /* No fourth addr used (<=32MB) */
 
 #define CFG_NAND_ECCSIZE	256
 #define CFG_NAND_ECCBYTES	3
@@ -193,21 +207,20 @@
 #define CFG_ENV_OFFSET_REDUND	(CFG_ENV_OFFSET + CFG_ENV_SIZE)
 #endif
 
-/*-----------------------------------------------------------------------
+/*
  * DDR SDRAM
- *----------------------------------------------------------------------*/
-#define CFG_MBYTES_SDRAM        (256)		/* 256MB			*/
+ */
+#define CFG_MBYTES_SDRAM        (256)	/* 256MB			*/
 #if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
-#define CONFIG_DDR_DATA_EYE			/* use DDR2 optimization	*/
+#define CONFIG_DDR_DATA_EYE		/* use DDR2 optimization	*/
 #endif
+#define CFG_MEM_TOP_HIDE	(4 << 10) /* don't use last 4kbytes	*/
+					/* 440EPx errata CHIP 11	*/
 
-/*-----------------------------------------------------------------------
+/*
  * I2C
- *----------------------------------------------------------------------*/
-#define CONFIG_HARD_I2C		1		/* I2C with hardware support	*/
-#undef	CONFIG_SOFT_I2C				/* I2C bit-banged		*/
-#define CFG_I2C_SPEED		400000		/* I2C speed and slave address	*/
-#define CFG_I2C_SLAVE		0x7F
+ */
+#define CFG_I2C_SPEED		400000	/* I2C speed and slave address	*/
 
 #define CFG_I2C_MULTI_EEPROMS
 #define CFG_I2C_EEPROM_ADDR	(0xa8>>1)
@@ -217,84 +230,48 @@
 #define CFG_EEPROM_PAGE_WRITE_DELAY_MS 10
 
 /* I2C SYSMON (LM75, AD7414 is almost compatible)			*/
-#define CONFIG_DTT_LM75		1		/* ON Semi's LM75	*/
-#define CONFIG_DTT_AD7414	1		/* use AD7414		*/
-#define CONFIG_DTT_SENSORS	{0}		/* Sensor addresses	*/
+#define CONFIG_DTT_LM75		1	/* ON Semi's LM75		*/
+#define CONFIG_DTT_AD7414	1	/* use AD7414			*/
+#define CONFIG_DTT_SENSORS	{0}	/* Sensor addresses		*/
 #define CFG_DTT_MAX_TEMP	70
 #define CFG_DTT_LOW_TEMP	-30
 #define CFG_DTT_HYSTERESIS	3
 
-#define CONFIG_PREBOOT	"echo;"						\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
-	"echo"
-
-#undef	CONFIG_BOOTARGS
-
-/* Setup some board specific values for the default environment variables */
-#ifndef CONFIG_RAINIER
-#define CONFIG_HOSTNAME		sequoia
-#define CFG_BOOTFILE		"bootfile=/tftpboot/sequoia/uImage\0"
-#define CFG_ROOTPATH		"rootpath=/opt/eldk/ppc_4xxFP\0"
-#else
-#define CONFIG_HOSTNAME		rainier
-#define CFG_BOOTFILE		"bootfile=/tftpboot/rainier/uImage\0"
-#define CFG_ROOTPATH		"rootpath=/opt/eldk/ppc_4xx\0"
-#endif
-
+/*
+ * Default environment variables
+ */
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
-	CFG_BOOTFILE							\
-	CFG_ROOTPATH							\
-	"netdev=eth0\0"							\
-	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
-		"nfsroot=${serverip}:${rootpath}\0"			\
-	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
-	"addip=setenv bootargs ${bootargs} "				\
-		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
-		":${hostname}:${netdev}:off panic=1\0"			\
-	"addtty=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
-	"flash_nfs=run nfsargs addip addtty;"				\
-		"bootm ${kernel_addr}\0"				\
-	"flash_self=run ramargs addip addtty;"				\
-		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
-	"net_nfs=tftp 200000 ${bootfile};run nfsargs addip addtty;"     \
-	        "bootm\0"						\
+	CONFIG_AMCC_DEF_ENV						\
+	CONFIG_AMCC_DEF_ENV_POWERPC					\
+	CONFIG_AMCC_DEF_ENV_PPC_OLD					\
+	CONFIG_AMCC_DEF_ENV_NOR_UPD					\
+	CONFIG_AMCC_DEF_ENV_NAND_UPD					\
 	"kernel_addr=FC000000\0"					\
 	"ramdisk_addr=FC180000\0"					\
-	"load=tftp 200000 /tftpboot/${hostname}/u-boot.bin\0"		\
-	"update=protect off FFFA0000 FFFFFFFF;era FFFA0000 FFFFFFFF;"	\
-		"cp.b 200000 FFFA0000 60000\0"			        \
-	"upd=run load;run update\0"					\
 	""
-#define CONFIG_BOOTCOMMAND	"run flash_self"
-
-#if 0
-#define CONFIG_BOOTDELAY	-1	/* autoboot disabled		*/
-#else
-#define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds	*/
-#endif
-
-#define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
-#define CFG_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
 
 #define CONFIG_M88E1111_PHY	1
 #define	CONFIG_IBM_EMAC4_V4	1
-#define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0	/* PHY address, See schematics	*/
 
-#define CONFIG_PHY_RESET        1	/* reset phy upon startup         */
+#define CONFIG_PHY_RESET        1	/* reset phy upon startup	*/
 #define CONFIG_PHY_GIGE		1	/* Include GbE speed/duplex detection */
 
 #define CONFIG_HAS_ETH0
-#define CFG_RX_ETH_BUFFER	32	/* Number of ethernet rx buffers & descriptors */
-
-#define CONFIG_NET_MULTI	1
 #define CONFIG_HAS_ETH1		1	/* add support for "eth1addr"	*/
 #define CONFIG_PHY1_ADDR	1
 
 /* USB */
 #ifdef CONFIG_440EPX
-#define CONFIG_USB_OHCI
+#define CONFIG_USB_OHCI_NEW
 #define CONFIG_USB_STORAGE
+#define CFG_OHCI_BE_CONTROLLER
+
+#undef CFG_USB_OHCI_BOARD_INIT
+#define CFG_USB_OHCI_CPU_INIT	1
+#define CFG_USB_OHCI_REGS_BASE	CFG_USB_HOST
+#define CFG_USB_OHCI_SLOT_NAME	"ppc440"
+#define CFG_USB_OHCI_MAX_ROOT_PORTS 15
 
 /* Comment this out to enable USB 1.1 device */
 #define USB_2_0_DEVICE
@@ -306,37 +283,13 @@
 #define CONFIG_DOS_PARTITION
 #define CONFIG_ISO_PARTITION
 
-
 /*
- * BOOTP options
+ * Commands additional to the ones defined in amcc-common.h
  */
-#define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_BOOTPATH
-#define CONFIG_BOOTP_GATEWAY
-#define CONFIG_BOOTP_HOSTNAME
-
-
-/*
- * Command line configuration.
- */
-#include <config_cmd_default.h>
-
-#define CONFIG_CMD_ASKENV
-#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DTT
-#define CONFIG_CMD_DIAG
-#define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_ELF
 #define CONFIG_CMD_FAT
-#define CONFIG_CMD_I2C
-#define CONFIG_CMD_IRQ
-#define CONFIG_CMD_MII
 #define CONFIG_CMD_NAND
-#define CONFIG_CMD_NET
-#define CONFIG_CMD_NFS
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_PING
-#define CONFIG_CMD_REGINFO
 #define CONFIG_CMD_SDRAM
 
 #ifdef CONFIG_440EPX
@@ -350,61 +303,33 @@
 #endif
 
 /* POST support */
-#define CONFIG_POST		(CFG_POST_MEMORY   | \
+#define CONFIG_POST		(CFG_POST_CACHE	   | \
 				 CFG_POST_CPU	   | \
-				 CFG_POST_UART	   | \
-				 CFG_POST_I2C	   | \
-				 CFG_POST_CACHE	   | \
-				 CFG_POST_FPU_ON   | \
 				 CFG_POST_ETHER	   | \
-				 CFG_POST_SPR)
+				 CFG_POST_FPU_ON   | \
+				 CFG_POST_I2C	   | \
+				 CFG_POST_MEMORY   | \
+				 CFG_POST_SPR	   | \
+				 CFG_POST_UART)
 
 #define CFG_POST_WORD_ADDR	(CFG_GBL_DATA_OFFSET - 0x4)
 #define CONFIG_LOGBUFFER
-#define CFG_POST_CACHE_ADDR	0x10000000 /* free virtual address	*/
+#define CFG_POST_CACHE_ADDR	0x7fff0000	/* free virtual address     */
 
-#define CFG_CONSOLE_IS_IN_ENV /* Otherwise it catches logbuffer as output */
+#define CFG_CONSOLE_IS_IN_ENV	/* Otherwise it catches logbuffer as output */
 
 #define CONFIG_SUPPORT_VFAT
 
-/*-----------------------------------------------------------------------
- * Miscellaneous configurable options
- *----------------------------------------------------------------------*/
-#define CFG_LONGHELP			/* undef to save memory		*/
-#define CFG_PROMPT	        "=> "	/* Monitor Command Prompt	*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CBSIZE	        1024	/* Console I/O Buffer Size	*/
-#else
-#define CFG_CBSIZE	        256	/* Console I/O Buffer Size	*/
-#endif
-#define CFG_PBSIZE              (CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
-#define CFG_MAXARGS	        16	/* max number of command args	*/
-#define CFG_BARGSIZE	        CFG_CBSIZE /* Boot Argument Buffer Size	*/
-
-#define CFG_MEMTEST_START	0x0400000 /* memtest works on		*/
-#define CFG_MEMTEST_END		0x0C00000 /* 4 ... 12 MB in DRAM	*/
-
-#define CFG_LOAD_ADDR		0x100000  /* default load address	*/
-#define CFG_EXTBDINFO		1	/* To use extended board_into (bd_t) */
-
-#define CFG_HZ		        1000	/* decrementer freq: 1 ms ticks	*/
-
-#define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
-#define CONFIG_LOOPW            1       /* enable loopw command         */
-#define CONFIG_MX_CYCLIC        1       /* enable mdc/mwc commands      */
-#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check for keypress on bootdelay==0 */
-#define CONFIG_VERSION_VARIABLE 1	/* include version env variable */
-
-/*-----------------------------------------------------------------------
+/*
  * PCI stuff
- *----------------------------------------------------------------------*/
+ */
 /* General PCI */
-#define CONFIG_PCI			/* include pci support	        */
-#define CONFIG_PCI_PNP			/* do pci plug-and-play   */
-#define CFG_PCI_CACHE_LINE_SIZE	0 /* to avoid problems with PNP */
-#define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup  */
-#define CFG_PCI_TARGBASE        0x80000000 /* PCIaddr mapped to CFG_PCI_MEMBASE*/
-
+#define CONFIG_PCI			/* include pci support		*/
+#define CONFIG_PCI_PNP			/* do pci plug-and-play		*/
+#define CFG_PCI_CACHE_LINE_SIZE	0	/* to avoid problems with PNP	*/
+#define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup	*/
+#define CFG_PCI_TARGBASE	0x80000000	/* PCIaddr mapped to	*/
+						/*   CFG_PCI_MEMBASE	*/
 /* Board-specific PCI */
 #define CFG_PCI_TARGET_INIT
 #define CFG_PCI_MASTER_INIT
@@ -413,72 +338,134 @@
 #define CFG_PCI_SUBSYS_ID       0xcafe	/* Whatever			*/
 
 /*
- * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
- * the maximum mapped by the Linux kernel during initialization.
- */
-#define CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
-
-/*-----------------------------------------------------------------------
  * External Bus Controller (EBC) Setup
- *----------------------------------------------------------------------*/
+ */
 
 /*
  * On Sequoia CS0 and CS3 are switched when configuring for NAND booting
  */
 #if !defined(CONFIG_NAND_U_BOOT) && !defined(CONFIG_NAND_SPL)
-#define CFG_NAND_CS		3		/* NAND chip connected to CSx	*/
-/* Memory Bank 0 (NOR-FLASH) initialization					*/
+#define CFG_NAND_CS		3	/* NAND chip connected to CSx	*/
+/* Memory Bank 0 (NOR-FLASH) initialization				*/
 #define CFG_EBC_PB0AP		0x03017200
 #define CFG_EBC_PB0CR		(CFG_FLASH_BASE | 0xda000)
 
-/* Memory Bank 3 (NAND-FLASH) initialization					*/
+/* Memory Bank 3 (NAND-FLASH) initialization				*/
 #define CFG_EBC_PB3AP		0x018003c0
 #define CFG_EBC_PB3CR		(CFG_NAND_ADDR | 0x1c000)
 #else
-#define CFG_NAND_CS		0		/* NAND chip connected to CSx	*/
-/* Memory Bank 3 (NOR-FLASH) initialization					*/
+#define CFG_NAND_CS		0	/* NAND chip connected to CSx	*/
+/* Memory Bank 3 (NOR-FLASH) initialization				*/
 #define CFG_EBC_PB3AP		0x03017200
 #define CFG_EBC_PB3CR		(CFG_FLASH_BASE | 0xda000)
 
-/* Memory Bank 0 (NAND-FLASH) initialization					*/
+/* Memory Bank 0 (NAND-FLASH) initialization				*/
 #define CFG_EBC_PB0AP		0x018003c0
 #define CFG_EBC_PB0CR		(CFG_NAND_ADDR | 0x1c000)
 #endif
 
-/* Memory Bank 2 (CPLD) initialization						*/
+/* Memory Bank 2 (CPLD) initialization					*/
 #define CFG_EBC_PB2AP		0x24814580
 #define CFG_EBC_PB2CR		(CFG_BCSR_BASE | 0x38000)
 
 #define CFG_BCSR5_PCI66EN	0x80
 
-/*-----------------------------------------------------------------------
+/*
  * NAND FLASH
- *----------------------------------------------------------------------*/
+ */
 #define CFG_MAX_NAND_DEVICE	1
 #define NAND_MAX_CHIPS		1
 #define CFG_NAND_BASE		(CFG_NAND_ADDR + CFG_NAND_CS)
-#define CFG_NAND_SELECT_DEVICE  1	/* nand driver supports mutipl. chips	*/
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- *----------------------------------------------------------------------*/
-#define CFG_DCACHE_SIZE		(32<<10)  /* For AMCC 440 CPUs			*/
-#define CFG_CACHELINE_SIZE	32	      /* ...			            */
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	      /* log base 2 of the above value	*/
-#endif
+#define CFG_NAND_SELECT_DEVICE  1	/* nand driver supports mutipl. chips */
 
 /*
- * Internal Definitions
- *
- * Boot Flags
+ * PPC440 GPIO Configuration
  */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
+/* test-only: take GPIO init from pcs440ep ???? in config file */
+#define CFG_4xx_GPIO_TABLE { /*	  Out		  GPIO	Alternate1	Alternate2	Alternate3 */ \
+{											\
+/* GPIO Core 0 */									\
+{GPIO0_BASE, GPIO_BI , GPIO_ALT1, GPIO_OUT_0}, /* GPIO0	EBC_ADDR(7)	DMA_REQ(2)	*/	\
+{GPIO0_BASE, GPIO_BI , GPIO_ALT1, GPIO_OUT_0}, /* GPIO1	EBC_ADDR(6)	DMA_ACK(2)	*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO2	EBC_ADDR(5)	DMA_EOT/TC(2)	*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO3	EBC_ADDR(4)	DMA_REQ(3)	*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO4	EBC_ADDR(3)	DMA_ACK(3)	*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO5	EBC_ADDR(2)	DMA_EOT/TC(3)	*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO6	EBC_CS_N(1)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO7	EBC_CS_N(2)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO8	EBC_CS_N(3)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO9	EBC_CS_N(4)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO10 EBC_CS_N(5)			*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO11 EBC_BUS_ERR			*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO12				*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO13				*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO14				*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO15				*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO16 GMCTxD(4)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO17 GMCTxD(5)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO18 GMCTxD(6)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO19 GMCTxD(7)			*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO20 RejectPkt0			*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO21 RejectPkt1			*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO22				*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO23 SCPD0				*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO24 GMCTxD(2)			*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO25 GMCTxD(3)			*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO26				*/	\
+{GPIO0_BASE, GPIO_IN , GPIO_ALT2, GPIO_OUT_0}, /* GPIO27 EXT_EBC_REQ	USB2D_RXERROR	*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT2, GPIO_OUT_1}, /* GPIO28		USB2D_TXVALID	*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT2, GPIO_OUT_1}, /* GPIO29 EBC_EXT_HDLA	USB2D_PAD_SUSPNDM */	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT2, GPIO_OUT_1}, /* GPIO30 EBC_EXT_ACK	USB2D_XCVRSELECT*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_ALT2, GPIO_OUT_1}, /* GPIO31 EBC_EXR_BUSREQ	USB2D_TERMSELECT*/	\
+},											\
+{											\
+/* GPIO Core 1 */									\
+{GPIO1_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO32 USB2D_OPMODE0	EBC_DATA(2)	*/	\
+{GPIO1_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO33 USB2D_OPMODE1	EBC_DATA(3)	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT2, GPIO_OUT_0}, /* GPIO34 UART0_8PIN_DCD_N UART1_DSR_CTS_N UART2_SOUT*/ \
+{GPIO1_BASE, GPIO_OUT, GPIO_ALT2, GPIO_OUT_1}, /* GPIO35 UART0_8PIN_DSR_N UART1_RTS_DTR_N UART2_SIN*/ \
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO36 UART0_CTS_N	EBC_DATA(0)	UART3_SIN*/ \
+{GPIO1_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_1}, /* GPIO37 UART0_RTS_N	EBC_DATA(1)	UART3_SOUT*/ \
+{GPIO1_BASE, GPIO_OUT, GPIO_ALT2, GPIO_OUT_1}, /* GPIO38 UART0_8PIN_DTR_N UART1_SOUT	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT2, GPIO_OUT_0}, /* GPIO39 UART0_8PIN_RI_N UART1_SIN	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO40 UIC_IRQ(0)			*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO41 UIC_IRQ(1)			*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO42 UIC_IRQ(2)			*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO43 UIC_IRQ(3)			*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO44 UIC_IRQ(4)	DMA_ACK(1)	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_ALT1, GPIO_OUT_0}, /* GPIO45 UIC_IRQ(6)	DMA_EOT/TC(1)	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO46 UIC_IRQ(7)	DMA_REQ(0)	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO47 UIC_IRQ(8)	DMA_ACK(0)	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO48 UIC_IRQ(9)	DMA_EOT/TC(0)	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO49  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO50  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO51  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO52  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO53  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO54  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO55  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO56  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO57  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO58  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO59  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO60  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO61  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO62  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO63  Unselect via TraceSelect Bit	*/	\
+}											\
+}
 
-#if defined(CONFIG_CMD_KGDB)
-#define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-#define CONFIG_KGDB_SER_INDEX	2	    /* which serial port to use */
+#ifdef CONFIG_VIDEO
+#define CONFIG_BIOSEMU			/* x86 bios emulator for vga bios */
+#define CONFIG_ATI_RADEON_FB		/* use radeon framebuffer driver */
+#define VIDEO_IO_OFFSET			0xe8000000
+#define CFG_ISA_IO_BASE_ADDRESS		VIDEO_IO_OFFSET
+#define CONFIG_VIDEO_SW_CURSOR
+#define CONFIG_VIDEO_LOGO
+#define CONFIG_CFB_CONSOLE
+#define CONFIG_SPLASH_SCREEN
+#define CONFIG_VGA_AS_SINGLE_DEVICE
+#define CONFIG_CMD_BMP
 #endif
-#endif	/* __CONFIG_H */
+
+#endif /* __CONFIG_H */

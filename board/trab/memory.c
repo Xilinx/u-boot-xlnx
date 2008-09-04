@@ -282,7 +282,7 @@ static int memory_post_addrline(ulong *testaddr, ulong *base, ulong size)
 #endif
 			if(readback == *testaddr) {
 				printf ("Memory (address line) error at %08lx<->%08lx, "
-				  	"XOR value %08lx !\n",
+					"XOR value %08lx !\n",
 					(ulong)testaddr, (ulong)target,
 					xor);
 				ret = -1;
@@ -460,7 +460,7 @@ int memory_post_test (int flags)
 {
 	int ret = 0;
 	bd_t *bd = gd->bd;
-	unsigned long memsize = (bd->bi_memsize >= 256 << 20 ?
+	phys_size_t memsize = (bd->bi_memsize >= 256 << 20 ?
 				 256 << 20 : bd->bi_memsize) - (1 << 20);
 
 

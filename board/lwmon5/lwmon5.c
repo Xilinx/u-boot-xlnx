@@ -96,6 +96,42 @@ int board_early_init_f(void)
 
 	gpio_write_bit(CFG_GPIO_FLASH_WP, 1);
 
+#if CONFIG_POST & CFG_POST_BSPEC1
+	gpio_write_bit(CFG_GPIO_HIGHSIDE, 1);
+
+	reg = 0; /* reuse as counter */
+	out_be32((void *)CFG_DSPIC_TEST_ADDR,
+		in_be32((void *)CFG_DSPIC_TEST_ADDR)
+			& ~CFG_DSPIC_TEST_MASK);
+	while (!gpio_read_in_bit(CFG_GPIO_DSPIC_READY) && reg++ < 1000) {
+		udelay(1000);
+	}
+	gpio_write_bit(CFG_GPIO_HIGHSIDE, 0);
+	if (gpio_read_in_bit(CFG_GPIO_DSPIC_READY)) {
+		/* set "boot error" flag */
+		out_be32((void *)CFG_DSPIC_TEST_ADDR,
+			in_be32((void *)CFG_DSPIC_TEST_ADDR) |
+			CFG_DSPIC_TEST_MASK);
+	}
+#endif
+
+	/*
+	 * Reset PHY's:
+	 * The PHY's need a 2nd reset pulse, since the MDIO address is latched
+	 * upon reset, and with the first reset upon powerup, the addresses are
+	 * not latched reliable, since the IRQ line is multiplexed with an
+	 * MDIO address. A 2nd reset at this time will make sure, that the
+	 * correct address is latched.
+	 */
+	gpio_write_bit(CFG_GPIO_PHY0_RST, 1);
+	gpio_write_bit(CFG_GPIO_PHY1_RST, 1);
+	udelay(1000);
+	gpio_write_bit(CFG_GPIO_PHY0_RST, 0);
+	gpio_write_bit(CFG_GPIO_PHY1_RST, 0);
+	udelay(1000);
+	gpio_write_bit(CFG_GPIO_PHY0_RST, 1);
+	gpio_write_bit(CFG_GPIO_PHY1_RST, 1);
+
 	return 0;
 }
 
@@ -217,87 +253,6 @@ int misc_init_r(void)
 	mtdcr(plb4_acr, reg);
 
 	/*
-	 * Reset Lime controller
-	 */
-	gpio_write_bit(CFG_GPIO_LIME_S, 1);
-	udelay(500);
-	gpio_write_bit(CFG_GPIO_LIME_RST, 1);
-
-	/* Lime memory clock adjusted to 100MHz */
-	out_be32((void *)CFG_LIME_SDRAM_CLOCK, CFG_LIME_CLOCK_100MHZ);
-	/* Wait untill time expired. Because of requirements in lime manual */
-	udelay(300);
-	/* Write lime controller memory parameters */
-	out_be32((void *)CFG_LIME_MMR, CFG_LIME_MMR_VALUE);
-
-	/*
-	 * Reset PHY's
-	 */
-	gpio_write_bit(CFG_GPIO_PHY0_RST, 0);
-	gpio_write_bit(CFG_GPIO_PHY1_RST, 0);
-	udelay(100);
-	gpio_write_bit(CFG_GPIO_PHY0_RST, 1);
-	gpio_write_bit(CFG_GPIO_PHY1_RST, 1);
-
-	/*
-	 * Init display controller
-	 */
-	/* Setup dot clock (internal PLL, division rate 1/16) */
-	out_be32((void *)0xc1fd0100, 0x00000f00);
-
-	/* Lime L0 init (16 bpp, 640x480) */
-	out_be32((void *)0xc1fd0020, 0x801401df);
-	out_be32((void *)0xc1fd0024, 0x0);
-	out_be32((void *)0xc1fd0028, 0x0);
-	out_be32((void *)0xc1fd002c, 0x0);
-	out_be32((void *)0xc1fd0110, 0x0);
-	out_be32((void *)0xc1fd0114, 0x0);
-	out_be32((void *)0xc1fd0118, 0x01df0280);
-
-	/* Display timing init */
-	out_be32((void *)0xc1fd0004, 0x031f0000);
-	out_be32((void *)0xc1fd0008, 0x027f027f);
-	out_be32((void *)0xc1fd000c, 0x015f028f);
-	out_be32((void *)0xc1fd0010, 0x020c0000);
-	out_be32((void *)0xc1fd0014, 0x01df01ea);
-	out_be32((void *)0xc1fd0018, 0x0);
-	out_be32((void *)0xc1fd001c, 0x01e00280);
-
-#if 1
-	/*
-	 * Clear framebuffer using Lime's drawing engine
-	 * (draw blue rect. with white border around it)
-	 */
-	/* Setup mode and fbbase, xres, fg, bg */
-	out_be32((void *)0xc1ff0420, 0x8300);
-	out_be32((void *)0xc1ff0440, 0x0000);
-	out_be32((void *)0xc1ff0444, 0x0280);
-	out_be32((void *)0xc1ff0480, 0x7fff);
-	out_be32((void *)0xc1ff0484, 0x0000);
-	/* Reset clipping rectangle */
-	out_be32((void *)0xc1ff0454, 0x0000);
-	out_be32((void *)0xc1ff0458, 0x0280);
-	out_be32((void *)0xc1ff045c, 0x0000);
-	out_be32((void *)0xc1ff0460, 0x01e0);
-	/* Draw white rect. */
-	out_be32((void *)0xc1ff04a0, 0x09410000);
-	out_be32((void *)0xc1ff04a0, 0x00000000);
-	out_be32((void *)0xc1ff04a0, 0x01e00280);
-	udelay(2000);
-	/* Draw blue rect. */
-	out_be32((void *)0xc1ff0480, 0x001f);
-	out_be32((void *)0xc1ff04a0, 0x09410000);
-	out_be32((void *)0xc1ff04a0, 0x00010001);
-	out_be32((void *)0xc1ff04a0, 0x01de027e);
-#endif
-	/* Display enable, L0 layer */
-	out_be32((void *)0xc1fd0100, 0x80010f00);
-
-	/* TFT-LCD enable - PWM duty, lamp on */
-	out_be32((void *)0xc4000024, 0x64);
-	out_be32((void *)0xc4000020, 0x701);
-
-	/*
 	 * Init matrix keyboard
 	 */
 	misc_init_r_kbd();
@@ -319,44 +274,6 @@ int checkboard(void)
 
 	return (0);
 }
-
-#if defined(CFG_DRAM_TEST)
-int testdram(void)
-{
-	unsigned long *mem = (unsigned long *)0;
-	const unsigned long kend = (1024 / sizeof(unsigned long));
-	unsigned long k, n;
-
-	mtmsr(0);
-
-	for (k = 0; k < CFG_MBYTES_SDRAM;
-	     ++k, mem += (1024 / sizeof(unsigned long))) {
-		if ((k & 1023) == 0) {
-			printf("%3d MB\r", k / 1024);
-		}
-
-		memset(mem, 0xaaaaaaaa, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0xaaaaaaaa) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-
-		memset(mem, 0x55555555, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0x55555555) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-	}
-	printf("SDRAM test passes\n");
-	return 0;
-}
-#endif
 
 /*************************************************************************
  *  pci_pre_init
@@ -521,6 +438,24 @@ int is_pci_host(struct pci_controller *hose)
 void hw_watchdog_reset(void)
 {
 	int val;
+#if defined(CONFIG_WD_MAX_RATE)
+	unsigned long long ct = get_ticks();
+
+	/*
+	 * Don't allow watch-dog triggering more frequently than
+	 * the predefined value CONFIG_WD_MAX_RATE [ticks].
+	 */
+	if (ct >= gd->wdt_last) {
+		if ((ct - gd->wdt_last) < CONFIG_WD_MAX_RATE)
+			return;
+	} else {
+		/* Time base counter had been reset */
+		if (((unsigned long long)(-1) - gd->wdt_last + ct) <
+		    CONFIG_WD_MAX_RATE)
+			return;
+	}
+	gd->wdt_last = get_ticks();
+#endif
 
 	/*
 	 * Toggle watchdog output
@@ -554,3 +489,111 @@ U_BOOT_CMD(
 	"eepromwp- eeprom write protect off/on\n",
 	"<on|off> - enable (on) or disable (off) I2C EEPROM write protect\n"
 );
+
+#if defined(CONFIG_VIDEO)
+#include <video_fb.h>
+#include <mb862xx.h>
+
+extern GraphicDevice mb862xx;
+
+static const gdc_regs init_regs [] =
+{
+	{0x0100, 0x00000f00},
+	{0x0020, 0x801401df},
+	{0x0024, 0x00000000},
+	{0x0028, 0x00000000},
+	{0x002c, 0x00000000},
+	{0x0110, 0x00000000},
+	{0x0114, 0x00000000},
+	{0x0118, 0x01df0280},
+	{0x0004, 0x031f0000},
+	{0x0008, 0x027f027f},
+	{0x000c, 0x015f028f},
+	{0x0010, 0x020c0000},
+	{0x0014, 0x01df01ea},
+	{0x0018, 0x00000000},
+	{0x001c, 0x01e00280},
+	{0x0100, 0x80010f00},
+	{0x0, 0x0}
+};
+
+const gdc_regs *board_get_regs (void)
+{
+	return init_regs;
+}
+
+/* Returns Lime base address */
+unsigned int board_video_init (void)
+{
+	/*
+	 * Reset Lime controller
+	 */
+	gpio_write_bit(CFG_GPIO_LIME_S, 1);
+	udelay(500);
+	gpio_write_bit(CFG_GPIO_LIME_RST, 1);
+
+	/* Lime memory clock adjusted to 100MHz */
+	out_be32((void *)CFG_LIME_SDRAM_CLOCK, CFG_LIME_CLOCK_100MHZ);
+	/* Wait untill time expired. Because of requirements in lime manual */
+	udelay(300);
+	/* Write lime controller memory parameters */
+	out_be32((void *)CFG_LIME_MMR, CFG_LIME_MMR_VALUE);
+
+	mb862xx.winSizeX = 640;
+	mb862xx.winSizeY = 480;
+	mb862xx.gdfBytesPP = 2;
+	mb862xx.gdfIndex = GDF_15BIT_555RGB;
+
+	return CFG_LIME_BASE_0;
+}
+
+#define DEFAULT_BRIGHTNESS 0x64
+
+static void board_backlight_brightness(int brightness)
+{
+	if (brightness > 0) {
+		/* pwm duty, lamp on */
+		out_be32((void *)(CFG_FPGA_BASE_0 + 0x00000024), brightness);
+		out_be32((void *)(CFG_FPGA_BASE_0 + 0x00000020), 0x701);
+	} else {
+		/* lamp off */
+		out_be32((void *)(CFG_FPGA_BASE_0 + 0x00000024), 0x00);
+		out_be32((void *)(CFG_FPGA_BASE_0 + 0x00000020), 0x00);
+	}
+}
+
+void board_backlight_switch (int flag)
+{
+	char * param;
+	int rc;
+
+	if (flag) {
+		param = getenv("brightness");
+		rc = param ? simple_strtol(param, NULL, 10) : -1;
+		if (rc < 0)
+			rc = DEFAULT_BRIGHTNESS;
+	} else {
+		rc = 0;
+	}
+	board_backlight_brightness(rc);
+}
+
+#if defined(CONFIG_CONSOLE_EXTRA_INFO)
+/*
+ * Return text to be printed besides the logo.
+ */
+void video_get_info_str (int line_number, char *info)
+{
+	if (line_number == 1) {
+		strcpy (info, " Board: Lwmon5 (Liebherr Elektronik GmbH)");
+	} else {
+		info [0] = '\0';
+	}
+}
+#endif
+#endif /* CONFIG_VIDEO */
+
+void board_reset(void)
+{
+	gpio_write_bit(CFG_GPIO_BOARD_RESET, 1);
+}

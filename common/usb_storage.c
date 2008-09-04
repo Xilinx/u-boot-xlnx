@@ -52,14 +52,11 @@
 
 #include <common.h>
 #include <command.h>
+#include <asm/byteorder.h>
 #include <asm/processor.h>
 
-
-#if defined(CONFIG_CMD_USB)
 #include <part.h>
 #include <usb.h>
-
-#ifdef CONFIG_USB_STORAGE
 
 #undef USB_STOR_DEBUG
 #undef BBB_COMDAT_TRACE
@@ -188,17 +185,20 @@ void usb_show_progress(void)
  * show info on storage devices; 'usb start/init' must be invoked earlier
  * as we only retrieve structures populated during devices initialization
  */
-void usb_stor_info(void)
+int usb_stor_info(void)
 {
 	int i;
 
-	if (usb_max_devs > 0)
+	if (usb_max_devs > 0) {
 		for (i = 0; i < usb_max_devs; i++) {
 			printf ("  Device %d: ", i);
 			dev_print(&usb_dev_desc[i]);
 		}
-	else
-		printf("No storage devices, perhaps not 'usb start'ed..?\n");
+		return 0;
+	}
+
+	printf("No storage devices, perhaps not 'usb start'ed..?\n");
+	return 1;
 }
 
 /*********************************************************************************
@@ -471,9 +471,9 @@ int usb_stor_BBB_comdat(ccb *srb, struct us_data *us)
 	/* always OUT to the ep */
 	pipe = usb_sndbulkpipe(us->pusb_dev, us->ep_out);
 
-	cbw.dCBWSignature = swap_32(CBWSIGNATURE);
-	cbw.dCBWTag = swap_32(CBWTag++);
-	cbw.dCBWDataTransferLength = swap_32(srb->datalen);
+	cbw.dCBWSignature = cpu_to_le32(CBWSIGNATURE);
+	cbw.dCBWTag = cpu_to_le32(CBWTag++);
+	cbw.dCBWDataTransferLength = cpu_to_le32(srb->datalen);
 	cbw.bCBWFlags = (dir_in? CBWFLAGS_IN : CBWFLAGS_OUT);
 	cbw.bCBWLUN = srb->lun;
 	cbw.bCDBLength = srb->cmdlen;
@@ -689,14 +689,14 @@ int usb_stor_BBB_transport(ccb *srb, struct us_data *us)
 	printf("\n");
 #endif
 	/* misuse pipe to get the residue */
-	pipe = swap_32(csw.dCSWDataResidue);
+	pipe = le32_to_cpu(csw.dCSWDataResidue);
 	if (pipe == 0 && srb->datalen != 0 && srb->datalen - data_actlen != 0)
 		pipe = srb->datalen - data_actlen;
-	if (CSWSIGNATURE != swap_32(csw.dCSWSignature)) {
+	if (CSWSIGNATURE != le32_to_cpu(csw.dCSWSignature)) {
 		USB_STOR_PRINTF("!CSWSIGNATURE\n");
 		usb_stor_BBB_reset(us);
 		return USB_STOR_TRANSPORT_FAILED;
-	} else if ((CBWTag - 1) != swap_32(csw.dCSWTag)) {
+	} else if ((CBWTag - 1) != le32_to_cpu(csw.dCSWTag)) {
 		USB_STOR_PRINTF("!Tag\n");
 		usb_stor_BBB_reset(us);
 		return USB_STOR_TRANSPORT_FAILED;
@@ -727,7 +727,7 @@ int usb_stor_CB_transport(ccb *srb, struct us_data *us)
 	ccb reqsrb;
 	int retry,notready;
 
-	psrb=&reqsrb;
+	psrb = &reqsrb;
 	status=USB_STOR_TRANSPORT_GOOD;
 	retry=0;
 	notready=0;
@@ -772,7 +772,7 @@ do_retry:
 	psrb->cmd[1]=srb->lun<<5;
 	psrb->cmd[4]=18;
 	psrb->datalen=18;
-	psrb->pdata=&srb->sense_buf[0];
+	psrb->pdata = &srb->sense_buf[0];
 	psrb->cmdlen=12;
 	/* issue the command */
 	result=usb_stor_CB_comdat(psrb,us);
@@ -854,7 +854,7 @@ static int usb_request_sense(ccb *srb,struct us_data *ss)
 	srb->cmd[1]=srb->lun<<5;
 	srb->cmd[4]=18;
 	srb->datalen=18;
-	srb->pdata=&srb->sense_buf[0];
+	srb->pdata = &srb->sense_buf[0];
 	srb->cmdlen=12;
 	ss->transport(srb,ss);
 	USB_STOR_PRINTF("Request Sense returned %02X %02X %02X\n",srb->sense_buf[2],srb->sense_buf[12],srb->sense_buf[13]);
@@ -1195,7 +1195,7 @@ int usb_stor_get_info(struct usb_device *dev,struct us_data *ss,block_dev_desc_t
 	dev_desc->product[16] = 0;
 	dev_desc->revision[4] = 0;
 #ifdef CONFIG_USB_BIN_FIXUP
-	usb_bin_fixup(dev->descriptor, dev_desc->vendor, dev_desc->product);
+	usb_bin_fixup(dev->descriptor, (uchar *)dev_desc->vendor, (uchar *)dev_desc->product);
 #endif /* CONFIG_USB_BIN_FIXUP */
 	USB_STOR_PRINTF("ISO Vers %X, Response Data %X\n",usb_stor_buf[2],usb_stor_buf[3]);
 	if(usb_test_unit_ready(pccb,ss)) {
@@ -1219,18 +1219,9 @@ int usb_stor_get_info(struct usb_device *dev,struct us_data *ss,block_dev_desc_t
 	if(cap[0]>(0x200000 * 10)) /* greater than 10 GByte */
 		cap[0]>>=16;
 #endif
-#ifdef LITTLEENDIAN
-	cap[0] = ((unsigned long)(
-		(((unsigned long)(cap[0]) & (unsigned long)0x000000ffUL) << 24) |
-		(((unsigned long)(cap[0]) & (unsigned long)0x0000ff00UL) <<  8) |
-		(((unsigned long)(cap[0]) & (unsigned long)0x00ff0000UL) >>  8) |
-		(((unsigned long)(cap[0]) & (unsigned long)0xff000000UL) >> 24) ));
-	cap[1] = ((unsigned long)(
-		(((unsigned long)(cap[1]) & (unsigned long)0x000000ffUL) << 24) |
-		(((unsigned long)(cap[1]) & (unsigned long)0x0000ff00UL) <<  8) |
-		(((unsigned long)(cap[1]) & (unsigned long)0x00ff0000UL) >>  8) |
-		(((unsigned long)(cap[1]) & (unsigned long)0xff000000UL) >> 24) ));
-#endif
+	cap[0] = cpu_to_be32(cap[0]);
+	cap[1] = cpu_to_be32(cap[1]);
+
 	/* this assumes bigendian! */
 	cap[0] += 1;
 	capacity = &cap[0];
@@ -1247,6 +1238,3 @@ int usb_stor_get_info(struct usb_device *dev,struct us_data *ss,block_dev_desc_t
 	USB_STOR_PRINTF("partype: %d\n",dev_desc->part_type);
 	return 1;
 }
-
-#endif /* CONFIG_USB_STORAGE */
-#endif

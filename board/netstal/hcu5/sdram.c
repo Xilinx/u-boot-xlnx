@@ -34,46 +34,25 @@
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <asm/mmu.h>
+#include <asm/cache.h>
 #include <ppc440.h>
 
 void hcu_led_set(u32 value);
 void dcbz_area(u32 start_address, u32 num_bytes);
-void dflush(void);
 
-#define DDR_DCR_BASE 0x10
-#define ddrcfga  (DDR_DCR_BASE+0x0)   /* DDR configuration address reg */
-#define ddrcfgd  (DDR_DCR_BASE+0x1)   /* DDR configuration data reg    */
+#define ECC_RAM				0x03267F0B
+#define NO_ECC_RAM			0x00267F0B
 
-#define DDR0_01_INT_MASK_MASK             0x000000FF
-#define DDR0_00_INT_ACK_ALL               0x7F000000
-#define DDR0_01_INT_MASK_ALL_ON           0x000000FF
-#define DDR0_01_INT_MASK_ALL_OFF          0x00000000
+#define HCU_HW_SDRAM_CONFIG_MASK	0x7
 
-#define DDR0_17_DLLLOCKREG_MASK           0x00010000 /* Read only */
-#define DDR0_17_DLLLOCKREG_UNLOCKED       0x00000000
-#define DDR0_17_DLLLOCKREG_LOCKED         0x00010000
-
-#define DDR0_22                         0x16
-/* ECC */
-#define DDR0_22_CTRL_RAW_MASK             0x03000000
-#define DDR0_22_CTRL_RAW_ECC_DISABLE      0x00000000 /* ECC not enabled */
-#define DDR0_22_CTRL_RAW_ECC_CHECK_ONLY   0x01000000 /* ECC no correction */
-#define DDR0_22_CTRL_RAW_NO_ECC_RAM       0x02000000 /* Not a ECC RAM*/
-#define DDR0_22_CTRL_RAW_ECC_ENABLE       0x03000000 /* ECC correcting on */
-#define DDR0_03_CASLAT_DECODE(n)            ((((unsigned long)(n))>>16)&0x7)
-
-#ifdef CFG_ENABLE_SDRAM_CACHE
-#define MY_TLB_WORD2_I_ENABLE	0		/* enable caching on DDR2 */
-#else
-#define MY_TLB_WORD2_I_ENABLE TLB_WORD2_I_ENABLE /* disable caching on DDR2 */
-#endif
-
-void program_tlb(u32 phys_addr, u32 virt_addr, u32 size, u32 tlb_word2_i_value);
+#define MY_TLB_WORD2_I_ENABLE TLB_WORD2_I_ENABLE
+	/* disable caching on DDR2 */
 
 void board_add_ram_info(int use_default)
 {
-	PPC440_SYS_INFO board_cfg;
+	PPC4xx_SYS_INFO board_cfg;
 	u32 val;
+
 	mfsdram(DDR0_22, val);
 	val &= DDR0_22_CTRL_RAW_MASK;
 	switch (val) {
@@ -92,7 +71,7 @@ void board_add_ram_info(int use_default)
 	}
 
 	get_sys_info(&board_cfg);
-	printf(", %d MHz", (board_cfg.freqPLB * 2) / 1000000);
+	printf(", %lu MHz", (board_cfg.freqPLB * 2) / 1000000);
 
 	mfsdram(DDR0_03, val);
 	val = DDR0_03_CASLAT_DECODE(val);
@@ -110,11 +89,11 @@ static int wait_for_dlllock(void)
 	/* -----------------------------------------------------------+
 	 * Wait for the DCC master delay line to finish calibration
 	 * ----------------------------------------------------------*/
-	mtdcr(ddrcfga, DDR0_17);
+	mtdcr(memcfga, DDR0_17);
 	val = DDR0_17_DLLLOCKREG_UNLOCKED;
 
 	while (wait != 0xffff) {
-		val = mfdcr(ddrcfgd);
+		val = mfdcr(memcfgd);
 		if ((val & DDR0_17_DLLLOCKREG_MASK) ==
 		    DDR0_17_DLLLOCKREG_LOCKED)
 			/* dlllockreg bit on */
@@ -157,38 +136,41 @@ static void blank_string(int size)
 /*---------------------------------------------------------------------------+
  * program_ecc.
  *---------------------------------------------------------------------------*/
-static void program_ecc(unsigned long start_address, unsigned long num_bytes,
-			unsigned long tlb_word2_i_value)
+static void program_ecc(unsigned long start_address, unsigned long num_bytes)
 {
-	unsigned long current_address= start_address;
-	int loopi = 0;
 	u32 val;
-
 	char str[] = "ECC generation -";
-	char slash[] = "\\|/-\\|/-";
+#if defined(CONFIG_PRAM)
+	u32 *magicPtr;
+	u32 magic;
+
+	if ((mfspr(dbcr0) & 0x80000000) == 0) {
+		/* only if no external debugger is alive!
+		 * Check whether vxWorks is using EDR logging, if yes zero
+		 * also PostMortem and user reserved memory
+		 */
+		magicPtr = (u32 *)(start_address + num_bytes -
+				(CONFIG_PRAM*1024) + sizeof(u32));
+		magic = in_be32(magicPtr);
+		debug("%s:  CONFIG_PRAM %d kB magic 0x%x 0x%p\n",
+		      __FUNCTION__, CONFIG_PRAM,
+		      magicPtr, magic);
+		if (magic == 0xbeefbabe) {
+			printf("%s: preserving at %p\n", __FUNCTION__, magicPtr);
+			num_bytes -= (CONFIG_PRAM*1024) - PM_RESERVED_MEM;
+		}
+	}
+#endif
 
 	sync();
-	eieio();
 
 	puts(str);
 
-	if (tlb_word2_i_value == TLB_WORD2_I_ENABLE) {
-		/* ECC bit set method for non-cached memory */
-		/* This takes various seconds */
-		for(current_address = 0; current_address < num_bytes;
-		     current_address += sizeof(u32)) {
-			*(u32 *)current_address = 0;
-			if ((current_address % (2 << 20)) == 0) {
-				putc('\b');
-				putc(slash[loopi++ % 8]);
-			}
-		}
-	} else {
-		/* ECC bit set method for cached memory */
-		/* Fast method, no noticeable delay */
-		dcbz_area(start_address, num_bytes);
-		dflush();
-	}
+	/* ECC bit set method for cached memory */
+	/* Fast method, no noticeable delay */
+	dcbz_area(start_address, num_bytes);
+	/* Write modified dcache lines back to memory */
+	clean_dcache_range(start_address, start_address + num_bytes);
 	blank_string(strlen(str));
 
 	/* Clear error status */
@@ -196,7 +178,7 @@ static void program_ecc(unsigned long start_address, unsigned long num_bytes,
 	mtsdram(DDR0_00, val | DDR0_00_INT_ACK_ALL);
 
 	/*
-	 * Clear possible errors
+	 * Clear possible ECC errors
 	 * If not done, then we could get an interrupt later on when
 	 * exceptions are enabled.
 	 */
@@ -209,19 +191,16 @@ static void program_ecc(unsigned long start_address, unsigned long num_bytes,
 
 	return;
 }
-
 #endif
+
 
 /***********************************************************************
  *
  * initdram -- 440EPx's DDR controller is a DENALI Core
  *
  ************************************************************************/
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
-#define	HCU_HW_SDRAM_CONFIG_MASK 0x7
-#define INVALID_HW_CONFIG   "Invalid HW-Config"
-	u16 *hwVersReg = (u16 *) HCU_HW_VERSION_REGISTER;
 	unsigned int dram_size = 0;
 
 	mtsdram(DDR0_02, 0x00000000);
@@ -232,24 +211,23 @@ long int initdram (int board_type)
 	mtsdram(DDR0_03, 0x02030602);
 	mtsdram(DDR0_04, 0x0A020200);
 	mtsdram(DDR0_05, 0x02020307);
-	switch (*hwVersReg & HCU_HW_SDRAM_CONFIG_MASK) {
-	case 0:
-		dram_size = 128 * 1024 * 1024 ;
-		mtsdram(DDR0_06, 0x0102C80D);  /* 128MB RAM */
-		mtsdram(DDR0_11, 0x000FC800);  /* 128MB RAM */
-		mtsdram(DDR0_43, 0x030A0300);  /* 128MB RAM */
-		break;
+	switch (in_be16((u16 *)HCU_HW_VERSION_REGISTER) & HCU_HW_SDRAM_CONFIG_MASK) {
 	case 1:
 		dram_size = 256 * 1024 * 1024 ;
 		mtsdram(DDR0_06, 0x0102C812);  /* 256MB RAM */
 		mtsdram(DDR0_11, 0x0014C800);  /* 256MB RAM */
 		mtsdram(DDR0_43, 0x030A0200);  /* 256MB RAM */
 		break;
+	case 0:
 	default:
-		sdram_panic(INVALID_HW_CONFIG);
+		dram_size = 128 * 1024 * 1024 ;
+		mtsdram(DDR0_06, 0x0102C80D);  /* 128MB RAM */
+		mtsdram(DDR0_11, 0x000FC800);  /* 128MB RAM */
+		mtsdram(DDR0_43, 0x030A0300);  /* 128MB RAM */
 		break;
 	}
 	mtsdram(DDR0_07, 0x00090100);
+
 	/*
 	 * TCPD=200 cycles of clock input is required to lock the DLL.
 	 * CKE must be HIGH the entire time.mtsdram(DDR0_08, 0x02C80001);
@@ -264,8 +242,6 @@ long int initdram (int board_type)
 	mtsdram(DDR0_19, 0x1D1D1D1D);
 	mtsdram(DDR0_20, 0x0B0B0B0B);
 	mtsdram(DDR0_21, 0x0B0B0B0B);
-	#define ECC_RAM  0x03267F0B
-	#define NO_ECC_RAM  0x00267F0B
 #ifdef CONFIG_DDR_ECC
 	mtsdram(DDR0_22, ECC_RAM);
 #else
@@ -288,7 +264,7 @@ long int initdram (int board_type)
 	 * Program tlb entries for this size (dynamic)
 	 */
 	remove_tlb(CFG_SDRAM_BASE, 256 << 20);
-	program_tlb(0, 0, dram_size, MY_TLB_WORD2_I_ENABLE);
+	program_tlb(0, 0, dram_size, TLB_WORD2_W_ENABLE | TLB_WORD2_I_ENABLE);
 
 	/*
 	 * Setup 2nd TLB with same physical address but different virtual
@@ -296,13 +272,11 @@ long int initdram (int board_type)
 	 */
 	program_tlb(0, CFG_DDR_CACHED_ADDR, dram_size, 0);
 
-	/* Diminish RAM to initialize */
-	dram_size = dram_size - 32 ;
 #ifdef CONFIG_DDR_ECC
 	/*
 	 * If ECC is enabled, initialize the parity bits.
 	 */
-	program_ecc(CFG_DDR_CACHED_ADDR, dram_size, 0);
+	program_ecc(CFG_DDR_CACHED_ADDR, dram_size);
 #endif
 
 	return (dram_size);

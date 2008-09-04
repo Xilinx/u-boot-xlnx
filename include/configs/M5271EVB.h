@@ -31,8 +31,6 @@
 #ifndef _M5271EVB_H
 #define _M5271EVB_H
 
-#undef DEBUG
-
 /*
  * High Level Configuration Options (easy to change)
  */
@@ -44,7 +42,7 @@
 
 #define CONFIG_MCFUART
 #define CFG_UART_PORT		(0)
-#define CONFIG_BAUDRATE		19200
+#define CONFIG_BAUDRATE		115200
 #define CFG_BAUDRATE_TABLE	{ 9600 , 19200 , 38400 , 57600, 115200 }
 
 #undef CONFIG_WATCHDOG		/* disable watchdog */
@@ -90,13 +88,14 @@
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_NET_MULTI		1
 #	define CONFIG_MII		1
+#	define CONFIG_MII_INIT		1
 #	define CFG_DISCOVER_PHY
 #	define CFG_RX_ETH_BUFFER	8
 #	define CFG_FAULT_ECHO_LINK_DOWN
 
 #	define CFG_FEC0_PINMUX		0
 #	define CFG_FEC0_MIIBASE		CFG_FEC0_IOBASE
-#	define MCFFEC_TOUT_LOOP 	50000
+#	define MCFFEC_TOUT_LOOP		50000
 /* If CFG_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CFG_DISCOVER_PHY
 #		define FECDUPLEX	FULL
@@ -211,7 +210,7 @@
 #define CFG_FLASH_ERASE_TOUT	1000
 
 #define CFG_FLASH_CFI		1
-#define CFG_FLASH_CFI_DRIVER	1
+#define CONFIG_FLASH_CFI_DRIVER	1
 #define CFG_FLASH_SIZE		0x200000
 
 /* Cache Configuration */

@@ -32,6 +32,10 @@
 #include <mpc512x.h>
 #include <asm/processor.h>
 
+#if defined(CONFIG_OF_LIBFDT)
+#include <fdt_support.h>
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 int checkcpu (void)
@@ -123,5 +127,71 @@ void watchdog_reset (void)
 
 	if (re_enable)
 		enable_interrupts ();
+}
+#endif
+
+#ifdef CONFIG_OF_LIBFDT
+
+#ifdef CONFIG_OF_SUPPORT_OLD_DEVICE_TREES
+/*
+ * fdt setup for old device trees
+ * fix up
+ * 	cpu clocks
+ * 	soc clocks
+ * 	ethernet addresses
+ */
+static void old_ft_cpu_setup(void *blob, bd_t *bd)
+{
+	/*
+	 * avoid fixing up by path because that
+	 * produces scary error messages
+	 */
+
+	/*
+	 * old device trees have ethernet nodes with
+	 * device_type = "network"
+	 */
+	do_fixup_by_prop(blob, "device_type", "network", 8,
+		"local-mac-address", bd->bi_enetaddr, 6, 0);
+	do_fixup_by_prop(blob, "device_type", "network", 8,
+		"address", bd->bi_enetaddr, 6, 0);
+	/*
+	 * old device trees have soc nodes with
+	 * device_type = "soc"
+	 */
+	do_fixup_by_prop_u32(blob, "device_type", "soc", 4,
+		"bus-frequency", bd->bi_ipsfreq, 0);
+}
+#endif
+
+static void ft_clock_setup(void *blob, bd_t *bd)
+{
+	char *cpu_path = "/cpus/" OF_CPU;
+
+	/*
+	 * fixup cpu clocks using path
+	 */
+	do_fixup_by_path_u32(blob, cpu_path,
+		"timebase-frequency", OF_TBCLK, 1);
+	do_fixup_by_path_u32(blob, cpu_path,
+		"bus-frequency", bd->bi_busfreq, 1);
+	do_fixup_by_path_u32(blob, cpu_path,
+		"clock-frequency", bd->bi_intfreq, 1);
+	/*
+	 * fixup soc clocks using compatible
+	 */
+	do_fixup_by_compat_u32(blob, OF_SOC_COMPAT,
+		"bus-frequency", bd->bi_ipsfreq, 1);
+}
+
+void ft_cpu_setup(void *blob, bd_t *bd)
+{
+#ifdef CONFIG_OF_SUPPORT_OLD_DEVICE_TREES
+	old_ft_cpu_setup(blob, bd);
+#endif
+	ft_clock_setup(blob, bd);
+#ifdef CONFIG_HAS_ETH0
+	fdt_fixup_ethernet(blob);
+#endif
 }
 #endif

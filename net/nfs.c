@@ -34,7 +34,8 @@
 #if defined(CONFIG_CMD_NET) && defined(CONFIG_CMD_NFS)
 
 #define HASHES_PER_LINE 65	/* Number of "loading" hashes per line	*/
-#define NFS_TIMEOUT 60
+#define NFS_RETRY_COUNT 30
+#define NFS_TIMEOUT 2UL
 
 static int fs_mounted = 0;
 static unsigned long rpc_id = 0;
@@ -405,7 +406,6 @@ rpc_lookup_reply (int prog, uchar *pkt, unsigned len)
 
 	if (rpc_pkt.u.reply.rstatus  ||
 	    rpc_pkt.u.reply.verifier ||
-	    rpc_pkt.u.reply.astatus  ||
 	    rpc_pkt.u.reply.astatus) {
 		return -1;
 	}
@@ -587,6 +587,10 @@ Interfaces of U-BOOT
 static void
 NfsTimeout (void)
 {
+	if ( NfsTimeoutCount++ < NFS_RETRY_COUNT ) {
+		NfsSend ();
+		return;
+	}
 	puts ("Timeout\n");
 	NetState = NETLOOP_FAIL;
 	return;

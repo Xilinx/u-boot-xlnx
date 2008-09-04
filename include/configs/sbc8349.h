@@ -31,8 +31,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG
-
 /*
  * High Level Configuration Options
  */
@@ -135,7 +133,7 @@
  * FLASH on the Local Bus
  */
 #define CFG_FLASH_CFI				/* use the Common Flash Interface */
-#define CFG_FLASH_CFI_DRIVER			/* use the CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER			/* use the CFI driver */
 #define CFG_FLASH_BASE		0xFF800000	/* start of FLASH   */
 #define CFG_FLASH_SIZE		8		/* flash size in MB */
 /* #define CFG_FLASH_USE_BUFFER_WRITE */
@@ -310,13 +308,9 @@
 #endif
 
 /* pass open firmware flat tree */
-#define CONFIG_OF_FLAT_TREE	1
+#define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP	1
-
-#define OF_CPU			"PowerPC,8349@0"
-#define OF_SOC			"soc8349@e0000000"
-#define OF_TBCLK		(bd->bi_busfreq / 4)
-#define OF_STDOUT_PATH		"/soc8349@e0000000/serial@4500"
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_HARD_I2C			/* I2C with hardware support*/
@@ -458,7 +452,7 @@
 #define CONFIG_CMD_PING
 
 #if defined(CONFIG_PCI)
-    #define CONFG_CMD_PCI
+    #define CONFIG_CMD_PCI
 #endif
 
 #if defined(CFG_RAMBOOT)
@@ -493,13 +487,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
-
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value*/
-#endif
 
 #define CFG_RCWH_PCIHOST 0x80000000 /* PCIHOST  */
 
@@ -582,6 +569,8 @@
 
 
 #define CFG_HID2 HID2_HBE
+
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /* DDR @ 0x00000000 */
 #define CFG_IBAT0L	(CFG_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
@@ -675,7 +664,7 @@
 #define CONFIG_GATEWAYIP	192.168.1.1
 #define CONFIG_NETMASK		255.255.255.0
 
-#define CONFIG_LOADADDR		200000	/* default location for tftp and bootm */
+#define CONFIG_LOADADDR		500000	/* default location for tftp and bootm */
 
 #define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
 #undef  CONFIG_BOOTARGS			/* the boot command will set bootargs */
@@ -684,7 +673,7 @@
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
-	"hostname=sbc8349\0"					\
+	"hostname=sbc8349\0"						\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath}\0"			\
 	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
@@ -701,9 +690,9 @@
 	"load=tftp 100000 /tftpboot/sbc8349/u-boot.bin\0"		\
 	"update=protect off fff00000 fff3ffff; "			\
 		"era fff00000 fff3ffff; cp.b 100000 fff00000 ${filesize}\0"	\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"fdtaddr=400000\0"						\
-	"fdtfile=sbc8349.dtb\0"					\
+	"fdtfile=sbc8349.dtb\0"						\
 	""
 
 #define CONFIG_NFSBOOTCOMMAND	                                        \

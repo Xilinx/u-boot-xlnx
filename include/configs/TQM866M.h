@@ -61,7 +61,7 @@
 #define CONFIG_BOARD_TYPES	1	/* support board types		*/
 
 #define CONFIG_PREBOOT	"echo;" \
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -80,10 +80,17 @@
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
 	"net_nfs=tftp 200000 ${bootfile};run nfsargs addip;bootm\0"	\
 	"rootpath=/opt/eldk/ppc_8xx\0"					\
-	"bootfile=/tftpboot/TQM866M/uImage\0"				\
-	"fdt_addr=40080000\0"						\
-	"kernel_addr=400A0000\0"					\
+	"hostname=TQM866M\0"						\
+	"bootfile=TQM866M/uImage\0"					\
+	"fdt_addr=400C0000\0"						\
+	"kernel_addr=40100000\0"					\
 	"ramdisk_addr=40280000\0"					\
+	"u-boot=TQM866M/u-image.bin\0"					\
+	"load=tftp 200000 ${u-boot}\0"					\
+	"update=prot off 40000000 +${filesize};"			\
+		"era 40000000 +${filesize};"				\
+		"cp.b 200000 40000000 ${filesize};"			\
+		"sete filesize;save\0"					\
 	""
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
@@ -152,9 +159,14 @@
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_EEPROM
-#define CONFIG_CMD_I2C
+#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IDE
+#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_NFS
+#define CONFIG_CMD_SNTP
+
+
+#define CONFIG_NETCONSOLE
 
 
 /*
@@ -215,7 +227,7 @@
 #define CFG_FLASH_BASE		0x40000000
 #define CFG_MONITOR_LEN		(256 << 10)	/* Reserve 256 kB for Monitor	*/
 #define CFG_MONITOR_BASE	CFG_FLASH_BASE
-#define CFG_MALLOC_LEN		(128 << 10)	/* Reserve 128 kB for malloc()	*/
+#define CFG_MALLOC_LEN		(256 << 10)	/* Reserve 256 kB for malloc()	*/
 
 /*
  * For booting Linux, the board info and command line data
@@ -227,22 +239,37 @@
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define CFG_MAX_FLASH_BANKS	2	/* max number of memory banks		*/
-#define CFG_MAX_FLASH_SECT	256	/* max number of sectors on one chip	*/
-
-#define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
-#define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)	*/
+/* use CFI flash driver */
+#define CFG_FLASH_CFI		1	/* Flash is CFI conformant */
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver */
+#define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE }
+#define CFG_FLASH_EMPTY_INFO
+#define CFG_FLASH_USE_BUFFER_WRITE	1
+#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks */
+#define CFG_MAX_FLASH_SECT	256	/* max number of sectors on one chip */
 
 #define CFG_ENV_IS_IN_FLASH	1
 #define CFG_ENV_OFFSET		0x40000 /*   Offset   of Environment Sector	*/
 #define CFG_ENV_SIZE		0x08000 /* Total Size of Environment Sector	*/
-#define CFG_ENV_SECT_SIZE	0x20000 /* Total Size of Environment Sector	*/
+#define CFG_ENV_SECT_SIZE	0x40000 /* Total Size of Environment Sector	*/
 
 /* Address and size of Redundant Environment Sector	*/
 #define CFG_ENV_OFFSET_REDUND	(CFG_ENV_OFFSET+CFG_ENV_SECT_SIZE)
 #define CFG_ENV_SIZE_REDUND	(CFG_ENV_SIZE)
 
 #define	CFG_USE_PPCENV			/* Environment embedded in sect .ppcenv */
+
+/*-----------------------------------------------------------------------
+ * Dynamic MTD partition support
+ */
+#define CONFIG_JFFS2_CMDLINE
+#define MTDIDS_DEFAULT		"nor0=TQM8xxM-0"
+
+#define MTDPARTS_DEFAULT	"mtdparts=TQM8xxM-0:512k(u-boot),"	\
+						"128k(dtb),"		\
+						"1920k(kernel),"	\
+						"5632(rootfs),"		\
+						"4m(data)"
 
 /*-----------------------------------------------------------------------
  * Hardware Information Block
@@ -421,26 +448,30 @@
 #define CFG_PTA_PER_CLK	((4096 * 64 * 1000) / (4 * 64))
 
 /*
- * Memory Periodic Timer Prescaler
- * Periodic timer for refresh, start with refresh rate for 40 MHz clock
- * (CFG_8xx_CPUCLK_MIN / CFG_PTA_PER_CLK)
+ * Periodic timer (MAMR[PTx]) for 4 * 7.8 us refresh (= 31.2 us per quad)
+ *
+ *                        CPUclock(MHz) * 31.2
+ * CFG_MAMR_PTA = -----------------------------------     with DFBRG = 0
+ *                2^(2*SCCR[DFBRG]) * MPTPR_PTP_DIV16
+ *
+ * CPU clock =  15 MHz:  CFG_MAMR_PTA =  29   ->  4 * 7.73 us
+ * CPU clock =  50 MHz:  CFG_MAMR_PTA =  97   ->  4 * 7.76 us
+ * CPU clock =  66 MHz:  CFG_MAMR_PTA = 128   ->  4 * 7.75 us
+ * CPU clock = 133 MHz:  CFG_MAMR_PTA = 255   ->  4 * 7.67 us
+ *
+ * Value 97 is for 4 * 7.8 us at 50 MHz. So the refresh cycle requirement will
+ * be met also in the default configuration, i.e. if environment variable
+ * 'cpuclk' is not set.
  */
-#define CFG_MAMR_PTA		39
+#define CFG_MAMR_PTA		97
 
 /*
- * For 16 MBit, refresh rates could be 31.3 us
- * (= 64 ms / 2K = 125 / quad bursts).
- * For a simpler initialization, 15.6 us is used instead.
- *
- * #define CFG_MPTPR_2BK_2K	MPTPR_PTP_DIV32		for 2 banks
- * #define CFG_MPTPR_1BK_2K	MPTPR_PTP_DIV64		for 1 bank
+ * Memory Periodic Timer Prescaler Register (MPTPR) values.
  */
-#define CFG_MPTPR_2BK_4K	MPTPR_PTP_DIV16		/* setting for 2 banks	*/
-#define CFG_MPTPR_1BK_4K	MPTPR_PTP_DIV32		/* setting for 1 bank	*/
-
-/* refresh rate 7.8 us (= 64 ms / 8K = 31.2 / quad bursts) for 256 MBit		*/
-#define CFG_MPTPR_2BK_8K	MPTPR_PTP_DIV8		/* setting for 2 banks	*/
-#define CFG_MPTPR_1BK_8K	MPTPR_PTP_DIV16		/* setting for 1 bank	*/
+/* 4 * 7.8 us refresh (= 31.2 us per quad) at 50 MHz and PTA = 97 */
+#define CFG_MPTPR_2BK_4K	MPTPR_PTP_DIV16
+/* 4 * 3.9 us refresh (= 15.6 us per quad) at 50 MHz and PTA = 97 */
+#define CFG_MPTPR_2BK_8K	MPTPR_PTP_DIV8
 
 /*
  * MAMR settings for SDRAM

@@ -54,6 +54,7 @@
 
 #define CONFIG_405		1	/* This is a PPC405 CPU		*/
 #define CONFIG_4xx		1	/* ...member of PPC4xx family	*/
+#define CONFIG_XILINX_405	1
 #define CONFIG_XILINX_ML300	1	/* ...on a Xilinx ML300 board	*/
 
 #define CONFIG_SYSTEMACE	1
@@ -158,12 +159,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		16384	/* For AMCC 405 CPUs	*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
 
 /*-----------------------------------------------------------------------
  * Definitions for initial stack pointer and data area (in DPRAM)

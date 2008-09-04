@@ -26,8 +26,8 @@
  * struct nand_bbt_descr - bad block table descriptor
  * @param options	options for this descriptor
  * @param pages		the page(s) where we find the bbt, used with
- * 			option BBT_ABSPAGE when bbt is searched,
- * 			then we store the found bbts pages here.
+ *			option BBT_ABSPAGE when bbt is searched,
+ *			then we store the found bbts pages here.
  *			Its an array and supports up to 8 chips now
  * @param offs		offset of the pattern in the oob area of the page
  * @param veroffs	offset of the bbt version counter in the oob are of the page
@@ -96,6 +96,13 @@ struct nand_bbt_descr {
  * Constants for oob configuration
  */
 #define ONENAND_BADBLOCK_POS	0
+
+/*
+ * Bad block scanning errors
+ */
+#define ONENAND_BBT_READ_ERROR          1
+#define ONENAND_BBT_READ_ECC_ERROR      2
+#define ONENAND_BBT_READ_FATAL_ERROR    4
 
 /**
  * struct bbt_info - [GENERIC] Bad Block Table data structure

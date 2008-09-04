@@ -24,43 +24,34 @@
 #include <command.h>
 #include <pci.h>
 #include <asm/processor.h>
+#include <asm/mmu.h>
 #include <asm/immap_85xx.h>
 #include <asm/immap_fsl_pci.h>
+#include <asm/fsl_ddr_sdram.h>
 #include <asm/io.h>
-#include <spd.h>
 #include <miiphy.h>
+#include <libfdt.h>
+#include <fdt_support.h>
 
 #include "../common/pixis.h"
-
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-extern void ft_cpu_setup(void *blob, bd_t *bd);
-#endif
 
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 extern void ddr_enable_ecc(unsigned int dram_size);
 #endif
 
-extern long int spd_sdram(void);
-
-void sdram_init(void);
-
-int board_early_init_f (void)
-{
-	return 0;
-}
-
 int checkboard (void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_CCSRBAR;
-	volatile ccsr_gur_t *gur = &immap->im_gur;
-	volatile ccsr_lbc_t *lbc = &immap->im_lbc;
-	volatile ccsr_local_ecm_t *ecm = &immap->im_local_ecm;
+	volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
+	volatile ccsr_lbc_t *lbc = (void *)(CFG_MPC85xx_LBC_ADDR);
+	volatile ccsr_local_ecm_t *ecm = (void *)(CFG_MPC85xx_ECM_ADDR);
 
 	if ((uint)&gur->porpllsr != 0xe00e0000) {
-		printf("immap size error %x\n",&gur->porpllsr);
+		printf("immap size error %lx\n",(ulong)&gur->porpllsr);
 	}
-	printf ("Board: MPC8544DS\n");
+	printf ("Board: MPC8544DS, System ID: 0x%02x, "
+		"System Version: 0x%02x, FPGA Version: 0x%02x\n",
+		in8(PIXIS_BASE + PIXIS_ID), in8(PIXIS_BASE + PIXIS_VER),
+		in8(PIXIS_BASE + PIXIS_PVER));
 
 	lbc->ltesr = 0xffffffff;	/* Clear LBC error interrupts */
 	lbc->lteir = 0xffffffff;	/* Enable LBC error interrupts */
@@ -70,14 +61,18 @@ int checkboard (void)
 	return 0;
 }
 
-long int
+phys_size_t
 initdram(int board_type)
 {
 	long dram_size = 0;
 
 	puts("Initializing\n");
 
-	dram_size = spd_sdram();
+	dram_size = fsl_ddr_sdram();
+
+	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
+
+	dram_size *= 0x100000;
 
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 	/*
@@ -88,45 +83,6 @@ initdram(int board_type)
 	puts("    DDR: ");
 	return dram_size;
 }
-
-#if defined(CFG_DRAM_TEST)
-int
-testdram(void)
-{
-	uint *pstart = (uint *) CFG_MEMTEST_START;
-	uint *pend = (uint *) CFG_MEMTEST_END;
-	uint *p;
-
-	printf("Testing DRAM from 0x%08x to 0x%08x\n",
-	       CFG_MEMTEST_START,
-	       CFG_MEMTEST_END);
-
-	printf("DRAM test phase 1:\n");
-	for (p = pstart; p < pend; p++)
-		*p = 0xaaaaaaaa;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0xaaaaaaaa) {
-			printf ("DRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-
-	printf("DRAM test phase 2:\n");
-	for (p = pstart; p < pend; p++)
-		*p = 0x55555555;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0x55555555) {
-			printf ("DRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-
-	printf("DRAM test passed.\n");
-	return 0;
-}
-#endif
 
 #ifdef CONFIG_PCI1
 static struct pci_controller pci1_hose;
@@ -149,8 +105,7 @@ int first_free_busno=0;
 void
 pci_init_board(void)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_gur_t *gur = &immap->im_gur;
+	volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
 	uint devdisr = gur->devdisr;
 	uint io_sel = (gur->pordevsr & MPC85xx_PORDEVSR_IO_SEL) >> 19;
 	uint host_agent = (gur->porbmsr & MPC85xx_PORBMSR_HA) >> 16;
@@ -170,7 +125,7 @@ pci_init_board(void)
 	volatile ccsr_fsl_pci_t *pci = (ccsr_fsl_pci_t *) CFG_PCIE3_ADDR;
 	extern void fsl_pci_init(struct pci_controller *hose);
 	struct pci_controller *hose = &pcie3_hose;
-	int pcie_ep = (host_agent == 3);
+	int pcie_ep = (host_agent == 1);
 	int pcie_configured  = io_sel >= 1;
 
 	if (pcie_configured && !(devdisr & MPC85xx_DEVDISR_PCIE)){
@@ -227,7 +182,7 @@ pci_init_board(void)
 		 * Activate ULI1575 legacy chip by performing a fake
 		 * memory access.  Needed to make ULI RTC work.
 		 */
-		in_be32(CFG_PCIE3_MEM_BASE);
+		in_be32((u32 *)CFG_PCIE3_MEM_BASE);
 	} else {
 		printf ("    PCIE3: disabled\n");
 	}
@@ -508,51 +463,47 @@ get_board_sys_clk(ulong dummy)
 	return val;
 }
 
-#if defined(CONFIG_OF_FLAT_TREE) && defined(CONFIG_OF_BOARD_SETUP)
+#if defined(CONFIG_OF_BOARD_SETUP)
+
 void
 ft_board_setup(void *blob, bd_t *bd)
 {
-	u32 *p;
-	int len;
+	int node, tmp[2];
+	const char *path;
 
 	ft_cpu_setup(blob, bd);
 
-	p = ft_get_prop(blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32(bd->bi_memstart);
-		*p = cpu_to_be32(bd->bi_memsize);
-	}
+	node = fdt_path_offset(blob, "/aliases");
+	tmp[0] = 0;
+	if (node >= 0) {
 #ifdef CONFIG_PCI1
-	p = (u32 *)ft_get_prop(blob, "/" OF_SOC "/pci@8000/bus-range", &len);
-	if (p != NULL) {
-		p[0] = 0;
-		p[1] = pci1_hose.last_busno - pci1_hose.first_busno;
-		debug("PCI@8000 first_busno=%d last_busno=%d\n",p[0],p[1]);
-	}
-#endif
-#ifdef CONFIG_PCIE1
-	p = (u32 *)ft_get_prop(blob, "/" OF_SOC "/pcie@a000/bus-range", &len);
-	if (p != NULL) {
-		p[0] = 0;
-		p[1] = pcie1_hose.last_busno - pcie1_hose.first_busno;
-		debug("PCI@a000 first_busno=%d last_busno=%d\n",p[0],p[1]);
-	}
+		path = fdt_getprop(blob, node, "pci0", NULL);
+		if (path) {
+			tmp[1] = pci1_hose.last_busno - pci1_hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
 #endif
 #ifdef CONFIG_PCIE2
-	p = (u32 *)ft_get_prop(blob, "/" OF_SOC "/pcie@9000/bus-range", &len);
-	if (p != NULL) {
-		p[0] = 0;
-		p[1] = pcie2_hose.last_busno - pcie2_hose.first_busno;
-		debug("PCI@9000 first_busno=%d last_busno=%d\n",p[0],p[1]);
-	}
+		path = fdt_getprop(blob, node, "pci1", NULL);
+		if (path) {
+			tmp[1] = pcie2_hose.last_busno - pcie2_hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
+#endif
+#ifdef CONFIG_PCIE1
+		path = fdt_getprop(blob, node, "pci2", NULL);
+		if (path) {
+			tmp[1] = pcie1_hose.last_busno - pcie1_hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
 #endif
 #ifdef CONFIG_PCIE3
-	p = (u32 *)ft_get_prop(blob, "/" OF_SOC "/pcie@b000/bus-range", &len);
-	if (p != NULL) {
-		p[0] = 0;
-		p[1] = pcie3_hose.last_busno - pcie3_hose.first_busno;;
-		debug("PCI@b000 first_busno=%d last_busno=%d\n",p[0],p[1]);
-	}
+		path = fdt_getprop(blob, node, "pci3", NULL);
+		if (path) {
+			tmp[1] = pcie3_hose.last_busno - pcie3_hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
 #endif
+	}
 }
 #endif

@@ -27,7 +27,7 @@
 #include <net.h>
 #include <asm/io.h>
 #include <pci.h>
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 #include <asm/processor.h>
 
 #include "pci405.h"
@@ -735,7 +735,7 @@ U_BOOT_CMD(
 );
 
 
-#define SECTOR_SIZE 	32		/* 32 byte cache line */
+#define SECTOR_SIZE	32		/* 32 byte cache line */
 #define SECTOR_MASK	0x1F
 
 void my_flush_dcache(ulong lcl_addr, ulong count)

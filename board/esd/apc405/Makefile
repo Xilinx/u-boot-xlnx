@@ -28,7 +28,9 @@ endif
 
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	= $(BOARD).o strataflash.o ../common/misc.o
+COBJS	= $(BOARD).o \
+	../common/misc.o \
+	../common/auto_update.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -41,7 +43,7 @@ clean:
 	rm -f $(SOBJS) $(OBJS)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

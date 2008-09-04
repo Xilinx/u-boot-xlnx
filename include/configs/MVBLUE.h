@@ -28,16 +28,16 @@
 #define MV_VERSION	"v0.2.0"
 
 /* LED0 = Power , LED1 = Error , LED2-5 = error code, LED6-7=00 -->PPCBoot error */
-#define ERR_NONE			0
-#define ERR_ENV 			1
-#define ERR_BOOTM_BADMAGIC 	2
-#define ERR_BOOTM_BADCRC   	3
-#define ERR_BOOTM_GUNZIP   	4
+#define ERR_NONE		0
+#define ERR_ENV			1
+#define ERR_BOOTM_BADMAGIC	2
+#define ERR_BOOTM_BADCRC	3
+#define ERR_BOOTM_GUNZIP	4
 #define ERR_BOOTP_TIMEOUT	5
-#define ERR_DHCP			6
-#define ERR_TFTP			7
-#define ERR_NOLAN 			8
-#define ERR_LANDRV 			9
+#define ERR_DHCP		6
+#define ERR_TFTP		7
+#define ERR_NOLAN		8
+#define ERR_LANDRV		9
 
 #define CONFIG_BOARD_TYPES	1
 #define MVBLUE_BOARD_BOX	1
@@ -45,15 +45,13 @@
 
 #if 0
 #define ERR_LED(code)	do { if (code) \
-								*(volatile char *)(0xff000003) = ( 3 | (code<<4) ) & 0xf3; \
-							 else \
-								*(volatile char *)(0xff000003) = ( 1 ); \
-						} while(0)
+		*(volatile char *)(0xff000003) = ( 3 | (code<<4) ) & 0xf3; \
+	else \
+		*(volatile char *)(0xff000003) = ( 1 ); \
+} while(0)
 #else
 #define ERR_LED(code)
 #endif
-
-#undef DEBUG
 
 #define CONFIG_MPC824X		1
 #define CONFIG_MPC8245		1
@@ -61,17 +59,18 @@
 
 #define CONFIG_CLOCKS_IN_MHZ	1
 
-#define CONFIG_BOARD_TYPES    1
+#define CONFIG_BOARD_TYPES	1
 
 #define CONFIG_CONS_INDEX	1
 #define CONFIG_BAUDRATE		115200
 #define CFG_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
-#define CONFIG_BOOTDELAY		3
+#define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOT_RETRY_TIME	-1
 
 #define CONFIG_AUTOBOOT_KEYED
-#define CONFIG_AUTOBOOT_PROMPT		"autoboot in %d seconds (stop with 's')...\n"
+#define CONFIG_AUTOBOOT_PROMPT		\
+	"autoboot in %d seconds (stop with 's')...\n", bootdelay
 #define CONFIG_AUTOBOOT_STOP_STR	"s"
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 #define CONFIG_RESET_TO_RETRY		60
@@ -118,19 +117,19 @@
 /*
  * Miscellaneous configurable options
  */
-#define CFG_LONGHELP		/* undef to save memory		*/
-#define CFG_PROMPT	"=> "	/* Monitor Command Prompt	*/
+#define CFG_LONGHELP			/* undef to save memory		*/
+#define CFG_PROMPT	"=> "		/* Monitor Command Prompt	*/
 #define CFG_CBSIZE	256		/* Console I/O Buffer Size	*/
 
-#define CFG_PBSIZE		(CFG_CBSIZE + sizeof(CFG_PROMPT) + 16)
-#define CFG_MAXARGS		16			/* Max number of command args	*/
+#define CFG_PBSIZE	(CFG_CBSIZE + sizeof(CFG_PROMPT) + 16)
+#define CFG_MAXARGS	16		/* Max number of command args	*/
 #define CFG_BARGSIZE	CFG_CBSIZE	/* Boot Argument Buffer Size	*/
 #define CFG_LOAD_ADDR	0x00100000	/* Default load address			*/
 
-#define CONFIG_BOOTCOMMAND  	"run nfsboot"
+#define CONFIG_BOOTCOMMAND	"run nfsboot"
 #define CONFIG_BOOTARGS			"root=/dev/mtdblock5 ro rootfstype=jffs2"
 
-#define CONFIG_NFSBOOTCOMMAND  	"bootp; run nfsargs addcons;bootm"
+#define CONFIG_NFSBOOTCOMMAND	"bootp; run nfsargs addcons;bootm"
 
 #define CONFIG_EXTRA_ENV_SETTINGS			\
 	"console_nr=0\0"				\
@@ -158,11 +157,11 @@
 #define CONFIG_PCI_SCAN_SHOW
 
 #define CONFIG_NET_MULTI
-#define CONFIG_NET_RETRY_COUNT 5
+#define CONFIG_NET_RETRY_COUNT		5
 
 #define CONFIG_TULIP
 #define CONFIG_TULIP_FIX_DAVICOM	1
-#define CONFIG_ETHADDR      		b6:b4:45:eb:fb:c0
+#define CONFIG_ETHADDR			b6:b4:45:eb:fb:c0
 
 #define CONFIG_HW_WATCHDOG
 
@@ -226,7 +225,7 @@
  */
 
 #define CONFIG_SYS_CLK_FREQ  33000000
-#define CFG_HZ		     	 10000
+#define CFG_HZ			 10000
 
 /* Bit-field values for MCCR1.  */
 #define CFG_ROMNAL      7

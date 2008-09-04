@@ -60,7 +60,7 @@ extern ulong	BootpID;		/* ID of cur BOOTP request		*/
 extern char	BootFile[128];		/* Boot file name			*/
 extern int	BootpTry;
 #ifdef CONFIG_BOOTP_RANDOM_DELAY
-ulong		seed1, seed2;		/* seed for random BOOTP delay		*/
+extern ulong	seed1, seed2;		/* seed for random BOOTP delay		*/
 #endif
 
 
@@ -88,7 +88,7 @@ typedef enum { INIT,
 #define DHCP_NAK      6
 #define DHCP_RELEASE  7
 
-#define SELECT_TIMEOUT 3	/* Seconds to wait for offers */
+#define SELECT_TIMEOUT 3UL	/* Seconds to wait for offers */
 
 /**********************************************************************/
 

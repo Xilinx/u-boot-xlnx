@@ -264,6 +264,7 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 #ifndef CFG_ENV_IS_NOWHERE
 	extern char * env_name_spec;
 #endif
+	char *s;
 	cmd_tbl_t *cmdtp;
 	bd_t *bd;
 
@@ -311,6 +312,8 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 	dma_alloc_init();
 	board_init_info();
 
+	enable_interrupts();
+
 	bd->bi_flashstart = 0;
 	bd->bi_flashsize = 0;
 	bd->bi_flashoffset = 0;
@@ -334,11 +337,20 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 	/* initialize environment */
 	env_relocate();
 
+	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
+
 	devices_init();
 	jumptable_init();
 	console_init_r();
 
+	s = getenv("loadaddr");
+	if (s)
+		load_addr = simple_strtoul(s, NULL, 16);
+
 #if defined(CONFIG_CMD_NET)
+	s = getenv("bootfile");
+	if (s)
+		copy_filename(BootFile, s, sizeof(BootFile));
 #if defined(CONFIG_NET_MULTI)
 	puts("Net:   ");
 #endif

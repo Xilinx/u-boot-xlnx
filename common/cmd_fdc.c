@@ -46,24 +46,23 @@
 #define FALSE           0
 #endif
 
-
 /*#if defined(CONFIG_CMD_DATE) */
 /*#include <rtc.h> */
 /*#endif */
 
 #if defined(CONFIG_CMD_FDC) || defined(CONFIG_CMD_FDOS)
 
-
 typedef struct {
-	int						flags;		/* connected drives ect */
-	unsigned long blnr;			/* Logical block nr */
-	uchar					drive; 		/* drive no */
-	uchar					cmdlen; 	/* cmd length */
-	uchar					cmd[16]; 	/* cmd desc */
-	uchar					dma;			/* if > 0 dma enabled */
-	uchar					result[11];/* status information */
-	uchar					resultlen; /* lenght of result */
+	int		flags;		/* connected drives ect */
+	unsigned long	blnr;		/* Logical block nr */
+	uchar		drive;		/* drive no */
+	uchar		cmdlen;		/* cmd length */
+	uchar		cmd[16];	/* cmd desc */
+	uchar		dma;		/* if > 0 dma enabled */
+	uchar		result[11];	/* status information */
+	uchar		resultlen;	/* lenght of result */
 } FDC_COMMAND_STRUCT;
+
 /* flags: only the lower 8bit used:
  * bit 0 if set drive 0 is present
  * bit 1 if set drive 1 is present
@@ -75,31 +74,30 @@ typedef struct {
  * bit 7 if set disk in drive 4 is inserted
  */
 
-
 /* cmd indexes */
-#define COMMAND 		0
-#define DRIVE 			1
+#define COMMAND			0
+#define DRIVE			1
 #define CONFIG0			1
-#define SPEC_HUTSRT	1
-#define TRACK 			2
+#define SPEC_HUTSRT		1
+#define TRACK			2
 #define CONFIG1			2
 #define SPEC_HLT		2
-#define HEAD				3
+#define HEAD			3
 #define CONFIG2			3
-#define SECTOR 			4
-#define SECTOR_SIZE	5
-#define LAST_TRACK	6
-#define GAP					7
-#define DTL					8
+#define SECTOR			4
+#define SECTOR_SIZE		5
+#define LAST_TRACK		6
+#define GAP			7
+#define DTL			8
 /* result indexes */
-#define STATUS_0						0
-#define STATUS_PCN					1
-#define STATUS_1						1
-#define STATUS_2						2
-#define STATUS_TRACK				3
-#define STATUS_HEAD					4
-#define STATUS_SECT					5
-#define STATUS_SECT_SIZE		6
+#define STATUS_0		0
+#define STATUS_PCN		1
+#define STATUS_1		1
+#define STATUS_2		2
+#define STATUS_TRACK		3
+#define STATUS_HEAD		4
+#define STATUS_SECT		5
+#define STATUS_SECT_SIZE	6
 
 
 /* Register addresses */
@@ -114,34 +112,34 @@ typedef struct {
 #define FDC_DIR		FDC_BASE + 6	/* Digital Input Register */
 #define FDC_CCR		FDC_BASE + 7	/* Configuration Control */
 /* Commands */
-#define FDC_CMD_SENSE_INT 		0x08
-#define FDC_CMD_CONFIGURE 		0x13
-#define FDC_CMD_SPECIFY	 			0x03
-#define FDC_CMD_RECALIBRATE 	0x07
-#define FDC_CMD_READ				 	0x06
-#define FDC_CMD_READ_TRACK	 	0x02
-#define FDC_CMD_READ_ID			 	0x0A
-#define FDC_CMD_DUMP_REG		 	0x0E
-#define FDC_CMD_SEEK				 	0x0F
+#define FDC_CMD_SENSE_INT	0x08
+#define FDC_CMD_CONFIGURE	0x13
+#define FDC_CMD_SPECIFY		0x03
+#define FDC_CMD_RECALIBRATE	0x07
+#define FDC_CMD_READ		0x06
+#define FDC_CMD_READ_TRACK	0x02
+#define FDC_CMD_READ_ID		0x0A
+#define FDC_CMD_DUMP_REG	0x0E
+#define FDC_CMD_SEEK		0x0F
 
-#define FDC_CMD_SENSE_INT_LEN 		0x01
-#define FDC_CMD_CONFIGURE_LEN 		0x04
-#define FDC_CMD_SPECIFY_LEN	 			0x03
-#define FDC_CMD_RECALIBRATE_LEN 	0x02
-#define FDC_CMD_READ_LEN				 	0x09
-#define FDC_CMD_READ_TRACK_LEN	 	0x09
-#define FDC_CMD_READ_ID_LEN			 	0x02
-#define FDC_CMD_DUMP_REG_LEN		 	0x01
-#define FDC_CMD_SEEK_LEN				 	0x03
+#define FDC_CMD_SENSE_INT_LEN	0x01
+#define FDC_CMD_CONFIGURE_LEN	0x04
+#define FDC_CMD_SPECIFY_LEN	0x03
+#define FDC_CMD_RECALIBRATE_LEN	0x02
+#define FDC_CMD_READ_LEN	0x09
+#define FDC_CMD_READ_TRACK_LEN	0x09
+#define FDC_CMD_READ_ID_LEN	0x02
+#define FDC_CMD_DUMP_REG_LEN	0x01
+#define FDC_CMD_SEEK_LEN	0x03
 
-#define FDC_FIFO_THR			0x0C
-#define FDC_FIFO_DIS			0x00
+#define FDC_FIFO_THR		0x0C
+#define FDC_FIFO_DIS		0x00
 #define FDC_IMPLIED_SEEK	0x01
-#define FDC_POLL_DIS			0x00
-#define FDC_PRE_TRK				0x00
-#define FDC_CONFIGURE			FDC_FIFO_THR | (FDC_POLL_DIS<<4) | (FDC_FIFO_DIS<<5) | (FDC_IMPLIED_SEEK << 6)
-#define FDC_MFM_MODE			0x01 /* MFM enable */
-#define FDC_SKIP_MODE			0x00 /* skip enable */
+#define FDC_POLL_DIS		0x00
+#define FDC_PRE_TRK		0x00
+#define FDC_CONFIGURE		FDC_FIFO_THR | (FDC_POLL_DIS<<4) | (FDC_FIFO_DIS<<5) | (FDC_IMPLIED_SEEK << 6)
+#define FDC_MFM_MODE		0x01 /* MFM enable */
+#define FDC_SKIP_MODE		0x00 /* skip enable */
 
 #define FDC_TIME_OUT 100000 /* time out */
 #define	FDC_RW_RETRIES		3 /* read write retries */
@@ -150,18 +148,18 @@ typedef struct {
 
 /* Disk structure */
 typedef struct  {
-	unsigned int size;			/* nr of sectors total */
-	unsigned int sect;			/* sectors per track */
-	unsigned int head;			/* nr of heads */
-	unsigned int track;			/* nr of tracks */
-	unsigned int stretch;		/* !=0 means double track steps */
-	unsigned char	gap;			/* gap1 size */
-	unsigned char	rate;			/* data rate. |= 0x40 for perpendicular */
-	unsigned char	spec1;		/* stepping rate, head unload time */
-	unsigned char	fmt_gap;	/* gap2 size */
-	unsigned char hlt;			/* head load time */
-	unsigned char sect_code; /* Sector Size code */
-	const char	* name; 		/* used only for predefined formats */
+	unsigned int size;	/* nr of sectors total */
+	unsigned int sect;	/* sectors per track */
+	unsigned int head;	/* nr of heads */
+	unsigned int track;	/* nr of tracks */
+	unsigned int stretch;	/* !=0 means double track steps */
+	unsigned char	gap;	/* gap1 size */
+	unsigned char	rate;	/* data rate. |= 0x40 for perpendicular */
+	unsigned char	spec1;	/* stepping rate, head unload time */
+	unsigned char	fmt_gap;/* gap2 size */
+	unsigned char hlt;	/* head load time */
+	unsigned char sect_code;/* Sector Size code */
+	const char	* name;	/* used only for predefined formats */
 } FD_GEO_STRUCT;
 
 
@@ -342,7 +340,7 @@ int fdc_issue_cmd(FDC_COMMAND_STRUCT *pCMD,FD_GEO_STRUCT *pFG)
 		case FDC_CMD_CONFIGURE:
 			pCMD->cmd[CONFIG0]=0;
 			pCMD->cmd[CONFIG1]=FDC_CONFIGURE; /* FIFO Threshold, Poll, Enable FIFO */
-			pCMD->cmd[CONFIG2]=FDC_PRE_TRK; 	/* Precompensation Track */
+			pCMD->cmd[CONFIG2]=FDC_PRE_TRK;	/* Precompensation Track */
 			pCMD->cmdlen=FDC_CMD_CONFIGURE_LEN;
 			pCMD->resultlen=0;  /* no result */
 			break;
@@ -514,7 +512,7 @@ int fdc_read_data(unsigned char *buffer, unsigned long blocks,FDC_COMMAND_STRUCT
 	if(readblk>blocks) /* is end within 1st track */
 		readblk=blocks; /* yes, correct it */
 	PRINTF("we read %ld blocks start %ld\n",readblk,pCMD->blnr);
-	bufferw=&buffer[0]; /* setup working buffer */
+	bufferw = &buffer[0]; /* setup working buffer */
 	do {
 retryrw:
 		len=sect_size * readblk;
@@ -568,7 +566,7 @@ retryrw:
 		 * we need to get the results */
 		fdc_terminate(pCMD);
 		offset+=(sect_size*readblk); /* set up buffer pointer */
-		bufferw=&buffer[offset];
+		bufferw = &buffer[offset];
 		pCMD->blnr+=readblk; /* update current block nr */
 		blocks-=readblk; /* update blocks */
 		if(blocks==0)
@@ -788,6 +786,9 @@ int do_fdcboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int i,nrofblk;
 	char *ep;
 	int rcode = 0;
+#if defined(CONFIG_FIT)
+	const void *fit_hdr = NULL;
+#endif
 
 	switch (argc) {
 	case 1:
@@ -835,14 +836,27 @@ int do_fdcboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			printf("result%d: 0x%02X\n",i,pCMD->result[i]);
 		return 1;
 	}
-	hdr = (image_header_t *)addr;
-	if (ntohl(hdr->ih_magic)  != IH_MAGIC) {
-		printf ("Bad Magic Number\n");
+
+	switch (genimg_get_format ((void *)addr)) {
+	case IMAGE_FORMAT_LEGACY:
+		hdr = (image_header_t *)addr;
+		image_print_contents (hdr);
+
+		imsize = image_get_image_size (hdr);
+		break;
+#if defined(CONFIG_FIT)
+	case IMAGE_FORMAT_FIT:
+		fit_hdr = (const void *)addr;
+		puts ("Fit image detected...\n");
+
+		imsize = fit_get_size (fit_hdr);
+		break;
+#endif
+	default:
+		puts ("** Unknown image type\n");
 		return 1;
 	}
-	print_image_hdr(hdr);
 
-	imsize= ntohl(hdr->ih_size)+sizeof(image_header_t);
 	nrofblk=imsize/512;
 	if((imsize%512)>0)
 		nrofblk++;
@@ -858,23 +872,33 @@ int do_fdcboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	printf("OK %ld Bytes loaded.\n",imsize);
 
 	flush_cache (addr, imsize);
-	/* Loading ok, update default load address */
 
-	load_addr = addr;
-	if(hdr->ih_type  == IH_TYPE_KERNEL) {
-		/* Check if we should attempt an auto-start */
-		if (((ep = getenv("autostart")) != NULL) && (strcmp(ep,"yes") == 0)) {
-			char *local_args[2];
-			extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
-
-			local_args[0] = argv[0];
-			local_args[1] = NULL;
-
-			printf ("Automatic boot of image at addr 0x%08lX ...\n", addr);
-
-			do_bootm (cmdtp, 0, 1, local_args);
-			rcode ++;
+#if defined(CONFIG_FIT)
+	/* This cannot be done earlier, we need complete FIT image in RAM first */
+	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
+		if (!fit_check_format (fit_hdr)) {
+			puts ("** Bad FIT image format\n");
+			return 1;
 		}
+		fit_print_contents (fit_hdr);
+	}
+#endif
+
+	/* Loading ok, update default load address */
+	load_addr = addr;
+
+	/* Check if we should attempt an auto-start */
+	if (((ep = getenv("autostart")) != NULL) && (strcmp(ep,"yes") == 0)) {
+		char *local_args[2];
+		extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
+
+		local_args[0] = argv[0];
+		local_args[1] = NULL;
+
+		printf ("Automatic boot of image at addr 0x%08lX ...\n", addr);
+
+		do_bootm (cmdtp, 0, 1, local_args);
+		rcode ++;
 	}
 	return rcode;
 }

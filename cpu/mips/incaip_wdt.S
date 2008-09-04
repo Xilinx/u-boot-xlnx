@@ -24,7 +24,6 @@
 
 
 #include <config.h>
-#include <version.h>
 #include <asm/regdef.h>
 
 
@@ -51,7 +50,7 @@ disable_incaip_wdt:
 	and	t3, 0xFFFFFF01
 
 	or	t3, t2
-	or 	t3, 0xF0
+	or	t3, 0xF0
 
 	sw	t3, WD_CON0(t0)		/* write password */
 
@@ -68,5 +67,5 @@ disable_incaip_wdt:
 	li	t1, WD_WRITE_ENDINIT
 	sw	t1, WD_CON0(t0)		/* end command */
 
-	j	ra
+	jr	ra
 	nop

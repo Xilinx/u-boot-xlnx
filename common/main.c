@@ -40,7 +40,7 @@
 
 #include <post.h>
 
-#ifdef CONFIG_SILENT_CONSOLE
+#if defined(CONFIG_SILENT_CONSOLE) || defined(CONFIG_POST) || defined(CONFIG_CMDLINE_EDITING)
 DECLARE_GLOBAL_DATA_PTR;
 #endif
 
@@ -59,7 +59,6 @@ extern int do_bootd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 
 #define MAX_DELAY_STOP_STR 32
 
-static int parse_line (char *, char *[]);
 #if defined(CONFIG_BOOTDELAY) && (CONFIG_BOOTDELAY >= 0)
 static int abortboot(int);
 #endif
@@ -68,11 +67,9 @@ static int abortboot(int);
 
 char        console_buffer[CFG_CBSIZE];		/* console I/O buffer	*/
 
-#ifndef CONFIG_CMDLINE_EDITING
 static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen);
 static char erase_seq[] = "\b \b";		/* erase sequence	*/
 static char   tab_seq[] = "        ";		/* used to expand TABs	*/
-#endif /* CONFIG_CMDLINE_EDITING */
 
 #ifdef CONFIG_BOOT_RETRY_TIME
 static uint64_t endtime = 0;  /* must be set, default is instant timeout */
@@ -119,7 +116,7 @@ static __inline__ int abortboot(int bootdelay)
 	u_int i;
 
 #  ifdef CONFIG_AUTOBOOT_PROMPT
-	printf(CONFIG_AUTOBOOT_PROMPT, bootdelay);
+	printf(CONFIG_AUTOBOOT_PROMPT);
 #  endif
 
 #  ifdef CONFIG_AUTOBOOT_DELAY_STR
@@ -215,7 +212,7 @@ static __inline__ int abortboot(int bootdelay)
 	int abort = 0;
 
 #ifdef CONFIG_MENUPROMPT
-	printf(CONFIG_MENUPROMPT, bootdelay);
+	printf(CONFIG_MENUPROMPT);
 #else
 	printf("Hit any key to stop autoboot: %2d ", bootdelay);
 #endif
@@ -370,6 +367,12 @@ void main_loop (void)
 	init_cmd_timeout ();
 # endif	/* CONFIG_BOOT_RETRY_TIME */
 
+#ifdef CONFIG_POST
+	if (gd->flags & GD_FLG_POSTFAIL) {
+		s = getenv("failbootcmd");
+	}
+	else
+#endif /* CONFIG_POST */
 #ifdef CONFIG_BOOTCOUNT_LIMIT
 	if (bootlimit && (bootcount > bootlimit)) {
 		printf ("Warning: Bootlimit (%u) exceeded. Using altbootcmd.\n",
@@ -506,7 +509,7 @@ void reset_cmd_timeout(void)
  */
 
 #define putnstr(str,n)	do {			\
-		printf ("%.*s", n, str);	\
+		printf ("%.*s", (int)n, str);	\
 	} while (0)
 
 #define CTL_CH(c)		((c) - 'a' + 1)
@@ -696,7 +699,7 @@ static void cread_add_str(char *str, int strsize, int insert, unsigned long *num
 	}
 }
 
-static int cread_line(char *buf, unsigned int *len)
+static int cread_line(const char *const prompt, char *buf, unsigned int *len)
 {
 	unsigned long num = 0;
 	unsigned long eol_num = 0;
@@ -710,6 +713,13 @@ static int cread_line(char *buf, unsigned int *len)
 
 	while (1) {
 		rlen = 1;
+#ifdef CONFIG_BOOT_RETRY_TIME
+		while (!tstc()) {	/* while no incoming data */
+			if (retry_time >= 0 && get_ticks() > endtime)
+				return (-2);	/* timed out */
+		}
+#endif
+
 		ichar = getcmd_getch();
 
 		if ((ichar == '\n') || (ichar == '\r')) {
@@ -818,6 +828,7 @@ static int cread_line(char *buf, unsigned int *len)
 			insert = !insert;
 			break;
 		case CTL_CH('x'):
+		case CTL_CH('u'):
 			BEGINNING_OF_LINE();
 			ERASE_TO_EOL();
 			break;
@@ -867,6 +878,27 @@ static int cread_line(char *buf, unsigned int *len)
 			REFRESH_TO_EOL();
 			continue;
 		}
+#ifdef CONFIG_AUTO_COMPLETE
+		case '\t': {
+			int num2, col;
+
+			/* do not autocomplete when in the middle */
+			if (num < eol_num) {
+				getcmd_cbeep();
+				break;
+			}
+
+			buf[num] = '\0';
+			col = strlen(prompt) + eol_num;
+			num2 = num;
+			if (cmd_auto_complete(prompt, buf, &num2, &col)) {
+				col = num2 - num;
+				num += col;
+				eol_num += col;
+			}
+			break;
+		}
+#endif
 		default:
 			cread_add_char(ichar, insert, &num, &eol_num, buf, *len);
 			break;
@@ -896,23 +928,38 @@ static int cread_line(char *buf, unsigned int *len)
  */
 int readline (const char *const prompt)
 {
+	return readline_into_buffer(prompt, console_buffer);
+}
+
+
+int readline_into_buffer (const char *const prompt, char * buffer)
+{
+	char *p = buffer;
 #ifdef CONFIG_CMDLINE_EDITING
-	char *p = console_buffer;
 	unsigned int len=MAX_CMDBUF_SIZE;
 	int rc;
 	static int initted = 0;
 
-	if (!initted) {
-		hist_init();
-		initted = 1;
-	}
+	/*
+	 * History uses a global array which is not
+	 * writable until after relocation to RAM.
+	 * Revert to non-history version if still
+	 * running from flash.
+	 */
+	if (gd->flags & GD_FLG_RELOC) {
+		if (!initted) {
+			hist_init();
+			initted = 1;
+		}
 
-	puts (prompt);
+		puts (prompt);
 
-	rc = cread_line(p, &len);
-	return rc < 0 ? rc : len;
-#else
-	char   *p = console_buffer;
+		rc = cread_line(prompt, p, &len);
+		return rc < 0 ? rc : len;
+
+	} else {
+#endif	/* CONFIG_CMDLINE_EDITING */
+	char * p_buf = p;
 	int	n = 0;				/* buffer index		*/
 	int	plen = 0;			/* prompt length	*/
 	int	col;				/* output column cnt	*/
@@ -950,13 +997,13 @@ int readline (const char *const prompt)
 		case '\n':
 			*p = '\0';
 			puts ("\r\n");
-			return (p - console_buffer);
+			return (p - p_buf);
 
 		case '\0':				/* nul			*/
 			continue;
 
 		case 0x03:				/* ^C - break		*/
-			console_buffer[0] = '\0';	/* discard input */
+			p_buf[0] = '\0';	/* discard input */
 			return (-1);
 
 		case 0x15:				/* ^U - erase line	*/
@@ -964,20 +1011,20 @@ int readline (const char *const prompt)
 				puts (erase_seq);
 				--col;
 			}
-			p = console_buffer;
+			p = p_buf;
 			n = 0;
 			continue;
 
 		case 0x17:				/* ^W - erase word	*/
-			p=delete_char(console_buffer, p, &col, &n, plen);
+			p=delete_char(p_buf, p, &col, &n, plen);
 			while ((n > 0) && (*p != ' ')) {
-				p=delete_char(console_buffer, p, &col, &n, plen);
+				p=delete_char(p_buf, p, &col, &n, plen);
 			}
 			continue;
 
 		case 0x08:				/* ^H  - backspace	*/
 		case 0x7F:				/* DEL - backspace	*/
-			p=delete_char(console_buffer, p, &col, &n, plen);
+			p=delete_char(p_buf, p, &col, &n, plen);
 			continue;
 
 		default:
@@ -990,7 +1037,7 @@ int readline (const char *const prompt)
 					/* if auto completion triggered just continue */
 					*p = '\0';
 					if (cmd_auto_complete(prompt, console_buffer, &n, &col)) {
-						p = console_buffer + n;	/* reset */
+						p = p_buf + n;	/* reset */
 						continue;
 					}
 #endif
@@ -1007,12 +1054,13 @@ int readline (const char *const prompt)
 			}
 		}
 	}
-#endif /* CONFIG_CMDLINE_EDITING */
+#ifdef CONFIG_CMDLINE_EDITING
+	}
+#endif
 }
 
 /****************************************************************************/
 
-#ifndef CONFIG_CMDLINE_EDITING
 static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 {
 	char *s;
@@ -1042,7 +1090,6 @@ static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 	(*np)--;
 	return (p);
 }
-#endif /* CONFIG_CMDLINE_EDITING */
 
 /****************************************************************************/
 

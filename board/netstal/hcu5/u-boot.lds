@@ -22,7 +22,6 @@
  */
 
 OUTPUT_ARCH(powerpc)
-SEARCH_DIR(/lib); SEARCH_DIR(/usr/lib); SEARCH_DIR(/usr/local/lib); SEARCH_DIR(/usr/local/powerpc-any-elf/lib);
 
 SECTIONS
 {
@@ -43,11 +42,11 @@ SECTIONS
   .dynsym        : { *(.dynsym)		}
   .dynstr        : { *(.dynstr)		}
   .rel.text      : { *(.rel.text)		}
-  .rela.text     : { *(.rela.text) 	}
+  .rela.text     : { *(.rela.text)	}
   .rel.data      : { *(.rel.data)		}
-  .rela.data     : { *(.rela.data) 	}
-  .rel.rodata    : { *(.rel.rodata) 	}
-  .rela.rodata   : { *(.rela.rodata) 	}
+  .rela.data     : { *(.rela.data)	}
+  .rel.rodata    : { *(.rel.rodata)	}
+  .rela.rodata   : { *(.rela.rodata)	}
   .rel.got       : { *(.rel.got)		}
   .rela.got      : { *(.rela.got)		}
   .rel.ctors     : { *(.rel.ctors)	}
@@ -129,7 +128,7 @@ SECTIONS
   __init_end = .;
 
   __bss_start = .;
-  .bss       :
+  .bss (NOLOAD)       :
   {
    *(.sbss) *(.scommon)
    *(.dynbss)
@@ -137,7 +136,7 @@ SECTIONS
    *(COMMON)
   }
 
-  ppcenv_assert = ASSERT(. < 0xFFFF8000, ".bss section too big, overlaps .ppcenv section. Please update your confguration: CFG_MONITOR_BASE, CFG_MONITOR_LEN and TEXT_BASE may need to be modified.");
+  ppcenv_assert = ASSERT(. < 0xFFFFB000, ".bss section too big, overlaps .ppcenv section. Please update your confguration: CFG_MONITOR_BASE, CFG_MONITOR_LEN and TEXT_BASE may need to be modified.");
 
   _end = . ;
   PROVIDE (end = .);

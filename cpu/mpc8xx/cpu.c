@@ -39,6 +39,12 @@
 #include <mpc8xx.h>
 #include <asm/cache.h>
 
+#if defined(CONFIG_OF_LIBFDT)
+#include <libfdt.h>
+#include <libfdt_env.h>
+#include <fdt_support.h>
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 static char *cpu_warning = "\n         " \
@@ -628,7 +634,4 @@ void reset_8xx_watchdog (volatile immap_t * immr)
 	immr->im_siu_conf.sc_swsr = 0xaa39;	/* write magic2 */
 # endif /* CONFIG_LWMON */
 }
-
 #endif /* CONFIG_WATCHDOG */
-
-/* ------------------------------------------------------------------------- */

@@ -37,8 +37,6 @@
 #define CONFIG_MCF532x		/* define processor family */
 #define CONFIG_M5329		/* define processor type */
 
-#undef DEBUG
-
 #define CONFIG_MCFUART
 #define CFG_UART_PORT		(0)
 #define CONFIG_BAUDRATE		115200
@@ -72,13 +70,14 @@
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_NET_MULTI		1
 #	define CONFIG_MII		1
+#	define CONFIG_MII_INIT		1
 #	define CFG_DISCOVER_PHY
 #	define CFG_RX_ETH_BUFFER	8
 #	define CFG_FAULT_ECHO_LINK_DOWN
 
 #	define CFG_FEC0_PINMUX		0
 #	define CFG_FEC0_MIIBASE		CFG_FEC0_IOBASE
-#	define MCFFEC_TOUT_LOOP 	50000
+#	define MCFFEC_TOUT_LOOP		50000
 /* If CFG_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CFG_DISCOVER_PHY
 #		define FECDUPLEX	FULL
@@ -175,7 +174,7 @@
  * Please note that CFG_SDRAM_BASE _must_ start at 0
  */
 #define CFG_SDRAM_BASE		0x40000000
-#define CFG_SDRAM_SIZE		16	/* SDRAM size in MB */
+#define CFG_SDRAM_SIZE		32	/* SDRAM size in MB */
 #define CFG_SDRAM_CFG1		0x53722730
 #define CFG_SDRAM_CFG2		0x56670000
 #define CFG_SDRAM_CTRL		0xE1092000
@@ -203,7 +202,7 @@
  */
 #define CFG_FLASH_CFI
 #ifdef CFG_FLASH_CFI
-#	define CFG_FLASH_CFI_DRIVER	1
+#	define CONFIG_FLASH_CFI_DRIVER	1
 #	define CFG_FLASH_SIZE		0x800000	/* Max size that the board might have */
 #	define CFG_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks */
@@ -213,7 +212,7 @@
 
 #ifdef NANDFLASH_SIZE
 #	define CFG_MAX_NAND_DEVICE	1
-#	define CFG_NAND_BASE		(CFG_CS2_BASE << 16)
+#	define CFG_NAND_BASE		CFG_CS2_BASE
 #	define CFG_NAND_SIZE		1
 #	define CFG_NAND_BASE_LIST	{ CFG_NAND_BASE }
 #	define NAND_MAX_CHIPS		1
@@ -224,7 +223,7 @@
 #	define CONFIG_JFFS2_PART_OFFSET	0x00000000
 #endif
 
-#define CFG_FLASH_BASE		(CFG_CS0_BASE << 16)
+#define CFG_FLASH_BASE		CFG_CS0_BASE
 
 /* Configuration for environment
  * Environment is embedded in u-boot in the second sector of the flash
@@ -254,12 +253,12 @@
 #define CFG_CS0_MASK		0x007f0001
 #define CFG_CS0_CTRL		0x00001fa0
 
-#define CFG_CS1_BASE		0x1000
+#define CFG_CS1_BASE		0x10000000
 #define CFG_CS1_MASK		0x001f0001
 #define CFG_CS1_CTRL		0x002A3780
 
 #ifdef NANDFLASH_SIZE
-#define CFG_CS2_BASE		0x2000
+#define CFG_CS2_BASE		0x20000000
 #define CFG_CS2_MASK		((NANDFLASH_SIZE << 20) | 1)
 #define CFG_CS2_CTRL		0x00001f60
 #endif

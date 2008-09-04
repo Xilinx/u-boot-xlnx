@@ -22,7 +22,6 @@
  */
 
 OUTPUT_ARCH(powerpc)
-SEARCH_DIR(/lib); SEARCH_DIR(/usr/lib); SEARCH_DIR(/usr/local/lib); SEARCH_DIR(/usr/local/powerpc-any-elf/lib);
 /* Do we need any of these for elf?
    __DYNAMIC = 0;    */
 SECTIONS
@@ -43,11 +42,11 @@ SECTIONS
   .dynsym        : { *(.dynsym)		}
   .dynstr        : { *(.dynstr)		}
   .rel.text      : { *(.rel.text)		}
-  .rela.text     : { *(.rela.text) 	}
+  .rela.text     : { *(.rela.text)	}
   .rel.data      : { *(.rel.data)		}
-  .rela.data     : { *(.rela.data) 	}
-  .rel.rodata    : { *(.rel.rodata) 	}
-  .rela.rodata   : { *(.rela.rodata) 	}
+  .rela.data     : { *(.rela.data)	}
+  .rel.rodata    : { *(.rel.rodata)	}
+  .rela.rodata   : { *(.rela.rodata)	}
   .rel.got       : { *(.rel.got)		}
   .rela.got      : { *(.rela.got)		}
   .rel.ctors     : { *(.rel.ctors)	}
@@ -70,7 +69,7 @@ SECTIONS
     cpu/ppc4xx/kgdb.o	(.text)
     cpu/ppc4xx/traps.o	(.text)
     cpu/ppc4xx/interrupts.o	(.text)
-    cpu/ppc4xx/serial.o	(.text)
+    cpu/ppc4xx/4xx_uart.o	(.text)
     cpu/ppc4xx/cpu_init.o	(.text)
     cpu/ppc4xx/speed.o	(.text)
     cpu/ppc4xx/4xx_enet.o	(.text)
@@ -145,7 +144,7 @@ SECTIONS
   __init_end = .;
 
   __bss_start = .;
-  .bss       :
+  .bss (NOLOAD)       :
   {
    *(.sbss) *(.scommon)
    *(.dynbss)

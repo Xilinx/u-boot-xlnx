@@ -178,7 +178,7 @@ copyex:
 	bl	cpu_init_crit
 #endif
 
-#ifdef	CONFIG_AT91RM9200
+#ifndef	CONFIG_AT91RM9200
 
 #ifndef CONFIG_SKIP_RELOCATE_UBOOT
 relocate:				/* relocate U-Boot to RAM	    */
@@ -212,7 +212,7 @@ stack_setup:
 clear_bss:
 	ldr	r0, _bss_start		/* find start of bss segment        */
 	ldr	r1, _bss_end		/* stop here                        */
-	mov 	r2, #0x00000000		/* clear                            */
+	mov	r2, #0x00000000		/* clear                            */
 
 clbss_l:str	r2, [r0]		/* clear loop...                    */
 	add	r0, r0, #4
@@ -329,12 +329,12 @@ cpu_init_crit:
 	.macro	irq_save_user_regs
 	sub	sp, sp, #S_FRAME_SIZE
 	stmia	sp, {r0 - r12}			@ Calling r0-r12
-	add     r8, sp, #S_PC
-	stmdb   r8, {sp, lr}^                   @ Calling SP, LR
-	str     lr, [r8, #0]                    @ Save calling PC
+	add     r7, sp, #S_PC
+	stmdb   r7, {sp, lr}^                   @ Calling SP, LR
+	str     lr, [r7, #0]                    @ Save calling PC
 	mrs     r6, spsr
-	str     r6, [r8, #4]                    @ Save CPSR
-	str     r0, [r8, #8]                    @ Save OLD_R0
+	str     r6, [r7, #4]                    @ Save CPSR
+	str     r0, [r7, #8]                    @ Save OLD_R0
 	mov	r0, sp
 	.endm
 
@@ -377,31 +377,31 @@ cpu_init_crit:
 undefined_instruction:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_undefined_instruction
+	bl	do_undefined_instruction
 
 	.align	5
 software_interrupt:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_software_interrupt
+	bl	do_software_interrupt
 
 	.align	5
 prefetch_abort:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_prefetch_abort
+	bl	do_prefetch_abort
 
 	.align	5
 data_abort:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_data_abort
+	bl	do_data_abort
 
 	.align	5
 not_used:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_not_used
+	bl	do_not_used
 
 #ifdef CONFIG_USE_IRQ
 
@@ -409,7 +409,7 @@ not_used:
 irq:
 	get_irq_stack
 	irq_save_user_regs
-	bl 	do_irq
+	bl	do_irq
 	irq_restore_user_regs
 
 	.align	5
@@ -417,7 +417,7 @@ fiq:
 	get_fiq_stack
 	/* someone ought to write a more effiction fiq_save_user_regs */
 	irq_save_user_regs
-	bl 	do_fiq
+	bl	do_fiq
 	irq_restore_user_regs
 
 #else
@@ -426,12 +426,12 @@ fiq:
 irq:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_irq
+	bl	do_irq
 
 	.align	5
 fiq:
 	get_bad_stack
 	bad_save_user_regs
-	bl 	do_fiq
+	bl	do_fiq
 
 #endif

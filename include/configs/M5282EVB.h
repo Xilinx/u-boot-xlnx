@@ -40,8 +40,8 @@
 
 #define CONFIG_MCFUART
 #define CFG_UART_PORT		(0)
-#define CONFIG_BAUDRATE 19200
-#define CFG_BAUDRATE_TABLE { 9600 , 19200 , 38400 , 57600, 115200 }
+#define CONFIG_BAUDRATE		115200
+#define CFG_BAUDRATE_TABLE	{ 9600 , 19200 , 38400 , 57600, 115200 }
 
 #undef	CONFIG_MONITOR_IS_IN_RAM	/* define if monitor is started from a pre-loader */
 
@@ -75,13 +75,14 @@
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_NET_MULTI		1
 #	define CONFIG_MII		1
+#	define CONFIG_MII_INIT		1
 #	define CFG_DISCOVER_PHY
 #	define CFG_RX_ETH_BUFFER	8
 #	define CFG_FAULT_ECHO_LINK_DOWN
 
 #	define CFG_FEC0_PINMUX		0
 #	define CFG_FEC0_MIIBASE		CFG_FEC0_IOBASE
-#	define MCFFEC_TOUT_LOOP 	50000
+#	define MCFFEC_TOUT_LOOP		50000
 /* If CFG_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CFG_DISCOVER_PHY
 #		define FECDUPLEX	FULL
@@ -103,7 +104,7 @@
 #	define CONFIG_OVERWRITE_ETHADDR_ONCE
 #endif				/* CONFIG_MCFFEC */
 
-#define CONFIG_HOSTNAME		M5272C3
+#define CONFIG_HOSTNAME		M5282EVB
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"netdev=eth0\0"				\
 	"loadaddr=10000\0"			\
@@ -133,7 +134,7 @@
 #define CFG_MEMTEST_START	0x400
 #define CFG_MEMTEST_END		0x380000
 
-#define CFG_HZ			1000000
+#define CFG_HZ			1000
 #define	CFG_CLK			64000000
 
 /* PLL Configuration: Ext Clock * 6 (see table 9-4 of MCF user manual) */
@@ -163,7 +164,7 @@
  * Please note that CFG_SDRAM_BASE _must_ start at 0
  */
 #define CFG_SDRAM_BASE		0x00000000
-#define	CFG_SDRAM_SIZE		8	/* SDRAM size in MB */
+#define	CFG_SDRAM_SIZE		16	/* SDRAM size in MB */
 #define CFG_FLASH_BASE		0xffe00000
 #define	CFG_INT_FLASH_BASE	0xf0000000
 #define CFG_INT_FLASH_ENABLE	0x21
@@ -193,7 +194,7 @@
 #define CFG_FLASH_CFI
 #ifdef CFG_FLASH_CFI
 
-#	define CFG_FLASH_CFI_DRIVER	1
+#	define CONFIG_FLASH_CFI_DRIVER	1
 #	define CFG_FLASH_SIZE		0x1000000	/* Max size that the board might have */
 #	define CFG_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks */
@@ -214,13 +215,13 @@
 #define CFG_CS0_BASE		CFG_FLASH_BASE
 #define CFG_CS0_SIZE		2*1024*1024
 #define CFG_CS0_WIDTH		16
-#define CFG_CS0_RO 		0
+#define CFG_CS0_RO		0
 #define CFG_CS0_WS		6
 /*
 #define CFG_CS3_BASE		0xE0000000
 #define CFG_CS3_SIZE		1*1024*1024
 #define CFG_CS3_WIDTH		16
-#define CFG_CS3_RO 		0
+#define CFG_CS3_RO		0
 #define CFG_CS3_WS		6
 */
 /*-----------------------------------------------------------------------
@@ -245,6 +246,6 @@
 #define CFG_PEHLPAR		0xC0
 #define CFG_PUAPAR		0x0F	/* UA0..UA3 = Uart 0 +1 */
 #define CFG_DDRUA		0x05
-#define CFG_PJPAR 		0xFF;
+#define CFG_PJPAR		0xFF;
 
 #endif				/* _CONFIG_M5282EVB_H */

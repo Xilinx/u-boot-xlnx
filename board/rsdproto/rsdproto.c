@@ -210,7 +210,7 @@ void read_RS5C372_time (struct tm *timedate)
 
 #define BCD_TO_BIN(val) ((val)=((val)&15) + ((val)>>4)*10)
 
-	if (i2c_read (RS5C372_PPC_I2C_ADR, 0, 1, buffer, sizeof (buffer))) {
+	if (! i2c_read (RS5C372_PPC_I2C_ADR, 0, 1, buffer, sizeof (buffer))) {
 		timedate->tm_sec = BCD_TO_BIN (buffer[0]);
 		timedate->tm_min = BCD_TO_BIN (buffer[1]);
 		timedate->tm_hour = BCD_TO_BIN (buffer[2]);
@@ -231,7 +231,7 @@ int read_LM84_temp (int address)
 	unsigned char buffer[8];
 	/*int rc;*/
 
-	if (i2c_read (address, 0, 1, buffer, 1)) {
+	if (! i2c_read (address, 0, 1, buffer, 1)) {
 		return (int) buffer[0];
 	} else {
 		/*printf("i2c error %02x\n", rc); */
@@ -282,7 +282,7 @@ int misc_init_f (void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	volatile immap_t *immap = (immap_t *) CFG_IMMR;
 	volatile memctl8260_t *memctl = &immap->im_memctl;

@@ -81,13 +81,15 @@
 #include <common.h>
 #include <net.h>
 #include <asm/processor.h>
+#include <asm/io.h>
+#include <asm/cache.h>
+#include <asm/mmu.h>
 #include <commproc.h>
 #include <ppc4xx.h>
 #include <ppc4xx_enet.h>
 #include <405_mal.h>
 #include <miiphy.h>
 #include <malloc.h>
-#include "vecnum.h"
 
 /*
  * Only compile for platform with AMCC EMAC ethernet controller and
@@ -106,7 +108,7 @@
 #endif
 
 #define EMAC_RESET_TIMEOUT 1000 /* 1000 ms reset timeout */
-#define PHY_AUTONEGOTIATE_TIMEOUT 4000	/* 4000 ms autonegotiate timeout */
+#define PHY_AUTONEGOTIATE_TIMEOUT 5000	/* 5000 ms autonegotiate timeout */
 
 /* Ethernet Transmit and Receive Buffers */
 /* AS.HARNOIS
@@ -120,11 +122,65 @@
  * Defines for MAL/EMAC interrupt conditions as reported in the UIC (Universal
  * Interrupt Controller).
  *-----------------------------------------------------------------------------*/
-#define MAL_UIC_ERR ( UIC_MAL_SERR | UIC_MAL_TXDE  | UIC_MAL_RXDE)
-#define MAL_UIC_DEF  (UIC_MAL_RXEOB | MAL_UIC_ERR)
-#define EMAC_UIC_DEF UIC_ENET
-#define EMAC_UIC_DEF1 UIC_ENET1
-#define SEL_UIC_DEF(p) (p ? UIC_ENET1 : UIC_ENET )
+#define ETH_IRQ_NUM(dev)	(VECNUM_ETH0 + ((dev) * VECNUM_ETH1_OFFS))
+
+#if defined(CONFIG_HAS_ETH3)
+#if !defined(CONFIG_440GX)
+#define UIC_ETHx	(UIC_MASK(ETH_IRQ_NUM(0)) || UIC_MASK(ETH_IRQ_NUM(1)) || \
+			 UIC_MASK(ETH_IRQ_NUM(2)) || UIC_MASK(ETH_IRQ_NUM(3)))
+#else
+/* Unfortunately 440GX spreads EMAC interrupts on multiple UIC's */
+#define UIC_ETHx	(UIC_MASK(ETH_IRQ_NUM(0)) || UIC_MASK(ETH_IRQ_NUM(1)))
+#define UIC_ETHxB	(UIC_MASK(ETH_IRQ_NUM(2)) || UIC_MASK(ETH_IRQ_NUM(3)))
+#endif /* !defined(CONFIG_440GX) */
+#elif defined(CONFIG_HAS_ETH2)
+#define UIC_ETHx	(UIC_MASK(ETH_IRQ_NUM(0)) || UIC_MASK(ETH_IRQ_NUM(1)) || \
+			 UIC_MASK(ETH_IRQ_NUM(2)))
+#elif defined(CONFIG_HAS_ETH1)
+#define UIC_ETHx	(UIC_MASK(ETH_IRQ_NUM(0)) || UIC_MASK(ETH_IRQ_NUM(1)))
+#else
+#define UIC_ETHx	UIC_MASK(ETH_IRQ_NUM(0))
+#endif
+
+/*
+ * Define a default version for UIC_ETHxB for non 440GX so that we can
+ * use common code for all 4xx variants
+ */
+#if !defined(UIC_ETHxB)
+#define UIC_ETHxB	0
+#endif
+
+#define UIC_MAL_SERR	UIC_MASK(VECNUM_MAL_SERR)
+#define UIC_MAL_TXDE	UIC_MASK(VECNUM_MAL_TXDE)
+#define UIC_MAL_RXDE	UIC_MASK(VECNUM_MAL_RXDE)
+#define UIC_MAL_TXEOB	UIC_MASK(VECNUM_MAL_TXEOB)
+#define UIC_MAL_RXEOB	UIC_MASK(VECNUM_MAL_RXEOB)
+
+#define MAL_UIC_ERR	(UIC_MAL_SERR | UIC_MAL_TXDE | UIC_MAL_RXDE)
+#define MAL_UIC_DEF	(UIC_MAL_RXEOB | MAL_UIC_ERR)
+
+/*
+ * We have 3 different interrupt types:
+ * - MAL interrupts indicating successful transfer
+ * - MAL error interrupts indicating MAL related errors
+ * - EMAC interrupts indicating EMAC related errors
+ *
+ * All those interrupts can be on different UIC's, but since
+ * now at least all interrupts from one type are on the same
+ * UIC. Only exception is 440GX where the EMAC interrupts are
+ * spread over two UIC's!
+ */
+#if defined(CONFIG_440GX)
+#define UIC_BASE_MAL	UIC1_DCR_BASE
+#define UIC_BASE_MAL_ERR UIC2_DCR_BASE
+#define UIC_BASE_EMAC	UIC2_DCR_BASE
+#define UIC_BASE_EMAC_B	UIC3_DCR_BASE
+#else
+#define UIC_BASE_MAL	(UIC0_DCR_BASE + (UIC_NR(VECNUM_MAL_TXEOB) * 0x10))
+#define UIC_BASE_MAL_ERR (UIC0_DCR_BASE + (UIC_NR(VECNUM_MAL_SERR) * 0x10))
+#define UIC_BASE_EMAC	(UIC0_DCR_BASE + (UIC_NR(ETH_IRQ_NUM(0)) * 0x10))
+#define UIC_BASE_EMAC_B	(UIC0_DCR_BASE + (UIC_NR(ETH_IRQ_NUM(0)) * 0x10))
+#endif
 
 #undef INFO_4XX_ENET
 
@@ -134,22 +190,36 @@
 #define BI_PHYMODE_GMII  3
 #define BI_PHYMODE_RTBI  4
 #define BI_PHYMODE_TBI   5
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 #define BI_PHYMODE_SMII  6
 #define BI_PHYMODE_MII   7
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+#define BI_PHYMODE_RMII  8
+#endif
 #endif
 
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || \
-	defined(CONFIG_440GRX) || defined(CONFIG_440SP)
+#if defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 #define SDR0_MFR_ETH_CLK_SEL_V(n)	((0x01<<27) / (n+1))
+#endif
+
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+#define SDR0_ETH_CFG_CLK_SEL_V(n)	(0x01 << (8 + n))
+#endif
+
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+#define MAL_RX_CHAN_MUL	8	/* 460EX/GT uses MAL channel 8 for EMAC1 */
+#else
+#define MAL_RX_CHAN_MUL	1
 #endif
 
 /*-----------------------------------------------------------------------------+
  * Global variables. TX and RX descriptors and buffers.
  *-----------------------------------------------------------------------------*/
-/* IER globals */
-static uint32_t mal_ier;
-
 #if !defined(CONFIG_NET_MULTI)
 struct eth_device *emac0_dev = NULL;
 #endif
@@ -157,7 +227,14 @@ struct eth_device *emac0_dev = NULL;
 /*
  * Get count of EMAC devices (doesn't have to be the max. possible number
  * supported by the cpu)
+ *
+ * CONFIG_BOARD_EMAC_COUNT added so now a "dynamic" way to configure the
+ * EMAC count is possible. As it is needed for the Kilauea/Haleakala
+ * 405EX/405EXr eval board, using the same binary.
  */
+#if defined(CONFIG_BOARD_EMAC_COUNT)
+#define LAST_EMAC_NUM	board_emac_count()
+#else /* CONFIG_BOARD_EMAC_COUNT */
 #if defined(CONFIG_HAS_ETH3)
 #define LAST_EMAC_NUM	4
 #elif defined(CONFIG_HAS_ETH2)
@@ -167,11 +244,16 @@ struct eth_device *emac0_dev = NULL;
 #else
 #define LAST_EMAC_NUM	1
 #endif
+#endif /* CONFIG_BOARD_EMAC_COUNT */
 
 /* normal boards start with EMAC0 */
 #if !defined(CONFIG_EMAC_NR_START)
 #define CONFIG_EMAC_NR_START	0
 #endif
+
+#define MAL_RX_DESC_SIZE	2048
+#define MAL_TX_DESC_SIZE	2048
+#define MAL_ALLOC_SIZE		(MAL_TX_DESC_SIZE + MAL_RX_DESC_SIZE)
 
 /*-----------------------------------------------------------------------------+
  * Prototypes and externals.
@@ -190,6 +272,46 @@ extern int emac4xx_miiphy_read (char *devname, unsigned char addr,
 extern int emac4xx_miiphy_write (char *devname, unsigned char addr,
 		unsigned char reg, unsigned short value);
 
+int board_emac_count(void);
+
+static void emac_loopback_enable(EMAC_4XX_HW_PST hw_p)
+{
+#if defined(CONFIG_440SPE) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_405EX)
+	u32 val;
+
+	mfsdr(sdr_mfr, val);
+	val |= SDR0_MFR_ETH_CLK_SEL_V(hw_p->devnum);
+	mtsdr(sdr_mfr, val);
+#elif defined(CONFIG_460EX) || defined(CONFIG_460GT)
+	u32 val;
+
+	mfsdr(SDR0_ETH_CFG, val);
+	val |= SDR0_ETH_CFG_CLK_SEL_V(hw_p->devnum);
+	mtsdr(SDR0_ETH_CFG, val);
+#endif
+}
+
+static void emac_loopback_disable(EMAC_4XX_HW_PST hw_p)
+{
+#if defined(CONFIG_440SPE) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_405EX)
+	u32 val;
+
+	mfsdr(sdr_mfr, val);
+	val &= ~SDR0_MFR_ETH_CLK_SEL_V(hw_p->devnum);
+	mtsdr(sdr_mfr, val);
+#elif defined(CONFIG_460EX) || defined(CONFIG_460GT)
+	u32 val;
+
+	mfsdr(SDR0_ETH_CFG, val);
+	val &= ~SDR0_ETH_CFG_CLK_SEL_V(hw_p->devnum);
+	mtsdr(SDR0_ETH_CFG, val);
+#endif
+}
+
 /*-----------------------------------------------------------------------------+
 | ppc_4xx_eth_halt
 | Disable MAL channel, and EMACn
@@ -197,12 +319,9 @@ extern int emac4xx_miiphy_write (char *devname, unsigned char addr,
 static void ppc_4xx_eth_halt (struct eth_device *dev)
 {
 	EMAC_4XX_HW_PST hw_p = dev->priv;
-	uint32_t failsafe = 10000;
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
-	unsigned long mfr;
-#endif
+	u32 val = 10000;
 
-	out32 (EMAC_IER + hw_p->hw_addr, 0x00000000);	/* disable emac interrupts */
+	out_be32((void *)EMAC_IER + hw_p->hw_addr, 0x00000000);	/* disable emac interrupts */
 
 	/* 1st reset MAL channel */
 	/* Note: writing a 0 to a channel has no effect */
@@ -216,31 +335,29 @@ static void ppc_4xx_eth_halt (struct eth_device *dev)
 	/* wait for reset */
 	while (mfdcr (malrxcasr) & (MAL_CR_MMSR >> hw_p->devnum)) {
 		udelay (1000);	/* Delay 1 MS so as not to hammer the register */
-		failsafe--;
-		if (failsafe == 0)
+		val--;
+		if (val == 0)
 			break;
 	}
 
-	/* EMAC RESET */
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 	/* provide clocks for EMAC internal loopback  */
-	mfsdr (sdr_mfr, mfr);
-	mfr |= SDR0_MFR_ETH_CLK_SEL_V(hw_p->devnum);
-	mtsdr(sdr_mfr, mfr);
-#endif
+	emac_loopback_enable(hw_p);
 
-	out32 (EMAC_M0 + hw_p->hw_addr, EMAC_M0_SRST);
+	/* EMAC RESET */
+	out_be32((void *)EMAC_M0 + hw_p->hw_addr, EMAC_M0_SRST);
 
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 	/* remove clocks for EMAC internal loopback  */
-	mfsdr (sdr_mfr, mfr);
-	mfr &= ~SDR0_MFR_ETH_CLK_SEL_V(hw_p->devnum);
-	mtsdr(sdr_mfr, mfr);
-#endif
-
+	emac_loopback_disable(hw_p);
 
 #ifndef CONFIG_NETCONSOLE
 	hw_p->print_speed = 1;	/* print speed message again next time */
+#endif
+
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+	/* don't bypass the TAHOE0/TAHOE1 cores for Linux */
+	mfsdr(SDR0_ETH_CFG, val);
+	val &= ~(SDR0_ETH_CFG_TAHOE0_BYPASS | SDR0_ETH_CFG_TAHOE1_BYPASS);
+	mtsdr(SDR0_ETH_CFG, val);
 #endif
 
 	return;
@@ -330,8 +447,8 @@ int ppc_4xx_eth_setup_bridge(int devnum, bd_t * bis)
 	/* Ensure we setup mdio for this devnum and ONLY this devnum */
 	zmiifer |= (ZMII_FER_MDI) << ZMII_FER_V(devnum);
 
-	out32 (ZMII_FER, zmiifer);
-	out32 (RGMII_FER, rmiifer);
+	out_be32((void *)ZMII_FER, zmiifer);
+	out_be32((void *)RGMII_FER, rmiifer);
 
 	return ((int)pfc1);
 }
@@ -349,31 +466,31 @@ int ppc_4xx_eth_setup_bridge(int devnum, bd_t * bis)
 	switch (pfc1) {
 	case SDR0_PFC1_SELECT_CONFIG_2:
 		/* 1 x GMII port */
-		out32 (ZMII_FER, 0x00);
-		out32 (RGMII_FER, 0x00000037);
+		out_be32((void *)ZMII_FER, 0x00);
+		out_be32((void *)RGMII_FER, 0x00000037);
 		bis->bi_phymode[0] = BI_PHYMODE_GMII;
 		bis->bi_phymode[1] = BI_PHYMODE_NONE;
 		break;
 	case SDR0_PFC1_SELECT_CONFIG_4:
 		/* 2 x RGMII ports */
-		out32 (ZMII_FER, 0x00);
-		out32 (RGMII_FER, 0x00000055);
+		out_be32((void *)ZMII_FER, 0x00);
+		out_be32((void *)RGMII_FER, 0x00000055);
 		bis->bi_phymode[0] = BI_PHYMODE_RGMII;
 		bis->bi_phymode[1] = BI_PHYMODE_RGMII;
 		break;
 	case SDR0_PFC1_SELECT_CONFIG_6:
 		/* 2 x SMII ports */
-		out32 (ZMII_FER,
-		       ((ZMII_FER_SMII) << ZMII_FER_V(0)) |
-		       ((ZMII_FER_SMII) << ZMII_FER_V(1)));
-		out32 (RGMII_FER, 0x00000000);
+		out_be32((void *)ZMII_FER,
+			 ((ZMII_FER_SMII) << ZMII_FER_V(0)) |
+			 ((ZMII_FER_SMII) << ZMII_FER_V(1)));
+		out_be32((void *)RGMII_FER, 0x00000000);
 		bis->bi_phymode[0] = BI_PHYMODE_SMII;
 		bis->bi_phymode[1] = BI_PHYMODE_SMII;
 		break;
 	case SDR0_PFC1_SELECT_CONFIG_1_2:
 		/* only 1 x MII supported */
-		out32 (ZMII_FER, (ZMII_FER_MII) << ZMII_FER_V(0));
-		out32 (RGMII_FER, 0x00000000);
+		out_be32((void *)ZMII_FER, (ZMII_FER_MII) << ZMII_FER_V(0));
+		out_be32((void *)RGMII_FER, 0x00000000);
 		bis->bi_phymode[0] = BI_PHYMODE_MII;
 		bis->bi_phymode[1] = BI_PHYMODE_NONE;
 		break;
@@ -382,17 +499,301 @@ int ppc_4xx_eth_setup_bridge(int devnum, bd_t * bis)
 	}
 
 	/* Ensure we setup mdio for this devnum and ONLY this devnum */
-	zmiifer = in32 (ZMII_FER);
+	zmiifer = in_be32((void *)ZMII_FER);
 	zmiifer |= (ZMII_FER_MDI) << ZMII_FER_V(devnum);
-	out32 (ZMII_FER, zmiifer);
+	out_be32((void *)ZMII_FER, zmiifer);
 
 	return ((int)0x0);
 }
 #endif	/* CONFIG_440EPX */
 
+#if defined(CONFIG_405EX)
+int ppc_4xx_eth_setup_bridge(int devnum, bd_t * bis)
+{
+	u32 rgmiifer = 0;
+
+	/*
+	 * The 405EX(r)'s RGMII bridge can operate in one of several
+	 * modes, only one of which (2 x RGMII) allows the
+	 * simultaneous use of both EMACs on the 405EX.
+	 */
+
+	switch (CONFIG_EMAC_PHY_MODE) {
+
+	case EMAC_PHY_MODE_NONE:
+		/* No ports */
+		rgmiifer |= RGMII_FER_DIS	<< 0;
+		rgmiifer |= RGMII_FER_DIS	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_NONE;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		break;
+	case EMAC_PHY_MODE_NONE_RGMII:
+		/* 1 x RGMII port on channel 0 */
+		rgmiifer |= RGMII_FER_RGMII	<< 0;
+		rgmiifer |= RGMII_FER_DIS	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		break;
+	case EMAC_PHY_MODE_RGMII_NONE:
+		/* 1 x RGMII port on channel 1 */
+		rgmiifer |= RGMII_FER_DIS	<< 0;
+		rgmiifer |= RGMII_FER_RGMII	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_NONE;
+		bis->bi_phymode[1] = BI_PHYMODE_RGMII;
+		break;
+	case EMAC_PHY_MODE_RGMII_RGMII:
+		/* 2 x RGMII ports */
+		rgmiifer |= RGMII_FER_RGMII	<< 0;
+		rgmiifer |= RGMII_FER_RGMII	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[1] = BI_PHYMODE_RGMII;
+		break;
+	case EMAC_PHY_MODE_NONE_GMII:
+		/* 1 x GMII port on channel 0 */
+		rgmiifer |= RGMII_FER_GMII	<< 0;
+		rgmiifer |= RGMII_FER_DIS	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_GMII;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		break;
+	case EMAC_PHY_MODE_NONE_MII:
+		/* 1 x MII port on channel 0 */
+		rgmiifer |= RGMII_FER_MII	<< 0;
+		rgmiifer |= RGMII_FER_DIS	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_MII;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		break;
+	case EMAC_PHY_MODE_GMII_NONE:
+		/* 1 x GMII port on channel 1 */
+		rgmiifer |= RGMII_FER_DIS	<< 0;
+		rgmiifer |= RGMII_FER_GMII	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_NONE;
+		bis->bi_phymode[1] = BI_PHYMODE_GMII;
+		break;
+	case EMAC_PHY_MODE_MII_NONE:
+		/* 1 x MII port on channel 1 */
+		rgmiifer |= RGMII_FER_DIS	<< 0;
+		rgmiifer |= RGMII_FER_MII	<< 4;
+		out_be32((void *)RGMII_FER, rgmiifer);
+		bis->bi_phymode[0] = BI_PHYMODE_NONE;
+		bis->bi_phymode[1] = BI_PHYMODE_MII;
+		break;
+	default:
+		break;
+	}
+
+	/* Ensure we setup mdio for this devnum and ONLY this devnum */
+	rgmiifer = in_be32((void *)RGMII_FER);
+	rgmiifer |= (1 << (19-devnum));
+	out_be32((void *)RGMII_FER, rgmiifer);
+
+	return ((int)0x0);
+}
+#endif  /* CONFIG_405EX */
+
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+int ppc_4xx_eth_setup_bridge(int devnum, bd_t * bis)
+{
+	u32 eth_cfg;
+	u32 zmiifer;		/* ZMII0_FER reg. */
+	u32 rmiifer;		/* RGMII0_FER reg. Bridge 0 */
+	u32 rmiifer1;		/* RGMII0_FER reg. Bridge 1 */
+	int mode;
+
+	zmiifer  = 0;
+	rmiifer  = 0;
+	rmiifer1 = 0;
+
+#if defined(CONFIG_460EX)
+	mode = 9;
+#else
+	mode = 10;
+#endif
+
+	/* TODO:
+	 * NOTE: 460GT has 2 RGMII bridge cores:
+	 *		emac0 ------ RGMII0_BASE
+	 *		           |
+	 *		emac1 -----+
+	 *
+	 *		emac2 ------ RGMII1_BASE
+	 *		           |
+	 *		emac3 -----+
+	 *
+	 *	460EX has 1 RGMII bridge core:
+	 *	and RGMII1_BASE is disabled
+	 *		emac0 ------ RGMII0_BASE
+	 *		           |
+	 *		emac1 -----+
+	 */
+
+	/*
+	 * Right now only 2*RGMII is supported. Please extend when needed.
+	 * sr - 2008-02-19
+	 */
+	switch (mode) {
+	case 1:
+		/* 1 MII - 460EX */
+		/* GMC0 EMAC4_0, ZMII Bridge */
+		zmiifer |= ZMII_FER_MII << ZMII_FER_V(0);
+		bis->bi_phymode[0] = BI_PHYMODE_MII;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		bis->bi_phymode[2] = BI_PHYMODE_NONE;
+		bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		break;
+	case 2:
+		/* 2 MII - 460GT */
+		/* GMC0 EMAC4_0, GMC1 EMAC4_2, ZMII Bridge */
+		zmiifer |= ZMII_FER_MII << ZMII_FER_V(0);
+		zmiifer |= ZMII_FER_MII << ZMII_FER_V(2);
+		bis->bi_phymode[0] = BI_PHYMODE_MII;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		bis->bi_phymode[2] = BI_PHYMODE_MII;
+		bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		break;
+	case 3:
+		/* 2 RMII - 460EX */
+		/* GMC0 EMAC4_0, GMC0 EMAC4_1, ZMII Bridge */
+		zmiifer |= ZMII_FER_RMII << ZMII_FER_V(0);
+		zmiifer |= ZMII_FER_RMII << ZMII_FER_V(1);
+		bis->bi_phymode[0] = BI_PHYMODE_RMII;
+		bis->bi_phymode[1] = BI_PHYMODE_RMII;
+		bis->bi_phymode[2] = BI_PHYMODE_NONE;
+		bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		break;
+	case 4:
+		/* 4 RMII - 460GT */
+		/* GMC0 EMAC4_0, GMC0 EMAC4_1, GMC1 EMAC4_2, GMC1, EMAC4_3 */
+		/* ZMII Bridge */
+		zmiifer |= ZMII_FER_RMII << ZMII_FER_V(0);
+		zmiifer |= ZMII_FER_RMII << ZMII_FER_V(1);
+		zmiifer |= ZMII_FER_RMII << ZMII_FER_V(2);
+		zmiifer |= ZMII_FER_RMII << ZMII_FER_V(3);
+		bis->bi_phymode[0] = BI_PHYMODE_RMII;
+		bis->bi_phymode[1] = BI_PHYMODE_RMII;
+		bis->bi_phymode[2] = BI_PHYMODE_RMII;
+		bis->bi_phymode[3] = BI_PHYMODE_RMII;
+		break;
+	case 5:
+		/* 2 SMII - 460EX */
+		/* GMC0 EMAC4_0, GMC0 EMAC4_1, ZMII Bridge */
+		zmiifer |= ZMII_FER_SMII << ZMII_FER_V(0);
+		zmiifer |= ZMII_FER_SMII << ZMII_FER_V(1);
+		bis->bi_phymode[0] = BI_PHYMODE_SMII;
+		bis->bi_phymode[1] = BI_PHYMODE_SMII;
+		bis->bi_phymode[2] = BI_PHYMODE_NONE;
+		bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		break;
+	case 6:
+		/* 4 SMII - 460GT */
+		/* GMC0 EMAC4_0, GMC0 EMAC4_1, GMC0 EMAC4_3, GMC0 EMAC4_3 */
+		/* ZMII Bridge */
+		zmiifer |= ZMII_FER_SMII << ZMII_FER_V(0);
+		zmiifer |= ZMII_FER_SMII << ZMII_FER_V(1);
+		zmiifer |= ZMII_FER_SMII << ZMII_FER_V(2);
+		zmiifer |= ZMII_FER_SMII << ZMII_FER_V(3);
+		bis->bi_phymode[0] = BI_PHYMODE_SMII;
+		bis->bi_phymode[1] = BI_PHYMODE_SMII;
+		bis->bi_phymode[2] = BI_PHYMODE_SMII;
+		bis->bi_phymode[3] = BI_PHYMODE_SMII;
+		break;
+	case 7:
+		/* This is the default mode that we want for board bringup - Maple */
+		/* 1 GMII - 460EX */
+		/* GMC0 EMAC4_0, RGMII Bridge 0 */
+		rmiifer |= RGMII_FER_MDIO(0);
+
+		if (devnum == 0) {
+			rmiifer |= RGMII_FER_GMII << RGMII_FER_V(2); /* CH0CFG - EMAC0 */
+			bis->bi_phymode[0] = BI_PHYMODE_GMII;
+			bis->bi_phymode[1] = BI_PHYMODE_NONE;
+			bis->bi_phymode[2] = BI_PHYMODE_NONE;
+			bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		} else {
+			rmiifer |= RGMII_FER_GMII << RGMII_FER_V(3); /* CH1CFG - EMAC1 */
+			bis->bi_phymode[0] = BI_PHYMODE_NONE;
+			bis->bi_phymode[1] = BI_PHYMODE_GMII;
+			bis->bi_phymode[2] = BI_PHYMODE_NONE;
+			bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		}
+		break;
+	case 8:
+		/* 2 GMII - 460GT */
+		/* GMC0 EMAC4_0, RGMII Bridge 0 */
+		/* GMC1 EMAC4_2, RGMII Bridge 1 */
+		rmiifer |= RGMII_FER_GMII << RGMII_FER_V(2);	/* CH0CFG - EMAC0 */
+		rmiifer1 |= RGMII_FER_GMII << RGMII_FER_V(2);	/* CH0CFG - EMAC2 */
+		rmiifer |= RGMII_FER_MDIO(0);			/* enable MDIO - EMAC0 */
+		rmiifer1 |= RGMII_FER_MDIO(0);			/* enable MDIO - EMAC2 */
+
+		bis->bi_phymode[0] = BI_PHYMODE_GMII;
+		bis->bi_phymode[1] = BI_PHYMODE_NONE;
+		bis->bi_phymode[2] = BI_PHYMODE_GMII;
+		bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		break;
+	case 9:
+		/* 2 RGMII - 460EX */
+		/* GMC0 EMAC4_0, GMC0 EMAC4_1, RGMII Bridge 0 */
+		rmiifer |= RGMII_FER_RGMII << RGMII_FER_V(2);
+		rmiifer |= RGMII_FER_RGMII << RGMII_FER_V(3);
+		rmiifer |= RGMII_FER_MDIO(0);			/* enable MDIO - EMAC0 */
+
+		bis->bi_phymode[0] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[1] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[2] = BI_PHYMODE_NONE;
+		bis->bi_phymode[3] = BI_PHYMODE_NONE;
+		break;
+	case 10:
+		/* 4 RGMII - 460GT */
+		/* GMC0 EMAC4_0, GMC0 EMAC4_1, RGMII Bridge 0 */
+		/* GMC1 EMAC4_2, GMC1 EMAC4_3, RGMII Bridge 1 */
+		rmiifer |= RGMII_FER_RGMII << RGMII_FER_V(2);
+		rmiifer |= RGMII_FER_RGMII << RGMII_FER_V(3);
+		rmiifer1 |= RGMII_FER_RGMII << RGMII_FER_V(2);
+		rmiifer1 |= RGMII_FER_RGMII << RGMII_FER_V(3);
+		bis->bi_phymode[0] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[1] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[2] = BI_PHYMODE_RGMII;
+		bis->bi_phymode[3] = BI_PHYMODE_RGMII;
+		break;
+	default:
+		break;
+	}
+
+	/* Set EMAC for MDIO */
+	mfsdr(SDR0_ETH_CFG, eth_cfg);
+	eth_cfg |= SDR0_ETH_CFG_MDIO_SEL_EMAC0;
+	mtsdr(SDR0_ETH_CFG, eth_cfg);
+
+	out_be32((void *)RGMII_FER, rmiifer);
+#if defined(CONFIG_460GT)
+	out_be32((void *)RGMII_FER + RGMII1_BASE_OFFSET, rmiifer1);
+#endif
+
+	/* bypass the TAHOE0/TAHOE1 cores for U-Boot */
+	mfsdr(SDR0_ETH_CFG, eth_cfg);
+	eth_cfg |= (SDR0_ETH_CFG_TAHOE0_BYPASS | SDR0_ETH_CFG_TAHOE1_BYPASS);
+	mtsdr(SDR0_ETH_CFG, eth_cfg);
+
+	return 0;
+}
+#endif /* CONFIG_460EX || CONFIG_460GT */
+
+static inline void *malloc_aligned(u32 size, u32 align)
+{
+	return (void *)(((u32)malloc(size + align) + align - 1) &
+			~(align - 1));
+}
+
 static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 {
-	int i, j;
+	int i;
 	unsigned long reg = 0;
 	unsigned long msr;
 	unsigned long speed;
@@ -403,18 +804,27 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	unsigned short reg_short;
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 	sys_info_t sysinfo;
 #if defined(CONFIG_440GX) || defined(CONFIG_440SPE) || \
-    defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 	int ethgroup = -1;
 #endif
 #endif
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
-	unsigned long mfr;
+	u32 bd_cached;
+	u32 bd_uncached = 0;
+#ifdef CONFIG_4xx_DCACHE
+	static u32 last_used_ea = 0;
 #endif
-
+#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
+	int rgmii_channel;
+#endif
 
 	EMAC_4XX_HW_PST hw_p = dev->priv;
 
@@ -427,7 +837,9 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 	/* Need to get the OPB frequency so we can access the PHY */
 	get_sys_info (&sysinfo);
 #endif
@@ -477,62 +889,47 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	/* NOTE: Therefore, disable all other EMACS, since we handle */
 	/* NOTE: only one emac at a time */
 	reg = 0;
-	out32 (ZMII_FER, 0);
+	out_be32((void *)ZMII_FER, 0);
 	udelay (100);
 
-#if defined(CONFIG_440EP) || defined(CONFIG_440GR)
-	out32 (ZMII_FER, (ZMII_FER_RMII | ZMII_FER_MDI) << ZMII_FER_V (devnum));
-#elif defined(CONFIG_440GX) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440GP) || defined(CONFIG_440EP) || defined(CONFIG_440GR)
+	out_be32((void *)ZMII_FER, (ZMII_FER_RMII | ZMII_FER_MDI) << ZMII_FER_V (devnum));
+#elif defined(CONFIG_440GX) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT)
 	ethgroup = ppc_4xx_eth_setup_bridge(devnum, bis);
-#elif defined(CONFIG_440GP)
-	/* set RMII mode */
-	out32 (ZMII_FER, ZMII_RMII | ZMII_MDI0);
-#else
-	if ((devnum == 0) || (devnum == 1)) {
-		out32 (ZMII_FER, (ZMII_FER_SMII | ZMII_FER_MDI) << ZMII_FER_V (devnum));
-	} else { /* ((devnum == 2) || (devnum == 3)) */
-		out32 (ZMII_FER, ZMII_FER_MDI << ZMII_FER_V (devnum));
-		out32 (RGMII_FER, ((RGMII_FER_RGMII << RGMII_FER_V (2)) |
-				   (RGMII_FER_RGMII << RGMII_FER_V (3))));
-	}
 #endif
 
-	out32 (ZMII_SSR, ZMII_SSR_SP << ZMII_SSR_V(devnum));
+	out_be32((void *)ZMII_SSR, ZMII_SSR_SP << ZMII_SSR_V(devnum));
 #endif /* defined(CONFIG_440) && !defined(CONFIG_440SP) */
-
-	__asm__ volatile ("eieio");
-
-	/* reset emac so we have access to the phy */
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
-	/* provide clocks for EMAC internal loopback  */
-	mfsdr (sdr_mfr, mfr);
-	mfr |= SDR0_MFR_ETH_CLK_SEL_V(devnum);
-	mtsdr(sdr_mfr, mfr);
+#if defined(CONFIG_405EX)
+	ethgroup = ppc_4xx_eth_setup_bridge(devnum, bis);
 #endif
 
-	out32 (EMAC_M0 + hw_p->hw_addr, EMAC_M0_SRST);
-	__asm__ volatile ("eieio");
+	sync();
+
+	/* provide clocks for EMAC internal loopback  */
+	emac_loopback_enable(hw_p);
+
+	/* EMAC RESET */
+	out_be32((void *)EMAC_M0 + hw_p->hw_addr, EMAC_M0_SRST);
+
+	/* remove clocks for EMAC internal loopback  */
+	emac_loopback_disable(hw_p);
 
 	failsafe = 1000;
-	while ((in32 (EMAC_M0 + hw_p->hw_addr) & (EMAC_M0_SRST)) && failsafe) {
+	while ((in_be32((void *)EMAC_M0 + hw_p->hw_addr) & (EMAC_M0_SRST)) && failsafe) {
 		udelay (1000);
 		failsafe--;
 	}
 	if (failsafe <= 0)
 		printf("\nProblem resetting EMAC!\n");
 
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
-	/* remove clocks for EMAC internal loopback  */
-	mfsdr (sdr_mfr, mfr);
-	mfr &= ~SDR0_MFR_ETH_CLK_SEL_V(devnum);
-	mtsdr(sdr_mfr, mfr);
-#endif
-
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 	/* Whack the M1 register */
 	mode_reg = 0x0;
 	mode_reg &= ~0x00000038;
@@ -546,7 +943,7 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	else
 		mode_reg |= EMAC_M1_OBCI_GT100;
 
-	out32 (EMAC_M1 + hw_p->hw_addr, mode_reg);
+	out_be32((void *)EMAC_M1 + hw_p->hw_addr, mode_reg);
 #endif /* defined(CONFIG_440GX) || defined(CONFIG_440SP) */
 
 	/* wait for PHY to complete auto negotiation */
@@ -561,10 +958,12 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 		reg = CONFIG_PHY1_ADDR;
 		break;
 #endif
-#if defined (CONFIG_440GX)
+#if defined (CONFIG_PHY2_ADDR)
 	case 2:
 		reg = CONFIG_PHY2_ADDR;
 		break;
+#endif
+#if defined (CONFIG_PHY3_ADDR)
 	case 3:
 		reg = CONFIG_PHY3_ADDR;
 		break;
@@ -592,7 +991,9 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 
 #if defined(CONFIG_CIS8201_PHY)
 		/*
@@ -690,8 +1091,10 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 			hw_p->devnum);
 	}
 
-#if defined(CONFIG_440) && !defined(CONFIG_440SP) && !defined(CONFIG_440SPE) && \
-    !defined(CONFIG_440EPX) && !defined(CONFIG_440GRX)
+#if defined(CONFIG_440) && \
+    !defined(CONFIG_440SP) && !defined(CONFIG_440SPE) && \
+    !defined(CONFIG_440EPX) && !defined(CONFIG_440GRX) && \
+    !defined(CONFIG_460EX) && !defined(CONFIG_460GT)
 #if defined(CONFIG_440EP) || defined(CONFIG_440GR)
 	mfsdr(sdr_mfr, reg);
 	if (speed == 100) {
@@ -703,11 +1106,11 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 #endif
 
 	/* Set ZMII/RGMII speed according to the phy link speed */
-	reg = in32 (ZMII_SSR);
+	reg = in_be32((void *)ZMII_SSR);
 	if ( (speed == 100) || (speed == 1000) )
-		out32 (ZMII_SSR, reg | (ZMII_SSR_SP << ZMII_SSR_V (devnum)));
+		out_be32((void *)ZMII_SSR, reg | (ZMII_SSR_SP << ZMII_SSR_V (devnum)));
 	else
-		out32 (ZMII_SSR, reg & (~(ZMII_SSR_SP << ZMII_SSR_V (devnum))));
+		out_be32((void *)ZMII_SSR, reg & (~(ZMII_SSR_SP << ZMII_SSR_V (devnum))));
 
 	if ((devnum == 2) || (devnum == 3)) {
 		if (speed == 1000)
@@ -720,28 +1123,41 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 			printf("Error in RGMII Speed\n");
 			return -1;
 		}
-		out32 (RGMII_SSR, reg);
+		out_be32((void *)RGMII_SSR, reg);
 	}
 #endif /* defined(CONFIG_440) && !defined(CONFIG_440SP) */
 
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
+	if (devnum >= 2)
+		rgmii_channel = devnum - 2;
+	else
+		rgmii_channel = devnum;
+
 	if (speed == 1000)
-		reg = (RGMII_SSR_SP_1000MBPS << RGMII_SSR_V (devnum));
+		reg = (RGMII_SSR_SP_1000MBPS << RGMII_SSR_V(rgmii_channel));
 	else if (speed == 100)
-		reg = (RGMII_SSR_SP_100MBPS << RGMII_SSR_V (devnum));
+		reg = (RGMII_SSR_SP_100MBPS << RGMII_SSR_V(rgmii_channel));
 	else if (speed == 10)
-		reg = (RGMII_SSR_SP_10MBPS << RGMII_SSR_V (devnum));
+		reg = (RGMII_SSR_SP_10MBPS << RGMII_SSR_V(rgmii_channel));
 	else {
 		printf("Error in RGMII Speed\n");
 		return -1;
 	}
-	out32 (RGMII_SSR, reg);
+	out_be32((void *)RGMII_SSR, reg);
+#if defined(CONFIG_460GT)
+	if ((devnum == 2) || (devnum == 3))
+		out_be32((void *)RGMII_SSR + RGMII1_BASE_OFFSET, reg);
+#endif
 #endif
 
 	/* set the Mal configuration reg */
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 	mtdcr (malmcr, MAL_CR_PLBB | MAL_CR_OPBBL | MAL_CR_LEA |
 	       MAL_CR_PLBLT_DEFAULT | MAL_CR_EOPIE | 0x00330000);
 #else
@@ -752,91 +1168,67 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	}
 #endif
 
-	/* Free "old" buffers */
-	if (hw_p->alloc_tx_buf)
-		free (hw_p->alloc_tx_buf);
-	if (hw_p->alloc_rx_buf)
-		free (hw_p->alloc_rx_buf);
-
 	/*
 	 * Malloc MAL buffer desciptors, make sure they are
 	 * aligned on cache line boundary size
 	 * (401/403/IOP480 = 16, 405 = 32)
 	 * and doesn't cross cache block boundaries.
 	 */
-	hw_p->alloc_tx_buf =
-		(mal_desc_t *) malloc ((sizeof (mal_desc_t) * NUM_TX_BUFF) +
-				       ((2 * CFG_CACHELINE_SIZE) - 2));
-	if (NULL == hw_p->alloc_tx_buf)
-		return -1;
-	if (((int) hw_p->alloc_tx_buf & CACHELINE_MASK) != 0) {
-		hw_p->tx =
-			(mal_desc_t *) ((int) hw_p->alloc_tx_buf +
-					CFG_CACHELINE_SIZE -
-					((int) hw_p->
-					 alloc_tx_buf & CACHELINE_MASK));
-	} else {
-		hw_p->tx = hw_p->alloc_tx_buf;
-	}
+	if (hw_p->first_init == 0) {
+		debug("*** Allocating descriptor memory ***\n");
 
-	hw_p->alloc_rx_buf =
-		(mal_desc_t *) malloc ((sizeof (mal_desc_t) * NUM_RX_BUFF) +
-				       ((2 * CFG_CACHELINE_SIZE) - 2));
-	if (NULL == hw_p->alloc_rx_buf) {
-		free(hw_p->alloc_tx_buf);
-		hw_p->alloc_tx_buf = NULL;
-		return -1;
-	}
+		bd_cached = (u32)malloc_aligned(MAL_ALLOC_SIZE, 4096);
+		if (!bd_cached) {
+			printf("%s: Error allocating MAL descriptor buffers!\n", __func__);
+			return -1;
+		}
 
-	if (((int) hw_p->alloc_rx_buf & CACHELINE_MASK) != 0) {
-		hw_p->rx =
-			(mal_desc_t *) ((int) hw_p->alloc_rx_buf +
-					CFG_CACHELINE_SIZE -
-					((int) hw_p->
-					 alloc_rx_buf & CACHELINE_MASK));
-	} else {
-		hw_p->rx = hw_p->alloc_rx_buf;
+#ifdef CONFIG_4xx_DCACHE
+		flush_dcache_range(bd_cached, bd_cached + MAL_ALLOC_SIZE);
+		if (!last_used_ea)
+#if defined(CFG_MEM_TOP_HIDE)
+			bd_uncached = bis->bi_memsize + CFG_MEM_TOP_HIDE;
+#else
+			bd_uncached = bis->bi_memsize;
+#endif
+		else
+			bd_uncached = last_used_ea + MAL_ALLOC_SIZE;
+
+		last_used_ea = bd_uncached;
+		program_tlb(bd_cached, bd_uncached, MAL_ALLOC_SIZE,
+			    TLB_WORD2_I_ENABLE);
+#else
+		bd_uncached = bd_cached;
+#endif
+		hw_p->tx_phys = bd_cached;
+		hw_p->rx_phys = bd_cached + MAL_TX_DESC_SIZE;
+		hw_p->tx = (mal_desc_t *)(bd_uncached);
+		hw_p->rx = (mal_desc_t *)(bd_uncached + MAL_TX_DESC_SIZE);
+		debug("hw_p->tx=%08x, hw_p->rx=%08x\n", hw_p->tx, hw_p->rx);
 	}
 
 	for (i = 0; i < NUM_TX_BUFF; i++) {
 		hw_p->tx[i].ctrl = 0;
 		hw_p->tx[i].data_len = 0;
-		if (hw_p->first_init == 0) {
-			hw_p->txbuf_ptr =
-				(char *) malloc (ENET_MAX_MTU_ALIGNED);
-			if (NULL == hw_p->txbuf_ptr) {
-				free(hw_p->alloc_rx_buf);
-				free(hw_p->alloc_tx_buf);
-				hw_p->alloc_rx_buf = NULL;
-				hw_p->alloc_tx_buf = NULL;
-				for(j = 0; j < i; j++) {
-					free(hw_p->tx[i].data_ptr);
-					hw_p->tx[i].data_ptr = NULL;
-				}
-			}
-		}
+		if (hw_p->first_init == 0)
+			hw_p->txbuf_ptr = malloc_aligned(MAL_ALLOC_SIZE,
+							 L1_CACHE_BYTES);
 		hw_p->tx[i].data_ptr = hw_p->txbuf_ptr;
 		if ((NUM_TX_BUFF - 1) == i)
 			hw_p->tx[i].ctrl |= MAL_TX_CTRL_WRAP;
 		hw_p->tx_run[i] = -1;
-#if 0
-		printf ("TX_BUFF %d @ 0x%08lx\n", i,
-			(ulong) hw_p->tx[i].data_ptr);
-#endif
+		debug("TX_BUFF %d @ 0x%08lx\n", i, (u32)hw_p->tx[i].data_ptr);
 	}
 
 	for (i = 0; i < NUM_RX_BUFF; i++) {
 		hw_p->rx[i].ctrl = 0;
 		hw_p->rx[i].data_len = 0;
-		/*	 rx[i].data_ptr = (char *) &rx_buff[i]; */
-		hw_p->rx[i].data_ptr = (char *) NetRxPackets[i];
+		hw_p->rx[i].data_ptr = (char *)NetRxPackets[i];
 		if ((NUM_RX_BUFF - 1) == i)
 			hw_p->rx[i].ctrl |= MAL_RX_CTRL_WRAP;
 		hw_p->rx[i].ctrl |= MAL_RX_CTRL_EMPTY | MAL_RX_CTRL_INTR;
 		hw_p->rx_ready[i] = -1;
-#if 0
-		printf ("RX_BUFF %d @ 0x%08lx\n", i, (ulong) hw_p->rx[i].data_ptr);
-#endif
+		debug("RX_BUFF %d @ 0x%08lx\n", i, (u32)hw_p->rx[i].data_ptr);
 	}
 
 	reg = 0x00000000;
@@ -845,7 +1237,7 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	reg = reg << 8;
 	reg |= dev->enetaddr[1];
 
-	out32 (EMAC_IAH + hw_p->hw_addr, reg);
+	out_be32((void *)EMAC_IAH + hw_p->hw_addr, reg);
 
 	reg = 0x00000000;
 	reg |= dev->enetaddr[2];	/* set low address  */
@@ -856,44 +1248,71 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	reg = reg << 8;
 	reg |= dev->enetaddr[5];
 
-	out32 (EMAC_IAL + hw_p->hw_addr, reg);
+	out_be32((void *)EMAC_IAL + hw_p->hw_addr, reg);
 
 	switch (devnum) {
 	case 1:
 		/* setup MAL tx & rx channel pointers */
 #if defined (CONFIG_405EP) || defined (CONFIG_440EP) || defined (CONFIG_440GR)
-		mtdcr (maltxctp2r, hw_p->tx);
+		mtdcr (maltxctp2r, hw_p->tx_phys);
 #else
-		mtdcr (maltxctp1r, hw_p->tx);
+		mtdcr (maltxctp1r, hw_p->tx_phys);
 #endif
 #if defined(CONFIG_440)
 		mtdcr (maltxbattr, 0x0);
 		mtdcr (malrxbattr, 0x0);
 #endif
-		mtdcr (malrxctp1r, hw_p->rx);
+
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+		mtdcr (malrxctp8r, hw_p->rx_phys);
+		/* set RX buffer size */
+		mtdcr (malrcbs8, ENET_MAX_MTU_ALIGNED / 16);
+#else
+		mtdcr (malrxctp1r, hw_p->rx_phys);
 		/* set RX buffer size */
 		mtdcr (malrcbs1, ENET_MAX_MTU_ALIGNED / 16);
+#endif
 		break;
 #if defined (CONFIG_440GX)
 	case 2:
 		/* setup MAL tx & rx channel pointers */
 		mtdcr (maltxbattr, 0x0);
 		mtdcr (malrxbattr, 0x0);
-		mtdcr (maltxctp2r, hw_p->tx);
-		mtdcr (malrxctp2r, hw_p->rx);
+		mtdcr (maltxctp2r, hw_p->tx_phys);
+		mtdcr (malrxctp2r, hw_p->rx_phys);
 		/* set RX buffer size */
 		mtdcr (malrcbs2, ENET_MAX_MTU_ALIGNED / 16);
 		break;
 	case 3:
 		/* setup MAL tx & rx channel pointers */
 		mtdcr (maltxbattr, 0x0);
-		mtdcr (maltxctp3r, hw_p->tx);
+		mtdcr (maltxctp3r, hw_p->tx_phys);
 		mtdcr (malrxbattr, 0x0);
-		mtdcr (malrxctp3r, hw_p->rx);
+		mtdcr (malrxctp3r, hw_p->rx_phys);
 		/* set RX buffer size */
 		mtdcr (malrcbs3, ENET_MAX_MTU_ALIGNED / 16);
 		break;
 #endif /* CONFIG_440GX */
+#if defined (CONFIG_460GT)
+	case 2:
+		/* setup MAL tx & rx channel pointers */
+		mtdcr (maltxbattr, 0x0);
+		mtdcr (malrxbattr, 0x0);
+		mtdcr (maltxctp2r, hw_p->tx_phys);
+		mtdcr (malrxctp16r, hw_p->rx_phys);
+		/* set RX buffer size */
+		mtdcr (malrcbs16, ENET_MAX_MTU_ALIGNED / 16);
+		break;
+	case 3:
+		/* setup MAL tx & rx channel pointers */
+		mtdcr (maltxbattr, 0x0);
+		mtdcr (malrxbattr, 0x0);
+		mtdcr (maltxctp3r, hw_p->tx_phys);
+		mtdcr (malrxctp24r, hw_p->rx_phys);
+		/* set RX buffer size */
+		mtdcr (malrcbs24, ENET_MAX_MTU_ALIGNED / 16);
+		break;
+#endif /* CONFIG_460GT */
 	case 0:
 	default:
 		/* setup MAL tx & rx channel pointers */
@@ -901,8 +1320,8 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 		mtdcr (maltxbattr, 0x0);
 		mtdcr (malrxbattr, 0x0);
 #endif
-		mtdcr (maltxctp0r, hw_p->tx);
-		mtdcr (malrxctp0r, hw_p->rx);
+		mtdcr (maltxctp0r, hw_p->tx_phys);
+		mtdcr (malrxctp0r, hw_p->rx_phys);
 		/* set RX buffer size */
 		mtdcr (malrcbs0, ENET_MAX_MTU_ALIGNED / 16);
 		break;
@@ -917,11 +1336,12 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	mtdcr (malrxcasr, (MAL_TXRX_CASR >> hw_p->devnum));
 
 	/* set transmit enable & receive enable */
-	out32 (EMAC_M0 + hw_p->hw_addr, EMAC_M0_TXE | EMAC_M0_RXE);
+	out_be32((void *)EMAC_M0 + hw_p->hw_addr, EMAC_M0_TXE | EMAC_M0_RXE);
 
-	/* set receive fifo to 4k and tx fifo to 2k */
-	mode_reg = in32 (EMAC_M1 + hw_p->hw_addr);
-	mode_reg |= EMAC_M1_RFS_4K | EMAC_M1_TX_FIFO_2K;
+	mode_reg = in_be32((void *)EMAC_M1 + hw_p->hw_addr);
+
+	/* set rx-/tx-fifo size */
+	mode_reg = (mode_reg & ~EMAC_MR1_FIFO_MASK) | EMAC_MR1_FIFO_SIZE;
 
 	/* set speed */
 	if (speed == _1000BASET) {
@@ -941,46 +1361,46 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	if (duplex == FULL)
 		mode_reg = mode_reg | 0x80000000 | EMAC_M1_IST;
 
-	out32 (EMAC_M1 + hw_p->hw_addr, mode_reg);
+	out_be32((void *)EMAC_M1 + hw_p->hw_addr, mode_reg);
 
 	/* Enable broadcast and indvidual address */
 	/* TBS: enabling runts as some misbehaved nics will send runts */
-	out32 (EMAC_RXM + hw_p->hw_addr, EMAC_RMR_BAE | EMAC_RMR_IAE);
+	out_be32((void *)EMAC_RXM + hw_p->hw_addr, EMAC_RMR_BAE | EMAC_RMR_IAE);
 
 	/* we probably need to set the tx mode1 reg? maybe at tx time */
 
 	/* set transmit request threshold register */
-	out32 (EMAC_TRTR + hw_p->hw_addr, 0x18000000);	/* 256 byte threshold */
+	out_be32((void *)EMAC_TRTR + hw_p->hw_addr, 0x18000000);	/* 256 byte threshold */
 
 	/* set receive	low/high water mark register */
 #if defined(CONFIG_440)
 	/* 440s has a 64 byte burst length */
-	out32 (EMAC_RX_HI_LO_WMARK + hw_p->hw_addr, 0x80009000);
+	out_be32((void *)EMAC_RX_HI_LO_WMARK + hw_p->hw_addr, 0x80009000);
 #else
 	/* 405s have a 16 byte burst length */
-	out32 (EMAC_RX_HI_LO_WMARK + hw_p->hw_addr, 0x0f002000);
+	out_be32((void *)EMAC_RX_HI_LO_WMARK + hw_p->hw_addr, 0x0f002000);
 #endif /* defined(CONFIG_440) */
-	out32 (EMAC_TXM1 + hw_p->hw_addr, 0xf8640000);
+	out_be32((void *)EMAC_TXM1 + hw_p->hw_addr, 0xf8640000);
 
 	/* Set fifo limit entry in tx mode 0 */
-	out32 (EMAC_TXM0 + hw_p->hw_addr, 0x00000003);
+	out_be32((void *)EMAC_TXM0 + hw_p->hw_addr, 0x00000003);
 	/* Frame gap set */
-	out32 (EMAC_I_FRAME_GAP_REG + hw_p->hw_addr, 0x00000008);
+	out_be32((void *)EMAC_I_FRAME_GAP_REG + hw_p->hw_addr, 0x00000008);
 
 	/* Set EMAC IER */
 	hw_p->emac_ier = EMAC_ISR_PTLE | EMAC_ISR_BFCS | EMAC_ISR_ORE | EMAC_ISR_IRE;
 	if (speed == _100BASET)
 		hw_p->emac_ier = hw_p->emac_ier | EMAC_ISR_SYE;
 
-	out32 (EMAC_ISR + hw_p->hw_addr, 0xffffffff);	/* clear pending interrupts */
-	out32 (EMAC_IER + hw_p->hw_addr, hw_p->emac_ier);
+	out_be32((void *)EMAC_ISR + hw_p->hw_addr, 0xffffffff);	/* clear pending interrupts */
+	out_be32((void *)EMAC_IER + hw_p->hw_addr, hw_p->emac_ier);
 
 	if (hw_p->first_init == 0) {
 		/*
 		 * Connect interrupt service routines
 		 */
-		irq_install_handler (VECNUM_ETH0 + (hw_p->devnum * 2),
-				     (interrupt_handler_t *) enetInt, dev);
+		irq_install_handler(ETH_IRQ_NUM(hw_p->devnum),
+				    (interrupt_handler_t *) enetInt, dev);
 	}
 
 	mtmsr (msr);		/* enable interrupts again */
@@ -988,7 +1408,7 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	hw_p->bis = bis;
 	hw_p->first_init = 1;
 
-	return (1);
+	return 0;
 }
 
 
@@ -1016,6 +1436,7 @@ static int ppc_4xx_eth_send (struct eth_device *dev, volatile void *ptr,
 
 	/*   memcpy ((void *) &tx_buff[tx_slot], (const void *) ptr, len); */
 	memcpy ((void *) hw_p->txbuf_ptr, (const void *) ptr, len);
+	flush_dcache_range((u32)hw_p->txbuf_ptr, (u32)hw_p->txbuf_ptr + len);
 
 	/*-----------------------------------------------------------------------+
 	 * set TX Buffer busy, and send it
@@ -1029,10 +1450,10 @@ static int ppc_4xx_eth_send (struct eth_device *dev, volatile void *ptr,
 	hw_p->tx[hw_p->tx_slot].data_len = (short) len;
 	hw_p->tx[hw_p->tx_slot].ctrl |= MAL_TX_CTRL_READY;
 
-	__asm__ volatile ("eieio");
+	sync();
 
-	out32 (EMAC_TXM0 + hw_p->hw_addr,
-	       in32 (EMAC_TXM0 + hw_p->hw_addr) | EMAC_TXM0_GNP0);
+	out_be32((void *)EMAC_TXM0 + hw_p->hw_addr,
+		 in_be32((void *)EMAC_TXM0 + hw_p->hw_addr) | EMAC_TXM0_GNP0);
 #ifdef INFO_4XX_ENET
 	hw_p->stats.pkts_tx++;
 #endif
@@ -1042,7 +1463,7 @@ static int ppc_4xx_eth_send (struct eth_device *dev, volatile void *ptr,
 	 *-----------------------------------------------------------------------*/
 	time_start = get_timer (0);
 	while (1) {
-		temp_txm0 = in32 (EMAC_TXM0 + hw_p->hw_addr);
+		temp_txm0 = in_be32((void *)EMAC_TXM0 + hw_p->hw_addr);
 		/* loop until either TINT turns on or 3 seconds elapse */
 		if ((temp_txm0 & EMAC_TXM0_GNP0) != 0) {
 			/* transmit is done, so now check for errors
@@ -1059,42 +1480,17 @@ static int ppc_4xx_eth_send (struct eth_device *dev, volatile void *ptr,
 	}
 }
 
-
-#if defined (CONFIG_440)
-
-#if defined(CONFIG_440SP) || defined(CONFIG_440SPE)
-/*
- * Hack: On 440SP all enet irq sources are located on UIC1
- * Needs some cleanup. --sr
- */
-#define UIC0MSR		uic1msr
-#define UIC0SR		uic1sr
-#else
-#define UIC0MSR		uic0msr
-#define UIC0SR		uic0sr
-#endif
-
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
-#define UICMSR_ETHX	uic0msr
-#define UICSR_ETHX	uic0sr
-#else
-#define UICMSR_ETHX	uic1msr
-#define UICSR_ETHX	uic1sr
-#endif
-
 int enetInt (struct eth_device *dev)
 {
 	int serviced;
 	int rc = -1;		/* default to not us */
-	unsigned long mal_isr;
-	unsigned long emac_isr = 0;
-	unsigned long mal_rx_eob;
-	unsigned long my_uic0msr, my_uic1msr;
-	unsigned long my_uicmsr_ethx;
-
-#if defined(CONFIG_440GX)
-	unsigned long my_uic2msr;
-#endif
+	u32 mal_isr;
+	u32 emac_isr = 0;
+	u32 mal_eob;
+	u32 uic_mal;
+	u32 uic_mal_err;
+	u32 uic_emac;
+	u32 uic_emac_b;
 	EMAC_4XX_HW_PST hw_p;
 
 	/*
@@ -1113,253 +1509,78 @@ int enetInt (struct eth_device *dev)
 	do {
 		serviced = 0;
 
-		my_uic0msr = mfdcr (UIC0MSR);
-		my_uic1msr = mfdcr (uic1msr);
-#if defined(CONFIG_440GX)
-		my_uic2msr = mfdcr (uic2msr);
-#endif
-		my_uicmsr_ethx = mfdcr (UICMSR_ETHX);
+		uic_mal = mfdcr(UIC_BASE_MAL + UIC_MSR);
+		uic_mal_err = mfdcr(UIC_BASE_MAL_ERR + UIC_MSR);
+		uic_emac = mfdcr(UIC_BASE_EMAC + UIC_MSR);
+		uic_emac_b = mfdcr(UIC_BASE_EMAC_B + UIC_MSR);
 
-		if (!(my_uic0msr & (UIC_MRE | UIC_MTE))
-		    && !(my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE))
-		    && !(my_uicmsr_ethx & (UIC_ETH0 | UIC_ETH1))) {
+		if (!(uic_mal & (UIC_MAL_RXEOB | UIC_MAL_TXEOB))
+		    && !(uic_mal_err & (UIC_MAL_SERR | UIC_MAL_TXDE | UIC_MAL_RXDE))
+		    && !(uic_emac & UIC_ETHx) && !(uic_emac_b & UIC_ETHxB)) {
 			/* not for us */
 			return (rc);
 		}
-#if defined (CONFIG_440GX)
-		if (!(my_uic0msr & (UIC_MRE | UIC_MTE))
-		    && !(my_uic2msr & (UIC_ETH2 | UIC_ETH3))) {
-			/* not for us */
-			return (rc);
-		}
-#endif
+
 		/* get and clear controller status interrupts */
-		/* look at Mal and EMAC interrupts */
-		if ((my_uic0msr & (UIC_MRE | UIC_MTE))
-		    || (my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE))) {
-			/* we have a MAL interrupt */
-			mal_isr = mfdcr (malesr);
-			/* look for mal error */
-			if (my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE)) {
-				mal_err (dev, mal_isr, my_uic1msr, MAL_UIC_DEF, MAL_UIC_ERR);
-				serviced = 1;
-				rc = 0;
-			}
+		/* look at MAL and EMAC error interrupts */
+		if (uic_mal_err & (UIC_MAL_SERR | UIC_MAL_TXDE | UIC_MAL_RXDE)) {
+			/* we have a MAL error interrupt */
+			mal_isr = mfdcr(malesr);
+			mal_err(dev, mal_isr, uic_mal_err,
+				 MAL_UIC_DEF, MAL_UIC_ERR);
+
+			/* clear MAL error interrupt status bits */
+			mtdcr(UIC_BASE_MAL_ERR + UIC_SR,
+			      UIC_MAL_SERR | UIC_MAL_TXDE | UIC_MAL_RXDE);
+
+			return -1;
 		}
 
-		/* port by port dispatch of emac interrupts */
-		if (hw_p->devnum == 0) {
-			if (UIC_ETH0 & my_uicmsr_ethx) {	/* look for EMAC errors */
-				emac_isr = in32 (EMAC_ISR + hw_p->hw_addr);
-				if ((hw_p->emac_ier & emac_isr) != 0) {
-					emac_err (dev, emac_isr);
-					serviced = 1;
-					rc = 0;
-				}
-			}
-			if ((hw_p->emac_ier & emac_isr)
-			    || (my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE))) {
-				mtdcr (UIC0SR, UIC_MRE | UIC_MTE);	/* Clear */
-				mtdcr (uic1sr, UIC_MS | UIC_MTDE | UIC_MRDE);	/* Clear */
-				mtdcr (UICSR_ETHX, UIC_ETH0); /* Clear */
-				return (rc);	/* we had errors so get out */
-			}
-		}
+		/* look for EMAC errors */
+		if ((uic_emac & UIC_ETHx) || (uic_emac_b & UIC_ETHxB)) {
+			emac_isr = in_be32((void *)EMAC_ISR + hw_p->hw_addr);
+			emac_err(dev, emac_isr);
 
-#if !defined(CONFIG_440SP)
-		if (hw_p->devnum == 1) {
-			if (UIC_ETH1 & my_uicmsr_ethx) {	/* look for EMAC errors */
-				emac_isr = in32 (EMAC_ISR + hw_p->hw_addr);
-				if ((hw_p->emac_ier & emac_isr) != 0) {
-					emac_err (dev, emac_isr);
-					serviced = 1;
-					rc = 0;
-				}
-			}
-			if ((hw_p->emac_ier & emac_isr)
-			    || (my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE))) {
-				mtdcr (UIC0SR, UIC_MRE | UIC_MTE);	/* Clear */
-				mtdcr (uic1sr, UIC_MS | UIC_MTDE | UIC_MRDE); /* Clear */
-				mtdcr (UICSR_ETHX, UIC_ETH1); /* Clear */
-				return (rc);	/* we had errors so get out */
-			}
-		}
-#if defined (CONFIG_440GX)
-		if (hw_p->devnum == 2) {
-			if (UIC_ETH2 & my_uic2msr) {	/* look for EMAC errors */
-				emac_isr = in32 (EMAC_ISR + hw_p->hw_addr);
-				if ((hw_p->emac_ier & emac_isr) != 0) {
-					emac_err (dev, emac_isr);
-					serviced = 1;
-					rc = 0;
-				}
-			}
-			if ((hw_p->emac_ier & emac_isr)
-			    || (my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE))) {
-				mtdcr (UIC0SR, UIC_MRE | UIC_MTE);	/* Clear */
-				mtdcr (uic1sr, UIC_MS | UIC_MTDE | UIC_MRDE);	/* Clear */
-				mtdcr (uic2sr, UIC_ETH2);
-				return (rc);	/* we had errors so get out */
-			}
-		}
+			/* clear EMAC error interrupt status bits */
+			mtdcr(UIC_BASE_EMAC + UIC_SR, UIC_ETHx);
+			mtdcr(UIC_BASE_EMAC_B + UIC_SR, UIC_ETHxB);
 
-		if (hw_p->devnum == 3) {
-			if (UIC_ETH3 & my_uic2msr) {	/* look for EMAC errors */
-				emac_isr = in32 (EMAC_ISR + hw_p->hw_addr);
-				if ((hw_p->emac_ier & emac_isr) != 0) {
-					emac_err (dev, emac_isr);
-					serviced = 1;
-					rc = 0;
-				}
-			}
-			if ((hw_p->emac_ier & emac_isr)
-			    || (my_uic1msr & (UIC_MS | UIC_MTDE | UIC_MRDE))) {
-				mtdcr (UIC0SR, UIC_MRE | UIC_MTE);	/* Clear */
-				mtdcr (uic1sr, UIC_MS | UIC_MTDE | UIC_MRDE);	/* Clear */
-				mtdcr (uic2sr, UIC_ETH3);
-				return (rc);	/* we had errors so get out */
-			}
+			return -1;
 		}
-#endif /* CONFIG_440GX */
-#endif /* !CONFIG_440SP */
 
 		/* handle MAX TX EOB interrupt from a tx */
-		if (my_uic0msr & UIC_MTE) {
-			mal_rx_eob = mfdcr (maltxeobisr);
-			mtdcr (maltxeobisr, mal_rx_eob);
-			mtdcr (UIC0SR, UIC_MTE);
+		if (uic_mal & UIC_MAL_TXEOB) {
+			/* clear MAL interrupt status bits */
+			mal_eob = mfdcr(maltxeobisr);
+			mtdcr(maltxeobisr, mal_eob);
+			mtdcr(UIC_BASE_MAL + UIC_SR, UIC_MAL_TXEOB);
+
+			/* indicate that we serviced an interrupt */
+			serviced = 1;
+			rc = 0;
 		}
-		/* handle MAL RX EOB  interupt from a receive */
-		/* check for EOB on valid channels	      */
-		if (my_uic0msr & UIC_MRE) {
-			mal_rx_eob = mfdcr (malrxeobisr);
-			if ((mal_rx_eob & (0x80000000 >> hw_p->devnum)) != 0) { /* call emac routine for channel x */
-				/* clear EOB
-				   mtdcr(malrxeobisr, mal_rx_eob); */
-				enet_rcv (dev, emac_isr);
+
+		/* handle MAL RX EOB interupt from a receive */
+		/* check for EOB on valid channels	     */
+		if (uic_mal & UIC_MAL_RXEOB) {
+			mal_eob = mfdcr(malrxeobisr);
+			if (mal_eob &
+			    (0x80000000 >> (hw_p->devnum * MAL_RX_CHAN_MUL))) {
+				/* push packet to upper layer */
+				enet_rcv(dev, emac_isr);
+
+				/* clear MAL interrupt status bits */
+				mtdcr(UIC_BASE_MAL + UIC_SR, UIC_MAL_RXEOB);
+
 				/* indicate that we serviced an interrupt */
 				serviced = 1;
 				rc = 0;
 			}
-		}
-
-		mtdcr (UIC0SR, UIC_MRE);	/* Clear */
-		mtdcr (uic1sr, UIC_MS | UIC_MTDE | UIC_MRDE);	/* Clear */
-		switch (hw_p->devnum) {
-		case 0:
-			mtdcr (UICSR_ETHX, UIC_ETH0);
-			break;
-		case 1:
-			mtdcr (UICSR_ETHX, UIC_ETH1);
-			break;
-#if defined (CONFIG_440GX)
-		case 2:
-			mtdcr (uic2sr, UIC_ETH2);
-			break;
-		case 3:
-			mtdcr (uic2sr, UIC_ETH3);
-			break;
-#endif /* CONFIG_440GX */
-		default:
-			break;
 		}
 	} while (serviced);
 
 	return (rc);
 }
-
-#else /* CONFIG_440 */
-
-int enetInt (struct eth_device *dev)
-{
-	int serviced;
-	int rc = -1;		/* default to not us */
-	unsigned long mal_isr;
-	unsigned long emac_isr = 0;
-	unsigned long mal_rx_eob;
-	unsigned long my_uicmsr;
-
-	EMAC_4XX_HW_PST hw_p;
-
-	/*
-	 * Because the mal is generic, we need to get the current
-	 * eth device
-	 */
-#if defined(CONFIG_NET_MULTI)
-	dev = eth_get_dev();
-#else
-	dev = emac0_dev;
-#endif
-
-	hw_p = dev->priv;
-
-	/* enter loop that stays in interrupt code until nothing to service */
-	do {
-		serviced = 0;
-
-		my_uicmsr = mfdcr (uicmsr);
-
-		if ((my_uicmsr & (MAL_UIC_DEF | EMAC_UIC_DEF)) == 0) {	/* not for us */
-			return (rc);
-		}
-		/* get and clear controller status interrupts */
-		/* look at Mal and EMAC interrupts */
-		if ((MAL_UIC_DEF & my_uicmsr) != 0) {	/* we have a MAL interrupt */
-			mal_isr = mfdcr (malesr);
-			/* look for mal error */
-			if ((my_uicmsr & MAL_UIC_ERR) != 0) {
-				mal_err (dev, mal_isr, my_uicmsr, MAL_UIC_DEF, MAL_UIC_ERR);
-				serviced = 1;
-				rc = 0;
-			}
-		}
-
-		/* port by port dispatch of emac interrupts */
-
-		if ((SEL_UIC_DEF(hw_p->devnum) & my_uicmsr) != 0) {	/* look for EMAC errors */
-			emac_isr = in32 (EMAC_ISR + hw_p->hw_addr);
-			if ((hw_p->emac_ier & emac_isr) != 0) {
-				emac_err (dev, emac_isr);
-				serviced = 1;
-				rc = 0;
-			}
-		}
-		if (((hw_p->emac_ier & emac_isr) != 0) || ((MAL_UIC_ERR & my_uicmsr) != 0)) {
-			mtdcr (uicsr, MAL_UIC_DEF | SEL_UIC_DEF(hw_p->devnum)); /* Clear */
-			return (rc);		/* we had errors so get out */
-		}
-
-		/* handle MAX TX EOB interrupt from a tx */
-		if (my_uicmsr & UIC_MAL_TXEOB) {
-			mal_rx_eob = mfdcr (maltxeobisr);
-			mtdcr (maltxeobisr, mal_rx_eob);
-			mtdcr (uicsr, UIC_MAL_TXEOB);
-		}
-		/* handle MAL RX EOB  interupt from a receive */
-		/* check for EOB on valid channels	      */
-		if (my_uicmsr & UIC_MAL_RXEOB)
-		{
-			mal_rx_eob = mfdcr (malrxeobisr);
-			if ((mal_rx_eob & (0x80000000 >> hw_p->devnum)) != 0) { /* call emac routine for channel x */
-				/* clear EOB
-				 mtdcr(malrxeobisr, mal_rx_eob); */
-				enet_rcv (dev, emac_isr);
-				/* indicate that we serviced an interrupt */
-				serviced = 1;
-				rc = 0;
-			}
-		}
-		mtdcr (uicsr, MAL_UIC_DEF|EMAC_UIC_DEF|EMAC_UIC_DEF1);	/* Clear */
-#if defined(CONFIG_405EZ)
-		mtsdr (sdricintstat, SDR_ICRX_STAT | SDR_ICTX0_STAT | SDR_ICTX1_STAT);
-#endif	/* defined(CONFIG_405EZ) */
-	}
-	while (serviced);
-
-	return (rc);
-}
-
-#endif /* CONFIG_440 */
 
 /*-----------------------------------------------------------------------------+
  *  MAL Error Routine
@@ -1391,7 +1612,7 @@ static void emac_err (struct eth_device *dev, unsigned long isr)
 	EMAC_4XX_HW_PST hw_p = dev->priv;
 
 	printf ("EMAC%d error occured.... ISR = %lx\n", hw_p->devnum, isr);
-	out32 (EMAC_ISR + hw_p->hw_addr, isr);
+	out_be32((void *)EMAC_ISR + hw_p->hw_addr, isr);
 }
 
 /*-----------------------------------------------------------------------------+
@@ -1409,7 +1630,7 @@ static void enet_rcv (struct eth_device *dev, unsigned long malisr)
 	int loop_count = 0;
 
 	rx_eob_isr = mfdcr (malrxeobisr);
-	if ((0x80000000 >> hw_p->devnum) & rx_eob_isr) {
+	if ((0x80000000 >> (hw_p->devnum * MAL_RX_CHAN_MUL)) & rx_eob_isr) {
 		/* clear EOB */
 		mtdcr (malrxeobisr, rx_eob_isr);
 
@@ -1423,7 +1644,7 @@ static void enet_rcv (struct eth_device *dev, unsigned long malisr)
 
 			loop_count++;
 			handled++;
-			data_len = (unsigned long) hw_p->rx[i].data_len;	/* Get len */
+			data_len = (unsigned long) hw_p->rx[i].data_len & 0x0fff;	/* Get len */
 			if (data_len) {
 				if (data_len > ENET_MAX_MTU)	/* Check len */
 					data_len = 0;
@@ -1509,11 +1730,14 @@ static int ppc_4xx_eth_rx (struct eth_device *dev)
 		msr = mfmsr ();
 		mtmsr (msr & ~(MSR_EE));
 
-		length = hw_p->rx[user_index].data_len;
+		length = hw_p->rx[user_index].data_len & 0x0fff;
 
 		/* Pass the packet up to the protocol layers. */
 		/*	 NetReceive(NetRxPackets[rxIdx], length - 4); */
 		/*	 NetReceive(NetRxPackets[i], length); */
+		invalidate_dcache_range((u32)hw_p->rx[user_index].data_ptr,
+					(u32)hw_p->rx[user_index].data_ptr +
+					length - 4);
 		NetReceive (NetRxPackets[user_index], length - 4);
 		/* Free Recv Buffer */
 		hw_p->rx[user_index].ctrl |= MAL_RX_CTRL_EMPTY;
@@ -1543,6 +1767,7 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 	EMAC_4XX_HW_PST hw = NULL;
 	u8 ethaddr[4 + CONFIG_EMAC_NR_START][6];
 	u32 hw_addr[4];
+	u32 mal_ier;
 
 #if defined(CONFIG_440GX)
 	unsigned long pfc1;
@@ -1576,14 +1801,22 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 		case 2:
 			memcpy(ethaddr[eth_num + CONFIG_EMAC_NR_START],
 			       bis->bi_enet2addr, 6);
+#if defined(CONFIG_460GT)
+			hw_addr[eth_num] = 0x300;
+#else
 			hw_addr[eth_num] = 0x400;
+#endif
 			break;
 #endif
 #ifdef CONFIG_HAS_ETH3
 		case 3:
 			memcpy(ethaddr[eth_num + CONFIG_EMAC_NR_START],
 			       bis->bi_enet3addr, 6);
+#if defined(CONFIG_460GT)
+			hw_addr[eth_num] = 0x400;
+#else
 			hw_addr[eth_num] = 0x600;
+#endif
 			break;
 #endif
 		}
@@ -1602,7 +1835,11 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 	bis->bi_phynum[3] = CONFIG_PHY3_ADDR;
 	bis->bi_phymode[2] = 2;
 	bis->bi_phymode[3] = 2;
+#endif
 
+#if defined(CONFIG_440GX) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_405EX)
 	ppc_4xx_eth_setup_bridge(0, bis);
 #endif
 
@@ -1650,7 +1887,10 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 
 		if (0 == virgin) {
 			/* set the MAL IER ??? names may change with new spec ??? */
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440SPE) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 			mal_ier =
 				MAL_IER_PT | MAL_IER_PRE | MAL_IER_PWE |
 				MAL_IER_DE | MAL_IER_OTE | MAL_IER_OE | MAL_IER_PE ;
@@ -1665,19 +1905,19 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 			mtdcr (malier, mal_ier);
 
 			/* install MAL interrupt handler */
-			irq_install_handler (VECNUM_MS,
+			irq_install_handler (VECNUM_MAL_SERR,
 					     (interrupt_handler_t *) enetInt,
 					     dev);
-			irq_install_handler (VECNUM_MTE,
+			irq_install_handler (VECNUM_MAL_TXEOB,
 					     (interrupt_handler_t *) enetInt,
 					     dev);
-			irq_install_handler (VECNUM_MRE,
+			irq_install_handler (VECNUM_MAL_RXEOB,
 					     (interrupt_handler_t *) enetInt,
 					     dev);
-			irq_install_handler (VECNUM_TXDE,
+			irq_install_handler (VECNUM_MAL_TXDE,
 					     (interrupt_handler_t *) enetInt,
 					     dev);
-			irq_install_handler (VECNUM_RXDE,
+			irq_install_handler (VECNUM_MAL_RXDE,
 					     (interrupt_handler_t *) enetInt,
 					     dev);
 			virgin = 1;
@@ -1696,7 +1936,8 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 #endif
 #endif
 	}			/* end for each supported device */
-	return (1);
+
+	return 0;
 }
 
 #if !defined(CONFIG_NET_MULTI)

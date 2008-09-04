@@ -63,22 +63,22 @@
 # define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds	*/
 #endif
 
-#define CONFIG_PREBOOT	"echo;echo Type \"run flash_nfs\" to mount root filesystem over NFS;echo"
+#define CONFIG_PREBOOT	"echo;echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;echo"
 
 /* using this define saves us updating another source file */
 #define CONFIG_BOARD_EARLY_INIT_F 1
 
 #undef	CONFIG_BOOTARGS
 /* #define CONFIG_BOOTCOMMAND							\
- 	"bootp;" 								\
- 	"setenv bootargs root=/dev/nfs rw nfsroot=${serverip}:${rootpath} " 	\
- 	"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off;" 	\
- 	"bootm"
+	"bootp;"								\
+	"setenv bootargs root=/dev/nfs rw nfsroot=${serverip}:${rootpath} "	\
+	"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off;"	\
+	"bootm"
 */
 
 #define CONFIG_BOOTCOMMAND	\
-	"setenv bootargs root=/dev/nfs" 	\
-	"ip=192.168.28.129:139.10.137.138:192.168.28.1:255.255.255.0:iadlinux002::off; " 	\
+	"setenv bootargs root=/dev/nfs"	\
+	"ip=192.168.28.129:139.10.137.138:192.168.28.1:255.255.255.0:iadlinux002::off; "	\
 
 #undef	CONFIG_WATCHDOG			/* watchdog disabled		*/
 
@@ -159,7 +159,7 @@
 #define CFG_MEMTEST_START	0x0100000	/* memtest works on	*/
 #define CFG_MEMTEST_END		0x0400000	/* 1 ... 4 MB in DRAM	*/
 
-#define CFG_LOAD_ADDR	 	0x00100000
+#define CFG_LOAD_ADDR		0x00100000
 
 #define	CFG_HZ		1000		/* decrementer freq: 1 ms ticks	*/
 

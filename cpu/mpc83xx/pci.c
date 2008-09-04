@@ -28,13 +28,11 @@
 
 #if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
-#elif defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
+#include <fdt_support.h>
 #endif
 
 #include <asm/mpc8349_pci.h>
 
-#ifdef CONFIG_83XX_GENERIC_PCI
 #define MAX_BUSES 2
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -169,67 +167,70 @@ void mpc83xx_pci_init(int num_buses, struct pci_region **reg, int warmboot)
 		pci_init_bus(i, reg[i]);
 }
 
+#ifdef CONFIG_PCISLAVE
+
+#define PCI_FUNCTION_CONFIG	0x44
+#define PCI_FUNCTION_CFG_LOCK	0x20
+
+/*
+ * Unlock the configuration bit so that the host system can begin booting
+ *
+ * This should be used after you have:
+ * 1) Called mpc83xx_pci_init()
+ * 2) Set up your inbound translation windows to the appropriate size
+ */
+void mpc83xx_pcislave_unlock(int bus)
+{
+	struct pci_controller *hose = &pci_hose[bus];
+	u32 dev;
+	u16 reg16;
+
+	/* Unlock configuration lock in PCI function configuration register */
+	dev = PCI_BDF(hose->first_busno, 0, 0);
+	pci_hose_read_config_word (hose, dev, PCI_FUNCTION_CONFIG, &reg16);
+	reg16 &= ~(PCI_FUNCTION_CFG_LOCK);
+	pci_hose_write_config_word (hose, dev, PCI_FUNCTION_CONFIG, reg16);
+}
+#endif
+
 #if defined(CONFIG_OF_LIBFDT)
 void ft_pci_setup(void *blob, bd_t *bd)
 {
 	int nodeoffset;
-	int err;
 	int tmp[2];
+	const char *path;
 
 	if (pci_num_buses < 1)
 		return;
 
-	nodeoffset = fdt_find_node_by_path(blob, "/" OF_SOC "/pci@8500");
+	nodeoffset = fdt_path_offset(blob, "/aliases");
 	if (nodeoffset >= 0) {
-		tmp[0] = cpu_to_be32(pci_hose[0].first_busno);
-		tmp[1] = cpu_to_be32(pci_hose[0].last_busno);
-		err = fdt_setprop(blob, nodeoffset, "bus-range",
-				  tmp, sizeof(tmp));
+		path = fdt_getprop(blob, nodeoffset, "pci0", NULL);
+		if (path) {
+			tmp[0] = cpu_to_be32(pci_hose[0].first_busno);
+			tmp[1] = cpu_to_be32(pci_hose[0].last_busno);
+			do_fixup_by_path(blob, path, "bus-range",
+				&tmp, sizeof(tmp), 1);
 
-		tmp[0] = cpu_to_be32(gd->pci_clk);
-		err = fdt_setprop(blob, nodeoffset, "clock-frequency",
-				  tmp, sizeof(tmp[0]));
-	}
+			tmp[0] = cpu_to_be32(gd->pci_clk);
+			do_fixup_by_path(blob, path, "clock-frequency",
+				&tmp, sizeof(tmp[0]), 1);
+		}
 
-	if (pci_num_buses < 2)
-		return;
+		if (pci_num_buses < 2)
+			return;
 
-	nodeoffset = fdt_find_node_by_path(blob, "/" OF_SOC "/pci@8600");
-	if (nodeoffset >= 0) {
-		tmp[0] = cpu_to_be32(pci_hose[0].first_busno);
-		tmp[1] = cpu_to_be32(pci_hose[0].last_busno);
-		err = fdt_setprop(blob, nodeoffset, "bus-range",
-				  tmp, sizeof(tmp));
+		path = fdt_getprop(blob, nodeoffset, "pci1", NULL);
+		if (path) {
+			tmp[0] = cpu_to_be32(pci_hose[0].first_busno);
+			tmp[1] = cpu_to_be32(pci_hose[0].last_busno);
+			do_fixup_by_path(blob, path, "bus-range",
+				&tmp, sizeof(tmp), 1);
 
-		tmp[0] = cpu_to_be32(gd->pci_clk);
-		err = fdt_setprop(blob, nodeoffset, "clock-frequency",
-				  tmp, sizeof(tmp[0]));
+			tmp[0] = cpu_to_be32(gd->pci_clk);
+			do_fixup_by_path(blob, path, "clock-frequency",
+				&tmp, sizeof(tmp[0]), 1);
+		}
 	}
 }
-#elif CONFIG_OF_FLAT_TREE
-void ft_pci_setup(void *blob, bd_t *bd)
-{
-	u32 *p;
-	int len;
-
-	if (pci_num_buses < 1)
-		return;
-
-	p = (u32 *)ft_get_prop(blob, "/" OF_SOC "/pci@8500/bus-range", &len);
-	if (p) {
-		p[0] = pci_hose[0].first_busno;
-		p[1] = pci_hose[0].last_busno;
-	}
-
-	if (pci_num_buses < 2)
-		return;
-
-	p = (u32 *)ft_get_prop(blob, "/" OF_SOC "/pci@8600/bus-range", &len);
-	if (p) {
-		p[0] = pci_hose[1].first_busno;
-		p[1] = pci_hose[1].last_busno;
-	}
-}
-#endif /* CONFIG_OF_FLAT_TREE */
-
-#endif /* CONFIG_83XX_GENERIC_PCI */
+#endif /* CONFIG_OF_LIBFDT */

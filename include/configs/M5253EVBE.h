@@ -32,7 +32,7 @@
 
 #define CONFIG_MCFUART
 #define CFG_UART_PORT		(0)
-#define CONFIG_BAUDRATE		19200
+#define CONFIG_BAUDRATE		115200
 #define CFG_BAUDRATE_TABLE	{ 9600 , 19200 , 38400 , 57600, 115200 }
 
 #undef CONFIG_WATCHDOG		/* disable watchdog */
@@ -146,7 +146,7 @@
  * Please note that CFG_SDRAM_BASE _must_ start at 0
  */
 #define CFG_SDRAM_BASE		0x00000000
-#define CFG_SDRAM_SIZE		16	/* SDRAM size in MB */
+#define CFG_SDRAM_SIZE		8	/* SDRAM size in MB */
 
 #ifdef CONFIG_MONITOR_IS_IN_RAM
 #define CFG_MONITOR_BASE	0x20000
@@ -172,7 +172,7 @@
 #define CFG_FLASH_ERASE_TOUT	1000
 
 #define CFG_FLASH_CFI		1
-#define CFG_FLASH_CFI_DRIVER	1
+#define CONFIG_FLASH_CFI_DRIVER	1
 #define CFG_FLASH_SIZE		0x200000
 #define CFG_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 

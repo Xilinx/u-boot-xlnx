@@ -26,7 +26,7 @@
 #include <command.h>
 #include <malloc.h>
 #include <pci.h>
-#include <405gp_pci.h>
+#include <asm/4xx_pci.h>
 
 #include "pci405.h"
 
@@ -358,7 +358,7 @@ int checkboard (void)
 
 /* ------------------------------------------------------------------------- */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	unsigned long val;
 

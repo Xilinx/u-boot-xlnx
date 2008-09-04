@@ -139,8 +139,15 @@ int misc_init_r (void)
 	struct rtc_time tm;
 	char bootcmd[32];
 
-	hdr = (image_header_t *) (CFG_MONITOR_BASE - sizeof (image_header_t));
-	timestamp = (time_t) hdr->ih_time;
+	hdr = (image_header_t *) (CFG_MONITOR_BASE - image_get_header_size ());
+#if defined(CONFIG_FIT)
+	if (genimg_get_format ((void *)hdr) != IMAGE_FORMAT_LEGACY) {
+		puts ("Non legacy image format not supported\n");
+		return -1;
+	}
+#endif
+
+	timestamp = (time_t)image_get_time (hdr);
 	to_tm (timestamp, &tm);
 	printf ("Welcome to U-Boot on Cray L1. Compiled %4d-%02d-%02d  %2d:%02d:%02d (UTC)\n", tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
@@ -163,16 +170,16 @@ int misc_init_r (void)
 }
 
 /* ------------------------------------------------------------------------- */
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	return (L1_MEMSIZE);
 }
 
 /* ------------------------------------------------------------------------- */
 /* stubs so we can print dates w/o any nvram RTC.*/
-void rtc_get (struct rtc_time *tmp)
+int rtc_get (struct rtc_time *tmp)
 {
-	return;
+	return 0;
 }
 void rtc_set (struct rtc_time *tmp)
 {

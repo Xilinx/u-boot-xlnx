@@ -114,7 +114,7 @@
 
 #define CONFIG_PREBOOT								\
 	"echo; "								\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS; "	\
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS; "	\
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -191,7 +191,7 @@
 #endif
 
 
-#define CFG_NAND_LEGACY
+#define CONFIG_NAND_LEGACY
 
 /*
  * Miscellaneous configurable options

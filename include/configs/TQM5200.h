@@ -47,12 +47,15 @@
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH	*/
 #define BOOTFLAG_WARM		0x02	/* Software reboot			*/
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported			*/
+
 /*
  * Serial console configuration
  */
 #define CONFIG_PSC_CONSOLE	1	/* console is on PSC1			*/
 #define CONFIG_BAUDRATE		115200	/* ... at 115200 bps			*/
 #define CFG_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200, 230400 }
+#define CONFIG_BOOTCOUNT_LIMIT	1
 
 #ifdef CONFIG_FO300
 #define CFG_DEVICE_NULLDEV		1	/* enable null device */
@@ -131,6 +134,7 @@
 /* USB */
 #if defined(CONFIG_STK52XX) || defined(CONFIG_FO300)
 #define CONFIG_USB_OHCI_NEW
+#define CFG_OHCI_BE_CONTROLLER
 #define CONFIG_USB_STORAGE
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_USB
@@ -189,6 +193,7 @@
 
 #ifdef CONFIG_PCI
 #define CONFIG_CMD_PCI
+#define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
 #endif
 
 #if defined(CONFIG_MINIFAP) || defined(CONFIG_STK52XX) || defined(CONFIG_FO300)
@@ -251,14 +256,24 @@
 	"setup=tftp 200000 cam5200/setup.img; autoscr 200000\0"
 #endif
 
+#if defined(CONFIG_TQM5200_B)
+#define ENV_FLASH_LAYOUT						\
+	"fdt_addr=FC100000\0"						\
+	"kernel_addr=FC140000\0"					\
+	"ramdisk_addr=FC600000\0"
+#else	/* !CONFIG_TQM5200_B */
+#define ENV_FLASH_LAYOUT						\
+	"fdt_addr=FC0A0000\0"						\
+	"kernel_addr=FC0C0000\0"					\
+	"ramdisk_addr=FC300000\0"
+#endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth0\0"							\
 	"console=ttyPSC0\0"						\
-	"fdt_addr=FC0A0000\0"						\
-	"kernel_addr=FC0C0000\0"					\
-	"ramdisk_addr=FC300000\0"					\
-	"kernel_addr_r=200000\0"					\
-	"fdt_addr_r=400000\0"						\
+	ENV_FLASH_LAYOUT						\
+	"kernel_addr_r=400000\0"					\
+	"fdt_addr_r=600000\0"						\
 	"rootpath=/opt/eldk/ppc_6xx\0"					\
 	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
@@ -372,7 +387,7 @@
 #else
 /* use CFI flash driver */
 #define CFG_FLASH_CFI		1	/* Flash is CFI conformant */
-#define CFG_FLASH_CFI_DRIVER	1	/* Use the common driver */
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver */
 #define CFG_FLASH_BANKS_LIST	{ CFG_BOOTCS_START }
 #define CFG_MAX_FLASH_BANKS	1	/* max num of flash banks
 					   (= chip selects) */
@@ -399,8 +414,9 @@
 # if defined(CONFIG_TQM5200_B)
 #  if defined(CFG_LOWBOOT)
 #   define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:1m(firmware),"	\
-						"1536k(kernel),"	\
-						"3584k(small-fs),"	\
+						"256k(dtb),"		\
+						"2304k(kernel),"	\
+						"2560k(small-fs),"	\
 						"2m(initrd),"		\
 						"8m(misc),"		\
 						"16m(big-fs)"
@@ -547,7 +563,7 @@
 #  if defined (CONFIG_TQM5200_REV100)
 #   error TQM5200 REV100 not supported on STK52XX REV200 or above
 #  else/* TQM5200 REV200 and above */
-#   define CFG_GPS_PORT_CONFIG	0x91500004
+#   define CFG_GPS_PORT_CONFIG	0x91500404
 #  endif
 # endif
 #elif defined (CONFIG_FO300)

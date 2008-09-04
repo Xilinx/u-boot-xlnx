@@ -24,22 +24,15 @@
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <i2c.h>
-#include <spd.h>
 #include <miiphy.h>
-
+#include <vsc7385.h>
 #ifdef CONFIG_PCI
 #include <asm/mpc8349_pci.h>
 #include <pci.h>
 #endif
-
-#ifdef CONFIG_SPD_EEPROM
 #include <spd_sdram.h>
-#else
 #include <asm/mmu.h>
-#endif
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-#elif defined(CONFIG_OF_LIBFDT)
+#if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
 #endif
 
@@ -135,7 +128,7 @@ volatile static struct pci_controller hose[] = {
 };
 #endif				/* CONFIG_PCI */
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (immap_t *) CFG_IMMR;
 	u32 msize = 0;
@@ -185,7 +178,7 @@ int checkboard(void)
  */
 int misc_init_f(void)
 {
-#ifdef CONFIG_VSC7385
+#ifdef CONFIG_VSC7385_ENET
 	volatile u32 *vsc7385_cpuctrl;
 
 	/* 0x1c0c0 is the VSC7385 CPU Control (CPUCTRL) Register.  The power up
@@ -247,6 +240,8 @@ int misc_init_f(void)
 }
 
 /*
+ * Miscellaneous late-boot configurations
+ *
  * Make sure the EEPROM has the HRCW correctly programmed.
  * Make sure the RTC is correctly programmed.
  *
@@ -258,6 +253,8 @@ int misc_init_f(void)
  *
  * This function makes sure that the I2C EEPROM is programmed
  * correctly.
+ *
+ * If a VSC7385 microcode image is present, then upload it.
  */
 int misc_init_r(void)
 {
@@ -276,13 +273,13 @@ int misc_init_r(void)
 	static u8 eeprom_data[] =	/* HRCW data */
 	{
 		0xAA, 0x55, 0xAA,       /* Preamble */
-		0x7C, 		        /* ACS=0, BYTE_EN=1111, CONT=1 */
-		0x02, 0x40, 	        /* RCWL ADDR=0x0_0900 */
+		0x7C,		        /* ACS=0, BYTE_EN=1111, CONT=1 */
+		0x02, 0x40,	        /* RCWL ADDR=0x0_0900 */
 		(CFG_HRCW_LOW >> 24) & 0xFF,
 		(CFG_HRCW_LOW >> 16) & 0xFF,
 		(CFG_HRCW_LOW >> 8) & 0xFF,
 		CFG_HRCW_LOW & 0xFF,
-		0x7C, 		        /* ACS=0, BYTE_EN=1111, CONT=1 */
+		0x7C,		        /* ACS=0, BYTE_EN=1111, CONT=1 */
 		0x02, 0x41,	        /* RCWH ADDR=0x0_0904 */
 		(CFG_HRCW_HIGH >> 24) & 0xFF,
 		(CFG_HRCW_HIGH >> 16) & 0xFF,
@@ -383,22 +380,20 @@ int misc_init_r(void)
 	i2c_set_bus_num(orig_bus);
 #endif
 
+#ifdef CONFIG_VSC7385_IMAGE
+	if (vsc7385_upload_firmware((void *) CONFIG_VSC7385_IMAGE,
+		CONFIG_VSC7385_IMAGE_SIZE)) {
+		puts("Failure uploading VSC7385 microcode.\n");
+		rc = 1;
+	}
+#endif
+
 	return rc;
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
 void ft_board_setup(void *blob, bd_t *bd)
 {
-#if defined(CONFIG_OF_FLAT_TREE)
-	u32 *p;
-	int len;
-
-	p = ft_get_prop(blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32(bd->bi_memstart);
-		*p = cpu_to_be32(bd->bi_memsize);
-	}
-#endif
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);

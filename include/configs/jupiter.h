@@ -41,6 +41,8 @@
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
 #define BOOTFLAG_WARM		0x02	/* Software reboot	     */
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
+
 /*
  * Serial console configuration
  */
@@ -58,6 +60,7 @@
 #if defined(CONFIG_PCI)
 #define CONFIG_PCI_PNP		1
 #define CONFIG_PCI_SCAN_SHOW	1
+#define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
 
 #define CONFIG_PCI_MEM_BUS	0x40000000
 #define CONFIG_PCI_MEM_PHYS	CONFIG_PCI_MEM_BUS
@@ -110,7 +113,7 @@
 #define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds */
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -141,7 +144,7 @@
 /*
  * IPB Bus clocking configuration.
  */
-#undef CFG_IPBSPEED_133   	/* define for 133MHz speed */
+#undef CFG_IPBSPEED_133			/* define for 133MHz speed */
 
 #if 0
 /* pass open firmware flat tree */
@@ -188,7 +191,7 @@
 
 #define CFG_MAX_FLASH_BANKS	1	/* max num of flash banks */
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_FLASH_EMPTY_INFO
 #define CFG_FLASH_CFI_WIDTH	FLASH_CFI_8BIT

@@ -26,30 +26,39 @@
 #include <asm/inca-ip.h>
 #include <asm/regdef.h>
 #include <asm/mipsregs.h>
+#include <asm/io.h>
 #include <asm/addrspace.h>
 #include <asm/cacheops.h>
+#include <asm/reboot.h>
 
 #include "sconsole.h"
 
-#define cache_unroll(base,op)	        	\
-	__asm__ __volatile__("	         	\
-		.set noreorder;		        \
-		.set mips3;		        \
-		cache %1, (%0);	                \
-		.set mips0;			\
-		.set reorder"			\
-		:				\
-		: "r" (base),			\
+#define cache_unroll(base,op)		\
+	__asm__ __volatile__("		\
+		.set noreorder;		\
+		.set mips3;		\
+		cache %1, (%0);		\
+		.set mips0;		\
+		.set reorder"		\
+		:			\
+		: "r" (base),		\
 		  "i" (op));
 
 typedef void (*FUNCPTR)(ulong *source, ulong *destination, ulong nlongs);
 
 extern void	asc_serial_init		(void);
-extern void	asc_serial_putc 	(char);
-extern void	asc_serial_puts 	(const char *);
-extern int	asc_serial_getc 	(void);
-extern int	asc_serial_tstc 	(void);
-extern void	asc_serial_setbrg 	(void);
+extern void	asc_serial_putc		(char);
+extern void	asc_serial_puts		(const char *);
+extern int	asc_serial_getc		(void);
+extern int	asc_serial_tstc		(void);
+extern void	asc_serial_setbrg	(void);
+
+void _machine_restart(void)
+{
+	void (*f)(void) = (void *) 0xbfc00000;
+
+	f();
+}
 
 static void sdram_timing_init (ulong size)
 {
@@ -76,16 +85,16 @@ static void sdram_timing_init (ulong size)
 			while (p4 < 32 && done == 0) {
 			    WRITE_MC_IOGP_1;
 
-			    for (addr = KSEG1 + 0x4000;
-				 addr < KSEG1ADDR (size);
+			    for (addr = CKSEG1 + 0x4000;
+				 addr < CKSEG1ADDR (size);
 				 addr = addr + 4) {
 					*(uint *) addr = 0xaa55aa55;
 			    }
 
 			    pass = 1;
 
-			    for (addr = KSEG1 + 0x4000;
-				 addr < KSEG1ADDR (size) && pass == 1;
+			    for (addr = CKSEG1 + 0x4000;
+				 addr < CKSEG1ADDR (size) && pass == 1;
 				 addr = addr + 4) {
 					if (*(uint *) addr != 0xaa55aa55)
 						pass = 0;
@@ -115,7 +124,7 @@ static void sdram_timing_init (ulong size)
 	}
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	/* The only supported number of SDRAM banks is 4.
 	 */
@@ -129,7 +138,7 @@ long int initdram(int board_type)
 	ulong	size	= (1 << (rows + cols)) * (1 << (dw - 1)) * CFG_NB;
 	void (*  sdram_init) (ulong);
 
-	sdram_init = (void (*)(ulong)) KSEG0ADDR(&sdram_timing_init);
+	sdram_init = (void (*)(ulong)) CKSEG0ADDR(&sdram_timing_init);
 
 	sdram_init(0x10000);
 
@@ -144,6 +153,8 @@ int checkboard (void)
 	printf ("Board: Purple PLB 2800 chip version %ld, ", chipid & 0xF);
 
 	printf("CPU Speed %d MHz\n", CPU_CLOCK_RATE/1000000);
+
+	set_io_port_base(0);
 
 	return 0;
 }
@@ -173,8 +184,7 @@ static void copydwords (ulong *source, ulong *destination, ulong nlongs)
 	ulong temp,temp1;
 	ulong *dstend = destination + nlongs;
 
-	while (destination < dstend)
-	{
+	while (destination < dstend) {
 		temp = *source++;
 		/* dummy read from sdram */
 		temp1 = *(ulong *)0xa0000000;
@@ -250,14 +260,14 @@ void copy_code (ulong dest_addr)
 	/* flush caches
 	 */
 
-	start = KSEG0;
+	start = CKSEG0;
 	end = start + CFG_DCACHE_SIZE;
 	while(start < end) {
 		cache_unroll(start,Index_Writeback_Inv_D);
 		start += CFG_CACHELINE_SIZE;
 	}
 
-	start = KSEG0;
+	start = CKSEG0;
 	end = start + CFG_ICACHE_SIZE;
 	while(start < end) {
 		cache_unroll(start,Index_Invalidate_I);

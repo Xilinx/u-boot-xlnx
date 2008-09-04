@@ -50,7 +50,7 @@
 #define CONFIG_BAUDRATE		9600
 #define CFG_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
-#define CONFIG_PREBOOT	"echo;echo Type \"run flash_nfs\" to mount root filesystem over NFS;echo"
+#define CONFIG_PREBOOT	"echo;echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;echo"
 
 #define CONFIG_BOOTCOMMAND	"bootm FE020000"	/* autoboot command	*/
 #define CONFIG_BOOTDELAY	5
@@ -305,7 +305,7 @@
 #define CONFIG_PCI			/* include pci support			*/
 #undef CONFIG_PCI_PNP
 
-#define CONFIG_NET_MULTI		/* Multi ethernet cards support 	*/
+#define CONFIG_NET_MULTI		/* Multi ethernet cards support		*/
 
 #define CONFIG_TULIP
 #define CONFIG_TULIP_USE_IO

@@ -37,8 +37,6 @@
  * linked in U-Boot at build time.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include "cpu_asm.h"
 
@@ -97,6 +95,7 @@ int cpu_post_test_b (void)
 {
     int ret = 0;
     unsigned int i;
+    int flag = disable_interrupts();
 
     if (ret == 0)
     {
@@ -190,8 +189,10 @@ int cpu_post_test_b (void)
 	}
     }
 
+    if (flag)
+	enable_interrupts();
+
     return ret;
 }
 
-#endif
 #endif

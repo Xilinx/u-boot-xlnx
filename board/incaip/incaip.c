@@ -25,9 +25,15 @@
 #include <command.h>
 #include <asm/addrspace.h>
 #include <asm/inca-ip.h>
-
+#include <asm/io.h>
+#include <asm/reboot.h>
 
 extern uint incaip_get_cpuclk(void);
+
+void _machine_restart(void)
+{
+	*INCA_IP_WDT_RST_REQ = 0x3f;
+}
 
 static ulong max_sdram_size(void)
 {
@@ -47,7 +53,7 @@ static ulong max_sdram_size(void)
 	return size;
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	int   rows, cols, best_val = *INCA_IP_SDRAM_MC_CFGPB0;
 	ulong size, max_size       = 0;
@@ -57,7 +63,7 @@ long int initdram(int board_type)
 
 		/* Can't probe for RAM size unless we are running from Flash.
 		 */
-	if (PHYSADDR(our_address) < PHYSADDR(PHYS_FLASH_1))
+	if (CPHYSADDR(our_address) < CPHYSADDR(PHYS_FLASH_1))
 	{
 		return max_sdram_size();
 	}
@@ -85,7 +91,6 @@ long int initdram(int board_type)
 
 int checkboard (void)
 {
-
 	unsigned long chipid = *INCA_IP_WDT_CHIPID;
 	int part_num;
 
@@ -106,6 +111,8 @@ int checkboard (void)
 	printf ("Chip V1.%ld, ", (chipid >> 28));
 
 	printf("CPU Speed %d MHz\n", incaip_get_cpuclk()/1000000);
+
+	set_io_port_base(0);
 
 	return 0;
 }

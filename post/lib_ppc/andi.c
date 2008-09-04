@@ -32,8 +32,6 @@
  * different sets of operand registers and result registers.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include "cpu_asm.h"
 
@@ -51,13 +49,13 @@ static struct cpu_post_andi_s
 } cpu_post_andi_table[] =
 {
     {
-    	OP_ANDI_,
+	OP_ANDI_,
 	0x80008000,
 	0xffff,
 	0x00008000
     },
     {
-    	OP_ANDIS_,
+	OP_ANDIS_,
 	0x80008000,
 	0xffff,
 	0x80000000
@@ -81,7 +79,7 @@ int cpu_post_test_andi (void)
 	    unsigned int reg0 = (reg + 0) % 32;
 	    unsigned int reg1 = (reg + 1) % 32;
 	    unsigned int stk = reg < 16 ? 31 : 15;
-    	    unsigned long codecr[] =
+	    unsigned long codecr[] =
 	    {
 		ASM_STW(stk, 1, -4),
 		ASM_ADDI(stk, 1, -16),
@@ -114,10 +112,9 @@ int cpu_post_test_andi (void)
     }
 
     if (flag)
-    	enable_interrupts();
+	enable_interrupts();
 
     return ret;
 }
 
-#endif
 #endif

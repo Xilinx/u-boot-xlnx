@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2006-2007
+ * (C) Copyright 2006-2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -33,8 +33,8 @@
 #define CONFIG_4xx		1	    /* ... PPC4xx family	*/
 #define CONFIG_BOARD_EARLY_INIT_F 1	    /* Call board_pre_init	*/
 #define CONFIG_LAST_STAGE_INIT	1	    /* call last_stage_init()	*/
-#undef	CFG_DRAM_TEST			    /* Disable-takes long time! */
 #define CONFIG_SYS_CLK_FREQ	33333333    /* external freq to pll	*/
+#define CONFIG_4xx_DCACHE		/* Enable i- and d-cache	*/
 
 /*-----------------------------------------------------------------------
  * Base addresses -- Note these are effective addresses where the
@@ -86,7 +86,7 @@
  * FLASH related
  *----------------------------------------------------------------------*/
 #define CFG_FLASH_CFI		1	/* The flash is CFI compatible		*/
-#define CFG_FLASH_CFI_DRIVER	1	/* Use common CFI driver		*/
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use common CFI driver		*/
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
 #define CFG_MAX_FLASH_SECT	512	/* max number of sectors on one chip	*/
 #define CFG_FLASH_USE_BUFFER_WRITE 1	/* use buffered writes (20x faster)	*/
@@ -144,6 +144,8 @@
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	"netdev=eth3\0"							\
 	"hostname=alpr\0"						\
+	"fdt_file=alpr/alpr.dtb\0"					\
+	"fdt_addr=400000\0"						\
 	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
 		"nfsroot=${serverip}:${rootpath} ${init}\0"		\
 	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
@@ -158,6 +160,10 @@
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
 	"net_nfs=tftp 200000 ${bootfile};run nfsargs addip addtty;"     \
 	        "bootm\0"						\
+	"net_nfs_fdt=tftp 200000 ${bootfile};"				\
+		"tftp ${fdt_addr} ${fdt_file};"				\
+		"run nfsargs addip addtty;"				\
+		"bootm 200000 - ${fdt_addr}\0"				\
 	"rootpath=/opt/projects/alpr/nfs_root\0"			\
 	"bootfile=/alpr/uImage\0"					\
 	"kernel_addr=fff00000\0"					\
@@ -166,7 +172,7 @@
 	"update=protect off fffc0000 ffffffff;era fffc0000 ffffffff;"	\
 		"cp.b 100000 fffc0000 40000;"			        \
 		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"ethprime=ppc_4xx_eth3\0"					\
 	"ethact=ppc_4xx_eth3\0"						\
 	"autoload=no\0"							\
@@ -296,7 +302,9 @@
 /*-----------------------------------------------------------------------
  * FPGA stuff
  *-----------------------------------------------------------------------*/
-#define CONFIG_FPGA             CFG_ALTERA_CYCLON2
+#define CONFIG_FPGA
+#define CONFIG_FPGA_ALTERA
+#define CONFIG_FPGA_CYCLON2
 #define CFG_FPGA_CHECK_CTRLC
 #define CFG_FPGA_PROG_FEEDBACK
 #define CONFIG_FPGA_COUNT       1		/* Ich habe 2 ... aber in
@@ -355,12 +363,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		32768	/* For AMCC 440 CPUs			*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
 
 /*
  * Internal Definitions
@@ -374,4 +376,9 @@
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
 #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
+
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
+
 #endif	/* __CONFIG_H */

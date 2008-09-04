@@ -27,7 +27,7 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	:= dv_board.o
+COBJS	:= $(BOARD).o
 SOBJS	:= board_init.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
@@ -41,7 +41,7 @@ clean:
 	rm -f $(SOBJS) $(OBJS)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak *~ .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 # This is for $(obj).depend target

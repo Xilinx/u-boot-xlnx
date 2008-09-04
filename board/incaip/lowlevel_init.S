@@ -23,7 +23,6 @@
  */
 
 #include <config.h>
-#include <version.h>
 #include <asm/regdef.h>
 
 
@@ -105,7 +104,7 @@ __ebu_init:
 	li	t2, 0x684143FD
 	sw	t2, EBU_BUSCON1(t1)
 3:
-	j	ra
+	jr	ra
 	nop
 
 	.end	ebu_init
@@ -170,7 +169,7 @@ __cgu_init:
 	li	t2, 0x80000001
 	sw	t2, CGU_MUXCR(t1)
 5:
-	j	ra
+	jr	ra
 	nop
 
 	.end	cgu_init
@@ -266,7 +265,7 @@ __sdram_init:
 	li	t2, 0x00000001
 	sw	t2, MC_CTRLENA(t1)
 
-	j	ra
+	jr	ra
 	nop
 
 	.end	sdram_init
@@ -275,6 +274,12 @@ __sdram_init:
 	.globl	lowlevel_init
 	.ent	lowlevel_init
 lowlevel_init:
+
+	/* Disable Watchdog.
+	 */
+	la	t9, disable_incaip_wdt
+	jalr	t9
+	nop
 
 	/* EBU, CGU and SDRAM Initialization.
 	 */
@@ -292,7 +297,7 @@ lowlevel_init:
 	nop
 	move	ra, t0
 
-	j	ra
+	jr	ra
 	nop
 
 	.end	lowlevel_init

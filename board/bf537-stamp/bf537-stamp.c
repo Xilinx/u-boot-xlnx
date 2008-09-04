@@ -30,66 +30,31 @@
 #include <command.h>
 #include <asm/blackfin.h>
 #include <asm/io.h>
-#include "ether_bf537.h"
+#include <net.h>
+#include <asm/mach-common/bits/bootrom.h>
+
+/**
+ * is_valid_ether_addr - Determine if the given Ethernet address is valid
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Check that the Ethernet address (MAC) is not 00:00:00:00:00:00, is not
+ * a multicast address, and is not FF:FF:FF:FF:FF:FF.
+ *
+ * Return true if the address is valid.
+ */
+static inline int is_valid_ether_addr(const u8 * addr)
+{
+	/* FF:FF:FF:FF:FF:FF is a multicast address so we don't need to
+	 * explicitly check for it here. */
+	return !is_multicast_ether_addr(addr) && !is_zero_ether_addr(addr);
+}
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #define POST_WORD_ADDR 0xFF903FFC
 
-/*
- * the bootldr command loads an address, checks to see if there
- *   is a Boot stream that the on-chip BOOTROM can understand,
- *   and loads it via the BOOTROM Callback. It is possible
- *   to also add booting from SPI, or TWI, but this function does
- *   not currently support that.
- */
-int do_bootldr(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
-{
-	ulong addr, entry;
-	ulong *data;
-
-	/* Get the address */
-	if (argc < 2) {
-		addr = load_addr;
-	} else {
-		addr = simple_strtoul(argv[1], NULL, 16);
-	}
-
-	/* Check if it is a LDR file */
-	data = (ulong *) addr;
-	if (*data == 0xFF800060 || *data == 0xFF800040 || *data == 0xFF800020) {
-		/* We want to boot from FLASH or SDRAM */
-		entry = _BOOTROM_BOOT_DXE_FLASH;
-		printf("## Booting ldr image at 0x%08lx ...\n", addr);
-		if (icache_status())
-			icache_disable();
-		if (dcache_status())
-			dcache_disable();
-
-	      __asm__("R7=%[a];\n" "P0=%[b];\n" "JUMP (P0);\n":
-	      :[a] "d"(addr),[b] "a"(entry)
-	      :"R7", "P0");
-
-	} else {
-		printf("## No ldr image at address 0x%08lx\n", addr);
-	}
-
-	return 0;
-}
-
-U_BOOT_CMD(bootldr, 2, 0, do_bootldr,
-	   "bootldr - boot ldr image from memory\n",
-	   "[addr]\n         - boot ldr image stored in memory\n");
-
 int checkboard(void)
 {
-#if (BFIN_CPU == ADSP_BF534)
-	printf("CPU:   ADSP BF534 Rev.: 0.%d\n", *pCHIPID >> 28);
-#elif (BFIN_CPU == ADSP_BF536)
-	printf("CPU:   ADSP BF536 Rev.: 0.%d\n", *pCHIPID >> 28);
-#else
-	printf("CPU:   ADSP BF537 Rev.: 0.%d\n", *pCHIPID >> 28);
-#endif
 	printf("Board: ADI BF537 stamp board\n");
 	printf("       Support: http://blackfin.uclinux.org/\n");
 	return 0;
@@ -100,7 +65,7 @@ int checkboard(void)
 void cf_outb(unsigned char val, volatile unsigned char *addr)
 {
 	*(addr) = val;
-	sync();
+	SSYNC();
 }
 
 unsigned char cf_inb(volatile unsigned char *addr)
@@ -108,7 +73,7 @@ unsigned char cf_inb(volatile unsigned char *addr)
 	volatile unsigned char c;
 
 	c = *(addr);
-	sync();
+	SSYNC();
 
 	return c;
 }
@@ -119,7 +84,7 @@ void cf_insw(unsigned short *sect_buf, unsigned short *addr, int words)
 
 	for (i = 0; i < words; i++)
 		*(sect_buf + i) = *(addr);
-	sync();
+	SSYNC();
 }
 
 void cf_outsw(unsigned short *addr, unsigned short *sect_buf, int words)
@@ -128,11 +93,11 @@ void cf_outsw(unsigned short *addr, unsigned short *sect_buf, int words)
 
 	for (i = 0; i < words; i++)
 		*(addr) = *(sect_buf + i);
-	sync();
+	SSYNC();
 }
 #endif				/* CONFIG_BFIN_IDE */
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 #ifdef DEBUG
 	int brate;
@@ -155,12 +120,10 @@ long int initdram(int board_type)
 /* miscellaneous platform dependent initialisations */
 int misc_init_r(void)
 {
-#if (BFIN_BOOT_MODE == BF537_BYPASS_BOOT)
+#if defined(CONFIG_CMD_NET)
 	char nid[32];
 	unsigned char *pMACaddr = (unsigned char *)0x203F0000;
-	u8 SrcAddr[6] = { 0x02, 0x80, 0xAD, 0x20, 0x31, 0xB8 };
 
-#if defined(CONFIG_CMD_NET)
 	/* The 0xFF check here is to make sure we don't use the address
 	 * in flash if it's simply been erased (aka all 0xFF values) */
 	if (getenv("ethaddr") == NULL && is_valid_ether_addr(pMACaddr)) {
@@ -169,11 +132,7 @@ int misc_init_r(void)
 			pMACaddr[2], pMACaddr[3], pMACaddr[4], pMACaddr[5]);
 		setenv("ethaddr", nid);
 	}
-	if (getenv("ethaddr")) {
-		SetupMacAddr(SrcAddr);
-	}
 #endif
-#endif				/* BFIN_BOOT_MODE == BF537_BYPASS_BOOT */
 
 #if defined(CONFIG_BFIN_IDE)
 #if defined(CONFIG_BFIN_TRUE_IDE)
@@ -195,14 +154,17 @@ int misc_init_r(void)
 }
 #endif				/* CONFIG_MISC_INIT_R */
 
-#ifdef CONFIG_POST
-#if (BFIN_BOOT_MODE != BF537_BYPASS_BOOT)
-/* Using sw10-PF5 as the hotkey */
-int post_hotkeys_pressed(void)
+#if defined(CONFIG_BFIN_MAC)
+
+extern int bfin_EMAC_initialize(bd_t *bis);
+
+int board_eth_init(bd_t *bis)
 {
-	return 0;
+	return bfin_EMAC_initialize(bis);
 }
-#else
+#endif
+
+#ifdef CONFIG_POST
 /* Using sw10-PF5 as the hotkey */
 int post_hotkeys_pressed(void)
 {
@@ -234,7 +196,6 @@ int post_hotkeys_pressed(void)
 		return 1;
 	}
 }
-#endif
 #endif
 
 #if defined(CONFIG_POST) || defined(CONFIG_LOGBUFFER)

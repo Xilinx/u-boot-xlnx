@@ -57,7 +57,7 @@
 #define CONFIG_NETMASK		255.255.0.0
 #define CONFIG_HOSTNAME		idmr
 #define CONFIG_BOOTFILE		/tftpboot/idmr/uImage
-#define CONFIG_PREBOOT		"echo;echo Type \"run flash_nfs\" to mount root " \
+#define CONFIG_PREBOOT		"echo;echo Type \\\"run flash_nfs\\\" to mount root " \
 				"filesystem over NFS; echo"
 
 #define CONFIG_MCFTMR
@@ -156,14 +156,15 @@
 #define CONFIG_MCFFEC
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_NET_MULTI		1
-#define CONFIG_MII		1
+#	define CONFIG_MII		1
+#	define CONFIG_MII_INIT		1
 #	define CFG_DISCOVER_PHY
 #	define CFG_RX_ETH_BUFFER	8
 #	define CFG_FAULT_ECHO_LINK_DOWN
 
 #	define CFG_FEC0_PINMUX		0
 #	define CFG_FEC0_MIIBASE		CFG_FEC0_IOBASE
-#	define MCFFEC_TOUT_LOOP 	50000
+#	define MCFFEC_TOUT_LOOP		50000
 /* If CFG_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CFG_DISCOVER_PHY
 #		define FECDUPLEX	FULL

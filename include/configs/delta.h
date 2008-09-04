@@ -123,6 +123,8 @@
 #define CONFIG_USB_STORAGE      1
 #define CONFIG_DOS_PARTITION    1
 
+#include <asm/arch/pxa-regs.h> /* for OHCI_REGS_BASE */
+
 #undef CFG_USB_OHCI_BOARD_INIT
 #define CFG_USB_OHCI_CPU_INIT	1
 #define CFG_USB_OHCI_REGS_BASE	OHCI_REGS_BASE
@@ -215,7 +217,7 @@
 /*
  * NAND Flash
  */
-#undef CFG_NAND_LEGACY
+#undef CONFIG_NAND_LEGACY
 
 #define CFG_NAND0_BASE		0x0 /* 0x43100040 */ /* 0x10000000 */
 #undef CFG_NAND1_BASE

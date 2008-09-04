@@ -52,14 +52,6 @@
 # include <status_led.h>
 #endif
 
-#ifndef __PPC__
-#include <asm/io.h>
-#ifdef __MIPS__
-/* Macros depend on this variable */
-unsigned long mips_io_port_base = 0;
-#endif
-#endif
-
 #ifdef CONFIG_IDE_8xx_DIRECT
 DECLARE_GLOBAL_DATA_PTR;
 #endif
@@ -71,8 +63,6 @@ DECLARE_GLOBAL_DATA_PTR;
 # define EIEIO		/* nothing */
 # define SYNC		/* nothing */
 #endif
-
-#if defined(CONFIG_CMD_IDE)
 
 #ifdef CONFIG_IDE_8xx_DIRECT
 /* Timings for IDE Interface
@@ -171,8 +161,6 @@ static uchar ide_wait  (int dev, ulong t);
 
 #define IDE_SPIN_UP_TIME_OUT 5000 /* 5 sec spin-up timeout */
 
-void inline ide_outb(int dev, int port, unsigned char val);
-unsigned char inline ide_inb(int dev, int port);
 static void input_data(int dev, ulong *sect_buf, int words);
 static void output_data(int dev, ulong *sect_buf, int words);
 static void ident_cpy (unsigned char *dest, unsigned char *src, unsigned int len);
@@ -308,7 +296,7 @@ int do_ide (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		ulong addr = simple_strtoul(argv[2], NULL, 16);
 		ulong cnt  = simple_strtoul(argv[4], NULL, 16);
 		ulong n;
-#ifdef CFG_64BIT_STRTOUL
+#ifdef CFG_64BIT_LBA
 		lbaint_t blk  = simple_strtoull(argv[3], NULL, 16);
 
 		printf ("\nIDE read: device %d block # %qd, count %ld ... ",
@@ -337,7 +325,7 @@ int do_ide (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		ulong addr = simple_strtoul(argv[2], NULL, 16);
 		ulong cnt  = simple_strtoul(argv[4], NULL, 16);
 		ulong n;
-#ifdef CFG_64BIT_STRTOUL
+#ifdef CFG_64BIT_LBA
 		lbaint_t blk  = simple_strtoull(argv[3], NULL, 16);
 
 		printf ("\nIDE write: device %d block # %qd, count %ld ... ",
@@ -372,10 +360,13 @@ int do_diskboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	char *boot_device = NULL;
 	char *ep;
 	int dev, part = 0;
-	ulong addr, cnt, checksum;
+	ulong addr, cnt;
 	disk_partition_t info;
 	image_header_t *hdr;
 	int rcode = 0;
+#if defined(CONFIG_FIT)
+	const void *fit_hdr = NULL;
+#endif
 
 	show_boot_progress (41);
 	switch (argc) {
@@ -452,29 +443,37 @@ int do_diskboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 	show_boot_progress (48);
 
-	hdr = (image_header_t *)addr;
+	switch (genimg_get_format ((void *)addr)) {
+	case IMAGE_FORMAT_LEGACY:
+		hdr = (image_header_t *)addr;
 
-	if (ntohl(hdr->ih_magic) != IH_MAGIC) {
-		printf("\n** Bad Magic Number **\n");
+		show_boot_progress (49);
+
+		if (!image_check_hcrc (hdr)) {
+			puts ("\n** Bad Header Checksum **\n");
+			show_boot_progress (-50);
+			return 1;
+		}
+		show_boot_progress (50);
+
+		image_print_contents (hdr);
+
+		cnt = image_get_image_size (hdr);
+		break;
+#if defined(CONFIG_FIT)
+	case IMAGE_FORMAT_FIT:
+		fit_hdr = (const void *)addr;
+		puts ("Fit image detected...\n");
+
+		cnt = fit_get_size (fit_hdr);
+		break;
+#endif
+	default:
 		show_boot_progress (-49);
+		puts ("** Unknown image type\n");
 		return 1;
 	}
-	show_boot_progress (49);
 
-	checksum = ntohl(hdr->ih_hcrc);
-	hdr->ih_hcrc = 0;
-
-	if (crc32 (0, (uchar *)hdr, sizeof(image_header_t)) != checksum) {
-		puts ("\n** Bad Header Checksum **\n");
-		show_boot_progress (-50);
-		return 1;
-	}
-	show_boot_progress (50);
-	hdr->ih_hcrc = htonl(checksum); /* restore checksum for later use */
-
-	print_image_hdr (hdr);
-
-	cnt = (ntohl(hdr->ih_size) + sizeof(image_header_t));
 	cnt += info.blksz - 1;
 	cnt /= info.blksz;
 	cnt -= 1;
@@ -487,6 +486,18 @@ int do_diskboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 	show_boot_progress (51);
 
+#if defined(CONFIG_FIT)
+	/* This cannot be done earlier, we need complete FIT image in RAM first */
+	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
+		if (!fit_check_format (fit_hdr)) {
+			show_boot_progress (-140);
+			puts ("** Bad FIT image format\n");
+			return 1;
+		}
+		show_boot_progress (141);
+		fit_print_contents (fit_hdr);
+	}
+#endif
 
 	/* Loading ok, update default load address */
 
@@ -509,6 +520,38 @@ int do_diskboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 /* ------------------------------------------------------------------------- */
+
+void inline
+__ide_outb(int dev, int port, unsigned char val)
+{
+	debug ("ide_outb (dev= %d, port= 0x%x, val= 0x%02x) : @ 0x%08lx\n",
+		dev, port, val, (ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)));
+	outb(val, (ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)));
+}
+void inline ide_outb (int dev, int port, unsigned char val)
+		__attribute__((weak, alias("__ide_outb")));
+
+unsigned char inline
+__ide_inb(int dev, int port)
+{
+	uchar val;
+	val = inb((ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)));
+	debug ("ide_inb (dev= %d, port= 0x%x) : @ 0x%08lx -> 0x%02x\n",
+		dev, port, (ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)), val);
+	return val;
+}
+unsigned char inline ide_inb(int dev, int port)
+			__attribute__((weak, alias("__ide_inb")));
+
+#ifdef CONFIG_TUNE_PIO
+int inline
+__ide_set_piomode(int pio_mode)
+{
+	return 0;
+}
+int inline ide_set_piomode(int pio_mode)
+			__attribute__((weak, alias("__ide_set_piomode")));
+#endif
 
 void ide_init (void)
 {
@@ -804,28 +847,6 @@ set_pcmcia_timing (int pmode)
 
 /* ------------------------------------------------------------------------- */
 
-void inline
-__ide_outb(int dev, int port, unsigned char val)
-{
-	debug ("ide_outb (dev= %d, port= 0x%x, val= 0x%02x) : @ 0x%08lx\n",
-		dev, port, val, (ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)));
-	outb(val, (ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)));
-}
-void inline ide_outb (int dev, int port, unsigned char val)
-		__attribute__((weak, alias("__ide_outb")));
-
-unsigned char inline
-__ide_inb(int dev, int port)
-{
-	uchar val;
-	val = inb((ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)));
-	debug ("ide_inb (dev= %d, port= 0x%x) : @ 0x%08lx -> 0x%02x\n",
-		dev, port, (ATA_CURR_BASE(dev)+CFG_ATA_PORT_ADDR(port)), val);
-	return val;
-}
-unsigned char inline ide_inb(int dev, int port)
-			__attribute__((weak, alias("__ide_inb")));
-
 #ifdef __PPC__
 # ifdef CONFIG_AMIGAONEG3SE
 static void
@@ -892,7 +913,7 @@ input_swap_data(int dev, ulong *sect_buf, int words)
 #endif	/* __LITTLE_ENDIAN || CONFIG_AU1X00 */
 
 
-#if defined(__PPC__) || defined(CONFIG_PXA_PCMCIA)
+#if defined(__PPC__) || defined(CONFIG_PXA_PCMCIA) || defined(CONFIG_SH)
 static void
 output_data(int dev, ulong *sect_buf, int words)
 {
@@ -944,7 +965,7 @@ output_data(int dev, ulong *sect_buf, int words)
 }
 #endif	/* __PPC__ */
 
-#if defined(__PPC__) || defined(CONFIG_PXA_PCMCIA)
+#if defined(__PPC__) || defined(CONFIG_PXA_PCMCIA) || defined(CONFIG_SH)
 static void
 input_data(int dev, ulong *sect_buf, int words)
 {
@@ -1042,6 +1063,10 @@ static void ide_ident (block_dev_desc_t *dev_desc)
 	int do_retry = 0;
 #endif
 
+#ifdef CONFIG_TUNE_PIO
+	int pio_mode;
+#endif
+
 #if 0
 	int mode, cycle_time;
 #endif
@@ -1136,9 +1161,9 @@ static void ide_ident (block_dev_desc_t *dev_desc)
 
 	input_swap_data (device, iobuf, ATA_SECTORWORDS);
 
-	ident_cpy (dev_desc->revision, iop->fw_rev, sizeof(dev_desc->revision));
-	ident_cpy (dev_desc->vendor, iop->model, sizeof(dev_desc->vendor));
-	ident_cpy (dev_desc->product, iop->serial_no, sizeof(dev_desc->product));
+	ident_cpy ((unsigned char*)dev_desc->revision, iop->fw_rev, sizeof(dev_desc->revision));
+	ident_cpy ((unsigned char*)dev_desc->vendor, iop->model, sizeof(dev_desc->vendor));
+	ident_cpy ((unsigned char*)dev_desc->product, iop->serial_no, sizeof(dev_desc->product));
 #ifdef __LITTLE_ENDIAN
 	/*
 	 * firmware revision and model number have Big Endian Byte
@@ -1156,6 +1181,38 @@ static void ide_ident (block_dev_desc_t *dev_desc)
 		dev_desc->removable = 1;
 	else
 		dev_desc->removable = 0;
+
+#ifdef CONFIG_TUNE_PIO
+	/* Mode 0 - 2 only, are directly determined by word 51. */
+	pio_mode = iop->tPIO;
+	if (pio_mode > 2) {
+		printf("WARNING: Invalid PIO (word 51 = %d).\n", pio_mode);
+		pio_mode = 0; /* Force it to dead slow, and hope for the best... */
+	}
+
+	/* Any CompactFlash Storage Card that supports PIO mode 3 or above
+	 * shall set bit 1 of word 53 to one and support the fields contained
+	 * in words 64 through 70.
+	 */
+	if (iop->field_valid & 0x02) {
+		/* Mode 3 and above are possible.  Check in order from slow
+		 * to fast, so we wind up with the highest mode allowed.
+		 */
+		if (iop->eide_pio_modes & 0x01)
+			pio_mode = 3;
+		if (iop->eide_pio_modes & 0x02)
+			pio_mode = 4;
+		if (ata_id_is_cfa((u16 *)iop)) {
+			if ((iop->cf_advanced_caps & 0x07) == 0x01)
+				pio_mode = 5;
+			if ((iop->cf_advanced_caps & 0x07) == 0x02)
+				pio_mode = 6;
+		}
+	}
+
+	/* System-specific, depends on bus speeds, etc. */
+	ide_set_piomode(pio_mode);
+#endif /* CONFIG_TUNE_PIO */
 
 #if 0
 	/*
@@ -1221,7 +1278,7 @@ static void ide_ident (block_dev_desc_t *dev_desc)
 	dev_desc->blksz=ATA_BLOCKSIZE;
 	dev_desc->lun=0; /* just to fill something in... */
 
-#if 0 	/* only used to test the powersaving mode,
+#if 0	/* only used to test the powersaving mode,
 	 * if enabled, the drive goes after 5 sec
 	 * in standby mode */
 	ide_outb (device, ATA_DEV_HD, ATA_LBA | ATA_DEVICE(device));
@@ -1248,7 +1305,7 @@ ulong ide_read (int device, lbaint_t blknr, ulong blkcnt, void *buffer)
 #ifdef CONFIG_LBA48
 	unsigned char lba48 = 0;
 
-	if (blknr & 0x0000fffff0000000) {
+	if (blknr & 0x0000fffff0000000ULL) {
 		/* more than 28 bits used, use 48bit mode */
 		lba48 = 1;
 	}
@@ -1302,8 +1359,13 @@ ulong ide_read (int device, lbaint_t blknr, ulong blkcnt, void *buffer)
 			/* write high bits */
 			ide_outb (device, ATA_SECT_CNT, 0);
 			ide_outb (device, ATA_LBA_LOW,	(blknr >> 24) & 0xFF);
+#ifdef CFG_64BIT_LBA
 			ide_outb (device, ATA_LBA_MID,	(blknr >> 32) & 0xFF);
 			ide_outb (device, ATA_LBA_HIGH, (blknr >> 40) & 0xFF);
+#else
+			ide_outb (device, ATA_LBA_MID,	0);
+			ide_outb (device, ATA_LBA_HIGH, 0);
+#endif
 		}
 #endif
 		ide_outb (device, ATA_SECT_CNT, 1);
@@ -1367,7 +1429,7 @@ ulong ide_write (int device, lbaint_t blknr, ulong blkcnt, void *buffer)
 #ifdef CONFIG_LBA48
 	unsigned char lba48 = 0;
 
-	if (blknr & 0x0000fffff0000000) {
+	if (blknr & 0x0000fffff0000000ULL) {
 		/* more than 28 bits used, use 48bit mode */
 		lba48 = 1;
 	}
@@ -1392,8 +1454,13 @@ ulong ide_write (int device, lbaint_t blknr, ulong blkcnt, void *buffer)
 			/* write high bits */
 			ide_outb (device, ATA_SECT_CNT, 0);
 			ide_outb (device, ATA_LBA_LOW,	(blknr >> 24) & 0xFF);
+#ifdef CFG_64BIT_LBA
 			ide_outb (device, ATA_LBA_MID,	(blknr >> 32) & 0xFF);
 			ide_outb (device, ATA_LBA_HIGH, (blknr >> 40) & 0xFF);
+#else
+			ide_outb (device, ATA_LBA_MID,	0);
+			ide_outb (device, ATA_LBA_HIGH, 0);
+#endif
 		}
 #endif
 		ide_outb (device, ATA_SECT_CNT, 1);
@@ -1512,6 +1579,9 @@ static void ide_reset (void)
 		ide_dev_desc[i].type = DEV_TYPE_UNKNOWN;
 
 	ide_set_reset (1); /* assert reset */
+
+	/* the reset signal shall be asserted for et least 25 us */
+	udelay(25);
 
 	WATCHDOG_RESET();
 
@@ -1752,13 +1822,13 @@ unsigned char atapi_issue(int device,unsigned char* ccb,int ccblen, unsigned cha
 	c = atapi_wait_mask(device,ATAPI_TIME_OUT,mask,res);
 
 	if ((c & mask) != res) { /* DRQ must be 1, BSY 0 */
-		printf ("ATTAPI_ISSUE: Error (no IRQ) before sending ccb dev %d status 0x%02x\n",device,c);
+		printf ("ATAPI_ISSUE: Error (no IRQ) before sending ccb dev %d status 0x%02x\n",device,c);
 		err=0xFF;
 		goto AI_OUT;
 	}
 
 	output_data_shorts (device, (unsigned short *)ccb,ccblen/2); /* write command block */
- 	/* ATAPI Command written wait for completition */
+	/* ATAPI Command written wait for completition */
 	udelay (5000); /* device must set bsy */
 
 	mask = ATA_STAT_DRQ|ATA_STAT_BUSY|ATA_STAT_ERR;
@@ -1773,7 +1843,7 @@ unsigned char atapi_issue(int device,unsigned char* ccb,int ccblen, unsigned cha
 			err=(ide_inb(device,ATA_ERROR_REG))>>4;
 			debug ("atapi_issue 1 returned sense key %X status %02X\n",err,c);
 		} else {
-			printf ("ATTAPI_ISSUE: (no DRQ) after sending ccb (%x)  status 0x%02x\n", ccb[0],c);
+			printf ("ATAPI_ISSUE: (no DRQ) after sending ccb (%x)  status 0x%02x\n", ccb[0],c);
 			err=0xFF;
 		}
 		goto AI_OUT;
@@ -1827,7 +1897,7 @@ AI_OUT:
  * returns, an request_sense will be issued
  */
 
-#define ATAPI_DRIVE_NOT_READY 	100
+#define ATAPI_DRIVE_NOT_READY	100
 #define ATAPI_UNIT_ATTN		10
 
 unsigned char atapi_issue_autoreq (int device,
@@ -1953,9 +2023,9 @@ static void	atapi_inquiry(block_dev_desc_t * dev_desc)
 		return;
 
 	/* copy device ident strings */
-	ident_cpy(dev_desc->vendor,&iobuf[8],8);
-	ident_cpy(dev_desc->product,&iobuf[16],16);
-	ident_cpy(dev_desc->revision,&iobuf[32],5);
+	ident_cpy((unsigned char*)dev_desc->vendor,&iobuf[8],8);
+	ident_cpy((unsigned char*)dev_desc->product,&iobuf[16],16);
+	ident_cpy((unsigned char*)dev_desc->revision,&iobuf[32],5);
 
 	dev_desc->lun=0;
 	dev_desc->lba=0;
@@ -2085,5 +2155,3 @@ U_BOOT_CMD(
 	"diskboot- boot from IDE device\n",
 	"loadAddr dev:part\n"
 );
-
-#endif

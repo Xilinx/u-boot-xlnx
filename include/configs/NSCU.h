@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2000-2005
+ * (C) Copyright 2000-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -48,7 +48,7 @@
 #define CONFIG_BOARD_TYPES	1	/* support board types		*/
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -67,9 +67,16 @@
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
 	"net_nfs=tftp 200000 ${bootfile};run nfsargs addip;bootm\0"	\
 	"rootpath=/opt/eldk/ppc_8xx\0"					\
-	"bootfile=/tftpboot/NSCU/uImage\0"				\
+	"hostname=NSCU\0"						\
+	"bootfile=${hostname}/uImage\0"					\
 	"kernel_addr=40080000\0"					\
 	"ramdisk_addr=40180000\0"					\
+	"u-boot=${hostname}/u-image.bin\0"				\
+	"load=tftp 200000 ${u-boot}\0"					\
+	"update=prot off 40000000 +${filesize};"			\
+		"era 40000000 +${filesize};"				\
+		"cp.b 200000 40000000 ${filesize};"			\
+		"sete filesize;save\0"					\
 	""
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
@@ -110,9 +117,13 @@
 #define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
+#define CONFIG_CMD_ELF
 #define CONFIG_CMD_IDE
 #define CONFIG_CMD_NFS
 #define CONFIG_CMD_SNTP
+
+
+#define CONFIG_NETCONSOLE
 
 
 /*
@@ -121,9 +132,9 @@
 #define	CFG_LONGHELP			/* undef to save memory		*/
 #define	CFG_PROMPT		"=> "	/* Monitor Command Prompt	*/
 
-#if 0
+#define CONFIG_CMDLINE_EDITING	1	/* add command line history
+*/
 #define	CFG_HUSH_PARSER		1	/* use "hush" command parser	*/
-#endif
 #ifdef	CFG_HUSH_PARSER
 #define	CFG_PROMPT_HUSH_PS2	"> "
 #endif
@@ -186,20 +197,25 @@
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
-#define CFG_MAX_FLASH_SECT	256	/* max number of sectors on one chip	*/
 
-#define CFG_FLASH_ERASE_TOUT	120000	/* Timeout for Flash Erase (in ms)	*/
-#define CFG_FLASH_WRITE_TOUT	500	/* Timeout for Flash Write (in ms)	*/
+/* use CFI flash driver */
+#define CFG_FLASH_CFI		1	/* Flash is CFI conformant */
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver */
+#define CFG_FLASH_BANKS_LIST	{ CFG_FLASH_BASE, CFG_FLASH_BASE+flash_info[0].size }
+#define CFG_FLASH_EMPTY_INFO
+#define CFG_FLASH_USE_BUFFER_WRITE	1
+#define CFG_MAX_FLASH_BANKS	2	/* max number of memory banks */
+#define CFG_MAX_FLASH_SECT	71	/* max number of sectors on one chip */
 
 #define	CFG_ENV_IS_IN_FLASH	1
-#define	CFG_ENV_OFFSET		0x40000	/*   Offset   of Environment Sector	*/
-#define	CFG_ENV_SIZE		0x08000	/* Total Size of Environment Sector	*/
-#define	CFG_ENV_SECT_SIZE	0x20000	/* Total Size of Environment Sector	*/
+#define	CFG_ENV_OFFSET		0x8000	/*   Offset   of Environment Sector	*/
+#define	CFG_ENV_SIZE		0x4000	/* Total Size of Environment Sector	*/
 
 /* Address and size of Redundant Environment Sector	*/
-#define CFG_ENV_OFFSET_REDUND	(CFG_ENV_OFFSET+CFG_ENV_SECT_SIZE)
+#define CFG_ENV_OFFSET_REDUND	(CFG_ENV_OFFSET+CFG_ENV_SIZE)
 #define CFG_ENV_SIZE_REDUND	(CFG_ENV_SIZE)
+
+#define	CFG_USE_PPCENV			/* Environment embedded in sect .ppcenv */
 
 /*-----------------------------------------------------------------------
  * Hardware Information Block
@@ -295,8 +311,8 @@
 #define CFG_PCMCIA_ATTRB_SIZE	( 64 << 20 )
 #define CFG_PCMCIA_IO_ADDR	(0xEC000000)
 #define CFG_PCMCIA_IO_SIZE	( 64 << 20 )
-#define PCMCIA_MEM_WIN_NO 	8 /* override default 4 in pcmcia.h */
-#define	PCMCIA_SOCKETS_NO 	2 /* we have two sockets */
+#define PCMCIA_MEM_WIN_NO	8 /* override default 4 in pcmcia.h */
+#define	PCMCIA_SOCKETS_NO	2 /* we have two sockets */
 #undef	NSCU_OE_INV		/* PCMCIA_GCRX_CXOE was inverted on early boards */
 
 /*-----------------------------------------------------------------------

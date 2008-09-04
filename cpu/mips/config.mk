@@ -20,9 +20,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 #
-v=$(shell \
-$(CROSS_COMPILE)as --version|grep "GNU assembler"|awk '{print $$3}'|awk -F . '{print $$2}')
-MIPSFLAGS=$(shell \
+v=$(shell $(AS) --version | grep 'GNU assembler' | egrep -o '2\.[0-9\.]+' | cut -d. -f2)
+MIPSFLAGS:=$(shell \
 if [ "$v" -lt "14" ]; then \
 	echo "-mcpu=4kc"; \
 else \
@@ -35,6 +34,6 @@ else
 ENDIANNESS = -EB
 endif
 
-MIPSFLAGS += $(ENDIANNESS) -mabicalls
+MIPSFLAGS += $(ENDIANNESS)
 
 PLATFORM_CPPFLAGS += $(MIPSFLAGS)

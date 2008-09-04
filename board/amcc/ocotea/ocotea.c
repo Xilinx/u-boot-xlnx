@@ -147,36 +147,48 @@ int board_early_init_f (void)
 	/*--------------------------------------------------------------------
 	 * Setup the interrupt controller polarities, triggers, etc.
 	 *-------------------------------------------------------------------*/
-	mtdcr (uic0sr, 0xffffffff);	/* clear all */
-	mtdcr (uic0er, 0x00000000);	/* disable all */
-	mtdcr (uic0cr, 0x00000009);	/* SMI & UIC1 crit are critical */
-	mtdcr (uic0pr, 0xfffffe13);	/* per ref-board manual */
-	mtdcr (uic0tr, 0x01c00008);	/* per ref-board manual */
-	mtdcr (uic0vr, 0x00000001);	/* int31 highest, base=0x000 */
-	mtdcr (uic0sr, 0xffffffff);	/* clear all */
-
+	/*
+	 * Because of the interrupt handling rework to handle 440GX interrupts
+	 * with the common code, we needed to change names of the UIC registers.
+	 * Here the new relationship:
+	 *
+	 * U-Boot name	440GX name
+	 * -----------------------
+	 * UIC0		UICB0
+	 * UIC1		UIC0
+	 * UIC2		UIC1
+	 * UIC3		UIC2
+	 */
 	mtdcr (uic1sr, 0xffffffff);	/* clear all */
 	mtdcr (uic1er, 0x00000000);	/* disable all */
-	mtdcr (uic1cr, 0x00000000);	/* all non-critical */
-	mtdcr (uic1pr, 0xffffe0ff);	/* per ref-board manual */
-	mtdcr (uic1tr, 0x00ffc000);	/* per ref-board manual */
+	mtdcr (uic1cr, 0x00000009);	/* SMI & UIC1 crit are critical */
+	mtdcr (uic1pr, 0xfffffe13);	/* per ref-board manual */
+	mtdcr (uic1tr, 0x01c00008);	/* per ref-board manual */
 	mtdcr (uic1vr, 0x00000001);	/* int31 highest, base=0x000 */
 	mtdcr (uic1sr, 0xffffffff);	/* clear all */
 
 	mtdcr (uic2sr, 0xffffffff);	/* clear all */
 	mtdcr (uic2er, 0x00000000);	/* disable all */
 	mtdcr (uic2cr, 0x00000000);	/* all non-critical */
-	mtdcr (uic2pr, 0xffffffff);	/* per ref-board manual */
-	mtdcr (uic2tr, 0x00ff8c0f);	/* per ref-board manual */
+	mtdcr (uic2pr, 0xffffe0ff);	/* per ref-board manual */
+	mtdcr (uic2tr, 0x00ffc000);	/* per ref-board manual */
 	mtdcr (uic2vr, 0x00000001);	/* int31 highest, base=0x000 */
 	mtdcr (uic2sr, 0xffffffff);	/* clear all */
 
-	mtdcr (uicb0sr, 0xfc000000); /* clear all */
-	mtdcr (uicb0er, 0x00000000); /* disable all */
-	mtdcr (uicb0cr, 0x00000000); /* all non-critical */
-	mtdcr (uicb0pr, 0xfc000000); /* */
-	mtdcr (uicb0tr, 0x00000000); /* */
-	mtdcr (uicb0vr, 0x00000001); /* */
+	mtdcr (uic3sr, 0xffffffff);	/* clear all */
+	mtdcr (uic3er, 0x00000000);	/* disable all */
+	mtdcr (uic3cr, 0x00000000);	/* all non-critical */
+	mtdcr (uic3pr, 0xffffffff);	/* per ref-board manual */
+	mtdcr (uic3tr, 0x00ff8c0f);	/* per ref-board manual */
+	mtdcr (uic3vr, 0x00000001);	/* int31 highest, base=0x000 */
+	mtdcr (uic3sr, 0xffffffff);	/* clear all */
+
+	mtdcr (uic0sr, 0xfc000000); /* clear all */
+	mtdcr (uic0er, 0x00000000); /* disable all */
+	mtdcr (uic0cr, 0x00000000); /* all non-critical */
+	mtdcr (uic0pr, 0xfc000000); /* */
+	mtdcr (uic0tr, 0x00000000); /* */
+	mtdcr (uic0vr, 0x00000001); /* */
 	mfsdr (sdr_mfr, mfr);
 	mfr &= ~SDR0_MFR_ECS_MASK;
 /*	mtsdr(sdr_mfr, mfr); */
@@ -201,7 +213,7 @@ int checkboard (void)
 }
 
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long dram_size = 0;
 
@@ -213,36 +225,6 @@ long int initdram (int board_type)
 	return dram_size;
 }
 
-
-#if defined(CFG_DRAM_TEST)
-int testdram (void)
-{
-	uint *pstart = (uint *) 0x00000000;
-	uint *pend = (uint *) 0x08000000;
-	uint *p;
-
-	for (p = pstart; p < pend; p++)
-		*p = 0xaaaaaaaa;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0xaaaaaaaa) {
-			printf ("SDRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-
-	for (p = pstart; p < pend; p++)
-		*p = 0x55555555;
-
-	for (p = pstart; p < pend; p++) {
-		if (*p != 0x55555555) {
-			printf ("SDRAM test fails at: %08x\n", (uint) p);
-			return 1;
-		}
-	}
-	return 0;
-}
-#endif
 
 #if !defined(CONFIG_SPD_EEPROM)
 /*************************************************************************

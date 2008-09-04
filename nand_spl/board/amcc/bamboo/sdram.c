@@ -36,7 +36,7 @@ static void wait_init_complete(void)
 }
 
 /*
- * early_sdram_init()
+ * phys_size_t initdram(int board_type)
  *
  * As the name already indicates, this function is called very early
  * from start.S and configures the SDRAM with fixed values. This is needed,
@@ -44,8 +44,14 @@ static void wait_init_complete(void)
  * not enough free space to implement the complete I2C SPD DDR autodetection
  * routines. Therefore the Bamboo only supports the onboard 64MBytes of SDRAM
  * when booting from NAND flash.
+ *
+ * Note:
+ * As found out by Eugene O'Brien <eugene.obrien@advantechamt.com>, the fixed
+ * DDR setup has problems (U-Boot crashes randomly upon TFTP), when the DIMM
+ * modules are still plugged in. So it is recommended to remove the DIMM
+ * modules while using the NAND booting code with the fixed SDRAM setup!
  */
-void early_sdram_init(void)
+phys_size_t initdram(int board_type)
 {
 	/*
 	 * Soft-reset SDRAM controller.
@@ -81,12 +87,6 @@ void early_sdram_init(void)
 	 */
 	mtsdram(mem_cfg0, 0x80000000); /* DCEN=1, PMUD=0*/
 	wait_init_complete();
-}
 
-long int initdram(int board_type)
-{
-	/*
-	 * Nothing to do here, just return size of fixed SDRAM setup
-	 */
 	return CFG_MBYTES_SDRAM << 20;
 }

@@ -56,7 +56,7 @@
 #define CONFIG_BAUDRATE		115200
 #endif
 
-#define CONFIG_PREBOOT	"echo;echo Type \"run flash_nfs\" to mount root filesystem over NFS;echo"
+#define CONFIG_PREBOOT	"echo;echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;echo"
 
 #undef	CONFIG_BOOTARGS
 
@@ -87,7 +87,7 @@
 		"cp.b 300000 40000000 40000;"			        \
 		"setenv filesize;saveenv\0"				\
 	"cphwib=cp.b 4003fc00 33fc00 400\0"				\
-	"upd=run load;run cphwib;run update\0"				\
+	"upd=run load cphwib update\0"					\
 	""
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
@@ -372,7 +372,7 @@
 #define CFG_MAX_FLASH_SECT	128	/* max num of sects on one chip */
 
 #define CFG_FLASH_CFI				/* flash is CFI compat.	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver*/
 #define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector	*/
 #define CFG_FLASH_QUIET_TEST	1	/* don't warn upon unknown flash*/
 

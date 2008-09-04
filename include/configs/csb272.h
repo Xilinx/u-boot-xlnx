@@ -33,7 +33,7 @@
  * (easy to change)
  */
 
-#define CONFIG_405GP		1	/* This is a PPC405GP CPU     	*/
+#define CONFIG_405GP		1	/* This is a PPC405GP CPU	*/
 #define CONFIG_4xx		1	/* ...member of PPC4xx family   */
 #define CONFIG_CSB272		1	/* on a Cogent CSB272 board     */
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* Call board_early_init_f()    */
@@ -182,7 +182,7 @@
  */
 #define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0	/* PHY address			*/
-#define CONFIG_PHY_CMD_DELAY	40	/* PHY COMMAND delay 		*/
+#define CONFIG_PHY_CMD_DELAY	40	/* PHY COMMAND delay		*/
 					/* 32usec min. for LXT971A	*/
 #define CONFIG_PHY_RESET_DELAY	300	/* PHY RESET recovery delay	*/
 
@@ -264,7 +264,7 @@
  *
  */
 #define CFG_FLASH_CFI		1	/* flash is CFI conformant	*/
-#define CFG_FLASH_CFI_DRIVER	1	/* use common cfi driver	*/
+#define CONFIG_FLASH_CFI_DRIVER	1	/* use common cfi driver	*/
 #define CFG_FLASH_USE_BUFFER_WRITE 1	/* use buffered writes (20x faster) */
 #define CFG_MAX_FLASH_BANKS	1	/* max # of memory banks	*/
 #define CFG_FLASH_INCREMENT	0	/* there is only one bank	*/
@@ -288,14 +288,6 @@
 #define CFG_GBL_DATA_SIZE	128 /* byte size reserved for initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
-
-/*
- * Cache configuration
- *
- */
-#define CFG_DCACHE_SIZE		16384	/* For AMCC 405 CPUs, older 405 ppc's */
-					/* have only 8kB, 16kB is save here  */
-#define CFG_CACHELINE_SIZE	32
 
 /*
  * Miscellaneous board specific definitions

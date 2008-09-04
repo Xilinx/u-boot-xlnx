@@ -58,8 +58,10 @@ static void resume_from_sleep(void)
  */
 static long fixed_sdram(void)
 {
-	volatile immap_t *im = (volatile immap_t *)CFG_IMMR;
 	u32 msize = CFG_DDR_SIZE * 1024 * 1024;
+
+#ifndef CFG_RAMBOOT
+	volatile immap_t *im = (volatile immap_t *)CFG_IMMR;
 	u32 msize_log2 = __ilog2(msize);
 
 	im->sysconf.ddrlaw[0].bar = CFG_DDR_SDRAM_BASE >> 12;
@@ -100,11 +102,12 @@ static long fixed_sdram(void)
 
 	/* enable DDR controller */
 	im->ddr.sdram_cfg |= SDRAM_CFG_MEM_EN;
+#endif
 
 	return msize;
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (volatile immap_t *)CFG_IMMR;
 	volatile lbus83xx_t *lbc = &im->lbus;

@@ -31,7 +31,7 @@
 
 #define CONFIG_MPC5xxx		1	/* This is an MPC5xxx CPU */
 #define CONFIG_MPC5200		1	/* More exactly a MPC5200 */
-#define CONFIG_CANMB  		1	/* ... on canmb board - we need this for FEC.C */
+#define CONFIG_CANMB		1	/* ... on canmb board - we need this for FEC.C */
 
 #define CFG_MPC5XXX_CLKIN	33000000 /* ... running at 33.000000MHz */
 
@@ -39,6 +39,8 @@
 #define BOOTFLAG_WARM		0x02	/* Software reboot	     */
 
 #define CONFIG_BOARD_EARLY_INIT_R
+
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /*
  * Serial console configuration
@@ -88,7 +90,7 @@
 #define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds */
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -115,7 +117,7 @@
 /*
  * IPB Bus clocking configuration.
  */
-#undef CFG_IPBCLK_EQUALS_XLBCLK   		/* define for 133MHz speed */
+#undef CFG_IPBCLK_EQUALS_XLBCLK		/* define for 133MHz speed */
 
 /*
  * Flash configuration, expect one 16 Megabyte Bank at most
@@ -128,7 +130,7 @@
 #define CFG_FLASH_ERASE_TOUT	240000	/* Flash Erase Timeout (in ms)  */
 #define CFG_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (in ms)  */
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_FLASH_EMPTY_INFO
 

@@ -92,7 +92,10 @@
 #define MAL_ESR_PBEI	  0x00000001
       /* ^^			 ^^   */
       /* Mal IER		      */
-#if defined(CONFIG_440SPE) || defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440SPE) || \
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 #define MAL_IER_PT	  0x00000080
 #define MAL_IER_PRE	  0x00000040
 #define MAL_IER_PWE	  0x00000020

@@ -42,7 +42,7 @@
 #define CONFIG_P3G4		1	/* this is a P3G4  board	*/
 #define CFG_GT_6426x        GT_64260 /* with a 64260 system controller */
 
-#define CONFIG_BAUDRATE		115200 	/* console baudrate = 115200	*/
+#define CONFIG_BAUDRATE		115200	/* console baudrate = 115200	*/
 
 #undef	CONFIG_ECC			/* enable ECC support */
 /* #define CONFIG_EVB64260_750CX  1 */      /* Support the EVB-64260-750CX Board */
@@ -81,7 +81,7 @@
 #define CONFIG_ZERO_BOOTDELAY_CHECK
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -110,7 +110,7 @@
 	"update=protect off fff00000 fff3ffff;era fff00000 fff3ffff;"	\
 		"cp.b 100000 fff00000 ${filesize};"			\
 		"setenv filesize;saveenv\0"				\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	""
 #define CONFIG_BOOTCOMMAND	"run flash_self"
 
@@ -417,8 +417,8 @@
 
 #define CFG_L2
 
-#define L2_INIT  	(L2CR_L2SIZ_2M | L2CR_L2CLK_3 | L2CR_L2RAM_BURST | \
-			L2CR_L2OH_5 | L2CR_L2CTL | L2CR_L2WT)
+#define L2_INIT		(L2CR_L2SIZ_2M | L2CR_L2CLK_3 | L2CR_L2RAM_BURST | \
+			 L2CR_L2OH_5 | L2CR_L2CTL | L2CR_L2WT)
 
 #define L2_ENABLE	(L2_INIT | L2CR_L2E)
 

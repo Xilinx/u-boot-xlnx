@@ -35,14 +35,10 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int do_reset(cmd_tbl_t * cmdtp, bd_t * bd, int flag, int argc, char *argv[])
 {
-	volatile wdog_t *wdp = (wdog_t *) (MMAP_WDOG);
+	volatile rcm_t *rcm = (rcm_t *) (MMAP_RCM);
 
-	wdp->cr = 0;
 	udelay(1000);
-
-	/* enable watchdog, set timeout to 0 and wait */
-	wdp->cr = WTM_WCR_EN;
-	while (1) ;
+	rcm->rcr |= RCM_RCR_SOFTRST;
 
 	/* we don't return! */
 	return 0;
@@ -68,6 +64,18 @@ int checkcpu(void)
 	case 0x61:
 		id = 5327;
 		break;
+	case 0x65:
+		id = 5373;
+		break;
+	case 0x68:
+		id = 53721;
+		break;
+	case 0x69:
+		id = 5372;
+		break;
+	case 0x6B:
+		id = 5372;
+		break;
 	}
 
 	if (id) {
@@ -88,6 +96,7 @@ void watchdog_reset(void)
 	volatile wdog_t *wdp = (wdog_t *) (MMAP_WDOG);
 
 	wdp->sr = 0x5555;	/* Count register */
+	wdp->sr = 0xAAAA;	/* Count register */
 }
 
 int watchdog_disable(void)
@@ -108,8 +117,11 @@ int watchdog_init(void)
 
 	/* set timeout and enable watchdog */
 	wdog_module = ((CFG_CLK / 1000) * CONFIG_WATCHDOG_TIMEOUT);
-	wdog_module |= (wdog_module / 8192);
-	wdp->mr = wdog_module;
+#ifdef CONFIG_M5329
+	wdp->mr = (wdog_module / 8192);
+#else
+	wdp->mr = (wdog_module / 4096);
+#endif
 
 	wdp->cr = WTM_WCR_EN;
 	puts("WATCHDOG:enabled\n");
@@ -117,3 +129,17 @@ int watchdog_init(void)
 	return (0);
 }
 #endif				/* CONFIG_WATCHDOG */
+
+#if defined(CONFIG_MCFFEC)
+/* Default initializations for MCFFEC controllers.  To override,
+ * create a board-specific function called:
+ * 	int board_eth_init(bd_t *bis)
+ */
+
+extern int mcffec_initialize(bd_t*);
+
+int cpu_eth_init(bd_t *bis)
+{
+	return mcffec_initialize(bis);
+}
+#endif

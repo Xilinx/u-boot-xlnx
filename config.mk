@@ -69,28 +69,6 @@ PLATFORM_CPPFLAGS+= -D__ARM__
 endif
 endif
 
-ifeq ($(ARCH),blackfin)
-PLATFORM_CPPFLAGS+= -D__BLACKFIN__
-endif
-
-ifdef	ARCH
-sinclude $(TOPDIR)/$(ARCH)_config.mk	# include architecture dependend rules
-endif
-ifdef	CPU
-sinclude $(TOPDIR)/cpu/$(CPU)/config.mk	# include  CPU	specific rules
-endif
-ifdef	SOC
-sinclude $(TOPDIR)/cpu/$(CPU)/$(SOC)/config.mk	# include  SoC	specific rules
-endif
-ifdef	VENDOR
-BOARDDIR = $(VENDOR)/$(BOARD)
-else
-BOARDDIR = $(BOARD)
-endif
-ifdef	BOARD
-sinclude $(TOPDIR)/board/$(BOARDDIR)/config.mk	# include board specific rules
-endif
-
 #########################################################################
 
 CONFIG_SHELL	:= $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
@@ -122,10 +100,36 @@ CC	= $(CROSS_COMPILE)gcc
 CPP	= $(CC) -E
 AR	= $(CROSS_COMPILE)ar
 NM	= $(CROSS_COMPILE)nm
+LDR	= $(CROSS_COMPILE)ldr
 STRIP	= $(CROSS_COMPILE)strip
 OBJCOPY = $(CROSS_COMPILE)objcopy
 OBJDUMP = $(CROSS_COMPILE)objdump
 RANLIB	= $(CROSS_COMPILE)RANLIB
+
+#########################################################################
+
+# Load generated board configuration
+sinclude $(OBJTREE)/include/autoconf.mk
+
+ifdef	ARCH
+sinclude $(TOPDIR)/$(ARCH)_config.mk	# include architecture dependend rules
+endif
+ifdef	CPU
+sinclude $(TOPDIR)/cpu/$(CPU)/config.mk	# include  CPU	specific rules
+endif
+ifdef	SOC
+sinclude $(TOPDIR)/cpu/$(CPU)/$(SOC)/config.mk	# include  SoC	specific rules
+endif
+ifdef	VENDOR
+BOARDDIR = $(VENDOR)/$(BOARD)
+else
+BOARDDIR = $(BOARD)
+endif
+ifdef	BOARD
+sinclude $(TOPDIR)/board/$(BOARDDIR)/config.mk	# include board specific rules
+endif
+
+#########################################################################
 
 ifneq (,$(findstring s,$(MAKEFLAGS)))
 ARFLAGS = cr
@@ -152,14 +156,17 @@ OBJCFLAGS +=
 gccincdir := $(shell $(CC) -print-file-name=include)
 
 CPPFLAGS := $(DBGFLAGS) $(OPTFLAGS) $(RELFLAGS)		\
-	-D__KERNEL__ -DTEXT_BASE=$(TEXT_BASE)		\
+	-D__KERNEL__
+ifneq ($(TEXT_BASE),)
+CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE)
+endif
 
 ifneq ($(OBJTREE),$(SRCTREE))
 CPPFLAGS += -I$(OBJTREE)/include2 -I$(OBJTREE)/include
 endif
 
 CPPFLAGS += -I$(TOPDIR)/include
-CPPFLAGS += -fno-builtin -ffreestanding -nostdinc 	\
+CPPFLAGS += -fno-builtin -ffreestanding -nostdinc	\
 	-isystem $(gccincdir) -pipe $(PLATFORM_CPPFLAGS)
 
 ifdef BUILD_TAG
@@ -168,6 +175,8 @@ CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes \
 else
 CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
 endif
+
+CFLAGS += $(call cc-option,-fno-stack-protector)
 
 # avoid trigraph warnings while parsing pci.h (produced by NIOS gcc-2.9)
 # this option have to be placed behind -Wall -- that's why it is here
@@ -190,7 +199,10 @@ endif
 
 AFLAGS := $(AFLAGS_DEBUG) -D__ASSEMBLY__ $(CPPFLAGS)
 
-LDFLAGS += -Bstatic -T $(LDSCRIPT) -Ttext $(TEXT_BASE) $(PLATFORM_LDFLAGS)
+LDFLAGS += -Bstatic -T $(LDSCRIPT) $(PLATFORM_LDFLAGS)
+ifneq ($(TEXT_BASE),)
+LDFLAGS += -Ttext $(TEXT_BASE)
+endif
 
 # Location of a usable BFD library, where we define "usable" as
 # "built for ${HOST}, supports ${TARGET}".  Sensible values are

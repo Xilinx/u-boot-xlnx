@@ -159,6 +159,8 @@ typedef struct smc_uart {
 	ushort	smc_brkec;	/* rcv'd break condition counter */
 	ushort	smc_brkcr;	/* xmt break count register */
 	ushort	smc_rmask;	/* Temporary bit mask */
+	u_char	res1[8];
+	ushort	smc_rpbase;	/* Relocation pointer */
 } smc_uart_t;
 
 /* Function code bits.
@@ -784,19 +786,19 @@ typedef struct scc_enet {
 #undef	SCC_ENET
 #define	FEC_ENET
 
-#define PD_MII_TXD1	((ushort)0x1000)	/* PD  3 	*/
-#define PD_MII_TXD2	((ushort)0x0800)	/* PD  4 	*/
-#define PD_MII_TXD3	((ushort)0x0400)	/* PD  5 	*/
-#define PD_MII_RX_DV	((ushort)0x0200)	/* PD  6 	*/
-#define PD_MII_RX_ERR	((ushort)0x0100)	/* PD  7 	*/
-#define PD_MII_RX_CLK	((ushort)0x0080)	/* PD  8 	*/
-#define PD_MII_TXD0	((ushort)0x0040)	/* PD  9 	*/
-#define PD_MII_RXD0	((ushort)0x0020)	/* PD 10 	*/
-#define PD_MII_TX_ERR	((ushort)0x0010)	/* PD 11 	*/
-#define PD_MII_MDC	((ushort)0x0008)	/* PD 12 	*/
-#define PD_MII_RXD1	((ushort)0x0004)	/* PD 13 	*/
-#define PD_MII_RXD2	((ushort)0x0002)	/* PD 14 	*/
-#define PD_MII_RXD3	((ushort)0x0001)	/* PD 15 	*/
+#define PD_MII_TXD1	((ushort)0x1000)	/* PD  3	*/
+#define PD_MII_TXD2	((ushort)0x0800)	/* PD  4	*/
+#define PD_MII_TXD3	((ushort)0x0400)	/* PD  5	*/
+#define PD_MII_RX_DV	((ushort)0x0200)	/* PD  6	*/
+#define PD_MII_RX_ERR	((ushort)0x0100)	/* PD  7	*/
+#define PD_MII_RX_CLK	((ushort)0x0080)	/* PD  8	*/
+#define PD_MII_TXD0	((ushort)0x0040)	/* PD  9	*/
+#define PD_MII_RXD0	((ushort)0x0020)	/* PD 10	*/
+#define PD_MII_TX_ERR	((ushort)0x0010)	/* PD 11	*/
+#define PD_MII_MDC	((ushort)0x0008)	/* PD 12	*/
+#define PD_MII_RXD1	((ushort)0x0004)	/* PD 13	*/
+#define PD_MII_RXD2	((ushort)0x0002)	/* PD 14	*/
+#define PD_MII_RXD3	((ushort)0x0001)	/* PD 15	*/
 #define PD_MII_MASK	((ushort)0x1FFF)	/* PD 3-15	*/
 #endif	/* CONFIG_GEN860T */
 
@@ -1120,6 +1122,32 @@ typedef struct scc_enet {
 #define SICR_ENET_CLKRT	((uint)0x0000003d)
 #endif	/* CONFIG_MBX */
 
+/***  MGSUVD  *********************************************************/
+
+/* The MGSUVD Service Module uses SCC3 for Ethernet */
+
+#ifdef CONFIG_MGSUVD
+#define PROFF_ENET	PROFF_SCC3		/* Ethernet on SCC3 */
+#define CPM_CR_ENET	CPM_CR_CH_SCC3
+#define SCC_ENET	2
+#define PA_ENET_RXD	((ushort)0x0010)	/* PA 11 */
+#define PA_ENET_TXD	((ushort)0x0020)	/* PA 10 */
+#define PA_ENET_RCLK	((ushort)0x1000)	/* PA  3 CLK 5 */
+#define PA_ENET_TCLK	((ushort)0x2000)	/* PA  2 CLK 6 */
+
+#define PC_ENET_TENA	((ushort)0x0004)	/* PC 13 */
+
+#define PC_ENET_RENA	((ushort)0x0200)	/* PC  6 */
+#define PC_ENET_CLSN	((ushort)0x0100)	/* PC  7 */
+
+/* Control bits in the SICR to route TCLK (CLK6) and RCLK (CLK5) to
+ * SCC3.  Also, make sure GR3 (bit 8) and SC3 (bit 9) are zero.
+ */
+#define SICR_ENET_MASK	((uint)0x00FF0000)
+#define SICR_ENET_CLKRT	((uint)0x00250000)
+#endif	/* CONFIG_MGSUVD */
+
+
 /***  MHPC  ********************************************************/
 
 #if defined(CONFIG_MHPC)
@@ -1420,7 +1448,9 @@ typedef struct scc_enet {
  */
 #define	PROFF_ENET	PROFF_SCC2
 #define	CPM_CR_ENET	CPM_CR_CH_SCC2
+#if (!defined(CONFIG_TK885D))	/* TK885D does not use SCC Ethernet */
 #define	SCC_ENET	1
+#endif
 #define PA_ENET_RXD	((ushort)0x0004)	/* PA 13 */
 #define PA_ENET_TXD	((ushort)0x0008)	/* PA 12 */
 #define PA_ENET_RCLK	((ushort)0x0100)	/* PA  7 */

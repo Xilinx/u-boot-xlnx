@@ -41,16 +41,14 @@
 #define CONFIG_MPC85xx		1	/* MPC8540/MPC8560	*/
 #define CONFIG_CPM2		1	/* has CPM2 */
 #define CONFIG_STXSSA		1	/* Silicon Tx GPPP SSA board specific*/
+#define CONFIG_MPC8560		1
 
 #define CONFIG_PCI			/* PCI ethernet support	*/
 #define CONFIG_TSEC_ENET		/* tsec ethernet support*/
 #undef CONFIG_ETHER_ON_FCC		/* cpm FCC ethernet support */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
-#undef	CONFIG_DDR_ECC			/* only for ECC DDR module */
-#undef CONFIG_DDR_DLL			/* possible DLL fix needed */
-#define CONFIG_DDR_2T_TIMING		/* Sets the 2T timing bit */
 
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 /* sysclk for MPC85xx
  */
@@ -68,10 +66,10 @@
 #define  CONFIG_BTB				/* toggle branch predition */
 #define  CONFIG_ADDR_STREAMING			/* toggle addr streaming	*/
 
-#define CONFIG_BOARD_EARLY_INIT_F   1	     	/* Call board_pre_init	 */
+#define CONFIG_BOARD_EARLY_INIT_F   1		/* Call board_pre_init	 */
 
-#undef	CFG_DRAM_TEST			    	/* memory test, takes time	*/
-#define CFG_MEMTEST_START	0x00200000  	/* memtest region */
+#undef	CFG_DRAM_TEST				/* memory test, takes time	*/
+#define CFG_MEMTEST_START	0x00200000	/* memtest region */
 #define CFG_MEMTEST_END		0x00400000
 
 
@@ -96,7 +94,7 @@
 #define CFG_OR0_PRELIM	(CFG_FLASH_BASE | 0x0FF7)
 
 #define CFG_FLASH_CFI		1
-#define CFG_FLASH_CFI_DRIVER	1
+#define CONFIG_FLASH_CFI_DRIVER	1
 #undef CFG_FLASH_USE_BUFFER_WRITE	/* use buffered writes (20x faster) */
 #define CFG_MAX_FLASH_SECT	256	/* max number of sectors on one chip */
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks	*/
@@ -126,21 +124,30 @@
 #define CFG_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default	*/
 #endif
 #define CFG_CCSRBAR		0xe0000000	/* relocated CCSRBAR	*/
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR	*/
 
+/* DDR Setup */
+#define CONFIG_FSL_DDR1
+#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup*/
+#define CONFIG_DDR_SPD
+#undef CONFIG_FSL_DDR_INTERACTIVE
 
-/*
- * DDR Setup
- */
+#undef	CONFIG_DDR_ECC			/* only for ECC DDR module */
+#undef CONFIG_DDR_DLL			/* possible DLL fix needed */
+#define CONFIG_DDR_2T_TIMING		/* Sets the 2T timing bit */
 
-/*
- * Base addresses -- Note these are effective addresses where the
- * actual resources get mapped (not physical addresses)
- */
-#define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory  */
+#define CONFIG_MEM_INIT_VALUE		0xDeadBeef
+
+#define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory*/
 #define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
 
-#define SPD_EEPROM_ADDRESS	0x54		/*  DDR DIMM */
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
+
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x54	/* CTLR 0 DIMM 0 */
 
 #undef CONFIG_CLOCKS_IN_MHZ
 
@@ -230,7 +237,7 @@
 #define CFG_PCI2_IO_PHYS	0xe3000000
 #define CFG_PCI2_IO_SIZE	0x01000000	/* 16M */
 
-#if defined(CONFIG_PCI) 		/* PCI Ethernet card */
+#if defined(CONFIG_PCI)			/* PCI Ethernet card */
 #define CONFIG_MPC85XX_PCI2	1
 #define CONFIG_NET_MULTI
 #define CONFIG_PCI_PNP			/* do pci plug-and-play */
@@ -391,13 +398,6 @@
  */
 #define CFG_BOOTMAPSZ		(8 << 20) /* Initial Memory map for Linux */
 
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value */
-#endif
-
 /*
  * Internal Definitions
  *
@@ -433,13 +433,13 @@
 #define CONFIG_BOOTDELAY	3	/* -1 disable autoboot */
 #define CONFIG_BOOTCOMMAND	"bootm 0xffc00000 0xffd00000"
 #define CONFIG_BOOTARGS		"root=/dev/nfs rw ip=any console=ttyS1,$baudrate"
-#define CONFIG_SERVERIP 	192.168.85.1
+#define CONFIG_SERVERIP		192.168.85.1
 #define CONFIG_IPADDR		192.168.85.60
 #define CONFIG_GATEWAYIP	192.168.85.1
 #define CONFIG_NETMASK		255.255.255.0
-#define CONFIG_HOSTNAME 	STX_SSA
-#define CONFIG_ROOTPATH 	/gppproot
-#define CONFIG_BOOTFILE 	uImage
+#define CONFIG_HOSTNAME		STX_SSA
+#define CONFIG_ROOTPATH		/gppproot
+#define CONFIG_BOOTFILE		uImage
 #define CONFIG_LOADADDR		0x1000000
 
 #else /* ENV IS IN FLASH		-- use a full-blown envionment */

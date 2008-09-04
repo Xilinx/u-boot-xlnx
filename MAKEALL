@@ -42,10 +42,13 @@ LIST_5xxx="		\
 	fo300		\
 	icecube_5100	\
 	icecube_5200	\
+	inka4x0		\
 	lite5200b	\
 	mcc200		\
 	mecp5200	\
 	motionpro	\
+	munices		\
+	MVBC_P		\
 	o2dnt		\
 	pf5200		\
 	PM520		\
@@ -107,10 +110,10 @@ LIST_8xx="		\
 	lwmon		\
 	MBX		\
 	MBX860T		\
+	mgsuvd		\
 	MHPC		\
 	MPC86xADS	\
 	MPC885ADS	\
-	MVS1		\
 	NETPHONE	\
 	NETTA		\
 	NETTA2		\
@@ -135,6 +138,7 @@ LIST_8xx="		\
 	SPD823TS	\
 	svm_sc8xx	\
 	SXNI855T	\
+	TK885D		\
 	TOP860		\
 	TQM823L		\
 	TQM823L_LCD	\
@@ -162,13 +166,14 @@ LIST_4xx="		\
 	bamboo_nand	\
 	bubinga		\
 	CANBT		\
+	canyonlands	\
+	canyonlands_nand \
 	CMS700		\
 	CPCI2DP		\
 	CPCI405		\
 	CPCI4052	\
 	CPCI405AB	\
 	CPCI405DT	\
-	CPCI440		\
 	CPCIISER4	\
 	CRAYL1		\
 	csb272		\
@@ -176,10 +181,14 @@ LIST_4xx="		\
 	DASA_SIM	\
 	DP405		\
 	DU405		\
+	DU440		\
 	ebony		\
 	ERIC		\
 	EXBITGEN	\
 	G2000		\
+	glacier		\
+	haleakala	\
+	haleakala_nand	\
 	hcu4		\
 	hcu5		\
 	HH405		\
@@ -187,8 +196,13 @@ LIST_4xx="		\
 	JSE		\
 	KAREF		\
 	katmai		\
+	kilauea		\
+	kilauea_nand	\
+	korat		\
 	luan		\
 	lwmon5		\
+	makalu		\
+	mcu25		\
 	METROBOX	\
 	MIP405		\
 	MIP405T		\
@@ -196,6 +210,7 @@ LIST_4xx="		\
 	ml300		\
 	ml405		\
 	ml507		\
+	ml507_flash	\
 	ocotea		\
 	OCRTC		\
 	ORSG		\
@@ -205,8 +220,11 @@ LIST_4xx="		\
 	PIP405		\
 	PLU405		\
 	PMC405		\
+	PMC440		\
 	PPChameleonEVB	\
+	quad100hd	\
 	rainier		\
+	redwood		\
 	sbc405		\
 	sc3		\
 	sequoia		\
@@ -248,6 +266,7 @@ LIST_824x="		\
 	debris		\
 	eXalion		\
 	HIDDEN_DRAGON	\
+	linkstation_HGLAN	\
 	MOUSSE		\
 	MUSENKI		\
 	MVBLUE		\
@@ -276,6 +295,7 @@ LIST_8260="		\
 	hymod		\
 	IPHASE4539	\
 	ISPAN		\
+	mgcoge		\
 	MPC8260ADS	\
 	MPC8266ADS	\
 	MPC8272ADS	\
@@ -291,6 +311,7 @@ LIST_8260="		\
 	TQM8260_AC	\
 	TQM8260_AD	\
 	TQM8260_AE	\
+	TQM8272		\
 	ZPC1900		\
 "
 
@@ -301,6 +322,7 @@ LIST_8260="		\
 LIST_83xx="		\
 	MPC8313ERDB_33	\
 	MPC8313ERDB_66	\
+	MPC8315ERDB	\
 	MPC8323ERDB	\
 	MPC832XEMDS	\
 	MPC832XEMDS_ATM	\
@@ -309,6 +331,11 @@ LIST_83xx="		\
 	MPC8349ITXGP	\
 	MPC8360EMDS	\
 	MPC8360EMDS_ATM	\
+	MPC8360ERDK_33	\
+	MPC8360ERDK_66	\
+	MPC837XEMDS	\
+	MPC837XERDB	\
+	MVBLM7		\
 	sbc8349		\
 	TQM834x		\
 "
@@ -319,6 +346,8 @@ LIST_83xx="		\
 #########################################################################
 
 LIST_85xx="		\
+	ATUM8548	\
+	MPC8536DS	\
 	MPC8540ADS	\
 	MPC8540EVAL	\
 	MPC8541CDS	\
@@ -327,14 +356,18 @@ LIST_85xx="		\
 	MPC8555CDS	\
 	MPC8560ADS	\
 	MPC8568MDS	\
+	MPC8572DS	\
 	PM854		\
 	PM856		\
 	sbc8540		\
+	sbc8548		\
 	sbc8560		\
+	socrates	\
 	stxgp3		\
 	stxssa		\
 	TQM8540		\
 	TQM8541		\
+	TQM8548		\
 	TQM8555		\
 	TQM8560		\
 "
@@ -344,6 +377,7 @@ LIST_85xx="		\
 #########################################################################
 
 LIST_86xx="		\
+	MPC8610HPCD	\
 	MPC8641HPCN	\
 	sbc8641d	\
 "
@@ -364,12 +398,6 @@ LIST_74xx="		\
 	ZUMA		\
 "
 
-LIST_TSEC="		\
-	${LIST_85xx}	\
-	${LIST_86xx}	\
-	${LIST_83xx}	\
-"
-
 LIST_7xx="		\
 	BAB7xx		\
 	CPCI750		\
@@ -378,8 +406,19 @@ LIST_7xx="		\
 	ppmc7xx		\
 "
 
+#########################################################################
+## PowerPC groups
+#########################################################################
+
+LIST_TSEC="		\
+	${LIST_83xx}	\
+	${LIST_85xx}	\
+	${LIST_86xx}	\
+"
+
 LIST_ppc="		\
 	${LIST_5xx}	\
+	${LIST_512x}	\
 	${LIST_5xxx}	\
 	${LIST_8xx}	\
 	${LIST_8220}	\
@@ -428,8 +467,6 @@ LIST_ARM7="		\
 #########################################################################
 
 LIST_ARM9="			\
-	at91rm9200dk		\
-	cmc_pu2			\
 	ap920t			\
 	ap922_XA10		\
 	ap926ejs		\
@@ -441,13 +478,13 @@ LIST_ARM9="			\
 	cp946es			\
 	cp966			\
 	lpd7a400		\
-	mp2usb			\
 	mx1ads			\
 	mx1fs2			\
 	netstar			\
 	omap1510inn		\
 	omap1610h2		\
 	omap1610inn		\
+	omap5912osk		\
 	omap730p2		\
 	sbc2410x		\
 	scb9328			\
@@ -461,6 +498,7 @@ LIST_ARM9="			\
 	voiceblue		\
 	davinci_dvevm		\
 	davinci_schmoogie	\
+	davinci_sffsdr		\
 	davinci_sonata		\
 "
 
@@ -478,6 +516,29 @@ LIST_ARM10="		\
 LIST_ARM11="		\
 	cp1136		\
 	omap2420h4	\
+	apollon		\
+	imx31_litekit	\
+	imx31_phycore	\
+	mx31ads		\
+	smdk6400	\
+"
+
+#########################################################################
+## AT91 Systems
+#########################################################################
+
+LIST_at91="		\
+	at91cap9adk	\
+	at91rm9200dk	\
+	at91sam9260ek	\
+	at91sam9261ek	\
+	at91sam9263ek	\
+	at91sam9rlek	\
+	cmc_pu2		\
+	csb637		\
+	kb9202		\
+	mp2usb		\
+	m501sk		\
 "
 
 #########################################################################
@@ -485,7 +546,6 @@ LIST_ARM11="		\
 #########################################################################
 
 LIST_pxa="		\
-	adsvix		\
 	cerf250		\
 	cradle		\
 	csb226		\
@@ -502,12 +562,19 @@ LIST_pxa="		\
 "
 
 LIST_ixp="		\
+	actux1		\
+	actux2		\
+	actux3		\
+	actux4		\
 	ixdp425		\
 	ixdpg425	\
 	pdnb3		\
 	scpu		\
 "
 
+#########################################################################
+## ARM groups
+#########################################################################
 
 LIST_arm="		\
 	${LIST_SA}	\
@@ -515,6 +582,7 @@ LIST_arm="		\
 	${LIST_ARM9}	\
 	${LIST_ARM10}	\
 	${LIST_ARM11}	\
+	${LIST_at91}	\
 	${LIST_pxa}	\
 	${LIST_ixp}	\
 "
@@ -525,6 +593,7 @@ LIST_arm="		\
 
 LIST_mips4kc="		\
 	incaip		\
+	qemu_mips	\
 "
 
 LIST_mips5kc="		\
@@ -556,6 +625,7 @@ LIST_mips5kc_el=""
 
 LIST_au1xx0_el="	\
 	dbau1550_el	\
+	pb1000		\
 "
 
 LIST_mips_el="			\
@@ -610,8 +680,8 @@ LIST_nios2="		\
 #########################################################################
 
 LIST_microblaze="	\
-	suzaku		\
 	ml401		\
+	suzaku		\
 	xupv2p		\
 "
 
@@ -624,15 +694,21 @@ LIST_coldfire="			\
 	EB+MCF-EV123		\
 	EB+MCF-EV123_internal	\
 	idmr			\
+	M52277EVB		\
 	M5235EVB		\
 	M5249EVB		\
-	M5253EVB		\
+	M5253DEMO		\
+	M5253EVBE		\
 	M5271EVB		\
 	M5272C3			\
+	M5275EVB		\
 	M5282EVB		\
-	M5329EVB		\
+	M5329AFEE		\
+	M5373EVB		\
+	M54451EVB		\
 	M54455EVB		\
-	r5200			\
+	M5475AFE		\
+	M5485AFE		\
 	TASREG			\
 "
 
@@ -642,6 +718,13 @@ LIST_coldfire="			\
 
 LIST_avr32="		\
 	atstk1002	\
+	atstk1003	\
+	atstk1004	\
+	atstk1006	\
+	atngw100	\
+	favr-32-ezkit	\
+	hammerhead	\
+	mimc200		\
 "
 
 #########################################################################
@@ -654,6 +737,41 @@ LIST_blackfin="		\
 	bf537-stamp	\
 	bf561-ezkit	\
 "
+
+#########################################################################
+## SH Systems
+#########################################################################
+
+LIST_sh2="		\
+	rsk7203		\
+"
+LIST_sh3="		\
+	mpr2		\
+	ms7720se	\
+"
+
+LIST_sh4="		\
+	ms7750se	\
+	ms7722se	\
+	MigoR		\
+	r7780mp		\
+	r2dplus		\
+	sh7763rdp	\
+	sh7785lcr	\
+	ap325rxa	\
+"
+
+LIST_sh="		\
+	${LIST_sh2}	\
+	${LIST_sh3}	\
+	${LIST_sh4}	\
+"
+
+#########################################################################
+## SPARC Systems
+#########################################################################
+
+LIST_sparc="gr_xc3s_1500	gr_cpci_ax2000	gr_ep2s60	grsim	grsim_leon2"
 
 #-----------------------------------------------------------------------
 
@@ -671,7 +789,7 @@ build_target() {
 	${MAKE} ${JOBS} all 2>&1 >${LOG_DIR}/$target.MAKELOG \
 				| tee ${LOG_DIR}/$target.ERR
 
-	${CROSS_COMPILE:-ppc_8xx-}size ${BUILD_DIR}/u-boot \
+	${CROSS_COMPILE}size ${BUILD_DIR}/u-boot \
 				| tee -a ${LOG_DIR}/$target.MAKELOG
 }
 
@@ -681,15 +799,18 @@ build_target() {
 for arg in $@
 do
 	case "$arg" in
-	arm|SA|ARM7|ARM9|ARM10|ARM11|ixp|pxa| \
-	avr32| \
-	blackfin| \
-	coldfire| \
-	microblaze| \
-	mips|mips_el| \
-	nios|nios2| \
-	ppc|5xx|5xxx|512x|8xx|8220|824x|8260|83xx|85xx|86xx|4xx|7xx|74xx| \
-	x86|I486|TSEC)
+	arm|SA|ARM7|ARM9|ARM10|ARM11|at91|ixp|pxa \
+	|avr32 \
+	|blackfin \
+	|coldfire \
+	|microblaze \
+	|mips|mips_el \
+	|nios|nios2 \
+	|ppc|5xx|5xxx|512x|8xx|8220|824x|8260|83xx|85xx|86xx|4xx|7xx|74xx|TSEC \
+	|sh|sh2|sh3|sh4 \
+	|sparc \
+	|x86|I486 \
+	)
 			for target in `eval echo '$LIST_'${arg}`
 			do
 				build_target ${target}

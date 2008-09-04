@@ -1,7 +1,6 @@
 /* Memory sub-system initialization code */
 
 #include <config.h>
-#include <version.h>
 #include <asm/regdef.h>
 #include <asm/au1x00.h>
 #include <asm/mipsregs.h>
@@ -413,7 +412,9 @@ noCacheJump:
 	j clearmem
 	nop
 
+#if 0
 	.globl	memtest
+#endif
 memtest:
 	/* Fill memory with address */
 	li	t0, 0x80000000
@@ -434,7 +435,9 @@ mt1:	lw	t2, 0(t0)
 	bne	t1, zero, mt1
 	nop
 	nop
+#if 0
 	.globl	clearmem
+#endif
 clearmem:
 		/* Clear memory */
 	li	t0, 0x80000000
@@ -446,7 +449,7 @@ mtc:	sw	zero, 0(t0)
 	nop
 	nop
 memtestend:
-	j	ra
+	jr	ra
 	nop
 
 memhang:

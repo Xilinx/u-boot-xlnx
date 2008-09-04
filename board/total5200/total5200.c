@@ -36,7 +36,7 @@
 #include "mt48lc16m16a2-75.h"
 #endif
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	sdram_conf_t sdram_conf;
 
@@ -67,14 +67,14 @@ int checkboard (void)
 	puts ("Board: Total5100 ");
 #endif
 
-/*
- * Retrieve FPGA Revision.
- */
-printf ("(FPGA %08X)\n", *(vu_long *) (CFG_FPGA_BASE + 0x400));
+	/*
+	 * Retrieve FPGA Revision.
+	 */
+	printf ("(FPGA %08lX)\n", *(vu_long *) (CFG_FPGA_BASE + 0x400));
 
-/*
- * Take all peripherals in power-up mode.
- */
+	/*
+	 * Take all peripherals in power-up mode.
+	 */
 #if CONFIG_TOTAL5200_REV==2
 	*(vu_char *) (CFG_CPLD_BASE + 0x46) = 0x70;
 #else
@@ -118,7 +118,7 @@ void init_ide_reset (void)
 {
 	debug ("init_ide_reset\n");
 
-    	/* Configure IRDA_1 (PSC6_3) as GPIO output for ATA reset */
+	/* Configure IRDA_1 (PSC6_3) as GPIO output for ATA reset */
 	*(vu_long *) MPC5XXX_GPIO_ENABLE |= GPIO_IRDA_1;
 	*(vu_long *) MPC5XXX_GPIO_DIR    |= GPIO_IRDA_1;
 }

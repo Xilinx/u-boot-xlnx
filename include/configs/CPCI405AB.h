@@ -88,7 +88,6 @@
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
@@ -238,27 +237,6 @@
 
 #define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector on flinfo */
 
-/*
- * JFFS2 partitions
- */
-/* No command line, one static partition */
-#undef CONFIG_JFFS2_CMDLINE
-#define CONFIG_JFFS2_DEV		"nor0"
-#define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
-#define CONFIG_JFFS2_PART_OFFSET	0x00000000
-
-/* mtdparts command line support */
-
-/* Use first bank for JFFS2, second bank contains U-Boot.
- *
- * Note: fake mtd_id's used, no linux mtd map file.
- */
-/*
-#define CONFIG_JFFS2_CMDLINE
-#define MTDIDS_DEFAULT		"nor0=cpci405ab-0"
-#define MTDPARTS_DEFAULT	"mtdparts=cpci405ab-0:-(jffs2)"
-*/
-
 /*-----------------------------------------------------------------------
  * I2C EEPROM (CAT24WC32) for environment
  */
@@ -287,16 +265,6 @@
 #define CFG_NVRAM_BASE_ADDR	0xf0200000		/* NVRAM base address	*/
 #define CFG_NVRAM_SIZE		(32*1024)		/* NVRAM size		*/
 #define CFG_VXWORKS_MAC_PTR     (CFG_NVRAM_BASE_ADDR+0x6900) /* VxWorks eth-addr*/
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		16384	/* For AMCC 405 CPUs, older 405 ppc's	*/
-					/* have only 8kB, 16kB is save here	*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Init Memory Controller:

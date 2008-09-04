@@ -35,6 +35,7 @@
 #ifdef CONFIG_HAS_DATAFLASH
 #include <dataflash.h>
 #endif
+#include <watchdog.h>
 
 #if defined(CONFIG_CMD_MEMORY)		\
     || defined(CONFIG_CMD_I2C)		\
@@ -154,9 +155,32 @@ int do_mem_md ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		}
 	} while (nbytes > 0);
 #else
-	/* Print the lines. */
-	print_buffer(addr, (void*)addr, size, length, DISP_LINE_LEN/size);
-	addr += size*length;
+
+# if defined(CONFIG_BLACKFIN)
+	/* See if we're trying to display L1 inst */
+	if (addr_bfin_on_chip_mem(addr)) {
+		char linebuf[DISP_LINE_LEN];
+		ulong linebytes, nbytes = length * size;
+		do {
+			linebytes = (nbytes > DISP_LINE_LEN) ? DISP_LINE_LEN : nbytes;
+			memcpy(linebuf, (void *)addr, linebytes);
+			print_buffer(addr, linebuf, size, linebytes/size, DISP_LINE_LEN/size);
+
+			nbytes -= linebytes;
+			addr += linebytes;
+			if (ctrlc()) {
+				rc = 1;
+				break;
+			}
+		} while (nbytes > 0);
+	} else
+# endif
+
+	{
+		/* Print the lines. */
+		print_buffer(addr, (void*)addr, size, length, DISP_LINE_LEN/size);
+		addr += size*length;
+	}
 #endif
 
 	dp_last_addr = addr;
@@ -308,6 +332,13 @@ int do_mem_cmp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 #endif
 
+#ifdef CONFIG_BLACKFIN
+	if (addr_bfin_on_chip_mem(addr1) || addr_bfin_on_chip_mem(addr2)) {
+		puts ("Comparison with L1 instruction memory not supported.\n\r");
+		return 0;
+	}
+#endif
+
 	ngood = 0;
 
 	while (count-- > 0) {
@@ -387,7 +418,7 @@ int do_mem_cp ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	/* check if we are copying to Flash */
 	if ( (addr2info(dest) != NULL)
 #ifdef CONFIG_HAS_DATAFLASH
-	   && (!addr_dataflash(addr))
+	   && (!addr_dataflash(dest))
 #endif
 	   ) {
 		int rc;
@@ -462,7 +493,11 @@ int do_mem_cp ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 	/* Check if we are copying from DataFlash to RAM */
-	if (addr_dataflash(addr) && !addr_dataflash(dest) && (addr2info(dest)==NULL) ){
+	if (addr_dataflash(addr) && !addr_dataflash(dest)
+#ifndef CFG_NO_FLASH
+				 && (addr2info(dest) == NULL)
+#endif
+	   ){
 		int rc;
 		rc = read_dataflash(addr, count * size, (char *) dest);
 		if (rc != 1) {
@@ -475,6 +510,14 @@ int do_mem_cp ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (addr_dataflash(addr) && addr_dataflash(dest)){
 		puts ("Unsupported combination of source/destination.\n\r");
 		return 1;
+	}
+#endif
+
+#ifdef CONFIG_BLACKFIN
+	/* See if we're copying to/from L1 inst */
+	if (addr_bfin_on_chip_mem(dest) || addr_bfin_on_chip_mem(addr)) {
+		memcpy((void *)dest, (void *)addr, count * size);
+		return 0;
 	}
 #endif
 
@@ -659,9 +702,10 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	vu_long	*addr, *start, *end;
 	ulong	val;
 	ulong	readback;
+	int     rcode = 0;
 
 #if defined(CFG_ALT_MEMTEST)
-	vu_long	addr_mask;
+	vu_long	len;
 	vu_long	offset;
 	vu_long	test_offset;
 	vu_long	pattern;
@@ -689,7 +733,6 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #else
 	ulong	incr;
 	ulong	pattern;
-	int     rcode = 0;
 #endif
 
 	if (argc > 1) {
@@ -798,26 +841,19 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		 *              all possible.
 		 *
 		 * Returns:     0 if the test succeeds, 1 if the test fails.
-		 *
-		 * ## NOTE ##	Be sure to specify start and end
-		 *              addresses such that addr_mask has
-		 *              lots of bits set. For example an
-		 *              address range of 01000000 02000000 is
-		 *              bad while a range of 01000000
-		 *              01ffffff is perfect.
 		 */
-		addr_mask = ((ulong)end - (ulong)start)/sizeof(vu_long);
+		len = ((ulong)end - (ulong)start)/sizeof(vu_long);
 		pattern = (vu_long) 0xaaaaaaaa;
 		anti_pattern = (vu_long) 0x55555555;
 
-		PRINTF("%s:%d: addr mask = 0x%.8lx\n",
+		PRINTF("%s:%d: length = 0x%.8lx\n",
 			__FUNCTION__, __LINE__,
-			addr_mask);
+			len);
 		/*
 		 * Write the default pattern at each of the
 		 * power-of-two offsets.
 		 */
-		for (offset = 1; (offset & addr_mask) != 0; offset <<= 1) {
+		for (offset = 1; offset < len; offset <<= 1) {
 			start[offset] = pattern;
 		}
 
@@ -827,7 +863,7 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		test_offset = 0;
 		start[test_offset] = anti_pattern;
 
-		for (offset = 1; (offset & addr_mask) != 0; offset <<= 1) {
+		for (offset = 1; offset < len; offset <<= 1) {
 		    temp = start[offset];
 		    if (temp != pattern) {
 			printf ("\nFAILURE: Address bit stuck high @ 0x%.8lx:"
@@ -837,14 +873,15 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		    }
 		}
 		start[test_offset] = pattern;
+		WATCHDOG_RESET();
 
 		/*
 		 * Check for addr bits stuck low or shorted.
 		 */
-		for (test_offset = 1; (test_offset & addr_mask) != 0; test_offset <<= 1) {
+		for (test_offset = 1; test_offset < len; test_offset <<= 1) {
 		    start[test_offset] = anti_pattern;
 
-		    for (offset = 1; (offset & addr_mask) != 0; offset <<= 1) {
+		    for (offset = 1; offset < len; offset <<= 1) {
 			temp = start[offset];
 			if ((temp != pattern) && (offset != test_offset)) {
 			    printf ("\nFAILURE: Address bit stuck low or shorted @"
@@ -874,6 +911,7 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		 * Fill memory with a known pattern.
 		 */
 		for (pattern = 1, offset = 0; offset < num_words; pattern++, offset++) {
+			WATCHDOG_RESET();
 			start[offset] = pattern;
 		}
 
@@ -881,6 +919,7 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		 * Check each location and invert it for the second pass.
 		 */
 		for (pattern = 1, offset = 0; offset < num_words; pattern++, offset++) {
+		    WATCHDOG_RESET();
 		    temp = start[offset];
 		    if (temp != pattern) {
 			printf ("\nFAILURE (read/write) @ 0x%.8lx:"
@@ -897,6 +936,7 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		 * Check each location for the inverted pattern and zero it.
 		 */
 		for (pattern = 1, offset = 0; offset < num_words; pattern++, offset++) {
+		    WATCHDOG_RESET();
 		    anti_pattern = ~pattern;
 		    temp = start[offset];
 		    if (temp != anti_pattern) {
@@ -923,6 +963,7 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			pattern, "");
 
 		for (addr=start,val=pattern; addr<end; addr++) {
+			WATCHDOG_RESET();
 			*addr = val;
 			val  += incr;
 		}
@@ -930,6 +971,7 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		puts ("Reading...");
 
 		for (addr=start,val=pattern; addr<end; addr++) {
+			WATCHDOG_RESET();
 			readback = *addr;
 			if (readback != val) {
 				printf ("\nMem error @ 0x%08X: "
@@ -954,8 +996,8 @@ int do_mem_mtest (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		}
 		incr = -incr;
 	}
-	return rcode;
 #endif
+	return rcode;
 }
 
 
@@ -1002,6 +1044,13 @@ mod_mem(cmd_tbl_t *cmdtp, int incrflag, int flag, int argc, char *argv[])
 #ifdef CONFIG_HAS_DATAFLASH
 	if (addr_dataflash(addr)){
 		puts ("Can't modify DataFlash in place. Use cp instead.\n\r");
+		return 0;
+	}
+#endif
+
+#ifdef CONFIG_BLACKFIN
+	if (addr_bfin_on_chip_mem(addr)) {
+		puts ("Can't modify L1 instruction in place. Use cp instead.\n\r");
 		return 0;
 	}
 #endif
@@ -1149,59 +1198,87 @@ int do_mem_crc (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 #endif	/* CONFIG_CRC32_VERIFY */
 
+
+#ifdef CONFIG_CMD_UNZIP
+int  gunzip (void *, int, unsigned char *, unsigned long *);
+
+int do_unzip ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	unsigned long src, dst;
+	unsigned long src_len = ~0UL, dst_len = ~0UL;
+	int err;
+
+	switch (argc) {
+		case 4:
+			dst_len = simple_strtoul(argv[3], NULL, 16);
+			/* fall through */
+		case 3:
+			src = simple_strtoul(argv[1], NULL, 16);
+			dst = simple_strtoul(argv[2], NULL, 16);
+			break;
+		default:
+			printf ("Usage:\n%s\n", cmdtp->usage);
+			return 1;
+	}
+
+	return !!gunzip((void *) dst, dst_len, (void *) src, &src_len);
+}
+#endif /* CONFIG_CMD_UNZIP */
+
+
 /**************************************************/
 #if defined(CONFIG_CMD_MEMORY)
 U_BOOT_CMD(
-	md,     3,     1,      do_mem_md,
-	"md      - memory display\n",
-	"[.b, .w, .l] address [# of objects]\n    - memory display\n"
+	md,	3,	1,	do_mem_md,
+	"md	- memory display\n",
+	"[.b, .w, .l] address [# of objects]\n	  - memory display\n"
 );
 
 
 U_BOOT_CMD(
-	mm,     2,      1,       do_mem_mm,
-	"mm      - memory modify (auto-incrementing)\n",
+	mm,	2,	1,	do_mem_mm,
+	"mm	- memory modify (auto-incrementing)\n",
 	"[.b, .w, .l] address\n" "    - memory modify, auto increment address\n"
 );
 
 
 U_BOOT_CMD(
-	nm,     2,	    1,     	do_mem_nm,
-	"nm      - memory modify (constant address)\n",
+	nm,	2,	1,	do_mem_nm,
+	"nm	- memory modify (constant address)\n",
 	"[.b, .w, .l] address\n    - memory modify, read and keep address\n"
 );
 
 U_BOOT_CMD(
-	mw,    4,    1,     do_mem_mw,
-	"mw      - memory write (fill)\n",
-	"[.b, .w, .l] address value [count]\n    - write memory\n"
+	mw,	4,	1,	do_mem_mw,
+	"mw	- memory write (fill)\n",
+	"[.b, .w, .l] address value [count]\n	- write memory\n"
 );
 
 U_BOOT_CMD(
-	cp,    4,    1,    do_mem_cp,
-	"cp      - memory copy\n",
+	cp,	4,	1,	do_mem_cp,
+	"cp	- memory copy\n",
 	"[.b, .w, .l] source target count\n    - copy memory\n"
 );
 
 U_BOOT_CMD(
-	cmp,    4,     1,     do_mem_cmp,
-	"cmp     - memory compare\n",
+	cmp,	4,	1,	do_mem_cmp,
+	"cmp	- memory compare\n",
 	"[.b, .w, .l] addr1 addr2 count\n    - compare memory\n"
 );
 
 #ifndef CONFIG_CRC32_VERIFY
 
 U_BOOT_CMD(
-	crc32,    4,    1,     do_mem_crc,
-	"crc32   - checksum calculation\n",
+	crc32,	4,	1,	do_mem_crc,
+	"crc32	- checksum calculation\n",
 	"address count [addr]\n    - compute CRC32 checksum [save at addr]\n"
 );
 
 #else	/* CONFIG_CRC32_VERIFY */
 
 U_BOOT_CMD(
-	crc32,    5,    1,     do_mem_crc,
-	"crc32   - checksum calculation\n",
+	crc32,	5,	1,	do_mem_crc,
+	"crc32	- checksum calculation\n",
 	"address count [addr]\n    - compute CRC32 checksum [save at addr]\n"
 	"-v address count crc\n    - verify crc of memory area\n"
 );
@@ -1209,48 +1286,56 @@ U_BOOT_CMD(
 #endif	/* CONFIG_CRC32_VERIFY */
 
 U_BOOT_CMD(
-	base,    2,    1,     do_mem_base,
-	"base    - print or set address offset\n",
+	base,	2,	1,	do_mem_base,
+	"base	- print or set address offset\n",
 	"\n    - print address offset for memory commands\n"
 	"base off\n    - set address offset for memory commands to 'off'\n"
 );
 
 U_BOOT_CMD(
-	loop,    3,    1,    do_mem_loop,
-	"loop    - infinite loop on address range\n",
+	loop,	3,	1,	do_mem_loop,
+	"loop	- infinite loop on address range\n",
 	"[.b, .w, .l] address number_of_objects\n"
 	"    - loop on a set of addresses\n"
 );
 
 #ifdef CONFIG_LOOPW
 U_BOOT_CMD(
-	loopw,    4,    1,    do_mem_loopw,
-	"loopw   - infinite write loop on address range\n",
+	loopw,	4,	1,	do_mem_loopw,
+	"loopw	- infinite write loop on address range\n",
 	"[.b, .w, .l] address number_of_objects data_to_write\n"
 	"    - loop on a set of addresses\n"
 );
 #endif /* CONFIG_LOOPW */
 
 U_BOOT_CMD(
-	mtest,    4,    1,     do_mem_mtest,
-	"mtest   - simple RAM test\n",
+	mtest,	4,	1,	do_mem_mtest,
+	"mtest	- simple RAM test\n",
 	"[start [end [pattern]]]\n"
 	"    - simple RAM read/write test\n"
 );
 
 #ifdef CONFIG_MX_CYCLIC
 U_BOOT_CMD(
-	mdc,     4,     1,      do_mem_mdc,
-	"mdc     - memory display cyclic\n",
+	mdc,	4,	1,	do_mem_mdc,
+	"mdc	- memory display cyclic\n",
 	"[.b, .w, .l] address count delay(ms)\n    - memory display cyclic\n"
 );
 
 U_BOOT_CMD(
-	mwc,     4,     1,      do_mem_mwc,
-	"mwc     - memory write cyclic\n",
+	mwc,	4,	1,	do_mem_mwc,
+	"mwc	- memory write cyclic\n",
 	"[.b, .w, .l] address value delay(ms)\n    - memory write cyclic\n"
 );
 #endif /* CONFIG_MX_CYCLIC */
+
+#ifdef CONFIG_CMD_UNZIP
+U_BOOT_CMD(
+	unzip,	4,	1,	do_unzip,
+	"unzip - unzip a memory region\n",
+	"srcaddr dstaddr [dstsize]\n"
+);
+#endif /* CONFIG_CMD_UNZIP */
 
 #endif
 #endif

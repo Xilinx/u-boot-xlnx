@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2000 - 2005
+# (C) Copyright 2000 - 2008
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
 # See file CREDITS for list of people who contributed to this
@@ -51,7 +51,8 @@ Makefile have been tested to some extent and can be considered
 "working". In fact, many of them are used in production systems.
 
 In case of problems see the CHANGELOG and CREDITS files to find out
-who contributed the specific port.
+who contributed the specific port. The MAINTAINERS file lists board
+maintainers.
 
 
 Where to get help:
@@ -63,6 +64,22 @@ U-Boot you should send a message to the U-Boot mailing list at
 previous traffic on the mailing list - please search the archive
 before asking FAQ's. Please see
 http://lists.sourceforge.net/lists/listinfo/u-boot-users/
+
+
+Where to get source code:
+=========================
+
+The U-Boot source code is maintained in the git repository at
+git://www.denx.de/git/u-boot.git ; you can browse it online at
+http://www.denx.de/cgi-bin/gitweb.cgi?p=u-boot.git;a=summary
+
+The "snapshot" links on this page allow you to download tarballs of
+any version you might be interested in. Official releases are also
+available for FTP download from the ftp://ftp.denx.de/pub/u-boot/
+directory.
+
+Pre-built (and tested) images are available from
+ftp://ftp.denx.de/pub/u-boot/images/
 
 
 Where we come from:
@@ -77,10 +94,11 @@ Where we come from:
   * Provide extended interface to Linux boot loader
   * S-Record download
   * network boot
-  * PCMCIA / CompactFLash / ATA disk / SCSI ... boot
+  * PCMCIA / CompactFlash / ATA disk / SCSI ... boot
 - create ARMBoot project (http://sourceforge.net/projects/armboot)
 - add other CPU families (starting with ARM)
 - create U-Boot project (http://sourceforge.net/projects/u-boot)
+- current project page: see http://www.denx.de/wiki/U-Boot
 
 
 Names and Spelling:
@@ -135,9 +153,13 @@ Directory Hierarchy:
   - at32ap	Files specific to Atmel AVR32 AP CPUs
   - i386	Files specific to i386 CPUs
   - ixp		Files specific to Intel XScale IXP CPUs
+  - leon2	Files specific to Gaisler LEON2 SPARC CPU
+  - leon3	Files specific to Gaisler LEON3 SPARC CPU
   - mcf52x2	Files specific to Freescale ColdFire MCF52x2 CPUs
+  - mcf5227x	Files specific to Freescale ColdFire MCF5227x CPUs
   - mcf532x	Files specific to Freescale ColdFire MCF5329 CPUs
   - mcf5445x	Files specific to Freescale ColdFire MCF5445x CPUs
+  - mcf547x_8x	Files specific to Freescale ColdFire MCF547x_8x CPUs
   - mips	Files specific to MIPS CPUs
   - mpc5xx	Files specific to Freescale MPC5xx  CPUs
   - mpc5xxx	Files specific to Freescale MPC5xxx CPUs
@@ -166,7 +188,8 @@ Directory Hierarchy:
 - lib_mips	Files generic to MIPS	 architecture
 - lib_nios	Files generic to NIOS	 architecture
 - lib_ppc	Files generic to PowerPC architecture
-- libfdt 	Library files to support flattened device trees
+- lib_sparc	Files generic to SPARC	 architecture
+- libfdt	Library files to support flattened device trees
 - net		Networking code
 - post		Power On Self Test
 - rtc		Real Time Clock drivers
@@ -207,7 +230,7 @@ Example: For a TQM823L module type:
 	cd u-boot
 	make TQM823L_config
 
-For the Cogent platform, you need to specify the cpu type as well;
+For the Cogent platform, you need to specify the CPU type as well;
 e.g. "make cogent_mpc8xx_config". And also configure the cogent
 directory according to the instructions in cogent/README.
 
@@ -235,9 +258,7 @@ The following options need to be configured:
 - Board Type:	Define exactly one, e.g. CONFIG_MPC8540ADS.
 
 - CPU Daughterboard Type: (if CONFIG_ATSTK1000 is defined)
-		Define exactly one of
-		CONFIG_ATSTK1002
-
+		Define exactly one, e.g. CONFIG_ATSTK1002
 
 - CPU Module Type: (if CONFIG_COGENT is defined)
 		Define exactly one of
@@ -257,7 +278,7 @@ The following options need to be configured:
 - Motherboard Options: (if CONFIG_CMA101 or CONFIG_CMA102 are defined)
 		Define one or more of
 		CONFIG_LCD_HEARTBEAT	- update a character position on
-					  the lcd display every second with
+					  the LCD display every second with
 					  a "rotator" |\-/|\-/
 
 - Board flavour: (if CONFIG_MPC8260ADS is defined)
@@ -272,7 +293,7 @@ The following options need to be configured:
 		Define exactly one of
 		CONFIG_MPC8240, CONFIG_MPC8245
 
-- 8xx CPU Options: (if using an MPC8xx cpu)
+- 8xx CPU Options: (if using an MPC8xx CPU)
 		CONFIG_8xx_GCLK_FREQ	- deprecated: CPU clock if
 					  get_gclk_freq() cannot work
 					  e.g. if there is no 32KHz
@@ -320,16 +341,16 @@ The following options need to be configured:
 		converts clock data to MHZ before passing it to the
 		Linux kernel.
 		When CONFIG_CLOCKS_IN_MHZ is defined, a definition of
-		"clocks_in_mhz=1" is  automatically  included  in  the
+		"clocks_in_mhz=1" is automatically included in the
 		default environment.
 
 		CONFIG_MEMSIZE_IN_BYTES		[relevant for MIPS only]
 
-		When transfering memsize parameter to linux, some versions
+		When transferring memsize parameter to linux, some versions
 		expect it to be in bytes, others in MB.
 		Define CONFIG_MEMSIZE_IN_BYTES to make it in bytes.
 
-		CONFIG_OF_LIBFDT / CONFIG_OF_FLAT_TREE
+		CONFIG_OF_LIBFDT
 
 		New kernel versions are expecting firmware settings to be
 		passed using flattened device trees (based on open firmware
@@ -340,32 +361,13 @@ The following options need to be configured:
 		 * Adds the "fdt" command
 		 * The bootm command automatically updates the fdt
 
-		CONFIG_OF_FLAT_TREE
-		 * Deprecated, see CONFIG_OF_LIBFDT
-		 * Original ft_build.c-based support
-		 * Automatically modifies the dft as part of the bootm command
-		 * The environment variable "disable_of", when set,
-		     disables this functionality.
-
 		OF_CPU - The proper name of the cpus node.
 		OF_SOC - The proper name of the soc node.
 		OF_TBCLK - The timebase frequency.
 		OF_STDOUT_PATH - The path to the console device
 
-		boards with QUICC Engines require OF_QE to set UCC mac addresses
-
-		CONFIG_OF_HAS_BD_T
-
-		 * CONFIG_OF_LIBFDT - enables the "fdt bd_t" command
-		 * CONFIG_OF_FLAT_TREE - The resulting flat device tree
-		     will have a copy of the bd_t.  Space should be
-		     pre-allocated in the dts for the bd_t.
-
-		CONFIG_OF_HAS_UBOOT_ENV
-
-		 * CONFIG_OF_LIBFDT - enables the "fdt env" command
-		 * CONFIG_OF_FLAT_TREE - The resulting flat device tree
-		     will have a copy of u-boot's environment variables
+		boards with QUICC Engines require OF_QE to set UCC MAC
+		addresses
 
 		CONFIG_OF_BOARD_SETUP
 
@@ -374,7 +376,7 @@ The following options need to be configured:
 
 		CONFIG_OF_BOOT_CPU
 
-		This define fills in the correct boot cpu in the boot
+		This define fills in the correct boot CPU in the boot
 		param header, the default value is zero if undefined.
 
 - Serial Ports:
@@ -444,7 +446,7 @@ The following options need to be configured:
 						linux_logo.h for logo.
 						Requires CONFIG_VIDEO_LOGO
 			CONFIG_CONSOLE_EXTRA_INFO
-						addional board info beside
+						additional board info beside
 						the logo
 
 		When CONFIG_CFB_CONSOLE is defined, video console is
@@ -514,7 +516,7 @@ The following options need to be configured:
 		The value of these goes into the environment as
 		"ramboot" and "nfsboot" respectively, and can be used
 		as a convenience, when switching between booting from
-		ram and nfs.
+		RAM and NFS.
 
 - Pre-Boot Commands:
 		CONFIG_PREBOOT
@@ -615,7 +617,6 @@ The following options need to be configured:
 		CONFIG_CMD_SPI		* SPI serial bus support
 		CONFIG_CMD_USB		* USB support
 		CONFIG_CMD_VFD		* VFD support (TRAB)
-		CONFIG_CMD_BSP		* Board SPecific functions
 		CONFIG_CMD_CDP		* Cisco Discover Protocol support
 		CONFIG_CMD_FSL		* Microblaze FSL support
 
@@ -664,12 +665,15 @@ The following options need to be configured:
 
 		CONFIG_RTC_MPC8xx	- use internal RTC of MPC8xx
 		CONFIG_RTC_PCF8563	- use Philips PCF8563 RTC
+		CONFIG_RTC_MC13783	- use MC13783 RTC
 		CONFIG_RTC_MC146818	- use MC146818 RTC
 		CONFIG_RTC_DS1307	- use Maxim, Inc. DS1307 RTC
 		CONFIG_RTC_DS1337	- use Maxim, Inc. DS1337 RTC
 		CONFIG_RTC_DS1338	- use Maxim, Inc. DS1338 RTC
 		CONFIG_RTC_DS164x	- use Dallas DS164x RTC
+		CONFIG_RTC_ISL1208	- use Intersil ISL1208 RTC
 		CONFIG_RTC_MAX6900	- use Maxim, Inc. MAX6900 RTC
+		CFG_RTC_DS1337_NOOSC	- Turn off the OSC output for DS1337
 
 		Note that if the RTC uses I2C, then the I2C interface
 		must also be configured. See I2C Support, below.
@@ -685,9 +689,9 @@ The following options need to be configured:
 		CONFIG_MAC_PARTITION and/or CONFIG_DOS_PARTITION
 		and/or CONFIG_ISO_PARTITION
 
-		If IDE or SCSI support	is  enabled  (CONFIG_CMD_IDE or
-		CONFIG_CMD_SCSI) you must configure support for at least
-		one partition type as well.
+		If IDE or SCSI support is enabled (CONFIG_CMD_IDE or
+		CONFIG_CMD_SCSI) you must configure support for at
+		least one partition type as well.
 
 - IDE Reset method:
 		CONFIG_IDE_RESET_ROUTINE - this is defined in several
@@ -731,9 +735,12 @@ The following options need to be configured:
 		CONFIG_E1000
 		Support for Intel 8254x gigabit chips.
 
+		CONFIG_E1000_FALLBACK_MAC
+		default MAC for empty EEPROM after production.
+
 		CONFIG_EEPRO100
 		Support for Intel 82557/82559/82559ER chips.
-		Optional CONFIG_EEPRO100_SROM_WRITE enables eeprom
+		Optional CONFIG_EEPRO100_SROM_WRITE enables EEPROM
 		write routine for first time initialisation.
 
 		CONFIG_TULIP
@@ -773,6 +780,21 @@ The following options need to be configured:
 			Define this to use i/o functions instead of macros
 			(some hardware wont work with macros)
 
+		CONFIG_DRIVER_SMC911X
+		Support for SMSC's LAN911x and LAN921x chips
+
+			CONFIG_DRIVER_SMC911X_BASE
+			Define this to hold the physical address
+			of the device (I/O space)
+
+			CONFIG_DRIVER_SMC911X_32_BIT
+			Define this if data bus is 32 bits
+
+			CONFIG_DRIVER_SMC911X_16_BIT
+			Define this if data bus is 16 bits. If your processor
+			automatically converts one 32 bit word to two 16 bit
+			words you may also try CONFIG_DRIVER_SMC911X_32_BIT.
+
 - USB Support:
 		At the moment only the UHCI host controller is
 		supported (PIP405, MIP405, MPC5200); define
@@ -797,7 +819,7 @@ The following options need to be configured:
 		Define the below if you wish to use the USB console.
 		Once firmware is rebuilt from a serial console issue the
 		command "setenv stdin usbtty; setenv stdout usbtty" and
-		attach your usb cable. The Unix command "dmesg" should print
+		attach your USB cable. The Unix command "dmesg" should print
 		it has found a new device. The environment variable usbtty
 		can be set to gserial or cdc_acm to enable your device to
 		appear to a USB host as a Linux gserial device or a
@@ -911,7 +933,7 @@ The following options need to be configured:
 		assumed.
 
 		For the CT69000 and SMI_LYNXEM drivers, videomode is
-		selected via environment 'videomode'. Two diferent ways
+		selected via environment 'videomode'. Two different ways
 		are possible:
 		- "videomode=num"   'num' is a standard LiLo mode numbers.
 		Following standard modes are supported	(* is default):
@@ -926,7 +948,7 @@ The following options need to be configured:
 		(i.e. setenv videomode 317; saveenv; reset;)
 
 		- "videomode=bootargs" all the video parameters are parsed
-		from the bootargs. (See drivers/videomodes.c)
+		from the bootargs. (See drivers/video/videomodes.c)
 
 
 		CONFIG_VIDEO_SED13806
@@ -947,6 +969,10 @@ The following options need to be configured:
 		Define this to enable LCD support (for output to LCD
 		display); also select one of the supported displays
 		by defining one of these:
+
+		CONFIG_ATMEL_LCD:
+
+			HITACHI TX09D70VM1CCA, 3.5", 240x320.
 
 		CONFIG_NEC_NL6448AC33:
 
@@ -1030,7 +1056,7 @@ The following options need to be configured:
 		CONFIG_PHY_GIGE
 
 		If this option is set, support for speed/duplex
-		detection of Gigabit PHY is included.
+		detection of gigabit PHY is included.
 
 		CONFIG_PHY_RESET_DELAY
 
@@ -1049,21 +1075,21 @@ The following options need to be configured:
 		CONFIG_ETH2ADDR
 		CONFIG_ETH3ADDR
 
-		Define a default value for ethernet address to use
-		for the respective ethernet interface, in case this
+		Define a default value for Ethernet address to use
+		for the respective Ethernet interface, in case this
 		is not determined automatically.
 
 - IP address:
 		CONFIG_IPADDR
 
 		Define a default value for the IP address to use for
-		the default ethernet interface, in case this is not
+		the default Ethernet interface, in case this is not
 		determined through e.g. bootp.
 
 - Server IP address:
 		CONFIG_SERVERIP
 
-		Defines a default value for theIP address of a TFTP
+		Defines a default value for the IP address of a TFTP
 		server to contact when using the "tftboot" command.
 
 - Multicast TFTP Mode:
@@ -1071,7 +1097,7 @@ The following options need to be configured:
 
 		Defines whether you want to support multicast TFTP as per
 		rfc-2090; for example to work with atftp.  Lets lots of targets
-		tftp down the same boot image concurrently.  Note: the ethernet
+		tftp down the same boot image concurrently.  Note: the Ethernet
 		driver in use must provide a function: mcast() to join/leave a
 		multicast group.
 
@@ -1131,6 +1157,20 @@ The following options need to be configured:
 		of the "hostname" environment variable is passed as
 		option 12 to the DHCP server.
 
+		CONFIG_BOOTP_DHCP_REQUEST_DELAY
+
+		A 32bit value in microseconds for a delay between
+		receiving a "DHCP Offer" and sending the "DHCP Request".
+		This fixes a problem with certain DHCP servers that don't
+		respond 100% of the time to a "DHCP request". E.g. On an
+		AT91RM9200 processor running at 180MHz, this delay needed
+		to be *at least* 15,000 usec before a Windows Server 2003
+		DHCP server would reply 100% of the time. I recommend at
+		least 50,000 usec to be safe. The alternative is to hope
+		that one of the retries will be successful but note that
+		the DHCP timeout and retry process takes a longer than
+		this delay.
+
  - CDP Options:
 		CONFIG_CDP_DEVICE_ID
 
@@ -1145,7 +1185,7 @@ The following options need to be configured:
 
 		A printf format string which contains the ascii name of
 		the port. Normally is set to "eth%d" which sets
-		eth0 for the first ethernet, eth1 for the second etc.
+		eth0 for the first Ethernet, eth1 for the second etc.
 
 		CONFIG_CDP_CAPABILITIES
 
@@ -1194,7 +1234,7 @@ The following options need to be configured:
 
 		These enable I2C serial bus commands. Defining either of
 		(but not both of) CONFIG_HARD_I2C or CONFIG_SOFT_I2C will
-		include the appropriate I2C driver for the selected cpu.
+		include the appropriate I2C driver for the selected CPU.
 
 		This will allow you to use i2c commands at the u-boot
 		command line (as long as you set CONFIG_CMD_I2C in
@@ -1219,10 +1259,10 @@ The following options need to be configured:
 		In both cases you will need to define CFG_I2C_SPEED
 		to be the frequency (in Hz) at which you wish your i2c bus
 		to run and CFG_I2C_SLAVE to be the address of this node (ie
-		the cpu's i2c node address).
+		the CPU's i2c node address).
 
 		Now, the u-boot i2c code for the mpc8xx (cpu/mpc8xx/i2c.c)
-		sets the cpu up as a master node and so its address should
+		sets the CPU up as a master node and so its address should
 		therefore be cleared to 0 (See, eg, MPC823e User's Manual
 		p.16-473). So, set CFG_I2C_SLAVE to 0.
 
@@ -1324,7 +1364,7 @@ The following options need to be configured:
 		This option specifies a list of I2C devices that will be skipped
 		when the 'i2c probe' command is issued (or 'iprobe' using the legacy
 		command).  If CONFIG_I2C_MULTI_BUS is set, specify a list of bus-device
-		pairs.  Otherwise, specify a 1D array of device addresses
+		pairs.	Otherwise, specify a 1D array of device addresses
 
 		e.g.
 			#undef	CONFIG_I2C_MULTI_BUS
@@ -1355,7 +1395,7 @@ The following options need to be configured:
 		CONFIG_FSL_I2C
 
 		Define this option if you want to use Freescale's I2C driver in
-		drivers/fsl_i2c.c.
+		drivers/i2c/fsl_i2c.c.
 
 
 - SPI Support:	CONFIG_SPI
@@ -1379,14 +1419,36 @@ The following options need to be configured:
 		SPI configuration items (port pins to use, etc). For
 		an example, see include/configs/sacsng.h.
 
-- FPGA Support: CONFIG_FPGA_COUNT
+		CONFIG_HARD_SPI
+
+		Enables a hardware SPI driver for general-purpose reads
+		and writes.  As with CONFIG_SOFT_SPI, the board configuration
+		must define a list of chip-select function pointers.
+		Currently supported on some MPC8xxx processors.  For an
+		example, see include/configs/mpc8349emds.h.
+
+		CONFIG_MXC_SPI
+
+		Enables the driver for the SPI controllers on i.MX and MXC
+		SoCs. Currently only i.MX31 is supported.
+
+- FPGA Support: CONFIG_FPGA
+
+		Enables FPGA subsystem.
+
+		CONFIG_FPGA_<vendor>
+
+		Enables support for specific chip vendors.
+		(ALTERA, XILINX)
+
+		CONFIG_FPGA_<family>
+
+		Enables support for FPGA family.
+		(SPARTAN2, SPARTAN3, VIRTEX2, CYCLONE2, ACEX1K, ACEX)
+
+		CONFIG_FPGA_COUNT
 
 		Specify the number of FPGA devices to support.
-
-		CONFIG_FPGA
-
-		Used to specify the types of FPGA devices.  For example,
-		#define CONFIG_FPGA  CFG_XILINX_VIRTEX2
 
 		CFG_FPGA_PROG_FEEDBACK
 
@@ -1419,17 +1481,17 @@ The following options need to be configured:
 		Maximum time to wait for the INIT_B line to deassert
 		after PROB_B has been deasserted during a Virtex II
 		FPGA configuration sequence. The default time is 500
-		mS.
+		ms.
 
 		CFG_FPGA_WAIT_BUSY
 
 		Maximum time to wait for BUSY to deassert during
-		Virtex II FPGA configuration. The default is 5 mS.
+		Virtex II FPGA configuration. The default is 5 ms.
 
 		CFG_FPGA_WAIT_CONFIG
 
 		Time to wait after FPGA configuration. The default is
-		200 mS.
+		200 ms.
 
 - Configuration Management:
 		CONFIG_IDENT_STRING
@@ -1446,7 +1508,7 @@ The following options need to be configured:
 		protects these variables from casual modification by
 		the user. Once set, these variables are read-only,
 		and write or delete attempts are rejected. You can
-		change this behviour:
+		change this behaviour:
 
 		If CONFIG_ENV_OVERWRITE is #defined in your config
 		file, the write protection for vendor parameters is
@@ -1455,7 +1517,7 @@ The following options need to be configured:
 
 		Alternatively, if you #define _both_ CONFIG_ETHADDR
 		_and_ CONFIG_OVERWRITE_ETHADDR_ONCE, a default
-		ethernet address is installed in the environment,
+		Ethernet address is installed in the environment,
 		which can be changed exactly ONCE by the user. [The
 		serial# is unaffected by this, i. e. it remains
 		read-only.]
@@ -1499,7 +1561,7 @@ The following options need to be configured:
 		Define this variable to stop the system in case of a
 		fatal error, so that you have to reset it manually.
 		This is probably NOT a good idea for an embedded
-		system where you want to system to reboot
+		system where you want the system to reboot
 		automatically as fast as possible, but it may be
 		useful during development since you can try to debug
 		the conditions that lead to the situation.
@@ -1510,6 +1572,10 @@ The following options need to be configured:
 		network operations like ARP, RARP, TFTP, or BOOTP
 		before giving up the operation. If not defined, a
 		default value of 5 is used.
+
+		CONFIG_ARP_TIMEOUT
+
+		Timeout waiting for an ARP reply in milliseconds.
 
 - Command Interpreter:
 		CONFIG_AUTO_COMPLETE
@@ -1562,7 +1628,7 @@ The following options need to be configured:
 - Commandline Editing and History:
 		CONFIG_CMDLINE_EDITING
 
-		Enable editiong and History functions for interactive
+		Enable editing and History functions for interactive
 		commandline input operations
 
 - Default Environment:
@@ -1603,7 +1669,7 @@ The following options need to be configured:
 
 		Adding this option adds support for Xilinx SystemACE
 		chips attached via some sort of local bus. The address
-		of the chip must alsh be defined in the
+		of the chip must also be defined in the
 		CFG_SYSTEMACE_BASE macro. For example:
 
 		#define CONFIG_SYSTEMACE
@@ -1642,6 +1708,8 @@ The following options need to be configured:
 		example, some LED's) on your board. At the moment,
 		the following checkpoints are implemented:
 
+Legacy uImage format:
+
   Arg	Where			When
     1	common/cmd_bootm.c	before attempting to boot an image
    -1	common/cmd_bootm.c	Image header has bad	 magic number
@@ -1652,25 +1720,26 @@ The following options need to be configured:
     4	common/cmd_bootm.c	Image data   has correct checksum
    -4	common/cmd_bootm.c	Image is for unsupported architecture
     5	common/cmd_bootm.c	Architecture check OK
-   -5	common/cmd_bootm.c	Wrong Image Type (not kernel, multi, standalone)
+   -5	common/cmd_bootm.c	Wrong Image Type (not kernel, multi)
     6	common/cmd_bootm.c	Image Type check OK
    -6	common/cmd_bootm.c	gunzip uncompression error
    -7	common/cmd_bootm.c	Unimplemented compression type
     7	common/cmd_bootm.c	Uncompression OK
-   -8	common/cmd_bootm.c	Wrong Image Type (not kernel, multi, standalone)
-    8	common/cmd_bootm.c	Image Type check OK
+    8	common/cmd_bootm.c	No uncompress/copy overwrite error
    -9	common/cmd_bootm.c	Unsupported OS (not Linux, BSD, VxWorks, QNX)
-    9	common/cmd_bootm.c	Start initial ramdisk verification
-  -10	common/cmd_bootm.c	Ramdisk header has bad	   magic number
-  -11	common/cmd_bootm.c	Ramdisk header has bad	   checksum
-   10	common/cmd_bootm.c	Ramdisk header is OK
-  -12	common/cmd_bootm.c	Ramdisk data   has bad	   checksum
-   11	common/cmd_bootm.c	Ramdisk data   has correct checksum
-   12	common/cmd_bootm.c	Ramdisk verification complete, start loading
-  -13	common/cmd_bootm.c	Wrong Image Type (not PPC Linux Ramdisk)
-   13	common/cmd_bootm.c	Start multifile image verification
-   14	common/cmd_bootm.c	No initial ramdisk, no multifile, continue.
-   15	common/cmd_bootm.c	All preparation done, transferring control to OS
+
+    9	common/image.c		Start initial ramdisk verification
+  -10	common/image.c		Ramdisk header has bad	   magic number
+  -11	common/image.c		Ramdisk header has bad	   checksum
+   10	common/image.c		Ramdisk header is OK
+  -12	common/image.c		Ramdisk data   has bad	   checksum
+   11	common/image.c		Ramdisk data   has correct checksum
+   12	common/image.c		Ramdisk verification complete, start loading
+  -13	common/image.c		Wrong Image Type (not PPC Linux ramdisk)
+   13	common/image.c		Start multifile image verification
+   14	common/image.c		No initial ramdisk, no multifile, continue.
+
+   15	lib_<arch>/bootm.c	All preparation done, transferring control to OS
 
   -30	lib_ppc/board.c		Fatal error, hang the system
   -31	post/post.c		POST test failed, detected by post_output_backlog()
@@ -1726,13 +1795,13 @@ The following options need to be configured:
 
   -60	common/env_common.c	Environment has a bad CRC, using default
 
-   64	net/eth.c		starting with Ethernetconfiguration.
+   64	net/eth.c		starting with Ethernet configuration.
   -64	net/eth.c		no Ethernet found.
    65	net/eth.c		Ethernet found.
 
   -80	common/cmd_net.c	usage wrong
    80	common/cmd_net.c	before calling NetLoop()
-  -81	common/cmd_net.c	some error in NetLoop() occured
+  -81	common/cmd_net.c	some error in NetLoop() occurred
    81	common/cmd_net.c	NetLoop() back without error
   -82	common/cmd_net.c	size == 0 (File with size 0 loaded)
    82	common/cmd_net.c	trying automatic boot
@@ -1740,12 +1809,65 @@ The following options need to be configured:
   -83	common/cmd_net.c	some error in automatic boot or autoscript
    84	common/cmd_net.c	end without errors
 
+FIT uImage format:
+
+  Arg	Where			When
+  100	common/cmd_bootm.c	Kernel FIT Image has correct format
+ -100	common/cmd_bootm.c	Kernel FIT Image has incorrect format
+  101	common/cmd_bootm.c	No Kernel subimage unit name, using configuration
+ -101	common/cmd_bootm.c	Can't get configuration for kernel subimage
+  102	common/cmd_bootm.c	Kernel unit name specified
+ -103	common/cmd_bootm.c	Can't get kernel subimage node offset
+  103	common/cmd_bootm.c	Found configuration node
+  104	common/cmd_bootm.c	Got kernel subimage node offset
+ -104	common/cmd_bootm.c	Kernel subimage hash verification failed
+  105	common/cmd_bootm.c	Kernel subimage hash verification OK
+ -105	common/cmd_bootm.c	Kernel subimage is for unsupported architecture
+  106	common/cmd_bootm.c	Architecture check OK
+ -106	common/cmd_bootm.c	Kernel subimage has wrong type
+  107	common/cmd_bootm.c	Kernel subimage type OK
+ -107	common/cmd_bootm.c	Can't get kernel subimage data/size
+  108	common/cmd_bootm.c	Got kernel subimage data/size
+ -108	common/cmd_bootm.c	Wrong image type (not legacy, FIT)
+ -109	common/cmd_bootm.c	Can't get kernel subimage type
+ -110	common/cmd_bootm.c	Can't get kernel subimage comp
+ -111	common/cmd_bootm.c	Can't get kernel subimage os
+ -112	common/cmd_bootm.c	Can't get kernel subimage load address
+ -113	common/cmd_bootm.c	Image uncompress/copy overwrite error
+
+  120	common/image.c		Start initial ramdisk verification
+ -120	common/image.c		Ramdisk FIT image has incorrect format
+  121	common/image.c		Ramdisk FIT image has correct format
+  122	common/image.c		No ramdisk subimage unit name, using configuration
+ -122	common/image.c		Can't get configuration for ramdisk subimage
+  123	common/image.c		Ramdisk unit name specified
+ -124	common/image.c		Can't get ramdisk subimage node offset
+  125	common/image.c		Got ramdisk subimage node offset
+ -125	common/image.c		Ramdisk subimage hash verification failed
+  126	common/image.c		Ramdisk subimage hash verification OK
+ -126	common/image.c		Ramdisk subimage for unsupported architecture
+  127	common/image.c		Architecture check OK
+ -127	common/image.c		Can't get ramdisk subimage data/size
+  128	common/image.c		Got ramdisk subimage data/size
+  129	common/image.c		Can't get ramdisk load address
+ -129	common/image.c		Got ramdisk load address
+
+ -130	common/cmd_doc.c	Incorrect FIT image format
+  131	common/cmd_doc.c	FIT image format OK
+
+ -140	common/cmd_ide.c	Incorrect FIT image format
+  141	common/cmd_ide.c	FIT image format OK
+
+ -150	common/cmd_nand.c	Incorrect FIT image format
+  151	common/cmd_nand.c	FIT image format OK
+
+
 Modem Support:
 --------------
 
 [so far only for SMDK2400 and TRAB boards]
 
-- Modem support endable:
+- Modem support enable:
 		CONFIG_MODEM_SUPPORT
 
 - RTS/CTS Flow control enable:
@@ -1761,11 +1883,11 @@ Modem Support:
 
 		There are common interrupt_init() and timer_interrupt()
 		for all PPC archs. interrupt_init() calls interrupt_init_cpu()
-		for cpu specific initialization. interrupt_init_cpu()
+		for CPU specific initialization. interrupt_init_cpu()
 		should set decrementer_count to appropriate value. If
-		cpu resets decrementer automatically after interrupt
+		CPU resets decrementer automatically after interrupt
 		(ppc4xx) it should set decrementer_count to zero.
-		timer_interrupt() calls timer_interrupt_cpu() for cpu
+		timer_interrupt() calls timer_interrupt_cpu() for CPU
 		specific handling. If board has watchdog / status_led
 		/ other_activity_monitor it works automatically from
 		general timer_interrupt().
@@ -1775,7 +1897,7 @@ Modem Support:
 		In the target system modem support is enabled when a
 		specific key (key combination) is pressed during
 		power-on. Otherwise U-Boot will boot normally
-		(autoboot). The key_pressed() fuction is called from
+		(autoboot). The key_pressed() function is called from
 		board_init(). Currently key_pressed() is a dummy
 		function, returning 1 and thus enabling modem
 		initialization.
@@ -1783,7 +1905,7 @@ Modem Support:
 		If there are no modem init strings in the
 		environment, U-Boot proceed to autoboot; the
 		previous output (banner, info printfs) will be
-		supressed, though.
+		suppressed, though.
 
 		See also: doc/README.Modem
 
@@ -1836,6 +1958,27 @@ Configuration Settings:
 		Scratch address used by the alternate memory test
 		You only need to set this if address zero isn't writeable
 
+- CFG_MEM_TOP_HIDE (PPC only):
+		If CFG_MEM_TOP_HIDE is defined in the board config header,
+		this specified memory area will get subtracted from the top
+		(end) of RAM and won't get "touched" at all by U-Boot. By
+		fixing up gd->ram_size the Linux kernel should gets passed
+		the now "corrected" memory size and won't touch it either.
+		This should work for arch/ppc and arch/powerpc. Only Linux
+		board ports in arch/powerpc with bootwrapper support that
+		recalculate the memory size from the SDRAM controller setup
+		will have to get fixed in Linux additionally.
+
+		This option can be used as a workaround for the 440EPx/GRx
+		CHIP 11 errata where the last 256 bytes in SDRAM shouldn't
+		be touched.
+
+		WARNING: Please make sure that this value is a multiple of
+		the Linux page size (normally 4k). If this is not the case,
+		then the end address of the Linux memory will be located at a
+		non page size aligned address and this could cause major
+		problems.
+
 - CFG_TFTP_LOADADDR:
 		Default load address for network file downloads
 
@@ -1876,8 +2019,11 @@ Configuration Settings:
 - CFG_BOOTMAPSZ:
 		Maximum size of memory mapped by the startup code of
 		the Linux kernel; all data that must be processed by
-		the Linux kernel (bd_info, boot arguments, eventually
-		initrd image) must be put below this limit.
+		the Linux kernel (bd_info, boot arguments, FDT blob if
+		used) must be put below this limit, unless "bootm_low"
+		enviroment variable is defined and non-zero. In such case
+		all data for the Linux kernel must be between "bootm_low"
+		and "bootm_low" + CFG_BOOTMAPSZ.
 
 - CFG_MAX_FLASH_BANKS:
 		Max number of Flash memory banks
@@ -1910,17 +2056,24 @@ Configuration Settings:
 
 		The two-step approach is usually more reliable, since
 		you can check if the download worked before you erase
-		the flash, but in some situations (when sytem RAM is
-		too limited to allow for a tempory copy of the
+		the flash, but in some situations (when system RAM is
+		too limited to allow for a temporary copy of the
 		downloaded image) this option may be very useful.
 
 - CFG_FLASH_CFI:
 		Define if the flash driver uses extra elements in the
 		common flash structure for storing flash geometry.
 
-- CFG_FLASH_CFI_DRIVER
+- CONFIG_FLASH_CFI_DRIVER
 		This option also enables the building of the cfi_flash driver
 		in the drivers directory
+
+- CFG_FLASH_USE_BUFFER_WRITE
+		Use buffered writes to flash.
+
+- CONFIG_FLASH_SPANSION_S29WS_N
+		s29ws-n MirrorBit flash has non-standard addresses for buffered
+		write commands.
 
 - CFG_FLASH_QUIET_TEST
 		If this option is defined, the common CFI flash doesn't
@@ -1928,12 +2081,17 @@ Configuration Settings:
 		is useful, if some of the configured banks are only
 		optionally available.
 
+- CONFIG_FLASH_SHOW_PROGRESS
+		If defined (must be an integer), print out countdown
+		digits and dots.  Recommended value: 45 (9..1) for 80
+		column displays, 15 (3..1) for 40 column displays.
+
 - CFG_RX_ETH_BUFFER:
-		Defines the number of ethernet receive buffers. On some
-		ethernet controllers it is recommended to set this value
+		Defines the number of Ethernet receive buffers. On some
+		Ethernet controllers it is recommended to set this value
 		to 8 or even higher (EEPRO100 or 405 EMAC), since all
 		buffers can be full shortly after enabling the interface
-		on high ethernet traffic.
+		on high Ethernet traffic.
 		Defaults to 4 if not defined.
 
 The following definitions that deal with the placement and management
@@ -2001,7 +2159,7 @@ following configurations:
 	  CFG_ENV_SIZE_REDUND
 
 	   These settings describe a second storage area used to hold
-	   a redundand copy of the environment data, so that there is
+	   a redundant copy of the environment data, so that there is
 	   a valid backup copy in case there is a power failure during
 	   a "saveenv" operation.
 
@@ -2019,14 +2177,14 @@ accordingly!
 	- CFG_ENV_ADDR:
 	- CFG_ENV_SIZE:
 
-	  These two #defines are used to determin the memory area you
+	  These two #defines are used to determine the memory area you
 	  want to use for environment. It is assumed that this memory
 	  can just be read and written to, without any special
 	  provision.
 
 BE CAREFUL! The first access to the environment happens quite early
 in U-Boot initalization (when we try to get the setting of for the
-console baudrate). You *MUST* have mappend your NVRAM area then, or
+console baudrate). You *MUST* have mapped your NVRAM area then, or
 U-Boot will hang.
 
 Please note that even with NVRAM we still use a copy of the
@@ -2123,7 +2281,7 @@ to save the current settings.
 	to be a good choice since it makes it far enough from the
 	start of the data area as well as from the stack pointer.
 
-Please note that the environment is read-only as long as the monitor
+Please note that the environment is read-only until the monitor
 has been relocated to RAM and a RAM copy of the environment has been
 created; also, when using EEPROM you will have to use getenv_r()
 until then to read environment variables.
@@ -2175,14 +2333,14 @@ Low Level (hardware related) configuration options:
 
 		CFG_ISA_IO_STRIDE
 
-		defines the spacing between fdc chipset registers
+		defines the spacing between FDC chipset registers
 		(default value 1)
 
 		CFG_ISA_IO_OFFSET
 
 		defines the offset of register from address. It
 		depends on which part of the data bus is connected to
-		the fdc chipset. (default value 0)
+		the FDC chipset. (default value 0)
 
 		If CFG_ISA_IO_STRIDE CFG_ISA_IO_OFFSET and
 		CFG_FDC_DRIVE_NUMBER are undefined, they take their
@@ -2271,6 +2429,10 @@ Low Level (hardware related) configuration options:
 		enable I2C microcode relocation patch (MPC8xx);
 		define relocation offset in DPRAM [DSP2]
 
+- CFG_SMC_UCODE_PATCH, CFG_SMC_DPMEM_OFFSET [0x1FC0]:
+		enable SMC microcode relocation patch (MPC8xx);
+		define relocation offset in DPRAM [SMC1]
+
 - CFG_SPI_UCODE_PATCH, CFG_SPI_DPMEM_OFFSET [0x1FC0]:
 		enable SPI microcode relocation patch (MPC8xx);
 		define relocation offset in DPRAM [SCC4]
@@ -2297,22 +2459,24 @@ Low Level (hardware related) configuration options:
 		Overrides the default PCI memory map in cpu/mpc8260/pci.c if set.
 
 - CONFIG_SPD_EEPROM
-		Get DDR timing information from an I2C EEPROM.  Common with pluggable
-		memory modules such as SODIMMs
+		Get DDR timing information from an I2C EEPROM. Common
+		with pluggable memory modules such as SODIMMs
+
   SPD_EEPROM_ADDRESS
 		I2C address of the SPD EEPROM
 
 - CFG_SPD_BUS_NUM
-		If SPD EEPROM is on an I2C bus other than the first one, specify here.
-		Note that the value must resolve to something your driver can deal with.
+		If SPD EEPROM is on an I2C bus other than the first
+		one, specify here. Note that the value must resolve
+		to something your driver can deal with.
 
 - CFG_83XX_DDR_USES_CS0
-		Only for 83xx systems. If specified, then DDR should be configured
-		using CS0 and CS1 instead of CS2 and CS3.
+		Only for 83xx systems. If specified, then DDR should
+		be configured using CS0 and CS1 instead of CS2 and CS3.
 
 - CFG_83XX_DDR_USES_CS0
-		Only for 83xx systems. If specified, then DDR should be configured
-		using CS0 and CS1 instead of CS2 and CS3.
+		Only for 83xx systems. If specified, then DDR should
+		be configured using CS0 and CS1 instead of CS2 and CS3.
 
 - CONFIG_ETHER_ON_FEC[12]
 		Define to enable FEC[12] on a 8xx series processor.
@@ -2372,41 +2536,42 @@ Low Level (hardware related) configuration options:
 		Normally these variables MUST NOT be defined. The
 		only exception is when U-Boot is loaded (to RAM) by
 		some other boot loader or by a debugger which
-		performs these intializations itself.
+		performs these initializations itself.
 
 
 Building the Software:
 ======================
 
-Building U-Boot has been tested in native PPC environments (on a
-PowerBook G3 running LinuxPPC 2000) and in cross environments
-(running RedHat 6.x and 7.x Linux on x86, Solaris 2.6 on a SPARC, and
-NetBSD 1.5 on x86).
+Building U-Boot has been tested in several native build environments
+and in many different cross environments. Of course we cannot support
+all possibly existing versions of cross development tools in all
+(potentially obsolete) versions. In case of tool chain problems we
+recommend to use the ELDK (see http://www.denx.de/wiki/DULG/ELDK)
+which is extensively used to build and test U-Boot.
 
-If you are not using a native PPC environment, it is assumed that you
-have the GNU cross compiling tools available in your path and named
-with a prefix of "powerpc-linux-". If this is not the case, (e.g. if
-you are using Monta Vista's Hard Hat Linux CDK 1.2) you must change
-the definition of CROSS_COMPILE in Makefile. For HHL on a 4xx CPU,
-change it to:
+If you are not using a native environment, it is assumed that you
+have GNU cross compiling tools available in your path. In this case,
+you must set the environment variable CROSS_COMPILE in your shell.
+Note that no changes to the Makefile or any other source files are
+necessary. For example using the ELDK on a 4xx CPU, please enter:
 
-	CROSS_COMPILE = ppc_4xx-
+	$ CROSS_COMPILE=ppc_4xx-
+	$ export CROSS_COMPILE
 
-
-U-Boot is intended to be  simple  to  build.  After  installing	 the
-sources	 you must configure U-Boot for one specific board type. This
+U-Boot is intended to be simple to build. After installing the
+sources you must configure U-Boot for one specific board type. This
 is done by typing:
 
 	make NAME_config
 
-where "NAME_config" is the name of one of the existing
-configurations; see the main Makefile for supported names.
+where "NAME_config" is the name of one of the existing configu-
+rations; see the main Makefile for supported names.
 
 Note: for some board special configuration names may exist; check if
       additional information is available from the board vendor; for
       instance, the TQM823L systems are available without (standard)
       or with LCD support. You can select such additional "features"
-      when chosing the configuration, i. e.
+      when choosing the configuration, i. e.
 
       make TQM823L_config
 	- will configure for a plain TQM823L, i. e. no LCD support
@@ -2476,20 +2641,20 @@ steps:
 Testing of U-Boot Modifications, Ports to New Hardware, etc.:
 ==============================================================
 
-If you have modified U-Boot sources (for instance added a new	board
-or  support  for  new  devices,	 a new CPU, etc.) you are expected to
+If you have modified U-Boot sources (for instance added a new board
+or support for new devices, a new CPU, etc.) you are expected to
 provide feedback to the other developers. The feedback normally takes
 the form of a "patch", i. e. a context diff against a certain (latest
-official or latest in CVS) version of U-Boot sources.
+official or latest in the git repository) version of U-Boot sources.
 
-But before you submit such a patch, please verify that	your  modifi-
-cation	did not break existing code. At least make sure that *ALL* of
+But before you submit such a patch, please verify that your modifi-
+cation did not break existing code. At least make sure that *ALL* of
 the supported boards compile WITHOUT ANY compiler warnings. To do so,
 just run the "MAKEALL" script, which will configure and build U-Boot
-for ALL supported system. Be warned, this will take a while. You  can
-select	which  (cross)	compiler  to use by passing a `CROSS_COMPILE'
-environment variable to the script, i. e. to use the cross tools from
-MontaVista's Hard Hat Linux you can type
+for ALL supported system. Be warned, this will take a while. You can
+select which (cross) compiler to use by passing a `CROSS_COMPILE'
+environment variable to the script, i. e. to use the ELDK cross tools
+you can type
 
 	CROSS_COMPILE=ppc_8xx- MAKEALL
 
@@ -2497,20 +2662,21 @@ or to build on a native PowerPC system you can type
 
 	CROSS_COMPILE=' ' MAKEALL
 
-When using the MAKEALL script, the default behaviour is to build U-Boot
-in the source directory. This location can be changed by setting the
-BUILD_DIR environment variable. Also, for each target built, the MAKEALL
-script saves two log files (<target>.ERR and <target>.MAKEALL) in the
-<source dir>/LOG directory. This default location can be changed by
-setting the MAKEALL_LOGDIR environment variable. For example:
+When using the MAKEALL script, the default behaviour is to build
+U-Boot in the source directory. This location can be changed by
+setting the BUILD_DIR environment variable. Also, for each target
+built, the MAKEALL script saves two log files (<target>.ERR and
+<target>.MAKEALL) in the <source dir>/LOG directory. This default
+location can be changed by setting the MAKEALL_LOGDIR environment
+variable. For example:
 
 	export BUILD_DIR=/tmp/build
 	export MAKEALL_LOGDIR=/tmp/log
 	CROSS_COMPILE=ppc_8xx- MAKEALL
 
-With the above settings build objects are saved in the /tmp/build, log
-files are saved in the /tmp/log and the source tree remains clean during
-the whole build process.
+With the above settings build objects are saved in the /tmp/build,
+log files are saved in the /tmp/log and the source tree remains clean
+during the whole build process.
 
 
 See also "U-Boot Porting Guide" below.
@@ -2602,10 +2768,32 @@ Some configuration options can be set using Environment Variables:
 
   bootfile	- Name of the image to load with TFTP
 
+  bootm_low	- Memory range available for image processing in the bootm
+		  command can be restricted. This variable is given as
+		  a hexadecimal number and defines lowest address allowed
+		  for use by the bootm command. See also "bootm_size"
+		  environment variable. Address defined by "bootm_low" is
+		  also the base of the initial memory mapping for the Linux
+		  kernel -- see the description of CFG_BOOTMAPSZ.
+
+  bootm_size	- Memory range available for image processing in the bootm
+		  command can be restricted. This variable is given as
+		  a hexadecimal number and defines the size of the region
+		  allowed for use by the bootm command. See also "bootm_low"
+		  environment variable.
+
   autoload	- if set to "no" (any string beginning with 'n'),
 		  "bootp" will just load perform a lookup of the
 		  configuration from the BOOTP server, but not try to
 		  load any image using TFTP
+
+  autoscript	- if set to "yes" commands like "loadb", "loady",
+		  "bootp", "tftpb", "rarpboot" and "nfs" will attempt
+		  to automatically run script images (by internally
+		  calling "autoscript").
+
+  autoscript_uname - if script image is in a format (FIT) this
+		     variable is used to get script subimage unit name.
 
   autostart	- if set to "yes", an image loaded using the "bootp",
 		  "rarpboot", "tftpboot" or "diskboot" commands will
@@ -2680,6 +2868,10 @@ Some configuration options can be set using Environment Variables:
 		  => setenv ethact SCC ETHERNET
 		  => ping 10.0.0.1 # traffic sent on SCC ETHERNET
 
+  ethrotate	- When set to "no" U-Boot does not go through all
+		  available network interfaces.
+		  It just stays at the currently selected interface.
+
    netretry	- When set to "no" each network operation will
 		  either succeed or fail without retrying.
 		  When set to "once" the network operation will
@@ -2688,6 +2880,9 @@ Some configuration options can be set using Environment Variables:
 		  Useful on scripts which control the retry operation
 		  themselves.
 
+  npe_ucode	- see CONFIG_IXP4XX_NPE_EXT_UCOD
+		  if set load address for the NPE microcode
+
   tftpsrcport	- If this is set, the value is used for TFTP's
 		  UDP source port.
 
@@ -2695,7 +2890,7 @@ Some configuration options can be set using Environment Variables:
 		  destination port instead of the Well Know Port 69.
 
    vlan		- When set to a value < 4095 the traffic over
-		  ethernet is encapsulated/received over 802.1q
+		  Ethernet is encapsulated/received over 802.1q
 		  VLAN tagged frames.
 
 The following environment variables may be used and automatically
@@ -2773,14 +2968,14 @@ General rules:
     executed anyway.
 
 (2) If you execute several variables with one call to run (i. e.
-    calling run with a list af variables as arguments), any failing
+    calling run with a list of variables as arguments), any failing
     command will cause "run" to terminate, i. e. the remaining
     variables are not executed.
 
 Note for Redundant Ethernet Interfaces:
 =======================================
 
-Some boards come with redundant ethernet interfaces; U-Boot supports
+Some boards come with redundant Ethernet interfaces; U-Boot supports
 such configurations and is capable of automatic selection of a
 "working" interface when needed. MAC assignment works as follows:
 
@@ -2814,10 +3009,24 @@ o If neither SROM nor the environment contain a MAC address, an error
 Image Formats:
 ==============
 
-The "boot" commands of this monitor operate on "image" files which
-can be basicly anything, preceeded by a special header; see the
-definitions in include/image.h for details; basicly, the header
-defines the following image properties:
+U-Boot is capable of booting (and performing other auxiliary operations on)
+images in two formats:
+
+New uImage format (FIT)
+-----------------------
+
+Flexible and powerful format based on Flattened Image Tree -- FIT (similar
+to Flattened Device Tree). It allows the use of images with multiple
+components (several kernels, ramdisks, etc.), with contents protected by
+SHA1, MD5 or CRC32. More details are found in the doc/uImage.FIT directory.
+
+
+Old uImage format
+-----------------
+
+Old image format is based on binary files which can be basically anything,
+preceded by a special header; see the definitions in include/image.h for
+details; basically, the header defines the following image properties:
 
 * Target Operating System (Provisions for OpenBSD, NetBSD, FreeBSD,
   4.4BSD, Linux, SVR4, Esix, Solaris, Irix, SCO, Dell, NCR, VxWorks,
@@ -3059,7 +3268,7 @@ TQM8xxL is in the first Flash bank):
 
 
 You can check the success of the download using the 'iminfo' command;
-this includes a checksum verification so you  can  be  sure  no	 data
+this includes a checksum verification so you can be sure no data
 corruption happened:
 
 	=> imi 40100000
@@ -3107,7 +3316,7 @@ parameters. You can check and modify this variable using the
 	Memory: 15208k available (700k kernel code, 444k data, 32k init) [c0000000,c1000000]
 	...
 
-If you want to boot a Linux kernel with initial ram disk, you pass
+If you want to boot a Linux kernel with initial RAM disk, you pass
 the memory addresses of both the kernel and the initrd image (PPBCOOT
 format!) to the "bootm" command:
 
@@ -3404,7 +3613,7 @@ models provide on-chip memory (like the IMMR area on MPC8xx and
 MPC826x processors), on others (parts of) the data cache can be
 locked as (mis-) used as memory, etc.
 
-	Chris Hallinan posted a good summary of	 these	issues	to  the
+	Chris Hallinan posted a good summary of these issues to the
 	u-boot-users mailing list:
 
 	Subject: RE: [U-Boot-Users] RE: More On Memory Bank x (nothingness)?
@@ -3417,13 +3626,13 @@ locked as (mis-) used as memory, etc.
 	require any physical RAM backing up the cache. The cleverness
 	is that the cache is being used as a temporary supply of
 	necessary storage before the SDRAM controller is setup. It's
-	beyond the scope of this list to expain the details, but you
+	beyond the scope of this list to explain the details, but you
 	can see how this works by studying the cache architecture and
 	operation in the architecture and processor-specific manuals.
 
 	OCM is On Chip Memory, which I believe the 405GP has 4K. It
 	is another option for the system designer to use as an
-	initial stack/ram area prior to SDRAM being available. Either
+	initial stack/RAM area prior to SDRAM being available. Either
 	option should work for you. Using CS 4 should be fine if your
 	board designers haven't used it for something that would
 	cause you grief during the initial boot! It is frequently not
@@ -3448,7 +3657,7 @@ code for the initialization procedures:
 * Initialized global data (data segment) is read-only. Do not attempt
   to write it.
 
-* Do not use any unitialized global data (or implicitely initialized
+* Do not use any uninitialized global data (or implicitely initialized
   as zero data - BSS segment) at all - this is undefined, initiali-
   zation is performed later (when relocating to RAM).
 
@@ -3471,7 +3680,7 @@ GCC's implementation.
 
 For PowerPC, the following registers have specific use:
 	R1:	stack pointer
-	R2:	TOC pointer
+	R2:	reserved for system use
 	R3-R4:	parameter passing and return values
 	R5-R10: parameter passing
 	R13:	small data area pointer
@@ -3480,7 +3689,7 @@ For PowerPC, the following registers have specific use:
 
 	(U-Boot also uses R14 as internal GOT pointer.)
 
-    ==> U-Boot will use R29 to hold a pointer to the global data
+    ==> U-Boot will use R2 to hold a pointer to the global data
 
     Note: on PPC, we could use a static initializer (since the
     address of the global data structure is known at compile time),
@@ -3488,6 +3697,11 @@ For PowerPC, the following registers have specific use:
     smaller code - although the code savings are not that big (on
     average for all boards 752 bytes for the whole U-Boot image,
     624 text + 127 data).
+
+On Blackfin, the normal C ABI (except for P5) is followed as documented here:
+	http://docs.blackfin.uclinux.org/doku.php?id=application_binary_interface
+
+    ==> U-Boot will use P5 to hold a pointer to the global data
 
 On ARM, the following registers are used:
 
@@ -3555,7 +3769,7 @@ System Initialization:
 ----------------------
 
 In the reset configuration, U-Boot starts at the reset entry point
-(on most PowerPC systens at address 0x00000100). Because of the reset
+(on most PowerPC systems at address 0x00000100). Because of the reset
 configuration for CS0# this is a mirror of the onboard Flash memory.
 To be able to re-map memory U-Boot then jumps to its link address.
 To be able to implement the initialization code in C, a (small!)
@@ -3689,6 +3903,8 @@ may be rejected, even when they contain important and valuable stuff.
 
 Patches shall be sent to the u-boot-users mailing list.
 
+Please see http://www.denx.de/wiki/U-Boot/Patches for details.
+
 When you send a patch, please include the following information with
 it:
 
@@ -3709,18 +3925,23 @@ it:
 * If your patch adds new configuration options, don't forget to
   document these in the README file.
 
-* The patch itself. If you are accessing the CVS repository use "cvs
-  update; cvs diff -puRN"; else, use "diff -purN OLD NEW". If your
-  version of diff does not support these options, then get the latest
-  version of GNU diff.
+* The patch itself. If you are using git (which is *strongly*
+  recommended) you can easily generate the patch using the
+  "git-format-patch". If you then use "git-send-email" to send it to
+  the U-Boot mailing list, you will avoid most of the common problems
+  with some other mail clients.
 
-  The current directory when running this command shall be the top
-  level directory of the U-Boot source tree, or it's parent directory
-  (i. e. please make sure that your patch includes sufficient
-  directory information for the affected files).
+  If you cannot use git, use "diff -purN OLD NEW". If your version of
+  diff does not support these options, then get the latest version of
+  GNU diff.
 
-  We accept patches as plain text, MIME attachments or as uuencoded
-  gzipped text.
+  The current directory when running this command shall be the parent
+  directory of the U-Boot source tree (i. e. please make sure that
+  your patch includes sufficient directory information for the
+  affected files).
+
+  We prefer patches as plain text. MIME attachments are discouraged,
+  and compressed attachments must not be used.
 
 * If one logical set of modifications affects or creates several
   files, all these changes shall be submitted in a SINGLE patch file.
@@ -3747,4 +3968,6 @@ Notes:
   modification.
 
 * Remember that there is a size limit of 40 kB per message on the
-  u-boot-users mailing list. Compression may help.
+  u-boot-users mailing list. Bigger patches will be moderated. If
+  they are reasonable and not bigger than 100 kB, they will be
+  acknowledged. Even bigger patches should be avoided.

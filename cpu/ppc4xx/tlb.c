@@ -26,13 +26,14 @@
 #if defined(CONFIG_440)
 
 #include <ppc440.h>
+#include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/mmu.h>
 
 typedef struct region {
-	unsigned long base;
-	unsigned long size;
-	unsigned long tlb_word2_i_value;
+	u64 base;
+	u32 size;
+	u32 tlb_word2_i_value;
 } region_t;
 
 void remove_tlb(u32 vaddr, u32 size)
@@ -42,7 +43,6 @@ void remove_tlb(u32 vaddr, u32 size)
 	u32 tlb_vaddr;
 	u32 tlb_size = 0;
 
-	/* First, find the index of a TLB entry not being used */
 	for (i=0; i<PPC4XX_TLB_SIZE; i++) {
 		tlb_word0_value = mftlb1(i);
 		tlb_vaddr = TLB_WORD0_EPN_DECODE(tlb_word0_value);
@@ -96,10 +96,98 @@ void remove_tlb(u32 vaddr, u32 size)
 	asm("isync");
 }
 
-static int add_tlb_entry(unsigned long phys_addr,
-			 unsigned long virt_addr,
-			 unsigned long tlb_word0_size_value,
-			 unsigned long tlb_word2_i_value)
+/*
+ * Change the I attribute (cache inhibited) of a TLB or multiple TLB's.
+ * This function is used to either turn cache on or off in a specific
+ * memory area.
+ */
+void change_tlb(u32 vaddr, u32 size, u32 tlb_word2_i_value)
+{
+	int i;
+	u32 tlb_word0_value;
+	u32 tlb_word2_value;
+	u32 tlb_vaddr;
+	u32 tlb_size = 0;
+
+	for (i=0; i<PPC4XX_TLB_SIZE; i++) {
+		tlb_word0_value = mftlb1(i);
+		tlb_vaddr = TLB_WORD0_EPN_DECODE(tlb_word0_value);
+		if (((tlb_word0_value & TLB_WORD0_V_MASK) == TLB_WORD0_V_ENABLE) &&
+		    (tlb_vaddr >= vaddr)) {
+			/*
+			 * TLB is enabled and start address is lower or equal
+			 * than the area we are looking for. Now we only have
+			 * to check the size/end address for a match.
+			 */
+			switch (tlb_word0_value & TLB_WORD0_SIZE_MASK) {
+			case TLB_WORD0_SIZE_1KB:
+				tlb_size = 1 << 10;
+				break;
+			case TLB_WORD0_SIZE_4KB:
+				tlb_size = 4 << 10;
+				break;
+			case TLB_WORD0_SIZE_16KB:
+				tlb_size = 16 << 10;
+				break;
+			case TLB_WORD0_SIZE_64KB:
+				tlb_size = 64 << 10;
+				break;
+			case TLB_WORD0_SIZE_256KB:
+				tlb_size = 256 << 10;
+				break;
+			case TLB_WORD0_SIZE_1MB:
+				tlb_size = 1 << 20;
+				break;
+			case TLB_WORD0_SIZE_16MB:
+				tlb_size = 16 << 20;
+				break;
+			case TLB_WORD0_SIZE_256MB:
+				tlb_size = 256 << 20;
+				break;
+			}
+
+			/*
+			 * Now check the end-address if it's in the range
+			 */
+			if (((tlb_vaddr + tlb_size - 1) <= (vaddr + size - 1)) ||
+			    ((tlb_vaddr < (vaddr + size - 1)) &&
+			     ((tlb_vaddr + tlb_size - 1) > (vaddr + size - 1)))) {
+				/*
+				 * Found a TLB in the range.
+				 * Change cache attribute in tlb2 word.
+				 */
+				tlb_word2_value =
+					TLB_WORD2_U0_DISABLE | TLB_WORD2_U1_DISABLE |
+					TLB_WORD2_U2_DISABLE | TLB_WORD2_U3_DISABLE |
+					TLB_WORD2_W_DISABLE | tlb_word2_i_value |
+					TLB_WORD2_M_DISABLE | TLB_WORD2_G_DISABLE |
+					TLB_WORD2_E_DISABLE | TLB_WORD2_UX_ENABLE |
+					TLB_WORD2_UW_ENABLE | TLB_WORD2_UR_ENABLE |
+					TLB_WORD2_SX_ENABLE | TLB_WORD2_SW_ENABLE |
+					TLB_WORD2_SR_ENABLE;
+
+				/*
+				 * Now either flush or invalidate the dcache
+				 */
+				if (tlb_word2_i_value)
+					flush_dcache();
+				else
+					invalidate_dcache();
+
+				mttlb3(i, tlb_word2_value);
+				asm("iccci 0,0");
+			}
+		}
+	}
+
+	/* Execute an ISYNC instruction so that the new TLB entry takes effect */
+	asm("isync");
+}
+
+static int add_tlb_entry(u64 phys_addr,
+			 u32 virt_addr,
+			 u32 tlb_word0_size_value,
+			 u32 tlb_word2_i_value)
 {
 	int i;
 	unsigned long tlb_word0_value;
@@ -118,7 +206,8 @@ static int add_tlb_entry(unsigned long phys_addr,
 	/* Second, create the TLB entry */
 	tlb_word0_value = TLB_WORD0_EPN_ENCODE(virt_addr) | TLB_WORD0_V_ENABLE |
 		TLB_WORD0_TS_0 | tlb_word0_size_value;
-	tlb_word1_value = TLB_WORD1_RPN_ENCODE(phys_addr) | TLB_WORD1_ERPN_ENCODE(0);
+	tlb_word1_value = TLB_WORD1_RPN_ENCODE((u32)phys_addr) |
+		TLB_WORD1_ERPN_ENCODE(phys_addr >> 32);
 	tlb_word2_value = TLB_WORD2_U0_DISABLE | TLB_WORD2_U1_DISABLE |
 		TLB_WORD2_U2_DISABLE | TLB_WORD2_U3_DISABLE |
 		TLB_WORD2_W_DISABLE | tlb_word2_i_value |
@@ -142,10 +231,10 @@ static int add_tlb_entry(unsigned long phys_addr,
 	return 0;
 }
 
-static void program_tlb_addr(unsigned long phys_addr,
-			     unsigned long virt_addr,
-			     unsigned long mem_size,
-			     unsigned long tlb_word2_i_value)
+static void program_tlb_addr(u64 phys_addr,
+			     u32 virt_addr,
+			     u32 mem_size,
+			     u32 tlb_word2_i_value)
 {
 	int rc;
 	int tlb_i;
@@ -227,12 +316,12 @@ static void program_tlb_addr(unsigned long phys_addr,
 				virt_addr += TLB_1KB_SIZE;
 			}
 		} else {
-			printf("ERROR: no TLB size exists for the base address 0x%0X.\n",
+			printf("ERROR: no TLB size exists for the base address 0x%llx.\n",
 				phys_addr);
 		}
 
 		if (rc != 0)
-			printf("ERROR: no TLB entries available for the base addr 0x%0X.\n",
+			printf("ERROR: no TLB entries available for the base addr 0x%llx.\n",
 				phys_addr);
 	}
 
@@ -245,7 +334,7 @@ static void program_tlb_addr(unsigned long phys_addr,
  * Common usage for boards with SDRAM DIMM modules to dynamically
  * configure the TLB's for the SDRAM
  */
-void program_tlb(u32 phys_addr, u32 virt_addr, u32 size, u32 tlb_word2_i_value)
+void program_tlb(u64 phys_addr, u32 virt_addr, u32 size, u32 tlb_word2_i_value)
 {
 	region_t region_array;
 

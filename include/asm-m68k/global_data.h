@@ -47,12 +47,19 @@ typedef	struct	global_data {
 	unsigned long	vco_clk;
 	unsigned long	flb_clk;
 #endif
-	unsigned long	ram_size;	/* RAM size */
+#ifdef CONFIG_FSL_I2C
+	unsigned long	i2c1_clk;
+	unsigned long	i2c2_clk;
+#endif
+	phys_size_t	ram_size;	/* RAM size */
 	unsigned long	reloc_off;	/* Relocation Offset */
 	unsigned long	reset_status;	/* reset status register at boot	*/
 	unsigned long	env_addr;	/* Address  of Environment struct	*/
 	unsigned long	env_valid;	/* Checksum of Environment valid?	*/
 	unsigned long	have_console;	/* serial_init() was called		*/
+#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO)
+	unsigned long	fb_base;	/* Base addr of framebuffer memory */
+#endif
 #ifdef CONFIG_BOARD_TYPES
 	unsigned long	board_type;
 #endif
@@ -65,6 +72,9 @@ typedef	struct	global_data {
 #define	GD_FLG_RELOC	0x00001		/* Code was relocated to RAM		*/
 #define	GD_FLG_DEVINIT	0x00002		/* Devices have been initialized	*/
 #define	GD_FLG_SILENT	0x00004		/* Silent mode				*/
+#define	GD_FLG_POSTFAIL	0x00008		/* Critical POST test failed		*/
+#define	GD_FLG_POSTSTOP	0x00010		/* POST seqeunce aborted		*/
+#define	GD_FLG_LOGINIT	0x00020		/* Log Buffer has been initialized	*/
 
 #if 0
 extern gd_t *global_data;

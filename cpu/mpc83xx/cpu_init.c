@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2006 Freescale Semiconductor, Inc.
+ * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -73,59 +73,94 @@ void cpu_init_f (volatile immap_t * im)
 			  (CFG_ACR_PIPE_DEP << ACR_PIPE_DEP_SHIFT);
 #endif
 
+#ifdef CFG_ACR_RPTCNT
+	/* Arbiter repeat count */
+	im->arbiter.acr = (im->arbiter.acr & ~(ACR_RPTCNT)) |
+			  (CFG_ACR_RPTCNT << ACR_RPTCNT_SHIFT);
+#endif
+
+#ifdef CFG_SPCR_OPT
+	/* Optimize transactions between CSB and other devices */
+	im->sysconf.spcr = (im->sysconf.spcr & ~SPCR_OPT) |
+			   (CFG_SPCR_OPT << SPCR_OPT_SHIFT);
+#endif
+
+#ifdef CFG_SPCR_TSECEP
+	/* all eTSEC's Emergency priority */
+	im->sysconf.spcr = (im->sysconf.spcr & ~SPCR_TSECEP) |
+			   (CFG_SPCR_TSECEP << SPCR_TSECEP_SHIFT);
+#endif
+
 #ifdef CFG_SPCR_TSEC1EP
 	/* TSEC1 Emergency priority */
-	im->sysconf.spcr = (im->sysconf.spcr & ~SPCR_TSEC1EP) | (CFG_SPCR_TSEC1EP << SPCR_TSEC1EP_SHIFT);
+	im->sysconf.spcr = (im->sysconf.spcr & ~SPCR_TSEC1EP) |
+			   (CFG_SPCR_TSEC1EP << SPCR_TSEC1EP_SHIFT);
 #endif
 
 #ifdef CFG_SPCR_TSEC2EP
 	/* TSEC2 Emergency priority */
-	im->sysconf.spcr = (im->sysconf.spcr & ~SPCR_TSEC2EP) | (CFG_SPCR_TSEC2EP << SPCR_TSEC2EP_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_TSEC1CM
-	/* TSEC1 clock mode */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC1CM) | (CFG_SCCR_TSEC1CM << SCCR_TSEC1CM_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_TSEC2CM
-	/* TSEC2 & I2C1 clock mode */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC2CM) | (CFG_SCCR_TSEC2CM << SCCR_TSEC2CM_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_TSEC1ON
-	/* TSEC1 clock switch */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC1ON) | (CFG_SCCR_TSEC1ON << SCCR_TSEC1ON_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_TSEC2ON
-	/* TSEC2 clock switch */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC2ON) | (CFG_SCCR_TSEC2ON << SCCR_TSEC2ON_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_USBMPHCM
-	/* USB MPH clock mode */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_USBMPHCM) | (CFG_SCCR_USBMPHCM << SCCR_USBMPHCM_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_PCICM
-	/* PCI & DMA clock mode */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_PCICM) | (CFG_SCCR_PCICM << SCCR_PCICM_SHIFT);
-#endif
-
-#ifdef CFG_SCCR_USBDRCM
-	/* USB DR clock mode */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_USBDRCM) | (CFG_SCCR_USBDRCM << SCCR_USBDRCM_SHIFT);
+	im->sysconf.spcr = (im->sysconf.spcr & ~SPCR_TSEC2EP) |
+			   (CFG_SPCR_TSEC2EP << SPCR_TSEC2EP_SHIFT);
 #endif
 
 #ifdef CFG_SCCR_ENCCM
 	/* Encryption clock mode */
-	im->clk.sccr = (im->clk.sccr & ~SCCR_ENCCM) | (CFG_SCCR_ENCCM << SCCR_PCICM_SHIFT);
+	im->clk.sccr = (im->clk.sccr & ~SCCR_ENCCM) |
+		       (CFG_SCCR_ENCCM << SCCR_PCICM_SHIFT);
 #endif
 
-#ifdef CFG_ACR_RPTCNT
-	/* Arbiter repeat count */
-	im->arbiter.acr = ((im->arbiter.acr & ~(ACR_RPTCNT)) | (CFG_ACR_RPTCNT << ACR_RPTCNT_SHIFT));
+#ifdef CFG_SCCR_PCICM
+	/* PCI & DMA clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_PCICM) |
+		       (CFG_SCCR_PCICM << SCCR_PCICM_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_TSECCM
+	/* all TSEC's clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_TSECCM) |
+		       (CFG_SCCR_TSECCM << SCCR_TSECCM_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_TSEC1CM
+	/* TSEC1 clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC1CM) |
+		       (CFG_SCCR_TSEC1CM << SCCR_TSEC1CM_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_TSEC2CM
+	/* TSEC2 clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC2CM) |
+		       (CFG_SCCR_TSEC2CM << SCCR_TSEC2CM_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_TSEC1ON
+	/* TSEC1 clock switch */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC1ON) |
+		       (CFG_SCCR_TSEC1ON << SCCR_TSEC1ON_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_TSEC2ON
+	/* TSEC2 clock switch */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_TSEC2ON) |
+		       (CFG_SCCR_TSEC2ON << SCCR_TSEC2ON_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_USBMPHCM
+	/* USB MPH clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_USBMPHCM) |
+		       (CFG_SCCR_USBMPHCM << SCCR_USBMPHCM_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_USBDRCM
+	/* USB DR clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_USBDRCM) |
+		       (CFG_SCCR_USBDRCM << SCCR_USBDRCM_SHIFT);
+#endif
+
+#ifdef CFG_SCCR_SATACM
+	/* SATA controller clock mode */
+	im->clk.sccr = (im->clk.sccr & ~SCCR_SATACM) |
+		       (CFG_SCCR_SATACM << SCCR_SATACM_SHIFT);
 #endif
 
 	/* RSR - Reset Status Register - clear all status (4.6.1.3) */
@@ -146,7 +181,12 @@ void cpu_init_f (volatile immap_t * im)
 
 	/* System General Purpose Register */
 #ifdef CFG_SICRH
+#if defined(CONFIG_MPC834X) || defined(CONFIG_MPC8313)
+	/* regarding to MPC34x manual rev.1 bits 28..29 must be preserved */
+	im->sysconf.sicrh = (im->sysconf.sicrh & 0x0000000C) | CFG_SICRH;
+#else
 	im->sysconf.sicrh = CFG_SICRH;
+#endif
 #endif
 #ifdef CFG_SICRL
 	im->sysconf.sicrl = CFG_SICRL;
@@ -154,6 +194,10 @@ void cpu_init_f (volatile immap_t * im)
 	/* DDR control driver register */
 #ifdef CFG_DDRCDR
 	im->sysconf.ddrcdr = CFG_DDRCDR;
+#endif
+	/* Output buffer impedance register */
+#ifdef CFG_OBIR
+	im->sysconf.obir = CFG_OBIR;
 #endif
 
 #ifdef CONFIG_QE
@@ -179,7 +223,7 @@ void cpu_init_f (volatile immap_t * im)
 	im->sysconf.lblaw[0].bar = CFG_LBLAWBAR0_PRELIM;
 	im->sysconf.lblaw[0].ar = CFG_LBLAWAR0_PRELIM;
 #else
-#error 	CFG_BR0_PRELIM, CFG_OR0_PRELIM, CFG_LBLAWBAR0_PRELIM & CFG_LBLAWAR0_PRELIM must be defined
+#error	CFG_BR0_PRELIM, CFG_OR0_PRELIM, CFG_LBLAWBAR0_PRELIM & CFG_LBLAWAR0_PRELIM must be defined
 #endif
 
 #if defined(CFG_BR1_PRELIM) && defined(CFG_OR1_PRELIM)

@@ -42,9 +42,9 @@
 
 typedef volatile struct {
 	u_int32_t	pid12;
-	u_int32_t	emumgt_clksped;
-	u_int32_t	gpint_en;
-	u_int32_t	gpdir_dat;
+	u_int32_t	emumgt;
+	u_int32_t	na1;
+	u_int32_t	na2;
 	u_int32_t	tim12;
 	u_int32_t	tim34;
 	u_int32_t	prd12;
@@ -52,14 +52,12 @@ typedef volatile struct {
 	u_int32_t	tcr;
 	u_int32_t	tgcr;
 	u_int32_t	wdtcr;
-	u_int32_t	tlgc;
-	u_int32_t	tlmr;
 } davinci_timer;
 
 davinci_timer		*timer = (davinci_timer *)CFG_TIMERBASE;
 
 #define TIMER_LOAD_VAL	(CFG_HZ_CLOCK / CFG_HZ)
-#define READ_TIMER	timer->tim34
+#define TIM_CLK_DIV	16
 
 static ulong timestamp;
 static ulong lastinc;
@@ -69,45 +67,28 @@ int timer_init(void)
 	/* We are using timer34 in unchained 32-bit mode, full speed */
 	timer->tcr = 0x0;
 	timer->tgcr = 0x0;
-	timer->tgcr = 0x06;
+	timer->tgcr = 0x06 | ((TIM_CLK_DIV - 1) << 8);
 	timer->tim34 = 0x0;
 	timer->prd34 = TIMER_LOAD_VAL;
 	lastinc = 0;
-	timer->tcr = 0x80 << 16;
 	timestamp = 0;
+	timer->tcr = 2 << 22;
 
 	return(0);
 }
 
 void reset_timer(void)
 {
-	reset_timer_masked();
-}
-
-ulong get_timer(ulong base)
-{
-	return(get_timer_masked() - base);
-}
-
-void set_timer(ulong t)
-{
-	timestamp = t;
-}
-
-void udelay(unsigned long usec)
-{
-	udelay_masked(usec);
-}
-
-void reset_timer_masked(void)
-{
-	lastinc = READ_TIMER;
+	timer->tcr = 0x0;
+	timer->tim34 = 0;
+	lastinc = 0;
 	timestamp = 0;
+	timer->tcr = 2 << 22;
 }
 
-ulong get_timer_raw(void)
+static ulong get_timer_raw(void)
 {
-	ulong now = READ_TIMER;
+	ulong now = timer->tim34;
 
 	if (now >= lastinc) {
 		/* normal mode */
@@ -120,12 +101,17 @@ ulong get_timer_raw(void)
 	return timestamp;
 }
 
-ulong get_timer_masked(void)
+ulong get_timer(ulong base)
 {
-	return(get_timer_raw() / TIMER_LOAD_VAL);
+	return((get_timer_raw() / (TIMER_LOAD_VAL / TIM_CLK_DIV)) - base);
 }
 
-void udelay_masked(unsigned long usec)
+void set_timer(ulong t)
+{
+	timestamp = t;
+}
+
+void udelay(unsigned long usec)
 {
 	ulong tmo;
 	ulong endtime;
@@ -133,7 +119,7 @@ void udelay_masked(unsigned long usec)
 
 	tmo = CFG_HZ_CLOCK / 1000;
 	tmo *= usec;
-	tmo /= 1000;
+	tmo /= (1000 * TIM_CLK_DIV);
 
 	endtime = get_timer_raw() + tmo;
 
@@ -158,8 +144,5 @@ unsigned long long get_ticks(void)
  */
 ulong get_tbclk(void)
 {
-	ulong tbclk;
-
-	tbclk = CFG_HZ;
-	return(tbclk);
+	return CFG_HZ;
 }

@@ -27,8 +27,6 @@
 #include <altera.h>
 #include <ACEX1K.h>		/* ACEX device family */
 
-#if (CONFIG_FPGA & (CFG_ALTERA | CFG_CYCLON2))
-
 /* Define FPGA_DEBUG to get debug printf's */
 #ifdef	FPGA_DEBUG
 #define PRINTF(fmt,args...)	printf (fmt ,##args)
@@ -301,5 +299,3 @@ static int CYC2_ps_reloc (Altera_desc * desc, ulong reloc_offset)
 
 	return ret_val;
 }
-
-#endif /* (CONFIG_FPGA & (CFG_ALTERA | CFG_CYCLON2)) */

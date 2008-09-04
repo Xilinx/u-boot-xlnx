@@ -116,7 +116,8 @@
 
 
 #define CONFIG_AUTOBOOT_KEYED	/* Enable password protection */
-#define CONFIG_AUTOBOOT_PROMPT		"\nEnter password - autoboot in %d sec...\n"
+#define CONFIG_AUTOBOOT_PROMPT		\
+	"\nEnter password - autoboot in %d sec...\n", bootdelay
 #define CONFIG_AUTOBOOT_DELAY_STR	"system"
 /*
  * Miscellaneous configurable options
@@ -169,13 +170,13 @@
 #define CFG_FLASH_BASE	0xFF000000
 
 #if 1
-    #define CFG_FLASH_CFI_DRIVER
+    #define CONFIG_FLASH_CFI_DRIVER
 #else
-    #undef CFG_FLASH_CFI_DRIVER
+    #undef CONFIG_FLASH_CFI_DRIVER
 #endif
 
 
-#ifdef CFG_FLASH_CFI_DRIVER
+#ifdef CONFIG_FLASH_CFI_DRIVER
     #define CFG_FLASH_CFI 1
     #undef CFG_FLASH_USE_BUFFER_WRITE
     #define CFG_FLASH_BANKS_LIST {CFG_FLASH_BASE}

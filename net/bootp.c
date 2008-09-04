@@ -33,7 +33,7 @@
 
 #if defined(CONFIG_CMD_NET)
 
-#define TIMEOUT		5		/* Seconds before trying BOOTP again	*/
+#define TIMEOUT		5UL		/* Seconds before trying BOOTP again	*/
 #ifndef CONFIG_NET_RETRY_COUNT
 # define TIMEOUT_COUNT	5		/* # of timeouts before giving up  */
 #else
@@ -163,21 +163,21 @@ static void BootpVendorFieldProcess (u8 * ext)
 
 	switch (*ext) {
 		/* Fixed length fields */
-	case 1:			/* Subnet mask                                  */
+	case 1:			/* Subnet mask					*/
 		if (NetOurSubnetMask == 0)
 			NetCopyIP (&NetOurSubnetMask, (IPaddr_t *) (ext + 2));
 		break;
-	case 2:			/* Time offset - Not yet supported              */
+	case 2:			/* Time offset - Not yet supported		*/
 		break;
 		/* Variable length fields */
-	case 3:			/* Gateways list                                */
+	case 3:			/* Gateways list				*/
 		if (NetOurGatewayIP == 0) {
 			NetCopyIP (&NetOurGatewayIP, (IPaddr_t *) (ext + 2));
 		}
 		break;
-	case 4:			/* Time server - Not yet supported              */
+	case 4:			/* Time server - Not yet supported		*/
 		break;
-	case 5:			/* IEN-116 name server - Not yet supported      */
+	case 5:			/* IEN-116 name server - Not yet supported	*/
 		break;
 	case 6:
 		if (NetOurDNSIP == 0) {
@@ -189,43 +189,43 @@ static void BootpVendorFieldProcess (u8 * ext)
 		}
 #endif
 		break;
-	case 7:			/* Log server - Not yet supported               */
+	case 7:			/* Log server - Not yet supported		*/
 		break;
-	case 8:			/* Cookie/Quote server - Not yet supported      */
+	case 8:			/* Cookie/Quote server - Not yet supported	*/
 		break;
-	case 9:			/* LPR server - Not yet supported               */
+	case 9:			/* LPR server - Not yet supported		*/
 		break;
-	case 10:		/* Impress server - Not yet supported           */
+	case 10:		/* Impress server - Not yet supported		*/
 		break;
-	case 11:		/* RPL server - Not yet supported               */
+	case 11:		/* RPL server - Not yet supported		*/
 		break;
-	case 12:		/* Host name                                    */
+	case 12:		/* Host name					*/
 		if (NetOurHostName[0] == 0) {
 			size = truncate_sz ("Host Name", sizeof (NetOurHostName), size);
 			memcpy (&NetOurHostName, ext + 2, size);
 			NetOurHostName[size] = 0;
 		}
 		break;
-	case 13:		/* Boot file size                               */
+	case 13:		/* Boot file size				*/
 		if (size == 2)
 			NetBootFileSize = ntohs (*(ushort *) (ext + 2));
 		else if (size == 4)
 			NetBootFileSize = ntohl (*(ulong *) (ext + 2));
 		break;
-	case 14:		/* Merit dump file - Not yet supported          */
+	case 14:		/* Merit dump file - Not yet supported		*/
 		break;
-	case 15:		/* Domain name - Not yet supported              */
+	case 15:		/* Domain name - Not yet supported		*/
 		break;
-	case 16:		/* Swap server - Not yet supported              */
+	case 16:		/* Swap server - Not yet supported		*/
 		break;
-	case 17:		/* Root path                                    */
+	case 17:		/* Root path					*/
 		if (NetOurRootPath[0] == 0) {
 			size = truncate_sz ("Root Path", sizeof (NetOurRootPath), size);
 			memcpy (&NetOurRootPath, ext + 2, size);
 			NetOurRootPath[size] = 0;
 		}
 		break;
-	case 18:		/* Extension path - Not yet supported           */
+	case 18:		/* Extension path - Not yet supported		*/
 		/*
 		 * This can be used to send the information of the
 		 * vendor area in another file that the client can
@@ -233,7 +233,7 @@ static void BootpVendorFieldProcess (u8 * ext)
 		 */
 		break;
 		/* IP host layer fields */
-	case 40:		/* NIS Domain name                              */
+	case 40:		/* NIS Domain name				*/
 		if (NetOurNISDomain[0] == 0) {
 			size = truncate_sz ("NIS Domain Name", sizeof (NetOurNISDomain), size);
 			memcpy (&NetOurNISDomain, ext + 2, size);
@@ -241,7 +241,7 @@ static void BootpVendorFieldProcess (u8 * ext)
 		}
 		break;
 		/* Application layer fields */
-	case 43:		/* Vendor specific info - Not yet supported     */
+	case 43:		/* Vendor specific info - Not yet supported	*/
 		/*
 		 * Binary information to exchange specific
 		 * product information.
@@ -313,7 +313,7 @@ BootpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 	Bootp_t *bp;
 	char	*s;
 
-	debug ("got BOOTP packet (src=%d, dst=%d, len=%d want_len=%d)\n",
+	debug ("got BOOTP packet (src=%d, dst=%d, len=%d want_len=%zu)\n",
 		src, dest, len, sizeof (Bootp_t));
 
 	bp = (Bootp_t *)pkt;
@@ -850,9 +850,9 @@ static void DhcpSendRequestPkt(Bootp_t *bp_offer)
 	bp->bp_hlen = HWL_ETHER;
 	bp->bp_hops = 0;
 	bp->bp_secs = htons(get_timer(0) / CFG_HZ);
-	NetCopyIP(&bp->bp_ciaddr, &bp_offer->bp_ciaddr); /* both in network byte order */
-	NetCopyIP(&bp->bp_yiaddr, &bp_offer->bp_yiaddr);
-	NetCopyIP(&bp->bp_siaddr, &bp_offer->bp_siaddr);
+	/* Do not set the client IP, your IP, or server IP yet, since it hasn't been ACK'ed by
+	 * the server yet */
+
 	/*
 	 * RFC3046 requires Relay Agents to discard packets with
 	 * nonzero and offered giaddr
@@ -870,7 +870,9 @@ static void DhcpSendRequestPkt(Bootp_t *bp_offer)
 	/*
 	 * Copy options from OFFER packet if present
 	 */
-	NetCopyIP(&OfferedIP, &bp->bp_yiaddr);
+
+	/* Copy offered IP into the parameters request list */
+	NetCopyIP(&OfferedIP, &bp_offer->bp_yiaddr);
 	extlen = DhcpExtended((u8 *)bp->bp_vend, DHCP_REQUEST, NetDHCPServerIP, OfferedIP);
 
 	pktlen = BOOTP_SIZE - sizeof(bp->bp_vend) + extlen;
@@ -878,6 +880,9 @@ static void DhcpSendRequestPkt(Bootp_t *bp_offer)
 	NetSetIP(iphdr, 0xFFFFFFFFL, PORT_BOOTPS, PORT_BOOTPC, iplen);
 
 	debug ("Transmitting DHCPREQUEST packet: len = %d\n", pktlen);
+#ifdef CONFIG_BOOTP_DHCP_REQUEST_DELAY
+	udelay(CONFIG_BOOTP_DHCP_REQUEST_DELAY);
+#endif	/* CONFIG_BOOTP_DHCP_REQUEST_DELAY */
 	NetSendPacket(NetTxPacket, pktlen);
 }
 
@@ -918,8 +923,6 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 
 			if (NetReadLong((ulong*)&bp->bp_vend[0]) == htonl(BOOTP_VENDOR_MAGIC))
 				DhcpOptionsProcess((u8 *)&bp->bp_vend[4], bp);
-
-			BootpCopyNetParams(bp); /* Store net params from reply */
 
 			NetSetTimeout(TIMEOUT * CFG_HZ, BootpTimeout);
 			DhcpSendRequestPkt(bp);
@@ -966,6 +969,9 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 			return;
 		}
 		break;
+	case BOUND:
+		/* DHCP client bound to address */
+		break;
 	default:
 		puts ("DHCP: INVALID STATE\n");
 		break;
@@ -977,6 +983,6 @@ void DhcpRequest(void)
 {
 	BootpRequest();
 }
-#endif
+#endif	/* CONFIG_CMD_DHCP */
 
-#endif
+#endif	/* CONFIG_CMD_NET */

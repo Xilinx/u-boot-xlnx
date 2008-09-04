@@ -642,6 +642,7 @@ typedef enum enet_interface {
 	ENET_100_RGMII,
 	ENET_1000_GMII,
 	ENET_1000_RGMII,
+	ENET_1000_RGMII_RXID,
 	ENET_1000_TBI,
 	ENET_1000_RTBI
 } enet_interface_e;
@@ -708,7 +709,7 @@ typedef struct uec_private {
 	int				grace_stopped_rx;
 	int				the_first_run;
 	/* PHY specific */
-	struct uec_mii_info 		*mii_info;
+	struct uec_mii_info		*mii_info;
 	int				oldspeed;
 	int				oldduplex;
 	int				oldlink;

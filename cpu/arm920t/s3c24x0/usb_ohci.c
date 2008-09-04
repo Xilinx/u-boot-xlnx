@@ -58,8 +58,8 @@
 #define	OHCI_CONTROL_INIT \
 	(OHCI_CTRL_CBSR & 0x3) | OHCI_CTRL_IE | OHCI_CTRL_PLE
 
-#define readl(a) (*((vu_long *)(a)))
-#define writel(a, b) (*((vu_long *)(b)) = ((vu_long)a))
+#define readl(a) (*((volatile u32 *)(a)))
+#define writel(a, b) (*((volatile u32 *)(b)) = ((volatile u32)a))
 
 #define min_t(type,x,y) ({ type __x = (x); type __y = (y); __x < __y ? __x: __y; })
 
@@ -498,7 +498,7 @@ static int ep_link (ohci_t *ohci, ed_t *edi)
 		if (ohci->ed_controltail == NULL) {
 			writel (ed, &ohci->regs->ed_controlhead);
 		} else {
-			ohci->ed_controltail->hwNextED = m32_swap (ed);
+			ohci->ed_controltail->hwNextED = (__u32)m32_swap (ed);
 		}
 		ed->ed_prev = ohci->ed_controltail;
 		if (!ohci->ed_controltail && !ohci->ed_rm_list[0] &&
@@ -514,7 +514,7 @@ static int ep_link (ohci_t *ohci, ed_t *edi)
 		if (ohci->ed_bulktail == NULL) {
 			writel (ed, &ohci->regs->ed_bulkhead);
 		} else {
-			ohci->ed_bulktail->hwNextED = m32_swap (ed);
+			ohci->ed_bulktail->hwNextED = (__u32)m32_swap (ed);
 		}
 		ed->ed_prev = ohci->ed_bulktail;
 		if (!ohci->ed_bulktail && !ohci->ed_rm_list[0] &&
@@ -606,7 +606,7 @@ static ed_t * ep_add_ed (struct usb_device *usb_dev, unsigned long pipe)
 		ed->hwINFO = m32_swap (OHCI_ED_SKIP); /* skip ed */
 		/* dummy td; end of td list for ed */
 		td = td_alloc (usb_dev);
-		ed->hwTailP = m32_swap (td);
+		ed->hwTailP = (__u32)m32_swap (td);
 		ed->hwHeadP = ed->hwTailP;
 		ed->state = ED_UNLINK;
 		ed->type = usb_pipetype (pipe);
@@ -663,13 +663,13 @@ static void td_fill (ohci_t *ohci, unsigned int info,
 	if (!len)
 		data = 0;
 
-	td->hwINFO = m32_swap (info);
-	td->hwCBP = m32_swap (data);
+	td->hwINFO = (__u32)m32_swap (info);
+	td->hwCBP = (__u32)m32_swap (data);
 	if (data)
-		td->hwBE = m32_swap (data + len - 1);
+		td->hwBE = (__u32)m32_swap (data + len - 1);
 	else
 		td->hwBE = 0;
-	td->hwNextTD = m32_swap (td_pt);
+	td->hwNextTD = (__u32)m32_swap (td_pt);
 
 	/* append to queue */
 	td->ed->hwTailP = td->hwNextTD;
@@ -971,13 +971,13 @@ static unsigned char root_hub_str_index1[] =
 
 /*-------------------------------------------------------------------------*/
 
-#define OK(x) 			len = (x); break
+#define OK(x)			len = (x); break
 #ifdef DEBUG
-#define WR_RH_STAT(x) 		{info("WR:status %#8x", (x));writel((x), &gohci.regs->roothub.status);}
-#define WR_RH_PORTSTAT(x) 	{info("WR:portstatus[%d] %#8x", wIndex-1, (x));writel((x), &gohci.regs->roothub.portstatus[wIndex-1]);}
+#define WR_RH_STAT(x)		{info("WR:status %#8x", (x));writel((x), &gohci.regs->roothub.status);}
+#define WR_RH_PORTSTAT(x)	{info("WR:portstatus[%d] %#8x", wIndex-1, (x));writel((x), &gohci.regs->roothub.portstatus[wIndex-1]);}
 #else
-#define WR_RH_STAT(x) 		writel((x), &gohci.regs->roothub.status)
-#define WR_RH_PORTSTAT(x) 	writel((x), &gohci.regs->roothub.portstatus[wIndex-1])
+#define WR_RH_STAT(x)		writel((x), &gohci.regs->roothub.status)
+#define WR_RH_PORTSTAT(x)	writel((x), &gohci.regs->roothub.portstatus[wIndex-1])
 #endif
 #define RD_RH_STAT		roothub_status(&gohci)
 #define RD_RH_PORTSTAT		roothub_portstatus(&gohci,wIndex-1)
@@ -1163,7 +1163,7 @@ pkt_print(dev, pipe, buffer, transfer_len, cmd, "SUB(rh)", usb_pipein(pipe));
 		    data_buf [1] = 0x29;
 		    data_buf [2] = temp & RH_A_NDP;
 		    data_buf [3] = 0;
-		    if (temp & RH_A_PSM) 	/* per-port power switching? */
+		    if (temp & RH_A_PSM)	/* per-port power switching? */
 			data_buf [3] |= 0x1;
 		    if (temp & RH_A_NOCP)	/* no overcurrent reporting? */
 			data_buf [3] |= 0x10;
@@ -1188,9 +1188,9 @@ pkt_print(dev, pipe, buffer, transfer_len, cmd, "SUB(rh)", usb_pipein(pipe));
 		    OK (len);
 		}
 
-	case RH_GET_CONFIGURATION: 	*(__u8 *) data_buf = 0x01; OK (1);
+	case RH_GET_CONFIGURATION:	*(__u8 *) data_buf = 0x01; OK (1);
 
-	case RH_SET_CONFIGURATION: 	WR_RH_STAT (0x10000); OK (0);
+	case RH_SET_CONFIGURATION:	WR_RH_STAT (0x10000); OK (0);
 
 	default:
 		dbg ("unsupported root hub command");

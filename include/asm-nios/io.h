@@ -23,24 +23,32 @@
 #ifndef __ASM_NIOS_IO_H_
 #define __ASM_NIOS_IO_H_
 
+#define __raw_writeb(v,a)       (*(volatile unsigned char  *)(a) = (v))
+#define __raw_writew(v,a)       (*(volatile unsigned short *)(a) = (v))
+#define __raw_writel(v,a)       (*(volatile unsigned int   *)(a) = (v))
+
+#define __raw_readb(a)          (*(volatile unsigned char  *)(a))
+#define __raw_readw(a)          (*(volatile unsigned short *)(a))
+#define __raw_readl(a)          (*(volatile unsigned int   *)(a))
+
 #define readb(addr)\
 	({unsigned char val;\
 	 asm volatile(  "	pfxio	0		\n"\
-		 	"	ld	%0, [%1]	\n"\
+			"	ld	%0, [%1]	\n"\
 			"	ext8d	%0, %1		\n"\
 			:"=r"(val) : "r" (addr)); val;})
 
 #define readw(addr)\
 	({unsigned short val;\
 	 asm volatile(  "	pfxio	0		\n"\
-		 	"	ld	%0, [%1]	\n"\
+			"	ld	%0, [%1]	\n"\
 			"	ext16d	%0, %1		\n"\
 			:"=r"(val) : "r" (addr)); val;})
 
 #define readl(addr)\
 	({unsigned long val;\
 	 asm volatile(  "	pfxio	0		\n"\
-		 	"	ld	%0, [%1]	\n"\
+			"	ld	%0, [%1]	\n"\
 			:"=r"(val) : "r" (addr)); val;})
 
 #define writeb(addr,val)\
@@ -99,6 +107,30 @@ static inline void outsl (unsigned long port, const void *src, unsigned long cou
 
 static inline void sync(void)
 {
+}
+
+/*
+ * Given a physical address and a length, return a virtual address
+ * that can be used to access the memory range with the caching
+ * properties specified by "flags".
+ */
+#define MAP_NOCACHE	(0)
+#define MAP_WRCOMBINE	(0)
+#define MAP_WRBACK	(0)
+#define MAP_WRTHROUGH	(0)
+
+static inline void *
+map_physmem(phys_addr_t paddr, unsigned long len, unsigned long flags)
+{
+	return (void *)paddr;
+}
+
+/*
+ * Take down a mapping set up by map_physmem().
+ */
+static inline void unmap_physmem(void *vaddr, unsigned long flags)
+{
+
 }
 
 #endif /* __ASM_NIOS_IO_H_ */

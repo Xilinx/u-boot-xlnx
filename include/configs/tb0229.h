@@ -43,10 +43,10 @@
 #define CONFIG_TIMESTAMP		/* Print image info with timestamp */
 
 #define CONFIG_PREBOOT	"echo;" \
-	"echo Type \"boot\" for the network boot using DHCP, TFTP and NFS;" \
-	"echo Type \"run netboot_initrd\" for the network boot with initrd;" \
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
-	"echo Type \"run flash_local\" to mount local root filesystem;" \
+	"echo Type \\\"boot\\\" for the network boot using DHCP, TFTP and NFS;" \
+	"echo Type \\\"run netboot_initrd\\\" for the network boot with initrd;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_local\\\" to mount local root filesystem;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -122,7 +122,9 @@
 
 #define CFG_BOOTPARAMS_LEN	128*1024
 
-#define CFG_HZ			(CPU_TCLOCK_RATE/4)
+#define CFG_MIPS_TIMER_FREQ	(CPU_TCLOCK_RATE/4)
+
+#define CFG_HZ			1000
 
 #define CFG_SDRAM_BASE		0x80000000
 

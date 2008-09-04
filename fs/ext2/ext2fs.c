@@ -24,8 +24,6 @@
  */
 
 #include <common.h>
-
-#if defined(CONFIG_CMD_EXT2)
 #include <ext2fs.h>
 #include <malloc.h>
 #include <asm/byteorder.h>
@@ -436,7 +434,7 @@ int ext2fs_read_file
 				return (-1);
 			}
 		} else {
-			memset (buf, blocksize - skipfirst, 0);
+			memset (buf, 0, blocksize - skipfirst);
 		}
 		buf += blocksize - skipfirst;
 	}
@@ -874,5 +872,3 @@ fail:
 	ext2fs_root = NULL;
 	return (0);
 }
-
-#endif

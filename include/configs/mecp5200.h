@@ -50,6 +50,8 @@
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
 #define BOOTFLAG_WARM		0x02	/* Software reboot	     */
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
+
 /*
  * Serial console configuration
  */
@@ -154,7 +156,7 @@
 /*
  * IPB Bus clocking configuration.
  */
-#undef CFG_IPBSPEED_133   		/* define for 133MHz speed */
+#undef CFG_IPBSPEED_133			/* define for 133MHz speed */
 #endif
 /*
  * I2C configuration
@@ -201,7 +203,7 @@
 #define CONFIG_ENV_OVERWRITE	1
 #endif
 
-#define CFG_FLASH_CFI_DRIVER	1	   /* Flash is CFI conformant		*/
+#define CONFIG_FLASH_CFI_DRIVER	1	   /* Flash is CFI conformant		*/
 #define CFG_FLASH_CFI		1	   /* Flash is CFI conformant		*/
 #define CFG_FLASH_PROTECTION	1	   /* use hardware protection		*/
 #if 0

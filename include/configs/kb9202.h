@@ -54,10 +54,13 @@
 
 #define	CFG_LONGHELP
 
+#ifndef roundup
+#define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
+#endif
 /*
  * Size of malloc() pool
  */
-#define CFG_MALLOC_LEN	(CFG_ENV_SIZE + 128*1024)
+#define CFG_MALLOC_LEN	(roundup(CFG_ENV_SIZE,4096) + 128*1024)
 #define CFG_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
 
 #define CONFIG_BAUDRATE 115200
@@ -150,7 +153,7 @@
 #define CFG_MAXARGS		16		/* max number of command args */
 #define CFG_PBSIZE		(CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
 
-#define	CFG_FLASH_CFI_DRIVER
+#define	CONFIG_FLASH_CFI_DRIVER
 #define	CFG_FLASH_CFI
 
 #ifndef __ASSEMBLY__

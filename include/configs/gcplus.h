@@ -29,8 +29,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef	 DEBUG
-
 /*
  * The ADS GCPlus Linux boot ROM loads U-Boot into RAM at 0xc0200000.
  * We don't actually init RAM in this case since we're using U-Boot as
@@ -171,7 +169,7 @@
 #else
 /* REVISIT: This doesn't work on ADS GCPlus just yet: */
 #define CFG_FLASH_CFI           1       /* flash is CFI conformant      */
-#define CFG_FLASH_CFI_DRIVER    1       /* use common cfi driver        */
+#define CONFIG_FLASH_CFI_DRIVER    1       /* use common cfi driver        */
 #define CFG_FLASH_USE_BUFFER_WRITE 1    /* use buffered writes (20x faster) */
 #define CFG_MAX_FLASH_BANKS     1       /* max # of memory banks        */
 #define CFG_FLASH_INCREMENT     0       /* there is only one bank       */

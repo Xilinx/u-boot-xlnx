@@ -38,11 +38,7 @@
 #include "config.h"
 
 /*number of protected area*/
-#ifdef	CONFIG_NEW_PARTITION
-# define NB_DATAFLASH_AREA	6
-#else
-# define NB_DATAFLASH_AREA	4
-#endif
+#define NB_DATAFLASH_AREA		5
 
 #ifdef CFG_NO_FLASH
 
@@ -134,10 +130,14 @@ typedef struct _AT91S_DATAFLASH_INFO {
 	unsigned int id;			/* device id */
 } AT91S_DATAFLASH_INFO, *AT91PS_DATAFLASH_INFO;
 
-
+struct dataflash_addr {
+	unsigned long addr;
+	int cs;
+};
 /*-------------------------------------------------------------------------------------------------*/
-
 #define AT45DB161	0x2c
+#define AT45DB021	0x14
+#define AT45DB081	0x24
 #define AT45DB321	0x34
 #define AT45DB642	0x3c
 #define AT45DB128	0x10
@@ -211,9 +211,9 @@ extern int read_dataflash (unsigned long addr, unsigned long size, char *result)
 extern int write_dataflash (unsigned long addr, unsigned long dest, unsigned long size);
 extern void dataflash_print_info (void);
 extern void dataflash_perror (int err);
+extern void AT91F_DataflashSetEnv (void);
 
-#ifdef	CONFIG_NEW_DF_PARTITION
-extern int AT91F_DataflashSetEnv (void); #endif
-#endif
-
+extern struct dataflash_addr cs[CFG_MAX_DATAFLASH_BANKS];
+extern dataflash_protect_t area_list[NB_DATAFLASH_AREA];
+extern AT91S_DATAFLASH_INFO dataflash_info[];
 #endif

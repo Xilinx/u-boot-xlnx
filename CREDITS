@@ -117,7 +117,7 @@ N: Arun Dharankar
 E: ADharankar@ATTBI.Com
 D: threads / scheduler example code
 
-N: Kári Davíðsson
+N: K?ri Dav??sson
 E: kd@flaga.is
 D: FLAGA DM Support
 
@@ -143,7 +143,7 @@ E: info@elste.org
 D: Port for the ModNET50 Board, NET+50 CPU Port
 W: http://www.imms.de
 
-N: Daniel Engström
+N: Daniel Engstr?m
 E: daniel@omicron.se
 D: x86 port, Support for sc520_cdp board
 
@@ -217,6 +217,10 @@ H: Rich Ireland
 E: r.ireland@computer.org
 D: FPGA device configuration driver
 
+H: Mark Jackson
+E: mpfj@mimc.co.uk
+D: Port to MIMC200 board
+
 N: Gary Jennejohn
 E: garyj@jennejohn.org, gj@denx.de
 D: Support for Samsung ARM920T S3C2400X, ARM920T "TRAB"
@@ -235,6 +239,10 @@ N: Mark Jonas
 E: mark.jonas@freescale.com
 D: Support for Freescale Total5200 platform
 W: http://www.mobilegt.com/
+
+N: Mark Jonas
+E: mark.jonas@de.bosch.com
+D: Support for MPR2 board
 
 N: Sam Song
 E: samsongshu@yahoo.com.cn
@@ -290,7 +298,7 @@ W: http://www.leox.org
 
 N: TsiChung Liew
 E: Tsi-Chung.Liew@freescale.com
-D: Support for ColdFire MCF523x, MCF532x, MCF5445x
+D: Support for ColdFire MCF523x, MCF532x, MCF5445x, MCF547x_8x
 W: www.freescale.com
 
 N: Leif Lindholm
@@ -302,6 +310,11 @@ E: linz@li-pro.net
 D: Support for Nios Stratix Development Kit (DK-1S10)
 D: Support for SSV ADNP/ESC1 (Nios Cyclone)
 W: http://www.li-pro.net
+
+N: Dave Liu
+E: daveliu@freescale.com
+D: Support for MPC8315, MPC832x, MPC8360, MPC837x
+W: www.freescale.com
 
 N: Raymond Lo
 E: lo@routefree.com
@@ -334,7 +347,7 @@ N: Frank Morauf
 E: frank.morauf@salzbrenner.com
 D: Support for Embedded Planet RPX Super Board
 
-N: David Müller
+N: David M?ller
 E: d.mueller@elsoft.ch
 D: Support for Samsung ARM920T SMDK2410 eval board
 
@@ -386,6 +399,15 @@ E: dan.poirot@windriver.com
 D: Support for the Wind River sbc405, sbc8240 board
 W: http://www.windriver.com
 
+N: Stelian Pop
+E: stelian.pop@leadtechdesign.com
+D: Atmel AT91CAP9ADK support
+
+N: Ricardo Ribalda Delgado
+E: ricardo.ribalda@uam.es
+D: PPC440x5 (Virtex5), ML507 Board, eeprom_simul, adt7460
+W: http://www.ii.uam.es/~rribalda
+
 N: Stefan Roese
 E: sr@denx.de
 D: AMCC PPC4xx Support
@@ -411,6 +433,10 @@ N: Paolo Scaffardi
 E: arsenio@tin.it
 D: FADS823 configuration, MPC823 video support, I2C, wireless keyboard, lots more
 
+N: Andre Schwarz
+E: andre.schwarz@matrix-vision.de
+D: Support for Matrix Vision boards (MVBLM7/MVBC_P)
+
 N: Robert Schwebel
 E: r.schwebel@pengutronix.de
 D: Support for csb226, logodl and innokom boards (PXA2xx)
@@ -422,6 +448,7 @@ D: Support for EP82xxM
 N: Art Shipkowski
 E: art@videon-central.com
 D: Support for NetSilicon NS7520
+D: Support for ColdFire MCF5275
 
 N: Michal Simek
 E: monstr@monstr.eu
@@ -499,3 +526,28 @@ N: Alex Zuepke
 E: azu@sysgo.de
 D: Overall improvements on StrongARM, ARM720TDMI; Support for Tuxscreen; initial PCMCIA support for ARM
 W: www.elinos.com
+
+N: Nobuhiro Iwamatsu
+E: iwamatsu@nigauri.org
+D: Support for SuperH, MS7750SE01 and  MS7722SE01 boards.
+W: http://www.nigauri.org/~iwamatsu/
+
+N: Alan Lu
+E: alnalu001@gmail.com
+D: Support for Artila M-501 starter kit
+W: http://www.artila.com/
+
+N: Kimmo Leppala
+E: kimmo.leppala@sysart.fi
+D: Support for Artila M-501 starter kit
+W: http://www.sysart.fi/
+
+N: Timo Tuunainen
+E: timo.tuunainen@sysart.fi
+D: Support for Artila M-501 starter kit
+W: http://www.sysart.fi/
+
+N: Philip Balister
+E: philip@opensdr.com
+D: Port to Lyrtech SFFSDR development board.
+W: www.opensdr.com

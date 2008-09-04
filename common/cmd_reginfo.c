@@ -31,9 +31,9 @@
 #include <mpc5xx.h>
 #elif defined (CONFIG_MPC5200)
 #include <mpc5xxx.h>
+#elif defined (CONFIG_MPC86xx)
+extern void mpc86xx_reginfo(void);
 #endif
-
-#if defined(CONFIG_CMD_REGINFO)
 
 int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
@@ -93,11 +93,10 @@ int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #elif defined (CONFIG_405GP)
 	printf ("\n405GP registers; MSR=%08x\n",mfmsr());
 	printf ("\nUniversal Interrupt Controller Regs\n"
-	    "uicsr    uicsrs   uicer    uiccr    uicpr    uictr    uicmsr   uicvr    uicvcr"
+	    "uicsr    uicer    uiccr    uicpr    uictr    uicmsr   uicvr    uicvcr"
 	    "\n"
-	    "%08x %08x %08x %08x %08x %08x %08x %08x %08x\n",
+	    "%08x %08x %08x %08x %08x %08x %08x %08x\n",
 	mfdcr(uicsr),
-	mfdcr(uicsrs),
 	mfdcr(uicer),
 	mfdcr(uiccr),
 	mfdcr(uicpr),
@@ -109,24 +108,24 @@ int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts ("\nMemory (SDRAM) Configuration\n"
 	    "besra    besrsa   besrb    besrsb   bear     mcopt1   rtr      pmit\n");
 
-	mtdcr(memcfga,mem_besra); 	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_besra);	printf ("%08x ", mfdcr(memcfgd));
 	mtdcr(memcfga,mem_besrsa);	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_besrb); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_besrsb); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_bear); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_mcopt1); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_rtr); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_pmit); 	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_besrb);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_besrsb);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_bear);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mcopt1);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_rtr);		printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_pmit);	printf ("%08x ", mfdcr(memcfgd));
 
 	puts ("\n"
 	    "mb0cf    mb1cf    mb2cf    mb3cf    sdtr1    ecccf    eccerr\n");
-	mtdcr(memcfga,mem_mb0cf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_mb1cf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_mb2cf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_mb3cf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_sdtr1); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_ecccf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_eccerr); 	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mb0cf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mb1cf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mb2cf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mb3cf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_sdtr1);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_ecccf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_eccerr);	printf ("%08x ", mfdcr(memcfgd));
 
 	printf ("\n\n"
 	    "DMA Channels\n"
@@ -149,32 +148,32 @@ int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts ("\n"
 	    "External Bus\n"
 	    "pbear    pbesr0   pbesr1   epcr\n");
-	mtdcr(ebccfga,pbear); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pbesr0); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pbesr1); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,epcr); 	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pbear);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pbesr0);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pbesr1);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,epcr);	printf ("%08x ", mfdcr(ebccfgd));
 
 	puts ("\n"
 	    "pb0cr    pb0ap    pb1cr    pb1ap    pb2cr    pb2ap    pb3cr    pb3ap\n");
-	mtdcr(ebccfga,pb0cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb0ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb1cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb1ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb2cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb2ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb3cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb3ap); 	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb0cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb0ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb1cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb1ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb2cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb2ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb3cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb3ap);	printf ("%08x ", mfdcr(ebccfgd));
 
 	puts ("\n"
 	    "pb4cr    pb4ap    pb5cr    bp5ap    pb6cr    pb6ap    pb7cr    pb7ap\n");
-	mtdcr(ebccfga,pb4cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb4ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb5cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb5ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb6cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb6ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb7cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb7ap); 	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb4cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb4ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb5cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb5ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb6cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb6ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb7cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb7ap);	printf ("%08x ", mfdcr(ebccfgd));
 
 	puts ("\n\n");
 
@@ -196,12 +195,12 @@ int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts ("\nMemory (SDRAM) Configuration\n"
 	    "mcopt1   rtr      pmit     mb0cf    mb1cf    sdtr1\n");
 
-	mtdcr(memcfga,mem_mcopt1); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_rtr); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_pmit); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_mb0cf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_mb1cf); 	printf ("%08x ", mfdcr(memcfgd));
-	mtdcr(memcfga,mem_sdtr1); 	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mcopt1);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_rtr);		printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_pmit);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mb0cf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_mb1cf);	printf ("%08x ", mfdcr(memcfgd));
+	mtdcr(memcfga,mem_sdtr1);	printf ("%08x ", mfdcr(memcfgd));
 
 	printf ("\n\n"
 	    "DMA Channels\n"
@@ -221,31 +220,31 @@ int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts ("\n"
 	    "External Bus\n"
 	    "pbear    pbesr0   pbesr1   epcr\n");
-	mtdcr(ebccfga,pbear); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pbesr0); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pbesr1); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,epcr); 	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pbear);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pbesr0);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pbesr1);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,epcr);	printf ("%08x ", mfdcr(ebccfgd));
 
 	puts ("\n"
 	    "pb0cr    pb0ap    pb1cr    pb1ap    pb2cr    pb2ap    pb3cr    pb3ap\n");
-	mtdcr(ebccfga,pb0cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb0ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb1cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb1ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb2cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb2ap); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb3cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb3ap); 	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb0cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb0ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb1cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb1ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb2cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb2ap);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb3cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb3ap);	printf ("%08x ", mfdcr(ebccfgd));
 
 	puts ("\n"
 	    "pb4cr    pb4ap\n");
-	mtdcr(ebccfga,pb4cr); 	printf ("%08x ", mfdcr(ebccfgd));
-	mtdcr(ebccfga,pb4ap); 	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb4cr);	printf ("%08x ", mfdcr(ebccfgd));
+	mtdcr(ebccfga,pb4ap);	printf ("%08x ", mfdcr(ebccfgd));
 
 	puts ("\n\n");
 #elif defined(CONFIG_5xx)
 
-	volatile immap_t     	*immap  = (immap_t *)CFG_IMMR;
+	volatile immap_t	*immap  = (immap_t *)CFG_IMMR;
 	volatile memctl5xx_t	*memctl = &immap->im_memctl;
 	volatile sysconf5xx_t	*sysconf = &immap->im_siu_conf;
 	volatile sit5xx_t	*timers = &immap->im_sit;
@@ -282,70 +281,107 @@ int do_reginfo (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	puts ("\nMPC5200 registers\n");
 	printf ("MBAR=%08x\n", CFG_MBAR);
 	puts ("Memory map registers\n");
-	printf ("\tCS0: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS0: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS0_START,
 		*(volatile ulong*)MPC5XXX_CS0_STOP,
 		*(volatile ulong*)MPC5XXX_CS0_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x00010000) ? 1 : 0);
-	printf ("\tCS1: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS1: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS1_START,
 		*(volatile ulong*)MPC5XXX_CS1_STOP,
 		*(volatile ulong*)MPC5XXX_CS1_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x00020000) ? 1 : 0);
-	printf ("\tCS2: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS2: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS2_START,
 		*(volatile ulong*)MPC5XXX_CS2_STOP,
 		*(volatile ulong*)MPC5XXX_CS2_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x00040000) ? 1 : 0);
-	printf ("\tCS3: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS3: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS3_START,
 		*(volatile ulong*)MPC5XXX_CS3_STOP,
 		*(volatile ulong*)MPC5XXX_CS3_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x00080000) ? 1 : 0);
-	printf ("\tCS4: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS4: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS4_START,
 		*(volatile ulong*)MPC5XXX_CS4_STOP,
 		*(volatile ulong*)MPC5XXX_CS4_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x00100000) ? 1 : 0);
-	printf ("\tCS5: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS5: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS5_START,
 		*(volatile ulong*)MPC5XXX_CS5_STOP,
 		*(volatile ulong*)MPC5XXX_CS5_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x00200000) ? 1 : 0);
-	printf ("\tCS6: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS6: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS6_START,
 		*(volatile ulong*)MPC5XXX_CS6_STOP,
 		*(volatile ulong*)MPC5XXX_CS6_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x04000000) ? 1 : 0);
-	printf ("\tCS7: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tCS7: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_CS7_START,
 		*(volatile ulong*)MPC5XXX_CS7_STOP,
 		*(volatile ulong*)MPC5XXX_CS7_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x08000000) ? 1 : 0);
-	printf ("\tBOOTCS: start %08X\tstop %08X\tconfig %08X\ten %d\n",
+	printf ("\tBOOTCS: start %08lX\tstop %08lX\tconfig %08lX\ten %d\n",
 		*(volatile ulong*)MPC5XXX_BOOTCS_START,
 		*(volatile ulong*)MPC5XXX_BOOTCS_STOP,
 		*(volatile ulong*)MPC5XXX_BOOTCS_CFG,
 		(*(volatile ulong*)MPC5XXX_ADDECR & 0x02000000) ? 1 : 0);
-	printf ("\tSDRAMCS0: %08X\n",
+	printf ("\tSDRAMCS0: %08lX\n",
 		*(volatile ulong*)MPC5XXX_SDRAM_CS0CFG);
-	printf ("\tSDRAMCS1: %08X\n",
+	printf ("\tSDRAMCS1: %08lX\n",
 		*(volatile ulong*)MPC5XXX_SDRAM_CS1CFG);
-#endif /* CONFIG_MPC5200 */
+#elif defined(CONFIG_MPC86xx)
+	mpc86xx_reginfo();
+
+#elif defined(CONFIG_BLACKFIN)
+	puts("\nSystem Configuration registers\n");
+
+	puts("\nPLL Registers\n");
+	printf("\tPLL_DIV:   0x%04x   PLL_CTL:      0x%04x\n",
+		bfin_read_PLL_DIV(), bfin_read_PLL_CTL());
+	printf("\tPLL_STAT:  0x%04x   PLL_LOCKCNT:  0x%04x\n",
+		bfin_read_PLL_STAT(), bfin_read_PLL_LOCKCNT());
+	printf("\tVR_CTL:    0x%04x\n", bfin_read_VR_CTL());
+
+	puts("\nEBIU AMC Registers\n");
+	printf("\tEBIU_AMGCTL:   0x%04x\n", bfin_read_EBIU_AMGCTL());
+	printf("\tEBIU_AMBCTL0:  0x%08x   EBIU_AMBCTL1:  0x%08x\n",
+		bfin_read_EBIU_AMBCTL0(), bfin_read_EBIU_AMBCTL1());
+# ifdef EBIU_MODE
+	printf("\tEBIU_MBSCTL:   0x%08x   EBIU_ARBSTAT:  0x%08x\n",
+		bfin_read_EBIU_MBSCTL(), bfin_read_EBIU_ARBSTAT());
+	printf("\tEBIU_MODE:     0x%08x   EBIU_FCTL:     0x%08x\n",
+		bfin_read_EBIU_MODE(), bfin_read_EBIU_FCTL());
+# endif
+
+# ifdef EBIU_RSTCTL
+	puts("\nEBIU DDR Registers\n");
+	printf("\tEBIU_DDRCTL0:  0x%08x   EBIU_DDRCTL1:  0x%08x\n",
+		bfin_read_EBIU_DDRCTL0(), bfin_read_EBIU_DDRCTL1());
+	printf("\tEBIU_DDRCTL2:  0x%08x   EBIU_DDRCTL3:  0x%08x\n",
+		bfin_read_EBIU_DDRCTL2(), bfin_read_EBIU_DDRCTL3());
+	printf("\tEBIU_DDRQUE:   0x%08x   EBIU_RSTCTL    0x%04x\n",
+		bfin_read_EBIU_DDRQUE(), bfin_read_EBIU_RSTCTL());
+	printf("\tEBIU_ERRADD:   0x%08x   EBIU_ERRMST:   0x%04x\n",
+		bfin_read_EBIU_ERRADD(), bfin_read_EBIU_ERRMST());
+# else
+	puts("\nEBIU SDC Registers\n");
+	printf("\tEBIU_SDRRC:   0x%04x   EBIU_SDBCTL:  0x%04x\n",
+		bfin_read_EBIU_SDRRC(), bfin_read_EBIU_SDBCTL());
+	printf("\tEBIU_SDSTAT:  0x%04x   EBIU_SDGCTL:  0x%08x\n",
+		bfin_read_EBIU_SDSTAT(), bfin_read_EBIU_SDGCTL());
+# endif
+
+#endif /* CONFIG_BLACKFIN */
+
 	return 0;
 }
 
-#endif
-
-
  /**************************************************/
 
-#if ( defined(CONFIG_8xx)   || defined(CONFIG_405GP) || \
-      defined(CONFIG_405EP) || defined(CONFIG_MPC5200)  ) && \
-    defined(CONFIG_CMD_REGINFO)
-
+#if defined(CONFIG_CMD_REGINFO)
 U_BOOT_CMD(
- 	reginfo,	2,	1,	do_reginfo,
+	reginfo,	2,	1,	do_reginfo,
 	"reginfo - print register information\n",
 );
 #endif

@@ -1,6 +1,6 @@
 #include <common.h>
 
-#if !defined(CFG_NAND_LEGACY) && defined(CONFIG_CMD_JFFS2)
+#if !defined(CONFIG_NAND_LEGACY)
 
 #include <malloc.h>
 #include <linux/stat.h>
@@ -758,7 +758,7 @@ dump_dirents(struct b_lists *pL)
 		putLabeledWord("\tbuild_list: type = ", jDir->type);
 		putLabeledWord("\tbuild_list: node_crc = ", jDir->node_crc);
 		putLabeledWord("\tbuild_list: name_crc = ", jDir->name_crc);
-		putLabeledWord("\tbuild_list: offset = ", b->offset); 	/* FIXME: ? [RS] */
+		putLabeledWord("\tbuild_list: offset = ", b->offset);	/* FIXME: ? [RS] */
 		b = b->next;
 		put_fl_mem(jDir);
 	}
@@ -864,16 +864,18 @@ jffs2_1pass_build_lists(struct part_info * part)
 			} else if (node->nodetype == JFFS2_NODETYPE_CLEANMARKER) {
 				if (node->totlen != sizeof(struct jffs2_unknown_node))
 					printf("OOPS Cleanmarker has bad size "
-						"%d != %d\n", node->totlen,
+						"%d != %zu\n",
+						node->totlen,
 						sizeof(struct jffs2_unknown_node));
 			} else if (node->nodetype == JFFS2_NODETYPE_PADDING) {
 				if (node->totlen < sizeof(struct jffs2_unknown_node))
 					printf("OOPS Padding has bad size "
-						"%d < %d\n", node->totlen,
+						"%d < %zu\n",
+						node->totlen,
 						sizeof(struct jffs2_unknown_node));
 			} else {
-				printf("Unknown node type: %x len %d "
-					"offset 0x%x\n", node->nodetype,
+				printf("Unknown node type: %x len %d offset 0x%x\n",
+					node->nodetype,
 					node->totlen, offset);
 			}
 			offset += ((node->totlen + 3) & ~3);

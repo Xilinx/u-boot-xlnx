@@ -56,9 +56,7 @@
 _vectors:
 
 .long	0x00000000		/* Flash offset is 0 until we setup CS0 */
-#if defined(CONFIG_R5200)
-.long	0x400
-#elif defined(CONFIG_M5282)
+#if defined(CONFIG_M5282) && (TEXT_BASE == CFG_INT_FLASH_BASE)
 .long	_start - TEXT_BASE
 #else
 .long	_START
@@ -160,7 +158,7 @@ _copy_flash:
 _flashbar_setup:
 	/* Initialize FLASHBAR: locate internal Flash and validate it */
 	move.l	#(CFG_INT_FLASH_BASE + CFG_INT_FLASH_ENABLE), %d0
-	movec	%d0, %RAMBAR0
+	movec	%d0, %FLASHBAR
 	jmp _after_flashbar_copy.L	/* Force jump to absolute address */
 _flashbar_setup_end:
 	nop
@@ -168,7 +166,7 @@ _after_flashbar_copy:
 #else
 	/* Setup code to initialize FLASHBAR, if start from external Memory */
 	move.l	#(CFG_INT_FLASH_BASE + CFG_INT_FLASH_ENABLE), %d0
-	movec	%d0, %RAMBAR0
+	movec	%d0, %FLASHBAR
 #endif /* (TEXT_BASE == CFG_INT_FLASH_BASE) */
 
 #endif
@@ -177,20 +175,23 @@ _after_flashbar_copy:
 	 * therefore no VBR to set
 	 */
 #if !defined(CONFIG_MONITOR_IS_IN_RAM)
+#if defined(CONFIG_M5282) && (TEXT_BASE == CFG_INT_FLASH_BASE)
+	move.l	#CFG_INT_FLASH_BASE, %d0
+#else
 	move.l	#CFG_FLASH_BASE, %d0
+#endif
 	movec	%d0, %VBR
 #endif
 
-#ifdef	CONFIG_R5200
-	move.l	#(_flash_setup-CFG_FLASH_BASE), %a0
-	move.l	#(_flash_setup_end-CFG_FLASH_BASE), %a1
-	move.l	#(CFG_INIT_RAM_ADDR), %a2
-_copy_flash:
-	move.l	(%a0)+, (%a2)+
-	cmp.l	%a0, %a1
-	bgt.s	_copy_flash
-	jmp	CFG_INIT_RAM_ADDR
-_after_flash_copy:
+#ifdef CONFIG_M5275
+	/* Initialize IPSBAR */
+	move.l	#(CFG_MBAR + 1), %d0		/* set IPSBAR address + valid flag */
+	move.l	%d0, 0x40000000
+/*	movec	%d0, %MBAR */
+
+	/* Initialize RAMBAR: locate SRAM and validate it */
+	move.l	#(CFG_INIT_RAM_ADDR + 0x21), %d0
+	movec	%d0, %RAMBAR1
 #endif
 
 #if 0
@@ -214,24 +215,6 @@ _after_flash_copy:
 	/* board_init_f() does not return */
 
 /*------------------------------------------------------------------------------*/
-
-#ifdef	CONFIG_R5200
-_flash_setup:
-	/* CSAR0 */
-	move.l	#((CFG_FLASH_BASE & 0xffff0000) >> 16), %d0
-	move.w	%d0, 0x40000080
-
-	/* CSCR0 */
-	move.l	#0x2180, %d0		/* 8 wait states, 16bit port, auto ack,  */
-	move.w	%d0, 0x4000008A
-
-	/* CSMR0 */
-	move.l	#0x001f0001, %d0	/* 2 MB, valid */
-	move.l	%d0, 0x40000084
-
-	jmp	_after_flash_copy.L
-_flash_setup_end:
-#endif
 
 /*
  * void relocate_code (addr_sp, gd, addr_moni)
@@ -265,14 +248,14 @@ relocate_code:
  * We are done. Do not return, instead branch to second part of board
  * initialization, now running from RAM.
  */
- 	move.l	%a0, %a1
+	move.l	%a0, %a1
 	add.l	#(in_ram - CFG_MONITOR_BASE), %a1
 	jmp	(%a1)
 
 in_ram:
 
 clear_bss:
- 	/*
+	/*
 	 * Now clear BSS segment
 	 */
 	move.l	%a0, %a1
@@ -390,6 +373,25 @@ icache_enable:
 	rts
 #endif
 
+#if  defined(CONFIG_M5275)
+/*
+ * Instruction cache only
+ */
+	.globl	icache_enable
+icache_enable:
+	move.l	#0x01400000, %d0		/* Invalidate cache cmd */
+	movec	%d0, %CACR			/* Invalidate cache */
+	move.l	#0x0000c000, %d0		/* Setup SDRAM caching */
+	movec	%d0, %ACR0			/* Enable cache */
+	move.l	#0x00000000, %d0		/* No other caching */
+	movec	%d0, %ACR1			/* Enable cache */
+	move.l	#0x80400100, %d0		/* Setup cache mask */
+	movec	%d0, %CACR			/* Enable cache */
+	moveq	#1, %d0
+	move.l	%d0, icache_state
+	rts
+#endif
+
 #ifdef CONFIG_M5282
 	.globl	icache_enable
 icache_enable:
@@ -414,7 +416,7 @@ icache_enable:
 	 *  Note: The 5249 Documentation doesn't give a bit position for CINV!
 	 *  From the 5272 and the 5307 documentation, I have deduced that it is
 	 *  probably CACR[24]. Should someone say something to Motorola?
-	 *  	~Jeremy
+	 *	~Jeremy
 	 */
 	move.l	#0x01000000, %d0		/* Invalidate whole cache */
 	move.c	%d0,%CACR
@@ -474,3 +476,4 @@ version_string:
 	.ascii U_BOOT_VERSION
 	.ascii " (", __DATE__, " - ", __TIME__, ")"
 	.ascii CONFIG_IDENT_STRING, "\0"
+	.align 4

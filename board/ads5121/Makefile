@@ -23,10 +23,17 @@
 
 include $(TOPDIR)/config.mk
 
+$(shell mkdir -p $(OBJTREE)/board/freescale/common)
+
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	:= $(BOARD).o
+COBJS-y	:= $(BOARD).o
+COBJS-${CONFIG_FSL_DIU_FB} += ads5121_diu.o
+COBJS-${CONFIG_FSL_DIU_FB} += ../freescale/common/fsl_diu_fb.o
+COBJS-${CONFIG_FSL_DIU_FB} += ../freescale/common/fsl_logo_bmp.o
+COBJS-$(CONFIG_PCI) += pci.o
 
+COBJS	:= $(COBJS-y)
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 SOBJS	:= $(addprefix $(obj),$(SOBJS))
@@ -38,7 +45,7 @@ clean:
 	rm -f $(SOBJS) $(OBJS)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 

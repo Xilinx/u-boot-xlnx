@@ -22,8 +22,6 @@
  * (easy to change)
  */
 
-#undef DEBUG
-
 #define CONFIG_405	1		/* This is a PPC405 CPU	    */
 #define CONFIG_4xx	1		/* ...member of PPC4xx family	*/
 
@@ -192,14 +190,6 @@
 #define CFG_ENV_SIZE		0x1000		/* Size of Environment vars */
 #define CFG_ENV_ADDR	    \
     (CFG_NVRAM_BASE_ADDR+CFG_NVRAM_SIZE-CFG_ENV_SIZE)	/* Env	*/
-#endif
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		16384
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value    */
 #endif
 
 /*

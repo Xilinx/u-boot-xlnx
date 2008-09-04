@@ -31,8 +31,6 @@
 #define CONFIG_EP82XXM	/* Embedded Planet EP82xxM H 1.0 board */
 			/* 256MB SDRAM / 64MB FLASH */
 
-#undef DEBUG
-
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* Call board_early_init_f */
 
 /* Allow serial number (serial#) and MAC address (ethaddr) to be overwritten */
@@ -204,7 +202,7 @@
  *----------------------------------------------------------------------*/
 #define CFG_FLASH_BASE		0xFC000000
 #define CFG_FLASH_CFI
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_MAX_FLASH_BANKS	1	/* max num of flash banks	*/
 #define CFG_MAX_FLASH_SECT	512	/* max num of sects on one chip */
 #define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector in flinfo */
@@ -231,7 +229,7 @@
 #endif /* CFG_ENV_IS_IN_EEPROM */
 
 /* RTC Configuration */
-#define CONFIG_RTC_M41T11	1 	/* uses a M41T81 */
+#define CONFIG_RTC_M41T11	1	/* uses a M41T81 */
 #define CFG_I2C_RTC_ADDR	0x68
 #define CONFIG_M41T11_BASE_YEAR	1900
 
@@ -355,13 +353,13 @@
 /* Hard reset configuration word */
 #define CFG_HRCW_MASTER		0 /*0x1C800641*/  /* Not used - provided by CPLD */
 /* No slaves */
-#define CFG_HRCW_SLAVE1 	0
-#define CFG_HRCW_SLAVE2 	0
-#define CFG_HRCW_SLAVE3 	0
-#define CFG_HRCW_SLAVE4 	0
-#define CFG_HRCW_SLAVE5 	0
-#define CFG_HRCW_SLAVE6 	0
-#define CFG_HRCW_SLAVE7 	0
+#define CFG_HRCW_SLAVE1		0
+#define CFG_HRCW_SLAVE2		0
+#define CFG_HRCW_SLAVE3		0
+#define CFG_HRCW_SLAVE4		0
+#define CFG_HRCW_SLAVE5		0
+#define CFG_HRCW_SLAVE6		0
+#define CFG_HRCW_SLAVE7		0
 
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH */
 #define BOOTFLAG_WARM		0x02	/* Software reboot                  */

@@ -47,7 +47,7 @@
 #undef	CONFIG_8xx_CONS_NONE
 #define CONFIG_BAUDRATE 57600	/* console baudrate = 115kbps	*/
 #define CONFIG_BOOTDELAY	2	/* autoboot after 2 seconds */
-#define CONFIG_BOOTARGS		"ramdisk=8000 "\
+#define CONFIG_BOOTARGS		"ramdisk_size=8000 "\
 				"root=/dev/nfs rw nfsroot=10.77.77.250:/ppcroot "\
 				"nfsaddrs=10.77.77.20:10.77.77.250"
 #define CONFIG_BOOTCOMMAND	"bootm 400e0000"
@@ -127,7 +127,7 @@
  */
 #define CFG_SDRAM_BASE		0x00000000
 #define CFG_FLASH_BASE		0x40000000
-#define CFG_MONITOR_LEN 	(128 << 10)	/* Reserve 128 kB for Monitor	*/
+#define CFG_MONITOR_LEN		(128 << 10)	/* Reserve 128 kB for Monitor	*/
 #define CFG_MONITOR_BASE	CFG_FLASH_BASE
 #define CFG_MALLOC_LEN		(128 << 10)	/* Reserve 128 kB for malloc()	*/
 

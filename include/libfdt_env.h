@@ -21,16 +21,33 @@
 #ifndef _LIBFDT_ENV_H
 #define _LIBFDT_ENV_H
 
-#include <stddef.h>
-#include <linux/types.h>
-#include <asm/byteorder.h>
+#ifdef USE_HOSTCC
+#include <stdint.h>
+#include <string.h>
+#else
 #include <linux/string.h>
+#include <linux/types.h>
+#endif /* USE_HOSTCC */
 
-extern struct fdt_header *fdt;  /* Pointer to the working fdt */
+#include <stddef.h>
+#include <asm/byteorder.h>
+extern struct fdt_header *working_fdt;  /* Pointer to the working fdt */
 
 #define fdt32_to_cpu(x)		__be32_to_cpu(x)
 #define cpu_to_fdt32(x)		__cpu_to_be32(x)
 #define fdt64_to_cpu(x)		__be64_to_cpu(x)
 #define cpu_to_fdt64(x)		__cpu_to_be64(x)
+
+/*
+ * Types for `void *' pointers.
+ *
+ * Note: libfdt uses this definition from /usr/include/stdint.h.
+ * Define it here rather than pulling in all of stdint.h.
+ */
+#if __WORDSIZE == 64
+typedef unsigned long int       uintptr_t;
+#else
+typedef unsigned int            uintptr_t;
+#endif
 
 #endif /* _LIBFDT_ENV_H */

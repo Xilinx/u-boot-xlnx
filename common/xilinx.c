@@ -32,8 +32,6 @@
 #include <spartan2.h>
 #include <spartan3.h>
 
-#if (CONFIG_FPGA & CFG_FPGA_XILINX)
-
 #if 0
 #define FPGA_DEBUG
 #endif
@@ -59,7 +57,7 @@ int xilinx_load (Xilinx_desc * desc, void *buf, size_t bsize)
 	} else
 		switch (desc->family) {
 		case Xilinx_Spartan2:
-#if (CONFIG_FPGA & CFG_SPARTAN2)
+#if defined(CONFIG_FPGA_SPARTAN2)
 			PRINTF ("%s: Launching the Spartan-II Loader...\n",
 					__FUNCTION__);
 			ret_val = Spartan2_load (desc, buf, bsize);
@@ -69,7 +67,7 @@ int xilinx_load (Xilinx_desc * desc, void *buf, size_t bsize)
 #endif
 			break;
 		case Xilinx_Spartan3:
-#if (CONFIG_FPGA & CFG_SPARTAN3)
+#if defined(CONFIG_FPGA_SPARTAN3)
 			PRINTF ("%s: Launching the Spartan-III Loader...\n",
 					__FUNCTION__);
 			ret_val = Spartan3_load (desc, buf, bsize);
@@ -79,7 +77,7 @@ int xilinx_load (Xilinx_desc * desc, void *buf, size_t bsize)
 #endif
 			break;
 		case Xilinx_Virtex2:
-#if (CONFIG_FPGA & CFG_VIRTEX2)
+#if defined(CONFIG_FPGA_VIRTEX2)
 			PRINTF ("%s: Launching the Virtex-II Loader...\n",
 					__FUNCTION__);
 			ret_val = Virtex2_load (desc, buf, bsize);
@@ -106,7 +104,7 @@ int xilinx_dump (Xilinx_desc * desc, void *buf, size_t bsize)
 	} else
 		switch (desc->family) {
 		case Xilinx_Spartan2:
-#if (CONFIG_FPGA & CFG_SPARTAN2)
+#if defined(CONFIG_FPGA_SPARTAN2)
 			PRINTF ("%s: Launching the Spartan-II Reader...\n",
 					__FUNCTION__);
 			ret_val = Spartan2_dump (desc, buf, bsize);
@@ -116,7 +114,7 @@ int xilinx_dump (Xilinx_desc * desc, void *buf, size_t bsize)
 #endif
 			break;
 		case Xilinx_Spartan3:
-#if (CONFIG_FPGA & CFG_SPARTAN3)
+#if defined(CONFIG_FPGA_SPARTAN3)
 			PRINTF ("%s: Launching the Spartan-III Reader...\n",
 					__FUNCTION__);
 			ret_val = Spartan3_dump (desc, buf, bsize);
@@ -126,7 +124,7 @@ int xilinx_dump (Xilinx_desc * desc, void *buf, size_t bsize)
 #endif
 			break;
 		case Xilinx_Virtex2:
-#if (CONFIG_FPGA & CFG_VIRTEX2)
+#if defined( CONFIG_FPGA_VIRTEX2)
 			PRINTF ("%s: Launching the Virtex-II Reader...\n",
 					__FUNCTION__);
 			ret_val = Virtex2_dump (desc, buf, bsize);
@@ -198,7 +196,7 @@ int xilinx_info (Xilinx_desc * desc)
 			printf ("Device Function Table @ 0x%p\n", desc->iface_fns);
 			switch (desc->family) {
 			case Xilinx_Spartan2:
-#if (CONFIG_FPGA & CFG_SPARTAN2)
+#if defined(CONFIG_FPGA_SPARTAN2)
 				Spartan2_info (desc);
 #else
 				/* just in case */
@@ -207,7 +205,7 @@ int xilinx_info (Xilinx_desc * desc)
 #endif
 				break;
 			case Xilinx_Spartan3:
-#if (CONFIG_FPGA & CFG_SPARTAN3)
+#if defined(CONFIG_FPGA_SPARTAN3)
 				Spartan3_info (desc);
 #else
 				/* just in case */
@@ -216,7 +214,7 @@ int xilinx_info (Xilinx_desc * desc)
 #endif
 				break;
 			case Xilinx_Virtex2:
-#if (CONFIG_FPGA & CFG_VIRTEX2)
+#if defined(CONFIG_FPGA_VIRTEX2)
 				Virtex2_info (desc);
 #else
 				/* just in case */
@@ -249,7 +247,7 @@ int xilinx_reloc (Xilinx_desc * desc, ulong reloc_offset)
 	} else
 		switch (desc->family) {
 		case Xilinx_Spartan2:
-#if (CONFIG_FPGA & CFG_SPARTAN2)
+#if defined(CONFIG_FPGA_SPARTAN2)
 			ret_val = Spartan2_reloc (desc, reloc_offset);
 #else
 			printf ("%s: No support for Spartan-II devices.\n",
@@ -257,7 +255,7 @@ int xilinx_reloc (Xilinx_desc * desc, ulong reloc_offset)
 #endif
 			break;
 		case Xilinx_Spartan3:
-#if (CONFIG_FPGA & CFG_SPARTAN3)
+#if defined(CONFIG_FPGA_SPARTAN3)
 			ret_val = Spartan3_reloc (desc, reloc_offset);
 #else
 			printf ("%s: No support for Spartan-III devices.\n",
@@ -265,7 +263,7 @@ int xilinx_reloc (Xilinx_desc * desc, ulong reloc_offset)
 #endif
 			break;
 		case Xilinx_Virtex2:
-#if (CONFIG_FPGA & CFG_VIRTEX2)
+#if defined(CONFIG_FPGA_VIRTEX2)
 			ret_val = Virtex2_reloc (desc, reloc_offset);
 #else
 			printf ("%s: No support for Virtex-II devices.\n",
@@ -307,5 +305,3 @@ static int xilinx_validate (Xilinx_desc * desc, char *fn)
 
 	return ret_val;
 }
-
-#endif							/* CONFIG_FPGA & CFG_FPGA_XILINX */

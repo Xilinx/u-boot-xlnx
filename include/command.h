@@ -27,6 +27,8 @@
 #ifndef __COMMAND_H
 #define __COMMAND_H
 
+#include <config.h>
+
 #ifndef NULL
 #define NULL	0
 #endif
@@ -74,7 +76,7 @@ extern int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *
  * void function (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
  */
 
-typedef	void 	command_t (cmd_tbl_t *, int, int, char *[]);
+typedef	void	command_t (cmd_tbl_t *, int, int, char *[]);
 
 #endif	/* __ASSEMBLY__ */
 

@@ -88,8 +88,12 @@
 
 
 #define CONFIG_BOOTDELAY	15
-#define CONFIG_BOOTARGS    	"root=/dev/mtdblock1 console=ttyS0,9600 mtdparts=phys:7936k(root),256k(uboot) "
-#define CONFIG_BOOTCOMMAND	"setenv bootargs root=/dev/nfs ip=autoconf console=ttyS0,9600 mtdparts=phys:7808k(root),128k(env),256k(uboot); bootp; bootm"
+#define CONFIG_BOOTARGS		"root=/dev/mtdblock1 console=ttyS0,9600 " \
+					"mtdparts=phys:7936k(root),256k(uboot) "
+#define CONFIG_BOOTCOMMAND	"setenv bootargs root=/dev/nfs ip=autoconf " \
+					"console=ttyS0,9600 " \
+					"mtdparts=phys:7808k(root),128k(env),256k(uboot);" \
+					"bootp;bootm"
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	115200		/* speed to run kgdb serial port */
@@ -140,7 +144,7 @@
 
 #define CONFIG_SPI_EEPROM       /* SPI EEPROMs such as AT25010 or AT25640 */
 #define CONFIG_MW_EEPROM        /* MicroWire EEPROMS such as AT93LC46 */
-#define CONFIG_DS1722           /* Dallas DS1722 SPI Temperature probe */
+#define CONFIG_DTT_DS1722       /* Dallas DS1722 SPI Temperature probe */
 
 
 /* allow to overwrite serial and ethaddr */

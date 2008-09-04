@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2000-2006
+ * (C) Copyright 2000-2007
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -32,87 +32,119 @@
 DECLARE_GLOBAL_DATA_PTR;
 #endif
 
-#ifdef CFG_INIT_DCACHE_CS
-# if (CFG_INIT_DCACHE_CS == 0)
-#  define PBxAP pb0ap
-#  define PBxCR pb0cr
-#  if (defined(CFG_EBC_PB0AP) && defined(CFG_EBC_PB0CR))
-#   define PBxAP_VAL CFG_EBC_PB0AP
-#   define PBxCR_VAL CFG_EBC_PB0CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 1)
-#  define PBxAP pb1ap
-#  define PBxCR pb1cr
-#  if (defined(CFG_EBC_PB1AP) && defined(CFG_EBC_PB1CR))
-#   define PBxAP_VAL CFG_EBC_PB1AP
-#   define PBxCR_VAL CFG_EBC_PB1CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 2)
-#  define PBxAP pb2ap
-#  define PBxCR pb2cr
-#  if (defined(CFG_EBC_PB2AP) && defined(CFG_EBC_PB2CR))
-#   define PBxAP_VAL CFG_EBC_PB2AP
-#   define PBxCR_VAL CFG_EBC_PB2CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 3)
-#  define PBxAP pb3ap
-#  define PBxCR pb3cr
-#  if (defined(CFG_EBC_PB3AP) && defined(CFG_EBC_PB3CR))
-#   define PBxAP_VAL CFG_EBC_PB3AP
-#   define PBxCR_VAL CFG_EBC_PB3CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 4)
-#  define PBxAP pb4ap
-#  define PBxCR pb4cr
-#  if (defined(CFG_EBC_PB4AP) && defined(CFG_EBC_PB4CR))
-#   define PBxAP_VAL CFG_EBC_PB4AP
-#   define PBxCR_VAL CFG_EBC_PB4CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 5)
-#  define PBxAP pb5ap
-#  define PBxCR pb5cr
-#  if (defined(CFG_EBC_PB5AP) && defined(CFG_EBC_PB5CR))
-#   define PBxAP_VAL CFG_EBC_PB5AP
-#   define PBxCR_VAL CFG_EBC_PB5CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 6)
-#  define PBxAP pb6ap
-#  define PBxCR pb6cr
-#  if (defined(CFG_EBC_PB6AP) && defined(CFG_EBC_PB6CR))
-#   define PBxAP_VAL CFG_EBC_PB6AP
-#   define PBxCR_VAL CFG_EBC_PB6CR
-#  endif
-# endif
-# if (CFG_INIT_DCACHE_CS == 7)
-#  define PBxAP pb7ap
-#  define PBxCR pb7cr
-#  if (defined(CFG_EBC_PB7AP) && defined(CFG_EBC_PB7CR))
-#   define PBxAP_VAL CFG_EBC_PB7AP
-#   define PBxCR_VAL CFG_EBC_PB7CR
-#  endif
-# endif
-#endif /* CFG_INIT_DCACHE_CS */
+#ifndef CFG_PLL_RECONFIG
+#define CFG_PLL_RECONFIG	0
+#endif
+
+void reconfigure_pll(u32 new_cpu_freq)
+{
+#if defined(CONFIG_440EPX)
+	int	reset_needed = 0;
+	u32	reg, temp;
+	u32	prbdv0, target_prbdv0,				/* CLK_PRIMBD */
+		fwdva, target_fwdva, fwdvb, target_fwdvb,	/* CLK_PLLD */
+		fbdv, target_fbdv, lfbdv, target_lfbdv,
+		perdv0,	target_perdv0,				/* CLK_PERD */
+		spcid0,	target_spcid0;				/* CLK_SPCID */
+
+	/* Reconfigure clocks if necessary.
+	 * See PPC440EPx User's Manual, sections 8.2 and 14 */
+	if (new_cpu_freq == 667) {
+		target_prbdv0 = 2;
+		target_fwdva = 2;
+		target_fwdvb = 4;
+		target_fbdv = 20;
+		target_lfbdv = 1;
+		target_perdv0 = 4;
+		target_spcid0 = 4;
+
+		mfcpr(clk_primbd, reg);
+		temp = (reg & PRBDV_MASK) >> 24;
+		prbdv0 = temp ? temp : 8;
+		if (prbdv0 != target_prbdv0) {
+			reg &= ~PRBDV_MASK;
+			reg |= ((target_prbdv0 == 8 ? 0 : target_prbdv0) << 24);
+			mtcpr(clk_primbd, reg);
+			reset_needed = 1;
+		}
+
+		mfcpr(clk_plld, reg);
+
+		temp = (reg & PLLD_FWDVA_MASK) >> 16;
+		fwdva = temp ? temp : 16;
+
+		temp = (reg & PLLD_FWDVB_MASK) >> 8;
+		fwdvb = temp ? temp : 8;
+
+		temp = (reg & PLLD_FBDV_MASK) >> 24;
+		fbdv = temp ? temp : 32;
+
+		temp = (reg & PLLD_LFBDV_MASK);
+		lfbdv = temp ? temp : 64;
+
+		if (fwdva != target_fwdva || fbdv != target_fbdv || lfbdv != target_lfbdv) {
+			reg &= ~(PLLD_FWDVA_MASK | PLLD_FWDVB_MASK |
+				 PLLD_FBDV_MASK | PLLD_LFBDV_MASK);
+			reg |= ((target_fwdva == 16 ? 0 : target_fwdva) << 16) |
+				((target_fwdvb == 8 ? 0 : target_fwdvb) << 8) |
+				((target_fbdv == 32 ? 0 : target_fbdv) << 24) |
+				(target_lfbdv == 64 ? 0 : target_lfbdv);
+			mtcpr(clk_plld, reg);
+			reset_needed = 1;
+		}
+
+		mfcpr(clk_perd, reg);
+		perdv0 = (reg & CPR0_PERD_PERDV0_MASK) >> 24;
+		if (perdv0 != target_perdv0) {
+			reg &= ~CPR0_PERD_PERDV0_MASK;
+			reg |= (target_perdv0 << 24);
+			mtcpr(clk_perd, reg);
+			reset_needed = 1;
+		}
+
+		mfcpr(clk_spcid, reg);
+		temp = (reg & CPR0_SPCID_SPCIDV0_MASK) >> 24;
+		spcid0 = temp ? temp : 4;
+		if (spcid0 != target_spcid0) {
+			reg &= ~CPR0_SPCID_SPCIDV0_MASK;
+			reg |= ((target_spcid0 == 4 ? 0 : target_spcid0) << 24);
+			mtcpr(clk_spcid, reg);
+			reset_needed = 1;
+		}
+
+		/* Set reload inhibit so configuration will persist across
+		 * processor resets */
+		mfcpr(clk_icfg, reg);
+		reg &= ~CPR0_ICFG_RLI_MASK;
+		reg |= 1 << 31;
+		mtcpr(clk_icfg, reg);
+	}
+
+	/* Reset processor if configuration changed */
+	if (reset_needed) {
+		__asm__ __volatile__ ("sync; isync");
+		mtspr(dbcr0, 0x20000000);
+	}
+#endif
+}
 
 /*
  * Breath some life into the CPU...
  *
- * Set up the memory map,
+ * Reconfigure PLL if necessary,
+ * set up the memory map,
  * initialize a bunch of registers
  */
 void
 cpu_init_f (void)
 {
-#if defined(CONFIG_WATCHDOG)
-	unsigned long val;
+#if defined(CONFIG_WATCHDOG) || defined(CONFIG_440GX) || defined(CONFIG_460EX)
+	u32 val;
 #endif
 
-#if defined(CONFIG_405EP)
+	reconfigure_pll(CFG_PLL_RECONFIG);
+
+#if (defined(CONFIG_405EP) || defined (CONFIG_405EX)) && !defined(CFG_4xx_GPIO_TABLE)
 	/*
 	 * GPIO0 setup (select GPIO or alternate function)
 	 */
@@ -128,17 +160,30 @@ cpu_init_f (void)
 	out32(GPIO0_ISR1L, CFG_GPIO0_ISR1L);
 	out32(GPIO0_TSRH, CFG_GPIO0_TSRH);	/* three-state select			*/
 	out32(GPIO0_TSRL, CFG_GPIO0_TSRL);
+#if defined(CFG_GPIO0_ISR2H)
+	out32(GPIO0_ISR2H, CFG_GPIO0_ISR2H);
+	out32(GPIO0_ISR2L, CFG_GPIO0_ISR2L);
+#endif
+#if defined (CFG_GPIO0_TCR)
 	out32(GPIO0_TCR, CFG_GPIO0_TCR);	/* enable output driver for outputs	*/
+#endif
+#endif /* CONFIG_405EP ... && !CFG_4xx_GPIO_TABLE */
 
+#if defined (CONFIG_405EP)
 	/*
 	 * Set EMAC noise filter bits
 	 */
 	mtdcr(cpc0_epctl, CPC0_EPRCSR_E0NFE | CPC0_EPRCSR_E1NFE);
+
+	/*
+	 * Enable the internal PCI arbiter
+	 */
+	mtdcr(cpc0_pci, mfdcr(cpc0_pci) | CPC0_PCI_HOST_CFG_EN | CPC0_PCI_ARBIT_EN);
 #endif /* CONFIG_405EP */
 
-#if defined(CFG_440_GPIO_TABLE)
+#if defined(CFG_4xx_GPIO_TABLE)
 	gpio_set_chip_configuration();
-#endif /* CFG_440_GPIO_TABLE */
+#endif /* CFG_4xx_GPIO_TABLE */
 
 	/*
 	 * External Bus Controller (EBC) Setup
@@ -146,7 +191,7 @@ cpu_init_f (void)
 #if (defined(CFG_EBC_PB0AP) && defined(CFG_EBC_PB0CR))
 #if (defined(CONFIG_405GP) || defined(CONFIG_405CR) || \
      defined(CONFIG_405EP) || defined(CONFIG_405EZ) || \
-     defined(CONFIG_405))
+     defined(CONFIG_405EX) || defined(CONFIG_405))
 	/*
 	 * Move the next instructions into icache, since these modify the flash
 	 * we are running from!
@@ -228,6 +273,47 @@ cpu_init_f (void)
 
 	reset_4xx_watchdog();
 #endif /* CONFIG_WATCHDOG */
+
+#if defined(CONFIG_440GX)
+	/* Take the GX out of compatibility mode
+	 * Travis Sawyer, 9 Mar 2004
+	 * NOTE: 440gx user manual inconsistency here
+	 *       Compatibility mode and Ethernet Clock select are not
+	 *       correct in the manual
+	 */
+	mfsdr(sdr_mfr, val);
+	val &= ~0x10000000;
+	mtsdr(sdr_mfr,val);
+#endif /* CONFIG_440GX */
+
+#if defined(CONFIG_460EX)
+	/*
+	 * Set SDR0_AHB_CFG[A2P_INCR4] (bit 24) and
+	 * clear SDR0_AHB_CFG[A2P_PROT2] (bit 25) for a new 460EX errata
+	 * regarding concurrent use of AHB USB OTG, USB 2.0 host and SATA
+	 */
+	mfsdr(SDR0_AHB_CFG, val);
+	val |= 0x80;
+	val &= ~0x40;
+	mtsdr(SDR0_AHB_CFG, val);
+	mfsdr(SDR0_USB2HOST_CFG, val);
+	val &= ~0xf00;
+	val |= 0x400;
+	mtsdr(SDR0_USB2HOST_CFG, val);
+#endif /* CONFIG_460EX */
+
+#if defined(CONFIG_405EX) || \
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT)  || \
+    defined(CONFIG_460SX)
+	/*
+	 * Set PLB4 arbiter (Segment 0 and 1) to 4 deep pipeline read
+	 */
+	mtdcr(plb0_acr, (mfdcr(plb0_acr) & ~plb0_acr_rdp_mask) |
+	      plb0_acr_rdp_4deep);
+	mtdcr(plb1_acr, (mfdcr(plb1_acr) & ~plb1_acr_rdp_mask) |
+	      plb1_acr_rdp_4deep);
+#endif /* CONFIG_440SP/SPE || CONFIG_460EX/GT || CONFIG_405EX */
 }
 
 /*
@@ -241,24 +327,6 @@ int cpu_init_r (void)
 #if defined(CONFIG_405GP)
 	uint pvr = get_pvr();
 #endif
-
-#ifdef CFG_INIT_DCACHE_CS
-	/*
-	 * Flush and invalidate dcache, then disable CS for temporary stack.
-	 * Afterwards, this CS can be used for other purposes
-	 */
-	dcache_disable();   /* flush and invalidate dcache */
-	mtebc(PBxAP, 0);
-	mtebc(PBxCR, 0);    /* disable CS for temporary stack */
-
-#if (defined(PBxAP_VAL) && defined(PBxCR_VAL))
-	/*
-	 * Write new value into CS register
-	 */
-	mtebc(PBxAP, PBxAP_VAL);
-	mtebc(PBxCR, PBxCR_VAL);
-#endif
-#endif /* CFG_INIT_DCACHE_CS */
 
 	/*
 	 * Write Ethernetaddress into on-chip register
@@ -289,5 +357,6 @@ int cpu_init_r (void)
 	}
 #endif  /* defined(CONFIG_405GP) */
 #endif  /* defined(CONFIG_405GP) || defined(CONFIG_405EP) */
+
 	return (0);
 }

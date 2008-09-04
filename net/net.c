@@ -94,11 +94,22 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define ARP_TIMEOUT		5		/* Seconds before trying ARP again */
-#ifndef	CONFIG_NET_RETRY_COUNT
-# define ARP_TIMEOUT_COUNT	5		/* # of timeouts before giving up  */
+#ifndef	CONFIG_ARP_TIMEOUT
+# define ARP_TIMEOUT		50UL	/* Deciseconds before trying ARP again */
+#elif (CONFIG_ARP_TIMEOUT < 100)
+# error "Due to possible overflow CONFIG_ARP_TIMEOUT must be greater than 100ms"
 #else
-# define ARP_TIMEOUT_COUNT  (CONFIG_NET_RETRY_COUNT)
+# if (CONFIG_ARP_TIMEOUT % 100)
+#  warning "Supported ARP_TIMEOUT precision is 100ms"
+# endif
+# define ARP_TIMEOUT		(CONFIG_ARP_TIMEOUT / 100)
+#endif
+
+
+#ifndef	CONFIG_NET_RETRY_COUNT
+# define ARP_TIMEOUT_COUNT	5	/* # of timeouts before giving up  */
+#else
+# define ARP_TIMEOUT_COUNT	CONFIG_NET_RETRY_COUNT
 #endif
 
 #if 0
@@ -129,7 +140,7 @@ uchar		NetOurEther[6];		/* Our ethernet address			*/
 uchar		NetServerEther[6] =	/* Boot server enet address		*/
 			{ 0, 0, 0, 0, 0, 0 };
 IPaddr_t	NetOurIP;		/* Our IP addr (0 = unknown)		*/
-IPaddr_t	NetServerIP;		/* Our IP addr (0 = unknown)		*/
+IPaddr_t	NetServerIP;		/* Server IP addr (0 = unknown)		*/
 volatile uchar *NetRxPkt;		/* Current receive packet		*/
 int		NetRxPktLen;		/* Current rx packet length		*/
 unsigned	NetIPID;		/* IP packet ID				*/
@@ -137,6 +148,9 @@ uchar		NetBcastAddr[6] =	/* Ethernet bcast address		*/
 			{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 uchar		NetEtherNullAddr[6] =
 			{ 0, 0, 0, 0, 0, 0 };
+#ifdef CONFIG_API
+void		(*push_packet)(volatile void *, int len) = 0;
+#endif
 #if defined(CONFIG_CMD_CDP)
 uchar		NetCDPAddr[6] =		/* Ethernet bcast address		*/
 			{ 0x01, 0x00, 0x0c, 0xcc, 0xcc, 0xcc };
@@ -155,7 +169,7 @@ ushort		NetOurNativeVLAN = 0xFFFF;	/* ditto			*/
 char		BootFile[128];		/* Boot File name			*/
 
 #if defined(CONFIG_CMD_PING)
-IPaddr_t	NetPingIP;		/* the ip address to ping 		*/
+IPaddr_t	NetPingIP;		/* the ip address to ping		*/
 
 static void PingStart(void);
 #endif
@@ -193,7 +207,7 @@ IPaddr_t	NetArpWaitReplyIP;
 uchar	       *NetArpWaitPacketMAC;	/* MAC address of waiting packet's destination	*/
 uchar	       *NetArpWaitTxPacket;	/* THE transmit packet			*/
 int		NetArpWaitTxPacketSize;
-uchar 		NetArpWaitPacketBuf[PKTSIZE_ALIGN + PKTALIGN];
+uchar		NetArpWaitPacketBuf[PKTSIZE_ALIGN + PKTALIGN];
 ulong		NetArpWaitTimerStart;
 int		NetArpWaitTry;
 
@@ -250,7 +264,7 @@ void ArpTimeoutCheck(void)
 	t = get_timer(0);
 
 	/* check for arp timeout */
-	if ((t - NetArpWaitTimerStart) > ARP_TIMEOUT * CFG_HZ) {
+	if ((t - NetArpWaitTimerStart) > ARP_TIMEOUT * CFG_HZ / 10) {
 		NetArpWaitTry++;
 
 		if (NetArpWaitTry >= ARP_TIMEOUT_COUNT) {
@@ -491,7 +505,7 @@ restart:
 		 *	Check the ethernet for a new packet.  The ethernet
 		 *	receive routine will process it.
 		 */
-			eth_rx();
+		eth_rx();
 
 		/*
 		 *	Abort if ctrl-c was pressed.
@@ -589,16 +603,18 @@ void NetStartAgain (void)
 		return;
 	}
 #ifndef CONFIG_NET_MULTI
-	NetSetTimeout (10 * CFG_HZ, startAgainTimeout);
+	NetSetTimeout (10UL * CFG_HZ, startAgainTimeout);
 	NetSetHandler (startAgainHandler);
 #else	/* !CONFIG_NET_MULTI*/
 	eth_halt ();
+#if !defined(CONFIG_NET_DO_NOT_TRY_ANOTHER)
 	eth_try_another (!NetRestarted);
+#endif
 	eth_init (gd->bd);
 	if (NetRestartWrap) {
 		NetRestartWrap = 0;
 		if (NetDevExists && !once) {
-			NetSetTimeout (10 * CFG_HZ, startAgainTimeout);
+			NetSetTimeout (10UL * CFG_HZ, startAgainTimeout);
 			NetSetHandler (startAgainHandler);
 		} else {
 			NetState = NETLOOP_FAIL;
@@ -735,7 +751,7 @@ int PingSend(void)
 	s = &ip->udp_src;		/* XXX ICMP starts here */
 	s[0] = htons(0x0800);		/* echo-request, code */
 	s[1] = 0;			/* checksum */
-	s[2] = 0; 			/* identifier */
+	s[2] = 0;			/* identifier */
 	s[3] = htons(PingSeqNo++);	/* sequence number */
 	s[1] = ~NetCksum((uchar *)s, 8/2);
 
@@ -774,7 +790,7 @@ static void PingStart(void)
 #if defined(CONFIG_NET_MULTI)
 	printf ("Using %s device\n", eth_get_name());
 #endif	/* CONFIG_NET_MULTI */
-	NetSetTimeout (10 * CFG_HZ, PingTimeout);
+	NetSetTimeout (10UL * CFG_HZ, PingTimeout);
 	NetSetHandler (PingHandler);
 
 	PingSend();
@@ -1161,6 +1177,13 @@ NetReceive(volatile uchar * inpkt, int len)
 	if (len < ETHER_HDR_SIZE)
 		return;
 
+#ifdef CONFIG_API
+	if (push_packet) {
+		(*push_packet)(inpkt, len);
+		return;
+	}
+#endif
+
 #if defined(CONFIG_CMD_CDP)
 	/* keep track if packet is CDP */
 	iscdp = memcmp(et->et_dest, NetCDPAddr, 6) == 0;
@@ -1367,7 +1390,7 @@ NetReceive(volatile uchar * inpkt, int len)
 		puts ("Got IP\n");
 #endif
 		if (len < IP_HDR_SIZE) {
-			debug ("len bad %d < %d\n", len, IP_HDR_SIZE);
+			debug ("len bad %d < %lu\n", len, (ulong)IP_HDR_SIZE);
 			return;
 		}
 		if (len < ntohs(ip->ip_len)) {
@@ -1382,6 +1405,10 @@ NetReceive(volatile uchar * inpkt, int len)
 			return;
 		}
 		if (ip->ip_off & htons(0x1fff)) { /* Can't deal w/ fragments */
+			return;
+		}
+		/* can't deal with headers > 20 bytes */
+		if ((ip->ip_hl_v & 0x0f) > 0x05) {
 			return;
 		}
 		if (!NetCksumOk((uchar *)ip, IP_HDR_SIZE_NO_UDP / 2)) {
@@ -1493,7 +1520,8 @@ NetReceive(volatile uchar * inpkt, int len)
 				xsum = (xsum & 0x0000ffff) + ((xsum >> 16) & 0x0000ffff);
 			}
 			if ((xsum != 0x00000000) && (xsum != 0x0000ffff)) {
-				printf(" UDP wrong checksum %08x %08x\n", xsum, ntohs(ip->udp_xsum));
+				printf(" UDP wrong checksum %08lx %08x\n",
+					xsum, ntohs(ip->udp_xsum));
 				return;
 			}
 		}

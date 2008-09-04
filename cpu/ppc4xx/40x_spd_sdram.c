@@ -126,9 +126,9 @@ long int spd_sdram(int(read_spd)(uint addr))
 
 	int sdram0_pmit=0x07c00000;
 #ifndef CONFIG_405EP /* not on PPC405EP */
-	int sdram0_besr0=-1;
-	int sdram0_besr1=-1;
-	int sdram0_eccesr=-1;
+	int sdram0_besr0 = -1;
+	int sdram0_besr1 = -1;
+	int sdram0_eccesr = -1;
 #endif
 	int sdram0_ecccfg;
 
@@ -148,7 +148,7 @@ long int spd_sdram(int(read_spd)(uint addr))
 	int t_rc;
 	int min_cas;
 
-	PPC405_SYS_INFO sys_info;
+	PPC4xx_SYS_INFO sys_info;
 	unsigned long bus_period_x_10;
 
 	/*

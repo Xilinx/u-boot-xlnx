@@ -22,8 +22,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG
-
 /*
  * High Level Configuration Options
  */
@@ -170,6 +168,7 @@
 #undef	CFG_RAMBOOT
 #endif
 
+/* CFG_MONITOR_LEN must be a multiple of CFG_ENV_SECT_SIZE */
 #define CFG_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
 #define CFG_MALLOC_LEN		(128 * 1024) /* Reserved for malloc */
 
@@ -192,9 +191,10 @@
  * FLASH on the Local Bus
  */
 #define CFG_FLASH_CFI		/* use the Common Flash Interface */
-#define CFG_FLASH_CFI_DRIVER	/* use the CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER	/* use the CFI driver */
 #define CFG_FLASH_BASE		0xFE000000 /* FLASH base address */
 #define CFG_FLASH_SIZE		32 /* max FLASH size is 32M */
+#define CONFIG_FLASH_SHOW_PROGRESS 45 /* count down from 45/5: 9..1 */
 
 #define CFG_LBLAWBAR0_PRELIM	CFG_FLASH_BASE /* Window base at flash base */
 #define CFG_LBLAWAR0_PRELIM	0x80000018 /* 32MB window size */
@@ -203,7 +203,7 @@
 			(2 << BR_PS_SHIFT) | /* 16 bit port size */ \
 			BR_V)	/* valid */
 #define CFG_OR0_PRELIM		((~(CFG_FLASH_SIZE - 1) << 20) | OR_UPM_XAM | \
-				OR_GPCM_CSNT | OR_GPCM_ACS_0b11 | OR_GPCM_XACS | OR_GPCM_SCY_15 | \
+				OR_GPCM_CSNT | OR_GPCM_ACS_DIV2 | OR_GPCM_XACS | OR_GPCM_SCY_15 | \
 				OR_GPCM_TRLX | OR_GPCM_EHTR | OR_GPCM_EAD)
 
 #define CFG_MAX_FLASH_BANKS	1 /* number of banks */
@@ -346,16 +346,8 @@
 
 /* pass open firmware flat tree */
 #define CONFIG_OF_LIBFDT	1
-#undef  CONFIG_OF_FLAT_TREE
 #define CONFIG_OF_BOARD_SETUP	1
-#define CONFIG_OF_HAS_BD_T	1
-#define CONFIG_OF_HAS_UBOOT_ENV	1
-
-#define OF_CPU			"PowerPC,8360@0"
-#define OF_SOC			"soc8360@e0000000"
-#define OF_QE			"qe@e0100000"
-#define OF_TBCLK		(bd->bi_busfreq / 4)
-#define OF_STDOUT_PATH		"/soc8360@e0000000/serial@4500"
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_HARD_I2C		/* I2C with hardware support */
@@ -383,7 +375,7 @@
 #define CFG_PCI_MMIO_BASE	0x90000000
 #define CFG_PCI_MMIO_PHYS	CFG_PCI_MMIO_BASE
 #define CFG_PCI_MMIO_SIZE	0x10000000 /* 256M */
-#define CFG_PCI_IO_BASE		0xE0300000
+#define CFG_PCI_IO_BASE		0x00000000
 #define CFG_PCI_IO_PHYS		0xE0300000
 #define CFG_PCI_IO_SIZE		0x100000 /* 1M */
 
@@ -412,7 +404,7 @@
  * QE UEC ethernet configuration
  */
 #define CONFIG_UEC_ETH
-#define CONFIG_ETHPRIME		"Freescale GETH"
+#define CONFIG_ETHPRIME		"FSL UEC0"
 #define CONFIG_PHY_MODE_NEED_CHANGE
 
 #define CONFIG_UEC_ETH1		/* GETH1 */
@@ -443,8 +435,8 @@
 
 #ifndef CFG_RAMBOOT
 	#define CFG_ENV_IS_IN_FLASH	1
-	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + 0x40000)
-	#define CFG_ENV_SECT_SIZE	0x40000 /* 256K(one sector) for env */
+	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
+	#define CFG_ENV_SECT_SIZE	0x20000
 	#define CFG_ENV_SIZE		0x2000
 #else
 	#define CFG_NO_FLASH		1	/* Flash is not usable now */
@@ -473,6 +465,7 @@
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_ASKENV
+#define CONFIG_CMD_SDRAM
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
@@ -519,17 +512,10 @@
 #define CFG_HID2		HID2_HBE
 
 /*
- * Cache Config
- */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5 /*log base 2 of the above value */
-#endif
-
-/*
  * MMU Setup
  */
+
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /* DDR: cache cacheable */
 #define CFG_IBAT0L	(CFG_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
@@ -613,6 +599,7 @@
 #define CONFIG_ENV_OVERWRITE
 
 #if defined(CONFIG_UEC_ETH)
+#define CONFIG_HAS_ETH0
 #define CONFIG_ETHADDR	00:04:9f:ef:01:01
 #define CONFIG_HAS_ETH1
 #define CONFIG_ETH1ADDR 00:04:9f:ef:01:02
@@ -620,7 +607,7 @@
 
 #define CONFIG_BAUDRATE 115200
 
-#define CONFIG_LOADADDR 200000	/* default location for tftp and bootm */
+#define CONFIG_LOADADDR 500000	/* default location for tftp and bootm */
 
 #define CONFIG_BOOTDELAY 6	/* -1 disables auto-boot */
 #undef	CONFIG_BOOTARGS		/* the boot command will set bootargs */
@@ -631,7 +618,7 @@
    "ramdiskaddr=1000000\0"						\
    "ramdiskfile=ramfs.83xx\0"						\
    "fdtaddr=400000\0"							\
-   "fdtfile=mpc8360emds.dtb\0"						\
+   "fdtfile=mpc836x_mds.dtb\0"						\
    ""
 
 #define CONFIG_NFSBOOTCOMMAND						\

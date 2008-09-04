@@ -11,12 +11,15 @@
 #include <command.h>
 #include <malloc.h>
 #include <asm/io.h>
-
-#if defined(CONFIG_CMD_DOC)
-
 #include <linux/mtd/nftl.h>
 #include <linux/mtd/doc2000.h>
 
+/*
+ * ! BROKEN !
+ *
+ * TODO: must be implemented and tested by someone with HW
+ */
+#if 0
 #ifdef CFG_DOC_SUPPORT_2000
 #define DoC_is_2000(doc) (doc->ChipID == DOC_ChipID_Doc2k)
 #else
@@ -208,6 +211,9 @@ int do_docboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	ulong offset = 0;
 	image_header_t *hdr;
 	int rcode = 0;
+#if defined(CONFIG_FIT)
+	const void *fit_hdr = NULL;
+#endif
 
 	show_boot_progress (34);
 	switch (argc) {
@@ -264,21 +270,30 @@ int do_docboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 	show_boot_progress (38);
 
-	hdr = (image_header_t *)addr;
+	switch (genimg_get_format ((void *)addr)) {
+	case IMAGE_FORMAT_LEGACY:
+		hdr = (image_header_t *)addr;
 
-	if (hdr->ih_magic == IH_MAGIC) {
+		image_print_contents (hdr);
 
-		print_image_hdr (hdr);
+		cnt = image_get_image_size (hdr);
+		break;
+#if defined(CONFIG_FIT)
+	case IMAGE_FORMAT_FIT:
+		fit_hdr = (const void *)addr;
+		puts ("Fit image detected...\n");
 
-		cnt = (ntohl(hdr->ih_size) + sizeof(image_header_t));
-		cnt -= SECTORSIZE;
-	} else {
-		puts ("\n** Bad Magic Number **\n");
+		cnt = fit_get_size (fit_hdr);
+		break;
+#endif
+	default:
 		show_boot_progress (-39);
+		puts ("** Unknown image type\n");
 		return 1;
 	}
 	show_boot_progress (39);
 
+	cnt -= SECTORSIZE;
 	if (doc_rw (doc_dev_desc + dev, 1, offset + SECTORSIZE, cnt,
 		    NULL, (u_char *)(addr+SECTORSIZE))) {
 		printf ("** Read error on %d\n", dev);
@@ -286,6 +301,19 @@ int do_docboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 	show_boot_progress (40);
+
+#if defined(CONFIG_FIT)
+	/* This cannot be done earlier, we need complete FIT image in RAM first */
+	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
+		if (!fit_check_format (fit_hdr)) {
+			show_boot_progress (-130);
+			puts ("** Bad FIT image format\n");
+			return 1;
+		}
+		show_boot_progress (131);
+		fit_print_contents (fit_hdr);
+	}
+#endif
 
 	/* Loading ok, update default load address */
 
@@ -1607,5 +1635,6 @@ void doc_probe(unsigned long physadr)
 		puts ("No DiskOnChip found\n");
 	}
 }
-
+#else
+void doc_probe(unsigned long physadr) {}
 #endif

@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2007
+ * (C) Copyright 2007-2008
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  *
  * This program is free software; you can redistribute it and/or
@@ -36,6 +36,7 @@
 #define CONFIG_BOARD_EARLY_INIT_F 1	/* Call board_early_init_f	*/
 #define CONFIG_BOARD_POSTCLK_INIT 1	/* Call board_postclk_init	*/
 #define CONFIG_MISC_INIT_R	1	/* Call misc_init_r		*/
+#define CONFIG_BOARD_RESET	1	/* Call board_reset		*/
 
 /*-----------------------------------------------------------------------
  * Base addresses -- Note these are effective addresses where the
@@ -71,15 +72,36 @@
 /*-----------------------------------------------------------------------
  * Initial RAM & stack pointer
  *----------------------------------------------------------------------*/
-/* 440EPx/440GRx have 16KB of internal SRAM, so no need for D-Cache	*/
-#define CFG_INIT_RAM_ADDR	CFG_OCM_BASE	/* OCM			*/
-#define CFG_OCM_DATA_ADDR	CFG_OCM_BASE
-
+/*
+ * On LWMON5 we use D-cache as init-ram and stack pointer. We also move
+ * the POST_WORD from OCM to a 440EPx register that preserves it's
+ * content during reset (GPT0_COMP6). This way we reserve the OCM (16k)
+ * for logbuffer only. (GPT0_COMP1-COMP5 are reserved for logbuffer header.)
+ */
+#define CFG_INIT_RAM_DCACHE	1		/* d-cache as init ram	*/
+#define CFG_INIT_RAM_ADDR	0x70000000		/* DCache       */
 #define CFG_INIT_RAM_END	(4 << 10)
-#define CFG_GBL_DATA_SIZE	256		/* num bytes initial data */
+#define CFG_GBL_DATA_SIZE	256		/* num bytes initial data*/
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
-#define CFG_POST_WORD_ADDR	(CFG_GBL_DATA_OFFSET - 0x4)
-#define CFG_INIT_SP_OFFSET	CFG_POST_WORD_ADDR
+#define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
+#define CFG_POST_ALT_WORD_ADDR	(CFG_PERIPHERAL_BASE + GPT0_COMP6)
+						/* unused GPT0 COMP reg	*/
+#define CFG_MEM_TOP_HIDE	(4 << 10) /* don't use last 4kbytes	*/
+					/* 440EPx errata CHIP 11	*/
+#define CFG_OCM_SIZE		(16 << 10)
+
+/* Additional registers for watchdog timer post test */
+
+#define CFG_WATCHDOG_TIME_ADDR	(CFG_PERIPHERAL_BASE + GPT0_MASK2)
+#define CFG_WATCHDOG_FLAGS_ADDR	(CFG_PERIPHERAL_BASE + GPT0_MASK1)
+#define CFG_DSPIC_TEST_ADDR	CFG_WATCHDOG_FLAGS_ADDR
+#define CFG_OCM_STATUS_ADDR	CFG_WATCHDOG_FLAGS_ADDR
+#define CFG_WATCHDOG_MAGIC	0x12480000
+#define CFG_WATCHDOG_MAGIC_MASK	0xFFFF0000
+#define CFG_DSPIC_TEST_MASK	0x00000001
+#define CFG_OCM_STATUS_OK	0x00009A00
+#define CFG_OCM_STATUS_FAIL	0x0000A300
+#define CFG_OCM_STATUS_MASK	0x0000FF00
 
 /*-----------------------------------------------------------------------
  * Serial Port
@@ -102,7 +124,7 @@
  * FLASH related
  *----------------------------------------------------------------------*/
 #define CFG_FLASH_CFI				/* The flash is CFI compatible	*/
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver	*/
 
 #define CFG_FLASH0		0xFC000000
 #define CFG_FLASH1		0xF8000000
@@ -134,12 +156,8 @@
 #define CFG_MBYTES_SDRAM	(256)		/* 256MB			*/
 #define CFG_DDR_CACHED_ADDR	0x40000000	/* setup 2nd TLB cached here	*/
 #define CONFIG_DDR_DATA_EYE	1		/* use DDR2 optimization	*/
-#if 0 /* test-only: disable ECC for now */
 #define CONFIG_DDR_ECC		1		/* enable ECC			*/
 #define CFG_POST_ECC_ON		CFG_POST_ECC
-#else
-#define CFG_POST_ECC_ON		0
-#endif
 
 /* POST support */
 #define CONFIG_POST		(CFG_POST_CACHE    | \
@@ -149,12 +167,90 @@
 				 CFG_POST_FPU	   | \
 				 CFG_POST_I2C	   | \
 				 CFG_POST_MEMORY   | \
+				 CFG_POST_OCM      | \
 				 CFG_POST_RTC      | \
 				 CFG_POST_SPR      | \
-				 CFG_POST_UART)
+				 CFG_POST_UART     | \
+				 CFG_POST_SYSMON   | \
+				 CFG_POST_WATCHDOG | \
+				 CFG_POST_DSP      | \
+				 CFG_POST_BSPEC1   | \
+				 CFG_POST_BSPEC2   | \
+				 CFG_POST_BSPEC3   | \
+				 CFG_POST_BSPEC4   | \
+				 CFG_POST_BSPEC5)
 
-#define CFG_POST_CACHE_ADDR	0x10000000	/* free virtual address		*/
+#define CONFIG_POST_WATCHDOG  {\
+	"Watchdog timer test",				\
+	"watchdog",					\
+	"This test checks the watchdog timer.",		\
+	POST_RAM | POST_POWERON | POST_SLOWTEST | POST_MANUAL | POST_REBOOT, \
+	&lwmon5_watchdog_post_test,			\
+	NULL,						\
+	NULL,						\
+	CFG_POST_WATCHDOG				\
+	}
+
+#define CONFIG_POST_BSPEC1    {\
+	"dsPIC init test",				\
+	"dspic_init",					\
+	"This test returns result of dsPIC READY test run earlier.",	\
+	POST_RAM | POST_ALWAYS,				\
+	&dspic_init_post_test,				\
+	NULL,						\
+	NULL,						\
+	CFG_POST_BSPEC1					\
+	}
+
+#define CONFIG_POST_BSPEC2    {\
+	"dsPIC test",					\
+	"dspic",					\
+	"This test gets result of dsPIC POST and dsPIC version.",	\
+	POST_RAM | POST_ALWAYS,				\
+	&dspic_post_test,				\
+	NULL,						\
+	NULL,						\
+	CFG_POST_BSPEC2					\
+	}
+
+#define CONFIG_POST_BSPEC3    {\
+	"FPGA test",					\
+	"fpga",						\
+	"This test checks FPGA registers and memory.",	\
+	POST_RAM | POST_ALWAYS,				\
+	&fpga_post_test,				\
+	NULL,						\
+	NULL,						\
+	CFG_POST_BSPEC3					\
+	}
+
+#define CONFIG_POST_BSPEC4    {\
+	"GDC test",					\
+	"gdc",						\
+	"This test checks GDC registers and memory.",	\
+	POST_RAM | POST_ALWAYS,				\
+	&gdc_post_test,					\
+	NULL,						\
+	NULL,						\
+	CFG_POST_BSPEC4					\
+	}
+
+#define CONFIG_POST_BSPEC5    {\
+	"SYSMON1 test",					\
+	"sysmon1",					\
+	"This test checks GPIO_62_EPX pin indicating power failure.",	\
+	POST_RAM | POST_MANUAL | POST_NORMAL | POST_SLOWTEST,	\
+	&sysmon1_post_test,				\
+	NULL,						\
+	NULL,						\
+	CFG_POST_BSPEC5					\
+	}
+
+#define CFG_POST_CACHE_ADDR	0x7fff0000 /* free virtual address	*/
 #define CONFIG_LOGBUFFER
+/* Reserve GPT0_COMP1-COMP5 for logbuffer header */
+#define CONFIG_ALT_LH_ADDR	(CFG_PERIPHERAL_BASE + GPT0_COMP1)
+#define CONFIG_ALT_LB_ADDR	(CFG_OCM_BASE)
 #define CFG_CONSOLE_IS_IN_ENV /* Otherwise it catches logbuffer as output */
 
 /*-----------------------------------------------------------------------
@@ -176,11 +272,13 @@
 #define CONFIG_RTC_PCF8563	1		/* enable Philips PCF8563 RTC	*/
 #define CFG_I2C_RTC_ADDR	0x51		/* Philips PCF8563 RTC address	*/
 #define CFG_I2C_KEYBD_ADDR	0x56		/* PIC LWE keyboard		*/
+#define CFG_I2C_DSPIC_IO_ADDR	0x57		/* PIC I/O addr               */
 
 #define	CONFIG_POST_KEY_MAGIC	"3C+3E"	/* press F3 + F5 keys to force POST */
 #if 0
 #define	CONFIG_AUTOBOOT_KEYED		/* Enable "password" protection	*/
-#define CONFIG_AUTOBOOT_PROMPT	"\nEnter password - autoboot in %d sec...\n"
+#define CONFIG_AUTOBOOT_PROMPT	\
+	"\nEnter password - autoboot in %d sec...\n", bootdelay
 #define CONFIG_AUTOBOOT_DELAY_STR	"  "	/* "password"	*/
 #endif
 
@@ -214,7 +312,7 @@
 	"load=tftp 200000 /tftpboot/${hostname}/u-boot.bin\0"		\
 	"update=protect off FFF80000 FFFFFFFF;era FFF80000 FFFFFFFF;"	\
 		"cp.b 200000 FFF80000 80000\0"			        \
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"lwe_env=tftp 200000 /tftpboot.dev/lwmon5/env_uboot.bin;"	\
 		"autoscr 200000\0"					\
 	""
@@ -242,6 +340,18 @@
 #define CONFIG_NET_MULTI	1
 #define CONFIG_HAS_ETH1		1	/* add support for "eth1addr"	*/
 #define CONFIG_PHY1_ADDR	1
+
+/* Video console */
+#define CONFIG_VIDEO
+#define CONFIG_VIDEO_MB862xx
+#define CONFIG_CFB_CONSOLE
+#define CONFIG_VIDEO_LOGO
+#define CONFIG_CONSOLE_EXTRA_INFO
+#define VIDEO_FB_16BPP_PIXEL_SWAP
+
+#define CONFIG_VGA_AS_SINGLE_DEVICE
+#define CONFIG_VIDEO_SW_CURSOR
+#define CONFIG_SPLASH_SCREEN
 
 /* USB */
 #ifdef CONFIG_440EPX
@@ -289,6 +399,10 @@
 #define CONFIG_CMD_REGINFO
 #define CONFIG_CMD_SDRAM
 
+#ifdef CONFIG_VIDEO
+#define CONFIG_CMD_BMP
+#endif
+
 #ifdef CONFIG_440EPX
 #define CONFIG_CMD_USB
 #endif
@@ -300,6 +414,12 @@
 
 #define CFG_LONGHELP			/* undef to save memory		*/
 #define CFG_PROMPT	        "=> "	/* Monitor Command Prompt	*/
+
+#define CFG_HUSH_PARSER		1	/* Use the HUSH parser		*/
+#ifdef	CFG_HUSH_PARSER
+#define	CFG_PROMPT_HUSH_PS2	"> "
+#endif
+
 #if defined(CONFIG_CMD_KGDB)
 #define CFG_CBSIZE	        1024	/* Console I/O Buffer Size	*/
 #else
@@ -320,7 +440,6 @@
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
 #define CONFIG_LOOPW            1       /* enable loopw command         */
 #define CONFIG_MX_CYCLIC        1       /* enable mdc/mwc commands      */
-#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check for keypress on bootdelay==0 */
 #define CONFIG_VERSION_VARIABLE 1	/* include version env variable */
 
 /*-----------------------------------------------------------------------
@@ -339,12 +458,9 @@
 #define CFG_PCI_SUBSYS_VENDORID 0x10e8	/* AMCC				*/
 #define CFG_PCI_SUBSYS_ID       0xcafe	/* Whatever			*/
 
-#if 0
-/*
- * ToDo: Watchdog is not test fully, so exclude it for now
- */
 #define CONFIG_HW_WATCHDOG	1	/* Use external HW-Watchdog	*/
-#endif
+#define CONFIG_WD_PERIOD	40000	/* in usec */
+#define CONFIG_WD_MAX_RATE	66600	/* in ticks */
 
 /*
  * For booting Linux, the board info and command line data
@@ -405,16 +521,20 @@
 #define CFG_GPIO_PHY1_RST	12
 #define CFG_GPIO_FLASH_WP	14
 #define CFG_GPIO_PHY0_RST	22
+#define CFG_GPIO_DSPIC_READY	51
 #define CFG_GPIO_EEPROM_EXT_WP	55
+#define CFG_GPIO_HIGHSIDE	56
 #define CFG_GPIO_EEPROM_INT_WP	57
+#define CFG_GPIO_BOARD_RESET	58
 #define CFG_GPIO_LIME_S		59
 #define CFG_GPIO_LIME_RST	60
+#define CFG_GPIO_SYSMON_STATUS	62
 #define CFG_GPIO_WATCHDOG	63
 
 /*-----------------------------------------------------------------------
  * PPC440 GPIO Configuration
  */
-#define CFG_440_GPIO_TABLE { /*	  Out		  GPIO	Alternate1	Alternate2	Alternate3 */ \
+#define CFG_4xx_GPIO_TABLE { /*	  Out		  GPIO	Alternate1	Alternate2	Alternate3 */ \
 {											\
 /* GPIO Core 0 */									\
 {GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO0	EBC_ADDR(7)	DMA_REQ(2)	*/	\
@@ -432,7 +552,7 @@
 {GPIO0_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO12				*/	\
 {GPIO0_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO13				*/	\
 {GPIO0_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_1}, /* GPIO14				*/	\
-{GPIO0_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO15				*/	\
+{GPIO0_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_1}, /* GPIO15				*/	\
 {GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO16 GMCTxD(4)			*/	\
 {GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO17 GMCTxD(5)			*/	\
 {GPIO0_BASE, GPIO_OUT, GPIO_ALT1, GPIO_OUT_0}, /* GPIO18 GMCTxD(6)			*/	\
@@ -473,7 +593,7 @@
 {GPIO1_BASE, GPIO_IN,  GPIO_SEL , GPIO_OUT_0}, /* GPIO50  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO51  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_IN , GPIO_SEL , GPIO_OUT_0}, /* GPIO52  Unselect via TraceSelect Bit	*/	\
-{GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_1}, /* GPIO53  Unselect via TraceSelect Bit	*/	\
+{GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO53  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO54  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_1}, /* GPIO55  Unselect via TraceSelect Bit	*/	\
 {GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO56  Unselect via TraceSelect Bit	*/	\
@@ -486,15 +606,6 @@
 {GPIO1_BASE, GPIO_OUT, GPIO_SEL , GPIO_OUT_0}, /* GPIO63  Unselect via TraceSelect Bit	*/	\
 }											\
 }
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- *----------------------------------------------------------------------*/
-#define CFG_DCACHE_SIZE		(32<<10)  /* For AMCC 440 CPUs			*/
-#define CFG_CACHELINE_SIZE	32	      /* ...			            */
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	      /* log base 2 of the above value	*/
-#endif
 
 /*
  * Internal Definitions

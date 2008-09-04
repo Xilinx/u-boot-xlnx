@@ -34,7 +34,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if (CONFIG_FPGA)
+#if defined(CONFIG_FPGA)
 
 #if 0
 #define GEN860T_FPGA_DEBUG
@@ -376,5 +376,3 @@ int fpga_busy_fn (int cookie)
 	return 0;
 }
 #endif
-
-/* vim: set ts=4 tw=78 sw=4: */

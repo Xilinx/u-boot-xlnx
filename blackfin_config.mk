@@ -21,4 +21,19 @@
 # MA 02111-1307 USA
 #
 
+CONFIG_BFIN_CPU := $(strip $(subst ",,$(CONFIG_BFIN_CPU)))
+CONFIG_BFIN_BOOT_MODE := $(strip $(subst ",,$(CONFIG_BFIN_BOOT_MODE)))
+
+PLATFORM_RELFLAGS += -ffixed-P5
 PLATFORM_CPPFLAGS += -DCONFIG_BLACKFIN
+
+ifneq (,$(CONFIG_BFIN_CPU))
+PLATFORM_RELFLAGS += -mcpu=$(CONFIG_BFIN_CPU)
+endif
+
+SYM_PREFIX = _
+
+LDR_FLAGS += --use-vmas
+ifneq (,$(findstring s,$(MAKEFLAGS)))
+LDR_FLAGS += --quiet
+endif

@@ -27,8 +27,6 @@
 #include <common.h>
 #include <malloc.h>
 
-#ifdef CONFIG_MCFFEC
-
 #include <asm/fec.h>
 #include <asm/immap.h>
 
@@ -51,8 +49,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if defined(CONFIG_CMD_NET) && defined(CONFIG_NET_MULTI)
-
 struct fec_info_s fec_info[] = {
 #ifdef CFG_FEC0_IOBASE
 	{
@@ -70,6 +66,7 @@ struct fec_info_s fec_info[] = {
 	 0,			/* tx Index */
 	 0,			/* tx buffer */
 	 0,			/* initialized flag */
+	 (struct fec_info_s *)-1,
 	 },
 #endif
 #ifdef CFG_FEC1_IOBASE
@@ -82,12 +79,17 @@ struct fec_info_s fec_info[] = {
 	 0,			/* duplex and speed */
 	 0,			/* phy name */
 	 0,			/* phy name init */
+#ifdef CFG_FEC_BUF_USE_SRAM
+	 (cbd_t *)DBUF_LENGTH,	/* RX BD */
+#else
 	 0,			/* RX BD */
+#endif
 	 0,			/* TX BD */
 	 0,			/* rx Index */
 	 0,			/* tx Index */
 	 0,			/* tx buffer */
 	 0,			/* initialized flag */
+	 (struct fec_info_s *)-1,
 	 }
 #endif
 };
@@ -125,11 +127,17 @@ void setFecDuplexSpeed(volatile fec_t * fecp, bd_t * bd, int dup_spd)
 	}
 
 	if ((dup_spd & 0xFFFF) == _100BASET) {
+#ifdef CONFIG_MCF5445x
+		fecp->rcr &= ~0x200;	/* disabled 10T base */
+#endif
 #ifdef MII_DEBUG
 		printf("100Mbps\n");
 #endif
 		bd->bi_ethspeed = 100;
 	} else {
+#ifdef CONFIG_MCF5445x
+		fecp->rcr |= 0x200;	/* enabled 10T base */
+#endif
 #ifdef MII_DEBUG
 		printf("10Mbps\n");
 #endif
@@ -166,9 +174,22 @@ int fec_send(struct eth_device *dev, volatile void *packet, int length)
 	/* Activate transmit Buffer Descriptor polling */
 	fecp->tdar = 0x01000000;	/* Descriptor polling active    */
 
+#ifndef CFG_FEC_BUF_USE_SRAM
+	/*
+	 * FEC unable to initial transmit data packet.
+	 * A nop will ensure the descriptor polling active completed.
+	 * CF Internal RAM has shorter cycle access than DRAM. If use
+	 * DRAM as Buffer descriptor and data, a nop is a must.
+	 * Affect only V2 and V3.
+	 */
+	__asm__ ("nop");
+
+#endif
+
 #ifdef CFG_UNIFY_CACHE
 	icache_invalid();
 #endif
+
 	j = 0;
 	while ((info->txbd[info->txIdx].cbd_sc & BD_ENET_TX_READY) &&
 	       (j < MCFFEC_TOUT_LOOP)) {
@@ -200,8 +221,10 @@ int fec_recv(struct eth_device *dev)
 	int length;
 
 	for (;;) {
+#ifndef CFG_FEC_BUF_USE_SRAM
+#endif
 #ifdef CFG_UNIFY_CACHE
-       		icache_invalid();
+		icache_invalid();
 #endif
 		/* section 16.9.23.2 */
 		if (info->rxbd[info->rxIdx].cbd_sc & BD_ENET_RX_EMPTY) {
@@ -544,6 +567,9 @@ int mcffec_initialize(bd_t * bis)
 {
 	struct eth_device *dev;
 	int i;
+#ifdef CFG_FEC_BUF_USE_SRAM
+	u32 tmp = CFG_INIT_RAM_ADDR + 0x1000;
+#endif
 
 	for (i = 0; i < sizeof(fec_info) / sizeof(fec_info[0]); i++) {
 
@@ -564,6 +590,18 @@ int mcffec_initialize(bd_t * bis)
 		dev->recv = fec_recv;
 
 		/* setup Receive and Transmit buffer descriptor */
+#ifdef CFG_FEC_BUF_USE_SRAM
+		fec_info[i].rxbd = (cbd_t *)((u32)fec_info[i].rxbd + tmp);
+		tmp = (u32)fec_info[i].rxbd;
+		fec_info[i].txbd =
+		    (cbd_t *)((u32)fec_info[i].txbd + tmp +
+		    (PKTBUFSRX * sizeof(cbd_t)));
+		tmp = (u32)fec_info[i].txbd;
+		fec_info[i].txbuf =
+		    (char *)((u32)fec_info[i].txbuf + tmp +
+		    (CFG_TX_ETH_BUFFER * sizeof(cbd_t)));
+		tmp = (u32)fec_info[i].txbuf;
+#else
 		fec_info[i].rxbd =
 		    (cbd_t *) memalign(CFG_CACHELINE_SIZE,
 				       (PKTBUFSRX * sizeof(cbd_t)));
@@ -572,6 +610,8 @@ int mcffec_initialize(bd_t * bis)
 				       (TX_BUF_CNT * sizeof(cbd_t)));
 		fec_info[i].txbuf =
 		    (char *)memalign(CFG_CACHELINE_SIZE, DBUF_LENGTH);
+#endif
+
 #ifdef ET_DEBUG
 		printf("rxbd %x txbd %x\n",
 		       (int)fec_info[i].rxbd, (int)fec_info[i].txbd);
@@ -585,13 +625,13 @@ int mcffec_initialize(bd_t * bis)
 		miiphy_register(dev->name,
 				mcffec_miiphy_read, mcffec_miiphy_write);
 #endif
+		if (i > 0)
+			fec_info[i - 1].next = &fec_info[i];
 	}
+	fec_info[i - 1].next = &fec_info[0];
 
 	/* default speed */
 	bis->bi_ethspeed = 10;
 
-	return 1;
+	return 0;
 }
-
-#endif				/* CONFIG_CMD_NET, FEC_ENET & NET_MULTI */
-#endif				/* CONFIG_MCFFEC */

@@ -31,8 +31,6 @@
  * several test scenarios.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 
 #if CONFIG_POST & CFG_POST_CACHE
@@ -42,16 +40,12 @@
 
 #define CACHE_POST_SIZE	1024
 
-void program_tlb(u32 phys_addr, u32 virt_addr, u32 size, u32 tlb_word2_i_value);
-
 int cache_post_test1 (int tlb, void *p, int size);
 int cache_post_test2 (int tlb, void *p, int size);
 int cache_post_test3 (int tlb, void *p, int size);
 int cache_post_test4 (int tlb, void *p, int size);
 int cache_post_test5 (int tlb, void *p, int size);
 int cache_post_test6 (int tlb, void *p, int size);
-
-static int tlb = -1;		/* index to the victim TLB entry */
 
 #ifdef CONFIG_440
 static unsigned char testarea[CACHE_POST_SIZE]
@@ -60,9 +54,10 @@ __attribute__((__aligned__(CACHE_POST_SIZE)));
 
 int cache_post_test (int flags)
 {
-	void* virt = (void*)CFG_POST_CACHE_ADDR;
+	void *virt = (void *)CFG_POST_CACHE_ADDR;
 	int ints;
 	int res = 0;
+	int tlb = -1;		/* index to the victim TLB entry */
 
 	/*
 	 * All 44x variants deal with cache management differently
@@ -73,25 +68,23 @@ int cache_post_test (int flags)
 #ifdef CONFIG_440
 	int word0, i;
 
-	if (tlb < 0) {
-		/*
-		 * Allocate a new TLB entry, since we are going to modify
-		 * the write-through and caching inhibited storage attributes.
-		 */
-		program_tlb((u32)testarea, (u32)virt,
-			    CACHE_POST_SIZE, TLB_WORD2_I_ENABLE);
+	/*
+	 * Allocate a new TLB entry, since we are going to modify
+	 * the write-through and caching inhibited storage attributes.
+	 */
+	program_tlb((u32)testarea, (u32)virt, CACHE_POST_SIZE,
+		    TLB_WORD2_I_ENABLE);
 
-		/* Find the TLB entry */
-		for (i = 0;; i++) {
-			if (i >= PPC4XX_TLB_SIZE) {
-				printf ("Failed to program tlb entry\n");
-				return -1;
-			}
-			word0 = mftlb1(i);
-			if (TLB_WORD0_EPN_DECODE(word0) == (u32)virt) {
-				tlb = i;
-				break;
-			}
+	/* Find the TLB entry */
+	for (i = 0;; i++) {
+		if (i >= PPC4XX_TLB_SIZE) {
+			printf ("Failed to program tlb entry\n");
+			return -1;
+		}
+		word0 = mftlb1(i);
+		if (TLB_WORD0_EPN_DECODE(word0) == (u32)virt) {
+			tlb = i;
+			break;
 		}
 	}
 #endif
@@ -119,8 +112,11 @@ int cache_post_test (int flags)
 	if (ints)
 		enable_interrupts ();
 
+#ifdef CONFIG_440
+	remove_tlb((u32)virt, CACHE_POST_SIZE);
+#endif
+
 	return res;
 }
 
 #endif /* CONFIG_POST & CFG_POST_CACHE */
-#endif /* CONFIG_POST */

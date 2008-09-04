@@ -173,7 +173,7 @@ flash_print_info(flash_info_t * info)
 	int i;
 	uchar *boottype;
 	uchar *bootletter;
-	uchar *fmt;
+	char *fmt;
 	uchar botbootletter[] = "B";
 	uchar topbootletter[] = "T";
 	uchar botboottype[] = "bottom boot sector";
@@ -612,7 +612,7 @@ bad_write_buff(flash_info_t * info, uchar * src, ulong addr, ulong cnt)
  * @param info:
  * @param src:	source of copy transaction
  * @param addr:	where to copy to
- * @param cnt: 	number of bytes to copy
+ * @param cnt:	number of bytes to copy
  *
  * @return	error code
  */

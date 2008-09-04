@@ -5,8 +5,7 @@
 #ifndef __CONFIG_EZKIT561_H__
 #define __CONFIG_EZKIT561_H__
 
-#define CONFIG_VDSP		1
-#define CONFIG_BF561		1
+#include <asm/blackfin-config-pre.h>
 
 #define CFG_LONGHELP		1
 #define CONFIG_CMDLINE_EDITING	1
@@ -18,28 +17,12 @@
 
 #define CONFIG_PANIC_HANG 1
 
-/*
-* Boot Mode Set
-* Blackfin can support several boot modes
-*/
-#define BF561_BYPASS_BOOT	0x21
-#define BF561_PARA_BOOT		0x22
-#define BF561_SPI_BOOT		0x24
-/* Define the boot mode */
-#define BFIN_BOOT_MODE	BF561_BYPASS_BOOT
+#define CONFIG_BFIN_CPU	bf561-0.3
+#define CONFIG_BFIN_BOOT_MODE BFIN_BOOT_BYPASS
 
 /* This sets the default state of the cache on U-Boot's boot */
 #define CONFIG_ICACHE_ON
 #define CONFIG_DCACHE_ON
-
-/* Define where the uboot will be loaded by on-chip boot rom */
-#define APP_ENTRY 0x00001000
-
-/*
- * Stringize definitions - needed for environmental settings
- */
-#define STRINGIZE2(x) #x
-#define STRINGIZE(x) STRINGIZE2(x)
 
 /*
  * Board settings
@@ -94,7 +77,7 @@
  */
 
 #define CFG_FLASH_CFI		/* The flash is CFI compatible */
-#define CFG_FLASH_CFI_DRIVER	/* Use common CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER	/* Use common CFI driver */
 #define CFG_FLASH_CFI_AMD_RESET
 #define	CFG_ENV_IS_IN_FLASH	1
 #define CFG_FLASH_BASE		0x20000000
@@ -165,27 +148,26 @@
 
 #if (CONFIG_DRIVER_SMC91111)
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"ramargs=setenv bootargs root=/dev/mtdblock0 rw console=ttyBF0,57600\0" 		\
+	"ramargs=setenv bootargs root=/dev/mtdblock0 rw console=ttyBF0,57600\0"	 \
 	"nfsargs=setenv bootargs root=/dev/nfs rw nfsroot=$(serverip):"	\
-		"$(rootpath) console=ttyBF0,57600\0"						\
+		"$(rootpath) console=ttyBF0,57600\0"			\
 	"addip=setenv bootargs $(bootargs) ip=$(ipaddr):$(serverip):"	\
 		"$(gatewayip):$(netmask):$(hostname):eth0:off\0"	\
-	"ramboot=tftpboot $(loadaddr) linux; "		\
+	"ramboot=tftpboot $(loadaddr) linux; "				\
 		"run ramargs; run addip; bootelf\0"			\
-	"nfsboot=tftpboot $(loadaddr) linux; "		\
+	"nfsboot=tftpboot $(loadaddr) linux; "				\
 		"run nfsargs; run addip; bootelf\0"			\
-	"update=tftpboot $(loadaddr) u-boot.bin; "	\
+	"update=tftpboot $(loadaddr) u-boot.bin; "			\
 		"protect off 0x20000000 0x2003FFFF; "			\
 		"erase 0x20000000 0x2003FFFF; "				\
-		"cp.b $(loadaddr) 0x20000000 $(filesize)\0" \
+		"cp.b $(loadaddr) 0x20000000 $(filesize)\0"		\
 	""
 #else
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"ramargs=setenv bootargs root=/dev/mtdblock0 rw console=ttyBF0,57600\0"		\
+	"ramargs=setenv bootargs root=/dev/mtdblock0 rw console=ttyBF0,57600\0"	 \
 	"flashboot=bootm 0x20100000\0"					\
 	""
 #endif
-
 
 /*
  * BOOTP options
@@ -194,7 +176,6 @@
 #define CONFIG_BOOTP_BOOTPATH
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
-
 
 /*
  * Command line configuration.
@@ -210,13 +191,12 @@
 #define CONFIG_CMD_DHCP
 #endif
 
-
 /*
  * Console settings
  */
 #define CFG_BAUDRATE_TABLE	{ 9600, 19200, 38400, 57600, 115200 }
 
-#define	CFG_PROMPT		"ezkit> "	/* Monitor Command Prompt */
+#define	CFG_PROMPT		"bfin> "	/* Monitor Command Prompt */
 
 #if defined(CONFIG_CMD_KGDB)
 #define	CFG_CBSIZE		1024		/* Console I/O Buffer Size */
@@ -238,17 +218,14 @@
 /*
  * FLASH organization and environment definitions
  */
-#define	CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
+#define CONFIG_EBIU_SDRRC_VAL  0x306
+#define CONFIG_EBIU_SDGCTL_VAL 0x91114d
+#define CONFIG_EBIU_SDBCTL_VAL 0x15
 
-#define AMGCTLVAL		0x3F
-#define AMBCTL0VAL		0x7BB07BB0
-#define AMBCTL1VAL		0xFFC27BB0
+#define CONFIG_EBIU_AMGCTL_VAL		0x3F
+#define CONFIG_EBIU_AMBCTL0_VAL		0x7BB07BB0
+#define CONFIG_EBIU_AMBCTL1_VAL		0xFFC27BB0
 
-#ifdef CONFIG_VDSP
-#define ET_EXEC_VDSP		0x8
-#define SHT_STRTAB_VDSP		0x1
-#define ELFSHDRSIZE_VDSP	0x2C
-#define VDSP_ENTRY_ADDR		0xFFA00000
-#endif
+#include <asm/blackfin-config-post.h>
 
 #endif				/* __CONFIG_EZKIT561_H__ */

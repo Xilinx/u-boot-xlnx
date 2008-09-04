@@ -3,10 +3,10 @@ Freescale MPC8313ERDB Board
 
 1.	Board Switches and Jumpers
 
-	SW3 is used to set CFG_RESET_SOURCE.
+	S3 is used to set CFG_RESET_SOURCE.
 
 	To boot the image at 0xFE000000 in NOR flash, use these DIP
-	switche settings for SW3 SW4:
+	switch settings for S3 S4:
 
 	+------+	+------+
 	|      |	| **** |
@@ -22,7 +22,7 @@ Freescale MPC8313ERDB Board
 	0x8000_0000	0x8fff_ffff	PCI MEM		 256M
 	0x9000_0000	0x9fff_ffff	PCI_MMIO	 256M
 	0xe000_0000	0xe00f_ffff	IMMR		 1M
-	0xe200_0000	0xe20f_ffff	PCI IO	 	 16M
+	0xe200_0000	0xe20f_ffff	PCI IO		 16M
 	0xe280_0000	0xe280_7fff	NAND FLASH (CS1) 32K
 	0xf000_0000	0xf001_ffff	VSC7385 (CS2)	 128K
 	0xfa00_0000	0xfa00_7fff	Board Status/	 32K

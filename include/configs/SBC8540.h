@@ -48,7 +48,8 @@
 
 #define CONFIG_CPM2		1	/* has CPM2 */
 
-#define CONFIG_SBC8540      	1   	/* configuration for SBC8560 board */
+#define CONFIG_SBC8540		1	/* configuration for SBC8560 board */
+#define CONFIG_MPC8540		1
 
 #define CONFIG_MPC8560ADS	1	/* MPC8560ADS board specific (supplement)	*/
 
@@ -56,6 +57,7 @@
 #undef	CONFIG_PCI			/* pci ethernet support		*/
 #undef  CONFIG_ETHER_ON_FCC		/* cpm FCC ethernet support	*/
 
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 #define CONFIG_ENV_OVERWRITE
 
@@ -98,19 +100,36 @@
 #else
   #define CFG_CCSRBAR		0xff700000	/* default CCSRBAR	*/
 #endif
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR	*/
 
-#define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory	 */
-#define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
 #define CFG_SDRAM_SIZE		512		/* DDR is 512MB */
-#define SPD_EEPROM_ADDRESS	0x55		/*  DDR DIMM */
 
+/* DDR Setup */
+#define CONFIG_FSL_DDR1
+#undef CONFIG_FSL_DDR_INTERACTIVE
 #undef  CONFIG_DDR_ECC				/* only for ECC DDR module	*/
 #undef  CONFIG_SPD_EEPROM			/* Use SPD EEPROM for DDR setup */
+#undef  CONFIG_DDR_SPD
 
 #if defined(CONFIG_MPC85xx_REV1)
   #define CONFIG_DDR_DLL			/* possible DLL fix needed	*/
 #endif
+
+#undef  CONFIG_DDR_ECC			    /* only for ECC DDR module */
+#undef CONFIG_ECC_INIT_VIA_DDRCONTROLLER	/* DDR controller or DMA? */
+#define CONFIG_MEM_INIT_VALUE	0xDeadBeef
+
+#define CFG_DDR_SDRAM_BASE	0x00000000
+#define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
+#define CONFIG_VERY_BIG_RAM
+
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	2
+
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x55	/* CTLR 0 DIMM 0 */
 
 #undef CONFIG_CLOCKS_IN_MHZ
 
@@ -288,7 +307,7 @@
  */
 
 #define CFG_FLASH_CFI		1	/* Flash is CFI conformant		*/
-#define CFG_FLASH_CFI_DRIVER	1	/* Use the common driver		*/
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver		*/
 #if 0
 #define CFG_FLASH_USE_BUFFER_WRITE 1    /* use buffered writes (20x faster)     */
 #define CFG_FLASH_PROTECTION		/* use hardware protection		*/
@@ -394,13 +413,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ		(8 << 20) /* Initial Memory map for Linux */
-
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-  #define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value */
-#endif
 
 /*
  * Internal Definitions

@@ -32,8 +32,6 @@
  * different sets of operand registers and result registers.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include "cpu_asm.h"
 
@@ -54,7 +52,7 @@ static struct cpu_post_rlwnm_s
 } cpu_post_rlwnm_table[] =
 {
    {
-   	OP_RLWNM,
+	OP_RLWNM,
 	0xffff0000,
 	24,
 	16,
@@ -81,7 +79,7 @@ int cpu_post_test_rlwnm (void)
 	    unsigned int reg1 = (reg + 1) % 32;
 	    unsigned int reg2 = (reg + 2) % 32;
 	    unsigned int stk = reg < 16 ? 31 : 15;
-    	    unsigned long code[] =
+	    unsigned long code[] =
 	    {
 		ASM_STW(stk, 1, -4),
 		ASM_ADDI(stk, 1, -24),
@@ -102,7 +100,7 @@ int cpu_post_test_rlwnm (void)
 		ASM_LWZ(stk, 1, -4),
 		ASM_BLR,
 	    };
-    	    unsigned long codecr[] =
+	    unsigned long codecr[] =
 	    {
 		ASM_STW(stk, 1, -4),
 		ASM_ADDI(stk, 1, -24),
@@ -129,26 +127,26 @@ int cpu_post_test_rlwnm (void)
 
 	    if (ret == 0)
 	    {
- 	    	cr = 0;
-	    	cpu_post_exec_22 (code, & cr, & res, test->op1, test->op2);
+		cr = 0;
+		cpu_post_exec_22 (code, & cr, & res, test->op1, test->op2);
 
-	    	ret = res == test->res && cr == 0 ? 0 : -1;
+		ret = res == test->res && cr == 0 ? 0 : -1;
 
-	    	if (ret != 0)
-	    	{
+		if (ret != 0)
+		{
 	            post_log ("Error at rlwnm test %d !\n", i);
-	    	}
+		}
 	    }
 
 	    if (ret == 0)
 	    {
-	    	cpu_post_exec_22 (codecr, & cr, & res, test->op1, test->op2);
+		cpu_post_exec_22 (codecr, & cr, & res, test->op1, test->op2);
 
-	    	ret = res == test->res &&
+		ret = res == test->res &&
 		      (cr & 0xe0000000) == cpu_post_makecr (res) ? 0 : -1;
 
-	    	if (ret != 0)
-	    	{
+		if (ret != 0)
+		{
 	            post_log ("Error at rlwnm test %d !\n", i);
 	        }
 	    }
@@ -156,10 +154,9 @@ int cpu_post_test_rlwnm (void)
     }
 
     if (flag)
-    	enable_interrupts();
+	enable_interrupts();
 
     return ret;
 }
 
-#endif
 #endif

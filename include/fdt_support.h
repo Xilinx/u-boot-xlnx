@@ -29,13 +29,38 @@
 #include <fdt.h>
 
 int fdt_chosen(void *fdt, ulong initrd_start, ulong initrd_end, int force);
+int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end, int force);
+void do_fixup_by_path(void *fdt, const char *path, const char *prop,
+		      const void *val, int len, int create);
+void do_fixup_by_path_u32(void *fdt, const char *path, const char *prop,
+			  u32 val, int create);
+void do_fixup_by_prop(void *fdt,
+		      const char *pname, const void *pval, int plen,
+		      const char *prop, const void *val, int len,
+		      int create);
+void do_fixup_by_prop_u32(void *fdt,
+			  const char *pname, const void *pval, int plen,
+			  const char *prop, u32 val, int create);
+void do_fixup_by_compat(void *fdt, const char *compat,
+			const char *prop, const void *val, int len, int create);
+void do_fixup_by_compat_u32(void *fdt, const char *compat,
+			    const char *prop, u32 val, int create);
+int fdt_fixup_memory(void *blob, u64 start, u64 size);
+void fdt_fixup_ethernet(void *fdt);
+int fdt_find_and_setprop(void *fdt, const char *node, const char *prop,
+			 const void *val, int len, int create);
+void fdt_fixup_qe_firmware(void *fdt);
 
-#ifdef CONFIG_OF_HAS_UBOOT_ENV
-int fdt_env(void *fdt);
-#endif
+#ifdef CONFIG_HAS_FSL_DR_USB
+void fdt_fixup_dr_usb(void *blob, bd_t *bd);
+#else
+static inline void fdt_fixup_dr_usb(void *blob, bd_t *bd) {}
+#endif /* CONFIG_HAS_FSL_DR_USB */
 
-#ifdef CONFIG_OF_HAS_BD_T
-int fdt_bd_t(void *fdt);
+#if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC83XX)
+void fdt_fixup_crypto_node(void *blob, int sec_rev);
+#else
+static inline void fdt_fixup_crypto_node(void *blob, int sec_rev) {}
 #endif
 
 #ifdef CONFIG_OF_BOARD_SETUP
@@ -43,6 +68,9 @@ void ft_board_setup(void *blob, bd_t *bd);
 void ft_cpu_setup(void *blob, bd_t *bd);
 void ft_pci_setup(void *blob, bd_t *bd);
 #endif
+
+void set_working_fdt_addr(void *addr);
+int fdt_resize(void *blob);
 
 #endif /* ifdef CONFIG_OF_LIBFDT */
 #endif /* ifndef __FDT_SUPPORT_H */

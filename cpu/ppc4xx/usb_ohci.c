@@ -56,8 +56,8 @@
 #define OHCI_CONTROL_INIT \
 	(OHCI_CTRL_CBSR & 0x3) | OHCI_CTRL_IE | OHCI_CTRL_PLE
 
-#define readl(a) (*((vu_long *)(a)))
-#define writel(a, b) (*((vu_long *)(b)) = ((vu_long)a))
+#define readl(a) (*((volatile u32 *)(a)))
+#define writel(a, b) (*((volatile u32 *)(b)) = ((volatile u32)a))
 
 #define min_t(type,x,y) ({ type __x = (x); type __y = (y); __x < __y ? __x: __y; })
 
@@ -1600,7 +1600,7 @@ int usb_lowlevel_init(void)
 	gohci.sleeping = 0;
 	gohci.irq = -1;
 #if defined(CONFIG_440EP)
- 	gohci.regs = (struct ohci_regs *)(CFG_PERIPHERAL_BASE | 0x1000);
+	gohci.regs = (struct ohci_regs *)(CFG_PERIPHERAL_BASE | 0x1000);
 #elif defined(CONFIG_440EPX) || defined(CFG_USB_HOST)
 	gohci.regs = (struct ohci_regs *)(CFG_USB_HOST);
 #endif

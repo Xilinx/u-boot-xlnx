@@ -132,11 +132,17 @@ static void sdram_start(int hi_addr)
 /*
  * Initalize SDRAM - configure SDRAM controller, detect memory size.
  */
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	ulong dramsize = 0;
 #ifndef CFG_RAMBOOT
 	ulong test1, test2;
+
+	/* According to AN3221 (MPC5200B SDRAM Initialization and
+	 * Configuration), the SDelay register must be written a value of
+	 * 0x00000004 as the first step of the SDRAM contorller configuration.
+	 */
+	*(vu_long *)MPC5XXX_SDRAM_SDELAY = 0x04;
 
 	/* configure SDRAM start/end for detection */
 	*(vu_long *)MPC5XXX_SDRAM_CS0CFG = 0x0000001e; /* 2G at 0x0 */

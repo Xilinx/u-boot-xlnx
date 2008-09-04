@@ -33,18 +33,15 @@
 #define CONFIG_MPC8568		1	/* MPC8568 specific */
 #define CONFIG_MPC8568MDS	1	/* MPC8568MDS board specific */
 
-#define CONFIG_PCI
-#define CONFIG_TSEC_ENET 		/* tsec ethernet support */
+#define CONFIG_PCI		1	/* Enable PCI/PCIE */
+#define CONFIG_PCI1		1	/* PCI controller */
+#define CONFIG_PCIE1		1	/* PCIE controller */
+#define CONFIG_FSL_PCI_INIT	1	/* use common fsl pci init code */
+#define CONFIG_FSL_PCIE_RESET	1	/* need PCIe reset errata */
+#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_QE			/* Enable QE */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup*/
-#define CONFIG_DDR_DLL			/* possible DLL fix needed */
-/*#define CONFIG_DDR_2T_TIMING		 Sets the 2T timing bit */
-
-/*#define CONFIG_DDR_ECC*/			/* only for ECC DDR module */
-/*#define CONFIG_ECC_INIT_VIA_DDRCONTROLLER*/	/* DDR controller or DMA? */
-#define CONFIG_MEM_INIT_VALUE		0xDeadBeef
-
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 /*
  * When initializing flash, if we cannot find the manufacturer ID,
@@ -52,8 +49,6 @@
  * This allows booting from a promjet.
  */
 #define CONFIG_ASSUME_AMD_FLASH
-
-#define MPC85xx_DDR_SDRAM_CLK_CNTL	/* 85xx has clock control reg */
 
 #ifndef __ASSEMBLY__
 extern unsigned long get_clock_freq(void);
@@ -63,7 +58,7 @@ extern unsigned long get_clock_freq(void);
 /*
  * These can be toggled for performance analysis, otherwise use default.
  */
-#define CONFIG_L2_CACHE				/* toggle L2 cache 	*/
+#define CONFIG_L2_CACHE				/* toggle L2 cache	*/
 #define CONFIG_BTB				/* toggle branch predition */
 #define CONFIG_ADDR_STREAMING			/* toggle addr streaming   */
 
@@ -75,7 +70,6 @@ extern unsigned long get_clock_freq(void);
 
 #define CONFIG_BOARD_EARLY_INIT_F	1	/* Call board_pre_init */
 
-#undef	CFG_DRAM_TEST			/* memory test, takes time */
 #define CFG_MEMTEST_START	0x00200000	/* memtest works on */
 #define CFG_MEMTEST_END		0x00400000
 
@@ -83,27 +77,40 @@ extern unsigned long get_clock_freq(void);
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  */
-#define CFG_CCSRBAR_DEFAULT 	0xff700000	/* CCSRBAR Default */
+#define CFG_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
 #define CFG_CCSRBAR		0xe0000000	/* relocated CCSRBAR */
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR */
 
-/*
- * DDR Setup
- */
+#define CFG_PCI1_ADDR           (CFG_CCSRBAR+0x8000)
+#define CFG_PCIE1_ADDR          (CFG_CCSRBAR+0xa000)
+
+/* DDR Setup */
+#define CONFIG_FSL_DDR2
+#undef CONFIG_FSL_DDR_INTERACTIVE
+#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup*/
+#define CONFIG_DDR_SPD
+#define CONFIG_DDR_DLL			/* possible DLL fix needed */
+#undef CONFIG_ECC_INIT_VIA_DDRCONTROLLER	/* DDR controller or DMA? */
+
+#define CONFIG_MEM_INIT_VALUE	0xDeadBeef
+
 #define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory*/
 #define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
 
-#define SPD_EEPROM_ADDRESS	0x51		/* DDR DIMM */
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
 
-/*
- * Make sure required options are set
- */
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x51	/* CTLR 0 DIMM 0 */
+
+/* Make sure required options are set */
 #ifndef CONFIG_SPD_EEPROM
 #error ("CONFIG_SPD_EEPROM is required")
 #endif
 
 #undef CONFIG_CLOCKS_IN_MHZ
-
 
 /*
  * Local Bus Definitions
@@ -157,9 +164,9 @@ extern unsigned long get_clock_freq(void);
 #define CFG_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CFG_FLASH_WRITE_TOUT	500		/* Flash Write Timeout (ms) */
 
-#define CFG_MONITOR_BASE    	TEXT_BASE	/* start of monitor */
+#define CFG_MONITOR_BASE	TEXT_BASE	/* start of monitor */
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_FLASH_EMPTY_INFO
 
@@ -175,10 +182,10 @@ extern unsigned long get_clock_freq(void);
 #define CFG_BR2_PRELIM      0xf0001861
 #define CFG_OR2_PRELIM		0xfc006901
 
-#define CFG_LBC_LCRR		0x00030004    	/* LB clock ratio reg */
-#define CFG_LBC_LBCR		0x00000000    	/* LB config reg */
-#define CFG_LBC_LSRT		0x20000000  	/* LB sdram refresh timer */
-#define CFG_LBC_MRTPR		0x00000000  	/* LB refresh timer prescal*/
+#define CFG_LBC_LCRR		0x00030004	/* LB clock ratio reg */
+#define CFG_LBC_LBCR		0x00000000	/* LB config reg */
+#define CFG_LBC_LSRT		0x20000000	/* LB sdram refresh timer */
+#define CFG_LBC_MRTPR		0x00000000	/* LB refresh timer prescal*/
 
 /*
  * LSDMR masks
@@ -258,16 +265,16 @@ extern unsigned long get_clock_freq(void);
 #define CFG_OR5_PRELIM	 0xffff69f7
 
 #define CONFIG_L1_INIT_RAM
-#define CFG_INIT_RAM_LOCK 	1
+#define CFG_INIT_RAM_LOCK	1
 #define CFG_INIT_RAM_ADDR	0xe4010000	/* Initial RAM address */
-#define CFG_INIT_RAM_END    	0x4000	    /* End of used area in RAM */
+#define CFG_INIT_RAM_END	0x4000	    /* End of used area in RAM */
 
-#define CFG_GBL_DATA_SIZE  	128	    /* num bytes initial data */
+#define CFG_GBL_DATA_SIZE	128	    /* num bytes initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
 
-#define CFG_MONITOR_LEN	    	(256 * 1024) /* Reserve 256 kB for Mon */
-#define CFG_MALLOC_LEN	    	(128 * 1024)	/* Reserved for malloc */
+#define CFG_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
+#define CFG_MALLOC_LEN		(128 * 1024)	/* Reserved for malloc */
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX		1
@@ -290,14 +297,12 @@ extern unsigned long get_clock_freq(void);
 #endif
 
 /* pass open firmware flat tree */
-#define CONFIG_OF_FLAT_TREE	1
-#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_LIBFDT		1
+#define CONFIG_OF_BOARD_SETUP		1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
-#define OF_CPU			"PowerPC,8568@0"
-#define OF_SOC			"soc8568@e0000000"
-#define OF_QE			"qe@e0080000"
-#define OF_TBCLK		(bd->bi_busfreq / 8)
-#define OF_STDOUT_PATH		"/soc8568@e0000000/serial@4600"
+#define CFG_64BIT_VSPRINTF	1
+#define CFG_64BIT_STRTOUL	1
 
 /*
  * I2C
@@ -325,19 +330,14 @@ extern unsigned long get_clock_freq(void);
 #define CFG_PCI1_IO_PHYS	0xe2000000
 #define CFG_PCI1_IO_SIZE	0x00800000	/* 8M */
 
-#define CFG_PEX_MEM_BASE	0xa0000000
-#define CFG_PEX_MEM_PHYS	CFG_PEX_MEM_BASE
-#define CFG_PEX_MEM_SIZE	0x10000000	/* 256M */
-#define CFG_PEX_IO_BASE		0x00000000
-#define CFG_PEX_IO_PHYS		0xe2800000
-#define CFG_PEX_IO_SIZE		0x00800000	/* 8M */
+#define CFG_PCIE1_MEM_BASE	0xa0000000
+#define CFG_PCIE1_MEM_PHYS	CFG_PCIE1_MEM_BASE
+#define CFG_PCIE1_MEM_SIZE	0x20000000	/* 512M */
+#define CFG_PCIE1_IO_BASE	0x00000000
+#define CFG_PCIE1_IO_PHYS	0xe2800000
+#define CFG_PCIE1_IO_SIZE	0x00800000	/* 8M */
 
 #define CFG_SRIO_MEM_BASE	0xc0000000
-
-#if defined(CONFIG_PCI)
-
-#define CONFIG_NET_MULTI
-#define CONFIG_PCI_PNP	               	/* do pci plug-and-play */
 
 #ifdef CONFIG_QE
 /*
@@ -351,7 +351,7 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_eTSEC_MDIO_BUS
 
 #ifdef CONFIG_eTSEC_MDIO_BUS
-#define CONFIG_MIIM_ADDRESS 	0xE0024520
+#define CONFIG_MIIM_ADDRESS	0xE0024520
 #endif
 
 #define CONFIG_UEC_ETH1         /* GETH1 */
@@ -377,16 +377,26 @@ extern unsigned long get_clock_freq(void);
 #endif
 #endif /* CONFIG_QE */
 
+#if defined(CONFIG_PCI)
+
+#define CONFIG_NET_MULTI
+#define CONFIG_PCI_PNP			/* do pci plug-and-play */
+
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
 
 #undef CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #define CFG_PCI_SUBSYS_VENDORID 0x1057  /* Motorola */
 
+/* PCI view of System Memory */
+#define CFG_PCI_MEMORY_BUS      0x00000000
+#define CFG_PCI_MEMORY_PHYS     0x00000000
+#define CFG_PCI_MEMORY_SIZE     0x80000000
+
 #endif	/* CONFIG_PCI */
 
 #ifndef CONFIG_NET_MULTI
-#define CONFIG_NET_MULTI 	1
+#define CONFIG_NET_MULTI	1
 #endif
 
 #if defined(CONFIG_TSEC_ENET)
@@ -440,6 +450,7 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
+#define CONFIG_CMD_ELF
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
@@ -452,6 +463,7 @@ extern unsigned long get_clock_freq(void);
  * Miscellaneous configurable options
  */
 #define CFG_LONGHELP			/* undef to save memory	*/
+#define CONFIG_CMDLINE_EDITING		/* Command-line editing */
 #define CFG_LOAD_ADDR	0x2000000	/* default load address */
 #define CFG_PROMPT	"=> "		/* Monitor Command Prompt */
 #if defined(CONFIG_CMD_KGDB)
@@ -469,14 +481,7 @@ extern unsigned long get_clock_freq(void);
  * have to be in the first 8 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CFG_BOOTMAPSZ	(8 << 20) 	/* Initial Memory map for Linux*/
-
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE	32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value*/
-#endif
+#define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
 
 /*
  * Internal Definitions

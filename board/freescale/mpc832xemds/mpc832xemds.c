@@ -16,20 +16,13 @@
 #include <ioports.h>
 #include <mpc83xx.h>
 #include <i2c.h>
-#include <spd.h>
 #include <miiphy.h>
 #include <command.h>
 #if defined(CONFIG_PCI)
 #include <pci.h>
 #endif
-#if defined(CONFIG_SPD_EEPROM)
-#include <spd_sdram.h>
-#else
 #include <asm/mmu.h>
-#endif
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-#elif defined(CONFIG_OF_LIBFDT)
+#if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
 #endif
 #if defined(CONFIG_PQ_MDS_PIB)
@@ -101,7 +94,7 @@ int board_early_init_r(void)
 
 int fixed_sdram(void);
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 	volatile immap_t *im = (immap_t *) CFG_IMMR;
 	u32 msize = 0;
@@ -169,16 +162,6 @@ int checkboard(void)
 #if defined(CONFIG_OF_BOARD_SETUP)
 void ft_board_setup(void *blob, bd_t *bd)
 {
-#if defined(CONFIG_OF_FLAT_TREE)
-	u32 *p;
-	int len;
-
-	p = ft_get_prop(blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32(bd->bi_memstart);
-		*p = cpu_to_be32(bd->bi_memsize);
-	}
-#endif
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);

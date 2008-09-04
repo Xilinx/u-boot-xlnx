@@ -1,7 +1,7 @@
 #
 # U-boot Makefile
 #
-# Copyright (c) 2005-2007 Analog Devices Inc.
+# Copyright (c) 2005-2008 Analog Devices Inc.
 #
 # (C) Copyright 2000-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -27,14 +27,25 @@
 
 include $(TOPDIR)/config.mk
 
+CFLAGS += -DBFIN_BOARD_NAME='"$(BOARD)"'
+
 LIB	= $(obj)lib$(ARCH).a
 
-SOBJS	= memcpy.o memcmp.o memset.o memmove.o
+SOBJS-y	+= memcmp.o
+SOBJS-y	+= memcpy.o
+SOBJS-y	+= memmove.o
+SOBJS-y	+= memset.o
 
-COBJS	= post.o tests.o board.o bf533_linux.o bf533_string.o cache.o muldi3.o
+COBJS-y	+= board.o
+COBJS-y	+= bootm.o
+COBJS-y	+= cache.o
+COBJS-y	+= muldi3.o
+COBJS-y	+= post.o
+COBJS-y	+= string.o
+COBJS-y	+= tests.o
 
-SRCS 	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
+SRCS	:= $(SOBJS-y:.o=.S) $(COBJS-y:.o=.c)
+OBJS	:= $(addprefix $(obj),$(SOBJS-y) $(COBJS-y))
 
 $(LIB):	$(obj).depend $(OBJS)
 	$(AR) $(ARFLAGS) $@ $(OBJS)

@@ -38,10 +38,11 @@
 #include <asm/arch/pxa-regs.h>
 
 /*
- * If we are developing, we might want to start armboot from ram
+ * If we are developing, we might want to start U-Boot from RAM
  * so we MUST NOT initialize critical regs like mem-timing ...
  */
-#define CONFIG_INIT_CRITICAL			/* undef for developing */
+#undef CONFIG_SKIP_LOWLEVEL_INIT			/* define for developing */
+#undef CONFIG_SKIP_RELOCATE_UBOOT			/* define for developing */
 
 /*
  * define the following to enable debug blinks.  A debug blink function
@@ -62,6 +63,7 @@
 #endif
 
 #define CONFIG_MMC		1
+#define CONFIG_DOS_PARTITION	1
 #define BOARD_LATE_INIT		1
 
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff */
@@ -121,11 +123,13 @@
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_DHCP
 
-
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_BOOTCOMMAND	"bootm 40000"
 #define CONFIG_BOOTARGS		"root=/dev/mtdblock2 rootfstype=cramfs console=ttyS0,115200"
-#define CONFIG_CMDLINE_TAG
+
+#define CONFIG_CMDLINE_TAG		1	/* enable passing of ATAGs */
+#define CONFIG_SETUP_MEMORY_TAGS	1
+/* #define CONFIG_INITRD_TAG		1 */
 
 /*
  * Current memory map for Vibren supplied Linux images:
@@ -329,10 +333,10 @@
  * FLASH and environment organization
  */
 #define CFG_FLASH_CFI
-#define CFG_FLASH_CFI_DRIVER	1
+#define CONFIG_FLASH_CFI_DRIVER	1
 
 #define CFG_MONITOR_BASE	0
-#define CFG_MONITOR_LEN		0x40000
+#define CFG_MONITOR_LEN		PHYS_FLASH_SECT_SIZE
 
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
 #define CFG_MAX_FLASH_SECT	128  /* max number of sectors on one chip    */
@@ -347,7 +351,7 @@
 #define CFG_ENV_IS_IN_FLASH	1
  /* Addr of Environment Sector	*/
 #define CFG_ENV_ADDR		(PHYS_FLASH_1 + PHYS_FLASH_SIZE - 0x40000)
-#define CFG_ENV_SIZE		0x40000	/* Total Size of Environment Sector	*/
-#define	CFG_ENV_SECT_SIZE	0x40000
+#define CFG_ENV_SIZE		PHYS_FLASH_SECT_SIZE	/* Total Size of Environment Sector	*/
+#define	CFG_ENV_SECT_SIZE	(PHYS_FLASH_SECT_SIZE / 16)
 
 #endif	/* __CONFIG_H */

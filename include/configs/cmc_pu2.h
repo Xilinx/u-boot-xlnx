@@ -50,7 +50,7 @@
 #define MC_ASR_VAL	0x00000000
 #define MC_AASR_VAL	0x00000000
 #define EBI_CFGR_VAL	0x00000000
-#define SMC2_CSR_VAL	0x100032ad /* 16bit, 2 TDF, 4 WS */
+#define SMC_CSR0_VAL	0x100032ad /* 16bit, 2 TDF, 4 WS */
 
 /* clocks */
 #define PLLAR_VAL	0x2026BE04 /* 179,712 MHz for PCK */
@@ -148,7 +148,7 @@
 
 #define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM		0x20000000
-#define PHYS_SDRAM_SIZE		0x1000000 	/* 16 megs */
+#define PHYS_SDRAM_SIZE		0x1000000	/* 16 megs */
 
 #define CFG_MEMTEST_START	PHYS_SDRAM
 #define CFG_MEMTEST_END		CFG_MEMTEST_START + PHYS_SDRAM_SIZE - 262144
@@ -185,25 +185,6 @@
 #define CFG_CBSIZE		256		/* Console I/O Buffer Size */
 #define CFG_MAXARGS		32		/* max number of command args */
 #define CFG_PBSIZE		(CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
-
-#ifndef __ASSEMBLY__
-/*-----------------------------------------------------------------------
- * Board specific extension for bd_info
- *
- * This structure is embedded in the global bd_info (bd_t) structure
- * and can be used by the board specific code (eg board/...)
- */
-
-struct bd_info_ext {
-	/* helper variable for board environment handling
-	 *
-	 * env_crc_valid == 0	 =>   uninitialised
-	 * env_crc_valid  > 0	 =>   environment crc in flash is valid
-	 * env_crc_valid  < 0	 =>   environment crc in flash is invalid
-	 */
-	int env_crc_valid;
-};
-#endif	/* __ASSEMBLY__ */
 
 #define CFG_HZ 1000
 #define CFG_HZ_CLOCK (AT91C_MASTER_CLOCK/2)	/* AT91C_TC0_CMR is implicitly set to */

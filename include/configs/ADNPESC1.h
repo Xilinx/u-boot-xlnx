@@ -81,9 +81,9 @@
  * appropriately -- this is very important if you plan to move your
  * memory to another place as configured at this time !!!).
  *
- * 	-The heap is placed below the monitor.
- * 	-Global data is placed below the heap.
- * 	-The stack is placed below global data (&grows down).
+ *	-The heap is placed below the monitor.
+ *	-Global data is placed below the heap.
+ *	-The stack is placed below global data (&grows down).
  *----------------------------------------------------------------------*/
 #define CFG_MONITOR_LEN		(256 * 1024)	/* Reserve 256k		*/
 #define CFG_GBL_DATA_SIZE	128		/* Global data size rsvd*/
@@ -574,38 +574,30 @@
 /*
  * Command line configuration.
  */
-#include <config_cmd_all.h>
+#include <config_cmd_default.h>
 
-#undef CONFIG_CMD_ASKENV
-#undef CONFIG_CMD_BEDBUG
-#undef CONFIG_CMD_BMP
-#undef CONFIG_CMD_CACHE
-#undef CONFIG_CMD_DOC
-#undef CONFIG_CMD_DTT
-#undef CONFIG_CMD_EEPROM
-#undef CONFIG_CMD_ELF
-#undef CONFIG_CMD_FAT
-#undef CONFIG_CMD_FDC
-#undef CONFIG_CMD_FDOS
-#undef CONFIG_CMD_HWFLOW
-#undef CONFIG_CMD_IDE
-#undef CONFIG_CMD_I2C
-#undef CONFIG_CMD_JFFS2
-#undef CONFIG_CMD_KGDB
-#undef CONFIG_CMD_NAND
+#define CONFIG_CMD_BSP
+#define CONFIG_CMD_CDP
+#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_DIAG
+#define CONFIG_CMD_DISPLAY
+#define CONFIG_CMD_EXT2
+#define CONFIG_CMD_IMMAP
+#define CONFIG_CMD_IRQ
+#define CONFIG_CMD_PING
+#define CONFIG_CMD_PORTIO
+#define CONFIG_CMD_REGINFO
+#define CONFIG_CMD_REISER
+#define CONFIG_CMD_SAVES
+#define CONFIG_CMD_SDRAM
+#define CONFIG_CMD_SNTP
+
 #undef CONFIG_CMD_NFS
-#undef CONFIG_CMD_MMC
-#undef CONFIG_CMD_MII
-#undef CONFIG_CMD_PCI
-#undef CONFIG_CMD_PCMCIA
-#undef CONFIG_CMD_SCSI
-#undef CONFIG_CMD_VFD
-#undef CONFIG_CMD_USB
 #undef CONFIG_CMD_XIMG
 
-#if (CFG_NIOS_CPU_SPI_NUMS != 1)
-#undef CONFIG_CMD_SPI
-#undef CONFIG_CMD_DATE
+#if (CFG_NIOS_CPU_SPI_NUMS == 1)
+#define CONFIG_CMD_DATE
+#define CONFIG_CMD_SPI
 #endif
 
 /*------------------------------------------------------------------------

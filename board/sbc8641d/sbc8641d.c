@@ -34,22 +34,14 @@
 #include <asm/processor.h>
 #include <asm/immap_86xx.h>
 #include <asm/immap_fsl_pci.h>
-#include <spd.h>
-
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-extern void ft_cpu_setup (void *blob, bd_t * bd);
-#endif
+#include <asm/fsl_ddr_sdram.h>
+#include <libfdt.h>
+#include <fdt_support.h>
 
 #if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 extern void ddr_enable_ecc (unsigned int dram_size);
 #endif
 
-#if defined(CONFIG_SPD_EEPROM)
-#include "spd_sdram.h"
-#endif
-
-void sdram_init (void);
 long int fixed_sdram (void);
 
 int board_early_init_f (void)
@@ -64,12 +56,12 @@ int checkboard (void)
 	return 0;
 }
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long dram_size = 0;
 
 #if defined(CONFIG_SPD_EEPROM)
-	dram_size = spd_sdram ();
+	dram_size = fsl_ddr_sdram();
 #else
 	dram_size = fixed_sdram ();
 #endif
@@ -142,7 +134,7 @@ long int fixed_sdram (void)
 	ddr->cs1_config = CFG_DDR_CS1_CONFIG;
 	ddr->cs2_config = CFG_DDR_CS2_CONFIG;
 	ddr->cs3_config = CFG_DDR_CS3_CONFIG;
-	ddr->ext_refrec = CFG_DDR_EXT_REFRESH;
+	ddr->timing_cfg_3 = CFG_DDR_TIMING_3;
 	ddr->timing_cfg_0 = CFG_DDR_TIMING_0;
 	ddr->timing_cfg_1 = CFG_DDR_TIMING_1;
 	ddr->timing_cfg_2 = CFG_DDR_TIMING_2;
@@ -173,7 +165,7 @@ long int fixed_sdram (void)
 	ddr->cs1_config = CFG_DDR2_CS1_CONFIG;
 	ddr->cs2_config = CFG_DDR2_CS2_CONFIG;
 	ddr->cs3_config = CFG_DDR2_CS3_CONFIG;
-	ddr->ext_refrec = CFG_DDR2_EXT_REFRESH;
+	ddr->timing_cfg_3 = CFG_DDR2_EXT_REFRESH;
 	ddr->timing_cfg_0 = CFG_DDR2_TIMING_0;
 	ddr->timing_cfg_1 = CFG_DDR2_TIMING_1;
 	ddr->timing_cfg_2 = CFG_DDR2_TIMING_2;
@@ -233,7 +225,8 @@ void pci_init_board(void)
 	volatile immap_t *immap = (immap_t *) CFG_CCSRBAR;
 	volatile ccsr_gur_t *gur = &immap->im_gur;
 	uint devdisr = gur->devdisr;
-	uint io_sel = (gur->pordevsr & MPC86xx_PORDEVSR_IO_SEL) >> 16;
+	uint io_sel = (gur->pordevsr & MPC8641_PORDEVSR_IO_SEL)
+		>> MPC8641_PORDEVSR_IO_SEL_SHIFT;
 
 #ifdef CONFIG_PCI1
 {
@@ -241,7 +234,8 @@ void pci_init_board(void)
 	extern void fsl_pci_init(struct pci_controller *hose);
 	struct pci_controller *hose = &pci1_hose;
 #ifdef DEBUG
-	uint host1_agent = (gur->porbmsr & MPC86xx_PORBMSR_HA) >> 17;
+	uint host1_agent = (gur->porbmsr & MPC8641_PORBMSR_HA)
+		>> MPC8641_PORBMSR_HA_SHIFT;
 	uint pex1_agent = (host1_agent == 0) || (host1_agent == 1);
 #endif
 	if ((io_sel == 2 || io_sel == 3 || io_sel == 5
@@ -341,18 +335,34 @@ void pci_init_board(void)
 
 }
 
-#if defined(CONFIG_OF_FLAT_TREE) && defined(CONFIG_OF_BOARD_SETUP)
-void ft_board_setup (void *blob, bd_t * bd)
+
+#if defined(CONFIG_OF_BOARD_SETUP)
+
+void
+ft_board_setup (void *blob, bd_t *bd)
 {
-	u32 *p;
-	int len;
+	int node, tmp[2];
+	const char *path;
 
-	ft_cpu_setup (blob, bd);
+	ft_cpu_setup(blob, bd);
 
-	p = ft_get_prop (blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32 (bd->bi_memstart);
-		*p = cpu_to_be32 (bd->bi_memsize);
+	node = fdt_path_offset(blob, "/aliases");
+	tmp[0] = 0;
+	if (node >= 0) {
+#ifdef CONFIG_PCI1
+		path = fdt_getprop(blob, node, "pci0", NULL);
+		if (path) {
+			tmp[1] = pci1_hose.last_busno - pci1_hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
+#endif
+#ifdef CONFIG_PCI2
+		path = fdt_getprop(blob, node, "pci1", NULL);
+		if (path) {
+			tmp[1] = pci2_hose.last_busno - pci2_hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
+#endif
 	}
 }
 #endif

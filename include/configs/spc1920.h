@@ -31,6 +31,7 @@
 #undef	CONFIG_8xx_CONS_NONE
 
 #define CONFIG_MII
+#define CONFIG_MII_INIT		1
 #undef CONFIG_ETHER_ON_FEC1
 #define CONFIG_ETHER_ON_FEC2
 #define FEC_ENET
@@ -179,7 +180,7 @@
  */
 #define CFG_FLASH_BASE          0xFE000000
 #define CFG_FLASH_CFI                           /* The flash is CFI compatible  */
-#define CFG_FLASH_CFI_DRIVER                    /* Use common CFI driver        */
+#define CONFIG_FLASH_CFI_DRIVER                    /* Use common CFI driver        */
 #define CFG_MAX_FLASH_BANKS     1               /* Max number of flash banks    */
 #define CFG_MAX_FLASH_SECT      128             /* Max num of sects on one chip */
 
@@ -428,9 +429,5 @@
  */
 #define	BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
 #define BOOTFLAG_WARM	0x02		/* Software reboot			*/
-
-/* Machine type
-*/
-#define _MACH_8xx (_MACH_fads)
 
 #endif	/* __CONFIG_H */

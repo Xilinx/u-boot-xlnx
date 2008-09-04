@@ -40,18 +40,13 @@
 #define CONFIG_MPC85xx		1	/* MPC8540/MPC8560 */
 #define CONFIG_CPM2		1	/* has CPM2 */
 #define CONFIG_MPC8560ADS	1	/* MPC8560ADS board specific */
+#define CONFIG_MPC8560		1
 
 #define CONFIG_PCI
-#define CONFIG_TSEC_ENET 		/* tsec ethernet support */
+#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #undef CONFIG_ETHER_ON_FCC             /* cpm FCC ethernet support */
 #define CONFIG_ENV_OVERWRITE
-#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup*/
-#define CONFIG_DDR_DLL			/* possible DLL fix needed */
-#define CONFIG_DDR_2T_TIMING		/* Sets the 2T timing bit */
-
-#define CONFIG_DDR_ECC			/* only for ECC DDR module */
-#define CONFIG_MEM_INIT_VALUE		0xDeadBeef
-
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 /*
  * sysclk for MPC85xx
@@ -79,11 +74,8 @@
 #define CONFIG_BTB			/* toggle branch predition */
 #define CONFIG_ADDR_STREAMING		/* toggle addr streaming */
 
-#define CONFIG_BOARD_EARLY_INIT_F	1	/* Call board_pre_init */
-
 #define CFG_INIT_DBCR DBCR_IDM		/* Enable Debug Exceptions */
 
-#undef	CFG_DRAM_TEST			/* memory test, takes time */
 #define CFG_MEMTEST_START	0x00200000	/* memtest region */
 #define CFG_MEMTEST_END		0x00400000
 
@@ -92,37 +84,38 @@
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  */
-#define CFG_CCSRBAR_DEFAULT 	0xff700000	/* CCSRBAR Default */
+#define CFG_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
 #define CFG_CCSRBAR		0xe0000000	/* relocated CCSRBAR */
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR */
 
+/* DDR Setup */
+#define CONFIG_FSL_DDR1
+#define CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup*/
+#define CONFIG_DDR_SPD
+#undef CONFIG_FSL_DDR_INTERACTIVE
 
-/*
- * DDR Setup
- */
+#define CONFIG_MEM_INIT_VALUE		0xDeadBeef
+
 #define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory*/
 #define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
 
-#if defined(CONFIG_SPD_EEPROM)
-    /*
-     * Determine DDR configuration from I2C interface.
-     */
-    #define SPD_EEPROM_ADDRESS	0x51		/* DDR DIMM */
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	(2 * CONFIG_DIMM_SLOTS_PER_CTLR)
 
-#else
-    /*
-     * Manually set up DDR parameters
-     */
-    #define CFG_SDRAM_SIZE	128		/* DDR is 128MB */
-    #define CFG_DDR_CS0_BNDS	0x00000007	/* 0-128MB */
-    #define CFG_DDR_CS0_CONFIG	0x80000002
-    #define CFG_DDR_TIMING_1	0x37344321
-    #define CFG_DDR_TIMING_2	0x00000800	/* P9-45,may need tuning */
-    #define CFG_DDR_CONTROL	0xc2000000	/* unbuffered,no DYN_PWR */
-    #define CFG_DDR_MODE	0x00000062	/* DLL,normal,seq,4/2.5 */
-    #define CFG_DDR_INTERVAL	0x05200100	/* autocharge,no open page */
-#endif
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x51	/* CTLR 0 DIMM 0 */
 
+/* These are used when DDR doesn't use SPD.  */
+#define CFG_SDRAM_SIZE	128		/* DDR is 128MB */
+#define CFG_DDR_CS0_BNDS	0x00000007	/* 0-128MB */
+#define CFG_DDR_CS0_CONFIG	0x80000002
+#define CFG_DDR_TIMING_1	0x37344321
+#define CFG_DDR_TIMING_2	0x00000800	/* P9-45,may need tuning */
+#define CFG_DDR_CONTROL		0xc2000000	/* unbuffered,no DYN_PWR */
+#define CFG_DDR_MODE		0x00000062	/* DLL,normal,seq,4/2.5 */
+#define CFG_DDR_INTERVAL	0x05200100	/* autocharge,no open page */
 
 /*
  * SDRAM on the Local Bus
@@ -140,7 +133,7 @@
 #define CFG_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CFG_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
 
-#define CFG_MONITOR_BASE    	TEXT_BASE	/* start of monitor */
+#define CFG_MONITOR_BASE	TEXT_BASE	/* start of monitor */
 
 #if (CFG_MONITOR_BASE < CFG_FLASH_BASE)
 #define CFG_RAMBOOT
@@ -148,7 +141,7 @@
 #undef  CFG_RAMBOOT
 #endif
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_FLASH_EMPTY_INFO
 
@@ -261,23 +254,23 @@
 #define CFG_BCSR		(CFG_BR4_PRELIM & 0xffff8000)
 
 #define CONFIG_L1_INIT_RAM
-#define CFG_INIT_RAM_LOCK 	1
+#define CFG_INIT_RAM_LOCK	1
 #define CFG_INIT_RAM_ADDR	0xe4010000	/* Initial RAM address */
-#define CFG_INIT_RAM_END    	0x4000	    	/* End of used area in RAM */
+#define CFG_INIT_RAM_END	0x4000		/* End of used area in RAM */
 
-#define CFG_GBL_DATA_SIZE  	128		/* num bytes initial data */
+#define CFG_GBL_DATA_SIZE	128		/* num bytes initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
 
-#define CFG_MONITOR_LEN	    	(256 * 1024)    /* Reserve 256 kB for Mon */
-#define CFG_MALLOC_LEN	    	(128 * 1024)    /* Reserved for malloc */
+#define CFG_MONITOR_LEN		(256 * 1024)    /* Reserve 256 kB for Mon */
+#define CFG_MALLOC_LEN		(128 * 1024)    /* Reserved for malloc */
 
 /* Serial Port */
 #define CONFIG_CONS_ON_SCC	/* define if console on SCC */
 #undef  CONFIG_CONS_NONE	/* define if console on something else */
 #define CONFIG_CONS_INDEX       1  /* which serial channel for console */
 
-#define CONFIG_BAUDRATE	 	115200
+#define CONFIG_BAUDRATE		115200
 
 #define CFG_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
@@ -289,13 +282,12 @@
 #endif
 
 /* pass open firmware flat tree */
-#define CONFIG_OF_FLAT_TREE	1
-#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_LIBFDT		1
+#define CONFIG_OF_BOARD_SETUP		1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
-#define OF_CPU			"PowerPC,8560@0"
-#define OF_SOC			"soc8560@e0000000"
-#define OF_TBCLK		(bd->bi_busfreq / 8)
-#define OF_STDOUT_PATH		"/soc8560@e0000000/serial@4500"
+#define CFG_64BIT_VSPRINTF	1
+#define CFG_64BIT_STRTOUL	1
 
 /*
  * I2C
@@ -327,7 +319,7 @@
 #if defined(CONFIG_PCI)
 
 #define CONFIG_NET_MULTI
-#define CONFIG_PCI_PNP	               	/* do pci plug-and-play */
+#define CONFIG_PCI_PNP			/* do pci plug-and-play */
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
@@ -335,7 +327,7 @@
 #if !defined(CONFIG_PCI_PNP)
     #define PCI_ENET0_IOADDR	0xe0000000
     #define PCI_ENET0_MEMADDR	0xe0000000
-    #define PCI_IDSEL_NUMBER	0x0c 	/* slot0->3(IDSEL)=12->15 */
+    #define PCI_IDSEL_NUMBER	0x0c	/* slot0->3(IDSEL)=12->15 */
 #endif
 
 #undef CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
@@ -347,7 +339,7 @@
 #ifdef CONFIG_TSEC_ENET
 
 #ifndef CONFIG_NET_MULTI
-#define CONFIG_NET_MULTI 	1
+#define CONFIG_NET_MULTI	1
 #endif
 
 #ifndef CONFIG_MII
@@ -369,9 +361,9 @@
 
 #endif /* CONFIG_TSEC_ENET */
 
-#ifdef CONFIG_ETHER_ON_FCC	/* CPM FCC Ethernet */
+#ifdef CONFIG_ETHER_ON_FCC		/* CPM FCC Ethernet */
 
-#undef  CONFIG_ETHER_NONE	/* define if ether on something else */
+#undef  CONFIG_ETHER_NONE		/* define if ether on something else */
 #define CONFIG_ETHER_INDEX      2       /* which channel for ether */
 
 #if (CONFIG_ETHER_INDEX == 2)
@@ -389,7 +381,7 @@
 #elif (CONFIG_ETHER_INDEX == 3)
   /* need more definitions here for FE3 */
   #define FETH3_RST		0x80
-#endif  				/* CONFIG_ETHER_INDEX */
+#endif					/* CONFIG_ETHER_INDEX */
 
 #ifndef CONFIG_MII
 #define CONFIG_MII		1	/* MII PHY management */
@@ -450,6 +442,7 @@
 
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_I2C
+#define CONFIG_CMD_ELF
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
@@ -471,6 +464,7 @@
  * Miscellaneous configurable options
  */
 #define CFG_LONGHELP			/* undef to save memory	*/
+#define CONFIG_CMDLINE_EDITING		/* Command-line editing */
 #define CFG_LOAD_ADDR	0x1000000	/* default load address */
 #define CFG_PROMPT	"=> "		/* Monitor Command Prompt */
 
@@ -491,13 +485,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
-
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value*/
-#endif
 
 /*
  * Internal Definitions
@@ -525,6 +512,8 @@
 #define CONFIG_ETH1ADDR  00:E0:0C:00:01:FD
 #define CONFIG_HAS_ETH2
 #define CONFIG_ETH2ADDR  00:E0:0C:00:02:FD
+#define CONFIG_HAS_ETH3
+#define CONFIG_ETH3ADDR  00:E0:0C:00:03:FD
 #endif
 
 #define CONFIG_IPADDR    192.168.1.253
@@ -545,29 +534,29 @@
 #define CONFIG_BAUDRATE	115200
 
 #define	CONFIG_EXTRA_ENV_SETTINGS				        \
-   "netdev=eth0\0"                                                      \
-   "consoledev=ttyCPM\0"						\
-   "ramdiskaddr=1000000\0"						\
-   "ramdiskfile=your.ramdisk.u-boot\0"					\
-   "fdtaddr=400000\0"							\
-   "fdtfile=mpc8560ads.dtb\0"
+	"netdev=eth0\0"							\
+	"consoledev=ttyCPM\0"						\
+	"ramdiskaddr=1000000\0"						\
+	"ramdiskfile=your.ramdisk.u-boot\0"				\
+	"fdtaddr=400000\0"						\
+	"fdtfile=mpc8560ads.dtb\0"
 
 #define CONFIG_NFSBOOTCOMMAND	                                        \
-   "setenv bootargs root=/dev/nfs rw "                                  \
-      "nfsroot=$serverip:$rootpath "                                    \
-      "ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
-      "console=$consoledev,$baudrate $othbootargs;"                     \
-   "tftp $loadaddr $bootfile;"                                          \
-   "tftp $fdtaddr $fdtfile;"						\
-   "bootm $loadaddr - $fdtaddr"
+	"setenv bootargs root=/dev/nfs rw "				\
+		"nfsroot=$serverip:$rootpath "				\
+		"ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
+		"console=$consoledev,$baudrate $othbootargs;"		\
+	"tftp $loadaddr $bootfile;"					\
+	"tftp $fdtaddr $fdtfile;"					\
+	"bootm $loadaddr - $fdtaddr"
 
 #define CONFIG_RAMBOOTCOMMAND \
-   "setenv bootargs root=/dev/ram rw "                                  \
-      "console=$consoledev,$baudrate $othbootargs;"                     \
-   "tftp $ramdiskaddr $ramdiskfile;"                                    \
-   "tftp $loadaddr $bootfile;"                                          \
-   "tftp $fdtaddr $fdtfile;"						\
-   "bootm $loadaddr $ramdiskaddr $fdtaddr"
+	"setenv bootargs root=/dev/ram rw "				\
+		"console=$consoledev,$baudrate $othbootargs;"		\
+	"tftp $ramdiskaddr $ramdiskfile;"				\
+	"tftp $loadaddr $bootfile;"					\
+	"tftp $fdtaddr $fdtfile;"					\
+	"bootm $loadaddr $ramdiskaddr $fdtaddr"
 
 #define CONFIG_BOOTCOMMAND  CONFIG_NFSBOOTCOMMAND
 

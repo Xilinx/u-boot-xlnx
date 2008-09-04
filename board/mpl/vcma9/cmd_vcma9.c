@@ -31,7 +31,7 @@
 #include "../common/common_util.h"
 
 #if defined(CONFIG_DRIVER_CS8900)
-#include <../drivers/cs8900.h>
+#include <../drivers/net/cs8900.h>
 
 static uchar cs8900_chksum(ushort data)
 {
@@ -58,8 +58,8 @@ int do_vcma9(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (strcmp(argv[1], "info") == 0)
 	{
 		print_vcma9_info();
-	 	return 0;
-   	}
+		return 0;
+	}
 #if defined(CONFIG_DRIVER_CS8900)
 	if (strcmp(argv[1], "cs8900") == 0) {
 		if (strcmp(argv[2], "read") == 0) {

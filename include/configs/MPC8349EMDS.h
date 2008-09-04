@@ -29,8 +29,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#undef DEBUG
-
 /*
  * High Level Configuration Options
  */
@@ -41,7 +39,7 @@
 #define CONFIG_MPC8349EMDS	1	/* MPC8349EMDS board specific */
 
 #undef CONFIG_PCI
-#undef CONFIG_MPC83XX_PCI2 		/* support for 2nd PCI controller */
+#undef CONFIG_MPC83XX_PCI2		/* support for 2nd PCI controller */
 
 #define PCI_66M
 #ifdef PCI_66M
@@ -49,6 +47,11 @@
 #else
 #define CONFIG_83XX_CLKIN	33000000	/* in Hz */
 #endif
+
+#ifdef CONFIG_PCISLAVE
+#define CONFIG_PCI
+#define CONFIG_83XX_PCICLK	66666666	/* in Hz */
+#endif /* CONFIG_PCISLAVE */
 
 #ifndef CONFIG_SYS_CLK_FREQ
 #ifdef PCI_66M
@@ -150,7 +153,7 @@
  * FLASH on the Local Bus
  */
 #define CFG_FLASH_CFI				/* use the Common Flash Interface */
-#define CFG_FLASH_CFI_DRIVER			/* use the CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER			/* use the CFI driver */
 #define CFG_FLASH_BASE		0xFE000000	/* start of FLASH   */
 #define CFG_FLASH_SIZE		32		/* max flash size in MB */
 /* #define CFG_FLASH_USE_BUFFER_WRITE */
@@ -159,7 +162,7 @@
 				(2 << BR_PS_SHIFT) |	/* 16 bit port size */	 \
 				BR_V)			/* valid */
 #define CFG_OR0_PRELIM		((~(CFG_FLASH_SIZE - 1) << 20) | OR_UPM_XAM | \
-				OR_GPCM_CSNT | OR_GPCM_ACS_0b11 | OR_GPCM_XACS | OR_GPCM_SCY_15 | \
+				OR_GPCM_CSNT | OR_GPCM_ACS_DIV2 | OR_GPCM_XACS | OR_GPCM_SCY_15 | \
 				OR_GPCM_TRLX | OR_GPCM_EHTR | OR_GPCM_EAD)
 #define CFG_LBLAWBAR0_PRELIM	CFG_FLASH_BASE	/* window base at flash base */
 #define CFG_LBLAWAR0_PRELIM	0x80000018	/* 32 MB window size */
@@ -341,11 +344,7 @@
 /* pass open firmware flat tree */
 #define CONFIG_OF_LIBFDT	1
 #define CONFIG_OF_BOARD_SETUP	1
-
-#define OF_CPU			"PowerPC,8349@0"
-#define OF_SOC			"soc8349@e0000000"
-#define OF_TBCLK		(bd->bi_busfreq / 4)
-#define OF_STDOUT_PATH		"/soc8349@e0000000/serial@4500"
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /* I2C */
 #define CONFIG_HARD_I2C			/* I2C with hardware support*/
@@ -358,6 +357,15 @@
 #define CFG_I2C_NOPROBES	{{0,0x69}}	/* Don't probe these addrs */
 #define CFG_I2C_OFFSET		0x3000
 #define CFG_I2C2_OFFSET		0x3100
+
+/* SPI */
+#define CONFIG_MPC8XXX_SPI
+#undef CONFIG_SOFT_SPI			/* SPI bit-banged */
+
+/* GPIOs.  Used as SPI chip selects */
+#define CFG_GPIO1_PRELIM
+#define CFG_GPIO1_DIR		0xC0000000  /* SPI CS on 0, LED on 1 */
+#define CFG_GPIO1_DAT		0xC0000000  /* Both are active LOW */
 
 /* TSEC */
 #define CFG_TSEC1_OFFSET 0x24000
@@ -403,6 +411,8 @@
 
 #define CONFIG_NET_MULTI
 #define CONFIG_PCI_PNP		/* do pci plug-and-play */
+#define CONFIG_83XX_GENERIC_PCI
+#define CONFIG_83XX_PCI_STREAMING
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
@@ -410,11 +420,11 @@
 #if !defined(CONFIG_PCI_PNP)
 	#define PCI_ENET0_IOADDR	0xFIXME
 	#define PCI_ENET0_MEMADDR	0xFIXME
-	#define PCI_IDSEL_NUMBER	0x0c 	/* slot0->3(IDSEL)=12->15 */
+	#define PCI_IDSEL_NUMBER	0x0c	/* slot0->3(IDSEL)=12->15 */
 #endif
 
 #undef CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
-#define CFG_PCI_SUBSYS_VENDORID 0x1057  /* Motorola */
+#define CFG_PCI_SUBSYS_VENDORID 0x1957  /* Freescale */
 
 #endif	/* CONFIG_PCI */
 
@@ -456,7 +466,7 @@
  */
 #ifndef CFG_RAMBOOT
 	#define CFG_ENV_IS_IN_FLASH	1
-	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + 0x40000)
+	#define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
 	#define CFG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
 	#define CFG_ENV_SIZE		0x2000
 
@@ -531,13 +541,6 @@
  */
 #define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
 
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value*/
-#endif
-
 #define CFG_RCWH_PCIHOST 0x80000000 /* PCIHOST  */
 
 #if 1 /*528/264*/
@@ -577,6 +580,20 @@
 	HRCWL_CORE_TO_CSB_1X1)
 #endif
 
+#ifdef CONFIG_PCISLAVE
+#define CFG_HRCW_HIGH (\
+	HRCWH_PCI_AGENT |\
+	HRCWH_64_BIT_PCI |\
+	HRCWH_PCI1_ARBITER_DISABLE |\
+	HRCWH_PCI2_ARBITER_DISABLE |\
+	HRCWH_CORE_ENABLE |\
+	HRCWH_FROM_0X00000100 |\
+	HRCWH_BOOTSEQ_DISABLE |\
+	HRCWH_SW_WATCHDOG_DISABLE |\
+	HRCWH_ROM_LOC_LOCAL_16BIT |\
+	HRCWH_TSEC1M_IN_GMII |\
+	HRCWH_TSEC2M_IN_GMII )
+#else
 #if defined(PCI_64BIT)
 #define CFG_HRCW_HIGH (\
 	HRCWH_PCI_HOST |\
@@ -603,7 +620,18 @@
 	HRCWH_ROM_LOC_LOCAL_16BIT |\
 	HRCWH_TSEC1M_IN_GMII |\
 	HRCWH_TSEC2M_IN_GMII )
-#endif
+#endif /* PCI_64BIT */
+#endif /* CONFIG_PCISLAVE */
+
+/*
+ * System performance
+ */
+#define CFG_ACR_PIPE_DEP	3	/* Arbiter pipeline depth (0-3) */
+#define CFG_ACR_RPTCNT		3	/* Arbiter repeat count (0-7) */
+#define CFG_SPCR_TSEC1EP	3	/* TSEC1 emergency priority (0-3) */
+#define CFG_SPCR_TSEC2EP	3	/* TSEC2 emergency priority (0-3) */
+#define CFG_SCCR_TSEC1CM	1	/* TSEC1 clock mode (0-3) */
+#define CFG_SCCR_TSEC2CM	1	/* TSEC2 & I2C0 clock mode (0-3) */
 
 /* System IO Config */
 #define CFG_SICRH SICRH_TSOBI1
@@ -619,6 +647,7 @@
 
 
 #define CFG_HID2 HID2_HBE
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /* DDR @ 0x00000000 */
 #define CFG_IBAT0L	(CFG_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
@@ -712,7 +741,7 @@
 #define CONFIG_GATEWAYIP	192.168.1.1
 #define CONFIG_NETMASK		255.255.255.0
 
-#define CONFIG_LOADADDR		200000	/* default location for tftp and bootm */
+#define CONFIG_LOADADDR		500000	/* default location for tftp and bootm */
 
 #define CONFIG_BOOTDELAY	6	/* -1 disables auto-boot */
 #undef  CONFIG_BOOTARGS			/* the boot command will set bootargs */
@@ -720,7 +749,7 @@
 #define CONFIG_BAUDRATE	 115200
 
 #define CONFIG_PREBOOT	"echo;"	\
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
@@ -742,7 +771,7 @@
 	"load=tftp 100000 /tftpboot/mpc8349emds/u-boot.bin\0"		\
 	"update=protect off fe000000 fe03ffff; "			\
 		"era fe000000 fe03ffff; cp.b 100000 fe000000 ${filesize}\0"	\
-	"upd=run load;run update\0"					\
+	"upd=run load update\0"						\
 	"fdtaddr=400000\0"						\
 	"fdtfile=mpc8349emds.dtb\0"					\
 	""

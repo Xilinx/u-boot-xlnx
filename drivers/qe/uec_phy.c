@@ -26,9 +26,6 @@
 #include "uec_phy.h"
 #include "miiphy.h"
 
-#if defined(CONFIG_QE)
-
-#define UEC_VERBOSE_DEBUG
 #define ugphy_printk(format, arg...)  \
 	printf(format "\n", ## arg)
 
@@ -77,11 +74,10 @@ void uec_write_phy_reg (struct eth_device *dev, int mii_id, int regnum, int valu
 
 	/* Setting up the MII Mangement Control Register with the value */
 	out_be32 (&ug_regs->miimcon, (u32) value);
+	sync();
 
 	/* Wait till MII management write is complete */
 	while ((in_be32 (&ug_regs->miimind)) & MIIMIND_BUSY);
-
-	udelay (100000);
 }
 
 /* Reads from register regnum in the PHY for device dev, */
@@ -101,20 +97,21 @@ int uec_read_phy_reg (struct eth_device *dev, int mii_id, int regnum)
 	tmp_reg = ((u32) mii_id << MIIMADD_PHY_ADDRESS_SHIFT) | mii_reg;
 	out_be32 (&ug_regs->miimadd, tmp_reg);
 
-	/* Perform an MII management read cycle */
+	/* clear MII management command cycle */
 	out_be32 (&ug_regs->miimcom, 0);
+	sync();
+
+	/* Perform an MII management read cycle */
 	out_be32 (&ug_regs->miimcom, MIIMCOM_READ_CYCLE);
 
 	/* Wait till MII management write is complete */
 	while ((in_be32 (&ug_regs->miimind)) &
 	       (MIIMIND_NOT_VALID | MIIMIND_BUSY));
 
-	udelay (100000);
-
 	/* Read MII management status  */
 	value = (u16) in_be32 (&ug_regs->miimstat);
 	if (value == 0xffff)
-		ugphy_warn
+		ugphy_vdbg
 			("read wrong value : mii_id %d,mii_reg %d, base %08x",
 			 mii_id, mii_reg, (u32) & (ug_regs->miimcfg));
 
@@ -270,20 +267,39 @@ static int genmii_update_link (struct uec_mii_info *mii_info)
 {
 	u16 status;
 
-	/* Do a fake read */
+	/* Status is read once to clear old link state */
 	phy_read (mii_info, PHY_BMSR);
 
-	/* Read link and autonegotiation status */
-	status = phy_read (mii_info, PHY_BMSR);
-	if ((status & PHY_BMSR_LS) == 0)
-		mii_info->link = 0;
-	else
-		mii_info->link = 1;
+	/*
+	 * Wait if the link is up, and autonegotiation is in progress
+	 * (ie - we're capable and it's not done)
+	 */
+	status = phy_read(mii_info, PHY_BMSR);
+	if ((status & PHY_BMSR_LS) && (status & PHY_BMSR_AUTN_ABLE)
+	    && !(status & PHY_BMSR_AUTN_COMP)) {
+		int i = 0;
 
-	/* If we are autonegotiating, and not done,
-	 * return an error */
-	if (mii_info->autoneg && !(status & PHY_BMSR_AUTN_COMP))
-		return -EAGAIN;
+		while (!(status & PHY_BMSR_AUTN_COMP)) {
+			/*
+			 * Timeout reached ?
+			 */
+			if (i > UGETH_AN_TIMEOUT) {
+				mii_info->link = 0;
+				return 0;
+			}
+
+			i++;
+			udelay(1000);	/* 1 ms */
+			status = phy_read(mii_info, PHY_BMSR);
+		}
+		mii_info->link = 1;
+		udelay(500000);	/* another 500 ms (results in faster booting) */
+	} else {
+		if (status & PHY_BMSR_LS)
+			mii_info->link = 1;
+		else
+			mii_info->link = 0;
+	}
 
 	return 0;
 }
@@ -300,16 +316,26 @@ static int genmii_read_status (struct uec_mii_info *mii_info)
 		return err;
 
 	if (mii_info->autoneg) {
-		status = phy_read (mii_info, PHY_ANLPAR);
+		status = phy_read(mii_info, MII_1000BASETSTATUS);
 
-		if (status & (PHY_ANLPAR_10FD | PHY_ANLPAR_TXFD))
-			mii_info->duplex = DUPLEX_FULL;
-		else
-			mii_info->duplex = DUPLEX_HALF;
-		if (status & (PHY_ANLPAR_TXFD | PHY_ANLPAR_TX))
-			mii_info->speed = SPEED_100;
-		else
-			mii_info->speed = SPEED_10;
+		if (status & (LPA_1000FULL | LPA_1000HALF)) {
+			mii_info->speed = SPEED_1000;
+			if (status & LPA_1000FULL)
+				mii_info->duplex = DUPLEX_FULL;
+			else
+				mii_info->duplex = DUPLEX_HALF;
+		} else {
+			status = phy_read(mii_info, PHY_ANLPAR);
+
+			if (status & (PHY_ANLPAR_10FD | PHY_ANLPAR_TXFD))
+				mii_info->duplex = DUPLEX_FULL;
+			else
+				mii_info->duplex = DUPLEX_HALF;
+			if (status & (PHY_ANLPAR_TXFD | PHY_ANLPAR_TX))
+				mii_info->speed = SPEED_100;
+			else
+				mii_info->speed = SPEED_10;
+		}
 		mii_info->pause = 0;
 	}
 	/* On non-aneg, we assume what we put in BMCR is the speed,
@@ -317,6 +343,37 @@ static int genmii_read_status (struct uec_mii_info *mii_info)
 	 */
 
 	return 0;
+}
+
+static int bcm_init(struct uec_mii_info *mii_info)
+{
+	struct eth_device *edev = mii_info->dev;
+	uec_private_t *uec = edev->priv;
+
+	gbit_config_aneg(mii_info);
+
+	if (uec->uec_info->enet_interface == ENET_1000_RGMII_RXID) {
+		u16 val;
+		int cnt = 50;
+
+		/* Wait for aneg to complete. */
+		do
+			val = phy_read(mii_info, PHY_BMSR);
+		while (--cnt && !(val & PHY_BMSR_AUTN_COMP));
+
+		/* Set RDX clk delay. */
+		phy_write(mii_info, 0x18, 0x7 | (7 << 12));
+
+		val = phy_read(mii_info, 0x18);
+		/* Set RDX-RXC skew. */
+		val |= (1 << 8);
+		val |= (7 | (7 << 12));
+		/* Write bits 14:0. */
+		val |= (1 << 15);
+		phy_write(mii_info, 0x18, val);
+	}
+
+	 return 0;
 }
 
 static int marvell_read_status (struct uec_mii_info *mii_info)
@@ -389,16 +446,12 @@ static int dm9161_init (struct uec_mii_info *mii_info)
 	/* PHY and MAC connect */
 	phy_write (mii_info, PHY_BMCR, phy_read (mii_info, PHY_BMCR) &
 		   ~PHY_BMCR_ISO);
-#ifdef CONFIG_RMII_MODE
-	phy_write (mii_info, MII_DM9161_SCR, MII_DM9161_SCR_RMII_INIT);
-#else
+
 	phy_write (mii_info, MII_DM9161_SCR, MII_DM9161_SCR_INIT);
-#endif
+
 	config_genmii_advert (mii_info);
 	/* Start/restart aneg */
 	genmii_config_aneg (mii_info);
-	/* Delay to wait the aneg compeleted */
-	udelay (3000000);
 
 	return 0;
 }
@@ -491,6 +544,15 @@ static struct phy_info phy_info_marvell = {
 	.config_intr = &marvell_config_intr,
 };
 
+static struct phy_info phy_info_bcm5481 = {
+	.phy_id = 0x0143bca0,
+	.phy_id_mask = 0xffffff0,
+	.name = "Broadcom 5481",
+	.features = MII_GBIT_FEATURES,
+	.read_status = genmii_read_status,
+	.init = bcm_init,
+};
+
 static struct phy_info phy_info_genmii = {
 	.phy_id = 0x00000000,
 	.phy_id_mask = 0x00000000,
@@ -504,6 +566,7 @@ static struct phy_info *phy_info[] = {
 	&phy_info_dm9161,
 	&phy_info_dm9161a,
 	&phy_info_marvell,
+	&phy_info_bcm5481,
 	&phy_info_genmii,
 	NULL
 };
@@ -561,9 +624,10 @@ void marvell_phy_interface_mode (struct eth_device *dev,
 {
 	uec_private_t *uec = (uec_private_t *) dev->priv;
 	struct uec_mii_info *mii_info;
+	u16 status;
 
 	if (!uec->mii_info) {
-		printf ("%s: the PHY not intialized\n", __FUNCTION__);
+		printf ("%s: the PHY not initialized\n", __FUNCTION__);
 		return;
 	}
 	mii_info = uec->mii_info;
@@ -596,6 +660,13 @@ void marvell_phy_interface_mode (struct eth_device *dev,
 		phy_write (mii_info, 0x00, 0x8100);
 		udelay (1000000);
 	}
+
+	/* handle 88e1111 rev.B2 erratum 5.6 */
+	if (mii_info->autoneg) {
+		status = phy_read (mii_info, PHY_BMCR);
+		phy_write (mii_info, PHY_BMCR, status | PHY_BMCR_AUTON);
+	}
+	/* now the B2 will correctly report autoneg completion status */
 }
 
 void change_phy_interface_mode (struct eth_device *dev, enet_interface_e mode)
@@ -604,4 +675,3 @@ void change_phy_interface_mode (struct eth_device *dev, enet_interface_e mode)
 	marvell_phy_interface_mode (dev, mode);
 #endif
 }
-#endif /* CONFIG_QE */

@@ -88,31 +88,16 @@
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_DATE
-#define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_BSP
 #define CONFIG_CMD_EEPROM
 
-
-#if 0 /* test-only */
-#define CONFIG_NETCONSOLE
-#define CONFIG_NET_MULTI
-
-#ifdef CONFIG_NET_MULTI
-#define CONFIG_PHY1_ADDR	1	/* PHY address: for NetConsole	*/
-#endif
-#endif
-
 #define CONFIG_MAC_PARTITION
 #define CONFIG_DOS_PARTITION
 
 #define CONFIG_SUPPORT_VFAT
-
-#if 0 /* test-only */
-#define CONFIG_AUTO_UPDATE      1       /* autoupdate via compactflash  */
-#endif
 
 #undef	CONFIG_WATCHDOG			/* watchdog disabled		*/
 
@@ -256,29 +241,6 @@
 
 #define CFG_FLASH_EMPTY_INFO		/* print 'E' for empty sector on flinfo */
 
-
-/*
- * JFFS2 partitions
- */
-
-/* No command line, one static partition, use whole device */
-#undef CONFIG_JFFS2_CMDLINE
-#define CONFIG_JFFS2_DEV		"nor0"
-#define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
-#define CONFIG_JFFS2_PART_OFFSET	0x00000000
-
-/* mtdparts command line support */
-
-/* Use first bank for JFFS2, second bank contains U-Boot.
- *
- * Note: fake mtd_id's used, no linux mtd map file.
- */
-/*
-#define CONFIG_JFFS2_CMDLINE
-#define MTDIDS_DEFAULT		"nor0=cpci4052-0"
-#define MTDPARTS_DEFAULT	"mtdparts=cpci4052-0:-(jffs2)"
-*/
-
 #if 0 /* Use NVRAM for environment variables */
 /*-----------------------------------------------------------------------
  * NVRAM organization
@@ -316,16 +278,6 @@
 					/* last 4 bits of the address	*/
 #define CFG_EEPROM_PAGE_WRITE_DELAY_MS	10   /* and takes up to 10 msec */
 #define CFG_EEPROM_PAGE_WRITE_ENABLE
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		16384	/* For AMCC 405 CPUs, older 405 ppc's	*/
-					/* have only 8kB, 16kB is save here	*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Init Memory Controller:

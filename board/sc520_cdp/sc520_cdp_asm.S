@@ -73,11 +73,11 @@ done:   movb	$0x88, %al
 	movw	$0x680, %dx
 	out	%al, %dx
 
-	jmp 	*%ebp		     /* return to caller */
+	jmp	*%ebp		     /* return to caller */
 
 
-.globl __show_boot_progress
-__show_boot_progress:
+.globl show_boot_progress
+show_boot_progress:
 	out	%al, $0x80
 	xchg	%al, %ah
 	movw	$0x680, %dx

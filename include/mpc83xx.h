@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2006 Freescale Semiconductor, Inc.
+ * Copyright (C) 2004-2007 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -14,6 +14,7 @@
 #define __MPC83XX_H__
 
 #include <config.h>
+#include <asm/fsl_lbc.h>
 #if defined(CONFIG_E300)
 #include <asm/e300.h>
 #endif
@@ -29,7 +30,9 @@
 
 /* IMMRBAR - Internal Memory Register Base Address
  */
+#ifndef CONFIG_DEFAULT_IMMR
 #define CONFIG_DEFAULT_IMMR		0xFF400000	/* Default IMMR base address */
+#endif
 #define IMMRBAR				0x0000		/* Register offset to immr */
 #define IMMRBAR_BASE_ADDR		0xFFF00000	/* Base address mask */
 #define IMMRBAR_RES			~(IMMRBAR_BASE_ADDR)
@@ -48,60 +51,41 @@
 
 /* SPRIDR - System Part and Revision ID Register
  */
-#define SPRIDR_PARTID			0xFFFF0000	/* Part Identification */
-#define SPRIDR_REVID			0x0000FFFF	/* Revision Identification */
+#define SPRIDR_PARTID			0xFFFF0000	/* Part Id */
+#define SPRIDR_REVID			0x0000FFFF	/* Revision Id */
 
-#define SPR_8349E_REV10			0x80300100
-#define SPR_8349_REV10			0x80310100
-#define SPR_8347E_REV10_TBGA		0x80320100
-#define SPR_8347_REV10_TBGA		0x80330100
-#define SPR_8347E_REV10_PBGA		0x80340100
-#define SPR_8347_REV10_PBGA		0x80350100
-#define SPR_8343E_REV10			0x80360100
-#define SPR_8343_REV10			0x80370100
+#if defined(CONFIG_MPC834X)
+#define REVID_MAJOR(spridr)		((spridr & 0x0000FF00) >> 8)
+#define REVID_MINOR(spridr)		(spridr & 0x000000FF)
+#else
+#define REVID_MAJOR(spridr)		((spridr & 0x000000F0) >> 4)
+#define REVID_MINOR(spridr)		(spridr & 0x0000000F)
+#endif
 
-#define SPR_8349E_REV11			0x80300101
-#define SPR_8349_REV11			0x80310101
-#define SPR_8347E_REV11_TBGA		0x80320101
-#define SPR_8347_REV11_TBGA		0x80330101
-#define SPR_8347E_REV11_PBGA		0x80340101
-#define SPR_8347_REV11_PBGA		0x80350101
-#define SPR_8343E_REV11			0x80360101
-#define SPR_8343_REV11			0x80370101
+#define PARTID_NO_E(spridr)		((spridr & 0xFFFE0000) >> 16)
+#define SPR_FAMILY(spridr)		((spridr & 0xFFF00000) >> 20)
 
-#define SPR_8349E_REV31			0x80300300
-#define SPR_8349_REV31			0x80310300
-#define SPR_8347E_REV31_TBGA		0x80320300
-#define SPR_8347_REV31_TBGA		0x80330300
-#define SPR_8347E_REV31_PBGA		0x80340300
-#define SPR_8347_REV31_PBGA		0x80350300
-#define SPR_8343E_REV31			0x80360300
-#define SPR_8343_REV31			0x80370300
-
-#define SPR_8360E_REV10			0x80480010
-#define SPR_8360_REV10			0x80490010
-#define SPR_8360E_REV11			0x80480011
-#define SPR_8360_REV11			0x80490011
-#define SPR_8360E_REV12			0x80480012
-#define SPR_8360_REV12			0x80490012
-#define SPR_8360E_REV20			0x80480020
-#define SPR_8360_REV20			0x80490020
-#define SPR_8360E_REV21			0x80480021
-#define SPR_8360_REV21			0x80490021
-
-#define SPR_8323E_REV10			0x80620010
-#define SPR_8323_REV10			0x80630010
-#define SPR_8321E_REV10			0x80660010
-#define SPR_8321_REV10			0x80670010
-#define SPR_8323E_REV11			0x80620011
-#define SPR_8323_REV11			0x80630011
-#define SPR_8321E_REV11			0x80660011
-#define SPR_8321_REV11			0x80670011
-
-#define SPR_8311_REV10			0x80B30010
-#define SPR_8311E_REV10			0x80B20010
-#define SPR_8313_REV10			0x80B10010
-#define SPR_8313E_REV10			0x80B00010
+#define SPR_831X_FAMILY			0x80B
+#define SPR_8311			0x80B2
+#define SPR_8313			0x80B0
+#define SPR_8314			0x80B6
+#define SPR_8315			0x80B4
+#define SPR_832X_FAMILY			0x806
+#define SPR_8321			0x8066
+#define SPR_8323			0x8062
+#define SPR_834X_FAMILY			0x803
+#define SPR_8343			0x8036
+#define SPR_8347_TBGA_			0x8032
+#define SPR_8347_PBGA_			0x8034
+#define SPR_8349			0x8030
+#define SPR_836X_FAMILY			0x804
+#define SPR_8358_TBGA_			0x804A
+#define SPR_8358_PBGA_			0x804E
+#define SPR_8360			0x8048
+#define SPR_837X_FAMILY			0x80C
+#define SPR_8377			0x80C6
+#define SPR_8378			0x80C4
+#define SPR_8379			0x80C2
 
 /* SPCR - System Priority Configuration Register
  */
@@ -110,6 +94,7 @@
 #define SPCR_PCIPR			0x03000000	/* PCI bridge system bus request priority */
 #define SPCR_PCIPR_SHIFT		(31-7)
 #define SPCR_OPT			0x00800000	/* Optimize */
+#define SPCR_OPT_SHIFT			(31-8)
 #define SPCR_TBEN			0x00400000	/* E300 PowerPC core time base unit enable */
 #define SPCR_TBEN_SHIFT			(31-9)
 #define SPCR_COREPR			0x00300000	/* E300 PowerPC Core system bus request priority */
@@ -130,14 +115,14 @@
 #define SPCR_TSEC2EP			0x00000003	/* TSEC2 emergency priority */
 #define SPCR_TSEC2EP_SHIFT		(31-31)
 
-#elif defined(CONFIG_MPC831X)
-/* SPCR bits - MPC831x specific */
+#elif defined(CONFIG_MPC831X) || defined(CONFIG_MPC837X)
+/* SPCR bits - MPC831x and MPC837x specific */
 #define SPCR_TSECDP			0x00003000	/* TSEC data priority */
 #define SPCR_TSECDP_SHIFT		(31-19)
-#define SPCR_TSECEP			0x00000C00	/* TSEC emergency priority */
-#define SPCR_TSECEP_SHIFT		(31-21)
-#define SPCR_TSECBDP			0x00000300	/* TSEC buffer descriptor priority */
-#define SPCR_TSECBDP_SHIFT		(31-23)
+#define SPCR_TSECBDP			0x00000C00	/* TSEC buffer descriptor priority */
+#define SPCR_TSECBDP_SHIFT		(31-21)
+#define SPCR_TSECEP			0x00000300	/* TSEC emergency priority */
+#define SPCR_TSECEP_SHIFT		(31-23)
 #endif
 
 /* SICRL/H - System I/O Configuration Register Low/High
@@ -213,8 +198,8 @@
 #define SICRL_URT_CTPR			0x06000000
 #define SICRL_IRQ_CTPR			0x00C00000
 
-#elif defined(CONFIG_MPC831X)
-/* SICRL bits - MPC831x specific */
+#elif defined(CONFIG_MPC8313)
+/* SICRL bits - MPC8313 specific */
 #define SICRL_LBC			0x30000000
 #define SICRL_UART			0x0C000000
 #define SICRL_SPI_A			0x03000000
@@ -225,7 +210,7 @@
 #define SICRL_ETSEC1_A			0x0000000C
 #define SICRL_ETSEC2_A			0x00000003
 
-/* SICRH bits - MPC831x specific */
+/* SICRH bits - MPC8313 specific */
 #define SICRH_INTR_A			0x02000000
 #define SICRH_INTR_B			0x00C00000
 #define SICRH_IIC			0x00300000
@@ -242,6 +227,90 @@
 #define SICRH_TSOBI1			0x00000002
 #define SICRH_TSOBI2			0x00000001
 
+#elif defined(CONFIG_MPC8315)
+/* SICRL bits - MPC8315 specific */
+#define SICRL_DMA_CH0			0xc0000000
+#define SICRL_DMA_SPI			0x30000000
+#define SICRL_UART			0x0c000000
+#define SICRL_IRQ4			0x02000000
+#define SICRL_IRQ5			0x01800000
+#define SICRL_IRQ6_7			0x00400000
+#define SICRL_IIC1			0x00300000
+#define SICRL_TDM			0x000c0000
+#define SICRL_TDM_SHARED		0x00030000
+#define SICRL_PCI_A			0x0000c000
+#define SICRL_ELBC_A			0x00003000
+#define SICRL_ETSEC1_A			0x000000c0
+#define SICRL_ETSEC1_B			0x00000030
+#define SICRL_ETSEC1_C			0x0000000c
+#define SICRL_TSEXPOBI			0x00000001
+
+/* SICRH bits - MPC8315 specific */
+#define SICRH_GPIO_0			0xc0000000
+#define SICRH_GPIO_1			0x30000000
+#define SICRH_GPIO_2			0x0c000000
+#define SICRH_GPIO_3			0x03000000
+#define SICRH_GPIO_4			0x00c00000
+#define SICRH_GPIO_5			0x00300000
+#define SICRH_GPIO_6			0x000c0000
+#define SICRH_GPIO_7			0x00030000
+#define SICRH_GPIO_8			0x0000c000
+#define SICRH_GPIO_9			0x00003000
+#define SICRH_GPIO_10			0x00000c00
+#define SICRH_GPIO_11			0x00000300
+#define SICRH_ETSEC2_A			0x000000c0
+#define SICRH_TSOBI1			0x00000002
+#define SICRH_TSOBI2			0x00000001
+
+#elif defined(CONFIG_MPC837X)
+/* SICRL bits - MPC837x specific */
+#define SICRL_USB_A			0xC0000000
+#define SICRL_USB_B			0x30000000
+#define SICRL_UART			0x0C000000
+#define SICRL_GPIO_A			0x02000000
+#define SICRL_GPIO_B			0x01000000
+#define SICRL_GPIO_C			0x00800000
+#define SICRL_GPIO_D			0x00400000
+#define SICRL_GPIO_E			0x00200000
+#define SICRL_GPIO_F			0x00180000
+#define SICRL_GPIO_G			0x00040000
+#define SICRL_GPIO_H			0x00020000
+#define SICRL_GPIO_I			0x00010000
+#define SICRL_GPIO_J			0x00008000
+#define SICRL_GPIO_K			0x00004000
+#define SICRL_GPIO_L			0x00003000
+#define SICRL_DMA_A			0x00000800
+#define SICRL_DMA_B			0x00000400
+#define SICRL_DMA_C			0x00000200
+#define SICRL_DMA_D			0x00000100
+#define SICRL_DMA_E			0x00000080
+#define SICRL_DMA_F			0x00000040
+#define SICRL_DMA_G			0x00000020
+#define SICRL_DMA_H			0x00000010
+#define SICRL_DMA_I			0x00000008
+#define SICRL_DMA_J			0x00000004
+#define SICRL_LDP_A			0x00000002
+#define SICRL_LDP_B			0x00000001
+
+/* SICRH bits - MPC837x specific */
+#define SICRH_DDR			0x80000000
+#define SICRH_TSEC1_A			0x10000000
+#define SICRH_TSEC1_B			0x08000000
+#define SICRH_TSEC2_A			0x00400000
+#define SICRH_TSEC2_B			0x00200000
+#define SICRH_TSEC2_C			0x00100000
+#define SICRH_TSEC2_D			0x00080000
+#define SICRH_TSEC2_E			0x00040000
+#define SICRH_TMR			0x00010000
+#define SICRH_GPIO2_A			0x00008000
+#define SICRH_GPIO2_B			0x00004000
+#define SICRH_GPIO2_C			0x00002000
+#define SICRH_GPIO2_D			0x00001000
+#define SICRH_GPIO2_E			0x00000C00
+#define SICRH_GPIO2_F			0x00000300
+#define SICRH_GPIO2_G			0x000000C0
+#define SICRH_GPIO2_H			0x00000030
+#define SICRH_SPI			0x00000003
 #endif
 
 /* SWCRR - System Watchdog Control Register
@@ -281,7 +350,9 @@
 /* ATR - Arbiter Timers Register
  */
 #define ATR_DTO				0x00FF0000	/* Data time out */
+#define ATR_DTO_SHIFT			16
 #define ATR_ATO				0x000000FF	/* Address time out */
+#define ATR_ATO_SHIFT			0
 
 /* AER - Arbiter Event Register
  */
@@ -295,10 +366,15 @@
 /* AEATR - Arbiter Event Address Register
  */
 #define AEATR_EVENT			0x07000000	/* Event type */
+#define AEATR_EVENT_SHIFT		24
 #define AEATR_MSTR_ID			0x001F0000	/* Master Id */
+#define AEATR_MSTR_ID_SHIFT		16
 #define AEATR_TBST			0x00000800	/* Transfer burst */
+#define AEATR_TBST_SHIFT		11
 #define AEATR_TSIZE			0x00000700	/* Transfer Size */
+#define AEATR_TSIZE_SHIFT		8
 #define AEATR_TTYPE			0x0000001F	/* Transfer Type */
+#define AEATR_TTYPE_SHIFT		0
 
 /* HRCWL - Hard Reset Configuration Word Low
  */
@@ -390,6 +466,22 @@
 #define HRCWL_CE_TO_PLL_1X29		0x0000001D
 #define HRCWL_CE_TO_PLL_1X30		0x0000001E
 #define HRCWL_CE_TO_PLL_1X31		0x0000001F
+
+#elif defined(CONFIG_MPC8315)
+#define HRCWL_SVCOD			0x30000000
+#define HRCWL_SVCOD_SHIFT		28
+#define HRCWL_SVCOD_DIV_2		0x00000000
+#define HRCWL_SVCOD_DIV_4		0x10000000
+#define HRCWL_SVCOD_DIV_8		0x20000000
+#define HRCWL_SVCOD_DIV_1		0x30000000
+
+#elif defined(CONFIG_MPC837X)
+#define HRCWL_SVCOD			0x30000000
+#define HRCWL_SVCOD_SHIFT		28
+#define HRCWL_SVCOD_DIV_4		0x00000000
+#define HRCWL_SVCOD_DIV_8		0x10000000
+#define HRCWL_SVCOD_DIV_2		0x20000000
+#define HRCWL_SVCOD_DIV_1		0x30000000
 #endif
 
 /* HRCWH - Hardware Reset Configuration Word High
@@ -436,11 +528,14 @@
 #if defined(CONFIG_MPC834X)
 #define HRCWH_ROM_LOC_PCI2		0x00200000
 #endif
+#if defined(CONIFG_MPC837X)
+#define HRCWH_ROM_LOC_ON_CHIP_ROM	0x00300000
+#endif
 #define HRCWH_ROM_LOC_LOCAL_8BIT	0x00500000
 #define HRCWH_ROM_LOC_LOCAL_16BIT	0x00600000
 #define HRCWH_ROM_LOC_LOCAL_32BIT	0x00700000
 
-#if defined(CONFIG_MPC831X)
+#if defined(CONFIG_MPC831X) || defined(CONFIG_MPC837X)
 #define HRCWH_ROM_LOC_NAND_SP_8BIT	0x00100000
 #define HRCWH_ROM_LOC_NAND_SP_16BIT	0x00200000
 #define HRCWH_ROM_LOC_NAND_LP_8BIT	0x00500000
@@ -489,8 +584,13 @@
 
 /* RSR - Reset Status Register
  */
+#if defined(CONFIG_MPC831X) || defined(CONFIG_MPC837X)
+#define RSR_RSTSRC			0xF0000000	/* Reset source */
+#define RSR_RSTSRC_SHIFT		28
+#else
 #define RSR_RSTSRC			0xE0000000	/* Reset source */
 #define RSR_RSTSRC_SHIFT		29
+#endif
 #define RSR_BSF				0x00010000	/* Boot seq. fail */
 #define RSR_BSF_SHIFT			16
 #define RSR_SWSR			0x00002000	/* software soft reset */
@@ -577,8 +677,8 @@
 #define SCCR_PCICM			0x00010000
 #define SCCR_PCICM_SHIFT		16
 
-/* SCCR bits - MPC8349 specific */
-#ifdef CONFIG_MPC834X
+#if defined(CONFIG_MPC834X)
+/* SCCR bits - MPC834x specific */
 #define SCCR_TSEC1CM			0xc0000000
 #define SCCR_TSEC1CM_SHIFT		30
 #define SCCR_TSEC1CM_0			0x00000000
@@ -593,10 +693,23 @@
 #define SCCR_TSEC2CM_2			0x20000000
 #define SCCR_TSEC2CM_3			0x30000000
 
-#elif defined(CONFIG_MPC831X)
+/* The MPH must have the same clock ratio as DR, unless its clock disabled */
+#define SCCR_USBMPHCM			0x00c00000
+#define SCCR_USBMPHCM_SHIFT		22
+#define SCCR_USBDRCM			0x00300000
+#define SCCR_USBDRCM_SHIFT		20
+#define SCCR_USBCM			0x00f00000
+#define SCCR_USBCM_SHIFT		20
+#define SCCR_USBCM_0			0x00000000
+#define SCCR_USBCM_1			0x00500000
+#define SCCR_USBCM_2			0x00A00000
+#define SCCR_USBCM_3			0x00F00000
+
+#elif defined(CONFIG_MPC8313)
 /* TSEC1 bits are for TSEC2 as well */
 #define SCCR_TSEC1CM			0xc0000000
 #define SCCR_TSEC1CM_SHIFT		30
+#define SCCR_TSEC1CM_0			0x00000000
 #define SCCR_TSEC1CM_1			0x40000000
 #define SCCR_TSEC1CM_2			0x80000000
 #define SCCR_TSEC1CM_3			0xC0000000
@@ -606,17 +719,109 @@
 #define SCCR_TSEC2ON			0x10000000
 #define SCCR_TSEC2ON_SHIFT		28
 
-#endif
-
-#define SCCR_USBMPHCM			0x00c00000
-#define SCCR_USBMPHCM_SHIFT		22
 #define SCCR_USBDRCM			0x00300000
 #define SCCR_USBDRCM_SHIFT		20
+#define SCCR_USBDRCM_0			0x00000000
+#define SCCR_USBDRCM_1			0x00100000
+#define SCCR_USBDRCM_2			0x00200000
+#define SCCR_USBDRCM_3			0x00300000
 
-#define SCCR_USBCM_0			0x00000000
-#define SCCR_USBCM_1			0x00500000
-#define SCCR_USBCM_2			0x00A00000
-#define SCCR_USBCM_3			0x00F00000
+#elif defined(CONFIG_MPC8315)
+/* SCCR bits - MPC8315 specific */
+#define SCCR_TSEC1CM			0xc0000000
+#define SCCR_TSEC1CM_SHIFT		30
+#define SCCR_TSEC1CM_0			0x00000000
+#define SCCR_TSEC1CM_1			0x40000000
+#define SCCR_TSEC1CM_2			0x80000000
+#define SCCR_TSEC1CM_3			0xC0000000
+
+#define SCCR_TSEC2CM			0x30000000
+#define SCCR_TSEC2CM_SHIFT		28
+#define SCCR_TSEC2CM_0			0x00000000
+#define SCCR_TSEC2CM_1			0x10000000
+#define SCCR_TSEC2CM_2			0x20000000
+#define SCCR_TSEC2CM_3			0x30000000
+
+#define SCCR_USBDRCM			0x00c00000
+#define SCCR_USBDRCM_SHIFT		22
+#define SCCR_USBDRCM_0			0x00000000
+#define SCCR_USBDRCM_1			0x00400000
+#define SCCR_USBDRCM_2			0x00800000
+#define SCCR_USBDRCM_3			0x00c00000
+
+#define SCCR_PCIEXP1CM			0x00300000
+#define SCCR_PCIEXP2CM			0x000c0000
+
+#define SCCR_SATA1CM			0x00003000
+#define SCCR_SATA1CM_SHIFT		12
+#define SCCR_SATACM			0x00003c00
+#define SCCR_SATACM_SHIFT		10
+#define SCCR_SATACM_0			0x00000000
+#define SCCR_SATACM_1			0x00001400
+#define SCCR_SATACM_2			0x00002800
+#define SCCR_SATACM_3			0x00003c00
+
+#define SCCR_TDMCM			0x00000030
+#define SCCR_TDMCM_SHIFT		4
+#define SCCR_TDMCM_0			0x00000000
+#define SCCR_TDMCM_1			0x00000010
+#define SCCR_TDMCM_2			0x00000020
+#define SCCR_TDMCM_3			0x00000030
+
+#elif defined(CONFIG_MPC837X)
+/* SCCR bits - MPC837x specific */
+#define SCCR_TSEC1CM			0xc0000000
+#define SCCR_TSEC1CM_SHIFT		30
+#define SCCR_TSEC1CM_0			0x00000000
+#define SCCR_TSEC1CM_1			0x40000000
+#define SCCR_TSEC1CM_2			0x80000000
+#define SCCR_TSEC1CM_3			0xC0000000
+
+#define SCCR_TSEC2CM			0x30000000
+#define SCCR_TSEC2CM_SHIFT		28
+#define SCCR_TSEC2CM_0			0x00000000
+#define SCCR_TSEC2CM_1			0x10000000
+#define SCCR_TSEC2CM_2			0x20000000
+#define SCCR_TSEC2CM_3			0x30000000
+
+#define SCCR_SDHCCM			0x0c000000
+#define SCCR_SDHCCM_SHIFT		26
+#define SCCR_SDHCCM_0			0x00000000
+#define SCCR_SDHCCM_1			0x04000000
+#define SCCR_SDHCCM_2			0x08000000
+#define SCCR_SDHCCM_3			0x0c000000
+
+#define SCCR_USBDRCM			0x00c00000
+#define SCCR_USBDRCM_SHIFT		22
+#define SCCR_USBDRCM_0			0x00000000
+#define SCCR_USBDRCM_1			0x00400000
+#define SCCR_USBDRCM_2			0x00800000
+#define SCCR_USBDRCM_3			0x00c00000
+
+#define SCCR_PCIEXP1CM			0x00300000
+#define SCCR_PCIEXP1CM_SHIFT		20
+#define SCCR_PCIEXP1CM_0		0x00000000
+#define SCCR_PCIEXP1CM_1		0x00100000
+#define SCCR_PCIEXP1CM_2		0x00200000
+#define SCCR_PCIEXP1CM_3		0x00300000
+
+#define SCCR_PCIEXP2CM			0x000c0000
+#define SCCR_PCIEXP2CM_SHIFT		18
+#define SCCR_PCIEXP2CM_0		0x00000000
+#define SCCR_PCIEXP2CM_1		0x00040000
+#define SCCR_PCIEXP2CM_2		0x00080000
+#define SCCR_PCIEXP2CM_3		0x000c0000
+
+/* All of the four SATA controllers must have the same clock ratio */
+#define SCCR_SATA1CM			0x000000c0
+#define SCCR_SATA1CM_SHIFT		6
+#define SCCR_SATACM			0x000000ff
+#define SCCR_SATACM_SHIFT		0
+#define SCCR_SATACM_0			0x00000000
+#define SCCR_SATACM_1			0x00000055
+#define SCCR_SATACM_2			0x000000aa
+#define SCCR_SATACM_3			0x000000ff
+#endif
 
 /* CSn_BDNS - Chip Select memory Bounds Register
  */
@@ -629,6 +834,8 @@
  */
 #define CSCONFIG_EN			0x80000000
 #define CSCONFIG_AP			0x00800000
+#define CSCONFIG_ODT_WR_ACS		0x00010000
+#define CSCONFIG_BANK_BIT_3		0x00004000
 #define CSCONFIG_ROW_BIT		0x00000700
 #define CSCONFIG_ROW_BIT_12		0x00000000
 #define CSCONFIG_ROW_BIT_13		0x00000100
@@ -655,7 +862,7 @@
 #define TIMING_CFG0_PRE_PD_EXIT_SHIFT	16
 #define TIMING_CFG0_ODT_PD_EXIT		0x00000F00
 #define TIMING_CFG0_ODT_PD_EXIT_SHIFT	8
-#define TIMING_CFG0_MRS_CYC		0x00000F00
+#define TIMING_CFG0_MRS_CYC		0x0000000F
 #define TIMING_CFG0_MRS_CYC_SHIFT	0
 
 /* TIMING_CFG_1 - DDR SDRAM Timing Configuration 1
@@ -678,6 +885,7 @@
 #define TIMING_CFG1_WRTORD_SHIFT	0
 #define TIMING_CFG1_CASLAT_20		0x00030000	/* CAS latency = 2.0 */
 #define TIMING_CFG1_CASLAT_25		0x00040000	/* CAS latency = 2.5 */
+#define TIMING_CFG1_CASLAT_30		0x00050000	/* CAS latency = 2.5 */
 
 /* TIMING_CFG_2 - DDR SDRAM Timing Configuration 2
  */
@@ -826,239 +1034,6 @@
 #define ECC_ERROR_MAN_SBET_SHIFT	16
 #define ECC_ERROR_MAN_SBEC		(0xff000000>>24)	/* Single Bit Error Counter 0..255 */
 #define ECC_ERROR_MAN_SBEC_SHIFT	0
-
-/* BR - Base Registers
- */
-#define BR0				0x5000		/* Register offset to immr */
-#define BR1				0x5008
-#define BR2				0x5010
-#define BR3				0x5018
-#define BR4				0x5020
-#define BR5				0x5028
-#define BR6				0x5030
-#define BR7				0x5038
-
-#define BR_BA				0xFFFF8000
-#define BR_BA_SHIFT			15
-#define BR_PS				0x00001800
-#define BR_PS_SHIFT			11
-#define BR_PS_8				0x00000800	/* Port Size 8 bit */
-#define BR_PS_16			0x00001000	/* Port Size 16 bit */
-#define BR_PS_32			0x00001800	/* Port Size 32 bit */
-#define BR_DECC				0x00000600
-#define BR_DECC_SHIFT			9
-#define BR_DECC_OFF			0x00000000
-#define BR_DECC_CHK			0x00000200
-#define BR_DECC_CHK_GEN			0x00000400
-#define BR_WP				0x00000100
-#define BR_WP_SHIFT			8
-#define BR_MSEL				0x000000E0
-#define BR_MSEL_SHIFT			5
-#define BR_MS_GPCM			0x00000000	/* GPCM */
-#define BR_MS_FCM			0x00000020	/* FCM */
-#define BR_MS_SDRAM			0x00000060	/* SDRAM */
-#define BR_MS_UPMA			0x00000080	/* UPMA */
-#define BR_MS_UPMB			0x000000A0	/* UPMB */
-#define BR_MS_UPMC			0x000000C0	/* UPMC */
-#if defined(CONFIG_MPC8360) || defined(CONFIG_MPC832X)
-#define BR_ATOM				0x0000000C
-#define BR_ATOM_SHIFT			2
-#endif
-#define BR_V				0x00000001
-#define BR_V_SHIFT			0
-
-#if defined(CONFIG_MPC834X)
-#define BR_RES				~(BR_BA | BR_PS | BR_DECC | BR_WP | BR_MSEL | BR_V)
-#elif defined(CONFIG_MPC8360)
-#define BR_RES				~(BR_BA | BR_PS | BR_DECC | BR_WP | BR_MSEL | BR_ATOM | BR_V)
-#endif
-
-/* OR - Option Registers
- */
-#define OR0				0x5004		/* Register offset to immr */
-#define OR1				0x500C
-#define OR2				0x5014
-#define OR3				0x501C
-#define OR4				0x5024
-#define OR5				0x502C
-#define OR6				0x5034
-#define OR7				0x503C
-
-#define OR_GPCM_AM			0xFFFF8000
-#define OR_GPCM_AM_SHIFT		15
-#define OR_GPCM_BCTLD			0x00001000
-#define OR_GPCM_BCTLD_SHIFT		12
-#define OR_GPCM_CSNT			0x00000800
-#define OR_GPCM_CSNT_SHIFT		11
-#define OR_GPCM_ACS			0x00000600
-#define OR_GPCM_ACS_SHIFT		9
-#define OR_GPCM_ACS_0b10		0x00000400
-#define OR_GPCM_ACS_0b11		0x00000600
-#define OR_GPCM_XACS			0x00000100
-#define OR_GPCM_XACS_SHIFT		8
-#define OR_GPCM_SCY			0x000000F0
-#define OR_GPCM_SCY_SHIFT		4
-#define OR_GPCM_SCY_1			0x00000010
-#define OR_GPCM_SCY_2			0x00000020
-#define OR_GPCM_SCY_3			0x00000030
-#define OR_GPCM_SCY_4			0x00000040
-#define OR_GPCM_SCY_5			0x00000050
-#define OR_GPCM_SCY_6			0x00000060
-#define OR_GPCM_SCY_7			0x00000070
-#define OR_GPCM_SCY_8			0x00000080
-#define OR_GPCM_SCY_9			0x00000090
-#define OR_GPCM_SCY_10			0x000000a0
-#define OR_GPCM_SCY_11			0x000000b0
-#define OR_GPCM_SCY_12			0x000000c0
-#define OR_GPCM_SCY_13			0x000000d0
-#define OR_GPCM_SCY_14			0x000000e0
-#define OR_GPCM_SCY_15			0x000000f0
-#define OR_GPCM_SETA			0x00000008
-#define OR_GPCM_SETA_SHIFT		3
-#define OR_GPCM_TRLX			0x00000004
-#define OR_GPCM_TRLX_SHIFT		2
-#define OR_GPCM_EHTR			0x00000002
-#define OR_GPCM_EHTR_SHIFT		1
-#define OR_GPCM_EAD			0x00000001
-#define OR_GPCM_EAD_SHIFT		0
-
-#define OR_FCM_AM			0xFFFF8000
-#define OR_FCM_AM_SHIFT				15
-#define OR_FCM_BCTLD			0x00001000
-#define OR_FCM_BCTLD_SHIFT			12
-#define OR_FCM_PGS			0x00000400
-#define OR_FCM_PGS_SHIFT			10
-#define OR_FCM_CSCT			0x00000200
-#define OR_FCM_CSCT_SHIFT			 9
-#define OR_FCM_CST			0x00000100
-#define OR_FCM_CST_SHIFT			 8
-#define OR_FCM_CHT			0x00000080
-#define OR_FCM_CHT_SHIFT			 7
-#define OR_FCM_SCY			0x00000070
-#define OR_FCM_SCY_SHIFT			 4
-#define OR_FCM_SCY_1			0x00000010
-#define OR_FCM_SCY_2			0x00000020
-#define OR_FCM_SCY_3			0x00000030
-#define OR_FCM_SCY_4			0x00000040
-#define OR_FCM_SCY_5			0x00000050
-#define OR_FCM_SCY_6			0x00000060
-#define OR_FCM_SCY_7			0x00000070
-#define OR_FCM_RST			0x00000008
-#define OR_FCM_RST_SHIFT			 3
-#define OR_FCM_TRLX			0x00000004
-#define OR_FCM_TRLX_SHIFT			 2
-#define OR_FCM_EHTR			0x00000002
-#define OR_FCM_EHTR_SHIFT			 1
-
-#define OR_UPM_AM			0xFFFF8000
-#define OR_UPM_AM_SHIFT			15
-#define OR_UPM_XAM			0x00006000
-#define OR_UPM_XAM_SHIFT		13
-#define OR_UPM_BCTLD			0x00001000
-#define OR_UPM_BCTLD_SHIFT		12
-#define OR_UPM_BI			0x00000100
-#define OR_UPM_BI_SHIFT			8
-#define OR_UPM_TRLX			0x00000004
-#define OR_UPM_TRLX_SHIFT		2
-#define OR_UPM_EHTR			0x00000002
-#define OR_UPM_EHTR_SHIFT		1
-#define OR_UPM_EAD			0x00000001
-#define OR_UPM_EAD_SHIFT		0
-
-#define OR_SDRAM_AM			0xFFFF8000
-#define OR_SDRAM_AM_SHIFT		15
-#define OR_SDRAM_XAM			0x00006000
-#define OR_SDRAM_XAM_SHIFT		13
-#define OR_SDRAM_COLS			0x00001C00
-#define OR_SDRAM_COLS_SHIFT		10
-#define OR_SDRAM_ROWS			0x000001C0
-#define OR_SDRAM_ROWS_SHIFT		6
-#define OR_SDRAM_PMSEL			0x00000020
-#define OR_SDRAM_PMSEL_SHIFT		5
-#define OR_SDRAM_EAD			0x00000001
-#define OR_SDRAM_EAD_SHIFT		0
-
-#define OR_AM_32KB			0xFFFF8000
-#define OR_AM_64KB			0xFFFF0000
-#define OR_AM_128KB			0xFFFE0000
-#define OR_AM_256KB			0xFFFC0000
-#define OR_AM_512KB			0xFFF80000
-#define OR_AM_1MB			0xFFF00000
-#define OR_AM_2MB			0xFFE00000
-#define OR_AM_4MB			0xFFC00000
-#define OR_AM_8MB			0xFF800000
-#define OR_AM_16MB			0xFF000000
-#define OR_AM_32MB			0xFE000000
-#define OR_AM_64MB			0xFC000000
-#define OR_AM_128MB			0xF8000000
-#define OR_AM_256MB			0xF0000000
-#define OR_AM_512MB			0xE0000000
-#define OR_AM_1GB			0xC0000000
-#define OR_AM_2GB			0x80000000
-#define OR_AM_4GB			0x00000000
-
-#define LBLAWAR_EN			0x80000000
-#define LBLAWAR_4KB			0x0000000B
-#define LBLAWAR_8KB			0x0000000C
-#define LBLAWAR_16KB			0x0000000D
-#define LBLAWAR_32KB			0x0000000E
-#define LBLAWAR_64KB			0x0000000F
-#define LBLAWAR_128KB			0x00000010
-#define LBLAWAR_256KB			0x00000011
-#define LBLAWAR_512KB			0x00000012
-#define LBLAWAR_1MB			0x00000013
-#define LBLAWAR_2MB			0x00000014
-#define LBLAWAR_4MB			0x00000015
-#define LBLAWAR_8MB			0x00000016
-#define LBLAWAR_16MB			0x00000017
-#define LBLAWAR_32MB			0x00000018
-#define LBLAWAR_64MB			0x00000019
-#define LBLAWAR_128MB			0x0000001A
-#define LBLAWAR_256MB			0x0000001B
-#define LBLAWAR_512MB			0x0000001C
-#define LBLAWAR_1GB			0x0000001D
-#define LBLAWAR_2GB			0x0000001E
-
-/* LBCR - Local Bus Configuration Register
- */
-#define LBCR_LDIS			0x80000000
-#define LBCR_LDIS_SHIFT			31
-#define LBCR_BCTLC			0x00C00000
-#define LBCR_BCTLC_SHIFT		22
-#define LBCR_LPBSE			0x00020000
-#define LBCR_LPBSE_SHIFT		17
-#define LBCR_EPAR			0x00010000
-#define LBCR_EPAR_SHIFT			16
-#define LBCR_BMT			0x0000FF00
-#define LBCR_BMT_SHIFT			8
-
-/* LCRR - Clock Ratio Register
- */
-#define LCRR_DBYP			0x80000000
-#define LCRR_DBYP_SHIFT			31
-#define LCRR_BUFCMDC			0x30000000
-#define LCRR_BUFCMDC_SHIFT		28
-#define LCRR_BUFCMDC_1			0x10000000
-#define LCRR_BUFCMDC_2			0x20000000
-#define LCRR_BUFCMDC_3			0x30000000
-#define LCRR_BUFCMDC_4			0x00000000
-#define LCRR_ECL			0x03000000
-#define LCRR_ECL_SHIFT			24
-#define LCRR_ECL_4			0x00000000
-#define LCRR_ECL_5			0x01000000
-#define LCRR_ECL_6			0x02000000
-#define LCRR_ECL_7			0x03000000
-#define LCRR_EADC			0x00030000
-#define LCRR_EADC_SHIFT			16
-#define LCRR_EADC_1			0x00010000
-#define LCRR_EADC_2			0x00020000
-#define LCRR_EADC_3			0x00030000
-#define LCRR_EADC_4			0x00000000
-#define LCRR_CLKDIV			0x0000000F
-#define LCRR_CLKDIV_SHIFT		0
-#define LCRR_CLKDIV_2			0x00000002
-#define LCRR_CLKDIV_4			0x00000004
-#define LCRR_CLKDIV_8			0x00000008
 
 /* DMAMR - DMA Mode Register
  */
@@ -1255,8 +1230,9 @@
 #define LTESR_CS		0x00080000
 #define LTESR_CC		0x00000001
 
-/* DDR Control Driver Register
+/* DDRCDR - DDR Control Driver Register
  */
+#define DDRCDR_DHC_EN		0x80000000
 #define DDRCDR_EN		0x40000000
 #define DDRCDR_PZ		0x3C000000
 #define DDRCDR_PZ_MAXZ		0x00000000

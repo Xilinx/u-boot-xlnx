@@ -43,19 +43,12 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int checkboard(void)
 {
-#if (BFIN_CPU == ADSP_BF531)
-	printf("CPU:   ADSP BF531 Rev.: 0.%d\n", *pCHIPID >> 28);
-#elif (BFIN_CPU == ADSP_BF532)
-	printf("CPU:   ADSP BF532 Rev.: 0.%d\n", *pCHIPID >> 28);
-#else
-	printf("CPU:   ADSP BF533 Rev.: 0.%d\n", *pCHIPID >> 28);
-#endif
 	printf("Board: ADI BF533 Stamp board\n");
 	printf("       Support: http://blackfin.uclinux.org/\n");
 	return 0;
 }
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
 #ifdef DEBUG
 	printf("SDRAM attributes:\n");
@@ -76,9 +69,9 @@ void swap_to(int device_id)
 
 	if (device_id == ETHERNET) {
 		*pFIO_DIR = PF0;
-		sync();
+		SSYNC();
 		*pFIO_FLAG_S = PF0;
-		sync();
+		SSYNC();
 	} else if (device_id == FLASH) {
 		*pFIO_DIR = (PF4 | PF3 | PF2 | PF1 | PF0);
 		*pFIO_FLAG_S = (PF4 | PF3 | PF2);
@@ -88,7 +81,7 @@ void swap_to(int device_id)
 		*pFIO_EDGE = (PF8 | PF7 | PF6 | PF5);
 		*pFIO_INEN = (PF8 | PF7 | PF6 | PF5);
 		*pFIO_FLAG_D = (PF4 | PF3 | PF2);
-		sync();
+		SSYNC();
 	} else {
 		printf("Unknown bank to switch\n");
 	}
@@ -155,15 +148,15 @@ void cf_outb(unsigned char val, volatile unsigned char *addr)
 	 */
 	*pFIO_FLAG_S = CF_PF0;
 	*pFIO_FLAG_C = CF_PF1;
-	sync();
+	SSYNC();
 
 	*(addr) = val;
-	sync();
+	SSYNC();
 
 	/* Setback PF1 PF0 to 0 0 to address external
 	 * memory banks  */
 	*(volatile unsigned short *)pFIO_FLAG_C = CF_PF1_PF0;
-	sync();
+	SSYNC();
 }
 
 unsigned char cf_inb(volatile unsigned char *addr)
@@ -172,13 +165,13 @@ unsigned char cf_inb(volatile unsigned char *addr)
 
 	*pFIO_FLAG_S = CF_PF0;
 	*pFIO_FLAG_C = CF_PF1;
-	sync();
+	SSYNC();
 
 	c = *(addr);
-	sync();
+	SSYNC();
 
 	*pFIO_FLAG_C = CF_PF1_PF0;
-	sync();
+	SSYNC();
 
 	return c;
 }
@@ -189,15 +182,15 @@ void cf_insw(unsigned short *sect_buf, unsigned short *addr, int words)
 
 	*pFIO_FLAG_S = CF_PF0;
 	*pFIO_FLAG_C = CF_PF1;
-	sync();
+	SSYNC();
 
 	for (i = 0; i < words; i++) {
 		*(sect_buf + i) = *(addr);
-		sync();
+		SSYNC();
 	}
 
 	*pFIO_FLAG_C = CF_PF1_PF0;
-	sync();
+	SSYNC();
 }
 
 void cf_outsw(unsigned short *addr, unsigned short *sect_buf, int words)
@@ -206,15 +199,15 @@ void cf_outsw(unsigned short *addr, unsigned short *sect_buf, int words)
 
 	*pFIO_FLAG_S = CF_PF0;
 	*pFIO_FLAG_C = CF_PF1;
-	sync();
+	SSYNC();
 
 	for (i = 0; i < words; i++) {
 		*(addr) = *(sect_buf + i);
-		sync();
+		SSYNC();
 	}
 
 	*pFIO_FLAG_C = CF_PF1_PF0;
-	sync();
+	SSYNC();
 }
 #endif
 
@@ -235,7 +228,7 @@ void stamp_led_set(int LED1, int LED2, int LED3)
 		*pFIO_FLAG_S = PF4;
 	else
 		*pFIO_FLAG_C = PF4;
-	sync();
+	SSYNC();
 }
 
 void show_boot_progress(int status)

@@ -195,7 +195,7 @@
 */
 
 /* NAND flash support */
-#define CFG_NAND_LEGACY
+#define CONFIG_NAND_LEGACY
 #define CONFIG_MTD_NAND_ECC_JFFS2
 #define CFG_MAX_NAND_DEVICE	1	/* Max number of NAND devices	*/
 #define SECTORSIZE 512
@@ -204,7 +204,7 @@
 #define ADDR_PAGE 2
 #define ADDR_COLUMN_PAGE 3
 
-#define NAND_ChipID_UNKNOWN 	0x00
+#define NAND_ChipID_UNKNOWN	0x00
 #define NAND_MAX_FLOORS 1
 #define NAND_MAX_CHIPS 1
 
@@ -250,7 +250,7 @@
 #define CFG_MEMTEST_START	0x0100000	/* memtest works on	*/
 #define CFG_MEMTEST_END		0x0400000	/* 1 ... 4 MB in DRAM	*/
 
-#define CFG_LOAD_ADDR	 	0x00100000
+#define CFG_LOAD_ADDR		0x00100000
 
 #define	CFG_HZ		1000		/* decrementer freq: 1 ms ticks	*/
 
@@ -465,7 +465,7 @@
 
 #if 1
 #define CONFIG_AUTOBOOT_KEYED		/* use key strings to stop autoboot */
-#define CONFIG_AUTOBOOT_PROMPT		"autoboot in %d seconds\n"
+#define CONFIG_AUTOBOOT_PROMPT		"autoboot in %d seconds\n", bootdelay
 #define CONFIG_AUTOBOOT_DELAY_STR	"delayabit"
 #define CONFIG_AUTOBOOT_STOP_STR	" " /* easy to stop for now */
 #endif

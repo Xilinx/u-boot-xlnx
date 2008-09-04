@@ -208,20 +208,10 @@
 #define CFG_ENV_IS_IN_FLASH	1
 #define CFG_ENV_ADDR		0xFFFB0000	/* Address of Environment Sector*/
 #define CFG_ENV_SECT_SIZE	0x10000 /* see README - env sector total size	*/
-#define CFG_ENV_SIZE		0x04000	        /* Size of Environment 	        */
+#define CFG_ENV_SIZE		0x04000	        /* Size of Environment	        */
 
 #define CFG_ENV_ADDR_REDUND     0xFFFA0000
 #define CFG_ENV_SIZE_REDUND	CFG_ENV_SIZE
-
-/*-----------------------------------------------------------------------
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		16384	/* For AMCC 405 CPUs, older 405 ppc's	*/
-					/* have only 8kB, 16kB is save here	*/
-#define CFG_CACHELINE_SIZE	32	/* ...			*/
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value	*/
-#endif
 
 /*
  * Init Memory Controller:

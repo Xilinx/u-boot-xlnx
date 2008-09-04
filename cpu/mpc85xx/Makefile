@@ -29,8 +29,30 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(CPU).a
 
 START	= start.o resetvec.o
-COBJS	= traps.o cpu.o cpu_init.o speed.o interrupts.o \
-	  pci.o serial_scc.o commproc.o ether_fcc.o spd_sdram.o qe_io.o
+SOBJS-$(CONFIG_MP) += release.o
+SOBJS	= $(SOBJS-y)
+COBJS-$(CONFIG_MP) += mp.o
+COBJS-$(CONFIG_OF_LIBFDT) += fdt.o
+
+# supports ddr1
+COBJS-$(CONFIG_MPC8540) += ddr-gen1.o
+COBJS-$(CONFIG_MPC8560) += ddr-gen1.o
+COBJS-$(CONFIG_MPC8541) += ddr-gen1.o
+COBJS-$(CONFIG_MPC8555) += ddr-gen1.o
+
+# supports ddr1/2
+COBJS-$(CONFIG_MPC8548) += ddr-gen2.o
+COBJS-$(CONFIG_MPC8568) += ddr-gen2.o
+COBJS-$(CONFIG_MPC8544) += ddr-gen2.o
+
+# supports ddr1/2/3
+COBJS-$(CONFIG_MPC8572) += ddr-gen3.o
+COBJS-$(CONFIG_MPC8536) += ddr-gen3.o
+
+COBJS-$(CONFIG_MPC8536) += mpc8536_serdes.o
+COBJS	= traps.o cpu.o cpu_init.o speed.o interrupts.o tlb.o \
+	  pci.o serial_scc.o commproc.o ether_fcc.o qe_io.o \
+	  $(COBJS-y)
 
 SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))

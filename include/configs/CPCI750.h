@@ -61,6 +61,8 @@
 
 #undef	CONFIG_ECC			/* enable ECC support */
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
+
 /* which initialization functions to call for this board */
 #define CONFIG_MISC_INIT_R
 #define CONFIG_BOARD_PRE_INIT
@@ -292,7 +294,7 @@
  * FLASH related
  *----------------------------------------------------------------------*/
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI		1	   /* Flash is CFI conformant		*/
 #define CFG_FLASH_PROTECTION	1	   /* use hardware protection		*/
 #define CFG_FLASH_USE_BUFFER_WRITE 1	   /* use buffered writes (20x faster)	*/

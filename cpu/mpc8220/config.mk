@@ -21,9 +21,9 @@
 # MA 02111-1307 USA
 #
 
-PLATFORM_RELFLAGS += -fPIC -ffixed-r14 -meabi -mrelocatable
+PLATFORM_RELFLAGS += -fPIC -ffixed-r14 -meabi
 
-PLATFORM_CPPFLAGS += -DCONFIG_MPC8220 -ffixed-r2 -ffixed-r29 \
+PLATFORM_CPPFLAGS += -DCONFIG_MPC8220 -ffixed-r2 \
 		     -mstring -mcpu=603e -mmultiple
 
 # Use default linker script.  Board port can override in board/*/config.mk

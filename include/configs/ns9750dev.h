@@ -56,13 +56,13 @@
 /*
  * Hardware drivers
  */
-#define CFG_NS9750_UART			1	/* use on-chip UART */
+#define CONFIG_NS9750_UART		1	/* use on-chip UART */
 #define CONFIG_DRIVER_NS9750_ETHERNET	1	/* use on-chip ethernet */
 
 /*
  * select serial console configuration
  */
-#define CONFIG_CONS_INDEX          1 		/* Port B */
+#define CONFIG_CONS_INDEX          1		/* Port B */
 
 /* allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -93,7 +93,7 @@
 
 
 #define CONFIG_BOOTDELAY	3
-/*#define CONFIG_BOOTARGS    	"root=ramfs devfs=mount console=ttySA0,9600" */
+/*#define CONFIG_BOOTARGS	"root=ramfs devfs=mount console=ttySA0,9600" */
 
 #define CONFIG_ETHADDR		00:04:f3:ff:ff:fb /*@TODO unset */
 #define CONFIG_NETMASK          255.255.255.0

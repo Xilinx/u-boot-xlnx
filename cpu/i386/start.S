@@ -34,8 +34,8 @@
 .globl _i386boot_start
 _i386boot_start:
 _start:
-	movl    $0x18,%eax         	/* Load our segement registes, the
-					 * gdt have already been loaded by start16.S */
+	movl    $0x18,%eax	/* Load our segement registes, the
+				 * gdt have already been loaded by start16.S */
 	movw    %ax,%fs
 	movw	%ax,%ds
 	movw    %ax,%gs
@@ -55,7 +55,7 @@ early_board_init_ret:
 	/* so we try to indicate progress */
 	movw	$0x01, %ax
 	movl	$.progress0, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress0:
 
 	/* size memory */
@@ -74,15 +74,15 @@ mem_init_ret:
 	/* indicate (lack of) progress */
 	movw	$0x81, %ax
 	movl	$.progress0a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress0a:
-	jmp 	die
+	jmp	die
 mem_ok:
 
 	/* indicate progress */
 	movw	$0x02, %ax
 	movl	$.progress1, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress1:
 
 	/* create a stack after the bss */
@@ -104,7 +104,7 @@ no_stack:
 	/* indicate (lack of) progress */
 	movw	$0x82, %ax
 	movl	$.progress1a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress1a:
 	jmp die
 
@@ -113,7 +113,7 @@ stack_ok:
 	/* indicate progress */
 	movw	$0x03, %ax
 	movl	$.progress2, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress2:
 
 	/* copy data section to ram, size must be 4-byte aligned */
@@ -136,16 +136,16 @@ data_fail:
 	/* indicate (lack of) progress */
 	movw	$0x83, %ax
 	movl	$.progress2a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress2a:
-	jmp 	die
+	jmp	die
 
 data_ok:
 
 	/* indicate progress */
 	movw	$0x04, %ax
 	movl	$.progress3, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress3:
 
 	/* clear bss section in ram, size must be 4-byte aligned  */
@@ -162,15 +162,15 @@ bss:
 	movl	$0, (%edi)
 	add	$4, %edi
 	loop	bss
-	jmp 	bss_ok
+	jmp	bss_ok
 
 bss_fail:
 	/* indicate (lack of) progress */
 	movw	$0x84, %ax
 	movl	$.progress3a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress3a:
-	jmp 	die
+	jmp	die
 
 bss_ok:
 
@@ -180,7 +180,7 @@ bss_ok:
 	/* indicate progress */
 	movw	$0x05, %ax
 	movl	$.progress4, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress4:
 
 	call	start_i386boot  /* Enter, U-boot! */
@@ -188,7 +188,7 @@ bss_ok:
 	/* indicate (lack of) progress */
 	movw	$0x85, %ax
 	movl	$.progress4a, %ebp
-	jmp	__show_boot_progress
+	jmp	show_boot_progress
 .progress4a:
 
 die:	hlt

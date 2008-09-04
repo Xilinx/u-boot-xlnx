@@ -23,13 +23,14 @@
  */
 
 #include <common.h>
-#if defined(CONFIG_OF_FLAT_TREE)
-#include <ft_build.h>
-#elif defined(CONFIG_OF_LIBFDT)
+#if defined(CONFIG_OF_LIBFDT)
 #include <libfdt.h>
 #endif
 #include <pci.h>
 #include <mpc83xx.h>
+#include <vsc7385.h>
+#include <ns16550.h>
+#include <nand.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -51,6 +52,7 @@ int checkboard(void)
 	return 0;
 }
 
+#ifndef CONFIG_NAND_SPL
 static struct pci_region pci_regions[] = {
 	{
 		bus_start: CFG_PCI1_MEM_BASE,
@@ -100,22 +102,61 @@ void pci_init_board(void)
 	mpc83xx_pci_init(1, reg, warmboot);
 }
 
+/*
+ * Miscellaneous late-boot configurations
+ *
+ * If a VSC7385 microcode image is present, then upload it.
+*/
+int misc_init_r(void)
+{
+	int rc = 0;
+
+#ifdef CONFIG_VSC7385_IMAGE
+	if (vsc7385_upload_firmware((void *) CONFIG_VSC7385_IMAGE,
+		CONFIG_VSC7385_IMAGE_SIZE)) {
+		puts("Failure uploading VSC7385 microcode.\n");
+		rc = 1;
+	}
+#endif
+
+	return rc;
+}
+
 #if defined(CONFIG_OF_BOARD_SETUP)
 void ft_board_setup(void *blob, bd_t *bd)
 {
-#if defined(CONFIG_OF_FLAT_TREE)
-	u32 *p;
-	int len;
-
-	p = ft_get_prop(blob, "/memory/reg", &len);
-	if (p != NULL) {
-		*p++ = cpu_to_be32(bd->bi_memstart);
-		*p = cpu_to_be32(bd->bi_memsize);
-	}
-#endif
 	ft_cpu_setup(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 #endif
+}
+#endif
+#else /* CONFIG_NAND_SPL */
+void board_init_f(ulong bootflag)
+{
+	board_early_init_f();
+	NS16550_init((NS16550_t)(CFG_IMMR + 0x4500),
+	             CFG_NS16550_CLK / 16 / CONFIG_BAUDRATE);
+	puts("NAND boot... ");
+	init_timebase();
+	initdram(0);
+	relocate_code(CFG_NAND_U_BOOT_RELOC + 0x10000, (gd_t *)gd,
+	              CFG_NAND_U_BOOT_RELOC);
+}
+
+void board_init_r(gd_t *gd, ulong dest_addr)
+{
+	nand_boot();
+}
+
+void putc(char c)
+{
+	if (gd->flags & GD_FLG_SILENT)
+		return;
+
+	if (c == '\n')
+		NS16550_putc((NS16550_t)(CFG_IMMR + 0x4500), '\r');
+
+	NS16550_putc((NS16550_t)(CFG_IMMR + 0x4500), c);
 }
 #endif

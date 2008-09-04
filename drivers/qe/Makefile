@@ -22,12 +22,14 @@
 
 include $(TOPDIR)/config.mk
 
-LIB 	:= $(obj)qe.a
+LIB	:= $(obj)qe.a
 
-COBJS 	:= qe.o uccf.o uec.o uec_phy.o
+COBJS-$(CONFIG_OF_LIBFDT) += fdt.o
+COBJS-$(CONFIG_QE) += qe.o uccf.o uec.o uec_phy.o
 
-SRCS 	:= $(COBJS:.o=.c)
-OBJS 	:= $(addprefix $(obj),$(COBJS))
+COBJS	:= $(COBJS-y)
+SRCS	:= $(COBJS:.o=.c)
+OBJS	:= $(addprefix $(obj),$(COBJS))
 
 all:	$(LIB)
 

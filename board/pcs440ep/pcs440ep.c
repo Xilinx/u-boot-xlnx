@@ -175,7 +175,7 @@ int board_early_init_f(void)
 	 *-------------------------------------------------------------------*/
 	mfsdr(sdr_pci0, reg);
 	mtsdr(sdr_pci0, 0x80000000 | reg);	/* PCI arbiter enabled */
-	mtsdr(sdr_pfc0, 0x00000100);	/* Pin function: enable GPIO49-63 */
+	mtsdr(sdr_pfc0, 0x00000000);	/* Pin function: enable GPIO49-63 */
 	mtsdr(sdr_pfc1, 0x00048000);	/* Pin function: UART0 has 4 pins, select IRQ5 */
 
 	return 0;
@@ -537,7 +537,7 @@ void spd_ddr_init_hang (void)
 	}
 }
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long dram_size = 0;
 
@@ -552,44 +552,6 @@ long int initdram (int board_type)
 
 	return dram_size;
 }
-
-#if defined(CFG_DRAM_TEST)
-int testdram(void)
-{
-	unsigned long *mem = (unsigned long *)0;
-	const unsigned long kend = (1024 / sizeof(unsigned long));
-	unsigned long k, n;
-
-	mtmsr(0);
-
-	for (k = 0; k < CFG_KBYTES_SDRAM;
-	     ++k, mem += (1024 / sizeof(unsigned long))) {
-		if ((k & 1023) == 0) {
-			printf("%3d MB\r", k / 1024);
-		}
-
-		memset(mem, 0xaaaaaaaa, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0xaaaaaaaa) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-
-		memset(mem, 0x55555555, 1024);
-		for (n = 0; n < kend; ++n) {
-			if (mem[n] != 0x55555555) {
-				printf("SDRAM test fails at: %08x\n",
-				       (uint) & mem[n]);
-				return 1;
-			}
-		}
-	}
-	printf("SDRAM test passes\n");
-	return 0;
-}
-#endif
 
 /*************************************************************************
  *  pci_pre_init
@@ -798,8 +760,8 @@ int do_led (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(
- 	led,	2,	1,	do_led,
- 	"led [bitmask]   - set the DIAG-LED\n",
+	led,	2,	1,	do_led,
+	"led [bitmask]   - set the DIAG-LED\n",
 	"[bitmask] 0x01 = DIAG 1 on\n"
 	"              0x02 = DIAG 2 on\n"
 	"              0x04 = DIAG 3 on\n"
@@ -860,8 +822,8 @@ int do_sha1 (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(
- 	sha1,	4,	1,	do_sha1,
- 	"sha1    - calculate the SHA1 Sum\n",
+	sha1,	4,	1,	do_sha1,
+	"sha1    - calculate the SHA1 Sum\n",
 	"address len [addr]  calculate the SHA1 sum [save at addr]\n"
 	"     -p calculate the SHA1 sum from the U-Boot image in flash and print\n"
 	"     -c check the U-Boot image in flash\n"

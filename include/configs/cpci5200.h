@@ -50,6 +50,8 @@
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
 #define BOOTFLAG_WARM		0x02	/* Software reboot	     */
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported 	  */
+
 /*
  * Serial console configuration
  */
@@ -69,6 +71,7 @@
 #define CONFIG_PCI_PNP		1
 #endif
 #define CONFIG_PCI_SCAN_SHOW	1
+#define CONFIG_PCIAUTO_SKIP_HOST_BRIDGE	1
 
 #define CONFIG_PCI_MEM_BUS	0x40000000
 #define CONFIG_PCI_MEM_PHYS	CONFIG_PCI_MEM_BUS

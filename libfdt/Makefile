@@ -27,10 +27,10 @@ LIB	= $(obj)libfdt.a
 
 SOBJS	=
 
-COBJS	= fdt.o  fdt_ro.o  fdt_rw.o  fdt_strerror.o  fdt_sw.o  fdt_wip.o
+COBJS-$(CONFIG_OF_LIBFDT) += fdt.o fdt_ro.o fdt_rw.o fdt_strerror.o fdt_sw.o fdt_wip.o
 
-
-SRCS 	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
+COBJS	:= $(COBJS-y)
+SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(SOBJS) $(COBJS))
 
 $(LIB):	$(obj).depend $(OBJS)

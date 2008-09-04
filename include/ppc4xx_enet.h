@@ -102,6 +102,8 @@ typedef struct emac_4xx_hw_st {
     uint32_t		emac_ier;
     volatile mal_desc_t *tx;
     volatile mal_desc_t *rx;
+    u32			tx_phys;
+    u32			rx_phys;
     bd_t		*bis;	/* for eth_init upon mal error */
     mal_desc_t		*alloc_tx_buf;
     mal_desc_t		*alloc_rx_buf;
@@ -129,7 +131,7 @@ typedef struct emac_4xx_hw_st {
 } EMAC_4XX_HW_ST, *EMAC_4XX_HW_PST;
 
 
-#if defined(CONFIG_440GX)
+#if defined(CONFIG_440GX) || defined(CONFIG_460GT)
 #define EMAC_NUM_DEV		4
 #elif (defined(CONFIG_440) || defined(CONFIG_405EP)) &&	\
 	defined(CONFIG_NET_MULTI) &&			\
@@ -146,13 +148,29 @@ typedef struct emac_4xx_hw_st {
 #endif
 
 #if defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
-    defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_405EX)
 #define SDR0_PFC1_EM_1000	(0x00200000)
 #endif
 
-/*ZMII Bridge Register addresses */
+/*
+ * XMII bridge configurations for those systems (e.g. 405EX(r)) that do
+ * not have a pin function control (PFC) register to otherwise determine
+ * the bridge configuration.
+ */
+#define EMAC_PHY_MODE_NONE		0
+#define EMAC_PHY_MODE_NONE_RGMII	1
+#define EMAC_PHY_MODE_RGMII_NONE	2
+#define EMAC_PHY_MODE_RGMII_RGMII	3
+#define EMAC_PHY_MODE_NONE_GMII		4
+#define EMAC_PHY_MODE_GMII_NONE		5
+#define EMAC_PHY_MODE_NONE_MII		6
+#define EMAC_PHY_MODE_MII_NONE		7
+
+/* ZMII Bridge Register addresses */
 #if defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
-    defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT)
 #define ZMII_BASE		(CFG_PERIPHERAL_BASE + 0x0D00)
 #else
 #define ZMII_BASE		(CFG_PERIPHERAL_BASE + 0x0780)
@@ -160,9 +178,6 @@ typedef struct emac_4xx_hw_st {
 #define ZMII_FER		(ZMII_BASE)
 #define ZMII_SSR		(ZMII_BASE + 4)
 #define ZMII_SMIISR		(ZMII_BASE + 8)
-
-#define ZMII_RMII		0x22000000
-#define ZMII_MDI0		0x80000000
 
 /* ZMII FER Register Bit Definitions */
 #define ZMII_FER_DIS		(0x0)
@@ -202,33 +217,44 @@ typedef struct emac_4xx_hw_st {
 /* RGMII Register Addresses */
 #if defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 #define RGMII_BASE		(CFG_PERIPHERAL_BASE + 0x1000)
+#elif defined(CONFIG_460EX) || defined(CONFIG_460GT)
+#define RGMII_BASE		(CFG_PERIPHERAL_BASE + 0x1500)
+#elif defined(CONFIG_405EX)
+#define RGMII_BASE		(CFG_PERIPHERAL_BASE + 0xB00)
 #else
 #define RGMII_BASE		(CFG_PERIPHERAL_BASE + 0x0790)
 #endif
 #define RGMII_FER		(RGMII_BASE + 0x00)
 #define RGMII_SSR		(RGMII_BASE + 0x04)
 
+#if defined(CONFIG_460GT)
+#define RGMII1_BASE_OFFSET	0x100
+#endif
+
 /* RGMII Function Enable (FER) Register Bit Definitions */
-/* Note: for EMAC 2 and 3 only, 440GX only */
 #define RGMII_FER_DIS		(0x00)
 #define RGMII_FER_RTBI		(0x04)
 #define RGMII_FER_RGMII		(0x05)
 #define RGMII_FER_TBI		(0x06)
 #define RGMII_FER_GMII		(0x07)
+#define RGMII_FER_MII		(RGMII_FER_GMII)
 
 #define RGMII_FER_V(__x)	((__x - 2) * 4)
+
+#define RGMII_FER_MDIO(__x)	(1 << (19 - (__x)))
 
 /* RGMII Speed Selection Register Bit Definitions */
 #define RGMII_SSR_SP_10MBPS	(0x00)
 #define RGMII_SSR_SP_100MBPS	(0x02)
 #define RGMII_SSR_SP_1000MBPS	(0x04)
 
-#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+#if defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 #define RGMII_SSR_V(__x)	((__x) * 8)
 #else
 #define RGMII_SSR_V(__x)	((__x -2) * 8)
 #endif
-
 
 /*---------------------------------------------------------------------------+
 |  TCP/IP Acceleration Hardware (TAH) 440GX Only
@@ -298,16 +324,17 @@ typedef struct emac_4xx_hw_st {
 /* Ethernet MAC Regsiter Addresses */
 #if defined(CONFIG_440)
 #if defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
-    defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
+    defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT)
 #define EMAC_BASE		(CFG_PERIPHERAL_BASE + 0x0E00)
 #else
 #define EMAC_BASE		(CFG_PERIPHERAL_BASE + 0x0800)
 #endif
 #else
-#if defined(CONFIG_405EZ)
-#define EMAC_BASE 		0xEF600900
+#if defined(CONFIG_405EZ) || defined(CONFIG_405EX)
+#define EMAC_BASE		0xEF600900
 #else
-#define EMAC_BASE 		0xEF600800
+#define EMAC_BASE		0xEF600800
 #endif
 #endif
 
@@ -338,7 +365,9 @@ typedef struct emac_4xx_hw_st {
 /* on 440GX EMAC_MR1 has a different layout! */
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE)
+    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
+    defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
+    defined(CONFIG_405EX)
 /* MODE Reg 1 */
 #define EMAC_M1_FDE		(0x80000000)
 #define EMAC_M1_ILE		(0x40000000)
@@ -349,12 +378,14 @@ typedef struct emac_4xx_hw_st {
 #define EMAC_M1_IST		(0x01000000)
 #define EMAC_M1_MF_1000MBPS	(0x00800000)	/* 0's for 10MBPS */
 #define EMAC_M1_MF_100MBPS	(0x00400000)
-#define EMAC_M1_RFS_16K		(0x00280000)	/* ~4k for 512 byte */
-#define EMAC_M1_RFS_8K		(0x00200000)	/* ~4k for 512 byte */
-#define EMAC_M1_RFS_4K		(0x00180000)	/* ~4k for 512 byte */
+#define EMAC_M1_RFS_MASK	(0x00380000)
+#define EMAC_M1_RFS_16K		(0x00280000)
+#define EMAC_M1_RFS_8K		(0x00200000)
+#define EMAC_M1_RFS_4K		(0x00180000)
 #define EMAC_M1_RFS_2K		(0x00100000)
 #define EMAC_M1_RFS_1K		(0x00080000)
-#define EMAC_M1_TX_FIFO_16K	(0x00050000)	/* 0's for 512 byte */
+#define EMAC_M1_TX_FIFO_MASK	(0x00070000)
+#define EMAC_M1_TX_FIFO_16K	(0x00050000)
 #define EMAC_M1_TX_FIFO_8K	(0x00040000)
 #define EMAC_M1_TX_FIFO_4K	(0x00030000)
 #define EMAC_M1_TX_FIFO_2K	(0x00020000)
@@ -379,11 +410,15 @@ typedef struct emac_4xx_hw_st {
 #define EMAC_M1_IST		0x01000000
 #define EMAC_M1_MF_1000MBPS	0x00800000	/* 0's for 10MBPS */
 #define EMAC_M1_MF_100MBPS	0x00400000
-#define EMAC_M1_RFS_4K		0x00300000	/* ~4k for 512 byte */
+#define EMAC_M1_RFS_MASK	0x00300000
+#define EMAC_M1_RFS_4K		0x00300000
 #define EMAC_M1_RFS_2K		0x00200000
 #define EMAC_M1_RFS_1K		0x00100000
-#define EMAC_M1_TX_FIFO_2K	0x00080000	/* 0's for 512 byte */
+#define EMAC_M1_RFS_512		0x00000000
+#define EMAC_M1_TX_FIFO_MASK	0x000c0000
+#define EMAC_M1_TX_FIFO_2K	0x00080000
 #define EMAC_M1_TX_FIFO_1K	0x00040000
+#define EMAC_M1_TX_FIFO_512	0x00000000
 #define EMAC_M1_TR0_DEPEND	0x00010000	/* 0'x for single packet */
 #define EMAC_M1_TR0_MULTI	0x00008000
 #define EMAC_M1_TR1_DEPEND	0x00004000
@@ -392,6 +427,15 @@ typedef struct emac_4xx_hw_st {
 #define EMAC_M1_JUMBO_ENABLE	0x00001000
 #endif /* defined(CONFIG_440EP) || defined(CONFIG_440GR) */
 #endif /* defined(CONFIG_440GX) */
+
+#define EMAC_MR1_FIFO_MASK	(EMAC_M1_RFS_MASK | EMAC_M1_TX_FIFO_MASK)
+#if defined(CONFIG_405EZ)
+/* 405EZ only supports 512 bytes fifos */
+#define EMAC_MR1_FIFO_SIZE	(EMAC_M1_RFS_512 | EMAC_M1_TX_FIFO_512)
+#else
+/* Set receive fifo to 4k and tx fifo to 2k */
+#define EMAC_MR1_FIFO_SIZE	(EMAC_M1_RFS_4K | EMAC_M1_TX_FIFO_2K)
+#endif
 
 /* Transmit Mode Register 0 */
 #define EMAC_TXM0_GNP0		(0x80000000)

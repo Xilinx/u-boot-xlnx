@@ -38,6 +38,9 @@
 #if defined(CONFIG_CMD_IDE)
 #include <ide.h>
 #endif
+#if defined(CONFIG_CMD_SATA)
+#include <sata.h>
+#endif
 #if defined(CONFIG_CMD_SCSI)
 #include <scsi.h>
 #endif
@@ -87,9 +90,8 @@ void doc_init (void);
     defined(CONFIG_SOFT_I2C)
 #include <i2c.h>
 #endif
-#if defined(CONFIG_CMD_NAND)
-void nand_init (void);
-#endif
+#include <spi.h>
+#include <nand.h>
 
 static char *failed = "*** failed ***\n";
 
@@ -112,6 +114,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #define	TOTAL_MALLOC_LEN	(CFG_MALLOC_LEN + CFG_ENV_SIZE)
 #else
 #define	TOTAL_MALLOC_LEN	CFG_MALLOC_LEN
+#endif
+
+#if !defined(CFG_MEM_TOP_HIDE)
+#define CFG_MEM_TOP_HIDE	0
 #endif
 
 extern ulong __init_end;
@@ -160,19 +166,6 @@ void *sbrk (ptrdiff_t increment)
 	}
 	mem_malloc_brk = new;
 	return ((void *) old);
-}
-
-char *strmhz (char *buf, long hz)
-{
-	long l, n;
-	long m;
-
-	n = hz / 1000000L;
-	l = sprintf (buf, "%ld", n);
-	m = (hz % 1000000L) / 1000L;
-	if (m != 0)
-		sprintf (buf + l, ".%03ld", m);
-	return (buf);
 }
 
 /*
@@ -242,6 +235,16 @@ static int init_func_i2c (void)
 {
 	puts ("I2C:   ");
 	i2c_init (CFG_I2C_SPEED, CFG_I2C_SLAVE);
+	puts ("ready\n");
+	return (0);
+}
+#endif
+
+#if defined(CONFIG_HARD_SPI)
+static int init_func_spi (void)
+{
+	puts ("SPI:   ");
+	spi_init ();
 	puts ("ready\n");
 	return (0);
 }
@@ -329,6 +332,9 @@ init_fnc_t *init_sequence[] = {
 #if defined(CONFIG_HARD_I2C) || defined(CONFIG_SOFT_I2C)
 	init_func_i2c,
 #endif
+#if defined(CONFIG_HARD_SPI)
+	init_func_spi,
+#endif
 #if defined(CONFIG_DTT)		/* Digital Thermometers and Thermostats */
 	dtt_init,
 #endif
@@ -345,6 +351,20 @@ init_fnc_t *init_sequence[] = {
 	NULL,			/* Terminate this list */
 };
 
+#ifndef CONFIG_MAX_MEM_MAPPED
+#define CONFIG_MAX_MEM_MAPPED (256 << 20)
+#endif
+ulong get_effective_memsize(void)
+{
+#ifndef	CONFIG_VERY_BIG_RAM
+	return gd->ram_size;
+#else
+	/* limit stack to what we can reasonable map */
+	return ((gd->ram_size > CONFIG_MAX_MEM_MAPPED) ?
+		 CONFIG_MAX_MEM_MAPPED : gd->ram_size);
+#endif
+}
+
 /************************************************************************
  *
  * This is the first part of the initialization sequence that is
@@ -360,6 +380,13 @@ init_fnc_t *init_sequence[] = {
  *
  ************************************************************************
  */
+
+#ifdef CONFIG_LOGBUFFER
+unsigned long logbuffer_base(void)
+{
+	return CFG_SDRAM_BASE + get_effective_memsize() - LOGBUFF_LEN;
+}
+#endif
 
 void board_init_f (ulong bootflag)
 {
@@ -379,7 +406,8 @@ void board_init_f (ulong bootflag)
 	/* compiler optimization barrier needed for GCC >= 3.4 */
 	__asm__ __volatile__("": : :"memory");
 
-#if !defined(CONFIG_CPM2) && !defined(CONFIG_MPC83XX)
+#if !defined(CONFIG_CPM2) && !defined(CONFIG_MPC83XX) && \
+    !defined(CONFIG_MPC85xx) && !defined(CONFIG_MPC86xx)
 	/* Clear initial global data */
 	memset ((void *) gd, 0, sizeof (gd_t));
 #endif
@@ -395,6 +423,7 @@ void board_init_f (ulong bootflag)
 	 * relocate the code and continue running from DRAM.
 	 *
 	 * Reserve memory at end of RAM for (top down in that order):
+	 *  - area that won't get touched by U-Boot and Linux (optional)
 	 *  - kernel log buffer
 	 *  - protected RAM
 	 *  - LCD framebuffer
@@ -403,18 +432,26 @@ void board_init_f (ulong bootflag)
 	 */
 	len = (ulong)&_end - CFG_MONITOR_BASE;
 
-#ifndef	CONFIG_VERY_BIG_RAM
-	addr = CFG_SDRAM_BASE + gd->ram_size;
-#else
-	/* only allow stack below 256M */
-	addr = CFG_SDRAM_BASE +
-	       (gd->ram_size > 256 << 20) ? 256 << 20 : gd->ram_size;
-#endif
+	/*
+	 * Subtract specified amount of memory to hide so that it won't
+	 * get "touched" at all by U-Boot. By fixing up gd->ram_size
+	 * the Linux kernel should now get passed the now "corrected"
+	 * memory size and won't touch it either. This should work
+	 * for arch/ppc and arch/powerpc. Only Linux board ports in
+	 * arch/powerpc with bootwrapper support, that recalculate the
+	 * memory size from the SDRAM controller setup will have to
+	 * get fixed.
+	 */
+	gd->ram_size -= CFG_MEM_TOP_HIDE;
+
+	addr = CFG_SDRAM_BASE + get_effective_memsize();
 
 #ifdef CONFIG_LOGBUFFER
+#ifndef CONFIG_ALT_LB_ADDR
 	/* reserve kernel log buffer */
 	addr -= (LOGBUFF_RESERVE);
 	debug ("Reserving %dk for kernel logbuffer at %08lx\n", LOGBUFF_LEN, addr);
+#endif
 #endif
 
 #ifdef CONFIG_PRAM
@@ -474,11 +511,11 @@ void board_init_f (ulong bootflag)
 	addr_sp -= sizeof (bd_t);
 	bd = (bd_t *) addr_sp;
 	gd->bd = bd;
-	debug ("Reserving %d Bytes for Board Info at: %08lx\n",
+	debug ("Reserving %zu Bytes for Board Info at: %08lx\n",
 			sizeof (bd_t), addr_sp);
 	addr_sp -= sizeof (gd_t);
 	id = (gd_t *) addr_sp;
-	debug ("Reserving %d Bytes for Global Data at: %08lx\n",
+	debug ("Reserving %zu Bytes for Global Data at: %08lx\n",
 			sizeof (gd_t), addr_sp);
 
 	/*
@@ -555,6 +592,9 @@ void board_init_f (ulong bootflag)
 	bd->bi_sccfreq = gd->scc_clk;
 	bd->bi_vco     = gd->vco_out;
 #endif /* CONFIG_CPM2 */
+#if defined(CONFIG_MPC512X)
+	bd->bi_ipsfreq = gd->ips_clk;
+#endif /* CONFIG_MPC512X */
 #if defined(CONFIG_MPC5xxx)
 	bd->bi_ipbfreq = gd->ipb_clk;
 	bd->bi_pcifreq = gd->pci_clk;
@@ -572,7 +612,7 @@ void board_init_f (ulong bootflag)
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 	bd->bi_pci_busfreq = get_PCI_freq ();
 	bd->bi_opbfreq = get_OPB_freq ();
-#elif defined(CONFIG_XILINX_ML300)
+#elif defined(CONFIG_XILINX_405)
 	bd->bi_pci_busfreq = get_PCI_freq ();
 #endif
 #endif
@@ -733,7 +773,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		 */
 		s = getenv ("flashchecksum");
 		if (s && (*s == 'y')) {
-			printf ("  CRC: %08lX",
+			printf ("  CRC: %08X",
 				crc32 (0, (const unsigned char *) CFG_FLASH_BASE, flash_size)
 			);
 		}
@@ -832,11 +872,16 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #if defined(CONFIG_SC3)
 	sc3_read_eeprom();
 #endif
+
+#if defined (CFG_ID_EEPROM) || defined (CFG_I2C_MAC_OFFSET)
+	mac_read_from_eeprom();
+#endif
+
 	s = getenv ("ethaddr");
 #if defined (CONFIG_MBX) || \
     defined (CONFIG_RPXCLASSIC) || \
     defined(CONFIG_IAD210) || \
-    defined(CONFIG_V38B) ||\
+    defined(CONFIG_V38B) || \
     defined(CONFIG_XILINX_ML507) ||\
     defined(CONFIG_XILINX_ML405)
 	if (s == NULL)
@@ -901,10 +946,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	}
 #endif
 
-#ifdef CFG_ID_EEPROM
-	mac_read_from_eeprom();
-#endif
-
 #if defined(CONFIG_TQM8xxL) || defined(CONFIG_TQM8260) || \
     defined(CONFIG_TQM8272) || \
     defined(CONFIG_CCM) || defined(CONFIG_KUP4K) || \
@@ -929,6 +970,11 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	/* Initialize the jump table for applications */
 	jumptable_init ();
+
+#if defined(CONFIG_API)
+	/* Initialize API */
+	api_init ();
+#endif
 
 	/* Initialize the console (after the relocation and devices init) */
 	console_init_r ();
@@ -1060,6 +1106,11 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 #endif
 
+#if defined(CONFIG_CMD_SATA)
+	puts ("SATA:  ");
+	sata_initialize ();
+#endif
+
 #ifdef CONFIG_LAST_STAGE_INIT
 	WATCHDOG_RESET ();
 	/*
@@ -1095,8 +1146,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		pram=0;
 #endif
 #ifdef CONFIG_LOGBUFFER
+#ifndef CONFIG_ALT_LB_ADDR
 		/* Also take the logbuffer into account (pram is in kB) */
 		pram += (LOGBUFF_LEN+LOGBUFF_OVERHEAD)/1024;
+#endif
 #endif
 		sprintf ((char *)memsz, "%ldk", (bd->bi_memsize / 1024) - pram);
 		setenv ("mem", (char *)memsz);

@@ -42,6 +42,8 @@
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from FLASH  */
 #define BOOTFLAG_WARM		0x02	/* Software reboot	     */
 
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
+
 /*
  * Serial console configuration
  */
@@ -140,7 +142,7 @@
 #define CONFIG_BOOTDELAY	5	/* autoboot after 5 seconds */
 
 #define CONFIG_PREBOOT	"echo;" \
-	"echo Type \"run flash_nfs\" to mount root filesystem over NFS;" \
+	"echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;" \
 	"echo"
 
 #undef	CONFIG_BOOTARGS
@@ -253,7 +255,7 @@
 
 /* use CFI flash driver */
 #define CFG_FLASH_CFI		1	/* Flash is CFI conformant */
-#define CFG_FLASH_CFI_DRIVER	1	/* Use the common driver */
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver */
 #define CFG_FLASH_BANKS_LIST	{ CFG_BOOTCS_START }
 #define CFG_FLASH_EMPTY_INFO
 #define CFG_FLASH_SIZE		0x04000000 /* 64 MByte */
@@ -335,7 +337,7 @@
 #else
 #define CFG_MONITOR_LEN		(384 << 10)	/* Reserve 384 kB for Monitor	*/
 #endif /* CONFIG_TQM5200_B */
-#define CFG_MALLOC_LEN		(256 << 10)	/* Reserve 256 kB for malloc()	*/
+#define CFG_MALLOC_LEN		(1024 << 10)	/* Reserve 1024 kB for malloc()	*/
 #define CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
 
 /*
@@ -392,6 +394,7 @@
  */
 #define CFG_LONGHELP			/* undef to save memory	    */
 #define CFG_PROMPT		"=> "	/* Monitor Command Prompt   */
+#define CONFIG_CMDLINE_EDITING	1	/* add command line history */
 #if defined(CONFIG_CMD_KGDB)
 #define CFG_CBSIZE		1024	/* Console I/O Buffer Size  */
 #else

@@ -35,6 +35,7 @@
 #endif
 
 #if (defined(CONFIG_CMD_IDE) || \
+     defined(CONFIG_CMD_SATA) || \
      defined(CONFIG_CMD_SCSI) || \
      defined(CONFIG_CMD_USB) || \
      defined(CONFIG_MMC) || \
@@ -48,6 +49,9 @@ struct block_drvr {
 static const struct block_drvr block_drvr[] = {
 #if defined(CONFIG_CMD_IDE)
 	{ .name = "ide", .get_dev = ide_get_dev, },
+#endif
+#if defined(CONFIG_CMD_SATA)
+	{.name = "sata", .get_dev = sata_get_dev, },
 #endif
 #if defined(CONFIG_CMD_SCSI)
 	{ .name = "scsi", .get_dev = scsi_get_dev, },
@@ -87,6 +91,7 @@ block_dev_desc_t *get_dev(char* ifname, int dev)
 #endif
 
 #if (defined(CONFIG_CMD_IDE) || \
+     defined(CONFIG_CMD_SATA) || \
      defined(CONFIG_CMD_SCSI) || \
      defined(CONFIG_CMD_USB) || \
      defined(CONFIG_MMC) || \
@@ -104,38 +109,45 @@ void dev_print (block_dev_desc_t *dev_desc)
 	lbaint_t lba512;
 #endif
 
-	if (dev_desc->type==DEV_TYPE_UNKNOWN) {
-		puts ("not available\n");
-		return;
-	}
-	if (dev_desc->if_type==IF_TYPE_SCSI)  {
-		printf ("(%d:%d) ", dev_desc->target,dev_desc->lun);
-	}
-	if (dev_desc->if_type==IF_TYPE_IDE) {
+	switch (dev_desc->if_type) {
+	case IF_TYPE_SCSI:
+		printf ("(%d:%d) Vendor: %s Prod.: %s Rev: %s\n",
+			dev_desc->target,dev_desc->lun,
+			dev_desc->vendor,
+			dev_desc->product,
+			dev_desc->revision);
+		break;
+	case IF_TYPE_IDE:
+	case IF_TYPE_SATA:
 		printf ("Model: %s Firm: %s Ser#: %s\n",
 			dev_desc->vendor,
 			dev_desc->revision,
 			dev_desc->product);
-	} else {
-		printf ("Vendor: %s Prod.: %s Rev: %s\n",
-			dev_desc->vendor,
-			dev_desc->product,
-			dev_desc->revision);
+		break;
+	case IF_TYPE_UNKNOWN:
+	default:
+		puts ("not available\n");
+		return;
 	}
 	puts ("            Type: ");
 	if (dev_desc->removable)
 		puts ("Removable ");
 	switch (dev_desc->type & 0x1F) {
-		case DEV_TYPE_HARDDISK: puts ("Hard Disk");
-					break;
-		case DEV_TYPE_CDROM: 	puts ("CD ROM");
-					break;
-		case DEV_TYPE_OPDISK: 	puts ("Optical Device");
-					break;
-		case DEV_TYPE_TAPE: 	puts ("Tape");
-					break;
-		default:		printf ("# %02X #", dev_desc->type & 0x1F);
-					break;
+	case DEV_TYPE_HARDDISK:
+		puts ("Hard Disk");
+		break;
+	case DEV_TYPE_CDROM:
+		puts ("CD ROM");
+		break;
+	case DEV_TYPE_OPDISK:
+		puts ("Optical Device");
+		break;
+	case DEV_TYPE_TAPE:
+		puts ("Tape");
+		break;
+	default:
+		printf ("# %02X #", dev_desc->type & 0x1F);
+		break;
 	}
 	puts ("\n");
 	if ((dev_desc->lba * dev_desc->blksz)>0L) {
@@ -177,6 +189,7 @@ void dev_print (block_dev_desc_t *dev_desc)
 #endif
 
 #if (defined(CONFIG_CMD_IDE) || \
+     defined(CONFIG_CMD_SATA) || \
      defined(CONFIG_CMD_SCSI) || \
      defined(CONFIG_CMD_USB) || \
      defined(CONFIG_MMC)		|| \
@@ -269,18 +282,27 @@ static void print_part_header (const char *type, block_dev_desc_t * dev_desc)
 {
 	puts ("\nPartition Map for ");
 	switch (dev_desc->if_type) {
-		case IF_TYPE_IDE:  	puts ("IDE");
-					break;
-		case IF_TYPE_SCSI: 	puts ("SCSI");
-					break;
-		case IF_TYPE_ATAPI:	puts ("ATAPI");
-					break;
-		case IF_TYPE_USB:	puts ("USB");
-					break;
-		case IF_TYPE_DOC:	puts ("DOC");
-					break;
-		default: 		puts ("UNKNOWN");
-					break;
+	case IF_TYPE_IDE:
+		puts ("IDE");
+		break;
+	case IF_TYPE_SATA:
+		puts ("SATA");
+		break;
+	case IF_TYPE_SCSI:
+		puts ("SCSI");
+		break;
+	case IF_TYPE_ATAPI:
+		puts ("ATAPI");
+		break;
+	case IF_TYPE_USB:
+		puts ("USB");
+		break;
+	case IF_TYPE_DOC:
+		puts ("DOC");
+		break;
+	default:
+		puts ("UNKNOWN");
+		break;
 	}
 	printf (" device %d  --   Partition Type: %s\n\n",
 			dev_desc->dev, type);

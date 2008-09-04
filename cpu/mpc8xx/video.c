@@ -115,9 +115,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define VIDEO_BURST_LEN		(VIDEO_COLS/8)
 
 #ifdef VIDEO_MODE_YUYV
-#define VIDEO_BG_COL 	0x80D880D8	/* Background color in YUYV format */
+#define VIDEO_BG_COL	0x80D880D8	/* Background color in YUYV format */
 #else
-#define VIDEO_BG_COL 	0xF8F8F8F8	/* Background color in RGB format */
+#define VIDEO_BG_COL	0xF8F8F8F8	/* Background color in RGB format */
 #endif
 
 /************************************************************************/
@@ -833,10 +833,10 @@ static void video_encoder_init (void)
 
 		puts ("[VIDEO ENCODER] Configuring the encoder...\n");
 
-		printf ("Sending %d bytes (@ %08lX) to I2C 0x%X:\n   ",
+		printf ("Sending %zu bytes (@ %08lX) to I2C 0x%lX:\n   ",
 			sizeof(video_encoder_data),
 			(ulong)video_encoder_data,
-			VIDEO_I2C_ADDR);
+			(ulong)VIDEO_I2C_ADDR);
 		for (i=0; i<sizeof(video_encoder_data); ++i) {
 			printf(" %02X", video_encoder_data[i]);
 		}

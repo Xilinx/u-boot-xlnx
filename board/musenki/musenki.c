@@ -35,7 +35,7 @@ int checkboard (void)
 
 }
 
-#if 0 	/* NOT USED */
+#if 0	/* NOT USED */
 int checkflash (void)
 {
 	/* TODO: XXX XXX XXX */
@@ -45,7 +45,7 @@ int checkflash (void)
 }
 #endif
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long size;
 	long new_bank0_end;

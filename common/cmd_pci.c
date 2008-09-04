@@ -30,15 +30,10 @@
  */
 
 #include <common.h>
-
-#ifdef CONFIG_PCI
-
 #include <command.h>
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <pci.h>
-
-#if defined(CONFIG_CMD_PCI)
 
 extern int cmd_get_data_size(char* arg, int default_size);
 
@@ -178,7 +173,7 @@ static char *pci_classes_str(u8 class)
  * Subroutine:  pci_header_show_brief
  *
  * Description: Reads and prints the header of the
- * 		specified PCI device in short form.
+ *		specified PCI device in short form.
  *
  * Inputs:	dev      Bus+Device+Function number
  *
@@ -564,7 +559,3 @@ U_BOOT_CMD(
 	"pci write[.b, .w, .l] b.d.f address value\n"
 	"    - write to CFG address\n"
 );
-
-#endif
-
-#endif /* CONFIG_PCI */

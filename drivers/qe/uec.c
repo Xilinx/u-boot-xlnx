@@ -29,8 +29,7 @@
 #include "uccf.h"
 #include "uec.h"
 #include "uec_phy.h"
-
-#if defined(CONFIG_QE)
+#include "miiphy.h"
 
 #ifdef CONFIG_UEC_ETH1
 static uec_info_t eth1_uec_info = {
@@ -40,8 +39,13 @@ static uec_info_t eth1_uec_info = {
 		.tx_clock	= CFG_UEC1_TX_CLK,
 		.eth_type	= CFG_UEC1_ETH_TYPE,
 	},
+#if (CFG_UEC1_ETH_TYPE == FAST_ETH)
+	.num_threads_tx		= UEC_NUM_OF_THREADS_1,
+	.num_threads_rx		= UEC_NUM_OF_THREADS_1,
+#else
 	.num_threads_tx		= UEC_NUM_OF_THREADS_4,
 	.num_threads_rx		= UEC_NUM_OF_THREADS_4,
+#endif
 	.riscTx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
 	.riscRx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
 	.tx_bd_ring_len		= 16,
@@ -58,8 +62,13 @@ static uec_info_t eth2_uec_info = {
 		.tx_clock	= CFG_UEC2_TX_CLK,
 		.eth_type	= CFG_UEC2_ETH_TYPE,
 	},
+#if (CFG_UEC2_ETH_TYPE == FAST_ETH)
+	.num_threads_tx		= UEC_NUM_OF_THREADS_1,
+	.num_threads_rx		= UEC_NUM_OF_THREADS_1,
+#else
 	.num_threads_tx		= UEC_NUM_OF_THREADS_4,
 	.num_threads_rx		= UEC_NUM_OF_THREADS_4,
+#endif
 	.riscTx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
 	.riscRx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
 	.tx_bd_ring_len		= 16,
@@ -68,6 +77,59 @@ static uec_info_t eth2_uec_info = {
 	.enet_interface		= CFG_UEC2_INTERFACE_MODE,
 };
 #endif
+#ifdef CONFIG_UEC_ETH3
+static uec_info_t eth3_uec_info = {
+	.uf_info		= {
+		.ucc_num	= CFG_UEC3_UCC_NUM,
+		.rx_clock	= CFG_UEC3_RX_CLK,
+		.tx_clock	= CFG_UEC3_TX_CLK,
+		.eth_type	= CFG_UEC3_ETH_TYPE,
+	},
+#if (CFG_UEC3_ETH_TYPE == FAST_ETH)
+	.num_threads_tx		= UEC_NUM_OF_THREADS_1,
+	.num_threads_rx		= UEC_NUM_OF_THREADS_1,
+#else
+	.num_threads_tx		= UEC_NUM_OF_THREADS_4,
+	.num_threads_rx		= UEC_NUM_OF_THREADS_4,
+#endif
+	.riscTx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
+	.riscRx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
+	.tx_bd_ring_len		= 16,
+	.rx_bd_ring_len		= 16,
+	.phy_address		= CFG_UEC3_PHY_ADDR,
+	.enet_interface		= CFG_UEC3_INTERFACE_MODE,
+};
+#endif
+#ifdef CONFIG_UEC_ETH4
+static uec_info_t eth4_uec_info = {
+	.uf_info		= {
+		.ucc_num	= CFG_UEC4_UCC_NUM,
+		.rx_clock	= CFG_UEC4_RX_CLK,
+		.tx_clock	= CFG_UEC4_TX_CLK,
+		.eth_type	= CFG_UEC4_ETH_TYPE,
+	},
+#if (CFG_UEC4_ETH_TYPE == FAST_ETH)
+	.num_threads_tx		= UEC_NUM_OF_THREADS_1,
+	.num_threads_rx		= UEC_NUM_OF_THREADS_1,
+#else
+	.num_threads_tx		= UEC_NUM_OF_THREADS_4,
+	.num_threads_rx		= UEC_NUM_OF_THREADS_4,
+#endif
+	.riscTx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
+	.riscRx			= QE_RISC_ALLOCATION_RISC1_AND_RISC2,
+	.tx_bd_ring_len		= 16,
+	.rx_bd_ring_len		= 16,
+	.phy_address		= CFG_UEC4_PHY_ADDR,
+	.enet_interface		= CFG_UEC4_INTERFACE_MODE,
+};
+#endif
+
+#define MAXCONTROLLERS	(4)
+
+static struct eth_device *devlist[MAXCONTROLLERS];
+
+u16 phy_read (struct uec_mii_info *mii_info, u16 regnum);
+void phy_write (struct uec_mii_info *mii_info, u16 regnum, u16 val);
 
 static int uec_mac_enable(uec_private_t *uec, comm_dir_e mode)
 {
@@ -325,7 +387,7 @@ static int uec_set_mac_duplex(uec_private_t *uec, int duplex)
 static int uec_set_mac_if_mode(uec_private_t *uec, enet_interface_e if_mode)
 {
 	enet_interface_e	enet_if_mode;
-	uec_info_t 		*uec_info;
+	uec_info_t		*uec_info;
 	uec_t			*uec_regs;
 	u32			upsmr;
 	u32			maccfg2;
@@ -361,6 +423,7 @@ static int uec_set_mac_if_mode(uec_private_t *uec, enet_interface_e if_mode)
 			maccfg2 |= MACCFG2_INTERFACE_MODE_BYTE;
 			upsmr |= (UPSMR_RPM | UPSMR_TBIM);
 			break;
+		case ENET_1000_RGMII_RXID:
 		case ENET_1000_RGMII:
 			maccfg2 |= MACCFG2_INTERFACE_MODE_BYTE;
 			upsmr |= UPSMR_RPM;
@@ -455,6 +518,8 @@ static int init_phy(struct eth_device *dev)
 	mii_info->mdio_write = &uec_write_phy_reg;
 
 	uec->mii_info = mii_info;
+
+	qe_set_mii_clk_src(uec->uec_info->uf_info.ucc_num);
 
 	if (init_mii_management_configuration(umii_regs)) {
 		printf("%s: The MII Bus is stuck!", dev->name);
@@ -562,22 +627,46 @@ static void adjust_link(struct eth_device *dev)
 static void phy_change(struct eth_device *dev)
 {
 	uec_private_t	*uec = (uec_private_t *)dev->priv;
-	uec_t		*uec_regs;
-	int		result = 0;
-
-	uec_regs = uec->uec_regs;
-
-	/* Delay 5s to give the PHY a chance to change the register state */
-	udelay(5000000);
 
 	/* Update the link, speed, duplex */
-	result = uec->mii_info->phyinfo->read_status(uec->mii_info);
+	uec->mii_info->phyinfo->read_status(uec->mii_info);
 
 	/* Adjust the interface according to speed */
-	if ((0 == result) || (uec->mii_info->link == 0)) {
-		adjust_link(dev);
-	}
+	adjust_link(dev);
 }
+
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII) \
+	&& !defined(BITBANGMII)
+
+/*
+ * Read a MII PHY register.
+ *
+ * Returns:
+ *  0 on success
+ */
+static int uec_miiphy_read(char *devname, unsigned char addr,
+			    unsigned char reg, unsigned short *value)
+{
+	*value = uec_read_phy_reg(devlist[0], addr, reg);
+
+	return 0;
+}
+
+/*
+ * Write a MII PHY register.
+ *
+ * Returns:
+ *  0 on success
+ */
+static int uec_miiphy_write(char *devname, unsigned char addr,
+			     unsigned char reg, unsigned short value)
+{
+	uec_write_phy_reg(devlist[0], addr, reg, value);
+
+	return 0;
+}
+
+#endif
 
 static int uec_set_mac_address(uec_private_t *uec, u8 *mac_addr)
 {
@@ -1101,28 +1190,60 @@ static int uec_startup(uec_private_t *uec)
 static int uec_init(struct eth_device* dev, bd_t *bd)
 {
 	uec_private_t		*uec;
-	int			err;
+	int			err, i;
+	struct phy_info         *curphy;
 
 	uec = (uec_private_t *)dev->priv;
 
 	if (uec->the_first_run == 0) {
-		/* Set up the MAC address */
-		if (dev->enetaddr[0] & 0x01) {
-			printf("%s: MacAddress is multcast address\n",
-				 __FUNCTION__);
-			return 0;
+		err = init_phy(dev);
+		if (err) {
+			printf("%s: Cannot initialize PHY, aborting.\n",
+			       dev->name);
+			return err;
 		}
-		uec_set_mac_address(uec, dev->enetaddr);
+
+		curphy = uec->mii_info->phyinfo;
+
+		if (curphy->config_aneg) {
+			err = curphy->config_aneg(uec->mii_info);
+			if (err) {
+				printf("%s: Can't negotiate PHY\n", dev->name);
+				return err;
+			}
+		}
+
+		/* Give PHYs up to 5 sec to report a link */
+		i = 50;
+		do {
+			err = curphy->read_status(uec->mii_info);
+			udelay(100000);
+		} while (((i-- > 0) && !uec->mii_info->link) || err);
+
+		if (err || i <= 0)
+			printf("warning: %s: timeout on PHY link\n", dev->name);
+
 		uec->the_first_run = 1;
 	}
+
+	/* Set up the MAC address */
+	if (dev->enetaddr[0] & 0x01) {
+		printf("%s: MacAddress is multcast address\n",
+			 __FUNCTION__);
+		return -1;
+	}
+	uec_set_mac_address(uec, dev->enetaddr);
+
 
 	err = uec_open(uec, COMM_DIR_RX_AND_TX);
 	if (err) {
 		printf("%s: cannot enable UEC device\n", dev->name);
-		return 0;
+		return -1;
 	}
 
-	return uec->mii_info->link;
+	phy_change(dev);
+
+	return (uec->mii_info->link ? 0 : -1);
 }
 
 static void uec_halt(struct eth_device* dev)
@@ -1230,6 +1351,7 @@ int uec_initialize(int index)
 	memset(uec, 0, sizeof(uec_private_t));
 
 	/* Init UEC private struct, they come from board.h */
+	uec_info = NULL;
 	if (index == 0) {
 #ifdef CONFIG_UEC_ETH1
 		uec_info = &eth1_uec_info;
@@ -1238,10 +1360,20 @@ int uec_initialize(int index)
 #ifdef CONFIG_UEC_ETH2
 		uec_info = &eth2_uec_info;
 #endif
+	} else if (index == 2) {
+#ifdef CONFIG_UEC_ETH3
+		uec_info = &eth3_uec_info;
+#endif
+	} else if (index == 3) {
+#ifdef CONFIG_UEC_ETH4
+		uec_info = &eth4_uec_info;
+#endif
 	} else {
 		printf("%s: index is illegal.\n", __FUNCTION__);
 		return -EINVAL;
 	}
+
+	devlist[index] = dev;
 
 	uec->uec_info = uec_info;
 
@@ -1265,14 +1397,10 @@ int uec_initialize(int index)
 		return err;
 	}
 
-	err = init_phy(dev);
-	if (err) {
-		printf("%s: Cannot initialize PHY, aborting.\n", dev->name);
-		return err;
-	}
-
-	phy_change(dev);
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII) \
+	&& !defined(BITBANGMII)
+	miiphy_register(dev->name, uec_miiphy_read, uec_miiphy_write);
+#endif
 
 	return 1;
 }
-#endif /* CONFIG_QE */

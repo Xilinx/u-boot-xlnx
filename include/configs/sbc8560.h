@@ -24,8 +24,8 @@
  * MA 02111-1307 USA
  */
 
-/* mpc8560ads board configuration file */
-/* please refer to doc/README.mpc85xx for more info */
+/* sbc8560 board configuration file */
+/* please refer to doc/README.sbc8560 for more info */
 /* make sure you change the MAC address and other network params first,
  * search for CONFIG_ETHADDR,CONFIG_SERVERIP,etc in this file
  */
@@ -42,6 +42,7 @@
 
 #define CONFIG_CPM2		1	/* has CPM2 */
 #define CONFIG_SBC8560		1	/* configuration for SBC8560 board */
+#define CONFIG_MPC8560		1
 
 /* XXX flagging this as something I might want to delete */
 #define CONFIG_MPC8560ADS	1	/* MPC8560ADS board specific	*/
@@ -50,6 +51,7 @@
 #undef	CONFIG_PCI			/* pci ethernet support		*/
 #undef  CONFIG_ETHER_ON_FCC		/* cpm FCC ethernet support	*/
 
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 #define CONFIG_ENV_OVERWRITE
 
@@ -92,19 +94,36 @@
 #else
   #define CFG_CCSRBAR		0xff700000	/* default CCSRBAR	*/
 #endif
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR	*/
 
-#define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory	 */
-#define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
 #define CFG_SDRAM_SIZE		512		/* DDR is 512MB */
-#define SPD_EEPROM_ADDRESS	0x55		/*  DDR DIMM */
 
+/* DDR Setup */
+#define CONFIG_FSL_DDR1
+#undef CONFIG_FSL_DDR_INTERACTIVE
 #undef  CONFIG_DDR_ECC				/* only for ECC DDR module	*/
 #undef  CONFIG_SPD_EEPROM			/* Use SPD EEPROM for DDR setup */
+#undef  CONFIG_DDR_SPD
 
 #if defined(CONFIG_MPC85xx_REV1)
   #define CONFIG_DDR_DLL			/* possible DLL fix needed	*/
 #endif
+
+#undef  CONFIG_DDR_ECC			    /* only for ECC DDR module */
+#undef CONFIG_ECC_INIT_VIA_DDRCONTROLLER	/* DDR controller or DMA? */
+#define CONFIG_MEM_INIT_VALUE	0xDeadBeef
+
+#define CFG_DDR_SDRAM_BASE	0x00000000
+#define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
+#define CONFIG_VERY_BIG_RAM
+
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	2
+
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x55	/* CTLR 0 DIMM 0 */
 
 #undef CONFIG_CLOCKS_IN_MHZ
 
@@ -174,8 +193,8 @@
 #define CFG_MALLOC_LEN		(128 * 1024)	/* Reserved for malloc */
 
 /* Serial Port */
-#undef  CONFIG_CONS_ON_SCC			/* define if console on SCC */
-#undef	CONFIG_CONS_NONE			/* define if console on something else */
+#undef  CONFIG_CONS_ON_SCC	/* define if console on SCC */
+#undef	CONFIG_CONS_NONE	/* define if console on something else */
 
 #define CONFIG_CONS_INDEX	1
 #undef	CONFIG_SERIAL_SOFTWARE_FIFO
@@ -197,6 +216,11 @@
 #define CFG_PROMPT_HUSH_PS2 "> "
 #endif
 
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT                1
+#define CONFIG_OF_BOARD_SETUP           1
+#define CONFIG_OF_STDOUT_VIA_ALIAS      1
+
 /*
  * I2C
  */
@@ -212,16 +236,28 @@
 #define CFG_PCI_MEM_PHYS	0xC0000000
 #define CFG_PCI_MEM_SIZE	0x10000000
 
-#if defined(CONFIG_TSEC_ENET)		/* TSEC Ethernet port */
+#ifdef CONFIG_TSEC_ENET
 
-#  define CONFIG_NET_MULTI	1
-#  define CONFIG_MII		1	/* MII PHY management		*/
-#  define CONFIG_MPC85xx_TSEC1
-#  define CONFIG_MPC85xx_TSEC1_NAME	"TSEC0"
-#  define TSEC1_PHY_ADDR	25
-#  define TSEC1_PHYIDX		0
-/* Options are: TSEC0 */
-#  define CONFIG_ETHPRIME		"TSEC0"
+#ifndef CONFIG_NET_MULTI
+#define CONFIG_NET_MULTI 	1
+#endif
+
+#ifndef CONFIG_MII
+#define CONFIG_MII		1	/* MII PHY management */
+#endif
+#define CONFIG_TSEC1	1
+#define CONFIG_TSEC1_NAME	"TSEC0"
+#define CONFIG_TSEC2	1
+#define CONFIG_TSEC2_NAME	"TSEC1"
+#define TSEC1_PHY_ADDR		0x19
+#define TSEC2_PHY_ADDR		0x1a
+#define TSEC1_PHYIDX		0
+#define TSEC2_PHYIDX		0
+#define TSEC1_FLAGS		TSEC_GIGABIT
+#define TSEC2_FLAGS		TSEC_GIGABIT
+
+/* Options are: TSEC[0-1] */
+#define CONFIG_ETHPRIME		"TSEC0"
 
 #elif defined(CONFIG_ETHER_ON_FCC)	/* CPM FCC Ethernet */
 
@@ -269,20 +305,20 @@
  * FLASH and environment organization
  */
 
-#define CFG_FLASH_CFI		1	/* Flash is CFI conformant		*/
-#define CFG_FLASH_CFI_DRIVER	1	/* Use the common driver		*/
+#define CFG_FLASH_CFI		1	/* Flash is CFI conformant	*/
+#define CONFIG_FLASH_CFI_DRIVER	1	/* Use the common driver	*/
 #if 0
-#define CFG_FLASH_USE_BUFFER_WRITE 1    /* use buffered writes (20x faster)     */
-#define CFG_FLASH_PROTECTION		/* use hardware protection		*/
+#define CFG_FLASH_USE_BUFFER_WRITE 1    /* use buffered writes (20x faster)   */
+#define CFG_FLASH_PROTECTION		/* use hardware protection	*/
 #endif
-#define CFG_MAX_FLASH_SECT	64	/* max number of sectors on one chip	*/
-#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks		*/
+#define CFG_MAX_FLASH_SECT	64	/* max number of sectors on one chip */
+#define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks	*/
 
 #undef	CFG_FLASH_CHECKSUM
-#define CFG_FLASH_ERASE_TOUT	200000		/* Timeout for Flash Erase (in ms)	*/
-#define CFG_FLASH_WRITE_TOUT	50000		/* Timeout for Flash Write (in ms)	*/
+#define CFG_FLASH_ERASE_TOUT	200000	/* Timeout for Flash Erase (in ms) */
+#define CFG_FLASH_WRITE_TOUT	50000	/* Timeout for Flash Write (in ms) */
 
-#define CFG_MONITOR_BASE	TEXT_BASE	/* start of monitor	*/
+#define CFG_MONITOR_BASE	TEXT_BASE /* start of monitor	*/
 
 #if 0
 /* XXX This doesn't work and I don't want to fix it */
@@ -312,9 +348,8 @@
   #define CFG_ENV_SIZE		0x2000
 #endif
 
-#define CONFIG_BOOTARGS "root=/dev/nfs rw nfsroot=192.168.0.251:/tftpboot ip=192.168.0.105:192.168.0.251::255.255.255.0:sbc8560:eth0:off console=ttyS0,9600"
+#define CONFIG_BOOTARGS "root=/dev/nfs rw ip=dhcp console=ttyS0,9600"
 /*#define CONFIG_BOOTARGS      "root=/dev/ram rw console=ttyS0,115200"*/
-#define CONFIG_BOOTCOMMAND	"bootm 0xff800000 0xffa00000"
 #define CONFIG_BOOTDELAY	5	/* -1 disable autoboot */
 
 #define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
@@ -377,13 +412,6 @@
  */
 #define CFG_BOOTMAPSZ		(8 << 20) /* Initial Memory map for Linux */
 
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-  #define CFG_CACHELINE_SHIFT	5	/* log base 2 of the above value */
-#endif
-
 /*
  * Internal Definitions
  *
@@ -393,25 +421,57 @@
 #define BOOTFLAG_WARM	0x02		/* Software reboot		*/
 
 #if defined(CONFIG_CMD_KGDB)
-  #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
-  #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
+#define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
+#define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
 #endif
 
-/*Note: change below for your network setting!!! */
 #if defined(CONFIG_TSEC_ENET) || defined(CONFIG_ETHER_ON_FCC)
-#  define CONFIG_ETHADDR	00:01:af:07:9b:8a
-#  define CONFIG_HAS_ETH1
-#  define CONFIG_ETH1ADDR	00:01:af:07:9b:8b
-#  define CONFIG_HAS_ETH2
-#  define CONFIG_ETH2ADDR	00:01:af:07:9b:8c
+#define CONFIG_HAS_ETH0
+#define CONFIG_HAS_ETH1
 #endif
 
-#define CONFIG_SERVERIP		192.168.0.131
-#define CONFIG_IPADDR		192.168.0.105
-#define CONFIG_GATEWAYIP	0.0.0.0
-#define CONFIG_NETMASK		255.255.255.0
+/* You can compile in a MAC address and your custom net settings by using
+ * the following syntax.  Your board should be marked with the assigned
+ * MAC addresses directly on it.
+ *
+ * #define CONFIG_ETHADDR		de:ad:be:ef:00:00
+ * #define CONFIG_ETH1ADDR		fa:ke:ad:dr:es:s!
+ * #define CONFIG_SERVERIP		<server ip>
+ * #define CONFIG_IPADDR		<board ip>
+ * #define CONFIG_GATEWAYIP		<gateway ip>
+ * #define CONFIG_NETMASK		<your netmask>
+ */
+
 #define CONFIG_HOSTNAME		SBC8560
 #define CONFIG_ROOTPATH		/home/ppc
-#define CONFIG_BOOTFILE		pImage
+#define CONFIG_BOOTFILE		uImage
+
+#define	CONFIG_EXTRA_ENV_SETTINGS		\
+	"netdev=eth0\0"				\
+	"consoledev=ttyS0\0"				\
+	"ramdiskaddr=2000000\0"			\
+	"ramdiskfile=ramdisk.uboot\0"			\
+	"fdtaddr=c00000\0"				\
+	"fdtfile=sbc8560.dtb\0"
+
+#define CONFIG_NFSBOOTCOMMAND						\
+	"setenv bootargs root=/dev/nfs rw "				\
+		"nfsroot=$serverip:$rootpath "				\
+		"ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
+		"console=$consoledev,$baudrate $othbootargs;"		\
+	"tftp $loadaddr $bootfile;"					\
+	"tftp $fdtaddr $fdtfile;"					\
+	"bootm $loadaddr - $fdtaddr"
+
+
+#define CONFIG_RAMBOOTCOMMAND \
+	"setenv bootargs root=/dev/ram rw "				\
+		"console=$consoledev,$baudrate $othbootargs;"		\
+	"tftp $ramdiskaddr $ramdiskfile;"				\
+	"tftp $loadaddr $bootfile;"					\
+	"tftp $fdtaddr $fdtfile;"					\
+	"bootm $loadaddr $ramdiskaddr $fdtaddr"
+
+#define CONFIG_BOOTCOMMAND	CONFIG_NFSBOOTCOMMAND
 
 #endif	/* __CONFIG_H */

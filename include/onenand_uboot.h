@@ -14,26 +14,25 @@
 #ifndef __UBOOT_ONENAND_H
 #define __UBOOT_ONENAND_H
 
-struct kvec {
-	void *iov_base;
-	size_t iov_len;
-};
+#include <linux/types.h>
 
-typedef int spinlock_t;
-typedef int wait_queue_head_t;
+struct mtd_info;
+struct erase_info;
+
+extern struct mtd_info onenand_mtd;
 
 /* Functions */
 extern void onenand_init(void);
 extern int onenand_read(struct mtd_info *mtd, loff_t from, size_t len,
 			size_t * retlen, u_char * buf);
-extern int onenand_read_oob(struct mtd_info *mtd, loff_t from, size_t len,
-			    size_t * retlen, u_char * buf);
+extern int onenand_read_oob(struct mtd_info *mtd, loff_t from,
+			    struct mtd_oob_ops *ops);
 extern int onenand_write(struct mtd_info *mtd, loff_t from, size_t len,
 			 size_t * retlen, const u_char * buf);
 extern int onenand_erase(struct mtd_info *mtd, struct erase_info *instr);
 
 extern int onenand_unlock(struct mtd_info *mtd, loff_t ofs, size_t len);
 
-extern void onenand_print_device_info(int device, int verbose);
+extern char *onenand_print_device_info(int device);
 
 #endif /* __UBOOT_ONENAND_H */

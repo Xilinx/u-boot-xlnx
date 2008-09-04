@@ -171,7 +171,7 @@ struct usb_device {
 
 #if defined(CONFIG_USB_UHCI) || defined(CONFIG_USB_OHCI) || \
 	defined(CONFIG_USB_OHCI_NEW) || defined (CONFIG_USB_SL811HS) || \
-	defined(CONFIG_USB_ISP116X_HCD)
+	defined(CONFIG_USB_ISP116X_HCD) || defined(CONFIG_USB_R8A66597_HCD)
 
 int usb_lowlevel_init(void);
 int usb_lowlevel_stop(void);
@@ -195,7 +195,7 @@ void usb_event_poll(void);
 #define USB_MAX_STOR_DEV 5
 block_dev_desc_t *usb_stor_get_dev(int index);
 int usb_stor_scan(int mode);
-void usb_stor_info(void);
+int usb_stor_info(void);
 
 #endif
 

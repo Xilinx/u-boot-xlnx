@@ -28,8 +28,6 @@
 #include <command.h>
 #include <net.h>
 
-#if defined(CONFIG_CMD_NET)
-
 extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
 
 static int netboot_common (proto_t, cmd_tbl_t *, int , char *[]);
@@ -41,8 +39,8 @@ int do_bootp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	bootp,	3,	1,	do_bootp,
-	"bootp\t- boot image via network using BootP/TFTP protocol\n",
-	"[loadAddress] [bootfilename]\n"
+	"bootp\t- boot image via network using BOOTP/TFTP protocol\n",
+	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
 );
 
 int do_tftpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -53,7 +51,7 @@ int do_tftpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	tftpboot,	3,	1,	do_tftpb,
 	"tftpboot- boot image via network using TFTP protocol\n",
-	"[loadAddress] [bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
 );
 
 int do_rarpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -64,7 +62,7 @@ int do_rarpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	rarpboot,	3,	1,	do_rarpb,
 	"rarpboot- boot image via network using RARP/TFTP protocol\n",
-	"[loadAddress] [bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
 );
 
 #if defined(CONFIG_CMD_DHCP)
@@ -75,8 +73,8 @@ int do_dhcp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	dhcp,	3,	1,	do_dhcp,
-	"dhcp\t- invoke DHCP client to obtain IP/boot params\n",
-	"\n"
+	"dhcp\t- boot image via network using DHCP/TFTP protocol\n",
+	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
 );
 #endif
 
@@ -89,7 +87,7 @@ int do_nfs (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	nfs,	3,	1,	do_nfs,
 	"nfs\t- boot image via network using NFS protocol\n",
-	"[loadAddress] [host ip addr:bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
 );
 #endif
 
@@ -222,9 +220,16 @@ netboot_common (proto_t proto, cmd_tbl_t *cmdtp, int argc, char *argv[])
 
 #ifdef CONFIG_AUTOSCRIPT
 	if (((s = getenv("autoscript")) != NULL) && (strcmp(s,"yes") == 0)) {
-		printf("Running autoscript at addr 0x%08lX ...\n", load_addr);
+		printf ("Running autoscript at addr 0x%08lX", load_addr);
+
+		s = getenv ("autoscript_uname");
+		if (s)
+			printf (":%s ...\n", s);
+		else
+			puts (" ...\n");
+
 		show_boot_progress (83);
-		rcode = autoscript (load_addr);
+		rcode = autoscript (load_addr, s);
 	}
 #endif
 	if (rcode < 0)
@@ -342,6 +347,4 @@ U_BOOT_CMD(
 	"sntp\t- synchronize RTC via network\n",
 	"[NTP server IP]\n"
 );
-#endif
-
 #endif

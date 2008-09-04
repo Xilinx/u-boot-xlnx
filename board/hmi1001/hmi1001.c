@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2003-2004
+ * (C) Copyright 2003-2008
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * (C) Copyright 2004
@@ -30,6 +30,7 @@
 #include <common.h>
 #include <mpc5xxx.h>
 #include <pci.h>
+#include <asm/processor.h>
 #include <malloc.h>
 
 #ifndef CFG_RAMBOOT
@@ -79,11 +80,12 @@ static void sdram_start (int hi_addr)
  *	      is something else than 0x00000000.
  */
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	ulong dramsize = 0;
 #ifndef CFG_RAMBOOT
 	ulong test1, test2;
+	uint svr, pvr;
 
 	/* setup SDRAM chip selects */
 	*(vu_long *)MPC5XXX_SDRAM_CS0CFG = 0x0000001c; /* 512MB at 0x0 */
@@ -146,6 +148,24 @@ long int initdram (int board_type)
 	}
 
 #endif /* CFG_RAMBOOT */
+
+	/*
+	 * On MPC5200B we need to set the special configuration delay in the
+	 * DDR controller. Please refer to Freescale's AN3221 "MPC5200B SDRAM
+	 * Initialization and Configuration", 3.3.1 SDelay--MBAR + 0x0190:
+	 *
+	 * "The SDelay should be written to a value of 0x00000004. It is
+	 * required to account for changes caused by normal wafer processing
+	 * parameters."
+	 */
+	svr = get_svr();
+	pvr = get_pvr();
+	if ((SVR_MJREV(svr) >= 2) &&
+	    (PVR_MAJ(pvr) == 1) && (PVR_MIN(pvr) == 4)) {
+
+		*(vu_long *)MPC5XXX_SDRAM_SDELAY = 0x04;
+		__asm__ volatile ("sync");
+	}
 
 /*	return dramsize + dramsize2; */
 	return dramsize;

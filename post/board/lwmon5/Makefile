@@ -1,6 +1,7 @@
 #
-# (C) Copyright 2002-2007
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# (C) Copyright 2008 Dmitry Rakhchev, EmCraft Systems, rda@emcraft.com
+#
+# Developed for DENX Software Engineering GmbH
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -19,11 +20,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
-#
-
+include $(OBJTREE)/include/autoconf.mk
 
 LIB	= libpostlwmon5.a
 
-COBJS	= ecc.o
+COBJS-$(CONFIG_HAS_POST)	+= sysmon.o watchdog.o dspic.o fpga.o dsp.o gdc.o
 
 include $(TOPDIR)/post/rules.mk

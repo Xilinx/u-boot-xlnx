@@ -235,17 +235,8 @@ in_flash:
 	bl	enable_ext_addr
 
 	/* setup the bats */
-	bl	setup_bats
-	sync
+	bl	early_bats
 
-#if (CFG_CCSRBAR_DEFAULT != CFG_CCSRBAR)
-	/* setup ccsrbar */
-	bl	setup_ccsrbar
-#endif
-
-	/* setup the law entries */
-	bl	law_entry
-	sync
 	/*
 	 * Cache must be enabled here for stack-in-cache trick.
 	 * This means we need to enable the BATS.
@@ -281,6 +272,16 @@ in_flash:
 	stwu	r0, -4(r1)	/* stack backtraces terminate cleanly	*/
 
 	GET_GOT			/* initialize GOT access	*/
+
+	/* setup the rest of the bats */
+	bl      setup_bats
+	bl      clear_tlbs
+	sync
+
+#if (CFG_CCSRBAR_DEFAULT != CFG_CCSRBAR)
+	/* setup ccsrbar */
+	bl      setup_ccsrbar
+#endif
 
 	/* run low-level CPU init code	   (from Flash) */
 	bl	cpu_init_f
@@ -357,169 +358,62 @@ invalidate_bats:
 	sync
 	blr
 
-
-	/* setup_bats - set them up to some initial state */
-	.globl	setup_bats
-setup_bats:
-
-	addis	r0, r0, 0x0000
-
-	/* IBAT 0 */
-	addis	r4, r0, CFG_IBAT0L@h
-	ori	r4, r4, CFG_IBAT0L@l
-	addis	r3, r0, CFG_IBAT0U@h
-	ori	r3, r3, CFG_IBAT0U@l
-	mtspr	IBAT0L, r4
-	mtspr	IBAT0U, r3
-	isync
-
-	/* DBAT 0 */
-	addis	r4, r0, CFG_DBAT0L@h
-	ori	r4, r4, CFG_DBAT0L@l
-	addis	r3, r0, CFG_DBAT0U@h
-	ori	r3, r3, CFG_DBAT0U@l
-	mtspr	DBAT0L, r4
-	mtspr	DBAT0U, r3
-	isync
-
-	/* IBAT 1 */
-	addis	r4, r0, CFG_IBAT1L@h
-	ori	r4, r4, CFG_IBAT1L@l
-	addis	r3, r0, CFG_IBAT1U@h
-	ori	r3, r3, CFG_IBAT1U@l
-	mtspr	IBAT1L, r4
-	mtspr	IBAT1U, r3
-	isync
-
-	/* DBAT 1 */
-	addis	r4, r0, CFG_DBAT1L@h
-	ori	r4, r4, CFG_DBAT1L@l
-	addis	r3, r0, CFG_DBAT1U@h
-	ori	r3, r3, CFG_DBAT1U@l
-	mtspr	DBAT1L, r4
-	mtspr	DBAT1U, r3
-	isync
-
-	/* IBAT 2 */
-	addis	r4, r0, CFG_IBAT2L@h
-	ori	r4, r4, CFG_IBAT2L@l
-	addis	r3, r0, CFG_IBAT2U@h
-	ori	r3, r3, CFG_IBAT2U@l
-	mtspr	IBAT2L, r4
-	mtspr	IBAT2U, r3
-	isync
-
-	/* DBAT 2 */
-	addis	r4, r0, CFG_DBAT2L@h
-	ori	r4, r4, CFG_DBAT2L@l
-	addis	r3, r0, CFG_DBAT2U@h
-	ori	r3, r3, CFG_DBAT2U@l
-	mtspr	DBAT2L, r4
-	mtspr	DBAT2U, r3
-	isync
-
-	/* IBAT 3 */
-	addis	r4, r0, CFG_IBAT3L@h
-	ori	r4, r4, CFG_IBAT3L@l
-	addis	r3, r0, CFG_IBAT3U@h
-	ori	r3, r3, CFG_IBAT3U@l
-	mtspr	IBAT3L, r4
-	mtspr	IBAT3U, r3
-	isync
-
-	/* DBAT 3 */
-	addis	r4, r0, CFG_DBAT3L@h
-	ori	r4, r4, CFG_DBAT3L@l
-	addis	r3, r0, CFG_DBAT3U@h
-	ori	r3, r3, CFG_DBAT3U@l
-	mtspr	DBAT3L, r4
-	mtspr	DBAT3U, r3
-	isync
-
-	/* IBAT 4 */
-	addis	r4, r0, CFG_IBAT4L@h
-	ori	r4, r4, CFG_IBAT4L@l
-	addis	r3, r0, CFG_IBAT4U@h
-	ori	r3, r3, CFG_IBAT4U@l
-	mtspr	IBAT4L, r4
-	mtspr	IBAT4U, r3
-	isync
-
-	/* DBAT 4 */
-	addis	r4, r0, CFG_DBAT4L@h
-	ori	r4, r4, CFG_DBAT4L@l
-	addis	r3, r0, CFG_DBAT4U@h
-	ori	r3, r3, CFG_DBAT4U@l
-	mtspr	DBAT4L, r4
-	mtspr	DBAT4U, r3
-	isync
-
+/*
+ * early_bats:
+ *
+ * Set up bats needed early on - this is usually the BAT for the
+ * stack-in-cache and the Flash
+ */
+	.globl  early_bats
+early_bats:
 	/* IBAT 5 */
-	addis	r4, r0, CFG_IBAT5L@h
-	ori	r4, r4, CFG_IBAT5L@l
-	addis	r3, r0, CFG_IBAT5U@h
-	ori	r3, r3, CFG_IBAT5U@l
-	mtspr	IBAT5L, r4
-	mtspr	IBAT5U, r3
+	lis	r4, CFG_IBAT5L@h
+	ori     r4, r4, CFG_IBAT5L@l
+	lis	r3, CFG_IBAT5U@h
+	ori     r3, r3, CFG_IBAT5U@l
+	mtspr   IBAT5L, r4
+	mtspr   IBAT5U, r3
 	isync
 
 	/* DBAT 5 */
-	addis	r4, r0, CFG_DBAT5L@h
-	ori	r4, r4, CFG_DBAT5L@l
-	addis	r3, r0, CFG_DBAT5U@h
-	ori	r3, r3, CFG_DBAT5U@l
-	mtspr	DBAT5L, r4
-	mtspr	DBAT5U, r3
+	lis	r4, CFG_DBAT5L@h
+	ori     r4, r4, CFG_DBAT5L@l
+	lis	r3, CFG_DBAT5U@h
+	ori     r3, r3, CFG_DBAT5U@l
+	mtspr   DBAT5L, r4
+	mtspr   DBAT5U, r3
 	isync
 
 	/* IBAT 6 */
-	addis	r4, r0, CFG_IBAT6L@h
-	ori	r4, r4, CFG_IBAT6L@l
-	addis	r3, r0, CFG_IBAT6U@h
-	ori	r3, r3, CFG_IBAT6U@l
-	mtspr	IBAT6L, r4
-	mtspr	IBAT6U, r3
+	lis	r4, CFG_IBAT6L@h
+	ori     r4, r4, CFG_IBAT6L@l
+	lis	r3, CFG_IBAT6U@h
+	ori     r3, r3, CFG_IBAT6U@l
+	mtspr   IBAT6L, r4
+	mtspr   IBAT6U, r3
 	isync
 
 	/* DBAT 6 */
-	addis	r4, r0, CFG_DBAT6L@h
-	ori	r4, r4, CFG_DBAT6L@l
-	addis	r3, r0, CFG_DBAT6U@h
-	ori	r3, r3, CFG_DBAT6U@l
-	mtspr	DBAT6L, r4
-	mtspr	DBAT6U, r3
+	lis	r4, CFG_DBAT6L@h
+	ori     r4, r4, CFG_DBAT6L@l
+	lis	r3, CFG_DBAT6U@h
+	ori     r3, r3, CFG_DBAT6U@l
+	mtspr   DBAT6L, r4
+	mtspr   DBAT6U, r3
 	isync
+	blr
 
-	/* IBAT 7 */
-	addis	r4, r0, CFG_IBAT7L@h
-	ori	r4, r4, CFG_IBAT7L@l
-	addis	r3, r0, CFG_IBAT7U@h
-	ori	r3, r3, CFG_IBAT7U@l
-	mtspr	IBAT7L, r4
-	mtspr	IBAT7U, r3
+	.globl clear_tlbs
+clear_tlbs:
+	addis   r3, 0, 0x0000
+	addis   r5, 0, 0x4
 	isync
-
-	/* DBAT 7 */
-	addis	r4, r0, CFG_DBAT7L@h
-	ori	r4, r4, CFG_DBAT7L@l
-	addis	r3, r0, CFG_DBAT7U@h
-	ori	r3, r3, CFG_DBAT7U@l
-	mtspr	DBAT7L, r4
-	mtspr	DBAT7U, r3
-	isync
-
-1:
-	addis	r3, 0, 0x0000
-	addis	r5, 0, 0x4	/* upper bound of 0x00040000 for 7400/750 */
-	isync
-
 tlblp:
-	tlbie	r3
+	tlbie   r3
 	sync
-	addi	r3, r3, 0x1000
-	cmp	0, 0, r3, r5
+	addi    r3, r3, 0x1000
+	cmp     0, 0, r3, r5
 	blt tlblp
-
 	blr
 
 	.globl enable_addr_trans
@@ -708,50 +602,6 @@ in32r:
 	blr
 
 /*
- * Function:	ppcDcbf
- * Description:	Data Cache block flush
- * Input:	r3 = effective address
- * Output:	none.
- */
-	.globl	ppcDcbf
-ppcDcbf:
-	dcbf	r0,r3
-	blr
-
-/*
- * Function:	ppcDcbi
- * Description:	Data Cache block Invalidate
- * Input:	r3 = effective address
- * Output:	none.
- */
-	.globl	ppcDcbi
-ppcDcbi:
-	dcbi	r0,r3
-	blr
-
-/*
- * Function:	ppcDcbz
- * Description:	Data Cache block zero.
- * Input:	r3 = effective address
- * Output:	none.
- */
-	.globl	ppcDcbz
-ppcDcbz:
-	dcbz	r0,r3
-	blr
-
-/*
- * Function:	ppcSync
- * Description:	Processor Synchronize
- * Input:	none.
- * Output:	none.
- */
-	.globl	ppcSync
-ppcSync:
-	sync
-	blr
-
-/*
  * void relocate_code (addr_sp, gd, addr_moni)
  *
  * This "function" does not return, instead it continues in RAM
@@ -767,7 +617,7 @@ relocate_code:
 
 	mr	r1,  r3		/* Set new stack pointer		*/
 	mr	r9,  r4		/* Save copy of Global Data pointer	*/
-	mr	r29, r9		/* Save for DECLARE_GLOBAL_DATA_PTR	*/
+	mr	r2,  r9		/* Save for DECLARE_GLOBAL_DATA_PTR	*/
 	mr	r10, r5		/* Save copy of Destination Address	*/
 
 	mr	r3,  r5				/* Destination Address	*/

@@ -43,14 +43,10 @@
 #define CONFIG_PM856		1	/* PM856 board specific */
 
 #define CONFIG_PCI
-#define CONFIG_TSEC_ENET 		/* tsec ethernet support */
+#define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
-#undef  CONFIG_SPD_EEPROM		/* do not use SPD EEPROM for DDR setup*/
-#define CONFIG_DDR_ECC			/* only for ECC DDR module */
-#define CONFIG_DDR_DLL			/* possible DLL fix needed */
-#define CONFIG_DDR_2T_TIMING		/* Sets the 2T timing bit */
-#define CONFIG_MEM_INIT_VALUE		0xDEADBEEF
 
+#define CONFIG_FSL_LAW		1	/* Use common FSL init code */
 
 /*
  * sysclk for MPC85xx
@@ -91,37 +87,41 @@
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  */
-#define CFG_CCSRBAR_DEFAULT 	0xff700000	/* CCSRBAR Default */
+#define CFG_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
 #define CFG_CCSRBAR		0xe0000000	/* relocated CCSRBAR */
+#define CFG_CCSRBAR_PHYS	CFG_CCSRBAR	/* physical addr of CCSRBAR */
 #define CFG_IMMR		CFG_CCSRBAR	/* PQII uses CFG_IMMR */
 
+/* DDR Setup */
+#define CONFIG_FSL_DDR1
+#undef CONFIG_FSL_DDR_INTERACTIVE
+#undef CONFIG_SPD_EEPROM		/* Use SPD EEPROM for DDR setup */
+#undef CONFIG_DDR_SPD
+#define CONFIG_DDR_DLL                      /* possible DLL fix needed */
+#define CONFIG_DDR_ECC			    /* only for ECC DDR module */
 
-/*
- * DDR Setup
- */
-#define CFG_DDR_SDRAM_BASE	0x00000000	/* DDR is system memory*/
+#define CONFIG_MEM_INIT_VALUE	0xDeadBeef
+
+#define CFG_DDR_SDRAM_BASE	0x00000000
 #define CFG_SDRAM_BASE		CFG_DDR_SDRAM_BASE
+#define CONFIG_VERY_BIG_RAM
 
-#if defined(CONFIG_SPD_EEPROM)
-    /*
-     * Determine DDR configuration from I2C interface.
-     */
-    #define SPD_EEPROM_ADDRESS	0x58		/* DDR DIMM */
+#define CONFIG_NUM_DDR_CONTROLLERS	1
+#define CONFIG_DIMM_SLOTS_PER_CTLR	1
+#define CONFIG_CHIP_SELECTS_PER_CTRL	2
 
-#else
-    /*
-     * Manually set up DDR parameters
-     */
-    #define CFG_SDRAM_SIZE	256		/* DDR is 256 MB */
-    #define CFG_DDR_CS0_BNDS	0x0000000f	/* 0-256MB */
-    #define CFG_DDR_CS0_CONFIG	0x80000102
-    #define CFG_DDR_TIMING_1	0x47444321
-    #define CFG_DDR_TIMING_2	0x00000800	/* P9-45,may need tuning */
-    #define CFG_DDR_CONTROL	0xc2008000	/* unbuffered,no DYN_PWR */
-    #define CFG_DDR_MODE	0x00000062	/* DLL,normal,seq,4/2.5 */
-    #define CFG_DDR_INTERVAL	0x045b0100	/* autocharge,no open page */
-#endif
+/* I2C addresses of SPD EEPROMs */
+#define SPD_EEPROM_ADDRESS	0x58	/* CTLR 0 DIMM 0 */
 
+/* Manually set up DDR parameters */
+#define CFG_SDRAM_SIZE	256		/* DDR is 256 MB */
+#define CFG_DDR_CS0_BNDS	0x0000000f	/* 0-256MB */
+#define CFG_DDR_CS0_CONFIG	0x80000102
+#define CFG_DDR_TIMING_1	0x47444321
+#define CFG_DDR_TIMING_2	0x00000800	/* P9-45,may need tuning */
+#define CFG_DDR_CONTROL	0xc2008000	/* unbuffered,no DYN_PWR */
+#define CFG_DDR_MODE	0x00000062	/* DLL,normal,seq,4/2.5 */
+#define CFG_DDR_INTERVAL	0x045b0100	/* autocharge,no open page */
 
 /*
  * SDRAM on the Local Bus
@@ -139,7 +139,7 @@
 #define CFG_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CFG_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
 
-#define CFG_MONITOR_BASE    	TEXT_BASE	/* start of monitor */
+#define CFG_MONITOR_BASE	TEXT_BASE	/* start of monitor */
 
 #if (CFG_MONITOR_BASE < CFG_FLASH_BASE)
 #define CFG_RAMBOOT
@@ -147,7 +147,7 @@
 #undef  CFG_RAMBOOT
 #endif
 
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_CFI
 #define CFG_FLASH_EMPTY_INFO
 
@@ -165,16 +165,16 @@
 
 
 #define CONFIG_L1_INIT_RAM
-#define CFG_INIT_RAM_LOCK 	1
+#define CFG_INIT_RAM_LOCK	1
 #define CFG_INIT_RAM_ADDR	0xe4010000	/* Initial RAM address */
-#define CFG_INIT_RAM_END    	0x4000	    	/* End of used area in RAM */
+#define CFG_INIT_RAM_END	0x4000		/* End of used area in RAM */
 
-#define CFG_GBL_DATA_SIZE  	128		/* num bytes initial data */
+#define CFG_GBL_DATA_SIZE	128		/* num bytes initial data */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
 
-#define CFG_MONITOR_LEN	    	(512 * 1024)    /* Reserve 512 kB for Mon */
-#define CFG_MALLOC_LEN	    	(128 * 1024)    /* Reserved for malloc */
+#define CFG_MONITOR_LEN		(512 * 1024)    /* Reserve 512 kB for Mon */
+#define CFG_MALLOC_LEN		(128 * 1024)    /* Reserved for malloc */
 
 /* Serial Port */
 #define CONFIG_CONS_ON_SCC	/* define if console on SCC */
@@ -234,7 +234,7 @@
 #if defined(CONFIG_PCI)
 
 #define CONFIG_NET_MULTI
-#define CONFIG_PCI_PNP	               	/* do pci plug-and-play */
+#define CONFIG_PCI_PNP			/* do pci plug-and-play */
 
 #undef CONFIG_EEPRO100
 #undef CONFIG_TULIP
@@ -242,7 +242,7 @@
 #if !defined(CONFIG_PCI_PNP)
     #define PCI_ENET0_IOADDR	0xe0000000
     #define PCI_ENET0_MEMADDR	0xe0000000
-    #define PCI_IDSEL_NUMBER	0x0c 	/* slot0->3(IDSEL)=12->15 */
+    #define PCI_IDSEL_NUMBER	0x0c	/* slot0->3(IDSEL)=12->15 */
 #endif
 
 #undef CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
@@ -254,7 +254,7 @@
 #if defined(CONFIG_TSEC_ENET)
 
 #ifndef CONFIG_NET_MULTI
-#define CONFIG_NET_MULTI 	1
+#define CONFIG_NET_MULTI	1
 #endif
 
 #define CONFIG_MII		1	/* MII PHY management */
@@ -364,13 +364,6 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
-
-/* Cache Configuration */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/*log base 2 of the above value*/
-#endif
 
 /*
  * Internal Definitions

@@ -68,12 +68,16 @@
 
 #define CFG_IMMR		0xE0000000	/* The IMMR is relocated to here */
 
+#define CONFIG_MISC_INIT_F
+#define CONFIG_MISC_INIT_R
 
-/* On-board devices */
+/*
+ * On-board devices
+ */
 
 #ifdef CONFIG_MPC8349ITX
 #define CONFIG_COMPACT_FLASH	/* The CF card interface on the back of the board */
-#define CONFIG_VSC7385		/* The Vitesse 7385 5-port switch */
+#define CONFIG_VSC7385_ENET	/* VSC7385 ethernet support */
 #endif
 
 #define CONFIG_PCI
@@ -87,9 +91,6 @@
 
 /* I2C */
 #ifdef CONFIG_HARD_I2C
-
-#define CONFIG_MISC_INIT_F
-#define CONFIG_MISC_INIT_R
 
 #define CONFIG_FSL_I2C
 #define CONFIG_I2C_MULTI_BUS
@@ -148,14 +149,14 @@
  * DDR Setup
  */
 #define CFG_DDR_BASE		0x00000000	/* DDR is system memory*/
-#define CFG_SDRAM_BASE 		CFG_DDR_BASE
-#define CFG_DDR_SDRAM_BASE 	CFG_DDR_BASE
+#define CFG_SDRAM_BASE		CFG_DDR_BASE
+#define CFG_DDR_SDRAM_BASE	CFG_DDR_BASE
 #define CFG_83XX_DDR_USES_CS0
 #define CFG_MEMTEST_START	0x1000		/* memtest region */
 #define CFG_MEMTEST_END		0x2000
 
 #define CFG_DDR_SDRAM_CLK_CNTL	(DDR_SDRAM_CLK_CNTL_SS_EN | \
-				DDR_SDRAM_CLK_CNTL_CLK_ADJUST_05)
+				DDR_SDRAM_CLK_CNTL_CLK_ADJUST_075)
 
 #ifdef CONFIG_HARD_I2C
 #define CONFIG_SPD_EEPROM		/* use SPD EEPROM for DDR setup*/
@@ -174,7 +175,7 @@
  */
 
 #define CFG_FLASH_CFI				/* use the Common Flash Interface */
-#define CFG_FLASH_CFI_DRIVER			/* use the CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER			/* use the CFI driver */
 #define CFG_FLASH_BASE		0xFE000000	/* start of FLASH   */
 #define CFG_FLASH_EMPTY_INFO
 #define CFG_MAX_FLASH_SECT	135	/* 127 64KB sectors + 8 8KB sectors per device */
@@ -186,9 +187,21 @@
 boards, we say we have two, but don't display a message if we find only one. */
 #define CFG_FLASH_QUIET_TEST
 #define CFG_MAX_FLASH_BANKS	2		/* number of banks */
-#define CFG_FLASH_BANKS_LIST 	{CFG_FLASH_BASE, CFG_FLASH_BASE + 0x800000}
+#define CFG_FLASH_BANKS_LIST	{CFG_FLASH_BASE, CFG_FLASH_BASE + 0x800000}
 #define CFG_FLASH_SIZE		16		/* FLASH size in MB */
 #define CFG_FLASH_SIZE_SHIFT	4		/* log2 of the above value */
+
+/* Vitesse 7385 */
+
+#ifdef CONFIG_VSC7385_ENET
+
+#define CONFIG_TSEC2
+
+/* The flash address and size of the VSC7385 firmware image */
+#define CONFIG_VSC7385_IMAGE		0xFEFFE000
+#define CONFIG_VSC7385_IMAGE_SIZE	8192
+
+#endif
 
 /*
  * BRx, ORx, LBLAWBARx, and LBLAWARx
@@ -198,16 +211,16 @@ boards, we say we have two, but don't display a message if we find only one. */
 
 #define CFG_BR0_PRELIM		(CFG_FLASH_BASE | BR_PS_16 | BR_V)
 #define CFG_OR0_PRELIM		((~(CFG_FLASH_SIZE - 1) << 20) | OR_UPM_XAM | \
-				OR_GPCM_CSNT | OR_GPCM_ACS_0b11 | OR_GPCM_XACS | OR_GPCM_SCY_15 | \
+				OR_GPCM_CSNT | OR_GPCM_ACS_DIV2 | OR_GPCM_XACS | OR_GPCM_SCY_15 | \
 				OR_GPCM_TRLX | OR_GPCM_EHTR | OR_GPCM_EAD)
 #define CFG_LBLAWBAR0_PRELIM	CFG_FLASH_BASE
 #define CFG_LBLAWAR0_PRELIM	(LBLAWAR_EN | (0x13 + CFG_FLASH_SIZE_SHIFT))
 
 /* Vitesse 7385 */
 
-#ifdef CONFIG_VSC7385
-
 #define CFG_VSC7385_BASE	0xF8000000
+
+#ifdef CONFIG_VSC7385_ENET
 
 #define CFG_BR1_PRELIM		(CFG_VSC7385_BASE | BR_PS_8 | BR_V)
 #define CFG_OR1_PRELIM		(OR_AM_128KB | OR_GPCM_CSNT | OR_GPCM_XACS | \
@@ -223,7 +236,7 @@ boards, we say we have two, but don't display a message if we find only one. */
 
 #define CFG_LED_BASE		0xF9000000
 #define CFG_BR2_PRELIM		(CFG_LED_BASE | BR_PS_8 | BR_V)
-#define CFG_OR2_PRELIM		(OR_AM_2MB | OR_GPCM_CSNT | OR_GPCM_ACS_0b11 | \
+#define CFG_OR2_PRELIM		(OR_AM_2MB | OR_GPCM_CSNT | OR_GPCM_ACS_DIV2 | \
 				OR_GPCM_XACS | OR_GPCM_SCY_9 | OR_GPCM_TRLX | \
 				OR_GPCM_EHTR | OR_GPCM_EAD)
 
@@ -261,6 +274,7 @@ boards, we say we have two, but don't display a message if we find only one. */
 #define CFG_GBL_DATA_OFFSET	(CFG_INIT_RAM_END - CFG_GBL_DATA_SIZE)
 #define CFG_INIT_SP_OFFSET	CFG_GBL_DATA_OFFSET
 
+/* CFG_MONITOR_LEN must be a multiple of CFG_ENV_SECT_SIZE */
 #define CFG_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
 #define CFG_MALLOC_LEN		(128 * 1024) /* Reserved for malloc */
 
@@ -297,12 +311,8 @@ boards, we say we have two, but don't display a message if we find only one. */
 
 /* pass open firmware flat tree */
 #define CONFIG_OF_LIBFDT	1
-#define CONFIG_OF_BOARD_SETUP
-
-#define OF_CPU			"PowerPC,8349@0"
-#define OF_SOC			"soc8349@e0000000"
-#define OF_TBCLK		(bd->bi_busfreq / 4)
-#define OF_STDOUT_PATH		"/soc8349@e0000000/serial@4500"
+#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * PCI
@@ -387,7 +397,7 @@ boards, we say we have two, but don't display a message if we find only one. */
 #define CONFIG_HAS_ETH1
 #define CONFIG_TSEC2_NAME  "TSEC1"
 #define CFG_TSEC2_OFFSET	0x25000
-#define CONFIG_UNKNOWN_TSEC	/* TSEC2 is proprietary */
+
 #define TSEC2_PHY_ADDR		4
 #define TSEC2_PHYIDX		0
 #define TSEC2_FLAGS		TSEC_GIGABIT
@@ -404,12 +414,12 @@ boards, we say we have two, but don't display a message if we find only one. */
 
 #ifndef CFG_RAMBOOT
   #define CFG_ENV_IS_IN_FLASH
+  #define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
   #define CFG_ENV_SECT_SIZE	0x10000 /* 64K (one sector) for environment */
-  #define CFG_ENV_ADDR		(CFG_MONITOR_BASE + (4 * CFG_ENV_SECT_SIZE))
   #define CFG_ENV_SIZE		0x2000
 #else
   #define CFG_NO_FLASH		/* Flash is not usable now */
-  #undef  CFG_FLASH_CFI_DRIVER
+  #undef  CONFIG_FLASH_CFI_DRIVER
   #define CFG_ENV_IS_NOWHERE	/* Store ENV in memory only */
   #define CFG_ENV_ADDR		(CFG_MONITOR_BASE - 0x1000)
   #define CFG_ENV_SIZE		0x2000
@@ -464,7 +474,7 @@ boards, we say we have two, but don't display a message if we find only one. */
 #define CFG_PROMPT_HUSH_PS2 "> "
 
 #define CFG_LOAD_ADDR	0x2000000	/* default load address */
-#define CONFIG_LOADADDR	200000	/* default location for tftp and bootm */
+#define CONFIG_LOADADDR	500000	/* default location for tftp and bootm */
 
 #ifdef CONFIG_MPC8349ITX
 #define CFG_PROMPT	"MPC8349E-mITX> "	/* Monitor Command Prompt */
@@ -489,15 +499,6 @@ boards, we say we have two, but don't display a message if we find only one. */
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CFG_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
-
-/*
- * Cache Configuration
- */
-#define CFG_DCACHE_SIZE		32768
-#define CFG_CACHELINE_SIZE	32
-#if defined(CONFIG_CMD_KGDB)
-#define CFG_CACHELINE_SHIFT	5	/* log2 of the above value */
-#endif
 
 #define CFG_HRCW_LOW (\
 	HRCWL_LCL_BUS_TO_SCB_CLK_1X1 |\
@@ -554,6 +555,7 @@ boards, we say we have two, but don't display a message if we find only one. */
 #define CFG_HID0_FINAL	CFG_HID0_INIT
 
 #define CFG_HID2	HID2_HBE
+#define CONFIG_HIGH_BATS	1	/* High BATs supported */
 
 /* DDR  */
 #define CFG_IBAT0L	(CFG_SDRAM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
@@ -631,11 +633,11 @@ boards, we say we have two, but don't display a message if we find only one. */
  */
 #define CONFIG_ENV_OVERWRITE
 
-#ifdef CONFIG_TSEC1
+#ifdef CONFIG_HAS_ETH0
 #define CONFIG_ETHADDR		00:E0:0C:00:8C:01
 #endif
 
-#ifdef CONFIG_TSEC2
+#ifdef CONFIG_HAS_ETH1
 #define CONFIG_ETH1ADDR		00:E0:0C:00:8C:02
 #endif
 
@@ -670,21 +672,21 @@ boards, we say we have two, but don't display a message if we find only one. */
 #define CONFIG_BOOTARGS \
 	"root=/dev/nfs rw" \
 	" nfsroot=" MK_STR(CONFIG_SERVERIP) ":" MK_STR(CONFIG_ROOTPATH) \
-	" ip=" MK_STR(CONFIG_IPADDR) ":" MK_STR(CONFIG_SERVERIP) ":" 	\
+	" ip=" MK_STR(CONFIG_IPADDR) ":" MK_STR(CONFIG_SERVERIP) ":"	\
 		MK_STR(CONFIG_GATEWAYIP) ":" MK_STR(CONFIG_NETMASK) ":" \
 		MK_STR(CONFIG_HOSTNAME) ":" MK_STR(CONFIG_NETDEV) ":off" \
 	" console=" MK_STR(CONFIG_CONSOLE) "," MK_STR(CONFIG_BAUDRATE)
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"console=" MK_STR(CONFIG_CONSOLE) "\0" 				\
-	"netdev=" MK_STR(CONFIG_NETDEV) "\0" 				\
-	"uboot=" MK_STR(CONFIG_UBOOTPATH) "\0" 				\
-	"tftpflash=tftpboot $loadaddr $uboot; " 			\
-		"protect off " MK_STR(TEXT_BASE) " +$filesize; " 	\
-		"erase " MK_STR(TEXT_BASE) " +$filesize; " 		\
-		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; " 	\
-		"protect on " MK_STR(TEXT_BASE) " +$filesize; " 	\
-		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0" 	\
+	"console=" MK_STR(CONFIG_CONSOLE) "\0"				\
+	"netdev=" MK_STR(CONFIG_NETDEV) "\0"				\
+	"uboot=" MK_STR(CONFIG_UBOOTPATH) "\0"				\
+	"tftpflash=tftpboot $loadaddr $uboot; "				\
+		"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
+		"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
+		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
+		"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
+		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
 	"fdtaddr=400000\0"						\
 	"fdtfile=" MK_STR(CONFIG_FDTFILE) "\0"
 

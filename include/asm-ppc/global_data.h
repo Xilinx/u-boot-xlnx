@@ -40,22 +40,26 @@ typedef	struct	global_data {
 	bd_t		*bd;
 	unsigned long	flags;
 	unsigned long	baudrate;
-	unsigned long	cpu_clk;	/* CPU clock in Hz!		*/
+	unsigned long	cpu_clk;	/* CPU clock in Hz! */
 	unsigned long	bus_clk;
+#if defined(CONFIG_8xx)
+	unsigned long	brg_clk;
+#endif
 #if defined(CONFIG_CPM2)
 	/* There are many clocks on the MPC8260 - see page 9-5 */
 	unsigned long	vco_out;
 	unsigned long	cpm_clk;
 	unsigned long	scc_clk;
 	unsigned long	brg_clk;
+#ifdef CONFIG_PCI
+	unsigned long	pci_clk;
 #endif
-#if defined(CONFIG_MPC7448HPC2)
+#endif
 	unsigned long   mem_clk;
-#endif
 #if defined(CONFIG_MPC83XX)
 	/* There are other clocks in the MPC83XX */
 	u32 csb_clk;
-#if defined (CONFIG_MPC834X) || defined(CONFIG_MPC831X)
+#if defined(CONFIG_MPC834X) || defined(CONFIG_MPC831X) || defined(CONFIG_MPC837X)
 	u32 tsec1_clk;
 	u32 tsec2_clk;
 	u32 usbdr_clk;
@@ -63,17 +67,31 @@ typedef	struct	global_data {
 #if defined (CONFIG_MPC834X)
 	u32 usbmph_clk;
 #endif /* CONFIG_MPC834X */
+#if defined(CONFIG_MPC8315)
+	u32 tdm_clk;
+#endif
 	u32 core_clk;
-	u32 i2c1_clk;
-	u32 i2c2_clk;
 	u32 enc_clk;
 	u32 lbiu_clk;
 	u32 lclk_clk;
-	u32 ddr_clk;
 	u32 pci_clk;
+#if defined(CONFIG_MPC837X)
+	u32 pciexp1_clk;
+	u32 pciexp2_clk;
+#endif
+#if defined(CONFIG_MPC837X) || defined(CONFIG_MPC8315)
+	u32 sata_clk;
+#endif
 #if defined(CONFIG_MPC8360)
-	u32  ddr_sec_clk;
+	u32  mem_sec_clk;
 #endif /* CONFIG_MPC8360 */
+#endif
+#if defined(CONFIG_MPC837X) || defined(CONFIG_MPC8536)
+	u32 sdhc_clk;
+#endif
+#if defined(CONFIG_MPC83XX) || defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
+	u32 i2c1_clk;
+	u32 i2c2_clk;
 #endif
 #if defined(CONFIG_QE)
 	u32 qe_clk;
@@ -81,13 +99,17 @@ typedef	struct	global_data {
 	uint mp_alloc_base;
 	uint mp_alloc_top;
 #endif /* CONFIG_QE */
+#if defined(CONFIG_FSL_LAW)
+	u32 used_laws;
+#endif
 #if defined(CONFIG_MPC5xxx)
 	unsigned long	ipb_clk;
 	unsigned long	pci_clk;
 #endif
 #if defined(CONFIG_MPC512X)
-	u32 ipb_clk;
+	u32 ips_clk;
 	u32 csb_clk;
+	u32 pci_clk;
 #endif /* CONFIG_MPC512X */
 #if defined(CONFIG_MPC8220)
 	unsigned long   bExtUart;
@@ -97,7 +119,7 @@ typedef	struct	global_data {
 	unsigned long   pev_clk;
 	unsigned long   flb_clk;
 #endif
-	unsigned long	ram_size;	/* RAM size */
+	phys_size_t	ram_size;	/* RAM size */
 	unsigned long	reloc_off;	/* Relocation Offset */
 	unsigned long	reset_status;	/* reset status register at boot	*/
 	unsigned long	env_addr;	/* Address  of Environment struct	*/
@@ -107,6 +129,9 @@ typedef	struct	global_data {
 	unsigned int	dp_alloc_base;
 	unsigned int	dp_alloc_top;
 #endif
+#if defined(CONFIG_4xx)
+	u32  uart_clk;
+#endif /* CONFIG_4xx */
 #if defined(CFG_GT_6426x)
 	unsigned int	mirror_hack[16];
 #endif
@@ -136,6 +161,9 @@ typedef	struct	global_data {
 #if defined(CONFIG_LWMON) || defined(CONFIG_LWMON5)
 	unsigned long kbd_status;
 #endif
+#if defined(CONFIG_WD_MAX_RATE)
+	unsigned long long wdt_last;	/* trace watch-dog triggering rate */
+#endif
 	void		**jt;		/* jump table */
 } gd_t;
 
@@ -145,9 +173,12 @@ typedef	struct	global_data {
 #define	GD_FLG_RELOC	0x00001		/* Code was relocated to RAM		*/
 #define	GD_FLG_DEVINIT	0x00002		/* Devices have been initialized	*/
 #define	GD_FLG_SILENT	0x00004		/* Silent mode				*/
+#define	GD_FLG_POSTFAIL	0x00008		/* Critical POST test failed		*/
+#define	GD_FLG_POSTSTOP	0x00010		/* POST seqeunce aborted		*/
+#define	GD_FLG_LOGINIT	0x00020		/* Log Buffer has been initialized	*/
 
 #if 1
-#define DECLARE_GLOBAL_DATA_PTR     register volatile gd_t *gd asm ("r29")
+#define DECLARE_GLOBAL_DATA_PTR     register volatile gd_t *gd asm ("r2")
 #else /* We could use plain global data, but the resulting code is bigger */
 #define XTRN_DECLARE_GLOBAL_DATA_PTR	extern
 #define DECLARE_GLOBAL_DATA_PTR     XTRN_DECLARE_GLOBAL_DATA_PTR \

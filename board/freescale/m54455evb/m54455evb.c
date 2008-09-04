@@ -37,11 +37,19 @@ int checkboard(void)
 	return 0;
 };
 
-long int initdram(int board_type)
+phys_size_t initdram(int board_type)
 {
+	u32 dramsize;
+#ifdef CONFIG_CF_SBF
+	/*
+	 * Serial Boot: The dram is already initialized in start.S
+	 * only require to return DRAM size
+	 */
+	dramsize = CFG_SDRAM_SIZE * 0x100000 >> 1;
+#else
 	volatile sdramc_t *sdram = (volatile sdramc_t *)(MMAP_SDRAM);
 	volatile gpio_t *gpio = (volatile gpio_t *)(MMAP_GPIO);
-	u32 dramsize, i;
+	u32 i;
 
 	dramsize = CFG_SDRAM_SIZE * 0x100000 >> 1;
 
@@ -51,7 +59,7 @@ long int initdram(int board_type)
 	}
 	i--;
 
-	gpio->mscr_sdram = 0xAA;
+	gpio->mscr_sdram = CFG_SDRAM_DRV_STRENGTH;
 
 	sdram->sdcs0 = (CFG_SDRAM_BASE | i);
 	sdram->sdcs1 = (CFG_SDRAM_BASE1 | i);
@@ -80,7 +88,7 @@ long int initdram(int board_type)
 	sdram->sdcr = (CFG_SDRAM_CTRL & ~0x80000000) | 0x10000c00;
 
 	udelay(100);
-
+#endif
 	return (dramsize << 1);
 };
 
@@ -162,3 +170,52 @@ void pci_init_board(void)
 	pci_mcf5445x_init(&hose);
 }
 #endif				/* CONFIG_PCI */
+
+#if defined(CONFIG_FLASH_CFI_LEGACY)
+#include <flash.h>
+ulong board_flash_get_legacy (ulong base, int banknum, flash_info_t * info)
+{
+	int sect[] = CFG_ATMEL_SECT;
+	int sectsz[] = CFG_ATMEL_SECTSZ;
+	int i, j, k;
+
+	if (base != CFG_ATMEL_BASE)
+		return 0;
+
+	info->flash_id          = 0x01000000;
+	info->portwidth         = 1;
+	info->chipwidth         = 1;
+	info->buffer_size       = 32;
+	info->erase_blk_tout    = 16384;
+	info->write_tout        = 2;
+	info->buffer_write_tout = 5;
+	info->vendor            = 0xFFF0; /* CFI_CMDSET_AMD_LEGACY */
+	info->cmd_reset         = 0x00F0;
+	info->interface         = FLASH_CFI_X8;
+	info->legacy_unlock     = 0;
+	info->manufacturer_id   = (u16) ATM_MANUFACT;
+	info->device_id         = ATM_ID_LV040;
+	info->device_id2        = 0;
+
+	info->ext_addr          = 0;
+	info->cfi_version       = 0x3133;
+	info->cfi_offset        = 0x0000;
+	info->addr_unlock1      = 0x00000555;
+	info->addr_unlock2      = 0x000002AA;
+	info->name              = "CFI conformant";
+
+	info->size              = 0;
+	info->sector_count      = CFG_ATMEL_TOTALSECT;
+	info->start[0] = base;
+	for (k = 0, i = 0; i < CFG_ATMEL_REGION; i++) {
+		info->size += sect[i] * sectsz[i];
+
+		for (j = 0; j < sect[i]; j++, k++) {
+			info->start[k + 1] = info->start[k] + sectsz[i];
+			info->protect[k] = 0;
+		}
+	}
+
+	return 1;
+}
+#endif				/* CFG_FLASH_CFI */

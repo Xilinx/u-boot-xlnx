@@ -37,9 +37,12 @@
 
 #define CONFIG_ETHER_ON_FEC1
 #define CONFIG_ETHER_ON_FEC2
+#define CONFIG_HAS_ETH0
+#define CONFIG_HAS_ETH1
 
 #if defined(CONFIG_ETHER_ON_FEC1) || defined(CONFIG_ETHER_ON_FEC2)
 #define CFG_DISCOVER_PHY
+#define CONFIG_MII_INIT		1
 #define FEC_ENET
 #endif /* CONFIG_ETHER_ON_FEC || CONFIG_ETHER_ON_FEC2 */
 
@@ -128,7 +131,7 @@
 #define CFG_BOOTMAPSZ		(8 << 20)	/* Initial Memory map for Linux */
 
 #define CFG_MONITOR_BASE	TEXT_BASE
-#define CFG_MONITOR_LEN		(192 << 10)	/* Reserve 192 KB for Monitor   */
+#define CFG_MONITOR_LEN		(256 << 10)	/* Reserve 256 KB for Monitor   */
 #ifdef CONFIG_BZIP2
 #define CFG_MALLOC_LEN		(2500 << 10)	/* Reserve ~2.5 MB for malloc() */
 #else
@@ -140,13 +143,13 @@
  */
 #define CFG_FLASH_BASE		0xFE000000
 #define CFG_FLASH_CFI				/* The flash is CFI compatible  */
-#define CFG_FLASH_CFI_DRIVER			/* Use common CFI driver        */
+#define CONFIG_FLASH_CFI_DRIVER			/* Use common CFI driver        */
 #define CFG_MAX_FLASH_BANKS	1		/* Max number of flash banks	*/
 #define CFG_MAX_FLASH_SECT	128		/* Max num of sects on one chip */
 
 /* Environment is in flash */
 #define CFG_ENV_IS_IN_FLASH
-#define CFG_ENV_SECT_SIZE	0x10000 	/* We use one complete sector	*/
+#define CFG_ENV_SECT_SIZE	0x10000		/* We use one complete sector	*/
 #define CFG_ENV_ADDR		(CFG_MONITOR_BASE + CFG_MONITOR_LEN)
 
 #define CONFIG_ENV_OVERWRITE
@@ -188,16 +191,16 @@
 #define CFG_TBSCR		(TBSCR_TBF | TBSCR_TBE)
 
 /* PISCR - Periodic Interrupt Status and Control */
-#define CFG_PISCR       	(PISCR_PS | PISCR_PITF)
+#define CFG_PISCR		(PISCR_PS | PISCR_PITF)
 
 /* PLPRCR - PLL, Low-Power, and Reset Control Register */
-/* #define CFG_PLPRCR      	PLPRCR_TEXPS */
+/* #define CFG_PLPRCR		PLPRCR_TEXPS */
 
 /* SCCR - System Clock and reset Control Register */
-#define SCCR_MASK       	SCCR_EBDF11
+#define SCCR_MASK		SCCR_EBDF11
 #define CFG_SCCR		SCCR_RTSEL
 
-#define CFG_DER         	0
+#define CFG_DER			0
 
 /*-----------------------------------------------------------------------
  * Cache Configuration
@@ -211,5 +214,9 @@
  */
 #define BOOTFLAG_COLD		0x01	/* Normal Power-On: Boot from flash	*/
 #define BOOTFLAG_WARM		0x02	/* Software reboot			*/
+
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
 
 #endif /* __CONFIG_H */

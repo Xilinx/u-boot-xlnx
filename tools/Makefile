@@ -23,7 +23,7 @@
 
 BIN_FILES	= img2srec$(SFX) mkimage$(SFX) envcrc$(SFX) ubsha1$(SFX) gen_eth_addr$(SFX) bmp_logo$(SFX)
 
-OBJ_LINKS	= environment.o crc32.o sha1.o
+OBJ_LINKS	= environment.o crc32.o md5.o sha1.o image.o
 OBJ_FILES	= img2srec.o mkimage.o envcrc.o ubsha1.o gen_eth_addr.o bmp_logo.o
 
 ifeq ($(ARCH),mips)
@@ -37,11 +37,17 @@ endif
 #OBJ_FILES	+= mpc86x_clk.o
 #endif
 
+LIBFDT_OBJ_FILES	= $(obj)fdt.o $(obj)fdt_ro.o $(obj)fdt_rw.o $(obj)fdt_strerror.o $(obj)fdt_wip.o
+
 LOGO_H	= $(OBJTREE)/include/bmp_logo.h
 
 ifeq ($(LOGO_BMP),)
 LOGO_BMP= logos/denx.bmp
 endif
+ifeq ($(VENDOR),atmel)
+LOGO_BMP= logos/atmel.bmp
+endif
+
 
 #-------------------------------------------------------------------------
 
@@ -97,6 +103,7 @@ endif
 #
 ifeq ($(HOSTOS),cygwin)
 SFX = .exe
+HOST_CFLAGS += -ansi
 else
 SFX =
 endif
@@ -119,6 +126,10 @@ CPPFLAGS   = -idirafter $(SRCTREE)/include \
 		-idirafter $(OBJTREE)/include \
 		-DTEXT_BASE=$(TEXT_BASE) -DUSE_HOSTCC
 CFLAGS     = $(HOST_CFLAGS) $(CPPFLAGS) -O
+
+# No -pedantic switch to avoid libfdt compilation warnings
+FIT_CFLAGS = -Wall $(CPPFLAGS) -O
+
 AFLAGS	   = -D__ASSEMBLY__ $(CPPFLAGS)
 CC	   = $(HOSTCC)
 STRIP	   = $(HOSTSTRIP)
@@ -136,7 +147,7 @@ $(obj)img2srec$(SFX):	$(obj)img2srec.o
 		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^
 		$(STRIP) $@
 
-$(obj)mkimage$(SFX):	$(obj)mkimage.o $(obj)crc32.o $(obj)sha1.o
+$(obj)mkimage$(SFX):	$(obj)mkimage.o $(obj)crc32.o $(obj)image.o $(obj)md5.o $(obj)sha1.o $(LIBFDT_OBJ_FILES)
 		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^
 		$(STRIP) $@
 
@@ -160,6 +171,10 @@ $(obj)mpc86x_clk$(SFX):	$(obj)mpc86x_clk.o
 		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^
 		$(STRIP) $@
 
+$(obj)bin2header$(SFX): $(obj)bin2header.o
+		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^
+		$(STRIP) $@
+
 $(obj)envcrc.o:	$(src)envcrc.c
 		$(CC) -g $(CFLAGS) -c -o $@ $<
 
@@ -169,11 +184,17 @@ $(obj)ubsha1.o:	$(src)ubsha1.c
 $(obj)crc32.o:	$(obj)crc32.c
 		$(CC) -g $(CFLAGS) -c -o $@ $<
 
+$(obj)md5.o:	$(obj)md5.c
+		$(CC) -g $(CFLAGS) -c -o $@ $<
+
 $(obj)sha1.o:	$(obj)sha1.c
 		$(CC) -g $(CFLAGS) -c -o $@ $<
 
+$(obj)image.o:	$(obj)image.c
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
+
 $(obj)mkimage.o:	$(src)mkimage.c
-		$(CC) -g $(CFLAGS) -c -o $@ $<
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
 
 $(obj)ncb.o:		$(src)ncb.c
 		$(CC) -g $(CFLAGS) -c -o $@ $<
@@ -187,6 +208,21 @@ $(obj)inca-swap-bytes.o:	$(src)inca-swap-bytes.c
 $(obj)mpc86x_clk.o:	$(src)mpc86x_clk.c
 		$(CC) -g $(CFLAGS) -c -o $@ $<
 
+$(obj)fdt.o:	$(obj)fdt.c
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
+
+$(obj)fdt_ro.o:	$(obj)fdt_ro.c
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
+
+$(obj)fdt_rw.o:	$(obj)fdt_rw.c
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
+
+$(obj)fdt_strerror.o:	$(obj)fdt_strerror.c
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
+
+$(obj)fdt_wip.o:	$(obj)fdt_wip.c
+		$(CC) -g $(FIT_CFLAGS) -c -o $@ $<
+
 subdirs:
 ifeq ($(TOOLSUBDIRS),)
 		@:
@@ -196,7 +232,7 @@ else
 			HOSTOS=$(HOSTOS) \
 			HOSTARCH=$(HOSTARCH) \
 			HOST_CFLAGS="$(HOST_CFLAGS)" \
-		   	HOST_LDFLAGS="$(HOST_LDFLAGS)" \
+			HOST_LDFLAGS="$(HOST_LDFLAGS)" \
 			-C $$dir || exit 1 ; \
 		done
 endif
@@ -208,13 +244,55 @@ $(obj)environment.c:
 $(obj)environment.o:	$(obj)environment.c
 		$(CC) -g $(HOST_ENVIRO_CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-$(obj)crc32.c:
+$(obj)zlib.h:
+		@rm -f $@
+		ln -s $(src)../include/zlib.h $@
+
+$(obj)crc32.c: $(obj)zlib.h
 		@rm -f $(obj)crc32.c
 		ln -s $(src)../lib_generic/crc32.c $(obj)crc32.c
+
+$(obj)md5.c:
+		@rm -f $(obj)md5.c
+		ln -s $(src)../lib_generic/md5.c $(obj)md5.c
 
 $(obj)sha1.c:
 		@rm -f $(obj)sha1.c
 		ln -s $(src)../lib_generic/sha1.c $(obj)sha1.c
+
+$(obj)image.c:
+		@rm -f $(obj)image.c
+		ln -s $(src)../common/image.c $(obj)image.c
+		if [ ! -f $(obj)mkimage.h ] ; then \
+			ln -s $(src)../tools/mkimage.h $(obj)mkimage.h; \
+		fi
+		if [ ! -f $(obj)fdt_host.h ] ; then \
+			ln -s $(src)../tools/fdt_host.h $(obj)fdt_host.h; \
+		fi
+
+$(obj)fdt.c:	$(obj)libfdt_internal.h
+		@rm -f $(obj)fdt.c
+		ln -s $(src)../libfdt/fdt.c $(obj)fdt.c
+
+$(obj)fdt_ro.c:	$(obj)libfdt_internal.h
+		@rm -f $(obj)fdt_ro.c
+		ln -s $(src)../libfdt/fdt_ro.c $(obj)fdt_ro.c
+
+$(obj)fdt_rw.c:	$(obj)libfdt_internal.h
+		@rm -f $(obj)fdt_rw.c
+		ln -s $(src)../libfdt/fdt_rw.c $(obj)fdt_rw.c
+
+$(obj)fdt_strerror.c:	$(obj)libfdt_internal.h
+		@rm -f $(obj)fdt_strerror.c
+		ln -s $(src)../libfdt/fdt_strerror.c $(obj)fdt_strerror.c
+
+$(obj)fdt_wip.c:	$(obj)libfdt_internal.h
+		@rm -f $(obj)fdt_wip.c
+		ln -s $(src)../libfdt/fdt_wip.c $(obj)fdt_wip.c
+
+$(obj)libfdt_internal.h:
+		@rm -f $(obj)libfdt_internal.h
+		ln -s $(src)../libfdt/libfdt_internal.h $(obj)libfdt_internal.h
 
 $(LOGO_H):	$(obj)bmp_logo $(LOGO_BMP)
 		$(obj)./bmp_logo $(LOGO_BMP) >$@

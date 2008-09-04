@@ -28,6 +28,17 @@
 
 #if defined(CONFIG_CMD_NET) && defined(CONFIG_NET_MULTI)
 
+/*
+ * CPU and board-specific Ethernet initializations.  Aliased function
+ * signals caller to move on
+ */
+static int __def_eth_init(bd_t *bis)
+{
+	return -1;
+}
+int cpu_eth_init(bd_t *bis) __attribute((weak, alias("__def_eth_init")));
+int board_eth_init(bd_t *bis) __attribute((weak, alias("__def_eth_init")));
+
 #ifdef CFG_GT_6426x
 extern int gt6426x_eth_initialize(bd_t *bis);
 #endif
@@ -52,14 +63,21 @@ extern int ppc_4xx_eth_initialize(bd_t *);
 extern int rtl8139_initialize(bd_t*);
 extern int rtl8169_initialize(bd_t*);
 extern int scc_initialize(bd_t*);
-extern int skge_initialize(bd_t*);
 extern int tsi108_eth_initialize(bd_t*);
-extern int tsec_initialize(bd_t*, int, char *);
 extern int npe_initialize(bd_t *);
 extern int uec_initialize(int);
-extern int bfin_EMAC_initialize(bd_t *);
-extern int atstk1000_eth_initialize(bd_t *);
-extern int mcffec_initialize(bd_t*);
+extern int at91sam9_eth_initialize(bd_t *);
+
+#ifdef CONFIG_API
+extern void (*push_packet)(volatile void *, int);
+
+static struct {
+	uchar data[PKTSIZE];
+	int length;
+} eth_rcv_bufs[PKTBUFSRX];
+
+static unsigned int eth_rcv_current = 0, eth_rcv_last = 0;
+#endif
 
 static struct eth_device *eth_devices, *eth_current;
 
@@ -137,7 +155,8 @@ int eth_register(struct eth_device* dev)
 
 int eth_initialize(bd_t *bis)
 {
-	char enetvar[32], env_enetaddr[6];
+	char enetvar[32];
+	unsigned char env_enetaddr[6];
 	int i, eth_number = 0;
 	char *tmp, *end;
 
@@ -148,6 +167,10 @@ int eth_initialize(bd_t *bis)
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 	miiphy_init();
 #endif
+	/* Try board-specific initialization first.  If it fails or isn't
+	 * present, try the cpu-specific initialization */
+	if (board_eth_init(bis) < 0)
+		cpu_eth_init(bis);
 
 #if defined(CONFIG_DB64360) || defined(CONFIG_CPCI750)
 	mv6436x_eth_initialize(bis);
@@ -176,30 +199,17 @@ int eth_initialize(bd_t *bis)
 #if defined(CONFIG_MPC8220_FEC)
 	mpc8220_fec_initialize(bis);
 #endif
-#if defined(CONFIG_SK98)
-	skge_initialize(bis);
-#endif
-#if defined(CONFIG_TSEC1)
-	tsec_initialize(bis, 0, CONFIG_TSEC1_NAME);
-#endif
-#if defined(CONFIG_TSEC2)
-	tsec_initialize(bis, 1, CONFIG_TSEC2_NAME);
-#endif
-#if defined(CONFIG_MPC85XX_FEC)
-	tsec_initialize(bis, 2, CONFIG_MPC85XX_FEC_NAME);
-#else
-#    if defined(CONFIG_TSEC3)
-	tsec_initialize(bis, 2, CONFIG_TSEC3_NAME);
-#    endif
-#    if defined(CONFIG_TSEC4)
-	tsec_initialize(bis, 3, CONFIG_TSEC4_NAME);
-#    endif
-#endif
 #if defined(CONFIG_UEC_ETH1)
 	uec_initialize(0);
 #endif
 #if defined(CONFIG_UEC_ETH2)
 	uec_initialize(1);
+#endif
+#if defined(CONFIG_UEC_ETH3)
+	uec_initialize(2);
+#endif
+#if defined(CONFIG_UEC_ETH4)
+	uec_initialize(3);
 #endif
 
 #if defined(FEC_ENET) || defined(CONFIG_ETHER_ON_FCC)
@@ -244,14 +254,9 @@ int eth_initialize(bd_t *bis)
 #if defined(CONFIG_RTL8169)
 	rtl8169_initialize(bis);
 #endif
-#if defined(CONFIG_BF537)
-	bfin_EMAC_initialize(bis);
-#endif
-#if defined(CONFIG_ATSTK1000)
-	atstk1000_eth_initialize(bis);
-#endif
-#if defined(CONFIG_MCFFEC)
-	mcffec_initialize(bis);
+#if defined(CONFIG_AT91CAP9) || defined(CONFIG_AT91SAM9260) || \
+    defined(CONFIG_AT91SAM9263)
+	at91sam9_eth_initialize(bis);
 #endif
 
 	if (!eth_devices) {
@@ -407,24 +412,26 @@ int eth_init(bd_t *bis)
 {
 	struct eth_device* old_current;
 
-	if (!eth_current)
-		return 0;
+	if (!eth_current) {
+		puts ("No ethernet found.\n");
+		return -1;
+	}
 
 	old_current = eth_current;
 	do {
 		debug ("Trying %s\n", eth_current->name);
 
-		if (eth_current->init(eth_current, bis)) {
+		if (eth_current->init(eth_current,bis) >= 0) {
 			eth_current->state = ETH_STATE_ACTIVE;
 
-			return 1;
+			return 0;
 		}
 		debug  ("FAIL\n");
 
 		eth_try_another(0);
 	} while (old_current != eth_current);
 
-	return 0;
+	return -1;
 }
 
 void eth_halt(void)
@@ -453,9 +460,65 @@ int eth_rx(void)
 	return eth_current->recv(eth_current);
 }
 
+#ifdef CONFIG_API
+static void eth_save_packet(volatile void *packet, int length)
+{
+	volatile char *p = packet;
+	int i;
+
+	if ((eth_rcv_last+1) % PKTBUFSRX == eth_rcv_current)
+		return;
+
+	if (PKTSIZE < length)
+		return;
+
+	for (i = 0; i < length; i++)
+		eth_rcv_bufs[eth_rcv_last].data[i] = p[i];
+
+	eth_rcv_bufs[eth_rcv_last].length = length;
+	eth_rcv_last = (eth_rcv_last + 1) % PKTBUFSRX;
+}
+
+int eth_receive(volatile void *packet, int length)
+{
+	volatile char *p = packet;
+	void *pp = push_packet;
+	int i;
+
+	if (eth_rcv_current == eth_rcv_last) {
+		push_packet = eth_save_packet;
+		eth_rx();
+		push_packet = pp;
+
+		if (eth_rcv_current == eth_rcv_last)
+			return -1;
+	}
+
+	if (length < eth_rcv_bufs[eth_rcv_current].length)
+		return -1;
+
+	length = eth_rcv_bufs[eth_rcv_current].length;
+
+	for (i = 0; i < length; i++)
+		p[i] = eth_rcv_bufs[eth_rcv_current].data[i];
+
+	eth_rcv_current = (eth_rcv_current + 1) % PKTBUFSRX;
+	return length;
+}
+#endif /* CONFIG_API */
+
 void eth_try_another(int first_restart)
 {
 	static struct eth_device *first_failed = NULL;
+	char *ethrotate;
+
+	/*
+	 * Do not rotate between network interfaces when
+	 * 'ethrotate' variable is set to 'no'.
+	 */
+	if (((ethrotate = getenv ("ethrotate")) != NULL) &&
+	    (strcmp(ethrotate, "no") == 0))
+		return;
 
 	if (!eth_current)
 		return;
@@ -513,7 +576,7 @@ extern int at91rm9200_miiphy_initialize(bd_t *bis);
 extern int emac4xx_miiphy_initialize(bd_t *bis);
 extern int mcf52x2_miiphy_initialize(bd_t *bis);
 extern int ns7520_miiphy_initialize(bd_t *bis);
-extern int dm644x_eth_miiphy_initialize(bd_t *bis);
+extern int davinci_eth_miiphy_initialize(bd_t *bis);
 
 
 int eth_initialize(bd_t *bis)
@@ -533,11 +596,11 @@ int eth_initialize(bd_t *bis)
 #if defined(CONFIG_MCF52x2)
 	mcf52x2_miiphy_initialize(bis);
 #endif
-#if defined(CONFIG_NETARM)
+#if defined(CONFIG_DRIVER_NS7520_ETHERNET)
 	ns7520_miiphy_initialize(bis);
 #endif
 #if defined(CONFIG_DRIVER_TI_EMAC)
-	dm644x_eth_miiphy_initialize(bis);
+	davinci_eth_miiphy_initialize(bis);
 #endif
 	return 0;
 }

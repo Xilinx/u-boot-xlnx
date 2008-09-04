@@ -29,8 +29,6 @@
 #include <xilinx.h>             /* xilinx specific definitions */
 #include <altera.h>             /* altera specific definitions */
 
-#if defined(CONFIG_FPGA)
-
 #if 0
 #define FPGA_DEBUG              /* define FPGA_DEBUG to get debug messages */
 #endif
@@ -67,14 +65,11 @@ static int fpga_dev_info( int devnum );
 static void fpga_no_sup( char *fn, char *msg )
 {
 	if ( fn && msg ) {
-		printf( "%s: No support for %s.  CONFIG_FPGA defined as 0x%x.\n",
-				fn, msg, CONFIG_FPGA );
+		printf( "%s: No support for %s.\n", fn, msg);
 	} else if ( msg ) {
-		printf( "No support for %s. CONFIG_FPGA defined as 0x%x.\n",
-				msg, CONFIG_FPGA );
+		printf( "No support for %s.\n", msg);
 	} else {
-		printf( "No FPGA suport!  CONFIG_FPGA defined as 0x%x.\n",
-				CONFIG_FPGA );
+		printf( "No FPGA suport!\n");
 	}
 }
 
@@ -112,11 +107,6 @@ static __attribute__((__const__)) fpga_desc * __attribute__((__const__)) fpga_va
 		printf( "%s: Null buffer.\n", fn );
 		return (fpga_desc * const)NULL;
 	}
-	if ( !bsize ) {
-		printf( "%s: Null buffer size.\n", fn );
-		return (fpga_desc * const)NULL;
-	}
-
 	return desc;
 }
 
@@ -135,7 +125,7 @@ static int fpga_dev_info( int devnum )
 
 		switch ( desc->devtype ) {
 		case fpga_xilinx:
-#if CONFIG_FPGA & CFG_FPGA_XILINX
+#if defined(CONFIG_FPGA_XILINX)
 			printf( "Xilinx Device\nDescriptor @ 0x%p\n", desc );
 			ret_val = xilinx_info( desc->devdesc );
 #else
@@ -143,7 +133,7 @@ static int fpga_dev_info( int devnum )
 #endif
 			break;
 		case fpga_altera:
-#if CONFIG_FPGA & CFG_FPGA_ALTERA
+#if defined(CONFIG_FPGA_ALTERA)
 			printf( "Altera Device\nDescriptor @ 0x%p\n", desc );
 			ret_val = altera_info( desc->devdesc );
 #else
@@ -175,14 +165,14 @@ int fpga_reloc( fpga_type devtype, void *desc, ulong reloc_off )
 
 	switch ( devtype ) {
 	case fpga_xilinx:
-#if CONFIG_FPGA & CFG_FPGA_XILINX
+#if defined(CONFIG_FPGA_XILINX)
 		ret_val = xilinx_reloc( desc, reloc_off );
 #else
 		fpga_no_sup( (char *)__FUNCTION__, "Xilinx devices" );
 #endif
 		break;
 	case fpga_altera:
-#if CONFIG_FPGA & CFG_FPGA_ALTERA
+#if defined(CONFIG_FPGA_ALTERA)
 		ret_val = altera_reloc( desc, reloc_off );
 #else
 		fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
@@ -207,10 +197,6 @@ void fpga_init( ulong reloc_off )
 	memset( desc_table, 0, sizeof(desc_table));
 
 	PRINTF( "%s: CONFIG_FPGA = 0x%x\n", __FUNCTION__, CONFIG_FPGA );
-#if 0
-	PRINTF( "%s: CFG_FPGA_XILINX = 0x%x\n", __FUNCTION__, CFG_FPGA_XILINX );
-	PRINTF( "%s: CFG_FPGA_ALTERA = 0x%x\n", __FUNCTION__, CFG_FPGA_ALTERA );
-#endif
 }
 
 /* fpga_count
@@ -268,14 +254,14 @@ int fpga_load( int devnum, void *buf, size_t bsize )
 	if ( desc ) {
 		switch ( desc->devtype ) {
 		case fpga_xilinx:
-#if CONFIG_FPGA & CFG_FPGA_XILINX
+#if defined(CONFIG_FPGA_XILINX)
 			ret_val = xilinx_load( desc->devdesc, buf, bsize );
 #else
 			fpga_no_sup( (char *)__FUNCTION__, "Xilinx devices" );
 #endif
 			break;
 		case fpga_altera:
-#if CONFIG_FPGA & CFG_FPGA_ALTERA
+#if defined(CONFIG_FPGA_ALTERA)
 			ret_val = altera_load( desc->devdesc, buf, bsize );
 #else
 			fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
@@ -301,14 +287,14 @@ int fpga_dump( int devnum, void *buf, size_t bsize )
 	if ( desc ) {
 		switch ( desc->devtype ) {
 		case fpga_xilinx:
-#if CONFIG_FPGA & CFG_FPGA_XILINX
+#if defined(CONFIG_FPGA_XILINX)
 			ret_val = xilinx_dump( desc->devdesc, buf, bsize );
 #else
 			fpga_no_sup( (char *)__FUNCTION__, "Xilinx devices" );
 #endif
 			break;
 		case fpga_altera:
-#if CONFIG_FPGA & CFG_FPGA_ALTERA
+#if defined(CONFIG_FPGA_ALTERA)
 			ret_val = altera_dump( desc->devdesc, buf, bsize );
 #else
 			fpga_no_sup( (char *)__FUNCTION__, "Altera devices" );
@@ -347,5 +333,3 @@ int fpga_info( int devnum )
 }
 
 /* ------------------------------------------------------------------------- */
-
-#endif  /* CONFIG_FPGA */

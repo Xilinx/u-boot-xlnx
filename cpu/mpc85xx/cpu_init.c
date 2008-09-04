@@ -31,8 +31,15 @@
 #include <asm/processor.h>
 #include <ioports.h>
 #include <asm/io.h>
+#include <asm/mmu.h>
+#include <asm/fsl_law.h>
+#include "mp.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#ifdef CONFIG_MPC8536
+extern void fsl_serdes_init(void);
+#endif
 
 #ifdef CONFIG_QE
 extern qe_iop_conf_t qe_iop_conf_tab[];
@@ -59,7 +66,7 @@ static void config_qe_ioports(void)
 #endif
 
 #ifdef CONFIG_CPM2
-static void config_8560_ioports (volatile immap_t * immr)
+void config_8560_ioports (volatile ccsr_cpm_t * cpm)
 {
 	int portnum;
 
@@ -99,7 +106,7 @@ static void config_8560_ioports (volatile immap_t * immr)
 		}
 
 		if (pmsk != 0) {
-			volatile ioport_t *iop = ioport_addr (immr, portnum);
+			volatile ioport_t *iop = ioport_addr (cpm, portnum);
 			uint tpmsk = ~pmsk;
 
 			/*
@@ -122,6 +129,40 @@ static void config_8560_ioports (volatile immap_t * immr)
 }
 #endif
 
+/* We run cpu_init_early_f in AS = 1 */
+void cpu_init_early_f(void)
+{
+	set_tlb(0, CFG_CCSRBAR, CFG_CCSRBAR_PHYS,
+		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+		1, 0, BOOKE_PAGESZ_4K, 0);
+
+	/* set up CCSR if we want it moved */
+#if (CFG_CCSRBAR_DEFAULT != CFG_CCSRBAR_PHYS)
+	{
+		u32 temp;
+
+		set_tlb(0, CFG_CCSRBAR_DEFAULT, CFG_CCSRBAR_DEFAULT,
+			MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
+			1, 1, BOOKE_PAGESZ_4K, 0);
+
+		temp = in_be32((volatile u32 *)CFG_CCSRBAR_DEFAULT);
+		out_be32((volatile u32 *)CFG_CCSRBAR_DEFAULT, CFG_CCSRBAR_PHYS >> 12);
+
+		temp = in_be32((volatile u32 *)CFG_CCSRBAR);
+	}
+#endif
+
+	/* Pointer is writable since we allocated a register for it */
+	gd = (gd_t *) (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET);
+
+	/* Clear initial global data */
+	memset ((void *) gd, 0, sizeof (gd_t));
+
+	init_laws();
+	invalidate_tlb(0);
+	init_tlbs();
+}
+
 /*
  * Breathe some life into the CPU...
  *
@@ -131,19 +172,14 @@ static void config_8560_ioports (volatile immap_t * immr)
 
 void cpu_init_f (void)
 {
-	volatile immap_t    *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_lbc_t *memctl = &immap->im_lbc;
+	volatile ccsr_lbc_t *memctl = (void *)(CFG_MPC85xx_LBC_ADDR);
 	extern void m8560_cpm_reset (void);
 
-	/* Pointer is writable since we allocated a register for it */
-	gd = (gd_t *) (CFG_INIT_RAM_ADDR + CFG_GBL_DATA_OFFSET);
-
-	/* Clear initial global data */
-	memset ((void *) gd, 0, sizeof (gd_t));
-
+	disable_tlb(14);
+	disable_tlb(15);
 
 #ifdef CONFIG_CPM2
-	config_8560_ioports(immap);
+	config_8560_ioports((ccsr_cpm_t *)CFG_MPC85xx_CPM_ADDR);
 #endif
 
 	/* Map banks 0 and 1 to the FLASH banks 0 and 1 at preliminary
@@ -208,6 +244,9 @@ void cpu_init_f (void)
 	/* Config QE ioports */
 	config_qe_ioports();
 #endif
+#if defined(CONFIG_MPC8536)
+	fsl_serdes_init();
+#endif
 
 }
 
@@ -222,62 +261,67 @@ void cpu_init_f (void)
 
 int cpu_init_r(void)
 {
-#if defined(CONFIG_CLEAR_LAW0) || defined(CONFIG_L2_CACHE)
-	volatile immap_t    *immap = (immap_t *)CFG_IMMR;
-#endif
-#ifdef CONFIG_CLEAR_LAW0
-	volatile ccsr_local_ecm_t *ecm = &immap->im_local_ecm;
-
-	/* clear alternate boot location LAW (used for sdram, or ddr bank) */
-	ecm->lawar0 = 0;
-#endif
+	puts ("L2:    ");
 
 #if defined(CONFIG_L2_CACHE)
-	volatile ccsr_l2cache_t *l2cache = &immap->im_l2cache;
+	volatile ccsr_l2cache_t *l2cache = (void *)CFG_MPC85xx_L2_ADDR;
 	volatile uint cache_ctl;
 	uint svr, ver;
 	uint l2srbar;
+	u32 l2siz_field;
 
 	svr = get_svr();
-	ver = SVR_VER(svr);
+	ver = SVR_SOC_VER(svr);
 
 	asm("msync;isync");
 	cache_ctl = l2cache->l2ctl;
+	l2siz_field = (cache_ctl >> 28) & 0x3;
 
-	switch (cache_ctl & 0x30000000) {
-	case 0x20000000:
-		if (ver == SVR_8548 || ver == SVR_8548_E ||
-		    ver == SVR_8544 || ver == SVR_8568_E) {
-			printf ("L2 cache 512KB:");
-			/* set L2E=1, L2I=1, & L2SRAM=0 */
-			cache_ctl = 0xc0000000;
-		} else {
-			printf ("L2 cache 256KB:");
-			/* set L2E=1, L2I=1, & L2BLKSZ=2 (256 Kbyte) */
-			cache_ctl = 0xc8000000;
-		}
+	switch (l2siz_field) {
+	case 0x0:
+		printf(" unknown size (0x%08x)\n", cache_ctl);
+		return -1;
 		break;
-	case 0x10000000:
-		printf ("L2 cache 256KB:");
-		if (ver == SVR_8544 || ver == SVR_8544_E) {
+	case 0x1:
+		if (ver == SVR_8540 || ver == SVR_8560   ||
+		    ver == SVR_8541 || ver == SVR_8541_E ||
+		    ver == SVR_8555 || ver == SVR_8555_E) {
+			puts("128 KB ");
+			/* set L2E=1, L2I=1, & L2BLKSZ=1 (128 Kbyte) */
+			cache_ctl = 0xc4000000;
+		} else {
+			puts("256 KB ");
 			cache_ctl = 0xc0000000; /* set L2E=1, L2I=1, & L2SRAM=0 */
 		}
 		break;
-	case 0x30000000:
-	case 0x00000000:
-	default:
-		printf ("L2 cache unknown size (0x%08x)\n", cache_ctl);
-		return -1;
+	case 0x2:
+		if (ver == SVR_8540 || ver == SVR_8560   ||
+		    ver == SVR_8541 || ver == SVR_8541_E ||
+		    ver == SVR_8555 || ver == SVR_8555_E) {
+			puts("256 KB ");
+			/* set L2E=1, L2I=1, & L2BLKSZ=2 (256 Kbyte) */
+			cache_ctl = 0xc8000000;
+		} else {
+			puts ("512 KB ");
+			/* set L2E=1, L2I=1, & L2SRAM=0 */
+			cache_ctl = 0xc0000000;
+		}
+		break;
+	case 0x3:
+		puts("1024 KB ");
+		/* set L2E=1, L2I=1, & L2SRAM=0 */
+		cache_ctl = 0xc0000000;
+		break;
 	}
 
 	if (l2cache->l2ctl & 0x80000000) {
-		printf(" already enabled.");
+		puts("already enabled");
 		l2srbar = l2cache->l2srbar0;
 #ifdef CFG_INIT_L2_ADDR
 		if (l2cache->l2ctl & 0x00010000 && l2srbar >= CFG_FLASH_BASE) {
 			l2srbar = CFG_INIT_L2_ADDR;
 			l2cache->l2srbar0 = l2srbar;
-			printf("  Moving to 0x%08x", CFG_INIT_L2_ADDR);
+			printf("moving to 0x%08x", CFG_INIT_L2_ADDR);
 		}
 #endif /* CFG_INIT_L2_ADDR */
 		puts("\n");
@@ -285,10 +329,10 @@ int cpu_init_r(void)
 		asm("msync;isync");
 		l2cache->l2ctl = cache_ctl; /* invalidate & enable */
 		asm("msync;isync");
-		printf(" enabled\n");
+		puts("enabled\n");
 	}
 #else
-	printf("L2 cache: disabled\n");
+	puts("disabled\n");
 #endif
 #ifdef CONFIG_QE
 	uint qe_base = CFG_IMMR + 0x00080000; /* QE immr base */
@@ -296,5 +340,8 @@ int cpu_init_r(void)
 	qe_reset();
 #endif
 
+#if defined(CONFIG_MP)
+	setup_mp();
+#endif
 	return 0;
 }

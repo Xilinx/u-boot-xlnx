@@ -158,7 +158,7 @@ int checkboard (void)
 /*
  * Initialize SDRAM
  */
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	volatile immap_t *immr = (immap_t *) CFG_IMMR;
 	volatile memctl8xx_t *memctl = &immr->im_memctl;
@@ -254,7 +254,7 @@ int misc_init_r (void)
 	mii_init ();
 #endif
 
-#if (CONFIG_FPGA)
+#if defined(CONFIG_FPGA)
 	gen860t_init_fpga ();
 #endif
 	return 0;

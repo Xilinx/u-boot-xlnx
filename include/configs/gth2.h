@@ -30,9 +30,9 @@
 
 #define CONFIG_MIPS32		1  /* MIPS32 CPU core	*/
 #define CONFIG_GTH2		1
-#define CONFIG_AU1X00		1  /* alchemy series cpu */
+#define CONFIG_SOC_AU1X00	1  /* alchemy series cpu */
 
-#define CONFIG_AU1000		1
+#define CONFIG_SOC_AU1000	1
 
 #define CONFIG_MISC_INIT_R	1
 
@@ -54,8 +54,9 @@
 /* Only interrupt boot if space is pressed */
 /* If a long serial cable is connected but */
 /* other end is dead, garbage will be read */
-#define CONFIG_AUTOBOOT_KEYED 1
-#define CONFIG_AUTOBOOT_PROMPT "Press space to abort autoboot in %d second\n"
+#define CONFIG_AUTOBOOT_KEYED	1
+#define CONFIG_AUTOBOOT_PROMPT	\
+	"Press space to abort autoboot in %d second\n", bootdelay
 #define CONFIG_AUTOBOOT_DELAY_STR "d"
 #define CONFIG_AUTOBOOT_STOP_STR " "
 
@@ -118,7 +119,9 @@
 
 #define CFG_MHZ			500
 
-#define CFG_HZ			(CFG_MHZ * 1000000) /* FIXME causes overflow in net.c */
+#define CFG_MIPS_TIMER_FREQ	(CFG_MHZ * 1000000)
+
+#define CFG_HZ			1000
 
 #define CFG_SDRAM_BASE		0x80000000     /* Cached addr */
 

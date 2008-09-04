@@ -23,6 +23,9 @@
 
 #include <common.h>
 
+#ifndef CONFIG_WD_PERIOD
+# define CONFIG_WD_PERIOD	(10 * 1000 * 1000)	/* 10 seconds default*/
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -53,13 +56,18 @@ unsigned long usec2ticks(unsigned long usec)
  */
 void udelay(unsigned long usec)
 {
-	ulong ticks = usec2ticks (usec);
+	ulong ticks, kv;
 
-	wait_ticks (ticks);
+	do {
+		kv = usec > CONFIG_WD_PERIOD ? CONFIG_WD_PERIOD : usec;
+		ticks = usec2ticks (kv);
+		wait_ticks (ticks);
+		usec -= kv;
+	} while(usec);
 }
 
 /* ------------------------------------------------------------------------- */
-
+#ifndef CONFIG_NAND_SPL
 unsigned long ticks2usec(unsigned long ticks)
 {
 	ulong tbclk = get_tbclk();
@@ -75,7 +83,7 @@ unsigned long ticks2usec(unsigned long ticks)
 
 	return ((ulong)ticks);
 }
-
+#endif
 /* ------------------------------------------------------------------------- */
 
 int init_timebase (void)

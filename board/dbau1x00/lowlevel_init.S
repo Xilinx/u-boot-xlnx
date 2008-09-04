@@ -1,7 +1,6 @@
 /* Memory sub-system initialization code */
 
 #include <config.h>
-#include <version.h>
 #include <asm/regdef.h>
 #include <asm/au1x00.h>
 #include <asm/mipsregs.h>
@@ -586,5 +585,5 @@ noCacheJump:
 	sw	t1, 0(t0)
 	sync
 
-	j	ra
+	jr	ra
 	nop

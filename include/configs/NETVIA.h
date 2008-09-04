@@ -59,13 +59,13 @@
 
 #undef	CONFIG_CLOCKS_IN_MHZ	/* clocks NOT passsed to Linux in MHz */
 
-#define CONFIG_PREBOOT	"echo;echo Type \"run flash_nfs\" to mount root filesystem over NFS;echo"
+#define CONFIG_PREBOOT	"echo;echo Type \\\"run flash_nfs\\\" to mount root filesystem over NFS;echo"
 
 #undef	CONFIG_BOOTARGS
 #define CONFIG_BOOTCOMMAND							\
-	"tftpboot; " 								\
-	"setenv bootargs root=/dev/nfs rw nfsroot=${serverip}:${rootpath} " 	\
-	"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off; " 	\
+	"tftpboot; "								\
+	"setenv bootargs root=/dev/nfs rw nfsroot=${serverip}:${rootpath} "	\
+	"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off; "	\
 	"bootm"
 
 #define CONFIG_LOADS_ECHO	0	/* echo off for serial download	*/
@@ -397,7 +397,7 @@
 
 /*****************************************************************************/
 
-#define CFG_NAND_LEGACY
+#define CONFIG_NAND_LEGACY
 
 #if defined(CONFIG_NETVIA_VERSION) && CONFIG_NETVIA_VERSION >= 2
 
@@ -411,7 +411,7 @@
 #define ADDR_COLUMN		1
 #define ADDR_PAGE		2
 #define ADDR_COLUMN_PAGE	3
-#define NAND_ChipID_UNKNOWN 	0x00
+#define NAND_ChipID_UNKNOWN	0x00
 #define NAND_MAX_FLOORS		1
 #define NAND_MAX_CHIPS		1
 

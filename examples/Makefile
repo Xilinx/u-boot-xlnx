@@ -30,7 +30,11 @@ LOAD_ADDR = 0x40000
 endif
 
 ifeq ($(ARCH),arm)
+ifeq ($(BOARD),omap2420h4)
+LOAD_ADDR = 0x80300000
+else
 LOAD_ADDR = 0xc100000
+endif
 endif
 
 ifeq ($(ARCH),mips)
@@ -61,6 +65,17 @@ ifeq ($(ARCH),avr32)
 LOAD_ADDR = 0x00000000
 endif
 
+ifeq ($(ARCH),sh)
+LOAD_ADDR = 0x8C000000
+ifeq ($(CPU),sh2)
+BIG_ENDIAN=y
+endif
+endif
+
+ifeq ($(ARCH),sparc)
+LOAD_ADDR = 0x00000000 -L $(gcclibdir) -T sparc.lds
+endif
+
 include $(TOPDIR)/config.mk
 
 ELF	= hello_world
@@ -68,9 +83,9 @@ SREC	= hello_world.srec
 BIN	= hello_world.bin
 
 ifeq ($(CPU),mpc8xx)
-ELF	= test_burst
-SREC	= test_burst.srec
-BIN	= test_burst.bin
+ELF	+= test_burst
+SREC	+= test_burst.srec
+BIN	+= test_burst.bin
 endif
 
 ifeq ($(ARCH),i386)
@@ -86,13 +101,9 @@ BIN	+= sched.bin
 endif
 
 ifeq ($(ARCH),blackfin)
-ifneq ($(BOARD),bf537-stamp)
-ifneq ($(BOARD),bf537-pnav)
 ELF	+= smc91111_eeprom
 SREC	+= smc91111_eeprom.srec
-BIN 	+= smc91111_eeprom.bin
-endif
-endif
+BIN	+= smc91111_eeprom.bin
 endif
 
 # The following example is pretty 8xx specific...
@@ -161,7 +172,7 @@ $(LIB):	$(obj).depend $(LIBOBJS)
 $(ELF):
 $(obj)%:	$(obj)%.o $(LIB)
 		$(LD) -g $(EX_LDFLAGS) -Ttext $(LOAD_ADDR) \
-			-o $@ -e $(notdir $(<:.o=)) $< $(LIB) \
+			-o $@ -e $(SYM_PREFIX)$(notdir $(<:.o=)) $< $(LIB) \
 			-L$(gcclibdir) -lgcc
 
 $(SREC):

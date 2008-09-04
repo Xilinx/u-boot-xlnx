@@ -12,8 +12,6 @@
 #include <common.h>
 #include <command.h>
 
-#ifdef CONFIG_CMD_ONENAND
-
 #include <linux/mtd/compat.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/onenand.h>
@@ -38,32 +36,44 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			onenand_init();
 			return 0;
 		}
-		onenand_print_device_info(onenand_chip.device_id, 1);
+		printf("%s\n", onenand_mtd.name);
 		return 0;
 
 	default:
 		/* At least 4 args */
 		if (strncmp(argv[1], "erase", 5) == 0) {
-			struct erase_info instr;
+			struct erase_info instr = {
+				.callback	= NULL,
+			};
 			ulong start, end;
 			ulong block;
+			char *endtail;
 
-			start = simple_strtoul(argv[2], NULL, 10);
-			end = simple_strtoul(argv[3], NULL, 10);
-			start -= (unsigned long)onenand_chip.base;
-			end -= (unsigned long)onenand_chip.base;
+			if (strncmp(argv[2], "block", 5) == 0) {
+				start = simple_strtoul(argv[3], NULL, 10);
+				endtail = strchr(argv[3], '-');
+				end = simple_strtoul(endtail + 1, NULL, 10);
+			} else {
+				start = simple_strtoul(argv[2], NULL, 10);
+				end = simple_strtoul(argv[3], NULL, 10);
+
+				start >>= onenand_chip.erase_shift;
+				end >>= onenand_chip.erase_shift;
+				/* Don't include the end block */
+				end--;
+			}
 
 			if (!end || end < 0)
 				end = start;
 
-			printf("Erase block from %d to %d\n", start, end);
+			printf("Erase block from %lu to %lu\n", start, end);
 
 			for (block = start; block <= end; block++) {
 				instr.addr = block << onenand_chip.erase_shift;
 				instr.len = 1 << onenand_chip.erase_shift;
 				ret = onenand_erase(&onenand_mtd, &instr);
 				if (ret) {
-					printf("erase failed %d\n", block);
+					printf("erase failed %lu\n", block);
 					break;
 				}
 			}
@@ -75,17 +85,25 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			ulong addr = simple_strtoul(argv[2], NULL, 16);
 			ulong ofs = simple_strtoul(argv[3], NULL, 16);
 			size_t len = simple_strtoul(argv[4], NULL, 16);
-			size_t retlen = 0;
 			int oob = strncmp(argv[1], "read.oob", 8) ? 0 : 1;
+			struct mtd_oob_ops ops;
 
-			ofs -= (unsigned long)onenand_chip.base;
+			ops.mode = MTD_OOB_PLACE;
 
-			if (oob)
-				onenand_read_oob(&onenand_mtd, ofs, len,
-						 &retlen, (u_char *) addr);
-			else
-				onenand_read(&onenand_mtd, ofs, len, &retlen,
-					     (u_char *) addr);
+			if (oob) {
+				ops.len = 0;
+				ops.datbuf = NULL;
+				ops.ooblen = len;
+				ops.oobbuf = (u_char *) addr;
+			} else {
+				ops.len = len;
+				ops.datbuf = (u_char *) addr;
+				ops.ooblen = 0;
+				ops.oobbuf = NULL;
+			}
+			ops.retlen = ops.oobretlen = 0;
+
+			onenand_mtd.read_oob(&onenand_mtd, ofs, &ops);
 			printf("Done\n");
 
 			return 0;
@@ -96,8 +114,6 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			ulong ofs = simple_strtoul(argv[3], NULL, 16);
 			size_t len = simple_strtoul(argv[4], NULL, 16);
 			size_t retlen = 0;
-
-			ofs -= (unsigned long)onenand_chip.base;
 
 			onenand_write(&onenand_mtd, ofs, len, &retlen,
 				      (u_char *) addr);
@@ -111,9 +127,12 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			ulong block = simple_strtoul(argv[3], NULL, 10);
 			ulong page = simple_strtoul(argv[4], NULL, 10);
 			size_t len = simple_strtol(argv[5], NULL, 10);
-			size_t retlen = 0;
 			ulong ofs;
 			int oob = strncmp(argv[1], "block.oob", 9) ? 0 : 1;
+			struct mtd_oob_ops ops;
+
+			ops.mode = MTD_OOB_PLACE;
+
 
 			ofs = block << onenand_chip.erase_shift;
 			if (page)
@@ -121,17 +140,21 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 			if (!len) {
 				if (oob)
-					len = 64;
+					ops.ooblen = 64;
 				else
-					len = 512;
+					ops.len = 512;
 			}
 
-			if (oob)
-				onenand_read_oob(&onenand_mtd, ofs, len,
-						 &retlen, (u_char *) addr);
-			else
-				onenand_read(&onenand_mtd, ofs, len, &retlen,
-					     (u_char *) addr);
+			if (oob) {
+				ops.datbuf = NULL;
+				ops.oobbuf = (u_char *) addr;
+			} else {
+				ops.datbuf = (u_char *) addr;
+				ops.oobbuf = NULL;
+			}
+			ops.retlen = ops.oobretlen = 0;
+
+			onenand_read_oob(&onenand_mtd, ofs, &ops);
 			return 0;
 		}
 
@@ -151,5 +174,3 @@ U_BOOT_CMD(
 	"onenand block[.oob] addr block [page] [len] - "
 		"read data with (block [, page]) to addr"
 );
-
-#endif /* CONFIG_CMD_ONENAND */

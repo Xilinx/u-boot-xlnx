@@ -31,8 +31,6 @@
 #include <common.h>
 #include <virtex2.h>
 
-#if (CONFIG_FPGA & (CFG_XILINX | CFG_VIRTEX2))
-
 #if 0
 #define FPGA_DEBUG
 #endif
@@ -84,7 +82,7 @@
  * an XC2V1000, if anyone can ever get ahold of one.
  */
 #ifndef CFG_FPGA_WAIT_INIT
-#define CFG_FPGA_WAIT_INIT 	CFG_HZ/2	/* 500 ms */
+#define CFG_FPGA_WAIT_INIT	CFG_HZ/2	/* 500 ms */
 #endif
 
 /*
@@ -552,6 +550,5 @@ static int Virtex2_ss_reloc (Xilinx_desc * desc, ulong reloc_offset)
 	}
 	return ret_val;
 }
-#endif
 
 /* vim: set ts=4 tw=78: */

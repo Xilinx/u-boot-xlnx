@@ -27,14 +27,16 @@
  */
 
 
-extern long int spd_sdram (void);
-
 #include <common.h>
 #include <asm/processor.h>
+#include <asm/mmu.h>
 #include <asm/immap_85xx.h>
+#include <asm/fsl_ddr_sdram.h>
 #include <ioports.h>
-#include <spd.h>
+#include <spd_sdram.h>
 #include <miiphy.h>
+#include <libfdt.h>
+#include <fdt_support.h>
 
 long int fixed_sdram (void);
 
@@ -195,8 +197,7 @@ const iop_conf_t iop_conf_tab[4][32] = {
 int board_early_init_f (void)
 {
 #if defined(CONFIG_PCI)
-    volatile immap_t *immr = (immap_t *)CFG_IMMR;
-    volatile ccsr_pcix_t *pci = &immr->im_pcix;
+    volatile ccsr_pcix_t *pci = (void *)(CFG_MPC85xx_PCIX_ADDR);
 
     pci->peer &= 0xfffffffdf; /* disable master abort */
 #endif
@@ -260,20 +261,19 @@ int checkboard (void)
 }
 
 
-long int initdram (int board_type)
+phys_size_t initdram (int board_type)
 {
 	long dram_size = 0;
-	extern long spd_sdram (void);
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+
 #if 0
 #if !defined(CONFIG_RAM_AS_FLASH)
-	volatile ccsr_lbc_t *lbc= &immap->im_lbc;
+	volatile ccsr_lbc_t *lbc = (void *)(CFG_MPC85xx_LBC_ADDR);
 	sys_info_t sysinfo;
 	uint temp_lbcdll = 0;
 #endif
 #endif /* 0 */
 #if !defined(CONFIG_RAM_AS_FLASH) || defined(CONFIG_DDR_DLL)
-	volatile ccsr_gur_t *gur= &immap->im_gur;
+	volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
 #endif
 #if defined(CONFIG_DDR_DLL)
 	uint temp_ddrdll = 0;
@@ -285,7 +285,9 @@ long int initdram (int board_type)
 #endif
 
 #if defined(CONFIG_SPD_EEPROM)
-	dram_size = spd_sdram ();
+	dram_size = fsl_ddr_sdram();
+	dram_size = setup_ddr_tlbs(dram_size / 0x100000);
+	dram_size *= 0x100000;
 #else
 	dram_size = fixed_sdram ();
 #endif
@@ -336,8 +338,7 @@ long int initdram (int board_type)
 		 * enable errors */
 		uint *p = 0;
 		uint i = 0;
-		volatile immap_t *immap = (immap_t *)CFG_IMMR;
-		volatile ccsr_ddr_t *ddr= &immap->im_ddr;
+		volatile ccsr_ddr_t *ddr= (void *)(CFG_MPC85xx_DDR_ADDR);
 		dma_init();
 		for (*p = 0; p < (uint *)(8 * 1024); p++) {
 			if (((unsigned int)p & 0x1f) == 0) { dcbz(p); }
@@ -424,10 +425,13 @@ long int fixed_sdram (void)
 #define CFG_DDR_CONTROL 0xc2000000
 
   #ifndef CFG_RAMBOOT
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
-	volatile ccsr_ddr_t *ddr= &immap->im_ddr;
+	volatile ccsr_ddr_t *ddr= (void *)(CFG_MPC85xx_DDR_ADDR);
 
+#if (CFG_SDRAM_SIZE == 512)
+	ddr->cs0_bnds		= 0x0000000f;
+#else
 	ddr->cs0_bnds		= 0x00000007;
+#endif
 	ddr->cs1_bnds		= 0x0010001f;
 	ddr->cs2_bnds		= 0x00000000;
 	ddr->cs3_bnds		= 0x00000000;
@@ -458,3 +462,29 @@ long int fixed_sdram (void)
 	return CFG_SDRAM_SIZE * 1024 * 1024;
 }
 #endif	/* !defined(CONFIG_SPD_EEPROM) */
+
+
+#if defined(CONFIG_OF_BOARD_SETUP)
+void
+ft_board_setup(void *blob, bd_t *bd)
+{
+	int node, tmp[2];
+#ifdef CONFIG_PCI
+	const char *path;
+#endif
+
+	ft_cpu_setup(blob, bd);
+
+	node = fdt_path_offset(blob, "/aliases");
+	tmp[0] = 0;
+	if (node >= 0) {
+#ifdef CONFIG_PCI
+		path = fdt_getprop(blob, node, "pci0", NULL);
+		if (path) {
+			tmp[1] = hose.last_busno - hose.first_busno;
+			do_fixup_by_path(blob, path, "bus-range", &tmp, 8, 1);
+		}
+#endif
+	}
+}
+#endif

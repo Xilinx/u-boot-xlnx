@@ -115,7 +115,7 @@ checkboard(void)
 	return (0);
 }
 
-long int
+phys_size_t
 initdram(int board_type)
 {
 	return 256 * 1024 * 1024;

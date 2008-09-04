@@ -33,8 +33,6 @@
  * of the source and target buffers are then compared.
  */
 
-#ifdef CONFIG_POST
-
 #include <post.h>
 #include "cpu_asm.h"
 
@@ -49,6 +47,7 @@ int cpu_post_test_string (void)
 {
     int ret = 0;
     unsigned int i;
+    int flag = disable_interrupts();
 
     if (ret == 0)
     {
@@ -99,8 +98,10 @@ int cpu_post_test_string (void)
 	post_log ("Error at string test !\n");
     }
 
+    if (flag)
+	enable_interrupts();
+
     return ret;
 }
 
-#endif
 #endif

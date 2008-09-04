@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2007 Michal Simek
+ * (C) Copyright 2007-2008 Michal Simek
  *
  * Michal SIMEK <monstr@monstr.eu>
  *
@@ -32,38 +32,71 @@
 #define	CONFIG_ML401		1	/* ML401 Board */
 
 /* uart */
+#ifdef XILINX_UARTLITE_BASEADDR
 #define	CONFIG_XILINX_UARTLITE
-#define	CONFIG_SERIAL_BASE	XILINX_UART_BASEADDR
-#define	CONFIG_BAUDRATE		XILINX_UART_BAUDRATE
+#define	CONFIG_SERIAL_BASE	XILINX_UARTLITE_BASEADDR
+#define	CONFIG_BAUDRATE		XILINX_UARTLITE_BAUDRATE
 #define	CFG_BAUDRATE_TABLE	{ CONFIG_BAUDRATE }
+#else
+#ifdef XILINX_UART16550_BASEADDR
+#define CFG_NS16550
+#define CFG_NS16550_SERIAL
+#define CFG_NS16550_REG_SIZE	4
+#define CONFIG_CONS_INDEX	1
+#define CFG_NS16550_COM1	XILINX_UART16550_BASEADDR
+#define CFG_NS16550_CLK		XILINX_UART16550_CLOCK_HZ
+#define	CONFIG_BAUDRATE		115200
+#define	CFG_BAUDRATE_TABLE	{ 9600, 115200 }
+#endif
+#endif
 
 /* setting reset address */
 /*#define	CFG_RESET_ADDRESS	TEXT_BASE*/
 
 /* ethernet */
-#define CONFIG_EMACLITE		1
-#define XPAR_EMAC_0_DEVICE_ID	XPAR_OPB_ETHERNET_0_DEVICE_ID
+#ifdef XILINX_EMAC_BASEADDR
+#define CONFIG_XILINX_EMAC	1
+#define CFG_ENET
+#else
+#ifdef XILINX_EMACLITE_BASEADDR
+#define CONFIG_XILINX_EMACLITE	1
+#define CFG_ENET
+#endif
+#endif
+#undef ET_DEBUG
 
 /* gpio */
+#ifdef XILINX_GPIO_BASEADDR
 #define	CFG_GPIO_0		1
 #define	CFG_GPIO_0_ADDR		XILINX_GPIO_BASEADDR
+#endif
 
 /* interrupt controller */
+#ifdef XILINX_INTC_BASEADDR
 #define	CFG_INTC_0		1
 #define	CFG_INTC_0_ADDR		XILINX_INTC_BASEADDR
 #define	CFG_INTC_0_NUM		XILINX_INTC_NUM_INTR_INPUTS
+#endif
 
 /* timer */
+#ifdef XILINX_TIMER_BASEADDR
+#if (XILINX_TIMER_IRQ != -1)
 #define	CFG_TIMER_0		1
 #define	CFG_TIMER_0_ADDR	XILINX_TIMER_BASEADDR
 #define	CFG_TIMER_0_IRQ		XILINX_TIMER_IRQ
 #define	FREQUENCE		XILINX_CLOCK_FREQ
 #define	CFG_TIMER_0_PRELOAD	( FREQUENCE/1000 )
+#endif
+#else
+#ifdef XILINX_CLOCK_FREQ
 #define	CONFIG_XILINX_CLOCK_FREQ	XILINX_CLOCK_FREQ
-
+#else
+#error BAD CLOCK FREQ
+#endif
+#endif
 /* FSL */
-#define	CFG_FSL_2
-#define	FSL_INTR_2	1
+/* #define	CFG_FSL_2 */
+/* #define	FSL_INTR_2	1 */
 
 /*
  * memory layout - Example
@@ -121,7 +154,7 @@
 	#define	CFG_FLASH_BASE		XILINX_FLASH_START
 	#define	CFG_FLASH_SIZE		XILINX_FLASH_SIZE
 	#define	CFG_FLASH_CFI		1
-	#define	CFG_FLASH_CFI_DRIVER	1
+	#define	CONFIG_FLASH_CFI_DRIVER	1
 	#define	CFG_FLASH_EMPTY_INFO	1	/* ?empty sector */
 	#define	CFG_MAX_FLASH_BANKS	1	/* max number of memory banks */
 	#define	CFG_MAX_FLASH_SECT	128	/* max number of sectors on one chip */
@@ -134,9 +167,9 @@
 
 	#else	/* !RAMENV */
 		#define	CFG_ENV_IS_IN_FLASH	1
-		#define	CFG_ENV_ADDR		0x40000
 		#define	CFG_ENV_SECT_SIZE	0x40000	/* 256K(one sector) for env */
-		#define	CFG_ENV_SIZE		0x2000
+		#define	CFG_ENV_ADDR		(CFG_FLASH_BASE + (2 * CFG_ENV_SECT_SIZE))
+		#define	CFG_ENV_SIZE		0x40000
 	#endif /* !RAMBOOT */
 #else /* !FLASH */
 	/* ENV in RAM */
@@ -174,7 +207,12 @@
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_MFSL
-#define CONFIG_CMD_PING
+
+#ifndef CFG_ENET
+	#undef CONFIG_CMD_NET
+#else
+	#define CONFIG_CMD_PING
+#endif
 
 #if defined(CONFIG_SYSTEMACE)
 	#define CONFIG_CMD_EXT2
@@ -234,5 +272,8 @@
 					"mtdparts=mtdparts=ml401-0:"\
 					"256k(u-boot),256k(env),3m(kernel),"\
 					"1m(romfs),1m(cramfs),-(jffs2)\0"
+
+#define CONFIG_CMDLINE_EDITING
+#define CONFIG_OF_LIBFDT	1
 
 #endif	/* __CONFIG_H */

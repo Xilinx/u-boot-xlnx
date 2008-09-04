@@ -30,6 +30,7 @@
  */
 #include <common.h>
 #include <ACEX1K.h>
+#include <stratixII.h>
 
 /* Define FPGA_DEBUG to get debug printf's */
 /* #define FPGA_DEBUG */
@@ -40,10 +41,8 @@
 #define PRINTF(fmt,args...)
 #endif
 
-#if (CONFIG_FPGA & CFG_FPGA_ALTERA)
-
 /* Local Static Functions */
-static int altera_validate (Altera_desc * desc, char *fn);
+static int altera_validate (Altera_desc * desc, const char *fn);
 
 /* ------------------------------------------------------------------------- */
 int altera_load( Altera_desc *desc, void *buf, size_t bsize )
@@ -56,11 +55,11 @@ int altera_load( Altera_desc *desc, void *buf, size_t bsize )
 		switch (desc->family) {
 		case Altera_ACEX1K:
 		case Altera_CYC2:
-#if (CONFIG_FPGA & CFG_ACEX1K)
+#if defined(CONFIG_FPGA_ACEX1K)
 			PRINTF ("%s: Launching the ACEX1K Loader...\n",
 					__FUNCTION__);
 			ret_val = ACEX1K_load (desc, buf, bsize);
-#elif (CONFIG_FPGA & CFG_CYCLON2)
+#elif defined(CONFIG_FPGA_CYCLON2)
 			PRINTF ("%s: Launching the CYCLON II Loader...\n",
 					__FUNCTION__);
 			ret_val = CYC2_load (desc, buf, bsize);
@@ -70,6 +69,13 @@ int altera_load( Altera_desc *desc, void *buf, size_t bsize )
 #endif
 			break;
 
+#if defined(CONFIG_FPGA_STRATIX_II)
+		case Altera_StratixII:
+			PRINTF ("%s: Launching the Stratix II Loader...\n",
+				__FUNCTION__);
+			ret_val = StratixII_load (desc, buf, bsize);
+			break;
+#endif
 		default:
 			printf ("%s: Unsupported family type, %d\n",
 					__FUNCTION__, desc->family);
@@ -88,7 +94,7 @@ int altera_dump( Altera_desc *desc, void *buf, size_t bsize )
 	} else {
 		switch (desc->family) {
 		case Altera_ACEX1K:
-#if (CONFIG_FPGA & CFG_ACEX)
+#if defined(CONFIG_FPGA_ACEX)
 			PRINTF ("%s: Launching the ACEX1K Reader...\n",
 					__FUNCTION__);
 			ret_val = ACEX1K_dump (desc, buf, bsize);
@@ -98,6 +104,13 @@ int altera_dump( Altera_desc *desc, void *buf, size_t bsize )
 #endif
 			break;
 
+#if defined(CONFIG_FPGA_STRATIX_II)
+		case Altera_StratixII:
+			PRINTF ("%s: Launching the Stratix II Reader...\n",
+				__FUNCTION__);
+			ret_val = StratixII_dump (desc, buf, bsize);
+			break;
+#endif
 		default:
 			printf ("%s: Unsupported family type, %d\n",
 					__FUNCTION__, desc->family);
@@ -117,10 +130,13 @@ int altera_info( Altera_desc *desc )
 		case Altera_ACEX1K:
 			printf ("ACEX1K\n");
 			break;
-			/* Add new family types here */
 		case Altera_CYC2:
 			printf ("CYCLON II\n");
 			break;
+		case Altera_StratixII:
+			printf ("Stratix II\n");
+			break;
+			/* Add new family types here */
 		default:
 			printf ("Unknown family type, %d\n", desc->family);
 		}
@@ -142,6 +158,13 @@ int altera_info( Altera_desc *desc )
 		case altera_jtag_mode:		/* Not used */
 			printf ("JTAG Mode\n");
 			break;
+		case fast_passive_parallel:
+			printf ("Fast Passive Parallel (FPP)\n");
+			break;
+		case fast_passive_parallel_security:
+			printf
+			    ("Fast Passive Parallel with Security (FPPS) \n");
+			break;
 			/* Add new interface types here */
 		default:
 			printf ("Unsupported interface type, %d\n", desc->iface);
@@ -156,9 +179,9 @@ int altera_info( Altera_desc *desc )
 			switch (desc->family) {
 			case Altera_ACEX1K:
 			case Altera_CYC2:
-#if (CONFIG_FPGA & CFG_ACEX1K)
+#if defined(CONFIG_FPGA_ACEX1K)
 				ACEX1K_info (desc);
-#elif (CONFIG_FPGA & CFG_CYCLON2)
+#elif defined(CONFIG_FPGA_CYCLON2)
 				CYC2_info (desc);
 #else
 				/* just in case */
@@ -166,6 +189,11 @@ int altera_info( Altera_desc *desc )
 						__FUNCTION__);
 #endif
 				break;
+#if defined(CONFIG_FPGA_STRATIX_II)
+			case Altera_StratixII:
+				StratixII_info (desc);
+				break;
+#endif
 				/* Add new family types here */
 			default:
 				/* we don't need a message here - we give one up above */
@@ -192,15 +220,20 @@ int altera_reloc( Altera_desc *desc, ulong reloc_offset)
 	} else {
 		switch (desc->family) {
 		case Altera_ACEX1K:
-#if (CONFIG_FPGA & CFG_ACEX1K)
+#if defined(CONFIG_FPGA_ACEX1K)
 			ret_val = ACEX1K_reloc (desc, reloc_offset);
 #else
 			printf ("%s: No support for ACEX devices.\n",
 					__FUNCTION__);
 #endif
 			break;
+#if defined(CONFIG_FPGA_STRATIX_II)
+		case Altera_StratixII:
+			ret_val = StratixII_reloc (desc, reloc_offset);
+			break;
+#endif
 		case Altera_CYC2:
-#if (CONFIG_FPGA & CFG_CYCLON2)
+#if defined(CONFIG_FPGA_CYCLON2)
 			ret_val = CYC2_reloc (desc, reloc_offset);
 #else
 			printf ("%s: No support for CYCLON II devices.\n",
@@ -219,7 +252,7 @@ int altera_reloc( Altera_desc *desc, ulong reloc_offset)
 
 /* ------------------------------------------------------------------------- */
 
-static int altera_validate (Altera_desc * desc, char *fn)
+static int altera_validate (Altera_desc * desc, const char *fn)
 {
 	int ret_val = FALSE;
 
@@ -248,5 +281,3 @@ static int altera_validate (Altera_desc * desc, char *fn)
 }
 
 /* ------------------------------------------------------------------------- */
-
-#endif /* CONFIG_FPGA & CFG_FPGA_ALTERA */

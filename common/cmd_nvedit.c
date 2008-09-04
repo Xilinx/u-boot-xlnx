@@ -58,8 +58,9 @@ DECLARE_GLOBAL_DATA_PTR;
     !defined(CFG_ENV_IS_IN_DATAFLASH)	&& \
     !defined(CFG_ENV_IS_IN_NAND)	&& \
     !defined(CFG_ENV_IS_IN_ONENAND)	&& \
+    !defined(CFG_ENV_IS_IN_SPI_FLASH)	&& \
     !defined(CFG_ENV_IS_NOWHERE)
-# error Define one of CFG_ENV_IS_IN_{NVRAM|EEPROM|FLASH|DATAFLASH|ONENAND|NOWHERE}
+# error Define one of CFG_ENV_IS_IN_{NVRAM|EEPROM|FLASH|DATAFLASH|ONENAND|SPI_FLASH|NOWHERE}
 #endif
 
 #define XMK_STR(x)	#x
@@ -67,21 +68,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /************************************************************************
 ************************************************************************/
-
-/* Function that returns a character from the environment */
-extern uchar (*env_get_char)(int);
-
-/* Function that returns a pointer to a value from the environment */
-/* (Only memory version supported / needed). */
-extern uchar *env_get_addr(int);
-
-/* Function that updates CRC of the enironment */
-extern void env_crc_update (void);
-
-/************************************************************************
-************************************************************************/
-
-static int envmatch (uchar *, int);
 
 /*
  * Table with supported baudrates (defined in config_xyz.h)
@@ -113,7 +99,8 @@ int do_printenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 		}
 
-		printf("\nEnvironment size: %d/%d bytes\n", i, ENV_SIZE);
+		printf("\nEnvironment size: %d/%ld bytes\n",
+			i, (ulong)ENV_SIZE);
 
 		return 0;
 	}
@@ -194,11 +181,12 @@ int _do_setenv (int flag, int argc, char *argv[])
 		 * Ethernet Address and serial# can be set only once,
 		 * ver is readonly.
 		 */
+		if (
 #ifdef CONFIG_HAS_UID
 		/* Allow serial# forced overwrite with 0xdeaf4add flag */
-		if ( ((strcmp (name, "serial#") == 0) && (flag != 0xdeaf4add)) ||
+		    ((strcmp (name, "serial#") == 0) && (flag != 0xdeaf4add)) ||
 #else
-		if ( (strcmp (name, "serial#") == 0) ||
+		    (strcmp (name, "serial#") == 0) ||
 #endif
 		    ((strcmp (name, "ethaddr") == 0)
 #if defined(CONFIG_OVERWRITE_ETHADDR_ONCE) && defined(CONFIG_ETHADDR)
@@ -394,13 +382,13 @@ int _do_setenv (int flag, int argc, char *argv[])
 	return 0;
 }
 
-void setenv (char *varname, char *varvalue)
+int setenv (char *varname, char *varvalue)
 {
 	char *argv[4] = { "setenv", varname, varvalue, NULL };
 	if (varvalue == NULL)
-		_do_setenv (0, 2, argv);
+		return _do_setenv (0, 2, argv);
 	else
-		_do_setenv (0, 3, argv);
+		return _do_setenv (0, 3, argv);
 }
 
 #ifdef CONFIG_HAS_UID
@@ -552,10 +540,11 @@ int getenv_r (char *name, char *buf, unsigned len)
 	return (-1);
 }
 
-#if defined(CFG_ENV_IS_IN_NVRAM) || defined(CFG_ENV_IS_IN_EEPROM) \
+#if ((defined(CFG_ENV_IS_IN_NVRAM) || defined(CFG_ENV_IS_IN_EEPROM) \
     || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_FLASH)) \
     || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_NAND)) \
-    || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_ONENAND))
+    || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_ONENAND))) \
+    && !defined(CFG_ENV_IS_NOWHERE))
 int do_saveenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	extern char * env_name_spec;
@@ -576,8 +565,7 @@ int do_saveenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
  * If the names match, return the index for the value2, else NULL.
  */
 
-static int
-envmatch (uchar *s1, int i2)
+int envmatch (uchar *s1, int i2)
 {
 
 	while (*s1 == env_get_char(i2++))
@@ -608,10 +596,11 @@ U_BOOT_CMD(
 	"    - delete environment variable 'name'\n"
 );
 
-#if defined(CFG_ENV_IS_IN_NVRAM) || defined(CFG_ENV_IS_IN_EEPROM) \
+#if ((defined(CFG_ENV_IS_IN_NVRAM) || defined(CFG_ENV_IS_IN_EEPROM) \
     || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_FLASH)) \
     || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_NAND)) \
-    || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_ONENAND))
+    || (defined(CONFIG_CMD_ENV) && defined(CONFIG_CMD_ONENAND))) \
+    && !defined(CFG_ENV_IS_NOWHERE))
 U_BOOT_CMD(
 	saveenv, 1, 0,	do_saveenv,
 	"saveenv - save environment variables to persistent storage\n",

@@ -29,7 +29,7 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	:= $(BOARD).o spi.o
+COBJS	:= $(BOARD).o spi_flash.o
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -39,14 +39,14 @@ $(LIB):	$(obj).depend $(OBJS) $(SOBJS) u-boot.lds
 	$(AR) $(ARFLAGS) $@ $(OBJS) $(SOBJS)
 
 u-boot.lds: u-boot.lds.S
-	$(CPP) $(CPPFLAGS) -P -Ubfin $^ > $@.tmp
+	$(CPP) $(CPPFLAGS) -D__ASSEMBLY__ -P -Ubfin $^ > $@.tmp
 	mv -f $@.tmp $@
 
 clean:
 	rm -f $(SOBJS) $(OBJS)
 
 distclean:	clean
-	rm -f $(LIB) core *.bak .depend
+	rm -f $(LIB) core *.bak $(obj).depend
 
 #########################################################################
 
