@@ -49,9 +49,10 @@
 
 #ifndef __CONFIG_H
 #define __CONFIG_H
-
-/* #define DEBUG */
-/* #define ET_DEBUG 1 */
+/*
+#define DEBUG
+#define ET_DEBUG 1 
+*/
 
 /*-----------------------------------------------------------------------
  * High Level Configuration Options
@@ -64,13 +65,6 @@
 
 #include "../board/xilinx/ml507/xparameters.h"
 
-/* for testing only, handy for when there's no non-volatile environment 
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
-	"ipaddr=172.16.40.227\0"	\
-	"ethaddr=00:00:00:80:80:80\0"	\
-	"serverip=172.16.40.98\0"	
-*/
 #define CONFIG_OF_LIBFDT	1
 
 /*  Make some configuration choices based on the hardware design
@@ -140,9 +134,6 @@
 
 #define CONFIG_BAUDRATE         9600
 #define CONFIG_BOOTDELAY        5       /* autoboot after 5 seconds	*/
-
-//#define CONFIG_BOOTCOMMAND      "" /* autoboot command	*/
-
 #define CONFIG_BOOTARGS         "console=ttyS0,9600 ip=off " \
                                 "root=/dev/xsysace/disc0/part2 rw"
 
@@ -187,7 +178,6 @@
 #undef  CONFIG_CMD_DHCP
 #endif
 
-
 /*
  * Miscellaneous configurable options
  */
@@ -203,14 +193,20 @@
 #define CFG_MEMTEST_START	0x0400000	/* memtest works on	*/
 #define CFG_MEMTEST_END		0x0C00000	/* 4 ... 12 MB in DRAM	*/
 
-#define CFG_DUART_CHAN		0
-#define CFG_NS16550_REG_SIZE   -4
-#define CFG_NS16550             1
-#define CFG_INIT_CHAN1	        1
+/*
+ * 16550 UART and console
+ */
+#define CONFIG_CONS_INDEX	1
+#undef	CONFIG_SERIAL_SOFTWARE_FIFO
+#define CFG_NS16550
+#define CFG_NS16550_SERIAL
+#define CFG_NS16550_REG_SIZE	-4
+#define CFG_NS16550_CLK		XPAR_XUARTNS550_CLOCK_HZ
+#define CFG_NS16550_COM1	(XPAR_UARTNS550_0_BASEADDR + 0x1003)
 
-/* The following table includes the supported baudrates */
-#define CFG_BAUDRATE_TABLE  \
-    {300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400}
+#define CFG_BAUDRATE_TABLE	\
+	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
+
 
 #define CFG_LOAD_ADDR		0x400000	/* default load address */
 #define CFG_EXTBDINFO		1	/* To use extended board_into (bd_t) */

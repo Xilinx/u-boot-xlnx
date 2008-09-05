@@ -52,7 +52,6 @@ CFLAGS-$(XPAR_IIC)	+= -I../xilinx_iic
 
 CFLAGS += -I../ml405 -I../common $(CFLAGS-y)
 OBJS	= $(BOARD).o \
-	  serial.o \
 	  $(OBJS-y)
 
 SOBJS	= init.o
