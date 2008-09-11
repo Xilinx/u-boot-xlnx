@@ -48,6 +48,7 @@
 #include "../board/xilinx/ml405/xparameters.h"
 
 #define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
 
 /*  Make some configuration choices based on the hardware design
  *  specified in xparameters.h.

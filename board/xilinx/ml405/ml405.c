@@ -43,6 +43,8 @@
 #include <asm/processor.h>
 #include "xparameters.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 /*-----------------------------------------------------------------------------
  * aschex_to_byte --
  *-----------------------------------------------------------------------------
@@ -138,6 +140,11 @@ get_sys_info(sys_info_t * sysInfo)
 	/* only correct if the PLB and OPB run at the same frequency */
 	sysInfo->freqPLB = XPAR_UARTNS550_0_CLOCK_FREQ_HZ;
 	sysInfo->freqPCI = 0;
+
+	/* setup the uart clock frequency in the global data otherwise the 
+	 * fdt fixups on the device tree hoses it up
+	 */
+	gd->uart_clk = XPAR_UARTNS550_0_CLOCK_FREQ_HZ;
 }
 
 /*-----------------------------------------------------------------------------
@@ -184,6 +191,14 @@ void board_get_enetaddr (uchar * enet)
 
 	printf ("MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
 		enet[0], enet[1], enet[2], enet[3], enet[4], enet[5]);
+
+	/* update the environment variable so that the fdt fixups for the emac
+	 * addr will work
+	 */
+	sprintf (buff, "%02X:%02X:%02X:%02X:%02X:%02X",
+ 		 enet[0], enet[1], enet[2], enet[3], enet[4], enet[5]); 
+
+	setenv("ethaddr", buff);
 
 	return;
 }
