@@ -80,21 +80,8 @@
 #define SYSTEMACE_CONFIG_FPGA   1
 #endif
 
-#if 0  /* for the moment assume that we do have Flash */
-#define CFG_ENV_IS_IN_FLASH	1	/* environment is in FLASH */
-#else
-#define CFG_NO_FLASH            1
-#endif
-
 #ifdef XPAR_IIC_0_DEVICE_ID
-#if ! defined(CFG_ENV_IS_IN_FLASH)
 #define CFG_ENV_IS_IN_EEPROM	1	/* environment is in IIC EEPROM */
-#endif
-#endif
-
-#undef XPAR_EMAC_0_DEVICE_ID
-#ifdef XPAR_EMAC_0_DEVICE_ID
-#define CONFIG_ETHADDR          00:0a:35:00:22:01
 #endif
 
 #if ! (defined(CFG_ENV_IS_IN_FLASH) || defined(CFG_ENV_IS_IN_EEPROM))
@@ -117,21 +104,17 @@
 #define CFG_MONITOR_BASE                0x02000000
 #endif
 
-/* following are used only if env is in Flash */
-#ifdef CFG_ENV_IS_IN_FLASH
-#define CFG_FLASH_BASE		0xf0000000
-//#define CFG_FLASH_BASE		0xFE000000
+/* the following flash memory base address is not based on a canoncial #define 
+ * yet as it doesn't exist yet, if this causes a compiler error you'll need to 
+ * figure out the new base address name from the xparameters.h
+ */
+#define CONFIG_CMD_FLASH 	1
+#define CFG_FLASH_BASE		XPAR_FLASH_MEM0_BASEADDR
 #define CFG_MAX_FLASH_BANKS	1	/* max number of memory banks        */
 #define CFG_MAX_FLASH_SECT	259	/* max number of sectors on one chip */
 #define CFG_FLASH_CFI
-#define CFG_FLASH_CFI_DRIVER
+#define CONFIG_FLASH_CFI_DRIVER
 #define CFG_FLASH_PROTECTION    1
-#define CFG_ENV_OFFSET          0x01F80000
-#define CFG_ENV_SIZE            0x00040000
-#define CONFIG_ENV_OVERWRITE    1       /* writable ethaddr and serial# */
-#define CFG_MONITOR_BASE	0x02000000
-//#define CFG_MONITOR_BASE	0xFFFC0000
-#endif
 
 #define CONFIG_BAUDRATE         9600
 #define CONFIG_BOOTDELAY        5       /* autoboot after 5 seconds	*/
@@ -159,10 +142,6 @@
 #define CONFIG_CMD_FAT          1
 #else
 #undef  CONFIG_CMD_FAT
-#endif
-
-#if 1  /* for the moment assume that we have Flash */
-#undef  CONFIG_CMD_FLASH
 #endif
 
 #ifdef XPAR_IIC_0_DEVICE_ID
