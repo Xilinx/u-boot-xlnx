@@ -12,7 +12,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -357,7 +357,8 @@ void *video_hw_init (void)
 	board_disp_init();
 #endif
 
-#if defined(CONFIG_LWMON5) && !(CONFIG_POST & CFG_POST_SYSMON)
+#if (defined(CONFIG_LWMON5) || \
+     defined(CONFIG_SOCRATES)) && !(CONFIG_POST & CONFIG_SYS_POST_SYSMON)
 	/* Lamp on */
 	board_backlight_switch (1);
 #endif

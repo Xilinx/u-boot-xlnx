@@ -451,6 +451,8 @@
 #define   L2CSR0_L2LO		0x00000020	/* L2 Cache Lock Overflow */
 #define SPRN_L2CSR1	0x3fa	/* L2 Data Cache Control and Status Register 1 */
 
+#define SPRN_TLB0CFG	0x2B0	/* TLB 0 Config Register */
+#define SPRN_TLB1CFG	0x2B1	/* TLB 1 Config Register */
 #define SPRN_MMUCSR0	0x3f4	/* MMU control and status register 0 */
 #define SPRN_MAS0	0x270	/* MMU Assist Register 0 */
 #define SPRN_MAS1	0x271	/* MMU Assist Register 1 */
@@ -777,6 +779,13 @@
 #define PVR_MAJ(pvr)	(((pvr) >>  4) & 0xF)	/* Major revision field */
 #define PVR_MIN(pvr)	(((pvr) >>  0) & 0xF)	/* Minor revision field */
 
+/* e600 core PVR fields */
+
+#define PVR_E600_VER(pvr)	(((pvr) >> 15) & 0xFFFF) /* Version/type */
+#define PVR_E600_TECH(pvr)	(((pvr) >> 12) & 0xF)	 /* Technology */
+#define PVR_E600_MAJ(pvr)	(((pvr) >> 8) & 0xF)	 /* Major revision */
+#define PVR_E600_MIN(pvr)	(((pvr) >> 0) & 0xFF)	 /* Minor revision */
+
 /* Processor Version Numbers */
 
 #define PVR_403GA	0x00200000
@@ -859,7 +868,6 @@
 #define PVR_85xx_REV2	(PVR_85xx | 0x0020)
 
 #define PVR_86xx	0x80040000
-#define PVR_86xx_REV1	(PVR_86xx | 0x0010)
 
 #define PVR_VIRTEX5     0x7ff21912
 
@@ -951,6 +959,8 @@
 #define SVR_8568_E	0x807D00
 #define SVR_8572	0x80E000
 #define SVR_8572_E	0x80E800
+#define SVR_P2020	0x80E200
+#define SVR_P2020_E	0x80EA00
 
 #define SVR_8610	0x80A000
 #define SVR_8641	0x809000

@@ -29,7 +29,7 @@
 #include <asm/processor.h>
 #include <asm/immap.h>
 
-#define	NR_IRQS		(CFG_NUM_IRQS)
+#define	NR_IRQS		(CONFIG_SYS_NUM_IRQS)
 
 /*
  * Interrupt vector functions.
@@ -61,7 +61,7 @@ static __inline__ void set_sr (unsigned short sr)
  */
 void irq_install_handler (int vec, interrupt_handler_t * handler, void *arg)
 {
-	if ((vec < 0) || (vec > NR_IRQS)) {
+	if ((vec < 0) || (vec >= NR_IRQS)) {
 		printf ("irq_install_handler: wrong interrupt vector %d\n",
 			vec);
 		return;
@@ -73,7 +73,7 @@ void irq_install_handler (int vec, interrupt_handler_t * handler, void *arg)
 
 void irq_free_handler (int vec)
 {
-	if ((vec < 0) || (vec > NR_IRQS)) {
+	if ((vec < 0) || (vec >= NR_IRQS)) {
 		return;
 	}
 

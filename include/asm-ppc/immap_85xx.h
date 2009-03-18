@@ -13,6 +13,7 @@
 
 #include <asm/types.h>
 #include <asm/fsl_i2c.h>
+#include <asm/fsl_lbc.h>
 
 /*
  * Local-Access Registers and ECM Registers(0x0000-0x2000)
@@ -57,7 +58,23 @@ typedef struct ccsr_local_ecm {
 	uint	lawbar7;	/* 0xce8 - Local Access Window 7 Base Address Register */
 	char	res19[4];
 	uint	lawar7;		/* 0xcf0 - Local Access Window 7 Attributes Register */
-	char	res20[780];	/* XXX: LAW 8, LAW9 for 8572 */
+	char	res19_8a[20];
+	uint	lawbar8;	/* 0xd08 - Local Access Window 8 Base Address Register */
+	char	res19_8b[4];
+	uint	lawar8;		/* 0xd10 - Local Access Window 8 Attributes Register */
+	char	res19_9a[20];
+	uint	lawbar9;	/* 0xd28 - Local Access Window 9 Base Address Register */
+	char	res19_9b[4];
+	uint	lawar9;		/* 0xd30 - Local Access Window 9 Attributes Register */
+	char	res19_10a[20];
+	uint	lawbar10;	/* 0xd48 - Local Access Window 10 Base Address Register */
+	char	res19_10b[4];
+	uint	lawar10;	/* 0xd50 - Local Access Window 10 Attributes Register */
+	char	res19_11a[20];
+	uint	lawbar11;	/* 0xd68 - Local Access Window 11 Base Address Register */
+	char	res19_11b[4];
+	uint	lawar11;	/* 0xd70 - Local Access Window 11 Attributes Register */
+	char	res20[652];
 	uint	eebacr;		/* 0x1000 - ECM CCB Address Configuration Register */
 	char	res21[12];
 	uint	eebpcr;		/* 0x1010 - ECM CCB Port Configuration Register */
@@ -118,7 +135,12 @@ typedef struct ccsr_ddr {
 	uint	ddr_sr_cntr;		/* 0x217C - DDR self refresh counter */
 	uint	ddr_sdram_rcw_1;	/* 0x2180 - DDR Register Control Words 1 */
 	uint	ddr_sdram_rcw_2;	/* 0x2184 - DDR Register Control Words 2 */
-	char	res8_1b[2672];
+	char	res8_1b[2456];
+	uint	ddr_dsr1;		/* 0x2B20 - DDR Debug Status Register 1	*/
+	uint	ddr_dsr2;		/* 0x2B24 - DDR Debug Status Register 2	*/
+	uint	ddr_cdr1;		/* 0x2B28 - DDR Control Driver Register 1 */
+	uint	ddr_cdr2;		/* 0x2B2C - DDR Control Driver Register 2 */
+	char	res8_1c[200];
 	uint	ip_rev1;		/* 0x2BF8 - DDR IP Block Revision 1 */
 	uint	ip_rev2;		/* 0x2BFC - DDR IP Block Revision 2 */
 	char	res8_2[512];
@@ -1552,6 +1574,13 @@ typedef struct par_io {
  */
 typedef struct ccsr_gur {
 	uint	porpllsr;	/* 0xe0000 - POR PLL ratio status register */
+#ifdef CONFIG_MPC8536
+#define MPC85xx_PORPLLSR_DDR_RATIO	0x3e000000
+#define MPC85xx_PORPLLSR_DDR_RATIO_SHIFT	25
+#else
+#define MPC85xx_PORPLLSR_DDR_RATIO	0x00003e00
+#define MPC85xx_PORPLLSR_DDR_RATIO_SHIFT	9
+#endif
 	uint	porbmsr;	/* 0xe0004 - POR boot mode status register */
 #define MPC85xx_PORBMSR_HA		0x00070000
 	uint	porimpscr;	/* 0xe0008 - POR I/O impedance status and control register */
@@ -1561,7 +1590,8 @@ typedef struct ccsr_gur {
 #define MPC85xx_PORDEVSR_SGMII3_DIS	0x08000000
 #define MPC85xx_PORDEVSR_SGMII4_DIS	0x04000000
 #define MPC85xx_PORDEVSR_SRDS2_IO_SEL   0x38000000
-#define MPC85xx_PORDEVSR_IO_SEL		0x00380000
+#define MPC85xx_PORDEVSR_PCI1		0x00800000
+#define MPC85xx_PORDEVSR_IO_SEL		0x00780000
 #define MPC85xx_PORDEVSR_PCI2_ARB	0x00040000
 #define MPC85xx_PORDEVSR_PCI1_ARB	0x00020000
 #define MPC85xx_PORDEVSR_PCI1_PCI32	0x00010000
@@ -1572,7 +1602,8 @@ typedef struct ccsr_gur {
 #define MPC85xx_PORDEVSR_RIO_DEV_ID	0x00000007
 	uint	pordbgmsr;	/* 0xe0010 - POR debug mode status register */
 	uint	pordevsr2;	/* 0xe0014 - POR I/O device status regsiter 2 */
-#define MPC85xx_PORDEVSR2_SEC_CFG	0x00000020
+/* The 8544 RM says this is bit 26, but it's really bit 24 */
+#define MPC85xx_PORDEVSR2_SEC_CFG	0x00000080
 	char	res1[8];
 	uint	gpporcr;	/* 0xe0020 - General-purpose POR configuration register */
 	char	res2[12];
@@ -1583,6 +1614,9 @@ typedef struct ccsr_gur {
 	uint	gpindr;		/* 0xe0050 - General-purpose input data register */
 	char	res5[12];
 	uint	pmuxcr;		/* 0xe0060 - Alternate function signal multiplex control */
+#define MPC85xx_PMUXCR_SD_DATA		0x80000000
+#define MPC85xx_PMUXCR_SDHC_CD		0x40000000
+#define MPC85xx_PMUXCR_SDHC_WP		0x20000000
 	char	res6[12];
 	uint	devdisr;	/* 0xe0070 - Device disable control */
 #define MPC85xx_DEVDISR_PCI1		0x80000000
@@ -1638,39 +1672,37 @@ typedef struct ccsr_gur {
 	char	res15[61648];	/* 0xe0f30 to 0xefffff */
 } ccsr_gur_t;
 
-#define PORDEVSR_PCI	(0x00800000)	/* PCI Mode */
-
-#define CFG_MPC85xx_GUTS_OFFSET	(0xE0000)
-#define CFG_MPC85xx_GUTS_ADDR	(CFG_IMMR + CFG_MPC85xx_GUTS_OFFSET)
-#define CFG_MPC85xx_ECM_OFFSET	(0x0000)
-#define CFG_MPC85xx_ECM_ADDR	(CFG_IMMR + CFG_MPC85xx_ECM_OFFSET)
-#define CFG_MPC85xx_DDR_OFFSET	(0x2000)
-#define CFG_MPC85xx_DDR_ADDR	(CFG_IMMR + CFG_MPC85xx_DDR_OFFSET)
-#define CFG_MPC85xx_DDR2_OFFSET	(0x6000)
-#define CFG_MPC85xx_DDR2_ADDR	(CFG_IMMR + CFG_MPC85xx_DDR2_OFFSET)
-#define CFG_MPC85xx_LBC_OFFSET	(0x5000)
-#define CFG_MPC85xx_LBC_ADDR	(CFG_IMMR + CFG_MPC85xx_LBC_OFFSET)
-#define CFG_MPC85xx_PCIX_OFFSET	(0x8000)
-#define CFG_MPC85xx_PCIX_ADDR	(CFG_IMMR + CFG_MPC85xx_PCIX_OFFSET)
-#define CFG_MPC85xx_PCIX2_OFFSET	(0x9000)
-#define CFG_MPC85xx_PCIX2_ADDR	(CFG_IMMR + CFG_MPC85xx_PCIX2_OFFSET)
-#define CFG_MPC85xx_SATA1_OFFSET	(0x18000)
-#define CFG_MPC85xx_SATA1_ADDR	(CFG_IMMR + CFG_MPC85xx_SATA1_OFFSET)
-#define CFG_MPC85xx_SATA2_OFFSET	(0x19000)
-#define CFG_MPC85xx_SATA2_ADDR	(CFG_IMMR + CFG_MPC85xx_SATA2_OFFSET)
-#define CFG_MPC85xx_L2_OFFSET	(0x20000)
-#define CFG_MPC85xx_L2_ADDR	(CFG_IMMR + CFG_MPC85xx_L2_OFFSET)
-#define CFG_MPC85xx_DMA_OFFSET	(0x21000)
-#define CFG_MPC85xx_DMA_ADDR	(CFG_IMMR + CFG_MPC85xx_DMA_OFFSET)
-#define CFG_MPC85xx_ESDHC_OFFSET	(0x2e000)
-#define CFG_MPC85xx_ESDHC_ADDR	(CFG_IMMR + CFG_MPC85xx_ESDHC_OFFSET)
-#define CFG_MPC85xx_PIC_OFFSET	(0x40000)
-#define CFG_MPC85xx_PIC_ADDR	(CFG_IMMR + CFG_MPC85xx_PIC_OFFSET)
-#define CFG_MPC85xx_CPM_OFFSET	(0x80000)
-#define CFG_MPC85xx_CPM_ADDR	(CFG_IMMR + CFG_MPC85xx_CPM_OFFSET)
-#define CFG_MPC85xx_SERDES1_OFFSET	(0xE3000)
-#define CFG_MPC85xx_SERDES1_ADDR	(CFG_IMMR + CFG_MPC85xx_SERDES2_OFFSET)
-#define CFG_MPC85xx_SERDES2_OFFSET	(0xE3100)
-#define CFG_MPC85xx_SERDES2_ADDR	(CFG_IMMR + CFG_MPC85xx_SERDES2_OFFSET)
+#define CONFIG_SYS_MPC85xx_GUTS_OFFSET	(0xE0000)
+#define CONFIG_SYS_MPC85xx_GUTS_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_GUTS_OFFSET)
+#define CONFIG_SYS_MPC85xx_ECM_OFFSET	(0x0000)
+#define CONFIG_SYS_MPC85xx_ECM_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_ECM_OFFSET)
+#define CONFIG_SYS_MPC85xx_DDR_OFFSET	(0x2000)
+#define CONFIG_SYS_MPC85xx_DDR_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_DDR_OFFSET)
+#define CONFIG_SYS_MPC85xx_DDR2_OFFSET	(0x6000)
+#define CONFIG_SYS_MPC85xx_DDR2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_DDR2_OFFSET)
+#define CONFIG_SYS_MPC85xx_LBC_OFFSET	(0x5000)
+#define CONFIG_SYS_MPC85xx_LBC_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_LBC_OFFSET)
+#define CONFIG_SYS_MPC85xx_PCIX_OFFSET	(0x8000)
+#define CONFIG_SYS_MPC85xx_PCIX_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_PCIX_OFFSET)
+#define CONFIG_SYS_MPC85xx_PCIX2_OFFSET	(0x9000)
+#define CONFIG_SYS_MPC85xx_PCIX2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_PCIX2_OFFSET)
+#define CONFIG_SYS_MPC85xx_SATA1_OFFSET	(0x18000)
+#define CONFIG_SYS_MPC85xx_SATA1_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SATA1_OFFSET)
+#define CONFIG_SYS_MPC85xx_SATA2_OFFSET	(0x19000)
+#define CONFIG_SYS_MPC85xx_SATA2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SATA2_OFFSET)
+#define CONFIG_SYS_MPC85xx_L2_OFFSET	(0x20000)
+#define CONFIG_SYS_MPC85xx_L2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_L2_OFFSET)
+#define CONFIG_SYS_MPC85xx_DMA_OFFSET	(0x21000)
+#define CONFIG_SYS_MPC85xx_DMA_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_DMA_OFFSET)
+#define CONFIG_SYS_MPC85xx_ESDHC_OFFSET	(0x2e000)
+#define CONFIG_SYS_MPC85xx_ESDHC_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_ESDHC_OFFSET)
+#define CONFIG_SYS_MPC85xx_PIC_OFFSET	(0x40000)
+#define CONFIG_SYS_MPC85xx_PIC_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_PIC_OFFSET)
+#define CONFIG_SYS_MPC85xx_CPM_OFFSET	(0x80000)
+#define CONFIG_SYS_MPC85xx_CPM_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_CPM_OFFSET)
+#define CONFIG_SYS_MPC85xx_SERDES1_OFFSET	(0xE3000)
+#define CONFIG_SYS_MPC85xx_SERDES1_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SERDES2_OFFSET)
+#define CONFIG_SYS_MPC85xx_SERDES2_OFFSET	(0xE3100)
+#define CONFIG_SYS_MPC85xx_SERDES2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SERDES2_OFFSET)
 
 #endif /*__IMMAP_85xx__*/

@@ -133,7 +133,7 @@ int do_sled (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	default:
 		break;
 	}
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
@@ -156,7 +156,7 @@ int do_sled (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #endif
 
 U_BOOT_CMD (sled, 3, 0, do_sled,
-	    "sled    - check and set status led\n",
+	    "check and set status led",
 	    "sled [name [state]]\n" __NAME_STR "    - state: on|off|blink\n");
 #endif
 #endif	/* CONFIG_STATUS_LED */

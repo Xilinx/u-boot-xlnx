@@ -31,6 +31,8 @@ extern void nand_init(void);
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
 
+extern int board_nand_init(struct nand_chip *nand);
+
 typedef struct mtd_info nand_info_t;
 
 extern int nand_curr_device;
@@ -122,7 +124,7 @@ int nand_lock( nand_info_t *meminfo, int tight );
 int nand_unlock( nand_info_t *meminfo, ulong start, ulong length );
 int nand_get_lock_status(nand_info_t *meminfo, ulong offset);
 
-#ifdef CFG_NAND_SELECT_DEVICE
+#ifdef CONFIG_SYS_NAND_SELECT_DEVICE
 void board_nand_select_device(struct nand_chip *nand, int chip);
 #endif
 

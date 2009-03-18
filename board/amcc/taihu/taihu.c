@@ -28,6 +28,7 @@
 #include <asm/processor.h>
 #include <asm/io.h>
 #include <spi.h>
+#include <netdev.h>
 #include <asm/gpio.h>
 
 extern int lcd_init(void);
@@ -47,8 +48,8 @@ int board_early_init_f(void)
 	mtdcr(uicsr, 0xFFFFFFFF);	/* clear all ints */
 	mtdcr(uicvcr, 0x00000001);	/* set vect base=0,INT0 highest priority */
 
-	mtebc(pb3ap, CFG_EBC_PB3AP);	/* memory bank 3 (CPLD_LCM) initialization */
-	mtebc(pb3cr, CFG_EBC_PB3CR);
+	mtebc(pb3ap, CONFIG_SYS_EBC_PB3AP);	/* memory bank 3 (CPLD_LCM) initialization */
+	mtebc(pb3cr, CONFIG_SYS_EBC_PB3CR);
 
 	/*
 	 * Configure CPC0_PCI to enable PerWE as output
@@ -77,15 +78,6 @@ int checkboard(void)
 	return 0;
 }
 
-/*************************************************************************
- *  phys_size_t initdram
- *
- ************************************************************************/
-phys_size_t initdram(int board)
-{
-	return CFG_SDRAM_SIZE_PER_BANK * CFG_SDRAM_BANKS; /* 128Mbytes */
-}
-
 static int do_sw_stat(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
 {
 	char stat;
@@ -101,7 +93,7 @@ static int do_sw_stat(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
 
 U_BOOT_CMD (
 	sw2_stat, 1, 1, do_sw_stat,
-	"sw2_stat - show status of switch 2\n",
+	"show status of switch 2",
 	NULL
 	);
 
@@ -110,13 +102,13 @@ static int do_led_ctl(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
 	int led_no;
 
 	if (argc != 3) {
-		printf("%s", cmd_tp->usage);
+		cmd_usage(cmd_tp);
 		return -1;
 	}
 
 	led_no = simple_strtoul(argv[1], NULL, 16);
 	if (led_no != 1 && led_no != 2) {
-		printf("%s", cmd_tp->usage);
+		cmd_usage(cmd_tp);
 		return -1;
 	}
 
@@ -131,7 +123,7 @@ static int do_led_ctl(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
 		else
 			gpio_write_bit(31, 0);
 	} else {
-		printf("%s", cmd_tp->usage);
+		cmd_usage(cmd_tp);
 		return -1;
 	}
 
@@ -140,7 +132,7 @@ static int do_led_ctl(cmd_tbl_t* cmd_tp, int flags, int argc, char *argv[])
 
 U_BOOT_CMD (
 	led_ctl, 3, 1, do_led_ctl,
-	"led_ctl	- make led 1 or 2  on or off\n",
+	"make led 1 or 2  on or off",
 	"<led_no> <on/off>	-  make led <led_no> on/off,\n"
 	"\tled_no is 1 or 2\t"
 	);
@@ -200,3 +192,9 @@ int pci_pre_init(struct pci_controller *hose)
 	return 1;
 }
 #endif /* CONFIG_PCI */
+
+int board_eth_init(bd_t *bis)
+{
+	cpu_eth_init(bis);
+	return pci_eth_init(bis);
+}

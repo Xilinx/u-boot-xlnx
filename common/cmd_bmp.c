@@ -55,19 +55,19 @@ static bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
 	/*
 	 * Decompress bmp image
 	 */
-	len = CFG_VIDEO_LOGO_MAX_SIZE;
-	dst = malloc(CFG_VIDEO_LOGO_MAX_SIZE);
+	len = CONFIG_SYS_VIDEO_LOGO_MAX_SIZE;
+	dst = malloc(CONFIG_SYS_VIDEO_LOGO_MAX_SIZE);
 	if (dst == NULL) {
 		puts("Error: malloc in gunzip failed!\n");
 		return NULL;
 	}
-	if (gunzip(dst, CFG_VIDEO_LOGO_MAX_SIZE, (uchar *)addr, &len) != 0) {
+	if (gunzip(dst, CONFIG_SYS_VIDEO_LOGO_MAX_SIZE, (uchar *)addr, &len) != 0) {
 		free(dst);
 		return NULL;
 	}
-	if (len == CFG_VIDEO_LOGO_MAX_SIZE)
+	if (len == CONFIG_SYS_VIDEO_LOGO_MAX_SIZE)
 		puts("Image could be truncated"
-				" (increase CFG_VIDEO_LOGO_MAX_SIZE)!\n");
+				" (increase CONFIG_SYS_VIDEO_LOGO_MAX_SIZE)!\n");
 
 	bmp = dst;
 
@@ -120,7 +120,7 @@ int do_bmp(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	        y = simple_strtoul(argv[4], NULL, 10);
 	        break;
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -132,14 +132,14 @@ int do_bmp(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	} else if (strncmp(argv[1],"display",1) == 0) {
 	    return (bmp_display(addr, x, y));
 	} else {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 }
 
 U_BOOT_CMD(
 	bmp,	5,	1,	do_bmp,
-	"bmp     - manipulate BMP image data\n",
+	"manipulate BMP image data",
 	"info <imageAddr>          - display image info\n"
 	"bmp display <imageAddr> [x y] - display image at x,y\n"
 );

@@ -28,11 +28,12 @@
 #include <fdt_support.h>
 #include <asm/processor.h>
 
+DECLARE_GLOBAL_DATA_PTR;
+
 extern void ft_qe_setup(void *blob);
 
 #ifdef CONFIG_MP
 #include "mp.h"
-DECLARE_GLOBAL_DATA_PTR;
 
 void ft_fixup_cpu(void *blob, u64 memory_limit)
 {
@@ -83,7 +84,7 @@ void ft_fixup_cpu(void *blob, u64 memory_limit)
 /* return size in kilobytes */
 static inline u32 l2cache_size(void)
 {
-	volatile ccsr_l2cache_t *l2cache = (void *)CFG_MPC85xx_L2_ADDR;
+	volatile ccsr_l2cache_t *l2cache = (void *)CONFIG_SYS_MPC85xx_L2_ADDR;
 	volatile u32 l2siz_field = (l2cache->l2ctl >> 28) & 0x3;
 	u32 ver = SVR_SOC_VER(get_svr());
 
@@ -152,7 +153,6 @@ static inline void ft_fixup_l2cache(void *blob)
 	}
 	fdt_setprop(blob, off, "cache-unified", NULL, 0);
 	fdt_setprop_cell(blob, off, "cache-block-size", line_size);
-	fdt_setprop_cell(blob, off, "cache-line-size", line_size);
 	fdt_setprop_cell(blob, off, "cache-size", size);
 	fdt_setprop_cell(blob, off, "cache-sets", num_sets);
 	fdt_setprop_cell(blob, off, "cache-level", 2);
@@ -181,7 +181,6 @@ static inline void ft_fixup_cache(void *blob)
 		dnum_sets = dsize / (dline_size * dnum_ways);
 
 		fdt_setprop_cell(blob, off, "d-cache-block-size", dline_size);
-		fdt_setprop_cell(blob, off, "d-cache-line-size", dline_size);
 		fdt_setprop_cell(blob, off, "d-cache-size", dsize);
 		fdt_setprop_cell(blob, off, "d-cache-sets", dnum_sets);
 
@@ -192,7 +191,6 @@ static inline void ft_fixup_cache(void *blob)
 		inum_sets = isize / (iline_size * inum_ways);
 
 		fdt_setprop_cell(blob, off, "i-cache-block-size", iline_size);
-		fdt_setprop_cell(blob, off, "i-cache-line-size", iline_size);
 		fdt_setprop_cell(blob, off, "i-cache-size", isize);
 		fdt_setprop_cell(blob, off, "i-cache-sets", inum_sets);
 
@@ -204,8 +202,21 @@ static inline void ft_fixup_cache(void *blob)
 }
 
 
+void fdt_add_enet_stashing(void *fdt)
+{
+	do_fixup_by_compat(fdt, "gianfar", "bd-stash", NULL, 0, 1);
+
+	do_fixup_by_compat_u32(fdt, "gianfar", "rx-stash-len", 96, 1);
+
+	do_fixup_by_compat_u32(fdt, "gianfar", "rx-stash-idx", 0, 1);
+}
+
 void ft_cpu_setup(void *blob, bd_t *bd)
 {
+	int off;
+	int val;
+	sys_info_t sysinfo;
+
 	/* delete crypto node if not on an E-processor */
 	if (!IS_E_PROCESSOR(get_svr()))
 		fdt_fixup_crypto_node(blob, 0);
@@ -213,23 +224,37 @@ void ft_cpu_setup(void *blob, bd_t *bd)
 #if defined(CONFIG_HAS_ETH0) || defined(CONFIG_HAS_ETH1) ||\
     defined(CONFIG_HAS_ETH2) || defined(CONFIG_HAS_ETH3)
 	fdt_fixup_ethernet(blob);
+
+	fdt_add_enet_stashing(blob);
 #endif
 
 	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
 		"timebase-frequency", bd->bi_busfreq / 8, 1);
 	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
 		"bus-frequency", bd->bi_busfreq, 1);
-	do_fixup_by_prop_u32(blob, "device_type", "cpu", 4,
-		"clock-frequency", bd->bi_intfreq, 1);
+	get_sys_info(&sysinfo);
+	off = fdt_node_offset_by_prop_value(blob, -1, "device_type", "cpu", 4);
+	while (off != -FDT_ERR_NOTFOUND) {
+		u32 *reg = (u32 *)fdt_getprop(blob, off, "reg", 0);
+		val = cpu_to_fdt32(sysinfo.freqProcessor[*reg]);
+		fdt_setprop(blob, off, "clock-frequency", &val, 4);
+		off = fdt_node_offset_by_prop_value(blob, off, "device_type",
+							"cpu", 4);
+	}
 	do_fixup_by_prop_u32(blob, "device_type", "soc", 4,
 		"bus-frequency", bd->bi_busfreq, 1);
+
+	do_fixup_by_compat_u32(blob, "fsl,pq3-localbus",
+		"bus-frequency", gd->lbc_clk, 1);
+	do_fixup_by_compat_u32(blob, "fsl,elbc",
+		"bus-frequency", gd->lbc_clk, 1);
 #ifdef CONFIG_QE
 	ft_qe_setup(blob);
 #endif
 
-#ifdef CFG_NS16550
+#ifdef CONFIG_SYS_NS16550
 	do_fixup_by_compat_u32(blob, "ns16550",
-		"clock-frequency", CFG_NS16550_CLK, 1);
+		"clock-frequency", CONFIG_SYS_NS16550_CLK, 1);
 #endif
 
 #ifdef CONFIG_CPM2

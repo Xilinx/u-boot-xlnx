@@ -31,9 +31,9 @@
 
 #define LCD_DELAY_NORMAL_US	100
 #define LCD_DELAY_NORMAL_MS	2
-#define LCD_CMD_ADDR		((volatile char *)(CFG_EBC2_LCM_BASE))
-#define LCD_DATA_ADDR		((volatile char *)(CFG_EBC2_LCM_BASE+1))
-#define LCD_BLK_CTRL		((volatile char *)(CFG_EBC1_FPGA_BASE+0x2))
+#define LCD_CMD_ADDR		((volatile char *)(CONFIG_SYS_EBC2_LCM_BASE))
+#define LCD_DATA_ADDR		((volatile char *)(CONFIG_SYS_EBC2_LCM_BASE+1))
+#define LCD_BLK_CTRL		((volatile char *)(CONFIG_SYS_EBC1_FPGA_BASE+0x2))
 
 #define mdelay(t)	({unsigned long msec=(t); while (msec--) { udelay(1000);}})
 
@@ -167,7 +167,7 @@ static int do_lcd_clear(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 static int do_lcd_puts(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	if (argc < 2) {
-		printf("%s", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 	lcd_puts(argv[1]);
@@ -176,7 +176,7 @@ static int do_lcd_puts(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 static int do_lcd_putc(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	if (argc < 2) {
-		printf("%s", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 	lcd_putc((char)argv[1][0]);
@@ -189,7 +189,7 @@ static int do_lcd_cur(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	char cur_addr;
 
 	if (argc < 3) {
-		printf("%s", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -254,16 +254,16 @@ static int do_lcd_cur(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
-U_BOOT_CMD(lcd_test, 1, 1, do_lcd_test, "lcd_test - lcd test display\n", NULL);
-U_BOOT_CMD(lcd_cls, 1, 1, do_lcd_clear, "lcd_cls - lcd clear display\n", NULL);
+U_BOOT_CMD(lcd_test, 1, 1, do_lcd_test, "lcd test display", NULL);
+U_BOOT_CMD(lcd_cls, 1, 1, do_lcd_clear, "lcd clear display", NULL);
 U_BOOT_CMD(lcd_puts, 2, 1, do_lcd_puts,
-	   "lcd_puts - display string on lcd\n",
+	   "display string on lcd",
 	   "<string> - <string> to be displayed\n");
 U_BOOT_CMD(lcd_putc, 2, 1, do_lcd_putc,
-	   "lcd_putc - display char on lcd\n",
+	   "display char on lcd",
 	   "<char> - <char> to be displayed\n");
 U_BOOT_CMD(lcd_cur, 3, 1, do_lcd_cur,
-	   "lcd_cur - shift cursor on lcd\n",
+	   "shift cursor on lcd",
 	   "<count> <dir>- shift cursor on lcd <count> times, direction is <dir> \n"
 	   " <count> - 0~31\n" " <dir> - 0,backward; 1, forward\n");
 
@@ -359,7 +359,7 @@ void set_phy_normal_mode(void)
 static int do_led_test_off(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	volatile unsigned int *GpioOr =
-		(volatile unsigned int *)(CFG_PERIPHERAL_BASE + 0x700);
+		(volatile unsigned int *)(CONFIG_SYS_PERIPHERAL_BASE + 0x700);
 	*GpioOr |= 0x00300000;
 	return 0;
 }
@@ -367,14 +367,14 @@ static int do_led_test_off(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 static int do_led_test_on(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	volatile unsigned int *GpioOr =
-		(volatile unsigned int *)(CFG_PERIPHERAL_BASE + 0x700);
+		(volatile unsigned int *)(CONFIG_SYS_PERIPHERAL_BASE + 0x700);
 	*GpioOr &= ~0x00300000;
 	return 0;
 }
 
 U_BOOT_CMD(ledon, 1, 1, do_led_test_on,
-	   "ledon - led test light on\n", NULL);
+	   "led test light on", NULL);
 
 U_BOOT_CMD(ledoff, 1, 1, do_led_test_off,
-	   "ledoff - led test light off\n", NULL);
+	   "led test light off", NULL);
 #endif

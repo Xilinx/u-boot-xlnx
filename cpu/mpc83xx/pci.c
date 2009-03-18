@@ -42,7 +42,7 @@ static int pci_num_buses;
 
 static void pci_init_bus(int bus, struct pci_region *reg)
 {
-	volatile immap_t *immr = (volatile immap_t *)CFG_IMMR;
+	volatile immap_t *immr = (volatile immap_t *)CONFIG_SYS_IMMR;
 	volatile pot83xx_t *pot = immr->ios.pot;
 	volatile pcictrl83xx_t *pci_ctrl = &immr->pci_ctrl[bus];
 	struct pci_controller *hose = &pci_hose[bus];
@@ -83,19 +83,19 @@ static void pci_init_bus(int bus, struct pci_region *reg)
 	pci_ctrl->pibar1 = 0;
 	pci_ctrl->piebar1 = 0;
 	pci_ctrl->piwar1 = PIWAR_EN | PIWAR_PF | PIWAR_RTT_SNOOP |
-	                   PIWAR_WTT_SNOOP | (__ilog2(gd->ram_size) - 1);
+	                   PIWAR_WTT_SNOOP | (__ilog2(gd->ram_size - 1));
 
 	i = hose->region_count++;
 	hose->regions[i].bus_start = 0;
 	hose->regions[i].phys_start = 0;
 	hose->regions[i].size = gd->ram_size;
-	hose->regions[i].flags = PCI_REGION_MEM | PCI_REGION_MEMORY;
+	hose->regions[i].flags = PCI_REGION_MEM | PCI_REGION_SYS_MEMORY;
 
-	hose->first_busno = 0;
+	hose->first_busno = pci_last_busno() + 1;
 	hose->last_busno = 0xff;
 
-	pci_setup_indirect(hose, CFG_IMMR + 0x8300 + bus * 0x80,
-	                         CFG_IMMR + 0x8304 + bus * 0x80);
+	pci_setup_indirect(hose, CONFIG_SYS_IMMR + 0x8300 + bus * 0x80,
+	                         CONFIG_SYS_IMMR + 0x8304 + bus * 0x80);
 
 	pci_register_hose(hose);
 
@@ -118,10 +118,12 @@ static void pci_init_bus(int bus, struct pci_region *reg)
 #ifdef CONFIG_PCI_SCAN_SHOW
 	printf("PCI:   Bus Dev VenId DevId Class Int\n");
 #endif
+#ifndef CONFIG_PCISLAVE
 	/*
 	 * Hose scan.
 	 */
 	hose->last_busno = pci_hose_scan(hose);
+#endif
 }
 
 /*
@@ -133,7 +135,7 @@ static void pci_init_bus(int bus, struct pci_region *reg)
  */
 void mpc83xx_pci_init(int num_buses, struct pci_region **reg, int warmboot)
 {
-	volatile immap_t *immr = (volatile immap_t *)CFG_IMMR;
+	volatile immap_t *immr = (volatile immap_t *)CONFIG_SYS_IMMR;
 	int i;
 
 	if (num_buses > MAX_BUSES) {
@@ -190,6 +192,9 @@ void mpc83xx_pcislave_unlock(int bus)
 	pci_hose_read_config_word (hose, dev, PCI_FUNCTION_CONFIG, &reg16);
 	reg16 &= ~(PCI_FUNCTION_CFG_LOCK);
 	pci_hose_write_config_word (hose, dev, PCI_FUNCTION_CONFIG, reg16);
+
+	/* The configuration bit is now unlocked, so we can scan the bus */
+	hose->last_busno = pci_hose_scan(hose);
 }
 #endif
 
@@ -222,8 +227,8 @@ void ft_pci_setup(void *blob, bd_t *bd)
 
 		path = fdt_getprop(blob, nodeoffset, "pci1", NULL);
 		if (path) {
-			tmp[0] = cpu_to_be32(pci_hose[0].first_busno);
-			tmp[1] = cpu_to_be32(pci_hose[0].last_busno);
+			tmp[0] = cpu_to_be32(pci_hose[1].first_busno);
+			tmp[1] = cpu_to_be32(pci_hose[1].last_busno);
 			do_fixup_by_path(blob, path, "bus-range",
 				&tmp, sizeof(tmp), 1);
 

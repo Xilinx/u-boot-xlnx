@@ -50,7 +50,7 @@ int do_vfd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	ulong bitmap;
 
 	if (argc != 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -67,7 +67,7 @@ int do_vfd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	vfd,	2,	0,	do_vfd,
-	"vfd     - load a bitmap to the VFDs on TRAB\n",
+	"load a bitmap to the VFDs on TRAB",
 	"/N\n"
 	"    - load bitmap N to the VFDs (N is _decimal_ !!!)\n"
 	"vfd ADDR\n"
@@ -75,7 +75,6 @@ U_BOOT_CMD(
 );
 #endif
 
-#ifdef CONFIG_VFD
 int trab_vfd (ulong bitmap)
 {
 	uchar *addr;
@@ -103,4 +102,3 @@ int trab_vfd (ulong bitmap)
 	transfer_pic(3, addr, VFD_LOGO_HEIGHT, VFD_LOGO_WIDTH);
 	return 0;
 }
-#endif	/* CONFIG_VFD */

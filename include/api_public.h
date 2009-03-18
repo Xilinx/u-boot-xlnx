@@ -57,6 +57,7 @@
 #define API_ENOMEM		3	/* no memory		*/
 #define API_EBUSY		4	/* busy, occupied etc.	*/
 #define API_EIO			5	/* I/O error		*/
+#define API_ESYSC		6	/* syscall error	*/
 
 typedef	int (*scp_t)(int, int *, ...);
 
@@ -110,8 +111,8 @@ struct sys_info {
 	int			mr_no;	/* number of memory regions */
 };
 
-#undef CFG_64BIT_LBA
-#ifdef CFG_64BIT_LBA
+#undef CONFIG_SYS_64BIT_LBA
+#ifdef CONFIG_SYS_64BIT_LBA
 typedef	u_int64_t lbasize_t;
 #else
 typedef unsigned long lbasize_t;

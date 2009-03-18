@@ -35,7 +35,7 @@ int do_setexpr(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	/* Validate arguments */
 	if ((argc != 5) || (strlen(argv[3]) != 1)) {
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -63,7 +63,7 @@ int do_setexpr(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	setexpr, 5, 0, do_setexpr,
-	"setexpr - set environment variable as the result of eval expression\n",
+	"set environment variable as the result of eval expression",
 	"name value1 <op> value2\n"
 	"    - set environment variable 'name' to the result of the evaluated\n"
 	"      express specified by <op>.  <op> can be &, |, ^, +, -, *, /, %\n"

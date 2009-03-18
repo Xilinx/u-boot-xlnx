@@ -59,7 +59,7 @@ static int scsi_max_devs; /* number of highest available scsi device */
 
 static int scsi_curr_dev; /* current device */
 
-static block_dev_desc_t scsi_dev_desc[CFG_SCSI_MAX_DEVICE];
+static block_dev_desc_t scsi_dev_desc[CONFIG_SYS_SCSI_MAX_DEVICE];
 
 /********************************************************************************
  *  forward declerations of some Setup Routines
@@ -88,7 +88,7 @@ void scsi_scan(int mode)
 	if(mode==1) {
 		printf("scanning bus for devices...\n");
 	}
-	for(i=0;i<CFG_SCSI_MAX_DEVICE;i++) {
+	for(i=0;i<CONFIG_SYS_SCSI_MAX_DEVICE;i++) {
 		scsi_dev_desc[i].target=0xff;
 		scsi_dev_desc[i].lun=0xff;
 		scsi_dev_desc[i].lba=0;
@@ -104,9 +104,9 @@ void scsi_scan(int mode)
 		scsi_dev_desc[i].block_read=scsi_read;
 	}
 	scsi_max_devs=0;
-	for(i=0;i<CFG_SCSI_MAX_SCSI_ID;i++) {
+	for(i=0;i<CONFIG_SYS_SCSI_MAX_SCSI_ID;i++) {
 		pccb->target=i;
-		for(lun=0;lun<CFG_SCSI_MAX_LUN;lun++) {
+		for(lun=0;lun<CONFIG_SYS_SCSI_MAX_LUN;lun++) {
 			pccb->lun=lun;
 			pccb->pdata=(unsigned char *)&tempbuff;
 			pccb->datalen=512;
@@ -195,7 +195,7 @@ void scsi_init(void)
 
 block_dev_desc_t * scsi_get_dev(int dev)
 {
-	return (dev < CFG_SCSI_MAX_DEVICE) ? &scsi_dev_desc[dev] : NULL;
+	return (dev < CONFIG_SYS_SCSI_MAX_DEVICE) ? &scsi_dev_desc[dev] : NULL;
 }
 
 
@@ -217,7 +217,7 @@ int do_scsiboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	switch (argc) {
 	case 1:
-		addr = CFG_LOAD_ADDR;
+		addr = CONFIG_SYS_LOAD_ADDR;
 		boot_device = getenv ("bootdevice");
 		break;
 	case 2:
@@ -229,7 +229,7 @@ int do_scsiboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		boot_device = argv[2];
 		break;
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -346,7 +346,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	switch (argc) {
     case 0:
-    case 1:	printf ("Usage:\n%s\n", cmdtp->usage);	return 1;
+    case 1:	cmd_usage(cmdtp);	return 1;
     case 2:
 			if (strncmp(argv[1],"res",3) == 0) {
 				printf("\nReset SCSI\n");
@@ -356,7 +356,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			if (strncmp(argv[1],"inf",3) == 0) {
 				int i;
-				for (i=0; i<CFG_SCSI_MAX_DEVICE; ++i) {
+				for (i=0; i<CONFIG_SYS_SCSI_MAX_DEVICE; ++i) {
 					if(scsi_dev_desc[i].type==DEV_TYPE_UNKNOWN)
 						continue; /* list only known devices */
 					printf ("SCSI dev. %d:  ", i);
@@ -365,7 +365,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				return 0;
 			}
 			if (strncmp(argv[1],"dev",3) == 0) {
-				if ((scsi_curr_dev < 0) || (scsi_curr_dev >= CFG_SCSI_MAX_DEVICE)) {
+				if ((scsi_curr_dev < 0) || (scsi_curr_dev >= CONFIG_SYS_SCSI_MAX_DEVICE)) {
 					printf("\nno SCSI devices available\n");
 					return 1;
 				}
@@ -379,7 +379,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			if (strncmp(argv[1],"part",4) == 0) {
 				int dev, ok;
-				for (ok=0, dev=0; dev<CFG_SCSI_MAX_DEVICE; ++dev) {
+				for (ok=0, dev=0; dev<CONFIG_SYS_SCSI_MAX_DEVICE; ++dev) {
 					if (scsi_dev_desc[dev].type!=DEV_TYPE_UNKNOWN) {
 						ok++;
 						if (dev)
@@ -392,13 +392,13 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 					printf("\nno SCSI devices available\n");
 				return 1;
 			}
-			printf ("Usage:\n%s\n", cmdtp->usage);
+			cmd_usage(cmdtp);
 			return 1;
 	case 3:
 			if (strncmp(argv[1],"dev",3) == 0) {
 				int dev = (int)simple_strtoul(argv[2], NULL, 10);
 				printf ("\nSCSI device %d: ", dev);
-				if (dev >= CFG_SCSI_MAX_DEVICE) {
+				if (dev >= CONFIG_SYS_SCSI_MAX_DEVICE) {
 					printf("unknown device\n");
 					return 1;
 				}
@@ -421,7 +421,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				}
 				return 1;
 			}
-			printf ("Usage:\n%s\n", cmdtp->usage);
+			cmd_usage(cmdtp);
 			return 1;
     default:
 			/* at least 4 args */
@@ -437,7 +437,7 @@ int do_scsi (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				return 0;
 			}
 	} /* switch */
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
@@ -616,7 +616,7 @@ void scsi_setup_inquiry(ccb * pccb)
 
 U_BOOT_CMD(
 	scsi, 5, 1, do_scsi,
-	"scsi    - SCSI sub-system\n",
+	"SCSI sub-system",
 	"reset - reset SCSI controller\n"
 	"scsi info  - show available SCSI devices\n"
 	"scsi scan  - (re-)scan SCSI bus\n"
@@ -628,6 +628,6 @@ U_BOOT_CMD(
 
 U_BOOT_CMD(
 	scsiboot, 3, 1, do_scsiboot,
-	"scsiboot- boot from SCSI device\n",
+	"boot from SCSI device",
 	"loadAddr dev:part\n"
 );

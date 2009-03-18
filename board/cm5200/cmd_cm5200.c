@@ -39,18 +39,18 @@ int do_i2c(char *argv[])
 	getc();
 
 	temp = 0xf0; /* set io 0-4 as output */
-	i2c_write(CFG_I2C_IO, 3, 1, (uchar *)&temp, 1);
+	i2c_write(CONFIG_SYS_I2C_IO, 3, 1, (uchar *)&temp, 1);
 
 	printf("Press I2C4-7. LED I2C0-3 should have the same state\n\n"
 		"Press any key to stop\n\n");
 
 	while (!tstc()) {
-		i2c_read(CFG_I2C_IO, 0, 1, (uchar *)&temp, 1);
+		i2c_read(CONFIG_SYS_I2C_IO, 0, 1, (uchar *)&temp, 1);
 		temp1 = (temp >> 4) & 0x03;
 		temp1 |= (temp >> 3) & 0x08; /* S302 -> LED303 */
 		temp1 |= (temp >> 5) & 0x04; /* S303 -> LED302 */
 		temp = temp1;
-		i2c_write(CFG_I2C_IO, 1, 1, (uchar *)&temp, 1);
+		i2c_write(CONFIG_SYS_I2C_IO, 1, 1, (uchar *)&temp, 1);
 	}
 	getc();
 
@@ -392,7 +392,7 @@ int do_rs232(char *argv[])
 		error_status = 1;
 		break;
 	}
-	gpio->port_config |= (CFG_GPS_PORT_CONFIG & 0xFF0FF80F);
+	gpio->port_config |= (CONFIG_SYS_GPS_PORT_CONFIG & 0xFF0FF80F);
 
 	return error_status;
 }
@@ -435,7 +435,7 @@ int cmd_fkt(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	fkt,	4,	1,	cmd_fkt,
-	"fkt     - Function test routines\n",
+	"Function test routines",
 	"i2c\n"
 	"     - Test I2C communication\n"
 	"fkt led\n"

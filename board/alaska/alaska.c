@@ -32,69 +32,69 @@ void setupBat (ulong size)
 	int blocksize = 0;
 
 	/* Flash 0 */
-#if defined (CFG_AMD_BOOT)
-	batu = CFG_FLASH0_BASE | (BL_512K << 2) | BPP_RW | BPP_RX;
+#if defined (CONFIG_SYS_AMD_BOOT)
+	batu = CONFIG_SYS_FLASH0_BASE | BATU_BL_512K | BPP_RW | BPP_RX;
 #else
-	batu = CFG_FLASH0_BASE | (BL_16M << 2) | BPP_RW | BPP_RX;
+	batu = CONFIG_SYS_FLASH0_BASE | BATU_BL_16M | BPP_RW | BPP_RX;
 #endif
-	batl = CFG_FLASH0_BASE | 0x22;
+	batl = CONFIG_SYS_FLASH0_BASE | 0x22;
 	write_bat (IBAT0, batu, batl);
 	write_bat (DBAT0, batu, batl);
 
 	/* Flash 1 */
-#if defined (CFG_AMD_BOOT)
-	batu = CFG_FLASH1_BASE | (BL_16M << 2) | BPP_RW | BPP_RX;
+#if defined (CONFIG_SYS_AMD_BOOT)
+	batu = CONFIG_SYS_FLASH1_BASE | BATU_BL_16M | BPP_RW | BPP_RX;
 #else
-	batu = CFG_FLASH1_BASE | (BL_512K << 2) | BPP_RW | BPP_RX;
+	batu = CONFIG_SYS_FLASH1_BASE | BATU_BL_512K | BPP_RW | BPP_RX;
 #endif
-	batl = CFG_FLASH1_BASE | 0x22;
+	batl = CONFIG_SYS_FLASH1_BASE | 0x22;
 	write_bat (IBAT1, batu, batl);
 	write_bat (DBAT1, batu, batl);
 
 	/* CPLD */
-	batu = CFG_CPLD_BASE | (BL_512K << 2) | BPP_RW | BPP_RX;
-	batl = CFG_CPLD_BASE | 0x22;
+	batu = CONFIG_SYS_CPLD_BASE | BATU_BL_512K | BPP_RW | BPP_RX;
+	batl = CONFIG_SYS_CPLD_BASE | 0x22;
 	write_bat (IBAT2, 0, 0);
 	write_bat (DBAT2, batu, batl);
 
 	/* FPGA */
-	batu = CFG_FPGA_BASE | (BL_512K << 2) | BPP_RW | BPP_RX;
-	batl = CFG_FPGA_BASE | 0x22;
+	batu = CONFIG_SYS_FPGA_BASE | BATU_BL_512K | BPP_RW | BPP_RX;
+	batl = CONFIG_SYS_FPGA_BASE | 0x22;
 	write_bat (IBAT3, 0, 0);
 	write_bat (DBAT3, batu, batl);
 
 	/* MBAR - Data only */
-	batu = CFG_MBAR | BPP_RW | BPP_RX;
-	batl = CFG_MBAR | 0x22;
+	batu = CONFIG_SYS_MBAR | BPP_RW | BPP_RX;
+	batl = CONFIG_SYS_MBAR | 0x22;
 	mtspr (IBAT4L, 0);
 	mtspr (IBAT4U, 0);
 	mtspr (DBAT4L, batl);
 	mtspr (DBAT4U, batu);
 
 	/* MBAR - SRAM */
-	batu = CFG_SRAM_BASE | BPP_RW | BPP_RX;
-	batl = CFG_SRAM_BASE | 0x42;
+	batu = CONFIG_SYS_SRAM_BASE | BPP_RW | BPP_RX;
+	batl = CONFIG_SYS_SRAM_BASE | 0x42;
 	mtspr (IBAT5L, batl);
 	mtspr (IBAT5U, batu);
 	mtspr (DBAT5L, batl);
 	mtspr (DBAT5U, batu);
 
 	if (size <= 0x800000)	/* 8MB */
-		blocksize = BL_8M << 2;
+		blocksize = BATU_BL_8M;
 	else if (size <= 0x1000000)	/* 16MB */
-		blocksize = BL_16M << 2;
+		blocksize = BATU_BL_16M;
 	else if (size <= 0x2000000)	/* 32MB */
-		blocksize = BL_32M << 2;
+		blocksize = BATU_BL_32M;
 	else if (size <= 0x4000000)	/* 64MB */
-		blocksize = BL_64M << 2;
+		blocksize = BATU_BL_64M;
 	else if (size <= 0x8000000)	/* 128MB */
-		blocksize = BL_128M << 2;
+		blocksize = BATU_BL_128M;
 	else if (size <= 0x10000000)	/* 256MB */
-		blocksize = BL_256M << 2;
+		blocksize = BATU_BL_256M;
 
 	/* Memory */
-	batu = CFG_SDRAM_BASE | blocksize | BPP_RW | BPP_RX;
-	batl = CFG_SDRAM_BASE | 0x42;
+	batu = CONFIG_SYS_SDRAM_BASE | blocksize | BPP_RW | BPP_RX;
+	batl = CONFIG_SYS_SDRAM_BASE | 0x42;
 	mtspr (IBAT6L, batl);
 	mtspr (IBAT6U, batu);
 	mtspr (DBAT6L, batl);
@@ -108,21 +108,21 @@ void setupBat (ulong size)
 	} else {
 		size -= 0x10000000;
 		if (size <= 0x800000)	/* 8MB */
-			blocksize = BL_8M << 2;
+			blocksize = BATU_BL_8M;
 		else if (size <= 0x1000000)	/* 16MB */
-			blocksize = BL_16M << 2;
+			blocksize = BATU_BL_16M;
 		else if (size <= 0x2000000)	/* 32MB */
-			blocksize = BL_32M << 2;
+			blocksize = BATU_BL_32M;
 		else if (size <= 0x4000000)	/* 64MB */
-			blocksize = BL_64M << 2;
+			blocksize = BATU_BL_64M;
 		else if (size <= 0x8000000)	/* 128MB */
-			blocksize = BL_128M << 2;
+			blocksize = BATU_BL_128M;
 		else if (size <= 0x10000000)	/* 256MB */
-			blocksize = BL_256M << 2;
+			blocksize = BATU_BL_256M;
 
-		batu = (CFG_SDRAM_BASE +
+		batu = (CONFIG_SYS_SDRAM_BASE +
 			0x10000000) | blocksize | BPP_RW | BPP_RX;
-		batl = (CFG_SDRAM_BASE + 0x10000000) | 0x42;
+		batl = (CONFIG_SYS_SDRAM_BASE + 0x10000000) | 0x42;
 	}
 
 	mtspr (IBAT7L, batl);

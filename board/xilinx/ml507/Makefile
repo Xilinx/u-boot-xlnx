@@ -1,6 +1,7 @@
 #
-# (C) Copyright 2000
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# (C) Copyright 2008
+# Ricardo Ribalda,Universidad Autonoma de Madrid, ricardo.ribalda@uam.es
+# This work has been supported by: Qtechnology http://qtec.com/
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -20,56 +21,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 
-include $(TOPDIR)/config.mk
-include xparameters.mk
+COBJS	+= $(BOARD).o
 
-LIB	= lib$(BOARD).a
-
-CFLAGS-y		:=
-CFLAGS-n		:=
-OBJS-y			:=
-OBJS-n			:=
-
-# Conditionally add Ethernet
-OBJS-$(XPAR_LLTEMAC)  	+= ../xilinx_lltemac/xlltemac_adapter.o \
-			   ../xilinx_lltemac/xlltemac.o \
-			   ../xilinx_lltemac/xlltemac_control.o \
-			   ../common/xlldma.o \
-			   ../common/xlldma_bdring.o \
-			   ../common/xipif_v1_23_b.o \
-			   ../common/xbasic_types.o \
-			   ../common/xversion.o \
-			   ../common/xio_dcr.o
-CFLAGS-$(XPAR_LLTEMAC)	+= -I../xilinx_lltemac
-
-# Conditionally add IIC
-OBJS-$(XPAR_IIC)  	+= ../xilinx_iic/iic_adapter.o \
-			   ../xilinx_iic/xiic_l.o \
-			   ../common/xipif_v1_23_b.o \
-			   ../common/xbasic_types.o \
-			   ../common/xversion.o
-CFLAGS-$(XPAR_IIC)	+= -I../xilinx_iic
-
-CFLAGS += -I../ml507 -I../common $(CFLAGS-y)
-OBJS	= $(BOARD).o \
-	  $(OBJS-y)
-
-SOBJS	= init.o
-
-$(LIB):	$(OBJS) $(SOBJS)
-	$(AR) crv $@ $^
-
-clean:
-	rm -f $(SOBJS) $(OBJS)
-
-distclean:	clean
-	rm -f $(LIB) core *.bak .depend
-
-#########################################################################
-
-.depend:	Makefile $(SOBJS:.o=.S) $(OBJS:.o=.c)
-		$(CC) -M $(CFLAGS) $(SOBJS:.o=.S) $(OBJS:.o=.c) > $@
-
-sinclude .depend
-
-#########################################################################
+include $(SRCTREE)/board/xilinx/ppc440-generic/Makefile

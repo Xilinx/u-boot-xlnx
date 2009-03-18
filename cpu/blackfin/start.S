@@ -1,7 +1,7 @@
 /*
  * U-boot - start.S Startup file for Blackfin u-boot
  *
- * Copyright (c) 2005-2007 Analog Devices Inc.
+ * Copyright (c) 2005-2008 Analog Devices Inc.
  *
  * This file is based on head.S
  * Copyright (c) 2003  Metrowerks/Motorola
@@ -49,8 +49,8 @@
 ENTRY(_start)
 
 	/* Set our initial stack to L1 scratch space */
-	sp.l = LO(L1_SRAM_SCRATCH + L1_SRAM_SCRATCH_SIZE);
-	sp.h = HI(L1_SRAM_SCRATCH + L1_SRAM_SCRATCH_SIZE);
+	sp.l = LO(L1_SRAM_SCRATCH_END - 20);
+	sp.h = HI(L1_SRAM_SCRATCH_END - 20);
 
 #ifdef CONFIG_HW_WATCHDOG
 # ifndef CONFIG_HW_WATCHDOG_TIMEOUT_START
@@ -75,7 +75,7 @@ ENTRY(_start)
 
 	serial_early_puts("Init Registers");
 
-	/* Disable nested interrupts and enable CYCLES for udelay() */
+	/* Disable self-nested interrupts and enable CYCLES for udelay() */
 	R0 = CCEN | 0x30;
 	SYSCFG = R0;
 
@@ -125,8 +125,11 @@ ENTRY(_start)
 	 */
 	r6 = 1 (x);
 
-	/* Relocate from wherever are (FLASH/RAM/etc...) to the
-	 * hardcoded monitor location in the end of RAM.
+	/* Relocate from wherever we are (FLASH/RAM/etc...) to the hardcoded
+	 * monitor location in the end of RAM.  We know that memcpy() only
+	 * uses registers, so it is safe to call here.  Note that this only
+	 * copies to external memory ... we do not start executing out of
+	 * it yet (see "lower to 15" below).
 	 */
 	serial_early_puts("Relocate");
 	call _get_pc;
@@ -135,27 +138,16 @@ ENTRY(_start)
 	r2.h = .Loffset;
 	r3.l = _start;
 	r3.h = _start;
-	r1 = r2 - r3;
-
-	r0 = r0 - r1;
-
-	cc = r0 == r3;
+	r2 = r2 - r3;
+	r1 = r0 - r2;
+	cc = r1 == r3;
 	if cc jump .Lnorelocate;
-
 	r6 = 0 (x);
-	p1 = r0;
 
-	p2.l = LO(CFG_MONITOR_BASE);
-	p2.h = HI(CFG_MONITOR_BASE);
-
-	p3 = 0x04;
-	p4.l = LO(CFG_MONITOR_BASE + CFG_MONITOR_LEN);
-	p4.h = HI(CFG_MONITOR_BASE + CFG_MONITOR_LEN);
-.Lloop1:
-	r1 = [p1 ++ p3];
-	[p2 ++ p3] = r1;
-	cc=p2==p4;
-	if !cc jump .Lloop1;
+	r0 = r3;
+	r2.l = LO(CONFIG_SYS_MONITOR_LEN);
+	r2.h = HI(CONFIG_SYS_MONITOR_LEN);
+	call _memcpy_ASM;
 
 	/* Initialize BSS section ... we know that memset() does not
 	 * use the BSS, so it is safe to call here.  The bootrom LDR
@@ -173,36 +165,40 @@ ENTRY(_start)
 .Lnorelocate:
 
 	/* Setup the actual stack in external memory */
-	r0.h = HI(CONFIG_STACKBASE);
-	r0.l = LO(CONFIG_STACKBASE);
-	sp = r0;
+	sp.h = HI(CONFIG_STACKBASE);
+	sp.l = LO(CONFIG_STACKBASE);
 	fp = sp;
 
 	/* Now lower ourselves from the highest interrupt level to
 	 * the lowest.  We do this by masking all interrupts but 15,
-	 * setting the 15 handler to "board_init_f", raising the 15
+	 * setting the 15 handler to ".Lenable_nested", raising the 15
 	 * interrupt, and then returning from the highest interrupt
 	 * level to the dummy "jump" until the interrupt controller
-	 * services the pending 15 interrupt.
+	 * services the pending 15 interrupt.  If executing out of
+	 * flash, these steps also changes the code flow from flash
+	 * to external memory.
 	 */
 	serial_early_puts("Lower to 15");
 	r0 = r7;
 	r1 = r6;
 	p0.l = LO(EVT15);
 	p0.h = HI(EVT15);
-	p1.l = _cpu_init_f;
-	p1.h = _cpu_init_f;
+	p1.l = .Lenable_nested;
+	p1.h = .Lenable_nested;
 	[p0] = p1;
-	p2.l = LO(IMASK);
-	p2.h = HI(IMASK);
-	p3.l = LO(EVT_IVG15);
-	p3.h = HI(EVT_IVG15);
-	[p2] = p3;
+	r7 = EVT_IVG15 (z);
+	sti r7;
 	raise 15;
 	p4.l = .LWAIT_HERE;
 	p4.h = .LWAIT_HERE;
 	reti = p4;
 	rti;
+
+	/* Enable nested interrupts before continuing with cpu init */
+.Lenable_nested:
+	cli r7;
+	[--sp] = reti;
+	jump.l _cpu_init_f;
 
 .LWAIT_HERE:
 	jump .LWAIT_HERE;

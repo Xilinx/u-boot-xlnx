@@ -148,14 +148,6 @@ typedef struct vidinfo {
 
 extern vidinfo_t panel_info;
 
-#elif defined(CONFIG_MCC200)
-typedef struct vidinfo {
-	ushort	vl_col;		/* Number of columns (i.e. 160) */
-	ushort	vl_row;		/* Number of rows (i.e. 100) */
-
-	u_char	vl_bpix;	/* Bits per pixel, 0 = 1 */
-} vidinfo_t;
-
 #elif defined(CONFIG_ATMEL_LCD)
 
 typedef struct vidinfo {
@@ -183,6 +175,19 @@ typedef struct vidinfo {
 
 extern vidinfo_t panel_info;
 
+#else
+
+typedef struct vidinfo {
+	ushort	vl_col;		/* Number of columns (i.e. 160) */
+	ushort	vl_row;		/* Number of rows (i.e. 100) */
+
+	u_char	vl_bpix;	/* Bits per pixel, 0 = 1 */
+
+	ushort	*cmap;		/* Pointer to the colormap */
+
+	void	*priv;		/* Pointer to driver-specific data */
+} vidinfo_t;
+
 #endif /* CONFIG_MPC823, CONFIG_PXA250 or CONFIG_MCC200 or CONFIG_ATMEL_LCD */
 
 /* Video functions */
@@ -197,6 +202,8 @@ void	lcd_putc	(const char c);
 void	lcd_puts	(const char *s);
 void	lcd_printf	(const char *fmt, ...);
 
+/* Allow boards to customize the information displayed */
+void lcd_show_board_info(void);
 
 /************************************************************************/
 /* ** BITMAP DISPLAY SUPPORT						*/
@@ -211,8 +218,8 @@ void	lcd_printf	(const char *fmt, ...);
  *  the LCD controller and memory allocation. Someone has to know what
  *  is connected, as we can't autodetect anything.
  */
-#define CFG_HIGH	0	/* Pins are active high			*/
-#define CFG_LOW		1	/* Pins are active low			*/
+#define CONFIG_SYS_HIGH	0	/* Pins are active high			*/
+#define CONFIG_SYS_LOW		1	/* Pins are active low			*/
 
 #define LCD_MONOCHROME	0
 #define LCD_COLOR2	1

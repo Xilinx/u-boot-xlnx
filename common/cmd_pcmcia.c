@@ -88,7 +88,7 @@ int do_pinit (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	pinit,	2,	0,	do_pinit,
-	"pinit   - PCMCIA sub-system\n",
+	"PCMCIA sub-system",
 	"on  - power on PCMCIA socket\n"
 			"pinit off - power off PCMCIA socket\n"
 	  );
@@ -278,8 +278,8 @@ int check_ide_device (int slot)
 	int found = 0;
 	int i;
 
-	addr = (volatile uchar *)(CFG_PCMCIA_MEM_ADDR +
-				  CFG_PCMCIA_MEM_SIZE * (slot * 4));
+	addr = (volatile uchar *)(CONFIG_SYS_PCMCIA_MEM_ADDR +
+				  CONFIG_SYS_PCMCIA_MEM_SIZE * (slot * 4));
 	debug ("PCMCIA MEM: %08lX\n", (ulong)addr);
 
 	start = p = (volatile uchar *) addr;

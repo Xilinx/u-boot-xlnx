@@ -89,20 +89,18 @@
 #if defined(CONFIG_CMD_SNTP)
 #include "sntp.h"
 #endif
+#if defined(CONFIG_CDP_VERSION)
+#include <timestamp.h>
+#endif
 
 #if defined(CONFIG_CMD_NET)
 
 DECLARE_GLOBAL_DATA_PTR;
 
 #ifndef	CONFIG_ARP_TIMEOUT
-# define ARP_TIMEOUT		50UL	/* Deciseconds before trying ARP again */
-#elif (CONFIG_ARP_TIMEOUT < 100)
-# error "Due to possible overflow CONFIG_ARP_TIMEOUT must be greater than 100ms"
+# define ARP_TIMEOUT		5000UL	/* Milliseconds before trying ARP again */
 #else
-# if (CONFIG_ARP_TIMEOUT % 100)
-#  warning "Supported ARP_TIMEOUT precision is 100ms"
-# endif
-# define ARP_TIMEOUT		(CONFIG_ARP_TIMEOUT / 100)
+# define ARP_TIMEOUT		CONFIG_ARP_TIMEOUT
 #endif
 
 
@@ -211,6 +209,8 @@ uchar		NetArpWaitPacketBuf[PKTSIZE_ALIGN + PKTALIGN];
 ulong		NetArpWaitTimerStart;
 int		NetArpWaitTry;
 
+int		env_changed_id = 0;
+
 void ArpRequest (void)
 {
 	int i;
@@ -264,7 +264,7 @@ void ArpTimeoutCheck(void)
 	t = get_timer(0);
 
 	/* check for arp timeout */
-	if ((t - NetArpWaitTimerStart) > ARP_TIMEOUT * CFG_HZ / 10) {
+	if ((t - NetArpWaitTimerStart) > ARP_TIMEOUT) {
 		NetArpWaitTry++;
 
 		if (NetArpWaitTry >= ARP_TIMEOUT_COUNT) {
@@ -276,6 +276,78 @@ void ArpTimeoutCheck(void)
 			ArpRequest();
 		}
 	}
+}
+
+int
+NetInitLoop(proto_t protocol)
+{
+	bd_t *bd = gd->bd;
+	int env_id = get_env_id ();
+
+	/* update only when the environment has changed */
+	if (env_changed_id == env_id)
+		return 0;
+
+	switch (protocol) {
+#if defined(CONFIG_CMD_NFS)
+	case NFS:
+#endif
+#if defined(CONFIG_CMD_PING)
+	case PING:
+#endif
+#if defined(CONFIG_CMD_SNTP)
+	case SNTP:
+#endif
+	case NETCONS:
+	case TFTP:
+		NetCopyIP(&NetOurIP, &bd->bi_ip_addr);
+		NetOurGatewayIP = getenv_IPaddr ("gatewayip");
+		NetOurSubnetMask= getenv_IPaddr ("netmask");
+		NetOurVLAN = getenv_VLAN("vlan");
+		NetOurNativeVLAN = getenv_VLAN("nvlan");
+
+		switch (protocol) {
+#if defined(CONFIG_CMD_NFS)
+		case NFS:
+#endif
+		case NETCONS:
+		case TFTP:
+			NetServerIP = getenv_IPaddr ("serverip");
+			break;
+#if defined(CONFIG_CMD_PING)
+		case PING:
+			/* nothing */
+			break;
+#endif
+#if defined(CONFIG_CMD_SNTP)
+		case SNTP:
+			/* nothing */
+			break;
+#endif
+		default:
+			break;
+		}
+
+		break;
+	case BOOTP:
+	case RARP:
+		/*
+		 * initialize our IP addr to 0 in order to accept ANY
+		 * IP addr assigned to us by the BOOTP / RARP server
+		 */
+		NetOurIP = 0;
+		NetServerIP = getenv_IPaddr ("serverip");
+		NetOurVLAN = getenv_VLAN("vlan");	/* VLANs must be read */
+		NetOurNativeVLAN = getenv_VLAN("nvlan");
+	case CDP:
+		NetOurVLAN = getenv_VLAN("vlan");	/* VLANs must be read */
+		NetOurNativeVLAN = getenv_VLAN("nvlan");
+		break;
+	default:
+		break;
+	}
+	env_changed_id = env_id;
+	return 0;
 }
 
 /**********************************************************************/
@@ -342,65 +414,7 @@ restart:
 	 *	here on, this code is a state machine driven by received
 	 *	packets and timer events.
 	 */
-
-	switch (protocol) {
-#if defined(CONFIG_CMD_NFS)
-	case NFS:
-#endif
-#if defined(CONFIG_CMD_PING)
-	case PING:
-#endif
-#if defined(CONFIG_CMD_SNTP)
-	case SNTP:
-#endif
-	case NETCONS:
-	case TFTP:
-		NetCopyIP(&NetOurIP, &bd->bi_ip_addr);
-		NetOurGatewayIP = getenv_IPaddr ("gatewayip");
-		NetOurSubnetMask= getenv_IPaddr ("netmask");
-		NetOurVLAN = getenv_VLAN("vlan");
-		NetOurNativeVLAN = getenv_VLAN("nvlan");
-
-		switch (protocol) {
-#if defined(CONFIG_CMD_NFS)
-		case NFS:
-#endif
-		case NETCONS:
-		case TFTP:
-			NetServerIP = getenv_IPaddr ("serverip");
-			break;
-#if defined(CONFIG_CMD_PING)
-		case PING:
-			/* nothing */
-			break;
-#endif
-#if defined(CONFIG_CMD_SNTP)
-		case SNTP:
-			/* nothing */
-			break;
-#endif
-		default:
-			break;
-		}
-
-		break;
-	case BOOTP:
-	case RARP:
-		/*
-		 * initialize our IP addr to 0 in order to accept ANY
-		 * IP addr assigned to us by the BOOTP / RARP server
-		 */
-		NetOurIP = 0;
-		NetServerIP = getenv_IPaddr ("serverip");
-		NetOurVLAN = getenv_VLAN("vlan");	/* VLANs must be read */
-		NetOurNativeVLAN = getenv_VLAN("nvlan");
-	case CDP:
-		NetOurVLAN = getenv_VLAN("vlan");	/* VLANs must be read */
-		NetOurNativeVLAN = getenv_VLAN("nvlan");
-		break;
-	default:
-		break;
-	}
+	NetInitLoop(protocol);
 
 	switch (net_check_prereq (protocol)) {
 	case 1:
@@ -477,16 +491,16 @@ restart:
 	}
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-#if defined(CFG_FAULT_ECHO_LINK_DOWN) && defined(CONFIG_STATUS_LED) && defined(STATUS_LED_RED)
+#if defined(CONFIG_SYS_FAULT_ECHO_LINK_DOWN) && defined(CONFIG_STATUS_LED) && defined(STATUS_LED_RED)
 	/*
 	 * Echo the inverted link state to the fault LED.
 	 */
-	if(miiphy_link(eth_get_dev()->name, CFG_FAULT_MII_ADDR)) {
+	if(miiphy_link(eth_get_dev()->name, CONFIG_SYS_FAULT_MII_ADDR)) {
 		status_led_set (STATUS_LED_RED, STATUS_LED_OFF);
 	} else {
 		status_led_set (STATUS_LED_RED, STATUS_LED_ON);
 	}
-#endif /* CFG_FAULT_ECHO_LINK_DOWN, ... */
+#endif /* CONFIG_SYS_FAULT_ECHO_LINK_DOWN, ... */
 #endif /* CONFIG_MII, ... */
 
 	/*
@@ -526,18 +540,18 @@ restart:
 			thand_f *x;
 
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-#  if defined(CFG_FAULT_ECHO_LINK_DOWN) && \
+#  if defined(CONFIG_SYS_FAULT_ECHO_LINK_DOWN) && \
       defined(CONFIG_STATUS_LED) &&	   \
       defined(STATUS_LED_RED)
 			/*
 			 * Echo the inverted link state to the fault LED.
 			 */
-			if(miiphy_link(eth_get_dev()->name, CFG_FAULT_MII_ADDR)) {
+			if(miiphy_link(eth_get_dev()->name, CONFIG_SYS_FAULT_MII_ADDR)) {
 				status_led_set (STATUS_LED_RED, STATUS_LED_OFF);
 			} else {
 				status_led_set (STATUS_LED_RED, STATUS_LED_ON);
 			}
-#  endif /* CFG_FAULT_ECHO_LINK_DOWN, ... */
+#  endif /* CONFIG_SYS_FAULT_ECHO_LINK_DOWN, ... */
 #endif /* CONFIG_MII, ... */
 			x = timeHandler;
 			timeHandler = (thand_f *)0;
@@ -603,7 +617,7 @@ void NetStartAgain (void)
 		return;
 	}
 #ifndef CONFIG_NET_MULTI
-	NetSetTimeout (10UL * CFG_HZ, startAgainTimeout);
+	NetSetTimeout (10000UL, startAgainTimeout);
 	NetSetHandler (startAgainHandler);
 #else	/* !CONFIG_NET_MULTI*/
 	eth_halt ();
@@ -614,7 +628,7 @@ void NetStartAgain (void)
 	if (NetRestartWrap) {
 		NetRestartWrap = 0;
 		if (NetDevExists && !once) {
-			NetSetTimeout (10UL * CFG_HZ, startAgainTimeout);
+			NetSetTimeout (10000UL, startAgainTimeout);
 			NetSetHandler (startAgainHandler);
 		} else {
 			NetState = NETLOOP_FAIL;
@@ -740,7 +754,7 @@ int PingSend(void)
 	ip->ip_tos   = 0;
 	ip->ip_len   = htons(IP_HDR_SIZE_NO_UDP + 8);
 	ip->ip_id    = htons(NetIPID++);
-	ip->ip_off   = htons(0x4000);	/* No fragmentation */
+	ip->ip_off   = htons(IP_FLAGS_DFRAG);	/* Don't fragment */
 	ip->ip_ttl   = 255;
 	ip->ip_p     = 0x01;		/* ICMP */
 	ip->ip_sum   = 0;
@@ -790,7 +804,7 @@ static void PingStart(void)
 #if defined(CONFIG_NET_MULTI)
 	printf ("Using %s device\n", eth_get_name());
 #endif	/* CONFIG_NET_MULTI */
-	NetSetTimeout (10UL * CFG_HZ, PingTimeout);
+	NetSetTimeout (10000UL, PingTimeout);
 	NetSetHandler (PingHandler);
 
 	PingSend();
@@ -813,7 +827,7 @@ static void PingStart(void)
 #define CDP_SYSOBJECT_TLV		0x0015
 #define CDP_MANAGEMENT_ADDRESS_TLV	0x0016
 
-#define CDP_TIMEOUT			(CFG_HZ/4)	/* one packet every 250ms */
+#define CDP_TIMEOUT			250UL	/* one packet every 250ms */
 
 static int CDPSeq;
 static int CDPOK;
@@ -1404,7 +1418,8 @@ NetReceive(volatile uchar * inpkt, int len)
 		if ((ip->ip_hl_v & 0xf0) != 0x40) {
 			return;
 		}
-		if (ip->ip_off & htons(0x1fff)) { /* Can't deal w/ fragments */
+		/* Can't deal with fragments */
+		if (ip->ip_off & htons(IP_OFFS | IP_FLAGS_MFRAG)) {
 			return;
 		}
 		/* can't deal with headers > 20 bytes */
@@ -1685,7 +1700,7 @@ NetSetEther(volatile uchar * xet, uchar * addr, uint prot)
 void
 NetSetIP(volatile uchar * xip, IPaddr_t dest, int dport, int sport, int len)
 {
-	volatile IP_t *ip = (IP_t *)xip;
+	IP_t *ip = (IP_t *)xip;
 
 	/*
 	 *	If the data is an odd number of bytes, zero the
@@ -1703,7 +1718,7 @@ NetSetIP(volatile uchar * xip, IPaddr_t dest, int dport, int sport, int len)
 	ip->ip_tos   = 0;
 	ip->ip_len   = htons(IP_HDR_SIZE + len);
 	ip->ip_id    = htons(NetIPID++);
-	ip->ip_off   = htons(0x4000);	/* No fragmentation */
+	ip->ip_off   = htons(IP_FLAGS_DFRAG);	/* Don't fragment */
 	ip->ip_ttl   = 255;
 	ip->ip_p     = 17;		/* UDP */
 	ip->ip_sum   = 0;

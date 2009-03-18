@@ -272,12 +272,12 @@ do_fpga (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		break;
 	}
 
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 U_BOOT_CMD(
 	fpga,	6,	1,	do_fpga,
-	"fpga    - FPGA sub-system\n",
+	"FPGA sub-system",
 	"load [type] addr size\n"
 	"  - write the configuration data at memory address `addr',\n"
 	"    size `size' bytes, into the FPGA of type `type' (either\n"
@@ -304,7 +304,7 @@ int
 do_eecl (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	uchar data[HYMOD_EEPROM_SIZE];
-	uint addr = CFG_I2C_EEPROM_ADDR;
+	uint addr = CONFIG_SYS_I2C_EEPROM_ADDR;
 
 	switch (argc) {
 
@@ -324,7 +324,7 @@ do_eecl (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		/* fall through ... */
 
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -336,7 +336,7 @@ do_eecl (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 U_BOOT_CMD(
 	eeclear,	1,	0,	do_eecl,
-	"eeclear - Clear the eeprom on a Hymod board \n",
+	"Clear the eeprom on a Hymod board",
 	"[type]\n"
 	"  - write zeroes into the EEPROM on the board of type `type'\n"
 	"    (`type' is either `main' or `mezz' - default `main')\n"

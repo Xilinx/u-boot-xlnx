@@ -1,7 +1,7 @@
 /*
  * U-boot - string.c Contains library routines.
  *
- * Copyright (c) 2005-2007 Analog Devices Inc.
+ * Copyright (c) 2005-2008 Analog Devices Inc.
  *
  * (C) Copyright 2000-2004
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
@@ -130,12 +130,41 @@ int strncmp(const char *cs, const char *ct, size_t count)
 # define bfin_write_MDMA_D0_IRQ_STATUS bfin_write_MDMA1_D0_IRQ_STATUS
 # define bfin_read_MDMA_D0_IRQ_STATUS  bfin_read_MDMA1_D0_IRQ_STATUS
 #endif
-static void *dma_memcpy(void *dst, const void *src, size_t count)
+/* This version misbehaves for count values of 0 and 2^16+.
+ * Perhaps we should detect that ?  Nowhere do we actually
+ * use dma memcpy for those types of lengths though ...
+ */
+void dma_memcpy_nocache(void *dst, const void *src, size_t count)
 {
-	if (dcache_status())
-		blackfin_dcache_flush_range(src, src + count);
+	uint16_t wdsize, mod;
 
-	bfin_write_MDMA_D0_IRQ_STATUS(DMA_DONE | DMA_ERR);
+	/* Disable DMA in case it's still running (older u-boot's did not
+	 * always turn them off).  Do it before the if statement below so
+	 * we can be cheap and not do a SSYNC() due to the forced abort.
+	 */
+	bfin_write_MDMA_D0_CONFIG(0);
+	bfin_write_MDMA_S0_CONFIG(0);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_RUN | DMA_DONE | DMA_ERR);
+
+	/* Scratchpad cannot be a DMA source or destination */
+	if (((unsigned long)src >= L1_SRAM_SCRATCH &&
+	     (unsigned long)src < L1_SRAM_SCRATCH_END) ||
+	    ((unsigned long)dst >= L1_SRAM_SCRATCH &&
+	     (unsigned long)dst < L1_SRAM_SCRATCH_END))
+		hang();
+
+	if (((unsigned long)dst | (unsigned long)src | count) & 0x1) {
+		wdsize = WDSIZE_8;
+		mod = 1;
+	} else if (((unsigned long)dst | (unsigned long)src | count) & 0x2) {
+		wdsize = WDSIZE_16;
+		count >>= 1;
+		mod = 2;
+	} else {
+		wdsize = WDSIZE_32;
+		count >>= 2;
+		mod = 4;
+	}
 
 	/* Copy sram functions from sdram to sram */
 	/* Setup destination start address */
@@ -143,30 +172,42 @@ static void *dma_memcpy(void *dst, const void *src, size_t count)
 	/* Setup destination xcount */
 	bfin_write_MDMA_D0_X_COUNT(count);
 	/* Setup destination xmodify */
-	bfin_write_MDMA_D0_X_MODIFY(1);
+	bfin_write_MDMA_D0_X_MODIFY(mod);
 
 	/* Setup Source start address */
 	bfin_write_MDMA_S0_START_ADDR(src);
 	/* Setup Source xcount */
 	bfin_write_MDMA_S0_X_COUNT(count);
 	/* Setup Source xmodify */
-	bfin_write_MDMA_S0_X_MODIFY(1);
+	bfin_write_MDMA_S0_X_MODIFY(mod);
 
 	/* Enable source DMA */
-	bfin_write_MDMA_S0_CONFIG(DMAEN);
+	bfin_write_MDMA_S0_CONFIG(wdsize | DMAEN);
+	bfin_write_MDMA_D0_CONFIG(wdsize | DMAEN | WNR | DI_EN);
 	SSYNC();
 
-	bfin_write_MDMA_D0_CONFIG(WNR | DMAEN);
+	while (!(bfin_read_MDMA_D0_IRQ_STATUS() & DMA_DONE))
+		continue;
 
-	while (bfin_read_MDMA_D0_IRQ_STATUS() & DMA_RUN)
-		bfin_write_MDMA_D0_IRQ_STATUS(bfin_read_MDMA_D0_IRQ_STATUS() | DMA_DONE | DMA_ERR);
-	bfin_write_MDMA_D0_IRQ_STATUS(bfin_read_MDMA_D0_IRQ_STATUS() | DMA_DONE | DMA_ERR);
+	bfin_write_MDMA_D0_IRQ_STATUS(DMA_RUN | DMA_DONE | DMA_ERR);
+	bfin_write_MDMA_D0_CONFIG(0);
+	bfin_write_MDMA_S0_CONFIG(0);
+}
+/* We should do a dcache invalidate on the destination after the dma, but since
+ * we lack such hardware capability, we'll flush/invalidate the destination
+ * before the dma and bank on the idea that u-boot is single threaded.
+ */
+void *dma_memcpy(void *dst, const void *src, size_t count)
+{
+	if (dcache_status()) {
+		blackfin_dcache_flush_range(src, src + count);
+		blackfin_dcache_flush_invalidate_range(dst, dst + count);
+	}
+
+	dma_memcpy_nocache(dst, src, count);
 
 	if (icache_status())
 		blackfin_icache_flush_range(dst, dst + count);
-
-	if (dcache_status())
-		blackfin_dcache_invalidate_range(dst, dst + count);
 
 	return dst;
 }

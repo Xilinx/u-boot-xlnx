@@ -25,9 +25,13 @@
  * MA 02111-1307 USA
  */
 
+#include <config.h>
 #include <common.h>
 #include <watchdog.h>
 #include <command.h>
+#include <tsec.h>
+#include <netdev.h>
+#include <fsl_esdhc.h>
 #include <asm/cache.h>
 #include <asm/io.h>
 
@@ -59,6 +63,8 @@ struct cpu_type cpu_type_list [] = {
 	CPU_TYPE_ENTRY(8568, 8568_E),
 	CPU_TYPE_ENTRY(8572, 8572),
 	CPU_TYPE_ENTRY(8572, 8572_E),
+	CPU_TYPE_ENTRY(P2020, P2020),
+	CPU_TYPE_ENTRY(P2020, P2020_E),
 };
 
 struct cpu_type *identify_cpu(u32 ver)
@@ -74,19 +80,20 @@ struct cpu_type *identify_cpu(u32 ver)
 int checkcpu (void)
 {
 	sys_info_t sysinfo;
-	uint lcrr;		/* local bus clock ratio register */
-	uint clkdiv;		/* clock divider portion of lcrr */
 	uint pvr, svr;
 	uint fam;
 	uint ver;
 	uint major, minor;
 	struct cpu_type *cpu;
+	char buf1[32], buf2[32];
 #ifdef CONFIG_DDR_CLK_FREQ
-	volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
-	u32 ddr_ratio = ((gur->porpllsr) & 0x00003e00) >> 9;
+	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	u32 ddr_ratio = ((gur->porpllsr) & MPC85xx_PORPLLSR_DDR_RATIO)
+		>> MPC85xx_PORPLLSR_DDR_RATIO_SHIFT;
 #else
 	u32 ddr_ratio = 0;
 #endif
+	int i;
 
 	svr = get_svr();
 	ver = SVR_SOC_VER(svr);
@@ -96,7 +103,12 @@ int checkcpu (void)
 #endif
 	minor = SVR_MIN(svr);
 
+#if (CONFIG_NUM_CPUS > 1)
+	volatile ccsr_pic_t *pic = (void *)(CONFIG_SYS_MPC85xx_PIC_ADDR);
+	printf("CPU%d:  ", pic->whoami);
+#else
 	puts("CPU:   ");
+#endif
 
 	cpu = identify_cpu(ver);
 	if (cpu) {
@@ -125,56 +137,49 @@ int checkcpu (void)
 	    puts("Unknown");
 	    break;
 	}
+
+	if (PVR_MEM(pvr) == 0x03)
+		puts("MC");
+
 	printf(", Version: %d.%d, (0x%08x)\n", major, minor, pvr);
 
 	get_sys_info(&sysinfo);
 
-	puts("Clock Configuration:\n");
-	printf("       CPU:%4lu MHz, ", DIV_ROUND_UP(sysinfo.freqProcessor,1000000));
-	printf("CCB:%4lu MHz,\n", DIV_ROUND_UP(sysinfo.freqSystemBus,1000000));
+	puts("Clock Configuration:");
+	for (i = 0; i < CONFIG_NUM_CPUS; i++) {
+		if (!(i & 3))
+			printf ("\n       ");
+		printf("CPU%d:%-4s MHz, ",
+				i,strmhz(buf1, sysinfo.freqProcessor[i]));
+	}
+	printf("\n       CCB:%-4s MHz,\n", strmhz(buf1, sysinfo.freqSystemBus));
 
 	switch (ddr_ratio) {
 	case 0x0:
-		printf("       DDR:%4lu MHz (%lu MT/s data rate), ",
-		DIV_ROUND_UP(sysinfo.freqDDRBus,2000000), DIV_ROUND_UP(sysinfo.freqDDRBus,1000000));
+		printf("       DDR:%-4s MHz (%s MT/s data rate), ",
+			strmhz(buf1, sysinfo.freqDDRBus/2),
+			strmhz(buf2, sysinfo.freqDDRBus));
 		break;
 	case 0x7:
-		printf("       DDR:%4lu MHz (%lu MT/s data rate) (Synchronous), ",
-		DIV_ROUND_UP(sysinfo.freqDDRBus, 2000000), DIV_ROUND_UP(sysinfo.freqDDRBus, 1000000));
+		printf("       DDR:%-4s MHz (%s MT/s data rate) (Synchronous), ",
+			strmhz(buf1, sysinfo.freqDDRBus/2),
+			strmhz(buf2, sysinfo.freqDDRBus));
 		break;
 	default:
-		printf("       DDR:%4lu MHz (%lu MT/s data rate) (Asynchronous), ",
-		DIV_ROUND_UP(sysinfo.freqDDRBus, 2000000), DIV_ROUND_UP(sysinfo.freqDDRBus,1000000));
+		printf("       DDR:%-4s MHz (%s MT/s data rate) (Asynchronous), ",
+			strmhz(buf1, sysinfo.freqDDRBus/2),
+			strmhz(buf2, sysinfo.freqDDRBus));
 		break;
 	}
 
-#if defined(CFG_LBC_LCRR)
-	lcrr = CFG_LBC_LCRR;
-#else
-	{
-	    volatile ccsr_lbc_t *lbc = (void *)(CFG_MPC85xx_LBC_ADDR);
-
-	    lcrr = lbc->lcrr;
-	}
-#endif
-	clkdiv = lcrr & 0x0f;
-	if (clkdiv == 2 || clkdiv == 4 || clkdiv == 8) {
-#if defined(CONFIG_MPC8548) || defined(CONFIG_MPC8544) || \
-    defined(CONFIG_MPC8572) || defined(CONFIG_MPC8536)
-		/*
-		 * Yes, the entire PQ38 family use the same
-		 * bit-representation for twice the clock divider values.
-		 */
-		 clkdiv *= 2;
-#endif
-		printf("LBC:%4lu MHz\n",
-		       DIV_ROUND_UP(sysinfo.freqSystemBus, 1000000) / clkdiv);
-	} else {
-		printf("LBC: unknown (lcrr: 0x%08x)\n", lcrr);
-	}
+	if (sysinfo.freqLocalBus > LCRR_CLKDIV)
+		printf("LBC:%-4s MHz\n", strmhz(buf1, sysinfo.freqLocalBus));
+	else
+		printf("LBC: unknown (LCRR[CLKDIV] = 0x%02lx)\n",
+		       sysinfo.freqLocalBus);
 
 #ifdef CONFIG_CPM2
-	printf("CPM:   %lu Mhz\n", sysinfo.freqSystemBus / 1000000);
+	printf("CPM:   %s MHz\n", strmhz(buf1, sysinfo.freqSystemBus));
 #endif
 
 	puts("L1:    D-cache 32 kB enabled\n       I-cache 32 kB enabled\n");
@@ -197,7 +202,7 @@ int do_reset (cmd_tbl_t *cmdtp, bd_t *bd, int flag, int argc, char *argv[])
 	if (ver & 1){
 	/* e500 v2 core has reset control register */
 		volatile unsigned int * rstcr;
-		rstcr = (volatile unsigned int *)(CFG_IMMR + 0xE00B0);
+		rstcr = (volatile unsigned int *)(CONFIG_SYS_IMMR + 0xE00B0);
 		*rstcr = 0x2;		/* HRESET_REQ */
 		udelay(100);
 	}
@@ -253,7 +258,7 @@ reset_85xx_watchdog(void)
 
 #if defined(CONFIG_DDR_ECC)
 void dma_init(void) {
-	volatile ccsr_dma_t *dma = (void *)(CFG_MPC85xx_DMA_ADDR);
+	volatile ccsr_dma_t *dma = (void *)(CONFIG_SYS_MPC85xx_DMA_ADDR);
 
 	dma->satr0 = 0x02c40000;
 	dma->datr0 = 0x02c40000;
@@ -263,7 +268,7 @@ void dma_init(void) {
 }
 
 uint dma_check(void) {
-	volatile ccsr_dma_t *dma = (void *)(CFG_MPC85xx_DMA_ADDR);
+	volatile ccsr_dma_t *dma = (void *)(CONFIG_SYS_MPC85xx_DMA_ADDR);
 	volatile uint status = dma->sr0;
 
 	/* While the channel is busy, spin */
@@ -282,7 +287,7 @@ uint dma_check(void) {
 }
 
 int dma_xfer(void *dest, uint count, void *src) {
-	volatile ccsr_dma_t *dma = (void *)(CFG_MPC85xx_DMA_ADDR);
+	volatile ccsr_dma_t *dma = (void *)(CONFIG_SYS_MPC85xx_DMA_ADDR);
 
 	dma->dar0 = (uint) dest;
 	dma->sar0 = (uint) src;
@@ -294,16 +299,16 @@ int dma_xfer(void *dest, uint count, void *src) {
 	return dma_check();
 }
 #endif
+
 /*
- * Configures a UPM. Currently, the loop fields in MxMR (RLF, WLF and TLF)
- * are hardcoded as "1"."size" is the number or entries, not a sizeof.
+ * Configures a UPM. The function requires the respective MxMR to be set
+ * before calling this function. "size" is the number or entries, not a sizeof.
  */
 void upmconfig (uint upm, uint * table, uint size)
 {
 	int i, mdr, mad, old_mad = 0;
 	volatile u32 *mxmr;
-	volatile ccsr_lbc_t *lbc = (void *)(CFG_MPC85xx_LBC_ADDR);
-	int loopval = 0x00004440;
+	volatile ccsr_lbc_t *lbc = (void *)(CONFIG_SYS_MPC85xx_LBC_ADDR);
 	volatile u32 *brp,*orp;
 	volatile u8* dummy = NULL;
 	int upmmask;
@@ -331,8 +336,8 @@ void upmconfig (uint upm, uint * table, uint size)
 		 i++, brp += 2, orp += 2) {
 
 		/* Look for a valid BR with selected UPM */
-		if ((in_be32(brp) & (BR_V | upmmask)) == (BR_V | upmmask)) {
-			dummy = (volatile u8*)(in_be32(brp) >> BR_BA_SHIFT);
+		if ((in_be32(brp) & (BR_V | BR_MSEL)) == (BR_V | upmmask)) {
+			dummy = (volatile u8*)(in_be32(brp) & BR_BA);
 			break;
 		}
 	}
@@ -344,7 +349,7 @@ void upmconfig (uint upm, uint * table, uint size)
 
 	for (i = 0; i < size; i++) {
 		/* 1 */
-		out_be32(mxmr, loopval | 0x10000000 | i); /* OP_WRITE */
+		out_be32(mxmr,  (in_be32(mxmr) & 0x4fffffc0) | MxMR_OP_WARR | i);
 		/* 2 */
 		out_be32(&lbc->mdr, table[i]);
 		/* 3 */
@@ -353,39 +358,57 @@ void upmconfig (uint upm, uint * table, uint size)
 		*(volatile u8 *)dummy = 0;
 		/* 5 */
 		do {
-			mad = in_be32(mxmr) & 0x3f;
+			mad = in_be32(mxmr) & MxMR_MAD_MSK;
 		} while (mad <= old_mad && !(!mad && i == (size-1)));
 		old_mad = mad;
 	}
-	out_be32(mxmr, loopval); /* OP_NORMAL */
+	out_be32(mxmr, (in_be32(mxmr) & 0x4fffffc0) | MxMR_OP_NORM);
 }
 
-#if defined(CONFIG_TSEC_ENET) || defined(CONFIGMPC85XX_FEC)
-/* Default initializations for TSEC controllers.  To override,
- * create a board-specific function called:
- * 	int board_eth_init(bd_t *bis)
+
+/*
+ * Initializes on-chip ethernet controllers.
+ * to override, implement board_eth_init()
  */
-
-extern int tsec_initialize(bd_t * bis, int index, char *devname);
-
 int cpu_eth_init(bd_t *bis)
 {
-#if defined(CONFIG_TSEC1)
-	tsec_initialize(bis, 0, CONFIG_TSEC1_NAME);
+#if defined(CONFIG_ETHER_ON_FCC)
+	fec_initialize(bis);
 #endif
-#if defined(CONFIG_TSEC2)
-	tsec_initialize(bis, 1, CONFIG_TSEC2_NAME);
+#if defined(CONFIG_UEC_ETH1)
+	uec_initialize(0);
 #endif
-#if defined(CONFIG_MPC85XX_FEC)
-	tsec_initialize(bis, 2, CONFIG_MPC85XX_FEC_NAME);
-#else
-#if defined(CONFIG_TSEC3)
-	tsec_initialize(bis, 2, CONFIG_TSEC3_NAME);
+#if defined(CONFIG_UEC_ETH2)
+	uec_initialize(1);
 #endif
-#if defined(CONFIG_TSEC4)
-	tsec_initialize(bis, 3, CONFIG_TSEC4_NAME);
+#if defined(CONFIG_UEC_ETH3)
+	uec_initialize(2);
 #endif
+#if defined(CONFIG_UEC_ETH4)
+	uec_initialize(3);
 #endif
+#if defined(CONFIG_UEC_ETH5)
+	uec_initialize(4);
+#endif
+#if defined(CONFIG_UEC_ETH6)
+	uec_initialize(5);
+#endif
+#if defined(CONFIG_TSEC_ENET) || defined(CONFIG_MPC85XX_FEC)
+	tsec_standard_init(bis);
+#endif
+
 	return 0;
 }
+
+/*
+ * Initializes on-chip MMC controllers.
+ * to override, implement board_mmc_init()
+ */
+int cpu_mmc_init(bd_t *bis)
+{
+#ifdef CONFIG_FSL_ESDHC
+	return fsl_esdhc_mmc_init(bis);
+#else
+	return 0;
 #endif
+}

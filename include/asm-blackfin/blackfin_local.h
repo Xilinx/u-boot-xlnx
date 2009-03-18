@@ -43,6 +43,9 @@
 #define SCLK_TO_MSEC(sclk) ((MSEC_PER_SEC * ((sclk) / USEC_PER_MSEC)) / (BFIN_SCLK / USEC_PER_MSEC))
 #define MSEC_TO_SCLK(msec) ((((BFIN_SCLK / USEC_PER_MSEC) * (msec)) / MSEC_PER_SEC) * USEC_PER_MSEC)
 
+#define L1_CACHE_SHIFT 5
+#define L1_CACHE_BYTES (1 << L1_CACHE_SHIFT)
+
 #include <asm/linkage.h>
 
 #ifndef __ASSEMBLY__
@@ -52,25 +55,22 @@
 
 # include <linux/types.h>
 
+extern u_long get_vco(void);
+extern u_long get_cclk(void);
 extern u_long get_sclk(void);
 
 # define bfin_revid() (*pCHIPID >> 28)
 
 extern void blackfin_icache_flush_range(const void *, const void *);
 extern void blackfin_dcache_flush_range(const void *, const void *);
-extern void blackfin_dcache_invalidate_range(const void *, const void *);
+extern void blackfin_icache_dcache_flush_range(const void *, const void *);
+extern void blackfin_dcache_flush_invalidate_range(const void *, const void *);
 
-/* Use DMA to move data from on chip to external memory.  While this is
- * required for only L1 instruction (it is not directly readable by the
- * core via data loads), it isn't a huge performance issue for other
- * regions (it's probably even faster than core load/stores).  However,
- * the DMA engine does not have access to the L1 scratchpad, and we
- * cannot use DMA inside of the MMR space.
+/* Use DMA to move data from on chip to external memory.  The L1 instruction
+ * regions can only be accessed via DMA, so if the address in question is in
+ * that region, make sure we attempt to DMA indirectly.
  */
-# define addr_bfin_on_chip_mem(addr) \
-	(((unsigned long)(addr) >= 0xef000000 && (unsigned long)addr < SYSMMR_BASE) && \
-	 !((unsigned long)(addr) >= L1_SRAM_SCRATCH && \
-	   (unsigned long)(addr) < L1_SRAM_SCRATCH_END))
+# define addr_bfin_on_chip_mem(addr) (((unsigned long)(addr) & 0xFFF00000) == 0xFFA00000)
 
 # include <asm/system.h>
 

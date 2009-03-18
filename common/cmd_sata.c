@@ -29,14 +29,14 @@
 #include <sata.h>
 
 int curr_device = -1;
-block_dev_desc_t sata_dev_desc[CFG_SATA_MAX_DEVICE];
+block_dev_desc_t sata_dev_desc[CONFIG_SYS_SATA_MAX_DEVICE];
 
-int sata_initialize(void)
+int __sata_initialize(void)
 {
 	int rc;
 	int i;
 
-	for (i = 0; i < CFG_SATA_MAX_DEVICE; i++) {
+	for (i = 0; i < CONFIG_SYS_SATA_MAX_DEVICE; i++) {
 		memset(&sata_dev_desc[i], 0, sizeof(struct block_dev_desc));
 		sata_dev_desc[i].if_type = IF_TYPE_SATA;
 		sata_dev_desc[i].dev = i;
@@ -55,26 +55,35 @@ int sata_initialize(void)
 	curr_device = 0;
 	return rc;
 }
+int sata_initialize(void) __attribute__((weak,alias("__sata_initialize")));
 
 block_dev_desc_t *sata_get_dev(int dev)
 {
-	return (dev < CFG_SATA_MAX_DEVICE) ? &sata_dev_desc[dev] : NULL;
+	return (dev < CONFIG_SYS_SATA_MAX_DEVICE) ? &sata_dev_desc[dev] : NULL;
 }
 
 int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	int rc = 0;
 
+	if (argc == 2 && strcmp(argv[1], "init") == 0)
+		return sata_initialize();
+
+	/* If the user has not yet run `sata init`, do it now */
+	if (curr_device == -1)
+		if (sata_initialize())
+			return 1;
+
 	switch (argc) {
 	case 0:
 	case 1:
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	case 2:
 		if (strncmp(argv[1],"inf", 3) == 0) {
 			int i;
 			putc('\n');
-			for (i = 0; i < CFG_SATA_MAX_DEVICE; ++i) {
+			for (i = 0; i < CONFIG_SYS_SATA_MAX_DEVICE; ++i) {
 				if (sata_dev_desc[i].type == DEV_TYPE_UNKNOWN)
 					continue;
 				printf ("SATA device %d: ", i);
@@ -82,7 +91,7 @@ int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			return 0;
 		} else if (strncmp(argv[1],"dev", 3) == 0) {
-			if ((curr_device < 0) || (curr_device >= CFG_SATA_MAX_DEVICE)) {
+			if ((curr_device < 0) || (curr_device >= CONFIG_SYS_SATA_MAX_DEVICE)) {
 				puts("\nno SATA devices available\n");
 				return 1;
 			}
@@ -92,7 +101,7 @@ int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		} else if (strncmp(argv[1],"part",4) == 0) {
 			int dev, ok;
 
-			for (ok = 0, dev = 0; dev < CFG_SATA_MAX_DEVICE; ++dev) {
+			for (ok = 0, dev = 0; dev < CONFIG_SYS_SATA_MAX_DEVICE; ++dev) {
 				if (sata_dev_desc[dev].part_type != PART_TYPE_UNKNOWN) {
 					++ok;
 					if (dev)
@@ -106,14 +115,14 @@ int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			return rc;
 		}
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	case 3:
 		if (strncmp(argv[1], "dev", 3) == 0) {
 			int dev = (int)simple_strtoul(argv[2], NULL, 10);
 
 			printf("\nSATA device %d: ", dev);
-			if (dev >= CFG_SATA_MAX_DEVICE) {
+			if (dev >= CONFIG_SYS_SATA_MAX_DEVICE) {
 				puts ("unknown device\n");
 				return 1;
 			}
@@ -138,7 +147,7 @@ int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			return rc;
 		}
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 
 	default: /* at least 4 args */
@@ -175,7 +184,7 @@ int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 				n, (n == cnt) ? "OK" : "ERROR");
 			return (n == cnt) ? 0 : 1;
 		} else {
-			printf("Usage:\n%s\n", cmdtp->usage);
+			cmd_usage(cmdtp);
 			rc = 1;
 		}
 
@@ -185,7 +194,8 @@ int do_sata(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	sata, 5, 1, do_sata,
-	"sata	- SATA sub system\n",
+	"SATA sub system",
+	"sata init - init SATA sub system\n"
 	"sata info - show available SATA devices\n"
 	"sata device [dev] - show or set current device\n"
 	"sata part [dev] - print partition table\n"

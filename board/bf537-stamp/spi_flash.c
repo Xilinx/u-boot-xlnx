@@ -3,7 +3,7 @@
  *
  * Enter bugs at http://blackfin.uclinux.org/
  *
- * Copyright (c) 2005-2007 Analog Devices Inc.
+ * Copyright (c) 2005-2008 Analog Devices Inc.
  *
  * Licensed under the GPL-2 or later.
  */
@@ -163,7 +163,9 @@ static struct manufacturer_info flash_manufacturers[] = {
 
 #define	TIMEOUT	5000	/* timeout of 5 seconds */
 
-/* BF54x support */
+/* If part has multiple SPI flashes, assume SPI0 as that is
+ * the one we can boot off of ...
+ */
 #ifndef pSPI_CTL
 # define pSPI_CTL  pSPI0_CTL
 # define pSPI_BAUD pSPI0_BAUD
@@ -171,23 +173,14 @@ static struct manufacturer_info flash_manufacturers[] = {
 # define pSPI_RDBR pSPI0_RDBR
 # define pSPI_STAT pSPI0_STAT
 # define pSPI_TDBR pSPI0_TDBR
-# define SPI0_SCK	0x0001
-# define SPI0_MOSI	0x0004
-# define SPI0_MISO	0x0002
-# define SPI0_SEL1	0x0010
 #endif
 
 /* Default to the SPI SSEL that we boot off of:
  *	BF54x, BF537, (everything new?): SSEL1
- *	BF533, BF561: SSEL2
+ *	BF51x, BF533, BF561: SSEL2
  */
 #ifndef CONFIG_SPI_FLASH_SSEL
-# if defined(__ADSPBF531__) || defined(__ADSPBF532__) || \
-     defined(__ADSPBF533__) || defined(__ADSPBF561__)
-#  define CONFIG_SPI_FLASH_SSEL 2
-# else
-#  define CONFIG_SPI_FLASH_SSEL 1
-# endif
+# define CONFIG_SPI_FLASH_SSEL BFIN_BOOT_SPI_SSEL
 #endif
 #define SSEL_MASK (1 << CONFIG_SPI_FLASH_SSEL)
 
@@ -200,12 +193,15 @@ static void SPI_INIT(void)
 
 	/* enable SPI pins: SSEL, MOSI, MISO, SCK */
 #ifdef __ADSPBF54x__
-	*pPORTE_FER |= (SPI0_SCK | SPI0_MOSI | SPI0_MISO | SPI0_SEL1);
+	*pPORTE_FER |= (PE0 | PE1 | PE2 | PE4);
 #elif defined(__ADSPBF534__) || defined(__ADSPBF536__) || defined(__ADSPBF537__)
 	*pPORTF_FER |= (PF10 | PF11 | PF12 | PF13);
 #elif defined(__ADSPBF52x__)
 	bfin_write_PORTG_MUX((bfin_read_PORTG_MUX() & ~PORT_x_MUX_0_MASK) | PORT_x_MUX_0_FUNC_3);
 	bfin_write_PORTG_FER(bfin_read_PORTG_FER() | PG1 | PG2 | PG3 | PG4);
+#elif defined(__ADSPBF51x__)
+	bfin_write_PORTG_MUX((bfin_read_PORTG_MUX() & ~PORT_x_MUX_7_MASK) | PORT_x_MUX_7_FUNC_1);
+	bfin_write_PORTG_FER(bfin_read_PORTG_FER() | PG12 | PG13 | PG14 | PG15);
 #endif
 
 	/* initate communication upon write of TDBR */
@@ -412,7 +408,7 @@ void spi_init_f(void)
  */
 void spi_init_r(void)
 {
-#if defined(CONFIG_POST) && (CONFIG_POST & CFG_POST_SPI)
+#if defined(CONFIG_POST) && (CONFIG_POST & CONFIG_SYS_POST_SPI)
 	/* Our testing strategy here is pretty basic:
 	 *  - fill src memory with an 8-bit pattern
 	 *  - write the src memory to the SPI flash
@@ -797,8 +793,8 @@ int eeprom_info(void)
 		ret = 1;
 	else
 		printf("SPI Device: %s 0x%02X (%s) 0x%02X 0x%02X\n"
-			"Parameters: num sectors = %i, sector size = %i, write size = %i\n"
-			"Flash Size: %i mbit (%i mbyte)\n"
+			"Parameters: num sectors = %lu, sector size = %lu, write size = %i\n"
+			"Flash Size: %lu mbit (%lu mbyte)\n"
 			"Status: 0x%02X\n",
 			flash.flash->name, flash.manufacturer_id, flash.manufacturer->name,
 			flash.device_id1, flash.device_id2, flash.num_sectors,

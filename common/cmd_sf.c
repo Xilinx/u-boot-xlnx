@@ -175,13 +175,13 @@ static int do_spi_flash(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return do_spi_flash_erase(argc - 1, argv + 1);
 
 usage:
-	printf("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(
 	sf,	5,	1,	do_spi_flash,
-	"sf	- SPI flash sub-system\n",
+	"SPI flash sub-system",
 	"probe [bus:]cs [hz] [mode]	- init flash device on given SPI bus\n"
 	"				  and chip select\n"
 	"sf read addr offset len 	- read `len' bytes starting at\n"

@@ -10,14 +10,12 @@
 #include <common.h>
 #include <command.h>
 
-#ifdef CONFIG_CFG_STRINGS
-
 static char *start_addr, *last_addr;
 
 int do_strings(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 {
 	if (argc == 1) {
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -31,7 +29,8 @@ int do_strings(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	char *addr = start_addr;
 	do {
-		printf("%s\n", addr);
+		puts(addr);
+		puts("\n");
 		addr += strlen(addr) + 1;
 	} while (addr[0] && addr < last_addr);
 
@@ -42,8 +41,6 @@ int do_strings(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(strings, 3, 1, do_strings,
-	"strings - display strings\n",
+	"display strings",
 	"<addr> [byte count]\n"
 	"    - display strings at <addr> for at least [byte count] or first double NUL\n");
-
-#endif

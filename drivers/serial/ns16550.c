@@ -1,13 +1,10 @@
 /*
  * COM1 NS16550 support
  * originally from linux source (arch/ppc/boot/ns16550.c)
- * modified to use CFG_ISA_MEM and new defines
+ * modified to use CONFIG_SYS_ISA_MEM and new defines
  */
 
 #include <config.h>
-
-#ifdef CFG_NS16550
-
 #include <ns16550.h>
 
 #define LCRVAL LCR_8N1					/* 8 data, 1 stop, no parity */
@@ -36,9 +33,10 @@ void NS16550_init (NS16550_t com_port, int baud_divisor)
 #else
 	com_port->mdr1 = 0;	/* /16 is proper to hit 115200 with 48MHz */
 #endif
-#endif
+#endif /* CONFIG_OMAP */
 }
 
+#ifndef CONFIG_NS16550_MIN_FUNCTIONS
 void NS16550_reinit (NS16550_t com_port, int baud_divisor)
 {
 	com_port->ier = 0x00;
@@ -53,6 +51,7 @@ void NS16550_reinit (NS16550_t com_port, int baud_divisor)
 	com_port->dlm = (baud_divisor >> 8) & 0xff;
 	com_port->lcr = LCRVAL;
 }
+#endif /* CONFIG_NS16550_MIN_FUNCTIONS */
 
 void NS16550_putc (NS16550_t com_port, char c)
 {
@@ -60,6 +59,7 @@ void NS16550_putc (NS16550_t com_port, char c)
 	com_port->thr = c;
 }
 
+#ifndef CONFIG_NS16550_MIN_FUNCTIONS
 char NS16550_getc (NS16550_t com_port)
 {
 	while ((com_port->lsr & LSR_DR) == 0) {
@@ -76,4 +76,4 @@ int NS16550_tstc (NS16550_t com_port)
 	return ((com_port->lsr & LSR_DR) != 0);
 }
 
-#endif
+#endif /* CONFIG_NS16550_MIN_FUNCTIONS */

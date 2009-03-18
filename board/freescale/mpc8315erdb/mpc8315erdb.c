@@ -29,12 +29,14 @@
 #include <fdt_support.h>
 #include <pci.h>
 #include <mpc83xx.h>
+#include <netdev.h>
+#include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
 int board_early_init_f(void)
 {
-	volatile immap_t *im = (immap_t *)CFG_IMMR;
+	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 
 	if (im->pmc.pmccr1 & PMCCR1_POWER_OFF)
 		gd->flags |= GD_FLG_SILENT;
@@ -47,7 +49,7 @@ static u8 read_board_info(void)
 	u8 val8;
 	i2c_set_bus_num(0);
 
-	if (i2c_read(CFG_I2C_PCF8574A_ADDR, 0, 0, &val8, 1) == 0)
+	if (i2c_read(CONFIG_SYS_I2C_PCF8574A_ADDR, 0, 0, &val8, 1) == 0)
 		return val8;
 	else
 		return 0;
@@ -75,31 +77,64 @@ int checkboard(void)
 
 static struct pci_region pci_regions[] = {
 	{
-		bus_start: CFG_PCI_MEM_BASE,
-		phys_start: CFG_PCI_MEM_PHYS,
-		size: CFG_PCI_MEM_SIZE,
+		bus_start: CONFIG_SYS_PCI_MEM_BASE,
+		phys_start: CONFIG_SYS_PCI_MEM_PHYS,
+		size: CONFIG_SYS_PCI_MEM_SIZE,
 		flags: PCI_REGION_MEM | PCI_REGION_PREFETCH
 	},
 	{
-		bus_start: CFG_PCI_MMIO_BASE,
-		phys_start: CFG_PCI_MMIO_PHYS,
-		size: CFG_PCI_MMIO_SIZE,
+		bus_start: CONFIG_SYS_PCI_MMIO_BASE,
+		phys_start: CONFIG_SYS_PCI_MMIO_PHYS,
+		size: CONFIG_SYS_PCI_MMIO_SIZE,
 		flags: PCI_REGION_MEM
 	},
 	{
-		bus_start: CFG_PCI_IO_BASE,
-		phys_start: CFG_PCI_IO_PHYS,
-		size: CFG_PCI_IO_SIZE,
+		bus_start: CONFIG_SYS_PCI_IO_BASE,
+		phys_start: CONFIG_SYS_PCI_IO_PHYS,
+		size: CONFIG_SYS_PCI_IO_SIZE,
 		flags: PCI_REGION_IO
 	}
 };
 
+static struct pci_region pcie_regions_0[] = {
+	{
+		.bus_start = CONFIG_SYS_PCIE1_MEM_BASE,
+		.phys_start = CONFIG_SYS_PCIE1_MEM_PHYS,
+		.size = CONFIG_SYS_PCIE1_MEM_SIZE,
+		.flags = PCI_REGION_MEM,
+	},
+	{
+		.bus_start = CONFIG_SYS_PCIE1_IO_BASE,
+		.phys_start = CONFIG_SYS_PCIE1_IO_PHYS,
+		.size = CONFIG_SYS_PCIE1_IO_SIZE,
+		.flags = PCI_REGION_IO,
+	},
+};
+
+static struct pci_region pcie_regions_1[] = {
+	{
+		.bus_start = CONFIG_SYS_PCIE2_MEM_BASE,
+		.phys_start = CONFIG_SYS_PCIE2_MEM_PHYS,
+		.size = CONFIG_SYS_PCIE2_MEM_SIZE,
+		.flags = PCI_REGION_MEM,
+	},
+	{
+		.bus_start = CONFIG_SYS_PCIE2_IO_BASE,
+		.phys_start = CONFIG_SYS_PCIE2_IO_PHYS,
+		.size = CONFIG_SYS_PCIE2_IO_SIZE,
+		.flags = PCI_REGION_IO,
+	},
+};
+
 void pci_init_board(void)
 {
-	volatile immap_t *immr = (volatile immap_t *)CFG_IMMR;
+	volatile immap_t *immr = (volatile immap_t *)CONFIG_SYS_IMMR;
+	volatile sysconf83xx_t *sysconf = &immr->sysconf;
 	volatile clk83xx_t *clk = (volatile clk83xx_t *)&immr->clk;
 	volatile law83xx_t *pci_law = immr->sysconf.pcilaw;
+	volatile law83xx_t *pcie_law = sysconf->pcielaw;
 	struct pci_region *reg[] = { pci_regions };
+	struct pci_region *pcie_reg[] = { pcie_regions_0, pcie_regions_1, };
 	int warmboot;
 
 	/* Enable all 3 PCI_CLK_OUTPUTs. */
@@ -108,16 +143,34 @@ void pci_init_board(void)
 	/*
 	 * Configure PCI Local Access Windows
 	 */
-	pci_law[0].bar = CFG_PCI_MEM_PHYS & LAWBAR_BAR;
+	pci_law[0].bar = CONFIG_SYS_PCI_MEM_PHYS & LAWBAR_BAR;
 	pci_law[0].ar = LBLAWAR_EN | LBLAWAR_512MB;
 
-	pci_law[1].bar = CFG_PCI_IO_PHYS & LAWBAR_BAR;
+	pci_law[1].bar = CONFIG_SYS_PCI_IO_PHYS & LAWBAR_BAR;
 	pci_law[1].ar = LBLAWAR_EN | LBLAWAR_1MB;
 
 	warmboot = gd->bd->bi_bootflags & BOOTFLAG_WARM;
 	warmboot |= immr->pmc.pmccr1 & PMCCR1_POWER_OFF;
 
 	mpc83xx_pci_init(1, reg, warmboot);
+
+	/* Configure the clock for PCIE controller */
+	clrsetbits_be32(&clk->sccr, SCCR_PCIEXP1CM | SCCR_PCIEXP2CM,
+				    SCCR_PCIEXP1CM_1 | SCCR_PCIEXP2CM_1);
+
+	/* Deassert the resets in the control register */
+	out_be32(&sysconf->pecr1, 0xE0008000);
+	out_be32(&sysconf->pecr2, 0xE0008000);
+	udelay(2000);
+
+	/* Configure PCI Express Local Access Windows */
+	out_be32(&pcie_law[0].bar, CONFIG_SYS_PCIE1_BASE & LAWBAR_BAR);
+	out_be32(&pcie_law[0].ar, LBLAWAR_EN | LBLAWAR_512MB);
+
+	out_be32(&pcie_law[1].bar, CONFIG_SYS_PCIE2_BASE & LAWBAR_BAR);
+	out_be32(&pcie_law[1].ar, LBLAWAR_EN | LBLAWAR_512MB);
+
+	mpc83xx_pcie_init(2, pcie_reg, warmboot);
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
@@ -165,3 +218,9 @@ void ft_board_setup(void *blob, bd_t *bd)
 	fdt_tsec1_fixup(blob, bd);
 }
 #endif
+
+int board_eth_init(bd_t *bis)
+{
+	cpu_eth_init(bis);	/* Initialize TSECs first */
+	return pci_eth_init(bis);
+}

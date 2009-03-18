@@ -37,13 +37,17 @@
 #include <video_fb.h>
 #endif
 
+#ifdef CONFIG_FSL_DIU_LOGO_BMP
 extern unsigned int FSL_Logo_BMP[];
+#else
+#define FSL_Logo_BMP NULL
+#endif
 
 static int xres, yres;
 
 void diu_set_pixel_clock(unsigned int pixclock)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	volatile clk512x_t *clk = &immap->clk;
 	volatile unsigned int *clkdvdr = &clk->scfr[0];
 	unsigned long speed_ccb, temp, pixval;
@@ -61,16 +65,40 @@ void diu_set_pixel_clock(unsigned int pixclock)
 	debug("DIU: Modified value of CLKDVDR = 0x%08x\n", *clkdvdr);
 }
 
+char *valid_bmp(char *addr)
+{
+	unsigned long h_addr;
+
+	h_addr = simple_strtoul(addr, NULL, 16);
+	if (h_addr < CONFIG_SYS_FLASH_BASE ||
+			h_addr >= (CONFIG_SYS_FLASH_BASE + CONFIG_SYS_FLASH_SIZE - 1)) {
+		printf("bmp addr %lx is not a valid flash address\n", h_addr);
+		return 0;
+	} else if ((*(char *)(h_addr) != 'B') || (*(char *)(h_addr+1) != 'M')) {
+		printf("bmp addr is not a bmp\n");
+		return 0;
+	} else
+		return (char *)h_addr;
+}
+
 int ads5121_diu_init(void)
 {
 	unsigned int pixel_format;
+	char *bmp = NULL;
+	char *bmp_env;
 
 	xres = 1024;
 	yres = 768;
 	pixel_format = 0x88883316;
 
-	return fsl_diu_init(xres, pixel_format, 0,
-		     (unsigned char *)FSL_Logo_BMP);
+	debug("ads5121_diu_init\n");
+	bmp_env = getenv("diu_bmp_addr");
+	if (bmp_env) {
+		bmp = valid_bmp(bmp_env);
+	}
+	if (!bmp)
+		bmp = FSL_Logo_BMP;
+	return fsl_diu_init(xres, pixel_format, 0, (unsigned char *)bmp);
 }
 
 int ads5121diu_init_show_bmp(cmd_tbl_t *cmdtp,
@@ -79,7 +107,7 @@ int ads5121diu_init_show_bmp(cmd_tbl_t *cmdtp,
 	unsigned int addr;
 
 	if (argc < 2) {
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -100,8 +128,8 @@ int ads5121diu_init_show_bmp(cmd_tbl_t *cmdtp,
 }
 
 U_BOOT_CMD(
-	diufb, CFG_MAXARGS, 1, ads5121diu_init_show_bmp,
-	"diufb init | addr - Init or Display BMP file\n",
+	diufb, CONFIG_SYS_MAXARGS, 1, ads5121diu_init_show_bmp,
+	"Init or Display BMP file",
 	"init\n    - initialize DIU\n"
 	"addr\n    - display bmp at address 'addr'\n"
 	);

@@ -27,11 +27,11 @@ static int do_df(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	}
 
 usage:
-	printf("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(
 	sf,	2,	1,	do_serial_flash,
-	"sf	- Serial flash sub-system\n",
+	"Serial flash sub-system",
 	"probe [bus:]cs		- init flash device on given SPI bus and CS\n")

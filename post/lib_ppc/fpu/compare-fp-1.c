@@ -30,7 +30,9 @@
 
 #include <post.h>
 
-#if CONFIG_POST & CFG_POST_FPU
+#if CONFIG_POST & CONFIG_SYS_POST_FPU
+
+GNU_FPOST_ATTR
 
 static int failed;
 
@@ -219,4 +221,4 @@ int fpu_post_test_math6 (void)
 	return 0;
 }
 
-#endif /* CONFIG_POST & CFG_POST_FPU */
+#endif /* CONFIG_POST & CONFIG_SYS_POST_FPU */

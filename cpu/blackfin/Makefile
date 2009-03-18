@@ -16,15 +16,16 @@ LIB	= $(obj)lib$(CPU).a
 EXTRA    :=
 CEXTRA   := initcode.o
 SEXTRA   := start.o
-SOBJS    := interrupt.o cache.o flush.o
-COBJS    := cpu.o traps.o interrupts.o reset.o serial.o i2c.o watchdog.o
+SOBJS    := interrupt.o cache.o
+COBJS-y  := cpu.o traps.o interrupts.o reset.o serial.o watchdog.o
+COBJS-$(CONFIG_JTAG_CONSOLE) += jtag-console.o
 
 ifeq ($(CONFIG_BFIN_BOOT_MODE),BFIN_BOOT_BYPASS)
-COBJS    += initcode.o
+COBJS-y  += initcode.o
 endif
 
-SRCS     := $(SEXTRA:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)
-OBJS     := $(addprefix $(obj),$(COBJS) $(SOBJS))
+SRCS     := $(SEXTRA:.o=.S) $(SOBJS:.o=.S) $(COBJS-y:.o=.c)
+OBJS     := $(addprefix $(obj),$(COBJS-y) $(SOBJS))
 EXTRA    := $(addprefix $(obj),$(EXTRA))
 CEXTRA   := $(addprefix $(obj),$(CEXTRA))
 SEXTRA   := $(addprefix $(obj),$(SEXTRA))
@@ -46,6 +47,7 @@ $(obj)bootrom-asm-offsets.h: $(obj)bootrom-asm-offsets.s
 
 # make sure our initcode (which goes into LDR) does not
 # have relocs or external references
+$(obj)initcode.o: CFLAGS += -fno-function-sections -fno-data-sections
 READINIT = env LC_ALL=C $(CROSS_COMPILE)readelf -s $<
 check_initcode: $(obj)initcode.o
 ifneq ($(CONFIG_BFIN_BOOT_MODE),BFIN_BOOT_BYPASS)

@@ -267,10 +267,10 @@ static int psII_write_config_dword (struct pci_controller *hose,
 static struct pci_config_table ap1000_config_table[] = {
 #ifdef CONFIG_AP1000
 	{PCI_ANY_ID, PCI_ANY_ID, PCI_ANY_ID,
-	 PCI_BUS (CFG_ETH_DEV_FN), PCI_DEV (CFG_ETH_DEV_FN),
-	 PCI_FUNC (CFG_ETH_DEV_FN),
+	 PCI_BUS (CONFIG_SYS_ETH_DEV_FN), PCI_DEV (CONFIG_SYS_ETH_DEV_FN),
+	 PCI_FUNC (CONFIG_SYS_ETH_DEV_FN),
 	 pci_cfgfunc_config_device,
-	 {CFG_ETH_IOBASE, CFG_ETH_MEMBASE,
+	 {CONFIG_SYS_ETH_IOBASE, CONFIG_SYS_ETH_MEMBASE,
 	  PCI_COMMAND_IO | PCI_COMMAND_MEMORY | PCI_COMMAND_MASTER}},
 #endif
 	{}
@@ -294,7 +294,7 @@ void pci_init_board (void)
 	pci_set_region (hose->regions + 0,
 			AP1000_SYS_MEM_START, AP1000_SYS_MEM_START,
 			AP1000_SYS_MEM_SIZE,
-			PCI_REGION_MEM | PCI_REGION_MEMORY);
+			PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
 
 	/* PCI Memory space */
 	pci_set_region (hose->regions + 1,

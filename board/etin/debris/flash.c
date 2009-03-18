@@ -27,6 +27,7 @@
 #include <asm/processor.h>
 #include <asm/pci_io.h>
 #include <mpc824x.h>
+#include <asm/mmu.h>
 
 int (*do_flash_erase)(flash_info_t*, uint32_t, uint32_t);
 int (*write_dword)(flash_info_t*, ulong, uint64_t);
@@ -71,7 +72,7 @@ static uint16_t cfi_read_query(flash_info_t *flash, uint32_t addr)
 	return (uint16_t)read32(base + addr);
 }
 
-flash_info_t    flash_info[CFG_MAX_FLASH_BANKS]; /* info for FLASH chips */
+flash_info_t    flash_info[CONFIG_SYS_MAX_FLASH_BANKS]; /* info for FLASH chips */
 
 static void move64(uint64_t *src, uint64_t *dest)
 {
@@ -99,7 +100,7 @@ static int cfi_write_dword(flash_info_t *flash, ulong dest, cfi_word data)
 		status &= CMD(0x80);
 		if(status == CMD(0x80))
 			break;
-		if (get_timer(start) > CFG_FLASH_WRITE_TOUT) {
+		if (get_timer(start) > CONFIG_SYS_FLASH_WRITE_TOUT) {
 			cfi_cmd(flash, 0xff, 0);
 			return 1;
 		}
@@ -128,7 +129,7 @@ static int jedec_write_dword (flash_info_t *flash, ulong dest, cfi_word data)
 	start = get_timer (0);
 	status = ~data;
 	while(status != data) {
-		if (get_timer(start) > CFG_FLASH_WRITE_TOUT)
+		if (get_timer(start) > CONFIG_SYS_FLASH_WRITE_TOUT)
 			return 1;
 		status = cfi_read(flash, dest);
 		udelay(1);
@@ -230,7 +231,7 @@ static int cfi_erase_oneblock(flash_info_t *flash, uint32_t sect)
 		status &= CMD(0x80);
 		if (status == CMD(0x80))
 			break;
-		if ((now = get_timer(start)) > CFG_FLASH_ERASE_TOUT) {
+		if ((now = get_timer(start)) > CONFIG_SYS_FLASH_ERASE_TOUT) {
 			cfi_cmd(flash, 0xff, 0);
 			printf ("Timeout\n");
 			return ERR_TIMOUT;
@@ -296,7 +297,7 @@ static int jedec_erase(flash_info_t *flash, uint32_t s_first, uint32_t s_last)
 		if (status == CMD(0xffff))
 			break;
 
-		if ((now = get_timer(start)) > CFG_FLASH_ERASE_TOUT) {
+		if ((now = get_timer(start)) > CONFIG_SYS_FLASH_ERASE_TOUT) {
 			printf ("Timeout\n");
 			return ERR_TIMOUT;
 		}
@@ -581,7 +582,7 @@ unsigned long flash_init (void)
 	mtdbat1u(0x70000000 | BATU_BL_256M | BATU_VS | BATU_VP);
 	set_msr(msr);
 
-	for (i = 0; i < CFG_MAX_FLASH_BANKS; i++)
+	for (i = 0; i < CONFIG_SYS_MAX_FLASH_BANKS; i++)
 		flash_info[i].flash_id = FLASH_UNKNOWN;
 	size = cfi_init(FLASH_BASE0_PRELIM, &flash_info[0]);
 	if (!size)

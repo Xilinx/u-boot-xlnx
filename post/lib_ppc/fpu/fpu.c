@@ -36,9 +36,11 @@
 
 #include <post.h>
 
-#if CONFIG_POST & CFG_POST_FPU
+#if CONFIG_POST & CONFIG_SYS_POST_FPU
 
 #include <watchdog.h>
+
+GNU_FPOST_ATTR
 
 extern int fpu_status (void);
 extern void fpu_enable (void);
@@ -86,4 +88,4 @@ int fpu_post_test (int flags)
 	return ret;
 }
 
-#endif /* CONFIG_POST & CFG_POST_FPU */
+#endif /* CONFIG_POST & CONFIG_SYS_POST_FPU */

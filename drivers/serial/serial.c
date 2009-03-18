@@ -23,8 +23,6 @@
 
 #include <common.h>
 
-#ifdef CFG_NS16550_SERIAL
-
 #include <ns16550.h>
 #ifdef CONFIG_NS87308
 #include <ns87308.h>
@@ -48,13 +46,13 @@ DECLARE_GLOBAL_DATA_PTR;
 #error	"Invalid console index value."
 #endif
 
-#if CONFIG_CONS_INDEX == 1 && !defined(CFG_NS16550_COM1)
+#if CONFIG_CONS_INDEX == 1 && !defined(CONFIG_SYS_NS16550_COM1)
 #error	"Console port 1 defined but not configured."
-#elif CONFIG_CONS_INDEX == 2 && !defined(CFG_NS16550_COM2)
+#elif CONFIG_CONS_INDEX == 2 && !defined(CONFIG_SYS_NS16550_COM2)
 #error	"Console port 2 defined but not configured."
-#elif CONFIG_CONS_INDEX == 3 && !defined(CFG_NS16550_COM3)
+#elif CONFIG_CONS_INDEX == 3 && !defined(CONFIG_SYS_NS16550_COM3)
 #error	"Console port 3 defined but not configured."
-#elif CONFIG_CONS_INDEX == 4 && !defined(CFG_NS16550_COM4)
+#elif CONFIG_CONS_INDEX == 4 && !defined(CONFIG_SYS_NS16550_COM4)
 #error	"Console port 4 defined but not configured."
 #endif
 
@@ -62,23 +60,23 @@ DECLARE_GLOBAL_DATA_PTR;
  *	 the array is 0 based.
  */
 static NS16550_t serial_ports[4] = {
-#ifdef CFG_NS16550_COM1
-	(NS16550_t)CFG_NS16550_COM1,
+#ifdef CONFIG_SYS_NS16550_COM1
+	(NS16550_t)CONFIG_SYS_NS16550_COM1,
 #else
 	NULL,
 #endif
-#ifdef CFG_NS16550_COM2
-	(NS16550_t)CFG_NS16550_COM2,
+#ifdef CONFIG_SYS_NS16550_COM2
+	(NS16550_t)CONFIG_SYS_NS16550_COM2,
 #else
 	NULL,
 #endif
-#ifdef CFG_NS16550_COM3
-	(NS16550_t)CFG_NS16550_COM3,
+#ifdef CONFIG_SYS_NS16550_COM3
+	(NS16550_t)CONFIG_SYS_NS16550_COM3,
 #else
 	NULL,
 #endif
-#ifdef CFG_NS16550_COM4
-	(NS16550_t)CFG_NS16550_COM4
+#ifdef CONFIG_SYS_NS16550_COM4
+	(NS16550_t)CONFIG_SYS_NS16550_COM4
 #else
 	NULL
 #endif
@@ -126,7 +124,7 @@ static int calc_divisor (NS16550_t port)
 {
 #ifdef CONFIG_OMAP1510
 	/* If can't cleanly clock 115200 set div to 1 */
-	if ((CFG_NS16550_CLK == 12000000) && (gd->baudrate == 115200)) {
+	if ((CONFIG_SYS_NS16550_CLK == 12000000) && (gd->baudrate == 115200)) {
 		port->osc_12m_sel = OSC_12M_SEL;	/* enable 6.5 * divisor */
 		return (1);				/* return 1 for base divisor */
 	}
@@ -134,7 +132,7 @@ static int calc_divisor (NS16550_t port)
 #endif
 #ifdef CONFIG_OMAP1610
 	/* If can't cleanly clock 115200 set div to 1 */
-	if ((CFG_NS16550_CLK == 48000000) && (gd->baudrate == 115200)) {
+	if ((CONFIG_SYS_NS16550_CLK == 48000000) && (gd->baudrate == 115200)) {
 		return (26);		/* return 26 for base divisor */
 	}
 #endif
@@ -146,11 +144,11 @@ static int calc_divisor (NS16550_t port)
 #endif
 
 	/* Compute divisor value. Normally, we should simply return:
-	 *   CFG_NS16550_CLK) / MODE_X_DIV / gd->baudrate
+	 *   CONFIG_SYS_NS16550_CLK) / MODE_X_DIV / gd->baudrate
 	 * but we need to round that value by adding 0.5.
 	 * Rounding is especially important at high baud rates.
 	 */
-	return (CFG_NS16550_CLK + (gd->baudrate * (MODE_X_DIV / 2))) /
+	return (CONFIG_SYS_NS16550_CLK + (gd->baudrate * (MODE_X_DIV / 2))) /
 		(MODE_X_DIV * gd->baudrate);
 }
 
@@ -163,19 +161,19 @@ int serial_init (void)
 	initialise_ns87308();
 #endif
 
-#ifdef CFG_NS16550_COM1
+#ifdef CONFIG_SYS_NS16550_COM1
 	clock_divisor = calc_divisor(serial_ports[0]);
 	NS16550_init(serial_ports[0], clock_divisor);
 #endif
-#ifdef CFG_NS16550_COM2
+#ifdef CONFIG_SYS_NS16550_COM2
 	clock_divisor = calc_divisor(serial_ports[1]);
 	NS16550_init(serial_ports[1], clock_divisor);
 #endif
-#ifdef CFG_NS16550_COM3
+#ifdef CONFIG_SYS_NS16550_COM3
 	clock_divisor = calc_divisor(serial_ports[2]);
 	NS16550_init(serial_ports[2], clock_divisor);
 #endif
-#ifdef CFG_NS16550_COM4
+#ifdef CONFIG_SYS_NS16550_COM4
 	clock_divisor = calc_divisor(serial_ports[3]);
 	NS16550_init(serial_ports[3], clock_divisor);
 #endif
@@ -328,5 +326,3 @@ DECLARE_ESERIAL_FUNCTIONS(4);
 struct serial_device eserial4_device =
 	INIT_ESERIAL_STRUCTURE(4,"eserial3","EUART4");
 #endif /* CONFIG_SERIAL_MULTI */
-
-#endif

@@ -28,17 +28,36 @@
 #ifndef	_MCF5271_H_
 #define	_MCF5271_H_
 
-#define mbar_readLong(x)	*((volatile unsigned long *) (CFG_MBAR + x))
-#define mbar_readShort(x)	*((volatile unsigned short *) (CFG_MBAR + x))
-#define mbar_readByte(x)	*((volatile unsigned char *) (CFG_MBAR + x))
-#define mbar_writeLong(x,y)	*((volatile unsigned long *) (CFG_MBAR + x)) = y
-#define mbar_writeShort(x,y)	*((volatile unsigned short *) (CFG_MBAR + x)) = y
-#define mbar_writeByte(x,y)	*((volatile unsigned char *) (CFG_MBAR + x)) = y
+#define mbar_readLong(x)	*((volatile unsigned long *) (CONFIG_SYS_MBAR + x))
+#define mbar_readShort(x)	*((volatile unsigned short *) (CONFIG_SYS_MBAR + x))
+#define mbar_readByte(x)	*((volatile unsigned char *) (CONFIG_SYS_MBAR + x))
+#define mbar_writeLong(x,y)	*((volatile unsigned long *) (CONFIG_SYS_MBAR + x)) = y
+#define mbar_writeShort(x,y)	*((volatile unsigned short *) (CONFIG_SYS_MBAR + x)) = y
+#define mbar_writeByte(x,y)	*((volatile unsigned char *) (CONFIG_SYS_MBAR + x)) = y
 
 #define MCF_FMPLL_SYNCR				0x120000
 #define MCF_FMPLL_SYNSR				0x120004
+
 #define MCF_FMPLL_SYNCR_MFD(x)			((x&0x7)<<24)
+#define MCF_SYNCR_MFD_4X		0x00000000
+#define MCF_SYNCR_MFD_6X		0x01000000
+#define MCF_SYNCR_MFD_8X		0x02000000
+#define MCF_SYNCR_MFD_10X		0x03000000
+#define MCF_SYNCR_MFD_12X		0x04000000
+#define MCF_SYNCR_MFD_14X		0x05000000
+#define MCF_SYNCR_MFD_16X		0x06000000
+#define MCF_SYNCR_MFD_18X		0x07000000
+
 #define MCF_FMPLL_SYNCR_RFD(x)			((x&0x7)<<19)
+#define MCF_SYNCR_RFD_DIV1		0x00000000
+#define MCF_SYNCR_RFD_DIV2		0x00080000
+#define MCF_SYNCR_RFD_DIV4		0x00100000
+#define MCF_SYNCR_RFD_DIV8		0x00180000
+#define MCF_SYNCR_RFD_DIV16		0x00200000
+#define MCF_SYNCR_RFD_DIV32		0x00280000
+#define MCF_SYNCR_RFD_DIV64		0x00300000
+#define MCF_SYNCR_RFD_DIV128		0x00380000
+
 #define MCF_FMPLL_SYNSR_LOCK			0x8
 
 #define MCF_WTM_WCR				0x140000
@@ -50,17 +69,79 @@
 #define MCF_RCM_RCR_FRCRSTOUT			0x40
 #define MCF_RCM_RCR_SOFTRST			0x80
 
+#define MCF_GPIO_PODR_ADDR			0x100000
+#define MCF_GPIO_PODR_DATAH			0x100001
+#define MCF_GPIO_PODR_DATAL			0x100002
+#define MCF_GPIO_PODR_BUSCTL			0x100003
+#define MCF_GPIO_PODR_BS			0x100004
+#define MCF_GPIO_PODR_CS			0x100005
+#define MCF_GPIO_PODR_SDRAM			0x100006
+#define MCF_GPIO_PODR_FECI2C			0x100007
+#define MCF_GPIO_PODR_UARTH			0x100008
+#define MCF_GPIO_PODR_UARTL			0x100009
+#define MCF_GPIO_PODR_QSPI			0x10000A
+#define MCF_GPIO_PODR_TIMER			0x10000B
+
+#define MCF_GPIO_PDDR_ADDR			0x100010
+#define MCF_GPIO_PDDR_DATAH			0x100011
+#define MCF_GPIO_PDDR_DATAL			0x100012
+#define MCF_GPIO_PDDR_BUSCTL			0x100013
+#define MCF_GPIO_PDDR_BS			0x100014
+#define MCF_GPIO_PDDR_CS			0x100015
+#define MCF_GPIO_PDDR_SDRAM			0x100016
+#define MCF_GPIO_PDDR_FECI2C			0x100017
+#define MCF_GPIO_PDDR_UARTH			0x100018
+#define MCF_GPIO_PDDR_UARTL			0x100019
+#define MCF_GPIO_PDDR_QSPI			0x10001A
+#define MCF_GPIO_PDDR_TIMER			0x10001B
+
+#define MCF_GPIO_PPDSDR_ADDR			0x100020
+#define MCF_GPIO_PPDSDR_DATAH			0x100021
+#define MCF_GPIO_PPDSDR_DATAL			0x100022
+#define MCF_GPIO_PPDSDR_BUSCTL			0x100023
+#define MCF_GPIO_PPDSDR_BS			0x100024
+#define MCF_GPIO_PPDSDR_CS			0x100025
+#define MCF_GPIO_PPDSDR_SDRAM			0x100026
+#define MCF_GPIO_PPDSDR_FECI2C			0x100027
+#define MCF_GPIO_PPDSDR_UARTH			0x100028
+#define MCF_GPIO_PPDSDR_UARTL			0x100029
+#define MCF_GPIO_PPDSDR_QSPI			0x10002A
+#define MCF_GPIO_PPDSDR_TIMER			0x10002B
+
+#define MCF_GPIO_PCLRR_ADDR			0x100030
+#define MCF_GPIO_PCLRR_DATAH			0x100031
+#define MCF_GPIO_PCLRR_DATAL			0x100032
+#define MCF_GPIO_PCLRR_BUSCTL			0x100033
+#define MCF_GPIO_PCLRR_BS			0x100034
+#define MCF_GPIO_PCLRR_CS			0x100035
+#define MCF_GPIO_PCLRR_SDRAM			0x100036
+#define MCF_GPIO_PCLRR_FECI2C			0x100037
+#define MCF_GPIO_PCLRR_UARTH			0x100038
+#define MCF_GPIO_PCLRR_UARTL			0x100039
+#define MCF_GPIO_PCLRR_QSPI			0x10003A
+#define MCF_GPIO_PCLRR_TIMER			0x10003B
+
 #define MCF_GPIO_PAR_AD				0x100040
+#define MCF_GPIO_PAR_BUSCTL			0x100042
+#define MCF_GPIO_PAR_BS				0x100044
 #define MCF_GPIO_PAR_CS				0x100045
 #define MCF_GPIO_PAR_SDRAM			0x100046
 #define MCF_GPIO_PAR_FECI2C			0x100047
 #define MCF_GPIO_PAR_UART			0x100048
+#define MCF_GPIO_PAR_QSPI			0x10004A
+#define MCF_GPIO_PAR_TIMER			0x10004C
+
+#define MCF_DSCR_EIM				0x100050
+#define MCF_DCSR_FEC12C 			0x100052
+#define MCF_DCSR_UART				0x100053
+#define MCF_DCSR_QSPI				0x100054
+#define MCF_DCSR_TIMER				0x100055
 
 #define MCF_CCM_CIR				0x11000A
 #define MCF_CCM_CIR_PRN_MASK			0x3F
 #define MCF_CCM_CIR_PIN_LEN			6
-#define MCF_CCM_CIR_PIN_MCF5270			0x2e
-#define MCF_CCM_CIR_PIN_MCF5271			0x80
+#define MCF_CCM_CIR_PIN_MCF5270			0x002e
+#define MCF_CCM_CIR_PIN_MCF5271			0x0032
 
 #define MCF_GPIO_AD_ADDR23			0x80
 #define MCF_GPIO_AD_ADDR22			0x40
@@ -116,9 +197,7 @@
 
 #define MCFSIM_ICR1				0x000C41
 
-/*********************************************************************
-* Interrupt Controller (INTC)
-*********************************************************************/
+/* Interrupt Controller (INTC) */
 #define INT0_LO_RSVD0			(0)
 #define INT0_LO_EPORT1			(1)
 #define INT0_LO_EPORT2			(2)
@@ -181,39 +260,5 @@
 #define INT0_HI_CAN1_ERRINT		(59)
 #define INT0_HI_CAN1_BOFFINT		(60)
 /* 60-63 Reserved */
-
-/* Bit definitions and macros for INTC_IPRL */
-#define INTC_IPRL_INT31			(0x80000000)
-#define INTC_IPRL_INT30			(0x40000000)
-#define INTC_IPRL_INT29			(0x20000000)
-#define INTC_IPRL_INT28			(0x10000000)
-#define INTC_IPRL_INT27			(0x08000000)
-#define INTC_IPRL_INT26			(0x04000000)
-#define INTC_IPRL_INT25			(0x02000000)
-#define INTC_IPRL_INT24			(0x01000000)
-#define INTC_IPRL_INT23			(0x00800000)
-#define INTC_IPRL_INT22			(0x00400000)
-#define INTC_IPRL_INT21			(0x00200000)
-#define INTC_IPRL_INT20			(0x00100000)
-#define INTC_IPRL_INT19			(0x00080000)
-#define INTC_IPRL_INT18			(0x00040000)
-#define INTC_IPRL_INT17			(0x00020000)
-#define INTC_IPRL_INT16			(0x00010000)
-#define INTC_IPRL_INT15			(0x00008000)
-#define INTC_IPRL_INT14			(0x00004000)
-#define INTC_IPRL_INT13			(0x00002000)
-#define INTC_IPRL_INT12			(0x00001000)
-#define INTC_IPRL_INT11			(0x00000800)
-#define INTC_IPRL_INT10			(0x00000400)
-#define INTC_IPRL_INT9			(0x00000200)
-#define INTC_IPRL_INT8			(0x00000100)
-#define INTC_IPRL_INT7			(0x00000080)
-#define INTC_IPRL_INT6			(0x00000040)
-#define INTC_IPRL_INT5			(0x00000020)
-#define INTC_IPRL_INT4			(0x00000010)
-#define INTC_IPRL_INT3			(0x00000008)
-#define INTC_IPRL_INT2			(0x00000004)
-#define INTC_IPRL_INT1			(0x00000002)
-#define INTC_IPRL_INT0			(0x00000001)
 
 #endif				/* _MCF5271_H_ */

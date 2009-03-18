@@ -25,21 +25,24 @@ include $(TOPDIR)/config.mk
 
 LIB	:= $(obj)libserial.a
 
+COBJS-$(CONFIG_ARM_DCC) += arm_dcc.o
 COBJS-$(CONFIG_ATMEL_USART) += atmel_usart.o
 COBJS-$(CONFIG_MCFUART) += mcfuart.o
 COBJS-$(CONFIG_NS9750_UART) += ns9750_serial.o
-COBJS-y += ns16550.o
+COBJS-$(CONFIG_SYS_NS16550) += ns16550.o
 COBJS-$(CONFIG_DRIVER_S3C4510_UART) += s3c4510b_uart.o
 COBJS-$(CONFIG_S3C64XX) += s3c64xx.o
-COBJS-y += serial.o
+COBJS-$(CONFIG_SYS_NS16550_SERIAL) += serial.o
+COBJS-$(CONFIG_IXP_SERIAL) += serial_ixp.o
 COBJS-$(CONFIG_MAX3100_SERIAL) += serial_max3100.o
-COBJS-y += serial_pl010.o
-COBJS-y += serial_pl011.o
+COBJS-$(CONFIG_PL010_SERIAL) += serial_pl01x.o
+COBJS-$(CONFIG_PL011_SERIAL) += serial_pl01x.o
 COBJS-$(CONFIG_XILINX_UARTLITE) += serial_xuartlite.o
 COBJS-$(CONFIG_SCIF_CONSOLE) += serial_sh.o
 COBJS-$(CONFIG_USB_TTY) += usbtty.o
+COBJS-$(CONFIG_VCT_SERIAL) += vct.o
 
-COBJS	:= $(COBJS-y)
+COBJS	:= $(sort $(COBJS-y))
 SRCS	:= $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
 

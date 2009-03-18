@@ -38,16 +38,16 @@
 #define CONFIG_NET_MULTI
 #if (CONFIG_ETHER_INDEX == 1)
 #define	CONFIG_ETHER_ON_FCC1
-# define CFG_CMXFCR_MASK1	CFG_CMXFCR_MASK
-# define CFG_CMXFCR_VALUE1	CFG_CMXFCR_VALUE
+# define CONFIG_SYS_CMXFCR_MASK1	CONFIG_SYS_CMXFCR_MASK
+# define CONFIG_SYS_CMXFCR_VALUE1	CONFIG_SYS_CMXFCR_VALUE
 #elif (CONFIG_ETHER_INDEX == 2)
 #define	CONFIG_ETHER_ON_FCC2
-# define CFG_CMXFCR_MASK2	CFG_CMXFCR_MASK
-# define CFG_CMXFCR_VALUE2	CFG_CMXFCR_VALUE
+# define CONFIG_SYS_CMXFCR_MASK2	CONFIG_SYS_CMXFCR_MASK
+# define CONFIG_SYS_CMXFCR_VALUE2	CONFIG_SYS_CMXFCR_VALUE
 #elif (CONFIG_ETHER_INDEX == 3)
 #define	CONFIG_ETHER_ON_FCC3
-# define CFG_CMXFCR_MASK3	CFG_CMXFCR_MASK
-# define CFG_CMXFCR_VALUE3	CFG_CMXFCR_VALUE
+# define CONFIG_SYS_CMXFCR_MASK3	CONFIG_SYS_CMXFCR_MASK
+# define CONFIG_SYS_CMXFCR_VALUE3	CONFIG_SYS_CMXFCR_VALUE
 #endif /* CONFIG_ETHER_INDEX */
 #endif /* CONFIG_ETHER_ON_FCC */
 #endif /* !CONFIG_NET_MULTI && CONFIG_8260 */
@@ -61,8 +61,8 @@
  *
  */
 
-#ifdef CFG_RX_ETH_BUFFER
-# define PKTBUFSRX	CFG_RX_ETH_BUFFER
+#ifdef CONFIG_SYS_RX_ETH_BUFFER
+# define PKTBUFSRX	CONFIG_SYS_RX_ETH_BUFFER
 #else
 # define PKTBUFSRX	4
 #endif
@@ -109,25 +109,26 @@ struct eth_device {
 	void *priv;
 };
 
-extern int eth_initialize(bd_t *bis);		/* Initialize network subsystem */
-extern int eth_register(struct eth_device* dev);/* Register network device	*/
-extern void eth_try_another(int first_restart);	/* Change the device		*/
+extern int eth_initialize(bd_t *bis);	/* Initialize network subsystem */
+extern int eth_register(struct eth_device* dev);/* Register network device */
+extern void eth_try_another(int first_restart);	/* Change the device */
 #ifdef CONFIG_NET_MULTI
-extern void eth_set_current(void);		/* set nterface to ethcur var.  */
+extern void eth_set_current(void);		/* set nterface to ethcur var */
 #endif
-extern struct eth_device *eth_get_dev(void);	/* get the current device MAC	*/
-extern struct eth_device *eth_get_dev_by_name(char *devname); /* get device	*/
-extern int eth_get_dev_index (void);		/* get the device index         */
-extern void eth_set_enetaddr(int num, char* a);	/* Set new MAC address		*/
+extern struct eth_device *eth_get_dev(void);	/* get the current device MAC */
+extern struct eth_device *eth_get_dev_by_name(char *devname); /* get device */
+extern struct eth_device *eth_get_dev_by_index(int index); /* get dev @ index */
+extern int eth_get_dev_index (void);		/* get the device index */
+extern void eth_set_enetaddr(int num, char* a);	/* Set new MAC address */
 
-extern int eth_init(bd_t *bis);			/* Initialize the device	*/
-extern int eth_send(volatile void *packet, int length);	   /* Send a packet	*/
+extern int eth_init(bd_t *bis);			/* Initialize the device */
+extern int eth_send(volatile void *packet, int length);	   /* Send a packet */
 #ifdef CONFIG_API
-extern int eth_receive(volatile void *packet, int length); /* Receive a packet	*/
+extern int eth_receive(volatile void *packet, int length); /* Receive a packet*/
 #endif
-extern int eth_rx(void);			/* Check for received packets	*/
-extern void eth_halt(void);			/* stop SCC			*/
-extern char *eth_get_name(void);		/* get name of current device	*/
+extern int eth_rx(void);			/* Check for received packets */
+extern void eth_halt(void);			/* stop SCC */
+extern char *eth_get_name(void);		/* get name of current device */
 
 #ifdef CONFIG_MCAST_TFTP
 int eth_mcast_join( IPaddr_t mcast_addr, u8 join);
@@ -199,6 +200,12 @@ typedef struct {
 	ushort		udp_len;	/* Length of UDP packet		*/
 	ushort		udp_xsum;	/* Checksum			*/
 } IP_t;
+
+#define IP_OFFS		0x1fff /* ip offset *= 8 */
+#define IP_FLAGS	0xe000 /* first 3 bits */
+#define IP_FLAGS_RES	0x8000 /* reserved */
+#define IP_FLAGS_DFRAG	0x4000 /* don't fragments */
+#define IP_FLAGS_MFRAG	0x2000 /* more fragments */
 
 #define IP_HDR_SIZE_NO_UDP	(sizeof (IP_t) - 8)
 #define IP_HDR_SIZE		(sizeof (IP_t))
@@ -466,6 +473,22 @@ static inline int is_zero_ether_addr(const u8 *addr)
 static inline int is_multicast_ether_addr(const u8 *addr)
 {
 	return (0x01 & addr[0]);
+}
+
+/**
+ * is_valid_ether_addr - Determine if the given Ethernet address is valid
+ * @addr: Pointer to a six-byte array containing the Ethernet address
+ *
+ * Check that the Ethernet address (MAC) is not 00:00:00:00:00:00, is not
+ * a multicast address, and is not FF:FF:FF:FF:FF:FF.
+ *
+ * Return true if the address is valid.
+ */
+static inline int is_valid_ether_addr(const u8 * addr)
+{
+	/* FF:FF:FF:FF:FF:FF is a multicast address so we don't need to
+	 * explicitly check for it here. */
+	return !is_multicast_ether_addr(addr) && !is_zero_ether_addr(addr);
 }
 
 /* Convert an IP address to a string */

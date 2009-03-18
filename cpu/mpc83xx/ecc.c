@@ -20,7 +20,7 @@
 #if defined(CONFIG_DDR_ECC) && defined(CONFIG_DDR_ECC_CMD)
 void ecc_print_status(void)
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile ddr83xx_t *ddr = &immap->ddr;
 
 	printf("\nECC mode: %s\n\n",
@@ -100,7 +100,7 @@ void ecc_print_status(void)
 
 int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
-	volatile immap_t *immap = (immap_t *) CFG_IMMR;
+	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
 	volatile ddr83xx_t *ddr = &immap->ddr;
 	volatile u32 val;
 	u64 *addr;
@@ -119,7 +119,7 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	writeback[1] = 0x89abcdefUL;
 
 	if (argc > 4) {
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -350,12 +350,12 @@ int do_ecc(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			return 0;
 		}
 	}
-	printf("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(ecc, 4, 0, do_ecc,
-	   "ecc     - support for DDR ECC features\n",
+	   "support for DDR ECC features",
 	   "status              - print out status info\n"
 	   "ecc captureclear        - clear capture regs data\n"
 	   "ecc sbecnt <val>        - set Single-Bit Error counter\n"

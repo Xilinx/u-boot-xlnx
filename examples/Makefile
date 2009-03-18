@@ -33,7 +33,11 @@ ifeq ($(ARCH),arm)
 ifeq ($(BOARD),omap2420h4)
 LOAD_ADDR = 0x80300000
 else
+ifeq ($(CPU),omap3)
+LOAD_ADDR = 0x80300000
+else
 LOAD_ADDR = 0xc100000
+endif
 endif
 endif
 
@@ -101,9 +105,10 @@ BIN	+= sched.bin
 endif
 
 ifeq ($(ARCH),blackfin)
-ELF	+= smc91111_eeprom
-SREC	+= smc91111_eeprom.srec
-BIN	+= smc91111_eeprom.bin
+BFIN_BIN = smc91111_eeprom smc911x_eeprom
+ELF	+= $(BFIN_BIN)
+SREC	+= $(addsuffix .srec,$(BFIN_BIN))
+BIN	+= $(addsuffix .bin,$(BFIN_BIN))
 endif
 
 # The following example is pretty 8xx specific...

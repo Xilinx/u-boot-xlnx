@@ -145,13 +145,13 @@ int do_wd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	default:
 		break;
 	}
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(
 	wd,	2,	1,	do_wd,
-	"wd      - check and set watchdog\n",
+	"check and set watchdog",
 	"on   - switch watchDog on\n"
 	"wd off  - switch watchdog off\n"
 	"wd      - print current status\n"

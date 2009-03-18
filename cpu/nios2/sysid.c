@@ -23,7 +23,7 @@
 
 #include <common.h>
 
-#if defined (CFG_NIOS_SYSID_BASE)
+#if defined (CONFIG_SYS_NIOS_SYSID_BASE)
 
 #include <command.h>
 #include <asm/io.h>
@@ -32,7 +32,7 @@
 
 void display_sysid (void)
 {
-	struct nios_sysid_t *sysid = (struct nios_sysid_t *)CFG_NIOS_SYSID_BASE;
+	struct nios_sysid_t *sysid = (struct nios_sysid_t *)CONFIG_SYS_NIOS_SYSID_BASE;
 	struct tm t;
 	char asc[32];
 	time_t stamp;
@@ -52,7 +52,7 @@ int do_sysid (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	sysid,	1,	1,	do_sysid,
-	"sysid   - display Nios-II system id\n\n",
+	"display Nios-II system id",
 	"\n    - display Nios-II system id\n"
 );
-#endif /* CFG_NIOS_SYSID_BASE */
+#endif /* CONFIG_SYS_NIOS_SYSID_BASE */

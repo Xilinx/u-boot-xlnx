@@ -92,8 +92,6 @@
 #include <kgdb.h>
 #include <command.h>
 
-#if defined(CONFIG_CMD_KGDB)
-
 #undef KGDB_DEBUG
 
 /*
@@ -574,8 +572,8 @@ do_kgdb(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(
-	kgdb, CFG_MAXARGS, 1,	do_kgdb,
-	"kgdb    - enter gdb remote debug mode\n",
+	kgdb, CONFIG_SYS_MAXARGS, 1,	do_kgdb,
+	"enter gdb remote debug mode",
 	"[arg0 arg1 .. argN]\n"
 	"    - executes a breakpoint so that kgdb mode is\n"
 	"      entered via the exception handler. To return\n"
@@ -587,8 +585,3 @@ U_BOOT_CMD(
 	"      program if it is executed (see the \"hello_world\"\n"
 	"      example program in the U-Boot examples directory)."
 );
-#else
-
-int kgdb_not_configured = 1;
-
-#endif

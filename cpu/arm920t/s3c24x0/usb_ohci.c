@@ -29,9 +29,7 @@
  */
 /*
  * IMPORTANT NOTES
- * 1 - you MUST define LITTLEENDIAN in the configuration file for the
- *     board or this driver will NOT work!
- * 2 - this driver is intended for use with USB Mass Storage Devices
+ * 1 - this driver is intended for use with USB Mass Storage Devices
  *     (BBB) ONLY. There is NO support for Interrupt or Isochronous pipes!
  */
 
@@ -654,7 +652,7 @@ static void td_fill (ohci_t *ohci, unsigned int info,
 	td->index = index;
 	td->data = (__u32)data;
 #ifdef OHCI_FILL_TRACE
-	if ((usb_pipetype(urb_priv->pipe) == PIPE_BULK) && usb_pipeout(urb_priv->pipe)) {
+	if (usb_pipebulk(urb_priv->pipe) && usb_pipeout(urb_priv->pipe)) {
 		for (i = 0; i < len; i++)
 		printf("td->data[%d] %#2x ",i, ((unsigned char *)td->data)[i]);
 		printf("\n");
@@ -756,7 +754,7 @@ static void dl_transfer_length(td_t * td)
 	tdCBP  = m32_swap (td->hwCBP);
 
 
-	if (!(usb_pipetype (lurb_priv->pipe) == PIPE_CONTROL &&
+	if (!(usb_pipecontrol(lurb_priv->pipe) &&
 	    ((td->index == 0) || (td->index == lurb_priv->length - 1)))) {
 		if (tdBE != 0) {
 			if (td->hwCBP == 0)
@@ -1025,7 +1023,7 @@ pkt_print(dev, pipe, buffer, transfer_len, cmd, "SUB(rh)", usb_pipein(pipe));
 #else
 	wait_ms(1);
 #endif
-	if ((pipe & PIPE_INTERRUPT) == PIPE_INTERRUPT) {
+	if (usb_pipeint(pipe)) {
 		info("Root-Hub submit IRQ: NOT implemented");
 		return 0;
 	}
@@ -1259,7 +1257,7 @@ int submit_common_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 
 	/* allow more time for a BULK device to react - some are slow */
 #define BULK_TO	 5000	/* timeout in milliseconds */
-	if (usb_pipetype (pipe) == PIPE_BULK)
+	if (usb_pipebulk(pipe))
 		timeout = BULK_TO;
 	else
 		timeout = 100;

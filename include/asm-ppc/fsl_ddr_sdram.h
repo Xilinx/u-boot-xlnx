@@ -34,7 +34,39 @@ typedef ddr2_spd_eeprom_t generic_spd_eeprom_t;
 #elif defined(CONFIG_FSL_DDR3)
 #define FSL_DDR_MIN_TCKE_PULSE_WIDTH_DDR	(3)	/* FIXME */
 typedef ddr3_spd_eeprom_t generic_spd_eeprom_t;
+#ifndef CONFIG_FSL_SDRAM_TYPE
+#define CONFIG_FSL_SDRAM_TYPE	SDRAM_TYPE_DDR3
 #endif
+#endif	/* #if defined(CONFIG_FSL_DDR1) */
+
+/* define bank(chip select) interleaving mode */
+#define FSL_DDR_CS0_CS1			0x40
+#define FSL_DDR_CS2_CS3			0x20
+#define FSL_DDR_CS0_CS1_AND_CS2_CS3	(FSL_DDR_CS0_CS1 | FSL_DDR_CS2_CS3)
+#define FSL_DDR_CS0_CS1_CS2_CS3		(FSL_DDR_CS0_CS1_AND_CS2_CS3 | 0x04)
+
+/* define memory controller interleaving mode */
+#define FSL_DDR_CACHE_LINE_INTERLEAVING	0x0
+#define FSL_DDR_PAGE_INTERLEAVING	0x1
+#define FSL_DDR_BANK_INTERLEAVING	0x2
+#define FSL_DDR_SUPERBANK_INTERLEAVING	0x3
+
+/* DDR_SDRAM_CFG - DDR SDRAM Control Configuration
+ */
+#define SDRAM_CFG_MEM_EN		0x80000000
+#define SDRAM_CFG_SREN			0x40000000
+#define SDRAM_CFG_ECC_EN		0x20000000
+#define SDRAM_CFG_RD_EN			0x10000000
+#define SDRAM_CFG_SDRAM_TYPE_DDR1	0x02000000
+#define SDRAM_CFG_SDRAM_TYPE_DDR2	0x03000000
+#define SDRAM_CFG_SDRAM_TYPE_MASK	0x07000000
+#define SDRAM_CFG_SDRAM_TYPE_SHIFT	24
+#define SDRAM_CFG_DYN_PWR		0x00200000
+#define SDRAM_CFG_32_BE			0x00080000
+#define SDRAM_CFG_8_BE			0x00040000
+#define SDRAM_CFG_NCAP			0x00020000
+#define SDRAM_CFG_2T_EN			0x00008000
+#define SDRAM_CFG_BI			0x00000001
 
 /* Record of register values computed */
 typedef struct fsl_ddr_cfg_regs_s {
@@ -131,6 +163,10 @@ typedef struct memctl_options_s {
 	unsigned int bstopre;
 	unsigned int tCKE_clock_pulse_width_ps;	/* tCKE */
 	unsigned int tFAW_window_four_activates_ps;	/* tFAW --  FOUR_ACT */
+
+	/* Automatic self refresh */
+	unsigned int auto_self_refresh_en;
+	unsigned int sr_it;
 } memctl_options_t;
 
 extern phys_size_t fsl_ddr_sdram(void);

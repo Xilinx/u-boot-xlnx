@@ -64,8 +64,6 @@ op_tbl_t op_table [] = {
 
 #define op_tbl_size (sizeof(op_table)/sizeof(op_table[0]))
 
-extern int cmd_get_data_size(char* arg, int default_size);
-
 static long evalexp(char *s, int w)
 {
 	long l, *p;
@@ -163,7 +161,7 @@ int do_itest ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] )
 
 	/* Validate arguments */
 	if ((argc != 4)){
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -192,6 +190,6 @@ int do_itest ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] )
 
 U_BOOT_CMD(
 	itest, 4, 0, do_itest,
-	"itest\t- return true/false on integer compare\n",
+	"return true/false on integer compare",
 	"[.b, .w, .l, .s] [*]value1 <op> [*]value2\n"
 );

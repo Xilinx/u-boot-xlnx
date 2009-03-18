@@ -65,17 +65,34 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #endif /* CONFIG_8xx_CONS_SCCx */
 
+#if !defined(CONFIG_SYS_SMC_RXBUFLEN)
+#define CONFIG_SYS_SMC_RXBUFLEN	1
+#define CONFIG_SYS_MAXIDLE	0
+#else
+#if !defined(CONFIG_SYS_MAXIDLE)
+#error "you must define CONFIG_SYS_MAXIDLE"
+#endif
+#endif
+
+typedef volatile struct serialbuffer {
+	cbd_t	rxbd;		/* Rx BD */
+	cbd_t	txbd;		/* Tx BD */
+	uint	rxindex;	/* index for next character to read */
+	volatile uchar	rxbuf[CONFIG_SYS_SMC_RXBUFLEN];/* rx buffers */
+	volatile uchar	txbuf;	/* tx buffers */
+} serialbuffer_t;
+
 static void serial_setdivisor(volatile cpm8xx_t *cp)
 {
 	int divisor=(gd->cpu_clk + 8*gd->baudrate)/16/gd->baudrate;
 
 	if(divisor/16>0x1000) {
-		/* bad divisor, assume 50Mhz clock and 9600 baud */
+		/* bad divisor, assume 50MHz clock and 9600 baud */
 		divisor=(50*1000*1000 + 8*9600)/16/9600;
 	}
 
-#ifdef CFG_BRGCLK_PRESCALE
-	divisor /= CFG_BRGCLK_PRESCALE;
+#ifdef CONFIG_SYS_BRGCLK_PRESCALE
+	divisor /= CONFIG_SYS_BRGCLK_PRESCALE;
 #endif
 
 	if(divisor<=0x1000) {
@@ -94,7 +111,7 @@ static void serial_setdivisor(volatile cpm8xx_t *cp)
 
 static void smc_setbrg (void)
 {
-	volatile immap_t *im = (immap_t *)CFG_IMMR;
+	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t *cp = &(im->im_cpm);
 
 	/* Set up the baud rate generator.
@@ -110,65 +127,61 @@ static void smc_setbrg (void)
 
 static int smc_init (void)
 {
-	volatile immap_t *im = (immap_t *)CFG_IMMR;
+	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile smc_t *sp;
 	volatile smc_uart_t *up;
-	volatile cbd_t *tbdf, *rbdf;
 	volatile cpm8xx_t *cp = &(im->im_cpm);
 #if (!defined(CONFIG_8xx_CONS_SMC1)) && (defined(CONFIG_MPC823) || defined(CONFIG_MPC850))
 	volatile iop8xx_t *ip = (iop8xx_t *)&(im->im_ioport);
 #endif
 	uint	dpaddr;
+	volatile serialbuffer_t *rtx;
 
 	/* initialize pointers to SMC */
 
 	sp = (smc_t *) &(cp->cp_smc[SMC_INDEX]);
 	up = (smc_uart_t *) &cp->cp_dparam[PROFF_SMC];
-#ifdef CFG_SMC_UCODE_PATCH
+#ifdef CONFIG_SYS_SMC_UCODE_PATCH
 	up = (smc_uart_t *) &cp->cp_dpmem[up->smc_rpbase];
 #else
 	/* Disable relocation */
 	up->smc_rpbase = 0;
 #endif
 
-	/* Disable transmitter/receiver.
-	*/
+	/* Disable transmitter/receiver. */
 	sp->smc_smcmr &= ~(SMCMR_REN | SMCMR_TEN);
 
-	/* Enable SDMA.
-	*/
+	/* Enable SDMA. */
 	im->im_siu_conf.sc_sdcr = 1;
 
 	/* clear error conditions */
-#ifdef	CFG_SDSR
-	im->im_sdma.sdma_sdsr = CFG_SDSR;
+#ifdef	CONFIG_SYS_SDSR
+	im->im_sdma.sdma_sdsr = CONFIG_SYS_SDSR;
 #else
 	im->im_sdma.sdma_sdsr = 0x83;
 #endif
 
 	/* clear SDMA interrupt mask */
-#ifdef	CFG_SDMR
-	im->im_sdma.sdma_sdmr = CFG_SDMR;
+#ifdef	CONFIG_SYS_SDMR
+	im->im_sdma.sdma_sdmr = CONFIG_SYS_SDMR;
 #else
 	im->im_sdma.sdma_sdmr = 0x00;
 #endif
 
 #if defined(CONFIG_8xx_CONS_SMC1)
-	/* Use Port B for SMC1 instead of other functions.
-	*/
+	/* Use Port B for SMC1 instead of other functions. */
 	cp->cp_pbpar |=  0x000000c0;
 	cp->cp_pbdir &= ~0x000000c0;
 	cp->cp_pbodr &= ~0x000000c0;
 #else	/* CONFIG_8xx_CONS_SMC2 */
 # if defined(CONFIG_MPC823) || defined(CONFIG_MPC850)
-	/* Use Port A for SMC2 instead of other functions.
-	*/
+	/* Use Port A for SMC2 instead of other functions. */
 	ip->iop_papar |=  0x00c0;
 	ip->iop_padir &= ~0x00c0;
 	ip->iop_paodr &= ~0x00c0;
 # else	/* must be a 860 then */
 	/* Use Port B for SMC2 instead of other functions.
-	*/
+	 */
 	cp->cp_pbpar |=  0x00000c00;
 	cp->cp_pbdir &= ~0x00000c00;
 	cp->cp_pbodr &= ~0x00000c00;
@@ -193,32 +206,34 @@ static int smc_init (void)
 	 * the buffer descriptors.
 	 */
 
-#ifdef CFG_ALLOC_DPRAM
-	dpaddr = dpram_alloc_align (sizeof(cbd_t)*2 + 2, 8) ;
+#ifdef CONFIG_SYS_ALLOC_DPRAM
+	/* allocate
+	 * size of struct serialbuffer with bd rx/tx, buffer rx/tx and rx index
+	 */
+	dpaddr = dpram_alloc_align((sizeof(serialbuffer_t)), 8);
 #else
 	dpaddr = CPM_SERIAL_BASE ;
 #endif
 
+	rtx = (serialbuffer_t *)&cp->cp_dpmem[dpaddr];
 	/* Allocate space for two buffer descriptors in the DP ram.
 	 * For now, this address seems OK, but it may have to
 	 * change with newer versions of the firmware.
 	 * damm: allocating space after the two buffers for rx/tx data
 	 */
 
-	rbdf = (cbd_t *)&cp->cp_dpmem[dpaddr];
-	rbdf->cbd_bufaddr = (uint) (rbdf+2);
-	rbdf->cbd_sc = 0;
-	tbdf = rbdf + 1;
-	tbdf->cbd_bufaddr = ((uint) (rbdf+2)) + 1;
-	tbdf->cbd_sc = 0;
+	rtx->rxbd.cbd_bufaddr = (uint) &rtx->rxbuf;
+	rtx->rxbd.cbd_sc      = 0;
 
-	/* Set up the uart parameters in the parameter ram.
-	*/
+	rtx->txbd.cbd_bufaddr = (uint) &rtx->txbuf;
+	rtx->txbd.cbd_sc      = 0;
+
+	/* Set up the uart parameters in the parameter ram. */
 	up->smc_rbase = dpaddr;
 	up->smc_tbase = dpaddr+sizeof(cbd_t);
 	up->smc_rfcr = SMC_EB;
 	up->smc_tfcr = SMC_EB;
-#if defined (CFG_SMC_UCODE_PATCH)
+#if defined (CONFIG_SYS_SMC_UCODE_PATCH)
 	up->smc_rbptr = up->smc_rbase;
 	up->smc_tbptr = up->smc_tbase;
 	up->smc_rstate = 0;
@@ -239,11 +254,11 @@ static int smc_init (void)
 	sp->smc_smcm = 0;
 	sp->smc_smce = 0xff;
 
-#ifdef CFG_SPC1920_SMC1_CLK4
+#ifdef CONFIG_SYS_SPC1920_SMC1_CLK4
 	/* clock source is PLD */
 
 	/* set freq to 19200 Baud */
-	*((volatile uchar *) CFG_SPC1920_PLD_BASE+6) = 0x3;
+	*((volatile uchar *) CONFIG_SYS_SPC1920_PLD_BASE+6) = 0x3;
 	/* configure clk4 as input */
 	im->im_ioport.iop_pdpar |= 0x800;
 	im->im_ioport.iop_pddir &= ~0x800;
@@ -254,19 +269,16 @@ static int smc_init (void)
 	smc_setbrg ();
 #endif
 
-	/* Make the first buffer the only buffer.
-	*/
-	tbdf->cbd_sc |= BD_SC_WRAP;
-	rbdf->cbd_sc |= BD_SC_EMPTY | BD_SC_WRAP;
+	/* Make the first buffer the only buffer. */
+	rtx->txbd.cbd_sc |= BD_SC_WRAP;
+	rtx->rxbd.cbd_sc |= BD_SC_EMPTY | BD_SC_WRAP;
 
-	/* Single character receive.
-	*/
-	up->smc_mrblr = 1;
-	up->smc_maxidl = 0;
+	/* single/multi character receive. */
+	up->smc_mrblr = CONFIG_SYS_SMC_RXBUFLEN;
+	up->smc_maxidl = CONFIG_SYS_MAXIDLE;
+	rtx->rxindex = 0;
 
-	/* Initialize Tx/Rx parameters.
-	*/
-
+	/* Initialize Tx/Rx parameters.	*/
 	while (cp->cp_cpcr & CPM_CR_FLG)  /* wait if cp is busy */
 	  ;
 
@@ -275,8 +287,7 @@ static int smc_init (void)
 	while (cp->cp_cpcr & CPM_CR_FLG)  /* wait if cp is busy */
 	  ;
 
-	/* Enable transmitter/receiver.
-	*/
+	/* Enable transmitter/receiver.	*/
 	sp->smc_smcmr |= SMCMR_REN | SMCMR_TEN;
 
 	return (0);
@@ -285,11 +296,10 @@ static int smc_init (void)
 static void
 smc_putc(const char c)
 {
-	volatile cbd_t		*tbdf;
-	volatile char		*buf;
 	volatile smc_uart_t	*up;
-	volatile immap_t	*im = (immap_t *)CFG_IMMR;
+	volatile immap_t	*im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t	*cpmp = &(im->im_cpm);
+	volatile serialbuffer_t	*rtx;
 
 #ifdef CONFIG_MODEM_SUPPORT
 	if (gd->be_quiet)
@@ -300,23 +310,19 @@ smc_putc(const char c)
 		smc_putc ('\r');
 
 	up = (smc_uart_t *)&cpmp->cp_dparam[PROFF_SMC];
-#ifdef CFG_SMC_UCODE_PATCH
+#ifdef CONFIG_SYS_SMC_UCODE_PATCH
 	up = (smc_uart_t *) &cpmp->cp_dpmem[up->smc_rpbase];
 #endif
 
-	tbdf = (cbd_t *)&cpmp->cp_dpmem[up->smc_tbase];
+	rtx = (serialbuffer_t *)&cpmp->cp_dpmem[up->smc_rbase];
 
-	/* Wait for last character to go.
-	*/
-
-	buf = (char *)tbdf->cbd_bufaddr;
-
-	*buf = c;
-	tbdf->cbd_datlen = 1;
-	tbdf->cbd_sc |= BD_SC_READY;
+	/* Wait for last character to go. */
+	rtx->txbuf = c;
+	rtx->txbd.cbd_datlen = 1;
+	rtx->txbd.cbd_sc |= BD_SC_READY;
 	__asm__("eieio");
 
-	while (tbdf->cbd_sc & BD_SC_READY) {
+	while (rtx->txbd.cbd_sc & BD_SC_READY) {
 		WATCHDOG_RESET ();
 		__asm__("eieio");
 	}
@@ -333,49 +339,52 @@ smc_puts (const char *s)
 static int
 smc_getc(void)
 {
-	volatile cbd_t		*rbdf;
-	volatile unsigned char	*buf;
 	volatile smc_uart_t	*up;
-	volatile immap_t	*im = (immap_t *)CFG_IMMR;
+	volatile immap_t	*im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t	*cpmp = &(im->im_cpm);
-	unsigned char		c;
+	volatile serialbuffer_t	*rtx;
+	unsigned char  c;
 
 	up = (smc_uart_t *)&cpmp->cp_dparam[PROFF_SMC];
-#ifdef CFG_SMC_UCODE_PATCH
+#ifdef CONFIG_SYS_SMC_UCODE_PATCH
 	up = (smc_uart_t *) &cpmp->cp_dpmem[up->smc_rpbase];
 #endif
+	rtx = (serialbuffer_t *)&cpmp->cp_dpmem[up->smc_rbase];
 
-	rbdf = (cbd_t *)&cpmp->cp_dpmem[up->smc_rbase];
-
-	/* Wait for character to show up.
-	*/
-	buf = (unsigned char *)rbdf->cbd_bufaddr;
-
-	while (rbdf->cbd_sc & BD_SC_EMPTY)
+	/* Wait for character to show up. */
+	while (rtx->rxbd.cbd_sc & BD_SC_EMPTY)
 		WATCHDOG_RESET ();
 
-	c = *buf;
-	rbdf->cbd_sc |= BD_SC_EMPTY;
+	/* the characters are read one by one,
+	 * use the rxindex to know the next char to deliver
+	 */
+	c = *(unsigned char *) (rtx->rxbd.cbd_bufaddr+rtx->rxindex);
+	rtx->rxindex++;
 
+	/* check if all char are readout, then make prepare for next receive */
+	if (rtx->rxindex >= rtx->rxbd.cbd_datlen) {
+		rtx->rxindex = 0;
+		rtx->rxbd.cbd_sc |= BD_SC_EMPTY;
+	}
 	return(c);
 }
 
 static int
 smc_tstc(void)
 {
-	volatile cbd_t		*rbdf;
 	volatile smc_uart_t	*up;
-	volatile immap_t	*im = (immap_t *)CFG_IMMR;
+	volatile immap_t	*im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t	*cpmp = &(im->im_cpm);
+	volatile serialbuffer_t	*rtx;
 
 	up = (smc_uart_t *)&cpmp->cp_dparam[PROFF_SMC];
-#ifdef CFG_SMC_UCODE_PATCH
+#ifdef CONFIG_SYS_SMC_UCODE_PATCH
 	up = (smc_uart_t *) &cpmp->cp_dpmem[up->smc_rpbase];
 #endif
 
-	rbdf = (cbd_t *)&cpmp->cp_dpmem[up->smc_rbase];
+	rtx = (serialbuffer_t *)&cpmp->cp_dpmem[up->smc_rbase];
 
-	return(!(rbdf->cbd_sc & BD_SC_EMPTY));
+	return !(rtx->rxbd.cbd_sc & BD_SC_EMPTY);
 }
 
 struct serial_device serial_smc_device =
@@ -398,7 +407,7 @@ struct serial_device serial_smc_device =
 static void
 scc_setbrg (void)
 {
-	volatile immap_t *im = (immap_t *)CFG_IMMR;
+	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t *cp = &(im->im_cpm);
 
 	/* Set up the baud rate generator.
@@ -414,7 +423,7 @@ scc_setbrg (void)
 
 static int scc_init (void)
 {
-	volatile immap_t *im = (immap_t *)CFG_IMMR;
+	volatile immap_t *im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile scc_t *sp;
 	volatile scc_uart_t *up;
 	volatile cbd_t *tbdf, *rbdf;
@@ -445,8 +454,7 @@ static int scc_init (void)
     }
 #endif	/* CONFIG_LWMON */
 
-	/* Disable transmitter/receiver.
-	*/
+	/* Disable transmitter/receiver. */
 	sp->scc_gsmrl &= ~(SCC_GSMRL_ENR | SCC_GSMRL_ENT);
 
 #if (SCC_INDEX == 2) && defined(CONFIG_MPC850)
@@ -471,17 +479,15 @@ static int scc_init (void)
 	ip->iop_pdpar |=  ((3 << (2 * SCC_INDEX)));
 #endif
 
-	/* Allocate space for two buffer descriptors in the DP ram.
-	 */
+	/* Allocate space for two buffer descriptors in the DP ram. */
 
-#ifdef CFG_ALLOC_DPRAM
+#ifdef CONFIG_SYS_ALLOC_DPRAM
 	dpaddr = dpram_alloc_align (sizeof(cbd_t)*2 + 2, 8) ;
 #else
 	dpaddr = CPM_SERIAL2_BASE ;
 #endif
 
-	/* Enable SDMA.
-	*/
+	/* Enable SDMA.	*/
 	im->im_siu_conf.sc_sdcr = 0x0001;
 
 	/* Set the physical address of the host memory buffers in
@@ -495,17 +501,14 @@ static int scc_init (void)
 	tbdf->cbd_bufaddr = ((uint) (rbdf+2)) + 1;
 	tbdf->cbd_sc = 0;
 
-	/* Set up the baud rate generator.
-	*/
+	/* Set up the baud rate generator. */
 	scc_setbrg ();
 
-	/* Set up the uart parameters in the parameter ram.
-	*/
+	/* Set up the uart parameters in the parameter ram. */
 	up->scc_genscc.scc_rbase = dpaddr;
 	up->scc_genscc.scc_tbase = dpaddr+sizeof(cbd_t);
 
-	/* Initialize Tx/Rx parameters.
-	*/
+	/* Initialize Tx/Rx parameters. */
 	while (cp->cp_cpcr & CPM_CR_FLG)  /* wait if cp is busy */
 		;
 	cp->cp_cpcr = mk_cr_cmd(CPM_CR_CH_SCC, CPM_CR_INIT_TRX) | CPM_CR_FLG;
@@ -536,8 +539,7 @@ static int scc_init (void)
 	up->scc_char8  = 0x8000;
 	up->scc_rccm   = 0xc0ff;
 
-	/* Set low latency / small fifo.
-	 */
+	/* Set low latency / small fifo. */
 	sp->scc_gsmrh = SCC_GSMRH_RFW;
 
 	/* Set SCC(x) clock mode to 16x
@@ -546,8 +548,7 @@ static int scc_init (void)
 	 * Wire BRG1 to SCCn
 	 */
 
-	/* Set UART mode, clock divider 16 on Tx and Rx
-	 */
+	/* Set UART mode, clock divider 16 on Tx and Rx */
 	sp->scc_gsmrl &= ~0xF;
 	sp->scc_gsmrl |=
 		(SCC_GSMRL_MODE_UART | SCC_GSMRL_TDCR_16 | SCC_GSMRL_RDCR_16);
@@ -555,20 +556,17 @@ static int scc_init (void)
 	sp->scc_psmr  = 0;
 	sp->scc_psmr  |= SCU_PSMR_CL;
 
-	/* Mask all interrupts and remove anything pending.
-	*/
+	/* Mask all interrupts and remove anything pending. */
 	sp->scc_sccm = 0;
 	sp->scc_scce = 0xffff;
 	sp->scc_dsr  = 0x7e7e;
 	sp->scc_psmr = 0x3000;
 
-	/* Make the first buffer the only buffer.
-	*/
+	/* Make the first buffer the only buffer. */
 	tbdf->cbd_sc |= BD_SC_WRAP;
 	rbdf->cbd_sc |= BD_SC_EMPTY | BD_SC_WRAP;
 
-	/* Enable transmitter/receiver.
-	*/
+	/* Enable transmitter/receiver.	*/
 	sp->scc_gsmrl |= (SCC_GSMRL_ENR | SCC_GSMRL_ENT);
 
 	return (0);
@@ -580,7 +578,7 @@ scc_putc(const char c)
 	volatile cbd_t		*tbdf;
 	volatile char		*buf;
 	volatile scc_uart_t	*up;
-	volatile immap_t	*im = (immap_t *)CFG_IMMR;
+	volatile immap_t	*im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t	*cpmp = &(im->im_cpm);
 
 #ifdef CONFIG_MODEM_SUPPORT
@@ -595,8 +593,7 @@ scc_putc(const char c)
 
 	tbdf = (cbd_t *)&cpmp->cp_dpmem[up->scc_genscc.scc_tbase];
 
-	/* Wait for last character to go.
-	*/
+	/* Wait for last character to go. */
 
 	buf = (char *)tbdf->cbd_bufaddr;
 
@@ -625,7 +622,7 @@ scc_getc(void)
 	volatile cbd_t		*rbdf;
 	volatile unsigned char	*buf;
 	volatile scc_uart_t	*up;
-	volatile immap_t	*im = (immap_t *)CFG_IMMR;
+	volatile immap_t	*im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t	*cpmp = &(im->im_cpm);
 	unsigned char		c;
 
@@ -633,8 +630,7 @@ scc_getc(void)
 
 	rbdf = (cbd_t *)&cpmp->cp_dpmem[up->scc_genscc.scc_rbase];
 
-	/* Wait for character to show up.
-	*/
+	/* Wait for character to show up. */
 	buf = (unsigned char *)rbdf->cbd_bufaddr;
 
 	while (rbdf->cbd_sc & BD_SC_EMPTY)
@@ -651,7 +647,7 @@ scc_tstc(void)
 {
 	volatile cbd_t		*rbdf;
 	volatile scc_uart_t	*up;
-	volatile immap_t	*im = (immap_t *)CFG_IMMR;
+	volatile immap_t	*im = (immap_t *)CONFIG_SYS_IMMR;
 	volatile cpm8xx_t	*cpmp = &(im->im_cpm);
 
 	up = (scc_uart_t *)&cpmp->cp_dparam[PROFF_SCC];

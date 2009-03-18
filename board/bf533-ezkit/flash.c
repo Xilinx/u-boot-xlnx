@@ -29,6 +29,10 @@
 #include <asm/io.h>
 #include "flash-defines.h"
 
+int AFP_NumSectors = 40;
+long AFP_SectorSize1 = 0x10000;
+int AFP_SectorSize2 = 0x4000;
+
 void flash_reset(void)
 {
 	reset_flash();
@@ -82,7 +86,7 @@ unsigned long flash_init(void)
 
 	size_b0 = size_b1 = size_b2 = 0;
 #ifdef DEBUG
-	printf("Flash Memory Start 0x%x\n", CFG_FLASH_BASE);
+	printf("Flash Memory Start 0x%x\n", CONFIG_SYS_FLASH_BASE);
 	printf("Memory Map for the Flash\n");
 	printf("0x20000000 - 0x200FFFFF Flash A Primary (1MB)\n");
 	printf("0x20100000 - 0x201FFFFF Flash B Primary (1MB)\n");
@@ -90,20 +94,20 @@ unsigned long flash_init(void)
 	printf("0x20280000 - 0x2028FFFF Flash B Secondary (64KB)\n");
 	printf("Please type command flinfo for information on Sectors \n");
 #endif
-	for (i = 0; i < CFG_MAX_FLASH_BANKS; ++i) {
+	for (i = 0; i < CONFIG_SYS_MAX_FLASH_BANKS; ++i) {
 		flash_info[i].flash_id = FLASH_UNKNOWN;
 	}
 
-	size_b0 = flash_get_size(CFG_FLASH0_BASE, &flash_info[0], 0);
-	size_b1 = flash_get_size(CFG_FLASH0_BASE, &flash_info[1], 1);
-	size_b2 = flash_get_size(CFG_FLASH0_BASE, &flash_info[2], 2);
+	size_b0 = flash_get_size(CONFIG_SYS_FLASH0_BASE, &flash_info[0], 0);
+	size_b1 = flash_get_size(CONFIG_SYS_FLASH0_BASE, &flash_info[1], 1);
+	size_b2 = flash_get_size(CONFIG_SYS_FLASH0_BASE, &flash_info[2], 2);
 
 	if (flash_info[0].flash_id == FLASH_UNKNOWN || size_b0 == 0) {
 		printf("## Unknown FLASH on Bank 0 - Size = 0x%08lx = %ld MB\n",
 		       size_b0, size_b0 >> 20);
 	}
 
-	(void)flash_protect(FLAG_PROTECT_SET, CFG_FLASH0_BASE,
+	(void)flash_protect(FLAG_PROTECT_SET, CONFIG_SYS_FLASH0_BASE,
 			    (flash_info[0].start[2] - 1), &flash_info[0]);
 
 	return (size_b0 + size_b1 + size_b2);
@@ -123,7 +127,7 @@ void flash_print_info(flash_info_t * info)
 		printf("ST Microelectronics ");
 		break;
 	default:
-		printf("Unknown Vendor: (0x%08X) ", info->flash_id);
+		printf("Unknown Vendor: (0x%08lX) ", info->flash_id);
 		break;
 	}
 	for (i = 0; i < info->sector_count; ++i) {
@@ -180,7 +184,7 @@ int write_buff(flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 	int ret;
 	int d;
 	if (addr % 2) {
-		read_flash(addr - 1 - CFG_FLASH_BASE, &d);
+		read_flash(addr - 1 - CONFIG_SYS_FLASH_BASE, &d);
 		d = (int)((d & 0x00FF) | (*src++ << 8));
 		ret = write_data(addr - 1, 2, (uchar *) & d);
 		if (ret == FLASH_FAIL)
@@ -196,7 +200,7 @@ int write_buff(flash_info_t * info, uchar * src, ulong addr, ulong cnt)
 int write_data(long lStart, long lCount, uchar * pnData)
 {
 	long i = 0;
-	unsigned long ulOffset = lStart - CFG_FLASH_BASE;
+	unsigned long ulOffset = lStart - CONFIG_SYS_FLASH_BASE;
 	int d;
 	int nSector = 0;
 	int flag = 0;
@@ -211,7 +215,7 @@ int write_data(long lStart, long lCount, uchar * pnData)
 		read_flash(ulOffset, &d);
 		if (d != 0xffff) {
 			printf
-			    ("Flash not erased at offset 0x%x Please erase to reprogram \n",
+			    ("Flash not erased at offset 0x%lx Please erase to reprogram\n",
 			     ulOffset);
 			return FLASH_FAIL;
 		}
@@ -230,7 +234,7 @@ int write_data(long lStart, long lCount, uchar * pnData)
 		read_flash(ulOffset, &d);
 		if (d != 0xffff) {
 			printf
-			    ("Flash not erased at offset 0x%x Please erase to reprogram \n",
+			    ("Flash not erased at offset 0x%lx Please erase to reprogram\n",
 			     ulOffset);
 			return FLASH_FAIL;
 		}
@@ -285,7 +289,7 @@ int write_flash(long nOffset, int nValue)
 {
 	long addr;
 
-	addr = (CFG_FLASH_BASE + nOffset);
+	addr = (CONFIG_SYS_FLASH_BASE + nOffset);
 	SSYNC();
 	*(unsigned volatile short *)addr = nValue;
 	SSYNC();
@@ -297,7 +301,7 @@ int write_flash(long nOffset, int nValue)
 int read_flash(long nOffset, int *pnValue)
 {
 	int nValue = 0x0;
-	long addr = (CFG_FLASH_BASE + nOffset);
+	long addr = (CONFIG_SYS_FLASH_BASE + nOffset);
 
 	if (nOffset != 0x2)
 		reset_flash();
@@ -396,7 +400,7 @@ int erase_block_flash(int nBlock, unsigned long address)
 	if ((nBlock < 0) || (nBlock > AFP_NumSectors))
 		return FALSE;
 
-	ulSectorOff = (address - CFG_FLASH_BASE);
+	ulSectorOff = (address - CONFIG_SYS_FLASH_BASE);
 
 	write_flash((WRITESEQ1 | ulSectorOff), WRITEDATA1);
 	write_flash((WRITESEQ2 | ulSectorOff), WRITEDATA2);

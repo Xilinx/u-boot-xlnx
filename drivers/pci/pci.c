@@ -116,6 +116,25 @@ PCI_READ_VIA_DWORD_OP(word, u16 *, 0x02)
 PCI_WRITE_VIA_DWORD_OP(byte, u8, 0x03, 0x000000ff)
 PCI_WRITE_VIA_DWORD_OP(word, u16, 0x02, 0x0000ffff)
 
+/* Get a virtual address associated with a BAR region */
+void *pci_map_bar(pci_dev_t pdev, int bar, int flags)
+{
+	pci_addr_t pci_bus_addr;
+	u32 bar_response;
+
+	/* read BAR address */
+	pci_read_config_dword(pdev, bar, &bar_response);
+	pci_bus_addr = (pci_addr_t)(bar_response & ~0xf);
+
+	/*
+	 * Pass "0" as the length argument to pci_bus_to_virt.  The arg
+	 * isn't actualy used on any platform because u-boot assumes a static
+	 * linear mapping.  In the future, this could read the BAR size
+	 * and pass that as the size if needed.
+	 */
+	return pci_bus_to_virt(pdev, pci_bus_addr, flags, 0, MAP_NOCACHE);
+}
+
 /*
  *
  */
@@ -146,6 +165,19 @@ struct pci_controller *pci_bus_to_hose (int bus)
 	return NULL;
 }
 
+int pci_last_busno(void)
+{
+	struct pci_controller *hose = hose_head;
+
+	if (!hose)
+		return -1;
+
+	while (hose->next)
+		hose = hose->next;
+
+	return hose->last_busno;
+}
+
 #ifndef CONFIG_IXP425
 pci_dev_t pci_find_devices(struct pci_device_id *ids, int index)
 {
@@ -157,7 +189,7 @@ pci_dev_t pci_find_devices(struct pci_device_id *ids, int index)
 
 	for (hose = hose_head; hose; hose = hose->next)
 	{
-#ifdef CFG_SCSI_SCAN_BUS_REVERSE
+#ifdef CONFIG_SYS_SCSI_SCAN_BUS_REVERSE
 		for (bus = hose->last_busno; bus >= hose->first_busno; bus--)
 #else
 		for (bus = hose->first_busno; bus <= hose->last_busno; bus++)
@@ -218,50 +250,74 @@ pci_dev_t pci_find_device(unsigned int vendor, unsigned int device, int index)
  *
  */
 
-unsigned long pci_hose_phys_to_bus (struct pci_controller *hose,
-				    phys_addr_t phys_addr,
-				    unsigned long flags)
+int __pci_hose_phys_to_bus (struct pci_controller *hose,
+				phys_addr_t phys_addr,
+				unsigned long flags,
+				unsigned long skip_mask,
+				pci_addr_t *ba)
 {
 	struct pci_region *res;
-	unsigned long bus_addr;
+	pci_addr_t bus_addr;
 	int i;
-
-	if (!hose) {
-		printf ("pci_hose_phys_to_bus: %s\n", "invalid hose");
-		goto Done;
-	}
 
 	for (i = 0; i < hose->region_count; i++) {
 		res = &hose->regions[i];
 
 		if (((res->flags ^ flags) & PCI_REGION_TYPE) != 0)
+			continue;
+
+		if (res->flags & skip_mask)
 			continue;
 
 		bus_addr = phys_addr - res->phys_start + res->bus_start;
 
 		if (bus_addr >= res->bus_start &&
 			bus_addr < res->bus_start + res->size) {
-			return bus_addr;
+			*ba = bus_addr;
+			return 0;
 		}
 	}
 
-	printf ("pci_hose_phys_to_bus: %s\n", "invalid physical address");
-
-Done:
-	return 0;
+	return 1;
 }
 
-phys_addr_t pci_hose_bus_to_phys(struct pci_controller* hose,
-				 unsigned long bus_addr,
-				 unsigned long flags)
+pci_addr_t pci_hose_phys_to_bus (struct pci_controller *hose,
+				    phys_addr_t phys_addr,
+				    unsigned long flags)
+{
+	pci_addr_t bus_addr = 0;
+	int ret;
+
+	if (!hose) {
+		puts ("pci_hose_phys_to_bus: invalid hose\n");
+		return bus_addr;
+	}
+
+	/* if PCI_REGION_MEM is set we do a two pass search with preference
+	 * on matches that don't have PCI_REGION_SYS_MEMORY set */
+	if ((flags & PCI_REGION_MEM) == PCI_REGION_MEM) {
+		ret = __pci_hose_phys_to_bus(hose, phys_addr,
+				flags, PCI_REGION_SYS_MEMORY, &bus_addr);
+		if (!ret)
+			return bus_addr;
+	}
+
+	ret = __pci_hose_phys_to_bus(hose, phys_addr, flags, 0, &bus_addr);
+
+	if (ret)
+		puts ("pci_hose_phys_to_bus: invalid physical address\n");
+
+	return bus_addr;
+}
+
+int __pci_hose_bus_to_phys (struct pci_controller *hose,
+				pci_addr_t bus_addr,
+				unsigned long flags,
+				unsigned long skip_mask,
+				phys_addr_t *pa)
 {
 	struct pci_region *res;
 	int i;
-
-	if (!hose) {
-		printf ("pci_hose_bus_to_phys: %s\n", "invalid hose");
-		goto Done;
-	}
 
 	for (i = 0; i < hose->region_count; i++) {
 		res = &hose->regions[i];
@@ -269,16 +325,46 @@ phys_addr_t pci_hose_bus_to_phys(struct pci_controller* hose,
 		if (((res->flags ^ flags) & PCI_REGION_TYPE) != 0)
 			continue;
 
+		if (res->flags & skip_mask)
+			continue;
+
 		if (bus_addr >= res->bus_start &&
 			bus_addr < res->bus_start + res->size) {
-			return bus_addr - res->bus_start + res->phys_start;
+			*pa = (bus_addr - res->bus_start + res->phys_start);
+			return 0;
 		}
 	}
 
-	printf ("pci_hose_bus_to_phys: %s\n", "invalid physical address");
+	return 1;
+}
 
-Done:
-	return 0;
+phys_addr_t pci_hose_bus_to_phys(struct pci_controller* hose,
+				 pci_addr_t bus_addr,
+				 unsigned long flags)
+{
+	phys_addr_t phys_addr = 0;
+	int ret;
+
+	if (!hose) {
+		puts ("pci_hose_bus_to_phys: invalid hose\n");
+		return phys_addr;
+	}
+
+	/* if PCI_REGION_MEM is set we do a two pass search with preference
+	 * on matches that don't have PCI_REGION_SYS_MEMORY set */
+	if ((flags & PCI_REGION_MEM) == PCI_REGION_MEM) {
+		ret = __pci_hose_bus_to_phys(hose, bus_addr,
+				flags, PCI_REGION_SYS_MEMORY, &phys_addr);
+		if (!ret)
+			return phys_addr;
+	}
+
+	ret = __pci_hose_bus_to_phys(hose, bus_addr, flags, 0, &phys_addr);
+
+	if (ret)
+		puts ("pci_hose_bus_to_phys: invalid physical address\n");
+
+	return phys_addr;
 }
 
 /*
@@ -288,15 +374,17 @@ Done:
 int pci_hose_config_device(struct pci_controller *hose,
 			   pci_dev_t dev,
 			   unsigned long io,
-			   unsigned long mem,
+			   pci_addr_t mem,
 			   unsigned long command)
 {
-	unsigned int bar_response, bar_size, bar_value, old_command;
+	unsigned int bar_response, old_command;
+	pci_addr_t bar_value;
+	pci_size_t bar_size;
 	unsigned char pin;
 	int bar, found_mem64;
 
-	debug ("PCI Config: I/O=0x%lx, Memory=0x%lx, Command=0x%lx\n",
-		io, mem, command);
+	debug ("PCI Config: I/O=0x%lx, Memory=0x%llx, Command=0x%lx\n",
+		io, (u64)mem, command);
 
 	pci_hose_write_config_dword (hose, dev, PCI_COMMAND, 0);
 
@@ -319,10 +407,19 @@ int pci_hose_config_device(struct pci_controller *hose,
 			io = io + bar_size;
 		} else {
 			if ((bar_response & PCI_BASE_ADDRESS_MEM_TYPE_MASK) ==
-				PCI_BASE_ADDRESS_MEM_TYPE_64)
-				found_mem64 = 1;
+				PCI_BASE_ADDRESS_MEM_TYPE_64) {
+				u32 bar_response_upper;
+				u64 bar64;
+				pci_hose_write_config_dword(hose, dev, bar+4, 0xffffffff);
+				pci_hose_read_config_dword(hose, dev, bar+4, &bar_response_upper);
 
-			bar_size = ~(bar_response & PCI_BASE_ADDRESS_MEM_MASK) + 1;
+				bar64 = ((u64)bar_response_upper << 32) | bar_response;
+
+				bar_size = ~(bar64 & PCI_BASE_ADDRESS_MEM_MASK) + 1;
+				found_mem64 = 1;
+			} else {
+				bar_size = (u32)(~(bar_response & PCI_BASE_ADDRESS_MEM_MASK) + 1);
+			}
 
 			/* round up region base address to multiple of size */
 			mem = ((mem - 1) | (bar_size - 1)) + 1;
@@ -332,11 +429,15 @@ int pci_hose_config_device(struct pci_controller *hose,
 		}
 
 		/* Write it out and update our limit */
-		pci_hose_write_config_dword (hose, dev, bar, bar_value);
+		pci_hose_write_config_dword (hose, dev, bar, (u32)bar_value);
 
 		if (found_mem64) {
 			bar += 4;
+#ifdef CONFIG_SYS_PCI_64BIT
+			pci_hose_write_config_dword(hose, dev, bar, (u32)(bar_value>>32));
+#else
 			pci_hose_write_config_dword (hose, dev, bar, 0x00000000);
+#endif
 		}
 	}
 

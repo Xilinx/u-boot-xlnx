@@ -10,6 +10,7 @@
 #include <i2c.h>
 
 #include <asm/fsl_ddr_sdram.h>
+#include <asm/fsl_ddr_dimm_params.h>
 
 static void
 get_spd(ddr1_spd_eeprom_t *spd, unsigned char i2c_address)
@@ -40,7 +41,9 @@ fsl_ddr_get_spd(ddr1_spd_eeprom_t *ctrl_dimms_spd,
 	}
 }
 
-void fsl_ddr_board_options(memctl_options_t *popts, unsigned int ctrl_num)
+void fsl_ddr_board_options(memctl_options_t *popts,
+				dimm_params_t *pdimm,
+				unsigned int ctrl_num)
 {
 	/*
 	 * Factors to consider for CPO:
@@ -61,6 +64,9 @@ void fsl_ddr_board_options(memctl_options_t *popts, unsigned int ctrl_num)
 	 * 6 = 3/2 clock delay
 	 */
 	popts->write_data_delay = 3;
+
+	/* 2T timing enable */
+	popts->twoT_en = 1;
 
 	/*
 	 * Factors to consider for half-strength driver enable:

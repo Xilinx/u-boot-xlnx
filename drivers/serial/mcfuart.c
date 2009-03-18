@@ -41,7 +41,7 @@ int serial_init(void)
 	volatile uart_t *uart;
 	u32 counter;
 
-	uart = (volatile uart_t *)(CFG_UART_BASE);
+	uart = (volatile uart_t *)(CONFIG_SYS_UART_BASE);
 
 	uart_port_conf();
 
@@ -76,7 +76,7 @@ int serial_init(void)
 
 void serial_putc(const char c)
 {
-	volatile uart_t *uart = (volatile uart_t *)(CFG_UART_BASE);
+	volatile uart_t *uart = (volatile uart_t *)(CONFIG_SYS_UART_BASE);
 
 	if (c == '\n')
 		serial_putc('\r');
@@ -96,7 +96,7 @@ void serial_puts(const char *s)
 
 int serial_getc(void)
 {
-	volatile uart_t *uart = (volatile uart_t *)(CFG_UART_BASE);
+	volatile uart_t *uart = (volatile uart_t *)(CONFIG_SYS_UART_BASE);
 
 	/* Wait for a character to arrive. */
 	while (!(uart->usr & UART_USR_RXRDY)) ;
@@ -105,18 +105,19 @@ int serial_getc(void)
 
 int serial_tstc(void)
 {
-	volatile uart_t *uart = (volatile uart_t *)(CFG_UART_BASE);
+	volatile uart_t *uart = (volatile uart_t *)(CONFIG_SYS_UART_BASE);
 
 	return (uart->usr & UART_USR_RXRDY);
 }
 
 void serial_setbrg(void)
 {
-	volatile uart_t *uart = (volatile uart_t *)(CFG_UART_BASE);
+	volatile uart_t *uart = (volatile uart_t *)(CONFIG_SYS_UART_BASE);
 	u32 counter;
 
-	counter = ((gd->bus_clk / gd->baudrate)) >> 5;
-	counter++;
+	/* Setting up BaudRate */
+	counter = (u32) ((gd->bus_clk / 32) + (gd->baudrate / 2));
+	counter = counter / gd->baudrate;
 
 	/* write to CTUR: divide counter upper byte */
 	uart->ubg1 = ((counter & 0xff00) >> 8);

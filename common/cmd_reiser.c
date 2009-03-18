@@ -57,7 +57,7 @@ int do_reiserls (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	int part_length;
 
 	if (argc < 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 	dev = (int)simple_strtoul (argv[2], &ep, 16);
@@ -102,7 +102,7 @@ int do_reiserls (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	reiserls,	4,	1,	do_reiserls,
-	"reiserls- list files in a directory (default /)\n",
+	"list files in a directory (default /)",
 	"<interface> <dev[:part]> [directory]\n"
 	"    - list files from 'dev' on 'interface' in a 'directory'\n"
 );
@@ -128,7 +128,7 @@ int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		if (addr_str != NULL) {
 			addr = simple_strtoul (addr_str, NULL, 16);
 		} else {
-			addr = CFG_LOAD_ADDR;
+			addr = CONFIG_SYS_LOAD_ADDR;
 		}
 		filename = getenv ("bootfile");
 		count = 0;
@@ -150,7 +150,7 @@ int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		break;
 
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -232,7 +232,7 @@ int do_reiserload (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	reiserload,	6,	0,	do_reiserload,
-	"reiserload- load binary file from a Reiser filesystem\n",
+	"load binary file from a Reiser filesystem",
 	"<interface> <dev[:part]> [addr] [filename] [bytes]\n"
 	"    - load binary file 'filename' from 'dev' on 'interface'\n"
 	"      to address 'addr' from dos filesystem\n"

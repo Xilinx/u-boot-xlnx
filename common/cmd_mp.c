@@ -29,7 +29,7 @@ cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	unsigned long cpuid;
 
 	if (argc < 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -47,7 +47,7 @@ cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		} else if (strncmp(argv[2], "status", 6) == 0) {
 			cpu_status(cpuid);
 		} else {
-			printf ("Usage:\n%s\n", cmdtp->usage);
+			cmd_usage(cmdtp);
 			return 1;
 		}
 		return 0;
@@ -55,12 +55,12 @@ cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	/* 4 or greater, make sure its release */
 	if (strncmp(argv[2], "release", 7) != 0) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
 	if (cpu_release(cpuid, argc - 3, argv + 3)) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -82,8 +82,8 @@ cpu_cmd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #endif
 
 U_BOOT_CMD(
-	cpu, CFG_MAXARGS, 1, cpu_cmd,
-	"cpu     - Multiprocessor CPU boot manipulation and release\n",
+	cpu, CONFIG_SYS_MAXARGS, 1, cpu_cmd,
+	"Multiprocessor CPU boot manipulation and release",
 	    "<num> reset                 - Reset cpu <num>\n"
 	"cpu <num> status                - Status of cpu <num>\n"
 	"cpu <num> release <addr> [args] - Release cpu <num> at <addr> with [args]\n"

@@ -33,8 +33,8 @@
 #if defined(CONFIG_PCI)
 
 /* System RAM mapped over PCI */
-#define CONFIG_PCI_SYS_MEM_BUS	 CFG_SDRAM_BASE
-#define CONFIG_PCI_SYS_MEM_PHYS	 CFG_SDRAM_BASE
+#define CONFIG_PCI_SYS_MEM_BUS	 CONFIG_SYS_SDRAM_BASE
+#define CONFIG_PCI_SYS_MEM_PHYS	 CONFIG_SYS_SDRAM_BASE
 #define CONFIG_PCI_SYS_MEM_SIZE	 (1024 * 1024 * 1024)
 
 #define cfg_read(val, addr, type, op)		*val = op((type)(addr));
@@ -165,7 +165,7 @@ pci_mpc8220_init(struct pci_controller *hose)
 		CONFIG_PCI_SYS_MEM_BUS,
 		CONFIG_PCI_SYS_MEM_PHYS,
 		CONFIG_PCI_SYS_MEM_SIZE,
-		PCI_REGION_MEM | PCI_REGION_MEMORY);
+		PCI_REGION_MEM | PCI_REGION_SYS_MEMORY);
 
 	hose->region_count = 3;
 

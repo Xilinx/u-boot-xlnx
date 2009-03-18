@@ -9,8 +9,11 @@
 #include <common.h>
 #include <config.h>
 #include <net.h>
+#include <netdev.h>
 #include <command.h>
 #include <malloc.h>
+#include <miiphy.h>
+#include <linux/mii.h>
 
 #include <asm/blackfin.h>
 #include <asm/mach-common/bits/dma.h>
@@ -19,16 +22,15 @@
 
 #include "bfin_mac.h"
 
-#ifdef CONFIG_POST
-#include <post.h>
+#ifndef CONFIG_PHY_ADDR
+# define CONFIG_PHY_ADDR 1
+#endif
+#ifndef CONFIG_PHY_CLOCK_FREQ
+# define CONFIG_PHY_CLOCK_FREQ 2500000
 #endif
 
-#undef DEBUG_ETHERNET
-
-#ifdef DEBUG_ETHERNET
-#define DEBUGF(fmt, args...) printf(fmt, ##args)
-#else
-#define DEBUGF(fmt, args...)
+#ifdef CONFIG_POST
+#include <post.h>
 #endif
 
 #define RXBUF_BASE_ADDR		0xFF900000
@@ -37,42 +39,61 @@
 
 #define TOUT_LOOP		1000000
 
-ADI_ETHER_BUFFER *txbuf[TX_BUF_CNT];
-ADI_ETHER_BUFFER *rxbuf[PKTBUFSRX];
+static ADI_ETHER_BUFFER *txbuf[TX_BUF_CNT];
+static ADI_ETHER_BUFFER *rxbuf[PKTBUFSRX];
 static u16 txIdx;		/* index of the current RX buffer */
 static u16 rxIdx;		/* index of the current TX buffer */
 
-u16 PHYregs[NO_PHY_REGS];	/* u16 PHYADDR; */
-
 /* DMAx_CONFIG values at DMA Restart */
-const ADI_DMA_CONFIG_REG rxdmacfg = {
-	.b_DMA_EN  = 1,	/* enabled */
-	.b_WNR     = 1,	/* write to memory */
-	.b_WDSIZE  = 2,	/* wordsize is 32 bits */
-	.b_DMA2D   = 0,
-	.b_RESTART = 0,
-	.b_DI_SEL  = 0,
-	.b_DI_EN   = 0,	/* no interrupt */
-	.b_NDSIZE  = 5,	/* 5 half words is desc size */
-	.b_FLOW    = 7	/* large desc flow */
+static const union {
+	u16 data;
+	ADI_DMA_CONFIG_REG reg;
+} txdmacfg = {
+	.reg = {
+		.b_DMA_EN  = 1,	/* enabled */
+		.b_WNR     = 0,	/* read from memory */
+		.b_WDSIZE  = 2,	/* wordsize is 32 bits */
+		.b_DMA2D   = 0,
+		.b_RESTART = 0,
+		.b_DI_SEL  = 0,
+		.b_DI_EN   = 0,	/* no interrupt */
+		.b_NDSIZE  = 5,	/* 5 half words is desc size */
+		.b_FLOW    = 7	/* large desc flow */
+	},
 };
 
-const ADI_DMA_CONFIG_REG txdmacfg = {
-	.b_DMA_EN  = 1,	/* enabled */
-	.b_WNR     = 0,	/* read from memory */
-	.b_WDSIZE  = 2,	/* wordsize is 32 bits */
-	.b_DMA2D   = 0,
-	.b_RESTART = 0,
-	.b_DI_SEL  = 0,
-	.b_DI_EN   = 0,	/* no interrupt */
-	.b_NDSIZE  = 5,	/* 5 half words is desc size */
-	.b_FLOW    = 7	/* large desc flow */
-};
+static int bfin_miiphy_wait(void)
+{
+	/* poll the STABUSY bit */
+	while (bfin_read_EMAC_STAADD() & STABUSY)
+		continue;
+	return 0;
+}
+
+static int bfin_miiphy_read(char *devname, uchar addr, uchar reg, ushort *val)
+{
+	if (bfin_miiphy_wait())
+		return 1;
+	bfin_write_EMAC_STAADD(SET_PHYAD(addr) | SET_REGAD(reg) | STABUSY);
+	if (bfin_miiphy_wait())
+		return 1;
+	*val = bfin_read_EMAC_STADAT();
+	return 0;
+}
+
+static int bfin_miiphy_write(char *devname, uchar addr, uchar reg, ushort val)
+{
+	if (bfin_miiphy_wait())
+		return 1;
+	bfin_write_EMAC_STADAT(val);
+	bfin_write_EMAC_STAADD(SET_PHYAD(addr) | SET_REGAD(reg) | STAOP | STABUSY);
+	return 0;
+}
 
 int bfin_EMAC_initialize(bd_t *bis)
 {
 	struct eth_device *dev;
-	dev = (struct eth_device *)malloc(sizeof(*dev));
+	dev = malloc(sizeof(*dev));
 	if (dev == NULL)
 		hang();
 
@@ -87,6 +108,10 @@ int bfin_EMAC_initialize(bd_t *bis)
 	dev->recv = bfin_EMAC_recv;
 
 	eth_register(dev);
+
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
+	miiphy_register(dev->name, bfin_miiphy_read, bfin_miiphy_write);
+#endif
 
 	return 0;
 }
@@ -118,8 +143,8 @@ static int bfin_EMAC_send(struct eth_device *dev, volatile void *packet,
 	txbuf[txIdx]->FrmData->NoBytes = length;
 	memcpy(txbuf[txIdx]->FrmData->Dest, (void *)packet, length);
 	txbuf[txIdx]->Dma[0].START_ADDR = (u32) txbuf[txIdx]->FrmData;
-	*pDMA2_NEXT_DESC_PTR = &txbuf[txIdx]->Dma[0];
-	*pDMA2_CONFIG = *(u16 *) (void *)(&txdmacfg);
+	*pDMA2_NEXT_DESC_PTR = txbuf[txIdx]->Dma;
+	*pDMA2_CONFIG = txdmacfg.data;
 	*pEMAC_OPMODE |= TE;
 
 	for (i = 0; (txbuf[txIdx]->StatusWord & TX_COMP) == 0; i++) {
@@ -135,7 +160,7 @@ static int bfin_EMAC_send(struct eth_device *dev, volatile void *packet,
 	else
 		txIdx++;
  out:
-	DEBUGF("BFIN EMAC send: length = %d\n", length);
+	debug("BFIN EMAC send: length = %d\n", length);
 	return result;
 }
 
@@ -181,51 +206,141 @@ static int bfin_EMAC_recv(struct eth_device *dev)
  *
  *************************************************************/
 
+/* MDC = SCLK / MDC_freq / 2 - 1 */
+#define MDC_FREQ_TO_DIV(mdc_freq) (get_sclk() / (mdc_freq) / 2 - 1)
+
+static int bfin_miiphy_init(struct eth_device *dev, int *opmode)
+{
+	u16 phydat;
+	size_t count;
+
+	/* Enable PHY output */
+	*pVR_CTL |= CLKBUFOE;
+
+	/* Set all the pins to peripheral mode */
+#ifdef CONFIG_RMII
+	/* grab RMII pins */
+# if defined(__ADSPBF51x__)
+	*pPORTF_MUX = (*pPORTF_MUX & \
+		~(PORT_x_MUX_3_MASK | PORT_x_MUX_4_MASK | PORT_x_MUX_5_MASK)) | \
+		PORT_x_MUX_3_FUNC_1 | PORT_x_MUX_4_FUNC_1 | PORT_x_MUX_5_FUNC_1;
+	*pPORTF_FER |= PF8 | PF9 | PF10 | PF11 | PF12 | PF13 | PF14 | PF15;
+	*pPORTG_MUX = (*pPORTG_MUX & ~PORT_x_MUX_0_MASK) | PORT_x_MUX_0_FUNC_1;
+	*pPORTG_FER |= PG0 | PG1 | PG2;
+# elif defined(__ADSPBF52x__)
+	*pPORTG_MUX = (*pPORTG_MUX & ~PORT_x_MUX_6_MASK) | PORT_x_MUX_6_FUNC_2;
+	*pPORTG_FER |= PG14 | PG15;
+	*pPORTH_MUX = (*pPORTH_MUX & ~(PORT_x_MUX_0_MASK | PORT_x_MUX_1_MASK)) | \
+		PORT_x_MUX_0_FUNC_2 | PORT_x_MUX_1_FUNC_2;
+	*pPORTH_FER |= PH0 | PH1 | PH2 | PH3 | PH4 | PH5 | PH6 | PH7 | PH8;
+# else
+	*pPORTH_FER |= PH0 | PH1 | PH4 | PH5 | PH6 | PH8 | PH9 | PH14 | PH15;
+# endif
+#else
+	/* grab MII & RMII pins */
+# if defined(__ADSPBF51x__)
+	*pPORTF_MUX = (*pPORTF_MUX & \
+		~(PORT_x_MUX_0_MASK | PORT_x_MUX_1_MASK | PORT_x_MUX_3_MASK | PORT_x_MUX_4_MASK | PORT_x_MUX_5_MASK)) | \
+		PORT_x_MUX_0_FUNC_1 | PORT_x_MUX_1_FUNC_1 | PORT_x_MUX_3_FUNC_1 | PORT_x_MUX_4_FUNC_1 | PORT_x_MUX_5_FUNC_1;
+	*pPORTF_FER |= PF0 | PF1 | PF2 | PF3 | PF4 | PF5 | PF6 | PF8 | PF9 | PF10 | PF11 | PF12 | PF13 | PF14 | PF15;
+	*pPORTG_MUX = (*pPORTG_MUX & ~PORT_x_MUX_0_MASK) | PORT_x_MUX_0_FUNC_1;
+	*pPORTG_FER |= PG0 | PG1 | PG2;
+# elif defined(__ADSPBF52x__)
+	*pPORTG_MUX = (*pPORTG_MUX & ~PORT_x_MUX_6_MASK) | PORT_x_MUX_6_FUNC_2;
+	*pPORTG_FER |= PG14 | PG15;
+	*pPORTH_MUX = PORT_x_MUX_0_FUNC_2 | PORT_x_MUX_1_FUNC_2 | PORT_x_MUX_2_FUNC_2;
+	*pPORTH_FER = -1; /* all pins */
+# else
+	*pPORTH_FER = -1; /* all pins */
+# endif
+#endif
+
+	/* Odd word alignment for Receive Frame DMA word */
+	/* Configure checksum support and rcve frame word alignment */
+	bfin_write_EMAC_SYSCTL(RXDWA | RXCKS | SET_MDCDIV(MDC_FREQ_TO_DIV(CONFIG_PHY_CLOCK_FREQ)));
+
+	/* turn on auto-negotiation and wait for link to come up */
+	bfin_miiphy_write(dev->name, CONFIG_PHY_ADDR, MII_BMCR, BMCR_ANENABLE);
+	count = 0;
+	while (1) {
+		++count;
+		if (bfin_miiphy_read(dev->name, CONFIG_PHY_ADDR, MII_BMSR, &phydat))
+			return -1;
+		if (phydat & BMSR_LSTATUS)
+			break;
+		if (count > 30000) {
+			printf("%s: link down, check cable\n", dev->name);
+			return -1;
+		}
+		udelay(100);
+	}
+
+	/* see what kind of link we have */
+	if (bfin_miiphy_read(dev->name, CONFIG_PHY_ADDR, MII_LPA, &phydat))
+		return -1;
+	if (phydat & LPA_DUPLEX)
+		*opmode = FDMODE;
+	else
+		*opmode = 0;
+
+	bfin_write_EMAC_MMC_CTL(RSTC | CROLL);
+
+	/* Initialize the TX DMA channel registers */
+	*pDMA2_X_COUNT = 0;
+	*pDMA2_X_MODIFY = 4;
+	*pDMA2_Y_COUNT = 0;
+	*pDMA2_Y_MODIFY = 0;
+
+	/* Initialize the RX DMA channel registers */
+	*pDMA1_X_COUNT = 0;
+	*pDMA1_X_MODIFY = 4;
+	*pDMA1_Y_COUNT = 0;
+	*pDMA1_Y_MODIFY = 0;
+
+	return 0;
+}
+
 static int bfin_EMAC_init(struct eth_device *dev, bd_t *bd)
 {
 	u32 opmode;
 	int dat;
 	int i;
-	DEBUGF("Eth_init: ......\n");
+	debug("Eth_init: ......\n");
 
 	txIdx = 0;
 	rxIdx = 0;
 
-/* Initialize System Register */
-	if (SetupSystemRegs(&dat) < 0)
+	/* Initialize System Register */
+	if (bfin_miiphy_init(dev, &dat) < 0)
 		return -1;
 
-/* Initialize EMAC address */
+	/* Initialize EMAC address */
 	bfin_EMAC_setup_addr(bd);
 
-/* Initialize TX and RX buffer */
+	/* Initialize TX and RX buffer */
 	for (i = 0; i < PKTBUFSRX; i++) {
 		rxbuf[i] = SetupRxBuffer(i);
 		if (i > 0) {
-			rxbuf[i - 1]->Dma[1].NEXT_DESC_PTR =
-			    &(rxbuf[i]->Dma[0]);
+			rxbuf[i - 1]->Dma[1].NEXT_DESC_PTR = rxbuf[i]->Dma;
 			if (i == (PKTBUFSRX - 1))
-				rxbuf[i]->Dma[1].NEXT_DESC_PTR =
-				    &(rxbuf[0]->Dma[0]);
+				rxbuf[i]->Dma[1].NEXT_DESC_PTR = rxbuf[0]->Dma;
 		}
 	}
 	for (i = 0; i < TX_BUF_CNT; i++) {
 		txbuf[i] = SetupTxBuffer(i);
 		if (i > 0) {
-			txbuf[i - 1]->Dma[1].NEXT_DESC_PTR =
-			    &(txbuf[i]->Dma[0]);
+			txbuf[i - 1]->Dma[1].NEXT_DESC_PTR = txbuf[i]->Dma;
 			if (i == (TX_BUF_CNT - 1))
-				txbuf[i]->Dma[1].NEXT_DESC_PTR =
-				    &(txbuf[0]->Dma[0]);
+				txbuf[i]->Dma[1].NEXT_DESC_PTR = txbuf[0]->Dma;
 		}
 	}
 
 	/* Set RX DMA */
-	*pDMA1_NEXT_DESC_PTR = &rxbuf[0]->Dma[0];
-	*pDMA1_CONFIG = *((u16 *) (void *)&rxbuf[0]->Dma[0].CONFIG);
+	*pDMA1_NEXT_DESC_PTR = rxbuf[0]->Dma;
+	*pDMA1_CONFIG = rxbuf[0]->Dma[0].CONFIG_DATA;
 
 	/* Wait MII done */
-	PollMdcDone();
+	bfin_miiphy_wait();
 
 	/* We enable only RX here */
 	/* ASTP   : Enable Automatic Pad Stripping
@@ -239,7 +354,7 @@ static int bfin_EMAC_init(struct eth_device *dev, bd_t *bd)
 	else
 		opmode = ASTP | PSF;
 	opmode |= RE;
-#ifdef CONFIG_BFIN_MAC_RMII
+#ifdef CONFIG_RMII
 	opmode |= TE | RMII;
 #endif
 	/* Turn on the EMAC */
@@ -249,7 +364,7 @@ static int bfin_EMAC_init(struct eth_device *dev, bd_t *bd)
 
 static void bfin_EMAC_halt(struct eth_device *dev)
 {
-	DEBUGF("Eth_halt: ......\n");
+	debug("Eth_halt: ......\n");
 	/* Turn off the EMAC */
 	*pEMAC_OPMODE = 0x00000000;
 	/* Turn off the EMAC RX DMA */
@@ -270,125 +385,6 @@ void bfin_EMAC_setup_addr(bd_t *bd)
 		bd->bi_enetaddr[5] << 8;
 }
 
-static void PollMdcDone(void)
-{
-	/* poll the STABUSY bit */
-	while (*pEMAC_STAADD & STABUSY) ;
-}
-
-static void WrPHYReg(u16 PHYAddr, u16 RegAddr, u16 Data)
-{
-	PollMdcDone();
-
-	*pEMAC_STADAT = Data;
-
-	*pEMAC_STAADD = SET_PHYAD(PHYAddr) | SET_REGAD(RegAddr) |
-	    STAOP | STAIE | STABUSY;
-}
-
-/*********************************************************************************
- *		Read an off-chip register in a PHY through the MDC/MDIO port     *
- *********************************************************************************/
-static u16 RdPHYReg(u16 PHYAddr, u16 RegAddr)
-{
-	u16 Data;
-
-	PollMdcDone();
-
-	*pEMAC_STAADD = SET_PHYAD(PHYAddr) | SET_REGAD(RegAddr) |
-	    STAIE | STABUSY;
-
-	PollMdcDone();
-
-	Data = (u16) * pEMAC_STADAT;
-
-	PHYregs[RegAddr] = Data;	/* save shadow copy */
-
-	return Data;
-}
-
-#if 0 /* dead code ? */
-static void SoftResetPHY(void)
-{
-	u16 phydat;
-	/* set the reset bit */
-	WrPHYReg(PHYADDR, PHY_MODECTL, PHY_RESET);
-	/* and clear it again */
-	WrPHYReg(PHYADDR, PHY_MODECTL, 0x0000);
-	do {
-		/* poll until reset is complete */
-		phydat = RdPHYReg(PHYADDR, PHY_MODECTL);
-	} while ((phydat & PHY_RESET) != 0);
-}
-#endif
-
-static int SetupSystemRegs(int *opmode)
-{
-	u16 sysctl, phydat;
-	int count = 0;
-	/* Enable PHY output */
-	*pVR_CTL |= CLKBUFOE;
-	/* Set all the pins to peripheral mode */
-
-#ifndef CONFIG_BFIN_MAC_RMII
-	*pPORTH_FER = 0xFFFF;
-#ifdef __ADSPBF52x__
-	*pPORTH_MUX = PORT_x_MUX_0_FUNC_2 | PORT_x_MUX_1_FUNC_2 | PORT_x_MUX_2_FUNC_2;
-#endif
-#else
-#if defined(__ADSPBF536__) || defined(__ADSPBF537__)
-	*pPORTH_FER = 0xC373;
-#endif
-#ifdef __ADSPBF52x__
-	*pPORTH_FER = 0x01FF;
-	*pPORTH_MUX = PORT_x_MUX_0_FUNC_2 | PORT_x_MUX_1_FUNC_2;
-#endif
-#endif
-	/* MDC  = 2.5 MHz */
-	sysctl = SET_MDCDIV(24);
-	/* Odd word alignment for Receive Frame DMA word */
-	/* Configure checksum support and rcve frame word alignment */
-	sysctl |= RXDWA | RXCKS;
-	*pEMAC_SYSCTL = sysctl;
-	/* auto negotiation on  */
-	/* full duplex */
-	/* 100 Mbps */
-	phydat = PHY_ANEG_EN | PHY_DUPLEX | PHY_SPD_SET;
-	WrPHYReg(PHYADDR, PHY_MODECTL, phydat);
-	do {
-		udelay(1000);
-		phydat = RdPHYReg(PHYADDR, PHY_MODESTAT);
-		if (count > 3000) {
-			printf
-			    ("Link is down, please check your network connection\n");
-			return -1;
-		}
-		count++;
-	} while (!(phydat & 0x0004));
-
-	phydat = RdPHYReg(PHYADDR, PHY_ANLPAR);
-
-	if ((phydat & 0x0100) || (phydat & 0x0040))
-		*opmode = FDMODE;
-	else
-		*opmode = 0;
-
-	*pEMAC_MMC_CTL = RSTC | CROLL;
-
-	/* Initialize the TX DMA channel registers */
-	*pDMA2_X_COUNT = 0;
-	*pDMA2_X_MODIFY = 4;
-	*pDMA2_Y_COUNT = 0;
-	*pDMA2_Y_MODIFY = 0;
-
-	/* Initialize the RX DMA channel registers */
-	*pDMA1_X_COUNT = 0;
-	*pDMA1_X_MODIFY = 4;
-	*pDMA1_Y_COUNT = 0;
-	*pDMA1_Y_MODIFY = 0;
-	return 0;
-}
-
 ADI_ETHER_BUFFER *SetupRxBuffer(int no)
 {
 	ADI_ETHER_FRAME_BUFFER *frmbuf;
@@ -396,10 +392,8 @@ ADI_ETHER_BUFFER *SetupRxBuffer(int no)
 	int nobytes_buffer = sizeof(ADI_ETHER_BUFFER[2]) / 2;	/* ensure a multi. of 4 */
 	int total_size = nobytes_buffer + RECV_BUFSIZE;
 
-	buf = (ADI_ETHER_BUFFER *) (RXBUF_BASE_ADDR + no * total_size);
-	frmbuf =
-	    (ADI_ETHER_FRAME_BUFFER *) (RXBUF_BASE_ADDR + no * total_size +
-					nobytes_buffer);
+	buf = (void *) (RXBUF_BASE_ADDR + no * total_size);
+	frmbuf = (void *) (RXBUF_BASE_ADDR + no * total_size + nobytes_buffer);
 
 	memset(buf, 0x00, nobytes_buffer);
 	buf->FrmData = frmbuf;
@@ -415,7 +409,7 @@ ADI_ETHER_BUFFER *SetupRxBuffer(int no)
 	buf->Dma[0].CONFIG.b_FLOW = 7;	/* large desc flow */
 
 	/* set up second desc to point to status word */
-	buf->Dma[1].NEXT_DESC_PTR = &(buf->Dma[0]);
+	buf->Dma[1].NEXT_DESC_PTR = buf->Dma;
 	buf->Dma[1].START_ADDR = (u32) & buf->IPHdrChksum;
 	buf->Dma[1].CONFIG.b_DMA_EN = 1;	/* enabled */
 	buf->Dma[1].CONFIG.b_WNR = 1;	/* Write to memory */
@@ -434,10 +428,8 @@ ADI_ETHER_BUFFER *SetupTxBuffer(int no)
 	int nobytes_buffer = sizeof(ADI_ETHER_BUFFER[2]) / 2;	/* ensure a multi. of 4 */
 	int total_size = nobytes_buffer + RECV_BUFSIZE;
 
-	buf = (ADI_ETHER_BUFFER *) (TXBUF_BASE_ADDR + no * total_size);
-	frmbuf =
-	    (ADI_ETHER_FRAME_BUFFER *) (TXBUF_BASE_ADDR + no * total_size +
-					nobytes_buffer);
+	buf = (void *) (TXBUF_BASE_ADDR + no * total_size);
+	frmbuf = (void *) (TXBUF_BASE_ADDR + no * total_size + nobytes_buffer);
 
 	memset(buf, 0x00, nobytes_buffer);
 	buf->FrmData = frmbuf;
@@ -465,7 +457,7 @@ ADI_ETHER_BUFFER *SetupTxBuffer(int no)
 	return buf;
 }
 
-#if defined(CONFIG_POST) && defined(CFG_POST_ETHER)
+#if defined(CONFIG_POST) && defined(CONFIG_SYS_POST_ETHER)
 int ether_post_test(int flags)
 {
 	uchar buf[64];

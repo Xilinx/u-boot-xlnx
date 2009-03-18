@@ -91,11 +91,16 @@ extern char *stdio_names[MAX_FILES];
  */
 int	device_register (device_t * dev);
 int	devices_init (void);
+#ifdef CONFIG_SYS_DEVICE_DEREGISTER
 int	device_deregister(char *devname);
+#endif
 struct list_head* device_get_list(void);
 device_t* device_get_by_name(char* name);
 device_t* device_clone(device_t *dev);
 
+#ifdef CONFIG_ARM_DCC_MULTI
+int drv_arm_dcc_init(void);
+#endif
 #ifdef CONFIG_LCD
 int	drv_lcd_init (void);
 #endif
@@ -113,6 +118,9 @@ int	drv_usbtty_init (void);
 #endif
 #ifdef CONFIG_NETCONSOLE
 int	drv_nc_init (void);
+#endif
+#ifdef CONFIG_JTAG_CONSOLE
+int drv_jtag_console_init (void);
 #endif
 
 #endif	/* _DEVICES_H_ */

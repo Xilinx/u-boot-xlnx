@@ -286,13 +286,13 @@ int do_fpga (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
     return 0;
 
  failure:
-    printf ("Usage:\n%s\n", cmdtp->usage);
+    cmd_usage(cmdtp);
     return 1;
 }
 
 U_BOOT_CMD(
 	fpga,	4,	1,	do_fpga,
-	"fpga    - access FPGA(s)\n",
+	"access FPGA(s)",
 	"fpga status [name] - print FPGA status\n"
 	"fpga reset  [name] - reset FPGA\n"
 	"fpga load [name] addr - load FPGA configuration data\n"

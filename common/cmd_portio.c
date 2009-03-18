@@ -30,8 +30,6 @@
 #include <common.h>
 #include <command.h>
 
-extern int cmd_get_data_size (char *arg, int default_size);
-
 /* Display values from last command.
  * Memory modify remembered values are different from display memory.
  */
@@ -46,7 +44,7 @@ int do_portio_out (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	uint value = out_last_value;
 
 	if (argc != 3) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -95,7 +93,7 @@ int do_portio_out (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	out,	3,	1,	do_portio_out,
-	"out     - write datum to IO port\n",
+	"write datum to IO port",
 	"[.b, .w, .l] port value\n    - output to IO port\n"
 );
 
@@ -105,7 +103,7 @@ int do_portio_in (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	uint size = in_last_size;
 
 	if (argc != 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -159,7 +157,7 @@ int do_portio_in (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	in,	2,	1,	do_portio_in,
-	"in      - read data from an IO port\n",
+	"read data from an IO port",
 	"[.b, .w, .l] port\n"
 	"    - read datum from IO port\n"
 );

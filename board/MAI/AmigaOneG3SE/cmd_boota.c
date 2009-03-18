@@ -27,7 +27,7 @@ struct bootcode_block bblk;
 
 int do_boota (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
-	unsigned char *load_address = (unsigned char *) CFG_LOAD_ADDR;
+	unsigned char *load_address = (unsigned char *) CONFIG_SYS_LOAD_ADDR;
 	unsigned char *base_address;
 	unsigned long offset;
 
@@ -122,7 +122,7 @@ int do_boota (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #if defined(CONFIG_AMIGAONEG3SE) && defined(CONFIG_CMD_BSP)
 U_BOOT_CMD(
 	boota,   3,      1,      do_boota,
-	"boota   - boot an Amiga kernel\n",
+	"boot an Amiga kernel",
 	"address disk"
 );
 #endif /* _CMD_BOOTA_H */

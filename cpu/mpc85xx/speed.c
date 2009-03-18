@@ -28,6 +28,7 @@
 #include <common.h>
 #include <ppc_asm.tmpl>
 #include <asm/processor.h>
+#include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -35,30 +36,58 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void get_sys_info (sys_info_t * sysInfo)
 {
-	volatile ccsr_gur_t *gur = (void *)(CFG_MPC85xx_GUTS_ADDR);
+	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
 	uint plat_ratio,e500_ratio,half_freqSystemBus;
+	uint lcrr_div;
+	int i;
 
 	plat_ratio = (gur->porpllsr) & 0x0000003e;
 	plat_ratio >>= 1;
 	sysInfo->freqSystemBus = plat_ratio * CONFIG_SYS_CLK_FREQ;
-	e500_ratio = (gur->porpllsr) & 0x003f0000;
-	e500_ratio >>= 16;
 
 	/* Divide before multiply to avoid integer
 	 * overflow for processor speeds above 2GHz */
 	half_freqSystemBus = sysInfo->freqSystemBus/2;
-	sysInfo->freqProcessor = e500_ratio*half_freqSystemBus;
+	for (i = 0; i < CONFIG_NUM_CPUS; i++) {
+		e500_ratio = ((gur->porpllsr) >> (i * 8 + 16)) & 0x3f;
+		sysInfo->freqProcessor[i] = e500_ratio * half_freqSystemBus;
+	}
 
 	/* Note: freqDDRBus is the MCLK frequency, not the data rate. */
 	sysInfo->freqDDRBus = sysInfo->freqSystemBus;
 
 #ifdef CONFIG_DDR_CLK_FREQ
 	{
-		u32 ddr_ratio = ((gur->porpllsr) & 0x00003e00) >> 9;
+		u32 ddr_ratio = ((gur->porpllsr) & MPC85xx_PORPLLSR_DDR_RATIO)
+			>> MPC85xx_PORPLLSR_DDR_RATIO_SHIFT;
 		if (ddr_ratio != 0x7)
 			sysInfo->freqDDRBus = ddr_ratio * CONFIG_DDR_CLK_FREQ;
 	}
 #endif
+
+#if defined(CONFIG_SYS_LBC_LCRR)
+	/* We will program LCRR to this value later */
+	lcrr_div = CONFIG_SYS_LBC_LCRR & LCRR_CLKDIV;
+#else
+	{
+	    volatile ccsr_lbc_t *lbc = (void *)(CONFIG_SYS_MPC85xx_LBC_ADDR);
+	    lcrr_div = in_be32(&lbc->lcrr) & LCRR_CLKDIV;
+	}
+#endif
+	if (lcrr_div == 2 || lcrr_div == 4 || lcrr_div == 8) {
+#if !defined(CONFIG_MPC8540) && !defined(CONFIG_MPC8541) && \
+    !defined(CONFIG_MPC8555) && !defined(CONFIG_MPC8560)
+		/*
+		 * Yes, the entire PQ38 family use the same
+		 * bit-representation for twice the clock divider values.
+		 */
+		lcrr_div *= 2;
+#endif
+		sysInfo->freqLocalBus = sysInfo->freqSystemBus / lcrr_div;
+	} else {
+		/* In case anyone cares what the unknown value is */
+		sysInfo->freqLocalBus = lcrr_div;
+	}
 }
 
 
@@ -66,10 +95,10 @@ int get_clocks (void)
 {
 	sys_info_t sys_info;
 #ifdef CONFIG_MPC8544
-	volatile ccsr_gur_t *gur = (void *) CFG_MPC85xx_GUTS_ADDR;
+	volatile ccsr_gur_t *gur = (void *) CONFIG_SYS_MPC85xx_GUTS_ADDR;
 #endif
 #if defined(CONFIG_CPM2)
-	volatile ccsr_cpm_t *cpm = (ccsr_cpm_t *)CFG_MPC85xx_CPM_ADDR;
+	volatile ccsr_cpm_t *cpm = (ccsr_cpm_t *)CONFIG_SYS_MPC85xx_CPM_ADDR;
 	uint sccr, dfbrg;
 
 	/* set VCO = 4 * BRG */
@@ -78,9 +107,10 @@ int get_clocks (void)
 	dfbrg = (sccr & SCCR_DFBRG_MSK) >> SCCR_DFBRG_SHIFT;
 #endif
 	get_sys_info (&sys_info);
-	gd->cpu_clk = sys_info.freqProcessor;
+	gd->cpu_clk = sys_info.freqProcessor[0];
 	gd->bus_clk = sys_info.freqSystemBus;
 	gd->mem_clk = sys_info.freqDDRBus;
+	gd->lbc_clk = sys_info.freqLocalBus;
 
 	/*
 	 * The base clock for I2C depends on the actual SOC.  Unfortunately,

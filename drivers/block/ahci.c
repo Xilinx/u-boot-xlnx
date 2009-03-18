@@ -251,7 +251,6 @@ static void ahci_print_info(struct ahci_probe_ent *probe_ent)
 
 static int ahci_init_one(pci_dev_t pdev)
 {
-	u32 iobase;
 	u16 vendor;
 	int rc;
 
@@ -261,9 +260,6 @@ static int ahci_init_one(pci_dev_t pdev)
 	memset(probe_ent, 0, sizeof(struct ahci_probe_ent));
 	probe_ent->dev = pdev;
 
-	pci_read_config_dword(pdev, AHCI_PCI_BAR, &iobase);
-	iobase &= ~0xf;
-
 	probe_ent->host_flags = ATA_FLAG_SATA
 				| ATA_FLAG_NO_LEGACY
 				| ATA_FLAG_MMIO
@@ -272,7 +268,8 @@ static int ahci_init_one(pci_dev_t pdev)
 	probe_ent->pio_mask = 0x1f;
 	probe_ent->udma_mask = 0x7f;	/*Fixme,assume to support UDMA6 */
 
-	probe_ent->mmio_base = iobase;
+	probe_ent->mmio_base = (u32)pci_map_bar(pdev, AHCI_PCI_BAR,
+						PCI_REGION_MEM);
 
 	/* Take from kernel:
 	 * JMicron-specific fixup:
@@ -676,7 +673,7 @@ void scsi_low_level_init(int busdevfunc)
 
 	linkmap = probe_ent->link_port_map;
 
-	for (i = 0; i < CFG_SCSI_MAX_SCSI_ID; i++) {
+	for (i = 0; i < CONFIG_SYS_SCSI_MAX_SCSI_ID; i++) {
 		if (((linkmap >> i) & 0x01)) {
 			if (ahci_port_start((u8) i)) {
 				printf("Can not start port %d\n", i);

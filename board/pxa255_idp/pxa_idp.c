@@ -127,8 +127,8 @@ int do_idpcmd(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
-U_BOOT_CMD(idpcmd, CFG_MAXARGS, 0, do_idpcmd,
-	   "idpcmd    - custom IDP command\n",
+U_BOOT_CMD(idpcmd, CONFIG_SYS_MAXARGS, 0, do_idpcmd,
+	   "custom IDP command",
 	   "no args at this time\n"
 );
 

@@ -101,7 +101,7 @@ static uchar buf_66[] =
 static int update_boot_eeprom(cmd_tbl_t* cmdtp, int flag, int argc, char *argv[])
 {
 	ulong len = 0x20;
-	uchar chip = CFG_I2C_EEPROM_ADDR;
+	uchar chip = CONFIG_SYS_I2C_EEPROM_ADDR;
 	uchar *pbuf;
 	uchar base;
 	int i;
@@ -127,6 +127,6 @@ static int update_boot_eeprom(cmd_tbl_t* cmdtp, int flag, int argc, char *argv[]
 
 U_BOOT_CMD (
 	update_boot_eeprom, 1, 1, update_boot_eeprom,
-	"update_boot_eeprom  - update boot eeprom content\n",
+	"update boot eeprom content",
 	NULL
 	);

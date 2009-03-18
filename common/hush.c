@@ -96,7 +96,6 @@
 /*cmd_boot.c*/
 extern int do_bootd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);      /* do_bootd */
 #endif
-#ifdef CFG_HUSH_PARSER
 #ifndef __U_BOOT__
 #include <ctype.h>     /* isalpha, isdigit */
 #include <unistd.h>    /* getpid */
@@ -501,10 +500,6 @@ static void remove_bg_job(struct pipe *pi);
 static char **make_list_in(char **inp, char *name);
 static char *insert_var_value(char *inp);
 static char *get_local_var(const char *var);
-#ifndef __U_BOOT__
-static void  unset_local_var(const char *name);
-#endif
-static int set_local_var(const char *s, int flg_export);
 
 #ifndef __U_BOOT__
 /* Table of built-in functions.  They can be forked or not, depending on
@@ -1023,9 +1018,9 @@ static void get_user_input(struct in_str *i)
 	fflush(stdout);
 	i->p = the_command;
 #else
-	extern char console_buffer[CFG_CBSIZE];
+	extern char console_buffer[CONFIG_SYS_CBSIZE];
 	int n;
-	static char the_command[CFG_CBSIZE];
+	static char the_command[CONFIG_SYS_CBSIZE];
 
 #ifdef CONFIG_BOOT_RETRY_TIME
 #  ifdef CONFIG_RESET_TO_RETRY
@@ -1037,9 +1032,9 @@ static void get_user_input(struct in_str *i)
 #endif
 	i->__promptme = 1;
 	if (i->promptmode == 1) {
-		n = readline(CFG_PROMPT);
+		n = readline(CONFIG_SYS_PROMPT);
 	} else {
-		n = readline(CFG_PROMPT_HUSH_PS2);
+		n = readline(CONFIG_SYS_PROMPT_HUSH_PS2);
 	}
 #ifdef CONFIG_BOOT_RETRY_TIME
 	if (n == -2) {
@@ -1079,7 +1074,7 @@ static void get_user_input(struct in_str *i)
 	else {
 		if (console_buffer[0] != '\n') {
 			if (strlen(the_command) + strlen(console_buffer)
-			    < CFG_CBSIZE) {
+			    < CONFIG_SYS_CBSIZE) {
 				n = strlen(the_command);
 				the_command[n-1] = ' ';
 				strcpy(&the_command[n],console_buffer);
@@ -1700,7 +1695,7 @@ static int run_pipe_real(struct pipe *pi)
 #endif
 				/* found - check max args */
 				if ((child->argc - i) > cmdtp->maxargs) {
-					printf ("Usage:\n%s\n", cmdtp->usage);
+					cmd_usage(cmdtp);
 					return -1;
 				}
 #endif
@@ -2204,7 +2199,7 @@ static char *get_local_var(const char *s)
    flg_export==0 if only local (not exporting) variable
    flg_export==1 if "new" exporting environ
    flg_export>1  if current startup environ (not call putenv()) */
-static int set_local_var(const char *s, int flg_export)
+int set_local_var(const char *s, int flg_export)
 {
 	char *name, *value;
 	int result=0;
@@ -2295,8 +2290,7 @@ static int set_local_var(const char *s, int flg_export)
 	return result;
 }
 
-#ifndef __U_BOOT__
-static void unset_local_var(const char *name)
+void unset_local_var(const char *name)
 {
 	struct variables *cur;
 
@@ -2311,8 +2305,10 @@ static void unset_local_var(const char *name)
 				error_msg("%s: readonly variable", name);
 				return;
 			} else {
+#ifndef __U_BOOT__
 				if(cur->flg_export)
 					unsetenv(cur->name);
+#endif
 				free(cur->name);
 				free(cur->value);
 				while (next->next != cur)
@@ -2323,7 +2319,6 @@ static void unset_local_var(const char *name)
 		}
 	}
 }
-#endif
 
 static int is_assignment(const char *s)
 {
@@ -3588,5 +3583,52 @@ static char * make_string(char ** inp)
 	return str;
 }
 
-#endif /* CFG_HUSH_PARSER */
+#ifdef __U_BOOT__
+int do_showvar (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	int i, k;
+	int rcode = 0;
+	struct variables *cur;
+
+	if (argc == 1) {		/* Print all env variables	*/
+		for (cur = top_vars; cur; cur = cur->next) {
+			printf ("%s=%s\n", cur->name, cur->value);
+			if (ctrlc ()) {
+				puts ("\n ** Abort\n");
+				return 1;
+			}
+		}
+		return 0;
+	}
+	for (i = 1; i < argc; ++i) {	/* print single env variables	*/
+		char *name = argv[i];
+
+		k = -1;
+		for (cur = top_vars; cur; cur = cur->next) {
+			if(strcmp (cur->name, name) == 0) {
+				k = 0;
+				printf ("%s=%s\n", cur->name, cur->value);
+			}
+			if (ctrlc ()) {
+				puts ("\n ** Abort\n");
+				return 1;
+			}
+		}
+		if (k < 0) {
+			printf ("## Error: \"%s\" not defined\n", name);
+			rcode ++;
+		}
+	}
+	return rcode;
+}
+
+U_BOOT_CMD(
+	showvar, CONFIG_SYS_MAXARGS, 1,	do_showvar,
+	"print local hushshell variables",
+	"\n    - print values of all hushshell variables\n"
+	"showvar name ...\n"
+	"    - print value of hushshell variable 'name'\n"
+);
+
+#endif
 /****************************************************************************/

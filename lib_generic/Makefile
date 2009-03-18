@@ -25,11 +25,12 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)libgeneric.a
 
-COBJS-y += bzlib.o
-COBJS-y += bzlib_crctable.o
-COBJS-y += bzlib_decompress.o
-COBJS-y += bzlib_randtable.o
-COBJS-y += bzlib_huffman.o
+COBJS-$(CONFIG_ADDR_MAP) += addr_map.o
+COBJS-$(CONFIG_BZIP2) += bzlib.o
+COBJS-$(CONFIG_BZIP2) += bzlib_crctable.o
+COBJS-$(CONFIG_BZIP2) += bzlib_decompress.o
+COBJS-$(CONFIG_BZIP2) += bzlib_randtable.o
+COBJS-$(CONFIG_BZIP2) += bzlib_huffman.o
 COBJS-y += crc16.o
 COBJS-y += crc32.o
 COBJS-y += ctype.o
@@ -45,6 +46,7 @@ COBJS-y += string.o
 COBJS-y	+= strmhz.o
 COBJS-y += vsprintf.o
 COBJS-y += zlib.o
+COBJS-$(CONFIG_RBTREE)	+= rbtree.o
 
 COBJS	:= $(COBJS-y)
 SRCS	:= $(COBJS:.o=.c)

@@ -33,26 +33,24 @@
 #ifndef __IMAGE_H__
 #define __IMAGE_H__
 
-#include <asm/byteorder.h>
-#include <command.h>
-
-#ifndef USE_HOSTCC
-#include <lmb.h>
-#include <linux/string.h>
-#include <asm/u-boot.h>
-
-#else
+#if USE_HOSTCC
+#include <endian.h>
 
 /* new uImage format support enabled on host */
 #define CONFIG_FIT		1
 #define CONFIG_OF_LIBFDT	1
 #define CONFIG_FIT_VERBOSE	1 /* enable fit_format_{error,warning}() */
 
+#else
+
+#include <lmb.h>
+#include <linux/string.h>
+#include <asm/u-boot.h>
+#include <asm/byteorder.h>
+
 #endif /* USE_HOSTCC */
 
-#if defined(CONFIG_FIT) && !defined(CONFIG_OF_LIBFDT)
-#error "CONFIG_OF_LIBFDT not enabled, required by CONFIG_FIT!"
-#endif
+#include <command.h>
 
 #if defined(CONFIG_FIT)
 #include <fdt.h>
@@ -85,6 +83,7 @@
 #define IH_OS_RTEMS		18	/* RTEMS	*/
 #define IH_OS_ARTOS		19	/* ARTOS	*/
 #define IH_OS_UNITY		20	/* Unity OS	*/
+#define IH_OS_INTEGRITY		21	/* INTEGRITY	*/
 
 /*
  * CPU Architecture Codes (supported by Linux)
@@ -164,6 +163,7 @@
 #define IH_COMP_NONE		0	/*  No	 Compression Used	*/
 #define IH_COMP_GZIP		1	/* gzip	 Compression Used	*/
 #define IH_COMP_BZIP2		2	/* bzip2 Compression Used	*/
+#define IH_COMP_LZMA		3	/* lzma  Compression Used	*/
 
 #define IH_MAGIC	0x27051956	/* Image Magic Number		*/
 #define IH_NMLEN		32	/* Image Name Length		*/
@@ -226,6 +226,7 @@ typedef struct bootm_headers {
 #endif
 #endif
 
+#ifndef USE_HOSTCC
 	image_info_t	os;		/* os image info */
 	ulong		ep;		/* entry point of OS */
 
@@ -236,8 +237,25 @@ typedef struct bootm_headers {
 #endif
 	ulong		ft_len;		/* length of flat device tree */
 
+	ulong		initrd_start;
+	ulong		initrd_end;
+	ulong		cmdline_start;
+	ulong		cmdline_end;
+	bd_t		*kbd;
+#endif
+
 	int		verify;		/* getenv("verify")[0] != 'n' */
-	int		valid;		/* set to 1 if we've set values in the header */
+
+#define	BOOTM_STATE_START	(0x00000001)
+#define	BOOTM_STATE_LOADOS	(0x00000002)
+#define	BOOTM_STATE_RAMDISK	(0x00000004)
+#define	BOOTM_STATE_FDT		(0x00000008)
+#define	BOOTM_STATE_OS_CMDLINE	(0x00000010)
+#define	BOOTM_STATE_OS_BD_T	(0x00000020)
+#define	BOOTM_STATE_OS_PREP	(0x00000040)
+#define	BOOTM_STATE_OS_GO	(0x00000080)
+	int		state;
+
 #ifndef USE_HOSTCC
 	struct lmb	lmb;		/* for memory mgmt */
 #endif
@@ -320,23 +338,23 @@ static inline uint32_t image_get_header_size (void)
 	{ \
 		return uimage_to_cpu (hdr->ih_##f); \
 	}
-image_get_hdr_l (magic);
-image_get_hdr_l (hcrc);
-image_get_hdr_l (time);
-image_get_hdr_l (size);
-image_get_hdr_l (load);
-image_get_hdr_l (ep);
-image_get_hdr_l (dcrc);
+image_get_hdr_l (magic);	/* image_get_magic */
+image_get_hdr_l (hcrc);		/* image_get_hcrc */
+image_get_hdr_l (time);		/* image_get_time */
+image_get_hdr_l (size);		/* image_get_size */
+image_get_hdr_l (load);		/* image_get_load */
+image_get_hdr_l (ep);		/* image_get_ep */
+image_get_hdr_l (dcrc);		/* image_get_dcrc */
 
 #define image_get_hdr_b(f) \
 	static inline uint8_t image_get_##f(image_header_t *hdr) \
 	{ \
 		return hdr->ih_##f; \
 	}
-image_get_hdr_b (os);
-image_get_hdr_b (arch);
-image_get_hdr_b (type);
-image_get_hdr_b (comp);
+image_get_hdr_b (os);		/* image_get_os */
+image_get_hdr_b (arch);		/* image_get_arch */
+image_get_hdr_b (type);		/* image_get_type */
+image_get_hdr_b (comp);		/* image_get_comp */
 
 static inline char *image_get_name (image_header_t *hdr)
 {
@@ -378,23 +396,23 @@ static inline ulong image_get_image_end (image_header_t *hdr)
 	{ \
 		hdr->ih_##f = cpu_to_uimage (val); \
 	}
-image_set_hdr_l (magic);
-image_set_hdr_l (hcrc);
-image_set_hdr_l (time);
-image_set_hdr_l (size);
-image_set_hdr_l (load);
-image_set_hdr_l (ep);
-image_set_hdr_l (dcrc);
+image_set_hdr_l (magic);	/* image_set_magic */
+image_set_hdr_l (hcrc);		/* image_set_hcrc */
+image_set_hdr_l (time);		/* image_set_time */
+image_set_hdr_l (size);		/* image_set_size */
+image_set_hdr_l (load);		/* image_set_load */
+image_set_hdr_l (ep);		/* image_set_ep */
+image_set_hdr_l (dcrc);		/* image_set_dcrc */
 
 #define image_set_hdr_b(f) \
 	static inline void image_set_##f(image_header_t *hdr, uint8_t val) \
 	{ \
 		hdr->ih_##f = val; \
 	}
-image_set_hdr_b (os);
-image_set_hdr_b (arch);
-image_set_hdr_b (type);
-image_set_hdr_b (comp);
+image_set_hdr_b (os);		/* image_set_os */
+image_set_hdr_b (arch);		/* image_set_arch */
+image_set_hdr_b (type);		/* image_set_type */
+image_set_hdr_b (comp);		/* image_set_comp */
 
 static inline void image_set_name (image_header_t *hdr, const char *name)
 {
@@ -573,6 +591,7 @@ int fit_image_hash_set_value (void *fit, int noffset, uint8_t *value,
 				int value_len);
 
 int fit_image_check_hashes (const void *fit, int noffset);
+int fit_all_image_check_hashes (const void *fit);
 int fit_image_check_os (const void *fit, int noffset, uint8_t os);
 int fit_image_check_arch (const void *fit, int noffset, uint8_t arch);
 int fit_image_check_type (const void *fit, int noffset, uint8_t type);

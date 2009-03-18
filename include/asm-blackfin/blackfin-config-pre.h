@@ -15,12 +15,12 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 /* Configurable Blackfin-specific monitor commands */
-#define CFG_BFIN_CMD_BOOTLDR     0x01
-#define CFG_BFIN_CMD_CPLBINFO    0x02
-#define CFG_BFIN_CMD_OTP         0x04
-#define CFG_BFIN_CMD_CACHE_DUMP  0x08
+#define CONFIG_SYS_BFIN_CMD_BOOTLDR     0x01
+#define CONFIG_SYS_BFIN_CMD_CPLBINFO    0x02
+#define CONFIG_SYS_BFIN_CMD_OTP         0x04
+#define CONFIG_SYS_BFIN_CMD_CACHE_DUMP  0x08
 
-/* Bootmode defines -- your config needs to select this via BFIN_BOOT_MODE.
+/* Bootmode defines -- your config needs to select this via CONFIG_BFIN_BOOT_MODE.
  * Depending on your cpu, some of these may not be valid, check your HRM.
  * The actual values here are meaningless as long as they're unique.
  */
@@ -36,5 +36,37 @@
 #define BFIN_BOOT_MEM         10      /* boot ldr out of memory (warmboot) */
 #define BFIN_BOOT_16HOST_DMA  11      /* boot ldr from 16-bit host dma */
 #define BFIN_BOOT_8HOST_DMA   12      /* boot ldr from 8-bit host dma */
+#define BFIN_BOOT_NAND        13      /* boot ldr from nand flash */
+
+#ifndef __ASSEMBLY__
+static inline const char *get_bfin_boot_mode(int bfin_boot)
+{
+	switch (bfin_boot) {
+	case BFIN_BOOT_BYPASS:     return "bypass";
+	case BFIN_BOOT_PARA:       return "parallel flash";
+	case BFIN_BOOT_SPI_MASTER: return "spi flash";
+	case BFIN_BOOT_SPI_SLAVE:  return "spi slave";
+	case BFIN_BOOT_TWI_MASTER: return "i2c flash";
+	case BFIN_BOOT_TWI_SLAVE:  return "i2c slave";
+	case BFIN_BOOT_UART:       return "uart";
+	case BFIN_BOOT_IDLE:       return "idle";
+	case BFIN_BOOT_FIFO:       return "fifo";
+	case BFIN_BOOT_MEM:        return "memory";
+	case BFIN_BOOT_16HOST_DMA: return "16bit dma";
+	case BFIN_BOOT_8HOST_DMA:  return "8bit dma";
+	case BFIN_BOOT_NAND:       return "nand flash";
+	default:                   return "INVALID";
+	}
+}
+#endif
+
+/* Define the default SPI CS used when booting out of SPI */
+#if defined(__ADSPBF531__) || defined(__ADSPBF532__) || defined(__ADSPBF533__) || \
+    defined(__ADSPBF538__) || defined(__ADSPBF539__) || defined(__ADSPBF561__) || \
+    defined(__ADSPBF51x__)
+# define BFIN_BOOT_SPI_SSEL 2
+#else
+# define BFIN_BOOT_SPI_SSEL 1
+#endif
 
 #endif

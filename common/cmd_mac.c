@@ -24,13 +24,11 @@
 #include <common.h>
 #include <command.h>
 
-#ifdef CFG_ID_EEPROM
-
 extern int do_mac(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
 
 U_BOOT_CMD(
 	mac, 3, 1,  do_mac,
-	"mac     - display and program the system ID and MAC addresses in EEPROM\n",
+	"display and program the system ID and MAC addresses in EEPROM",
 	"[read|save|id|num|errata|date|ports|0|1|2|3|4|5|6|7]\n"
 	"read\n"
 	"    - show content of EEPROM\n"
@@ -63,4 +61,3 @@ U_BOOT_CMD(
 	"mac 7\n"
 	"    - program the MAC address for port 7\n"
 );
-#endif /* CFG_ID_EEPROM */

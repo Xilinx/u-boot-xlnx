@@ -82,6 +82,7 @@ static struct pci_device_id supported[] = {
 	{PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_82540EM_LOM},
 	{PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_82541ER},
 	{PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_82541GI_LF},
+	{}
 };
 
 /* Function forward declarations */
@@ -3059,5 +3060,5 @@ e1000_initialize(bd_t * bis)
 
 		card_number++;
 	}
-	return 1;
+	return card_number;
 }

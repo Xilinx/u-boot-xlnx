@@ -14,45 +14,13 @@
 #include <asm/blackfin.h>
 #include <asm/cplb.h>
 #include <asm/mach-common/bits/core.h>
-#include <asm/mach-common/bits/mpu.h>
+#include <asm/mach-common/bits/ebiu.h>
 #include <asm/mach-common/bits/trace.h>
 
 #include "cpu.h"
 #include "serial.h"
 
-void icache_enable(void)
-{
-	bfin_write_IMEM_CONTROL(bfin_read_IMEM_CONTROL() | (IMC | ENICPLB));
-	SSYNC();
-}
-
-void icache_disable(void)
-{
-	bfin_write_IMEM_CONTROL(bfin_read_IMEM_CONTROL() & ~(IMC | ENICPLB));
-	SSYNC();
-}
-
-int icache_status(void)
-{
-	return bfin_read_IMEM_CONTROL() & ENICPLB;
-}
-
-void dcache_enable(void)
-{
-	bfin_write_DMEM_CONTROL(bfin_read_DMEM_CONTROL() | (ACACHE_BCACHE | ENDCPLB | PORT_PREF0));
-	SSYNC();
-}
-
-void dcache_disable(void)
-{
-	bfin_write_DMEM_CONTROL(bfin_read_DMEM_CONTROL() & ~(ACACHE_BCACHE | ENDCPLB | PORT_PREF0));
-	SSYNC();
-}
-
-int dcache_status(void)
-{
-	return bfin_read_DMEM_CONTROL() & ENDCPLB;
-}
+ulong bfin_poweron_retx;
 
 __attribute__ ((__noreturn__))
 void cpu_init_f(ulong bootflag, ulong loaded_from_ldr)
@@ -82,6 +50,9 @@ void cpu_init_f(ulong bootflag, ulong loaded_from_ldr)
 	else
 		bfin_write_EBIU_AMGCTL(CONFIG_EBIU_AMGCTL_VAL);
 #endif
+
+	/* Save RETX so we can pass it while booting Linux */
+	bfin_poweron_retx = bootflag;
 
 #ifdef CONFIG_DEBUG_DUMP
 	/* Turn on hardware trace buffer */
@@ -133,9 +104,8 @@ int irq_init(void)
 	bfin_write_EVT15(evt_default);
 	bfin_write_ILAT(0);
 	CSYNC();
-	/* enable all interrupts except for core timer */
-	irq_flags = 0xffffffbf;
+	/* enable hardware error irq */
+	irq_flags = 0x3f;
 	local_irq_enable();
-	CSYNC();
 	return 0;
 }

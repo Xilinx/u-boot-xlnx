@@ -68,7 +68,7 @@ static char *lbuf;
 
 unsigned long __logbuffer_base(void)
 {
-	return CFG_SDRAM_BASE + gd->bd->bi_memsize - LOGBUFF_LEN;
+	return CONFIG_SYS_SDRAM_BASE + gd->bd->bi_memsize - LOGBUFF_LEN;
 }
 unsigned long logbuffer_base (void) __attribute__((weak, alias("__logbuffer_base")));
 
@@ -241,18 +241,18 @@ int do_log (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			}
 			return 0;
 		}
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 }
 
 U_BOOT_CMD(
 	log,     255,	1,	do_log,
-	"log     - manipulate logbuffer\n",
+	"manipulate logbuffer",
 	"info   - show pointer details\n"
 	"log reset  - clear contents\n"
 	"log show   - show contents\n"

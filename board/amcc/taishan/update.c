@@ -51,7 +51,7 @@ const uchar bootstrap_buf[16] = {
 static int update_boot_eeprom(void)
 {
 	ulong len = 0x10;
-	uchar chip = CFG_BOOTSTRAP_IIC_ADDR;
+	uchar chip = CONFIG_SYS_BOOTSTRAP_IIC_ADDR;
 	uchar *pbuf = (uchar *)bootstrap_buf;
 	int ii, jj;
 
@@ -74,5 +74,5 @@ int do_update_boot_eeprom(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(update_boot_eeprom, 1, 1, do_update_boot_eeprom,
-	   "update_boot_eeprom  - update bootstrap eeprom content\n", NULL);
+	   "update bootstrap eeprom content", NULL);
 #endif

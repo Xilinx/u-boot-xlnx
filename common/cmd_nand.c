@@ -160,9 +160,50 @@ out:
 	if (*size == nand->size)
 		puts("whole chip\n");
 	else
-		printf("offset 0x%lx, size 0x%x\n", *off, *size);
+		printf("offset 0x%lx, size 0x%zx\n", *off, *size);
 	return 0;
 }
+
+#ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
+static void print_status(ulong start, ulong end, ulong erasesize, int status)
+{
+	printf("%08lx - %08lx: %08lx blocks %s%s%s\n",
+		start,
+		end - 1,
+		(end - start) / erasesize,
+		((status & NAND_LOCK_STATUS_TIGHT) ?  "TIGHT " : ""),
+		((status & NAND_LOCK_STATUS_LOCK) ?  "LOCK " : ""),
+		((status & NAND_LOCK_STATUS_UNLOCK) ?  "UNLOCK " : ""));
+}
+
+static void do_nand_status(nand_info_t *nand)
+{
+	ulong block_start = 0;
+	ulong off;
+	int last_status = -1;
+
+	struct nand_chip *nand_chip = nand->priv;
+	/* check the WP bit */
+	nand_chip->cmdfunc(nand, NAND_CMD_STATUS, -1, -1);
+	printf("device is %swrite protected\n",
+		(nand_chip->read_byte(nand) & 0x80 ?
+		"NOT " : ""));
+
+	for (off = 0; off < nand->size; off += nand->erasesize) {
+		int s = nand_get_lock_status(nand, off);
+
+		/* print message only if status has changed */
+		if (s != last_status && off != 0) {
+			print_status(block_start, off, nand->erasesize,
+					last_status);
+			block_start = off;
+		}
+		last_status = s;
+	}
+	/* Print the last block info */
+	print_status(block_start, off, nand->erasesize, last_status);
+}
+#endif
 
 int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
@@ -171,8 +212,8 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	size_t size;
 	char *cmd, *s;
 	nand_info_t *nand;
-#ifdef CFG_NAND_QUIET
-	int quiet = CFG_NAND_QUIET;
+#ifdef CONFIG_SYS_NAND_QUIET
+	int quiet = CONFIG_SYS_NAND_QUIET;
 #else
 	int quiet = 0;
 #endif
@@ -190,7 +231,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	if (strcmp(cmd, "info") == 0) {
 
 		putc('\n');
-		for (i = 0; i < CFG_MAX_NAND_DEVICE; i++) {
+		for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++) {
 			if (nand_info[i].name)
 				printf("Device %d: %s, sector size %u KiB\n",
 				       i, nand_info[i].name,
@@ -203,7 +244,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 		if (argc < 3) {
 			if ((nand_curr_device < 0) ||
-			    (nand_curr_device >= CFG_MAX_NAND_DEVICE))
+			    (nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE))
 				puts("\nno devices available\n");
 			else
 				printf("\nDevice %d: %s\n", nand_curr_device,
@@ -211,7 +252,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			return 0;
 		}
 		dev = (int)simple_strtoul(argv[2], NULL, 10);
-		if (dev < 0 || dev >= CFG_MAX_NAND_DEVICE || !nand_info[dev].name) {
+		if (dev < 0 || dev >= CONFIG_SYS_MAX_NAND_DEVICE || !nand_info[dev].name) {
 			puts("No such device\n");
 			return 1;
 		}
@@ -219,7 +260,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		puts("... is now current device\n");
 		nand_curr_device = dev;
 
-#ifdef CFG_NAND_SELECT_DEVICE
+#ifdef CONFIG_SYS_NAND_SELECT_DEVICE
 		/*
 		 * Select the chip in the board/cpu specific driver
 		 */
@@ -238,7 +279,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		goto usage;
 
 	/* the following commands operate on the current device */
-	if (nand_curr_device < 0 || nand_curr_device >= CFG_MAX_NAND_DEVICE ||
+	if (nand_curr_device < 0 || nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE ||
 	    !nand_info[nand_curr_device].name) {
 		puts("\nno devices available\n");
 		return 1;
@@ -357,7 +398,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			return 1;
 		}
 
-		printf(" %d bytes %s: %s\n", size,
+		printf(" %zu bytes %s: %s\n", size,
 		       read ? "read" : "written", ret ? "ERROR" : "OK");
 
 		return ret == 0 ? 0 : 1;
@@ -383,8 +424,9 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
+#ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 	if (strcmp(cmd, "lock") == 0) {
-		int tight  = 0;
+		int tight = 0;
 		int status = 0;
 		if (argc == 3) {
 			if (!strcmp("tight", argv[2]))
@@ -392,44 +434,8 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			if (!strcmp("status", argv[2]))
 				status = 1;
 		}
-/*
- * ! BROKEN !
- *
- * TODO: must be implemented and tested by someone with HW
- */
-#if 0
 		if (status) {
-			ulong block_start = 0;
-			ulong off;
-			int last_status = -1;
-
-			struct nand_chip *nand_chip = nand->priv;
-			/* check the WP bit */
-			nand_chip->cmdfunc (nand, NAND_CMD_STATUS, -1, -1);
-			printf("device is %swrite protected\n",
-			       (nand_chip->read_byte(nand) & 0x80 ?
-			       "NOT " : ""));
-
-			for (off = 0; off < nand->size; off += nand->writesize) {
-				int s = nand_get_lock_status(nand, off);
-
-				/* print message only if status has changed
-				 * or at end of chip
-				 */
-				if (off == nand->size - nand->writesize
-				    || (s != last_status && off != 0))	{
-
-					printf("%08lx - %08lx: %8d pages %s%s%s\n",
-					       block_start,
-					       off-1,
-					       (off-block_start)/nand->writesize,
-					       ((last_status & NAND_LOCK_STATUS_TIGHT) ? "TIGHT " : ""),
-					       ((last_status & NAND_LOCK_STATUS_LOCK) ? "LOCK " : ""),
-					       ((last_status & NAND_LOCK_STATUS_UNLOCK) ? "UNLOCK " : ""));
-				}
-
-				last_status = s;
-			}
+			do_nand_status(nand);
 		} else {
 			if (!nand_lock(nand, tight)) {
 				puts("NAND flash successfully locked\n");
@@ -438,7 +444,6 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 				return 1;
 			}
 		}
-#endif
 		return 0;
 	}
 
@@ -446,12 +451,6 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		if (arg_off_size(argc - 2, argv + 2, nand, &off, &size) < 0)
 			return 1;
 
-/*
- * ! BROKEN !
- *
- * TODO: must be implemented and tested by someone with HW
- */
-#if 0
 		if (!nand_unlock(nand, off, size)) {
 			puts("NAND flash successfully unlocked\n");
 		} else {
@@ -459,17 +458,17 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			     "write and erase will probably fail\n");
 			return 1;
 		}
-#endif
 		return 0;
 	}
+#endif
 
 usage:
-	printf("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(nand, 5, 1, do_nand,
-	   "nand - NAND sub-system\n",
+	   "NAND sub-system",
 	   "info - show available NAND devices\n"
 	   "nand device [dev] - show or set current device\n"
 	   "nand read - addr off|partition size\n"
@@ -483,9 +482,12 @@ U_BOOT_CMD(nand, 5, 1, do_nand,
 	   "nand scrub - really clean NAND erasing bad blocks (UNSAFE)\n"
 	   "nand markbad off - mark bad block at offset (UNSAFE)\n"
 	   "nand biterr off - make a bit error at offset (UNSAFE)\n"
+#ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
 	   "nand lock [tight] [status]\n"
 	   "    bring nand to lock state or display locked pages\n"
-	   "nand unlock [offset] [size] - unlock section\n");
+	   "nand unlock [offset] [size] - unlock section\n"
+#endif
+);
 
 static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 			   ulong offset, ulong addr, char *cmd)
@@ -606,7 +608,7 @@ int do_nandboot(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			if (argc == 3)
 				addr = simple_strtoul(argv[1], NULL, 16);
 			else
-				addr = CFG_LOAD_ADDR;
+				addr = CONFIG_SYS_LOAD_ADDR;
 			return nand_load_image(cmdtp, &nand_info[dev->id->num],
 					       part->offset, addr, argv[0]);
 		}
@@ -616,7 +618,7 @@ int do_nandboot(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	show_boot_progress(52);
 	switch (argc) {
 	case 1:
-		addr = CFG_LOAD_ADDR;
+		addr = CONFIG_SYS_LOAD_ADDR;
 		boot_device = getenv("bootdevice");
 		break;
 	case 2:
@@ -636,7 +638,7 @@ int do_nandboot(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 #if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
 usage:
 #endif
-		printf("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		show_boot_progress(-53);
 		return 1;
 	}
@@ -651,7 +653,7 @@ usage:
 
 	idx = simple_strtoul(boot_device, NULL, 16);
 
-	if (idx < 0 || idx >= CFG_MAX_NAND_DEVICE || !nand_info[idx].name) {
+	if (idx < 0 || idx >= CONFIG_SYS_MAX_NAND_DEVICE || !nand_info[idx].name) {
 		printf("\n** Device %d not available\n", idx);
 		show_boot_progress(-55);
 		return 1;
@@ -662,7 +664,7 @@ usage:
 }
 
 U_BOOT_CMD(nboot, 4, 1, do_nandboot,
-	"nboot   - boot from NAND device\n",
+	"boot from NAND device",
 	"[partition] | [[[loadAddr] dev] offset]\n");
 
 #endif
@@ -728,7 +730,7 @@ void archflashwp(void *archdata, int wp);
 /*
  * Imports from nand_legacy.c
  */
-extern struct nand_chip nand_dev_desc[CFG_MAX_NAND_DEVICE];
+extern struct nand_chip nand_dev_desc[CONFIG_SYS_MAX_NAND_DEVICE];
 extern int curr_device;
 extern int nand_legacy_erase(struct nand_chip *nand, size_t ofs,
 			    size_t len, int clean);
@@ -749,7 +751,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	switch (argc) {
 	case 0:
 	case 1:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	case 2:
 		if (strcmp (argv[1], "info") == 0) {
@@ -757,7 +759,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 			putc ('\n');
 
-			for (i = 0; i < CFG_MAX_NAND_DEVICE; ++i) {
+			for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; ++i) {
 				if (nand_dev_desc[i].ChipID ==
 				    NAND_ChipID_UNKNOWN)
 					continue;	/* list only known devices */
@@ -768,7 +770,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 		} else if (strcmp (argv[1], "device") == 0) {
 			if ((curr_device < 0)
-			    || (curr_device >= CFG_MAX_NAND_DEVICE)) {
+			    || (curr_device >= CONFIG_SYS_MAX_NAND_DEVICE)) {
 				puts ("\nno devices available\n");
 				return 1;
 			}
@@ -778,7 +780,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 		} else if (strcmp (argv[1], "bad") == 0) {
 			if ((curr_device < 0)
-			    || (curr_device >= CFG_MAX_NAND_DEVICE)) {
+			    || (curr_device >= CONFIG_SYS_MAX_NAND_DEVICE)) {
 				puts ("\nno devices available\n");
 				return 1;
 			}
@@ -787,14 +789,14 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			return 0;
 
 		}
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	case 3:
 		if (strcmp (argv[1], "device") == 0) {
 			int dev = (int) simple_strtoul (argv[2], NULL, 10);
 
 			printf ("\nDevice %d: ", dev);
-			if (dev >= CFG_MAX_NAND_DEVICE) {
+			if (dev >= CONFIG_SYS_MAX_NAND_DEVICE) {
 				puts ("unknown device\n");
 				return 1;
 			}
@@ -826,7 +828,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			return ret;
 		}
 
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	default:
 		/* at least 4 args */
@@ -854,19 +856,18 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 							      (u_char *) addr);
 				}
 				return ret;
-			} else if (cmdtail && !strncmp (cmdtail, ".jffs2", 2))
-				cmd |= NANDRW_JFFS2;	/* skip bad blocks */
-			else if (cmdtail && !strncmp (cmdtail, ".jffs2s", 2)) {
+			} else if (cmdtail && !strncmp (cmdtail, ".jffs2s", 7)) {
 				cmd |= NANDRW_JFFS2;	/* skip bad blocks (on read too) */
 				if (cmd & NANDRW_READ)
 					cmd |= NANDRW_JFFS2_SKIP;	/* skip bad blocks (on read too) */
-			}
+			} else if (cmdtail && !strncmp (cmdtail, ".jffs2", 2))
+				cmd |= NANDRW_JFFS2;	/* skip bad blocks */
 #ifdef SXNI855T
 			/* need ".e" same as ".j" for compatibility with older units */
 			else if (cmdtail && !strcmp (cmdtail, ".e"))
 				cmd |= NANDRW_JFFS2;	/* skip bad blocks */
 #endif
-#ifdef CFG_NAND_SKIP_BAD_DOT_I
+#ifdef CONFIG_SYS_NAND_SKIP_BAD_DOT_I
 			/* need ".i" same as ".jffs2s" for compatibility with older units (esd) */
 			/* ".i" for image -> read skips bad block (no 0xff) */
 			else if (cmdtail && !strcmp (cmdtail, ".i")) {
@@ -874,9 +875,9 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 				if (cmd & NANDRW_READ)
 					cmd |= NANDRW_JFFS2_SKIP;	/* skip bad blocks (on read too) */
 			}
-#endif /* CFG_NAND_SKIP_BAD_DOT_I */
+#endif /* CONFIG_SYS_NAND_SKIP_BAD_DOT_I */
 			else if (cmdtail) {
-				printf ("Usage:\n%s\n", cmdtp->usage);
+				cmd_usage(cmdtp);
 				return 1;
 			}
 
@@ -912,7 +913,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 			return ret;
 		} else {
-			printf ("Usage:\n%s\n", cmdtp->usage);
+			cmd_usage(cmdtp);
 			rcode = 1;
 		}
 
@@ -922,7 +923,7 @@ int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	nand,	5,	1,	do_nand,
-	"nand    - legacy NAND sub-system\n",
+	"legacy NAND sub-system",
 	"info  - show available NAND devices\n"
 	"nand device [dev] - show or set current device\n"
 	"nand read[.jffs2[s]]  addr off size\n"
@@ -952,7 +953,7 @@ int do_nandboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	show_boot_progress (52);
 	switch (argc) {
 	case 1:
-		addr = CFG_LOAD_ADDR;
+		addr = CONFIG_SYS_LOAD_ADDR;
 		boot_device = getenv ("bootdevice");
 		break;
 	case 2:
@@ -969,7 +970,7 @@ int do_nandboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		offset = simple_strtoul(argv[3], NULL, 16);
 		break;
 	default:
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		show_boot_progress (-53);
 		return 1;
 	}
@@ -984,7 +985,7 @@ int do_nandboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	dev = simple_strtoul(boot_device, &ep, 16);
 
-	if ((dev >= CFG_MAX_NAND_DEVICE) ||
+	if ((dev >= CONFIG_SYS_MAX_NAND_DEVICE) ||
 	    (nand_dev_desc[dev].ChipID == NAND_ChipID_UNKNOWN)) {
 		printf ("\n** Device %d not available\n", dev);
 		show_boot_progress (-55);
@@ -1071,7 +1072,7 @@ int do_nandboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	nboot,	4,	1,	do_nandboot,
-	"nboot   - boot from NAND device\n",
+	"boot from NAND device",
 	"loadAddr dev\n"
 );
 

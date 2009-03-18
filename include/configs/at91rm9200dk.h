@@ -1,7 +1,7 @@
 /*
  * Rick Bronson <rick@efn.org>
  *
- * Configuation settings for the AT91RM9200DK board.
+ * Configuration settings for the AT91RM9200DK board.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -43,41 +43,43 @@
 #define CONFIG_INITRD_TAG	1
 
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
-#define CFG_USE_MAIN_OSCILLATOR		1
+#define CONFIG_SYS_USE_MAIN_OSCILLATOR		1
 /* flash */
-#define MC_PUIA_VAL	0x00000000
-#define MC_PUP_VAL	0x00000000
-#define MC_PUER_VAL	0x00000000
-#define MC_ASR_VAL	0x00000000
-#define MC_AASR_VAL	0x00000000
-#define EBI_CFGR_VAL	0x00000000
-#define SMC_CSR0_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
+#define CONFIG_SYS_MC_PUIA_VAL	0x00000000
+#define CONFIG_SYS_MC_PUP_VAL	0x00000000
+#define CONFIG_SYS_MC_PUER_VAL	0x00000000
+#define CONFIG_SYS_MC_ASR_VAL	0x00000000
+#define CONFIG_SYS_MC_AASR_VAL	0x00000000
+#define CONFIG_SYS_EBI_CFGR_VAL	0x00000000
+#define CONFIG_SYS_SMC_CSR0_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
 
 /* clocks */
-#define PLLAR_VAL	0x20263E04 /* 179.712000 MHz for PCK */
-#define PLLBR_VAL	0x10483E0E /* 48.054857 MHz (divider by 2 for USB) */
-#define MCKR_VAL	0x00000202 /* PCK/3 = MCK Master Clock = 59.904000MHz from PLLA */
+#define CONFIG_SYS_PLLAR_VAL	0x20263E04 /* 179.712000 MHz for PCK */
+#define CONFIG_SYS_PLLBR_VAL	0x10483E0E /* 48.054857 MHz (divider by 2 for USB) */
+#define CONFIG_SYS_MCKR_VAL	0x00000202 /* PCK/3 = MCK Master Clock = 59.904000MHz from PLLA */
 
 /* sdram */
-#define PIOC_ASR_VAL	0xFFFF0000 /* Configure PIOC as peripheral (D16/D31) */
-#define PIOC_BSR_VAL	0x00000000
-#define PIOC_PDR_VAL	0xFFFF0000
-#define EBI_CSA_VAL	0x00000002 /* CS1=SDRAM */
-#define SDRC_CR_VAL	0x2188c155 /* set up the SDRAM */
-#define SDRAM		0x20000000 /* address of the SDRAM */
-#define SDRAM1		0x20000080 /* address of the SDRAM */
-#define SDRAM_VAL	0x00000000 /* value written to SDRAM */
-#define SDRC_MR_VAL	0x00000002 /* Precharge All */
-#define SDRC_MR_VAL1	0x00000004 /* refresh */
-#define SDRC_MR_VAL2	0x00000003 /* Load Mode Register */
-#define SDRC_MR_VAL3	0x00000000 /* Normal Mode */
-#define SDRC_TR_VAL	0x000002E0 /* Write refresh rate */
+#define CONFIG_SYS_PIOC_ASR_VAL	0xFFFF0000 /* Configure PIOC as peripheral (D16/D31) */
+#define CONFIG_SYS_PIOC_BSR_VAL	0x00000000
+#define CONFIG_SYS_PIOC_PDR_VAL	0xFFFF0000
+#define CONFIG_SYS_EBI_CSA_VAL	0x00000002 /* CS1=CONFIG_SYS_SDRAM */
+#define CONFIG_SYS_SDRC_CR_VAL	0x2188c155 /* set up the CONFIG_SYS_SDRAM */
+#define CONFIG_SYS_SDRAM	0x20000000 /* address of the CONFIG_SYS_SDRAM */
+#define CONFIG_SYS_SDRAM1	0x20000080 /* address of the CONFIG_SYS_SDRAM */
+#define CONFIG_SYS_SDRAM_VAL	0x00000000 /* value written to CONFIG_SYS_SDRAM */
+#define CONFIG_SYS_SDRC_MR_VAL	0x00000002 /* Precharge All */
+#define CONFIG_SYS_SDRC_MR_VAL1	0x00000004 /* refresh */
+#define CONFIG_SYS_SDRC_MR_VAL2	0x00000003 /* Load Mode Register */
+#define CONFIG_SYS_SDRC_MR_VAL3	0x00000000 /* Normal Mode */
+#define CONFIG_SYS_SDRC_TR_VAL	0x000002E0 /* Write refresh rate */
+#else
+#define CONFIG_SKIP_RELOCATE_UBOOT
 #endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
 /*
  * Size of malloc() pool
  */
-#define CFG_MALLOC_LEN	(CFG_ENV_SIZE + 128*1024)
-#define CFG_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
+#define CONFIG_SYS_MALLOC_LEN	(CONFIG_ENV_SIZE + 128*1024)
+#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size in bytes reserved for initial data */
 
 #define CONFIG_BAUDRATE 115200
 
@@ -118,7 +120,7 @@
 
 #define CONFIG_NAND_LEGACY
 
-#define CFG_MAX_NAND_DEVICE	1	/* Max number of NAND devices		*/
+#define CONFIG_SYS_MAX_NAND_DEVICE	1	/* Max number of NAND devices		*/
 #define SECTORSIZE 512
 
 #define ADDR_COLUMN 1
@@ -127,7 +129,6 @@
 
 #define NAND_ChipID_UNKNOWN	0x00
 #define NAND_MAX_FLOORS 1
-#define NAND_MAX_CHIPS 1
 
 #define AT91_SMART_MEDIA_ALE (1 << 22)	/* our ALE is AD22 */
 #define AT91_SMART_MEDIA_CLE (1 << 21)	/* our CLE is AD21 */
@@ -152,8 +153,8 @@
 #define PHYS_SDRAM 0x20000000
 #define PHYS_SDRAM_SIZE 0x2000000  /* 32 megs */
 
-#define CFG_MEMTEST_START		PHYS_SDRAM
-#define CFG_MEMTEST_END			CFG_MEMTEST_START + PHYS_SDRAM_SIZE - 262144
+#define CONFIG_SYS_MEMTEST_START		PHYS_SDRAM
+#define CONFIG_SYS_MEMTEST_END			CONFIG_SYS_MEMTEST_START + PHYS_SDRAM_SIZE - 262144
 
 #define CONFIG_DRIVER_ETHER
 #define CONFIG_NET_RETRY_COUNT		20
@@ -165,59 +166,59 @@
 #define DATAFLASH_TCHS	(0x1 << 24)
 
 #define CONFIG_HAS_DATAFLASH		1
-#define CFG_SPI_WRITE_TOUT		(5*CFG_HZ)
-#define CFG_MAX_DATAFLASH_BANKS		2
-#define CFG_MAX_DATAFLASH_PAGES		16384
-#define CFG_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* Logical adress for CS0 */
-#define CFG_DATAFLASH_LOGIC_ADDR_CS3	0xD0000000	/* Logical adress for CS3 */
+#define CONFIG_SYS_SPI_WRITE_TOUT		(5*CONFIG_SYS_HZ)
+#define CONFIG_SYS_MAX_DATAFLASH_BANKS		2
+#define CONFIG_SYS_MAX_DATAFLASH_PAGES		16384
+#define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* Logical adress for CS0 */
+#define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS3	0xD0000000	/* Logical adress for CS3 */
 
 #define PHYS_FLASH_1			0x10000000
 #define PHYS_FLASH_SIZE			0x200000  /* 2 megs main flash */
-#define CFG_FLASH_BASE			PHYS_FLASH_1
-#define CFG_MAX_FLASH_BANKS		1
-#define CFG_MAX_FLASH_SECT		256
-#define CFG_FLASH_ERASE_TOUT		(2*CFG_HZ) /* Timeout for Flash Erase */
-#define CFG_FLASH_WRITE_TOUT		(2*CFG_HZ) /* Timeout for Flash Write */
+#define CONFIG_SYS_FLASH_BASE			PHYS_FLASH_1
+#define CONFIG_SYS_MAX_FLASH_BANKS		1
+#define CONFIG_SYS_MAX_FLASH_SECT		256
+#define CONFIG_SYS_FLASH_ERASE_TOUT		(2*CONFIG_SYS_HZ) /* Timeout for Flash Erase */
+#define CONFIG_SYS_FLASH_WRITE_TOUT		(2*CONFIG_SYS_HZ) /* Timeout for Flash Write */
 
-#undef	CFG_ENV_IS_IN_DATAFLASH
+#undef	CONFIG_ENV_IS_IN_DATAFLASH
 
-#ifdef CFG_ENV_IS_IN_DATAFLASH
-#define CFG_ENV_OFFSET			0x20000
-#define CFG_ENV_ADDR			(CFG_DATAFLASH_LOGIC_ADDR_CS0 + CFG_ENV_OFFSET)
-#define CFG_ENV_SIZE			0x2000  /* 0x8000 */
+#ifdef CONFIG_ENV_IS_IN_DATAFLASH
+#define CONFIG_ENV_OFFSET			0x20000
+#define CONFIG_ENV_ADDR			(CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0 + CONFIG_ENV_OFFSET)
+#define CONFIG_ENV_SIZE			0x2000  /* 0x8000 */
 #else
-#define CFG_ENV_IS_IN_FLASH		1
+#define CONFIG_ENV_IS_IN_FLASH		1
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
-#define CFG_ENV_ADDR			(PHYS_FLASH_1 + 0xe000)  /* between boot.bin and u-boot.bin.gz */
-#define CFG_ENV_SIZE			0x2000  /* 0x8000 */
+#define CONFIG_ENV_ADDR			(PHYS_FLASH_1 + 0xe000)  /* between boot.bin and u-boot.bin.gz */
+#define CONFIG_ENV_SIZE			0x2000  /* 0x8000 */
 #else
-#define CFG_ENV_ADDR			(PHYS_FLASH_1 + 0x60000)  /* after u-boot.bin */
-#define CFG_ENV_SIZE			0x10000 /* sectors are 64K here */
+#define CONFIG_ENV_ADDR			(PHYS_FLASH_1 + 0x60000)  /* after u-boot.bin */
+#define CONFIG_ENV_SIZE			0x10000 /* sectors are 64K here */
 #endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
-#endif	/* CFG_ENV_IS_IN_DATAFLASH */
+#endif	/* CONFIG_ENV_IS_IN_DATAFLASH */
 
 
-#define CFG_LOAD_ADDR		0x21000000  /* default load address */
+#define CONFIG_SYS_LOAD_ADDR		0x21000000  /* default load address */
 
 #ifdef CONFIG_SKIP_LOWLEVEL_INIT
-#define CFG_BOOT_SIZE		0x6000 /* 24 KBytes */
-#define CFG_U_BOOT_BASE		(PHYS_FLASH_1 + 0x10000)
-#define CFG_U_BOOT_SIZE		0x10000 /* 64 KBytes */
+#define CONFIG_SYS_BOOT_SIZE		0x6000 /* 24 KBytes */
+#define CONFIG_SYS_U_BOOT_BASE		(PHYS_FLASH_1 + 0x10000)
+#define CONFIG_SYS_U_BOOT_SIZE		0x10000 /* 64 KBytes */
 #else
-#define CFG_BOOT_SIZE		0x00 /* 0 KBytes */
-#define CFG_U_BOOT_BASE		PHYS_FLASH_1
-#define CFG_U_BOOT_SIZE		0x60000 /* 384 KBytes */
+#define CONFIG_SYS_BOOT_SIZE		0x00 /* 0 KBytes */
+#define CONFIG_SYS_U_BOOT_BASE		PHYS_FLASH_1
+#define CONFIG_SYS_U_BOOT_SIZE		0x60000 /* 384 KBytes */
 #endif	/* CONFIG_SKIP_LOWLEVEL_INIT */
 
-#define CFG_BAUDRATE_TABLE	{ 115200, 19200, 38400, 57600, 9600 }
+#define CONFIG_SYS_BAUDRATE_TABLE	{ 115200, 19200, 38400, 57600, 9600 }
 
-#define CFG_PROMPT		"U-Boot> "	/* Monitor Command Prompt */
-#define CFG_CBSIZE		256		/* Console I/O Buffer Size */
-#define CFG_MAXARGS		16		/* max number of command args */
-#define CFG_PBSIZE		(CFG_CBSIZE+sizeof(CFG_PROMPT)+16) /* Print Buffer Size */
+#define CONFIG_SYS_PROMPT		"U-Boot> "	/* Monitor Command Prompt */
+#define CONFIG_SYS_CBSIZE		256		/* Console I/O Buffer Size */
+#define CONFIG_SYS_MAXARGS		16		/* max number of command args */
+#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* Print Buffer Size */
 
-#define CFG_HZ 1000
-#define CFG_HZ_CLOCK AT91C_MASTER_CLOCK/2	/* AT91C_TC0_CMR is implicitly set to */
+#define CONFIG_SYS_HZ 1000
+#define CONFIG_SYS_HZ_CLOCK AT91C_MASTER_CLOCK/2	/* AT91C_TC0_CMR is implicitly set to */
 						/* AT91C_TC_TIMER_DIV1_CLOCK */
 
 #define CONFIG_STACKSIZE	(32*1024)	/* regular stack */

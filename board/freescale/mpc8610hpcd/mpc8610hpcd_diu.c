@@ -43,7 +43,7 @@ static int xres, yres;
 
 void diu_set_pixel_clock(unsigned int pixclock)
 {
-	volatile immap_t *immap = (immap_t *)CFG_IMMR;
+	volatile immap_t *immap = (immap_t *)CONFIG_SYS_IMMR;
 	volatile ccsr_gur_t *gur = &immap->im_gur;
 	volatile unsigned int *guts_clkdvdr = &gur->clkdvdr;
 	unsigned long speed_ccb, temp, pixval;
@@ -116,7 +116,7 @@ int mpc8610diu_init_show_bmp(cmd_tbl_t *cmdtp,
 	unsigned int addr;
 
 	if (argc < 2) {
-		printf ("Usage:\n%s\n", cmdtp->usage);
+		cmd_usage(cmdtp);
 		return 1;
 	}
 
@@ -137,8 +137,8 @@ int mpc8610diu_init_show_bmp(cmd_tbl_t *cmdtp,
 }
 
 U_BOOT_CMD(
-	diufb, CFG_MAXARGS, 1, mpc8610diu_init_show_bmp,
-	"diufb init | addr - Init or Display BMP file\n",
+	diufb, CONFIG_SYS_MAXARGS, 1, mpc8610diu_init_show_bmp,
+	"Init or Display BMP file",
 	"init\n    - initialize DIU\n"
 	"addr\n    - display bmp at address 'addr'\n"
 	);

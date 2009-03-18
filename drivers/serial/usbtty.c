@@ -22,16 +22,14 @@
  */
 
 #include <common.h>
-
+#include <config.h>
 #include <circbuf.h>
 #include <devices.h>
 #include "usbtty.h"
 #include "usb_cdc_acm.h"
 #include "usbdescriptors.h"
-#include <config.h>		/* If defined, override Linux identifiers with
-				 * vendor specific ones */
 
-#if 0
+#ifdef DEBUG
 #define TTYDBG(fmt,args...)\
 	serial_printf("[%s] %s %d: "fmt, __FILE__,__FUNCTION__,__LINE__,##args)
 #else
@@ -152,8 +150,7 @@ struct acm_config_desc {
 
 	/* Slave Interface */
 	struct usb_interface_descriptor data_class_interface;
-	struct usb_endpoint_descriptor
-		data_endpoints[NUM_ENDPOINTS-1] __attribute__((packed));
+	struct usb_endpoint_descriptor data_endpoints[NUM_ENDPOINTS-1];
 } __attribute__((packed));
 
 static struct acm_config_desc acm_configuration_descriptors[NUM_CONFIGS] = {
@@ -282,10 +279,8 @@ static struct rs232_emu rs232_desc={
 struct gserial_config_desc {
 
 	struct usb_configuration_descriptor configuration_desc;
-	struct usb_interface_descriptor
-		interface_desc[NUM_GSERIAL_INTERFACES] __attribute__((packed));
-	struct usb_endpoint_descriptor
-		data_endpoints[NUM_ENDPOINTS] __attribute__((packed));
+	struct usb_interface_descriptor	interface_desc[NUM_GSERIAL_INTERFACES];
+	struct usb_endpoint_descriptor data_endpoints[NUM_ENDPOINTS];
 
 } __attribute__((packed));
 
@@ -435,6 +430,9 @@ int usbtty_getc (void)
  */
 void usbtty_putc (const char c)
 {
+	if (!usbtty_configured ())
+		return;
+
 	buf_push (&usbtty_output, &c, 1);
 	/* If \n, also do \r */
 	if (c == '\n')
@@ -488,8 +486,12 @@ static void __usbtty_puts (const char *str, int len)
 void usbtty_puts (const char *str)
 {
 	int n;
-	int len = strlen (str);
+	int len;
 
+	if (!usbtty_configured ())
+		return;
+
+	len = strlen (str);
 	/* add '\r' for each '\n' */
 	while (len > 0) {
 		n = next_nl_pos (str);

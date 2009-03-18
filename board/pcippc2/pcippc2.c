@@ -28,6 +28,7 @@
 #include <linux/mtd/doc2000.h>
 #include <watchdog.h>
 #include <pci.h>
+#include <netdev.h>
 
 #include "hardware.h"
 #include "pcippc2.h"
@@ -229,13 +230,13 @@ int do_wd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	default:
 		break;
 	}
-	printf ("Usage:\n%s\n", cmdtp->usage);
+	cmd_usage(cmdtp);
 	return 1;
 }
 
 U_BOOT_CMD(
 	wd,	2,	1,	do_wd,
-	"wd      - check and set watchdog\n",
+	"check and set watchdog",
 	"on   - switch watchDog on\n"
 	"wd off  - switch watchdog off\n"
 	"wd      - print current status\n"
@@ -243,3 +244,8 @@ U_BOOT_CMD(
 
 #endif
 #endif	/* CONFIG_WATCHDOG */
+
+int board_eth_init(bd_t *bis)
+{
+	return pci_eth_init(bis);
+}

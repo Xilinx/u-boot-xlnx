@@ -26,6 +26,11 @@
 #include <common.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
+#ifdef CONFIG_ADDR_MAP
+#include <addr_map.h>
+#endif
+
+DECLARE_GLOBAL_DATA_PTR;
 
 void set_tlb(u8 tlb, u32 epn, u64 rpn,
 	     u8 perms, u8 wimge,
@@ -47,6 +52,11 @@ void set_tlb(u8 tlb, u32 epn, u64 rpn,
 	mtspr(MAS7, _mas7);
 #endif
 	asm volatile("isync;msync;tlbwe;isync");
+
+#ifdef CONFIG_ADDR_MAP
+	if ((tlb == 1) && (gd->flags & GD_FLG_RELOC))
+		addrmap_set_entry(epn, rpn, (1UL << ((tsize * 2) + 10)), esel);
+#endif
 }
 
 void disable_tlb(u8 esel)
@@ -67,6 +77,11 @@ void disable_tlb(u8 esel)
 	mtspr(MAS7, _mas7);
 #endif
 	asm volatile("isync;msync;tlbwe;isync");
+
+#ifdef CONFIG_ADDR_MAP
+	if (gd->flags & GD_FLG_RELOC)
+		addrmap_set_entry(0, 0, 0, esel);
+#endif
 }
 
 void invalidate_tlb(u8 tlb)
@@ -91,63 +106,66 @@ void init_tlbs(void)
 	return ;
 }
 
+#ifdef CONFIG_ADDR_MAP
+void init_addr_map(void)
+{
+	int i;
+
+	for (i = 0; i < num_tlb_entries; i++) {
+		if (tlb_table[i].tlb == 0)
+			continue;
+
+		addrmap_set_entry(tlb_table[i].epn,
+			tlb_table[i].rpn,
+			(1UL << ((tlb_table[i].tsize * 2) + 10)),
+			tlb_table[i].esel);
+	}
+
+	return ;
+}
+#endif
+
+#ifndef CONFIG_SYS_DDR_TLB_START
+#define CONFIG_SYS_DDR_TLB_START 8
+#endif
+
 unsigned int setup_ddr_tlbs(unsigned int memsize_in_meg)
 {
 	unsigned int tlb_size;
-	unsigned int ram_tlb_index;
-	unsigned int ram_tlb_address;
+	unsigned int ram_tlb_index = CONFIG_SYS_DDR_TLB_START;
+	unsigned int ram_tlb_address = (unsigned int)CONFIG_SYS_DDR_SDRAM_BASE;
+	unsigned int max_cam = (mfspr(SPRN_TLB1CFG) >> 16) & 0xff;
+	u64 size, memsize = (u64)memsize_in_meg << 20;
 
-	/*
-	 * Determine size of each TLB1 entry.
-	 */
-	switch (memsize_in_meg) {
-	case 16:
-	case 32:
-		tlb_size = BOOKE_PAGESZ_16M;
-		break;
-	case 64:
-	case 128:
-		tlb_size = BOOKE_PAGESZ_64M;
-		break;
-	case 256:
-	case 512:
-		tlb_size = BOOKE_PAGESZ_256M;
-		break;
-	case 1024:
-	case 2048:
-		if (PVR_VER(get_pvr()) > PVR_VER(PVR_85xx))
-			tlb_size = BOOKE_PAGESZ_1G;
-		else
-			tlb_size = BOOKE_PAGESZ_256M;
-		break;
-	default:
-		puts("DDR: only 16M, 32M, 64M, 128M, 256M, 512M, 1G"
-			" and 2G are supported.\n");
+	size = min(memsize, CONFIG_MAX_MEM_MAPPED);
 
-		/*
-		 * The memory was not able to be mapped.
-		 * Default to a small size.
-		 */
-		tlb_size = BOOKE_PAGESZ_64M;
-		memsize_in_meg = 64;
-		break;
-	}
+	/* Convert (4^max) kB to (2^max) bytes */
+	max_cam = max_cam * 2 + 10;
 
-	/*
-	 * Configure DDR TLB1 entries.
-	 * Starting at TLB1 8, use no more than 8 TLB1 entries.
-	 */
-	ram_tlb_index = 8;
-	ram_tlb_address = (unsigned int)CFG_DDR_SDRAM_BASE;
-	while (ram_tlb_address < (memsize_in_meg * 1024 * 1024)
-	      && ram_tlb_index < 16) {
+	for (; size && ram_tlb_index < 16; ram_tlb_index++) {
+		u32 camsize = __ilog2_u64(size) & ~1U;
+		u32 align = __ilog2(ram_tlb_address) & ~1U;
+
+		if (align == -2) align = max_cam;
+		if (camsize > align)
+			camsize = align;
+
+		if (camsize > max_cam)
+			camsize = max_cam;
+
+		tlb_size = (camsize - 10) / 2;
+
 		set_tlb(1, ram_tlb_address, ram_tlb_address,
 			MAS3_SX|MAS3_SW|MAS3_SR, 0,
 			0, ram_tlb_index, tlb_size, 1);
 
-		ram_tlb_address += (0x1000 << ((tlb_size - 1) * 2));
-		ram_tlb_index++;
+		size -= 1ULL << camsize;
+		memsize -= 1ULL << camsize;
+		ram_tlb_address += 1UL << camsize;
 	}
+
+	if (memsize)
+		printf("%lldM left unmapped\n", memsize >> 20);
 
 	/*
 	 * Confirm that the requested amount of memory was mapped.

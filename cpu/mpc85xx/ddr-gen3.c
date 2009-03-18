@@ -19,13 +19,14 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 {
 	unsigned int i;
 	volatile ccsr_ddr_t *ddr;
+	u32 temp_sdram_cfg;
 
 	switch (ctrl_num) {
 	case 0:
-		ddr = (void *)CFG_MPC85xx_DDR_ADDR;
+		ddr = (void *)CONFIG_SYS_MPC85xx_DDR_ADDR;
 		break;
 	case 1:
-		ddr = (void *)CFG_MPC85xx_DDR2_ADDR;
+		ddr = (void *)CONFIG_SYS_MPC85xx_DDR2_ADDR;
 		break;
 	default:
 		printf("%s unexpected ctrl_num = %u\n", __FUNCTION__, ctrl_num);
@@ -78,16 +79,23 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 	out_be32(&ddr->ddr_sdram_rcw_1, regs->ddr_sdram_rcw_1);
 	out_be32(&ddr->ddr_sdram_rcw_2, regs->ddr_sdram_rcw_2);
 
+	/* Do not enable the memory */
+	temp_sdram_cfg = in_be32(&ddr->sdram_cfg);
+	temp_sdram_cfg &= ~(SDRAM_CFG_MEM_EN);
+	out_be32(&ddr->sdram_cfg, temp_sdram_cfg);
 	/*
-	 * 32-bit workaround for DDR2
-	 * 32_BE
+	 * For 8572 DDR1 erratum - DDR controller may enter illegal state
+	 * when operatiing in 32-bit bus mode with 4-beat bursts,
+	 * This erratum does not affect DDR3 mode, only for DDR2 mode.
 	 */
+#ifdef CONFIG_MPC8572
 	if ((((in_be32(&ddr->sdram_cfg) >> 24) & 0x7) == SDRAM_TYPE_DDR2)
-	    && in_be32(&ddr->sdram_cfg_2) & 0x80000) {
+	    && in_be32(&ddr->sdram_cfg) & 0x80000) {
 		/* set DEBUG_1[31] */
 		u32 temp = in_be32(&ddr->debug_1);
 		out_be32(&ddr->debug_1, temp | 1);
 	}
+#endif
 
 	/*
 	 * 200 painful micro-seconds must elapse between
@@ -96,7 +104,9 @@ void fsl_ddr_set_memctl_regs(const fsl_ddr_cfg_regs_t *regs,
 	udelay(200);
 	asm volatile("sync;isync");
 
-	out_be32(&ddr->sdram_cfg, regs->ddr_sdram_cfg);
+	/* Let the controller go */
+	temp_sdram_cfg = in_be32(&ddr->sdram_cfg);
+	out_be32(&ddr->sdram_cfg, temp_sdram_cfg | SDRAM_CFG_MEM_EN);
 
 	/* Poll DDR_SDRAM_CFG_2[D_INIT] bit until auto-data init is done.  */
 	while (in_be32(&ddr->sdram_cfg_2) & 0x10) {

@@ -30,8 +30,6 @@
 #include <logbuff.h>
 #endif
 
-#ifdef CONFIG_POST
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #define POST_MAX_NUMBER		32
@@ -345,7 +343,7 @@ int post_log(char *format, ...)
 {
 	va_list args;
 	uint i;
-	char printbuffer[CFG_PBSIZE];
+	char printbuffer[CONFIG_SYS_PBSIZE];
 
 	va_start(args, format);
 
@@ -419,7 +417,5 @@ void post_reloc(void)
  */
 unsigned long post_time_ms(unsigned long base)
 {
-	return (unsigned long)get_ticks() / (get_tbclk() / CFG_HZ) - base;
+	return (unsigned long)get_ticks() / (get_tbclk() / CONFIG_SYS_HZ) - base;
 }
-
-#endif				/* CONFIG_POST */

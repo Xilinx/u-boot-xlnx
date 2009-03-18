@@ -24,8 +24,11 @@
 CONFIG_BFIN_CPU := $(strip $(subst ",,$(CONFIG_BFIN_CPU)))
 CONFIG_BFIN_BOOT_MODE := $(strip $(subst ",,$(CONFIG_BFIN_BOOT_MODE)))
 
-PLATFORM_RELFLAGS += -ffixed-P5
+PLATFORM_RELFLAGS += -ffixed-P5 -fomit-frame-pointer -mno-fdpic
 PLATFORM_CPPFLAGS += -DCONFIG_BLACKFIN
+
+LDFLAGS += --gc-sections
+PLATFORM_RELFLAGS += -ffunction-sections -fdata-sections
 
 ifneq (,$(CONFIG_BFIN_CPU))
 PLATFORM_RELFLAGS += -mcpu=$(CONFIG_BFIN_CPU)
@@ -33,7 +36,11 @@ endif
 
 SYM_PREFIX = _
 
+LDR_FLAGS += --bmode $(subst BFIN_BOOT_,,$(CONFIG_BFIN_BOOT_MODE))
 LDR_FLAGS += --use-vmas
+ifneq ($(CONFIG_BFIN_BOOT_MODE),BFIN_BOOT_BYPASS)
+LDR_FLAGS += --initcode $(obj)cpu/$(CPU)/initcode.o
+endif
 ifneq (,$(findstring s,$(MAKEFLAGS)))
 LDR_FLAGS += --quiet
 endif

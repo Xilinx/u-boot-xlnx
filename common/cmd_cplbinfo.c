@@ -26,11 +26,11 @@ static const char *cplb_page_size(uint32_t data)
  */
 static void show_cplb_table(uint32_t *addr, uint32_t *data)
 {
-	size_t i;
+	int i;
 	printf("      Address     Data   Size  Valid  Locked\n");
 	for (i = 1; i <= 16; ++i) {
 		printf(" %2i 0x%p  0x%05X   %s     %c      %c\n",
-			i, *addr, *data,
+			i, (void *)*addr, *data,
 			cplb_page_size(*data),
 			(*data & CPLB_VALID ? 'Y' : 'N'),
 			(*data & CPLB_LOCK ? 'Y' : 'N'));
@@ -54,6 +54,6 @@ int do_cplbinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(cplbinfo, 1, 0, do_cplbinfo,
-	"cplbinfo- display current CPLB tables\n",
+	"display current CPLB tables",
 	"\n"
 	"    - display current CPLB tables\n");

@@ -11,16 +11,61 @@
 
 #include <common.h>
 #include <asm/blackfin.h>
+#include <asm/mach-common/bits/mpu.h>
 
 void flush_cache(unsigned long addr, unsigned long size)
 {
+	void *start_addr, *end_addr;
+	int istatus, dstatus;
+
 	/* no need to flush stuff in on chip memory (L1/L2/etc...) */
 	if (addr >= 0xE0000000)
 		return;
 
-	if (icache_status())
-		blackfin_icache_flush_range((void *)addr, (void *)(addr + size));
+	start_addr = (void *)addr;
+	end_addr = (void *)(addr + size);
+	istatus = icache_status();
+	dstatus = dcache_status();
 
-	if (dcache_status())
-		blackfin_dcache_flush_range((void *)addr, (void *)(addr + size));
+	if (istatus) {
+		if (dstatus)
+			blackfin_icache_dcache_flush_range(start_addr, end_addr);
+		else
+			blackfin_icache_flush_range(start_addr, end_addr);
+	} else if (dstatus)
+		blackfin_dcache_flush_range(start_addr, end_addr);
+}
+
+void icache_enable(void)
+{
+	bfin_write_IMEM_CONTROL(IMC | ENICPLB);
+	SSYNC();
+}
+
+void icache_disable(void)
+{
+	bfin_write_IMEM_CONTROL(0);
+	SSYNC();
+}
+
+int icache_status(void)
+{
+	return bfin_read_IMEM_CONTROL() & IMC;
+}
+
+void dcache_enable(void)
+{
+	bfin_write_DMEM_CONTROL(ACACHE_BCACHE | ENDCPLB | PORT_PREF0);
+	SSYNC();
+}
+
+void dcache_disable(void)
+{
+	bfin_write_DMEM_CONTROL(0);
+	SSYNC();
+}
+
+int dcache_status(void)
+{
+	return bfin_read_DMEM_CONTROL() & ACACHE_BCACHE;
 }

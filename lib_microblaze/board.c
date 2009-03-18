@@ -27,17 +27,18 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
+#include <timestamp.h>
 #include <version.h>
 #include <watchdog.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-const char version_string[] = U_BOOT_VERSION " (" __DATE__ " - " __TIME__ ")";
+const char version_string[] = U_BOOT_VERSION " ("U_BOOT_DATE" - "U_BOOT_TIME")";
 
-#ifdef CFG_GPIO_0
+#ifdef CONFIG_SYS_GPIO_0
 extern int gpio_init (void);
 #endif
-#ifdef CFG_INTC_0
+#ifdef CONFIG_SYS_INTC_0
 extern int interrupts_init (void);
 #endif
 #if defined(CONFIG_CMD_NET)
@@ -54,13 +55,13 @@ static ulong mem_malloc_brk;
 
 /*
  * The Malloc area is immediately below the monitor copy in DRAM
- * aka CFG_MONITOR_BASE - Note there is no need for reloc_off
+ * aka CONFIG_SYS_MONITOR_BASE - Note there is no need for reloc_off
  * as our monitory code is run from SDRAM
  */
 static void mem_malloc_init (void)
 {
-	mem_malloc_end = (CFG_MALLOC_BASE + CFG_MALLOC_LEN);
-	mem_malloc_start = CFG_MALLOC_BASE;
+	mem_malloc_end = (CONFIG_SYS_MALLOC_BASE + CONFIG_SYS_MALLOC_LEN);
+	mem_malloc_start = CONFIG_SYS_MALLOC_BASE;
 	mem_malloc_brk = mem_malloc_start;
 	memset ((void *)mem_malloc_start, 0, mem_malloc_end - mem_malloc_start);
 }
@@ -94,10 +95,10 @@ typedef int (init_fnc_t) (void);
 init_fnc_t *init_sequence[] = {
 	env_init,
 	serial_init,
-#ifdef CFG_GPIO_0
+#ifdef CONFIG_SYS_GPIO_0
 	gpio_init,
 #endif
-#ifdef CFG_INTC_0
+#ifdef CONFIG_SYS_INTC_0
 	interrupts_init,
 #endif
 	NULL,
@@ -107,18 +108,23 @@ void board_init (void)
 {
 	bd_t *bd;
 	init_fnc_t **init_fnc_ptr;
-	gd = (gd_t *) CFG_GBL_DATA_OFFSET;
+	gd = (gd_t *) CONFIG_SYS_GBL_DATA_OFFSET;
 #if defined(CONFIG_CMD_FLASH)
 	ulong flash_size = 0;
 #endif
+#if defined(CONFIG_CMD_NET)
+	char *s, *e;
+	int i;
+#endif
 	asm ("nop");	/* FIXME gd is not initialize - wait */
-	memset ((void *)gd, 0, CFG_GBL_DATA_SIZE);
+	memset ((void *)gd, 0, CONFIG_SYS_GBL_DATA_SIZE);
 	gd->bd = (bd_t *) (gd + 1);	/* At end of global data */
 	gd->baudrate = CONFIG_BAUDRATE;
 	bd = gd->bd;
 	bd->bi_baudrate = CONFIG_BAUDRATE;
-	bd->bi_memstart = CFG_SDRAM_BASE;
-	bd->bi_memsize = CFG_SDRAM_SIZE;
+	bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
+	bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
+	gd->flags |= GD_FLG_RELOC;      /* tell others: relocation done */
 
 	/* Initialise malloc() area */
 	mem_malloc_init ();
@@ -130,11 +136,34 @@ void board_init (void)
 		}
 	}
 
+	puts ("SDRAM :\n");
+	printf ("\t\tIcache:%s\n", icache_status() ? "OK" : "FAIL");
+	printf ("\t\tDcache:%s\n", dcache_status() ? "OK" : "FAIL");
+	printf ("\tU-Boot Start:0x%08x\n", TEXT_BASE);
+
 #if defined(CONFIG_CMD_FLASH)
-	bd->bi_flashstart = CFG_FLASH_BASE;
+	puts ("FLASH: ");
+	bd->bi_flashstart = CONFIG_SYS_FLASH_BASE;
 	if (0 < (flash_size = flash_init ())) {
 		bd->bi_flashsize = flash_size;
-		bd->bi_flashoffset = CFG_FLASH_BASE + flash_size;
+		bd->bi_flashoffset = CONFIG_SYS_FLASH_BASE + flash_size;
+# ifdef CONFIG_SYS_FLASH_CHECKSUM
+		print_size (flash_size, "");
+		/*
+		 * Compute and print flash CRC if flashchecksum is set to 'y'
+		 *
+		 * NOTE: Maybe we should add some WATCHDOG_RESET()? XXX
+		 */
+		s = getenv ("flashchecksum");
+		if (s && (*s == 'y')) {
+			printf ("  CRC: %08X",
+				crc32 (0, (const unsigned char *) CONFIG_SYS_FLASH_BASE, flash_size)
+			);
+		}
+		putc ('\n');
+# else	/* !CONFIG_SYS_FLASH_CHECKSUM */
+		print_size (flash_size, "\n");
+# endif /* CONFIG_SYS_FLASH_CHECKSUM */
 	} else {
 		puts ("Flash init FAILED");
 		bd->bi_flashstart = 0;
@@ -144,10 +173,9 @@ void board_init (void)
 #endif
 
 #if defined(CONFIG_CMD_NET)
-	char *s, *e;
-	int i;
 	/* board MAC address */
 	s = getenv ("ethaddr");
+	printf ("MAC:%s\n",s);
 	for (i = 0; i < 6; ++i) {
 		bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
 		if (s)

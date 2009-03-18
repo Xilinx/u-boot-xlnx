@@ -32,7 +32,6 @@
 #include <common.h>
 #include <asm/arch/ixp425.h>
 
-#ifndef CONFIG_USE_IRQ
 ulong get_timer (ulong base)
 {
        return get_timer_masked () - base;
@@ -44,7 +43,7 @@ void ixp425_udelay(unsigned long usec)
 	 * This function has a max usec, but since it is called from udelay
 	 * we should not have to worry... be happy
 	 */
-	unsigned long usecs = CFG_HZ/1000000L & ~IXP425_OST_RELOAD_MASK;
+	unsigned long usecs = CONFIG_SYS_HZ/1000000L & ~IXP425_OST_RELOAD_MASK;
 
 	*IXP425_OSST = IXP425_OSST_TIMER_1_PEND;
 	usecs |= IXP425_OST_ONE_SHOT | IXP425_OST_ENABLE;
@@ -80,4 +79,3 @@ ulong get_timer_masked (void)
 	}
 	return (reload_constant - current);
 }
-#endif /* #ifndef CONFIG_USE_IRQ */

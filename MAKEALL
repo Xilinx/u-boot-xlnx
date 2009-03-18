@@ -1,6 +1,15 @@
 #!/bin/sh
 
-: ${JOBS:=}
+# Determine number of CPU cores if no default was set
+: ${BUILD_NCPUS:="`getconf _NPROCESSORS_ONLN`"}
+
+if [ "$BUILD_NCPUS" -gt 1 ]
+then
+	JOBS=-j`expr "$BUILD_NCPUS" + 1`
+else
+	JOBS=""
+fi
+
 
 if [ "${CROSS_COMPILE}" ] ; then
 	MAKE="make CROSS_COMPILE=${CROSS_COMPILE}"
@@ -161,6 +170,7 @@ LIST_4xx="		\
 	alpr		\
 	AP1000		\
 	AR405		\
+	arches		\
 	ASH405		\
 	bamboo		\
 	bamboo_nand	\
@@ -185,7 +195,9 @@ LIST_4xx="		\
 	ebony		\
 	ERIC		\
 	EXBITGEN	\
+	fx12mm		\
 	G2000		\
+	gdppc440etx	\
 	glacier		\
 	haleakala	\
 	haleakala_nand	\
@@ -211,6 +223,7 @@ LIST_4xx="		\
 	ml405		\
 	ml507		\
 	ml507_flash	\
+	neo		\
 	ocotea		\
 	OCRTC		\
 	ORSG		\
@@ -231,12 +244,16 @@ LIST_4xx="		\
 	sequoia_nand	\
 	taihu		\
 	taishan		\
+	v5fx30teval	\
+	v5fx30teval_flash \
 	VOH405		\
 	VOM405		\
 	W7OLMC		\
 	W7OLMG		\
 	walnut		\
 	WUH405		\
+	xilinx-ppc440-generic \
+	xilinx-ppc440-generic_flash \
 	XPEDITE1K	\
 	yellowstone	\
 	yosemite	\
@@ -320,8 +337,9 @@ LIST_8260="		\
 #########################################################################
 
 LIST_83xx="		\
+	kmeter1		\
 	MPC8313ERDB_33	\
-	MPC8313ERDB_66	\
+	MPC8313ERDB_NAND_66	\
 	MPC8315ERDB	\
 	MPC8323ERDB	\
 	MPC832XEMDS	\
@@ -337,6 +355,7 @@ LIST_83xx="		\
 	MPC837XERDB	\
 	MVBLM7		\
 	sbc8349		\
+	SIMPC8313_LP	\
 	TQM834x		\
 "
 
@@ -357,6 +376,7 @@ LIST_85xx="		\
 	MPC8560ADS	\
 	MPC8568MDS	\
 	MPC8572DS	\
+	MPC8572DS_36BIT	\
 	PM854		\
 	PM856		\
 	sbc8540		\
@@ -368,8 +388,12 @@ LIST_85xx="		\
 	TQM8540		\
 	TQM8541		\
 	TQM8548		\
+	TQM8548_AG	\
+	TQM8548_BE	\
 	TQM8555		\
 	TQM8560		\
+	XPEDITE5200	\
+	XPEDITE5370	\
 "
 
 #########################################################################
@@ -481,6 +505,7 @@ LIST_ARM9="			\
 	mx1ads			\
 	mx1fs2			\
 	netstar			\
+	nmdk8815		\
 	omap1510inn		\
 	omap1610h2		\
 	omap1610inn		\
@@ -520,7 +545,19 @@ LIST_ARM11="		\
 	imx31_litekit	\
 	imx31_phycore	\
 	mx31ads		\
+	qong		\
 	smdk6400	\
+"
+
+#########################################################################
+## ARM Cortex-A8 Systems
+#########################################################################
+LIST_ARM_CORTEX_A8="		\
+	omap3_beagle		\
+	omap3_overo		\
+	omap3_evm		\
+	omap3_pandora		\
+	omap3_zoom1		\
 "
 
 #########################################################################
@@ -528,6 +565,7 @@ LIST_ARM11="		\
 #########################################################################
 
 LIST_at91="		\
+	afeb9260	\
 	at91cap9adk	\
 	at91rm9200dk	\
 	at91sam9260ek	\
@@ -576,15 +614,16 @@ LIST_ixp="		\
 ## ARM groups
 #########################################################################
 
-LIST_arm="		\
-	${LIST_SA}	\
-	${LIST_ARM7}	\
-	${LIST_ARM9}	\
-	${LIST_ARM10}	\
-	${LIST_ARM11}	\
-	${LIST_at91}	\
-	${LIST_pxa}	\
-	${LIST_ixp}	\
+LIST_arm="			\
+	${LIST_SA}		\
+	${LIST_ARM7}		\
+	${LIST_ARM9}		\
+	${LIST_ARM10}		\
+	${LIST_ARM11}		\
+	${LIST_ARM_CORTEX_A8}	\
+	${LIST_at91}		\
+	${LIST_pxa}		\
+	${LIST_ixp}		\
 "
 
 #########################################################################
@@ -594,6 +633,18 @@ LIST_arm="		\
 LIST_mips4kc="		\
 	incaip		\
 	qemu_mips	\
+	vct_platinum	\
+	vct_platinum_small	\
+	vct_platinum_onenand	\
+	vct_platinum_onenand_small	\
+	vct_platinumavc	\
+	vct_platinumavc_small	\
+	vct_platinumavc_onenand	\
+	vct_platinumavc_onenand_small	\
+	vct_premium	\
+	vct_premium_small	\
+	vct_premium_onenand	\
+	vct_premium_onenand_small	\
 "
 
 LIST_mips5kc="		\
@@ -640,6 +691,7 @@ LIST_mips_el="			\
 
 LIST_I486="		\
 	sc520_cdp	\
+	sc520_eNET	\
 	sc520_spunk	\
 	sc520_spunk_rel	\
 "
@@ -679,10 +731,9 @@ LIST_nios2="		\
 ## MicroBlaze Systems
 #########################################################################
 
-LIST_microblaze="	\
-	ml401		\
-	suzaku		\
-	xupv2p		\
+LIST_microblaze="			\
+	microblaze-generic		\
+	suzaku				\
 "
 
 #########################################################################
@@ -703,6 +754,7 @@ LIST_coldfire="			\
 	M5272C3			\
 	M5275EVB		\
 	M5282EVB		\
+	M53017EVB		\
 	M5329AFEE		\
 	M5373EVB		\
 	M54451EVB		\
@@ -799,7 +851,7 @@ build_target() {
 for arg in $@
 do
 	case "$arg" in
-	arm|SA|ARM7|ARM9|ARM10|ARM11|at91|ixp|pxa \
+	arm|SA|ARM7|ARM9|ARM10|ARM11|ARM_CORTEX_A8|at91|ixp|pxa \
 	|avr32 \
 	|blackfin \
 	|coldfire \

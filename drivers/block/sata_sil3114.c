@@ -48,9 +48,9 @@ static u8 sata_chk_status (struct sata_ioports *ioaddr, u8 usealtstatus);
 static void msleep (int count);
 
 static u32 iobase[6] = { 0, 0, 0, 0, 0, 0};	/* PCI BAR registers for device */
-extern block_dev_desc_t sata_dev_desc[CFG_SATA_MAX_DEVICE];
+extern block_dev_desc_t sata_dev_desc[CONFIG_SYS_SATA_MAX_DEVICE];
 
-static struct sata_port port[CFG_SATA_MAX_DEVICE];
+static struct sata_port port[CONFIG_SYS_SATA_MAX_DEVICE];
 
 static void output_data (struct sata_ioports *ioaddr, u16 * sect_buf, int words)
 {
@@ -96,7 +96,7 @@ static int sata_bus_softreset (int num)
 	}
 
 	if (status & ATA_BUSY) {
-		printf ("ata%u is slow to respond,plz be patient\n", port);
+		printf ("ata%u is slow to respond,plz be patient\n", num);
 	}
 
 	while ((status & ATA_BUSY)) {
@@ -105,7 +105,7 @@ static int sata_bus_softreset (int num)
 	}
 
 	if (status & ATA_BUSY) {
-		printf ("ata%u failed to respond : ", port);
+		printf ("ata%u failed to respond : ", num);
 		printf ("bus reset failed\n");
 		port[num].dev_mask = 0;
 		return 1;

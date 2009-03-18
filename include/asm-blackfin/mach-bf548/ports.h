@@ -59,38 +59,38 @@
 #define PORT_x_MUX_7_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
 #define PORT_x_MUX_7_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
 #define PORT_x_MUX_7_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_8_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_8_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_8_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_8_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_9_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_9_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_9_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_9_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_10_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_10_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_10_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_10_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_11_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_11_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_11_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_11_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_12_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_12_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_12_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_12_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_13_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_13_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_13_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_13_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_14_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_14_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_14_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_14_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
-#define PORT_x_MUX_15_FUNC_1	(PORT_x_MUX_FUNC_1 << 14)
-#define PORT_x_MUX_15_FUNC_2	(PORT_x_MUX_FUNC_2 << 14)
-#define PORT_x_MUX_15_FUNC_3	(PORT_x_MUX_FUNC_3 << 14)
-#define PORT_x_MUX_15_FUNC_4	(PORT_x_MUX_FUNC_4 << 14)
+#define PORT_x_MUX_8_FUNC_1	(PORT_x_MUX_FUNC_1 << 16)
+#define PORT_x_MUX_8_FUNC_2	(PORT_x_MUX_FUNC_2 << 16)
+#define PORT_x_MUX_8_FUNC_3	(PORT_x_MUX_FUNC_3 << 16)
+#define PORT_x_MUX_8_FUNC_4	(PORT_x_MUX_FUNC_4 << 16)
+#define PORT_x_MUX_9_FUNC_1	(PORT_x_MUX_FUNC_1 << 18)
+#define PORT_x_MUX_9_FUNC_2	(PORT_x_MUX_FUNC_2 << 18)
+#define PORT_x_MUX_9_FUNC_3	(PORT_x_MUX_FUNC_3 << 18)
+#define PORT_x_MUX_9_FUNC_4	(PORT_x_MUX_FUNC_4 << 18)
+#define PORT_x_MUX_10_FUNC_1	(PORT_x_MUX_FUNC_1 << 20)
+#define PORT_x_MUX_10_FUNC_2	(PORT_x_MUX_FUNC_2 << 20)
+#define PORT_x_MUX_10_FUNC_3	(PORT_x_MUX_FUNC_3 << 20)
+#define PORT_x_MUX_10_FUNC_4	(PORT_x_MUX_FUNC_4 << 20)
+#define PORT_x_MUX_11_FUNC_1	(PORT_x_MUX_FUNC_1 << 22)
+#define PORT_x_MUX_11_FUNC_2	(PORT_x_MUX_FUNC_2 << 22)
+#define PORT_x_MUX_11_FUNC_3	(PORT_x_MUX_FUNC_3 << 22)
+#define PORT_x_MUX_11_FUNC_4	(PORT_x_MUX_FUNC_4 << 22)
+#define PORT_x_MUX_12_FUNC_1	(PORT_x_MUX_FUNC_1 << 24)
+#define PORT_x_MUX_12_FUNC_2	(PORT_x_MUX_FUNC_2 << 24)
+#define PORT_x_MUX_12_FUNC_3	(PORT_x_MUX_FUNC_3 << 24)
+#define PORT_x_MUX_12_FUNC_4	(PORT_x_MUX_FUNC_4 << 24)
+#define PORT_x_MUX_13_FUNC_1	(PORT_x_MUX_FUNC_1 << 26)
+#define PORT_x_MUX_13_FUNC_2	(PORT_x_MUX_FUNC_2 << 26)
+#define PORT_x_MUX_13_FUNC_3	(PORT_x_MUX_FUNC_3 << 26)
+#define PORT_x_MUX_13_FUNC_4	(PORT_x_MUX_FUNC_4 << 26)
+#define PORT_x_MUX_14_FUNC_1	(PORT_x_MUX_FUNC_1 << 28)
+#define PORT_x_MUX_14_FUNC_2	(PORT_x_MUX_FUNC_2 << 28)
+#define PORT_x_MUX_14_FUNC_3	(PORT_x_MUX_FUNC_3 << 28)
+#define PORT_x_MUX_14_FUNC_4	(PORT_x_MUX_FUNC_4 << 28)
+#define PORT_x_MUX_15_FUNC_1	(PORT_x_MUX_FUNC_1 << 30)
+#define PORT_x_MUX_15_FUNC_2	(PORT_x_MUX_FUNC_2 << 30)
+#define PORT_x_MUX_15_FUNC_3	(PORT_x_MUX_FUNC_3 << 30)
+#define PORT_x_MUX_15_FUNC_4	(PORT_x_MUX_FUNC_4 << 30)
 
 /* Port A Masks */
 #define PA0			0x0001
@@ -236,7 +236,25 @@
 #define PH14			0x4000
 #define PH15			0x8000
 
-/* Port J Masks */
+/* Port I Masks */
+#define PI0			0x0001
+#define PI1			0x0002
+#define PI2			0x0004
+#define PI3			0x0008
+#define PI4			0x0010
+#define PI5			0x0020
+#define PI6			0x0040
+#define PI7			0x0080
+#define PI8			0x0100
+#define PI9			0x0200
+#define PI10			0x0400
+#define PI11			0x0800
+#define PI12			0x1000
+#define PI13			0x2000
+#define PI14			0x4000
+#define PI15			0x8000
+
+/* Port I Masks */
 #define PJ0			0x0001
 #define PJ1			0x0002
 #define PJ2			0x0004

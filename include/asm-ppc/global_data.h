@@ -33,7 +33,7 @@
  * global variables during system initialization (until we have set
  * up the memory controller so that we can use RAM).
  *
- * Keep it *SMALL* and remember to set CFG_GBL_DATA_SIZE > sizeof(gd_t)
+ * Keep it *SMALL* and remember to set CONFIG_SYS_GBL_DATA_SIZE > sizeof(gd_t)
  */
 
 typedef	struct	global_data {
@@ -75,7 +75,7 @@ typedef	struct	global_data {
 	u32 lbiu_clk;
 	u32 lclk_clk;
 	u32 pci_clk;
-#if defined(CONFIG_MPC837X)
+#if defined(CONFIG_MPC837X) || defined(CONFIG_MPC831X)
 	u32 pciexp1_clk;
 	u32 pciexp2_clk;
 #endif
@@ -89,6 +89,9 @@ typedef	struct	global_data {
 #if defined(CONFIG_MPC837X) || defined(CONFIG_MPC8536)
 	u32 sdhc_clk;
 #endif
+#if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
+	u32 lbc_clk;
+#endif /* CONFIG_MPC85xx || CONFIG_MPC86xx */
 #if defined(CONFIG_MPC83XX) || defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
 	u32 i2c1_clk;
 	u32 i2c2_clk;
@@ -122,17 +125,21 @@ typedef	struct	global_data {
 	phys_size_t	ram_size;	/* RAM size */
 	unsigned long	reloc_off;	/* Relocation Offset */
 	unsigned long	reset_status;	/* reset status register at boot	*/
+#if defined(CONFIG_MPC83XX)
+	unsigned long	arbiter_event_attributes;
+	unsigned long	arbiter_event_address;
+#endif
 	unsigned long	env_addr;	/* Address  of Environment struct	*/
 	unsigned long	env_valid;	/* Checksum of Environment valid?	*/
 	unsigned long	have_console;	/* serial_init() was called		*/
-#if defined(CFG_ALLOC_DPRAM) || defined(CONFIG_CPM2)
+#if defined(CONFIG_SYS_ALLOC_DPRAM) || defined(CONFIG_CPM2)
 	unsigned int	dp_alloc_base;
 	unsigned int	dp_alloc_top;
 #endif
 #if defined(CONFIG_4xx)
 	u32  uart_clk;
 #endif /* CONFIG_4xx */
-#if defined(CFG_GT_6426x)
+#if defined(CONFIG_SYS_GT_6426x)
 	unsigned int	mirror_hack[16];
 #endif
 #if defined(CONFIG_A3000)	|| \
@@ -176,6 +183,7 @@ typedef	struct	global_data {
 #define	GD_FLG_POSTFAIL	0x00008		/* Critical POST test failed		*/
 #define	GD_FLG_POSTSTOP	0x00010		/* POST seqeunce aborted		*/
 #define	GD_FLG_LOGINIT	0x00020		/* Log Buffer has been initialized	*/
+#define GD_FLG_DISABLE_CONSOLE	0x00040		/* Disable console (in & out)	 */
 
 #if 1
 #define DECLARE_GLOBAL_DATA_PTR     register volatile gd_t *gd asm ("r2")

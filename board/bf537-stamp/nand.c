@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2006 Aubrey.Li, aubrey.li@analog.com
+ * Copyright (c) 2006-2007 Analog Devices Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -23,8 +23,6 @@
 #include <common.h>
 #include <asm/io.h>
 
-#if defined(CONFIG_CMD_NAND)
-
 #include <nand.h>
 
 #define CONCAT(a,b,c,d) a ## b ## c ## d
@@ -43,14 +41,14 @@ static void bfin_hwcontrol(struct mtd_info *mtd, int cmd, unsigned int ctrl)
 	u32 IO_ADDR_W = (u32) this->IO_ADDR_W;
 
 	if (ctrl & NAND_CTRL_CHANGE) {
-		if( ctrl & NAND_CLE )
-			IO_ADDR_W = CFG_NAND_BASE + BFIN_NAND_CLE;
+		if (ctrl & NAND_CLE)
+			IO_ADDR_W = CONFIG_SYS_NAND_BASE + BFIN_NAND_CLE;
 		else
-			IO_ADDR_W = CFG_NAND_BASE;
-		if( ctrl & NAND_ALE )
-			IO_ADDR_W = CFG_NAND_BASE + BFIN_NAND_ALE;
+			IO_ADDR_W = CONFIG_SYS_NAND_BASE;
+		if (ctrl & NAND_ALE)
+			IO_ADDR_W = CONFIG_SYS_NAND_BASE + BFIN_NAND_ALE;
 		else
-			IO_ADDR_W = CFG_NAND_BASE;
+			IO_ADDR_W = CONFIG_SYS_NAND_BASE;
 		this->IO_ADDR_W = (void __iomem *) IO_ADDR_W;
 	}
 	this->IO_ADDR_R = this->IO_ADDR_W;
@@ -87,7 +85,7 @@ int bfin_device_ready(struct mtd_info *mtd)
  * Members with a "?" were not set in the merged testing-NAND branch,
  * so they are not set here either.
  */
-void board_nand_init(struct nand_chip *nand)
+int board_nand_init(struct nand_chip *nand)
 {
 	*PORT(CONFIG_NAND_GPIO_PORT, _FER) &= ~BFIN_NAND_READY;
 	*PORT(CONFIG_NAND_GPIO_PORT, IO_DIR) &= ~BFIN_NAND_READY;
@@ -97,5 +95,6 @@ void board_nand_init(struct nand_chip *nand)
 	nand->ecc.mode = NAND_ECC_SOFT;
 	nand->dev_ready = bfin_device_ready;
 	nand->chip_delay = 30;
+
+	return 0;
 }
-#endif

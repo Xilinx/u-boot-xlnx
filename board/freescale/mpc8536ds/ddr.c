@@ -10,6 +10,7 @@
 #include <i2c.h>
 
 #include <asm/fsl_ddr_sdram.h>
+#include <asm/fsl_ddr_dimm_params.h>
 
 static void get_spd(ddr2_spd_eeprom_t *spd, unsigned char i2c_address)
 {
@@ -36,7 +37,9 @@ void fsl_ddr_get_spd(ddr2_spd_eeprom_t *ctrl_dimms_spd,
 	}
 }
 
-void fsl_ddr_board_options(memctl_options_t *popts, unsigned int ctrl_num)
+void fsl_ddr_board_options(memctl_options_t *popts,
+				dimm_params_t *pdimm,
+				unsigned int ctrl_num)
 {
 	/*
 	 * Factors to consider for clock adjust:
@@ -76,4 +79,10 @@ void fsl_ddr_board_options(memctl_options_t *popts, unsigned int ctrl_num)
 	 *	- number of DIMMs installed
 	 */
 	popts->half_strength_driver_enable = 0;
+
+	/*
+	 * For wake up arp feature, we need enable auto self refresh
+	 */
+	popts->auto_self_refresh_en = 1;
+	popts->sr_it = 0x6;
 }
