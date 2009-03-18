@@ -1,42 +1,36 @@
+/* $Id: xversion.c,v 1.1 2006/12/13 14:23:34 imanuilov Exp $ */
 /******************************************************************************
 *
-*     Author: Xilinx, Inc.
+*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
+*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
+*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
+*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
+*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
+*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
+*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
+*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
+*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
+*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
+*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
+*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+*       FOR A PARTICULAR PURPOSE.
 *
+*       (c) Copyright 2002-2009 Xilinx Inc.
+*       All rights reserved.
+* This program is free software; you can redistribute it and/or modify it 
+* under the terms of the GNU General Public License as published by the 
+* Free Software Foundation; either version 2 of the License, or (at your 
+* option) any later version. 
 *
-*     This program is free software; you can redistribute it and/or modify it
-*     under the terms of the GNU General Public License as published by the
-*     Free Software Foundation; either version 2 of the License, or (at your
-*     option) any later version.
-*
-*
-*     XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A
-*     COURTESY TO YOU. BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS
-*     ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE, APPLICATION OR STANDARD,
-*     XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION IS FREE
-*     FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE FOR OBTAINING
-*     ANY THIRD PARTY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.
-*     XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO
-*     THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY
-*     WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM
-*     CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND
-*     FITNESS FOR A PARTICULAR PURPOSE.
-*
-*
-*     Xilinx hardware products are not intended for use in life support
-*     appliances, devices, or systems. Use in such applications is
-*     expressly prohibited.
-*
-*
-*     (c) Copyright 2002-2004 Xilinx Inc.
-*     All rights reserved.
-*
-*
-*     You should have received a copy of the GNU General Public License along
-*     with this program; if not, write to the Free Software Foundation, Inc.,
-*     675 Mass Ave, Cambridge, MA 02139, USA.
+* You should have received a copy of the GNU General Public License 
+* along with this program; if not, write to the Free Software 
+* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 ******************************************************************************/
-/*****************************************************************************
+/*****************************************************************************/
+/**
+*
+* @file xversion.c
 *
 * This file contains the implementation of the XVersion component. This
 * component represents a version ID.  It is encapsulated within a component
@@ -57,9 +51,16 @@
 * Major Revision            0 - 9       Bits 15 - 12
 * Minor Revision            0 - 99      Bits 11 - 5
 * Compatability Revision    a - z       Bits 4 - 0
+*
+* MODIFICATION HISTORY:
+*
+* Ver   Who    Date   Changes
+* ----- ---- -------- -------------------------------------------------------
+* 1.00a xd   11/03/04 Improved support for doxygen.
 </pre>
 *
 ******************************************************************************/
+
 
 /***************************** Include Files *********************************/
 
@@ -92,13 +93,16 @@
 
 /**************************** Type Definitions *******************************/
 
+
 /***************** Macros (Inline Functions) Definitions *********************/
+
 
 /************************** Function Prototypes ******************************/
 
-static u32 IsVersionStringValid(s8 * StringPtr);
+static u32 IsVersionStringValid(s8 *StringPtr);
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Unpacks a packed version into the specified version. Versions are packed
 * into the configuration ROM to reduce the amount storage. A packed version
@@ -108,22 +112,18 @@ static u32 IsVersionStringValid(s8 * StringPtr);
 * @param    InstancePtr points to the version to unpack the packed version into.
 * @param    PackedVersion contains the packed version to unpack.
 *
-* @return
+* @return   None.
 *
-* None.
-*
-* @note
-*
-* None.
+* @note     None.
 *
 ******************************************************************************/
-void
-XVersion_UnPack(XVersion * InstancePtr, u16 PackedVersion)
+void XVersion_UnPack(XVersion * InstancePtr, u16 PackedVersion)
 {
 	/* not implemented yet since CROM related */
 }
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Packs a version into the specified packed version. Versions are packed into
 * the configuration ROM to reduce the amount storage.
@@ -146,15 +146,15 @@ XVersion_UnPack(XVersion * InstancePtr, u16 PackedVersion)
 * None.
 *
 ******************************************************************************/
-XStatus
-XVersion_Pack(XVersion * InstancePtr, u16 * PackedVersionPtr)
+int XVersion_Pack(XVersion * InstancePtr, u16 *PackedVersionPtr)
 {
 	/* not implemented yet since CROM related */
 
 	return XST_SUCCESS;
 }
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Determines if two versions are equal.
 *
@@ -170,8 +170,7 @@ XVersion_Pack(XVersion * InstancePtr, u16 * PackedVersionPtr)
 * None.
 *
 ******************************************************************************/
-u32
-XVersion_IsEqual(XVersion * InstancePtr, XVersion * VersionPtr)
+u32 XVersion_IsEqual(XVersion * InstancePtr, XVersion * VersionPtr)
 {
 	u8 *Version1 = (u8 *) InstancePtr;
 	u8 *Version2 = (u8 *) VersionPtr;
@@ -185,7 +184,7 @@ XVersion_IsEqual(XVersion * InstancePtr, XVersion * VersionPtr)
 	/* check each byte of the versions to see if they are the same,
 	 * return at any point a byte differs between them
 	 */
-	for (Index = 0; Index < sizeof (XVersion); Index++) {
+	for (Index = 0; Index < sizeof(XVersion); Index++) {
 		if (Version1[Index] != Version2[Index]) {
 			return FALSE;
 		}
@@ -197,7 +196,8 @@ XVersion_IsEqual(XVersion * InstancePtr, XVersion * VersionPtr)
 	return TRUE;
 }
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Converts a version to a null terminated string.
 *
@@ -219,8 +219,7 @@ XVersion_IsEqual(XVersion * InstancePtr, XVersion * VersionPtr)
 * specified in the version header file.
 *
 ******************************************************************************/
-void
-XVersion_ToString(XVersion * InstancePtr, s8 * StringPtr)
+void XVersion_ToString(XVersion * InstancePtr, s8 *StringPtr)
 {
 	/* assert to verify input arguments */
 
@@ -233,7 +232,8 @@ XVersion_ToString(XVersion * InstancePtr, s8 * StringPtr)
 	XVersion_Copy(InstancePtr, (XVersion *) StringPtr);
 }
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Initializes a version from a null terminated string. Since the string may not
 * be a format which is compatible with the version, an error could occur.
@@ -255,8 +255,7 @@ XVersion_ToString(XVersion * InstancePtr, s8 * StringPtr)
 * None.
 *
 ******************************************************************************/
-XStatus
-XVersion_FromString(XVersion * InstancePtr, s8 * StringPtr)
+int XVersion_FromString(XVersion * InstancePtr, s8 *StringPtr)
 {
 	/* assert to verify input arguments */
 
@@ -277,7 +276,8 @@ XVersion_FromString(XVersion * InstancePtr, s8 * StringPtr)
 	return XST_SUCCESS;
 }
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Copies the contents of a version to another version.
 *
@@ -295,8 +295,7 @@ XVersion_FromString(XVersion * InstancePtr, s8 * StringPtr)
 * None.
 *
 ******************************************************************************/
-void
-XVersion_Copy(XVersion * InstancePtr, XVersion * VersionPtr)
+void XVersion_Copy(XVersion * InstancePtr, XVersion * VersionPtr)
 {
 	u8 *Source = (u8 *) InstancePtr;
 	u8 *Destination = (u8 *) VersionPtr;
@@ -309,12 +308,13 @@ XVersion_Copy(XVersion * InstancePtr, XVersion * VersionPtr)
 
 	/* copy each byte of the source version to the destination version */
 
-	for (Index = 0; Index < sizeof (XVersion); Index++) {
+	for (Index = 0; Index < sizeof(XVersion); Index++) {
 		Destination[Index] = Source[Index];
 	}
 }
 
-/*****************************************************************************
+/*****************************************************************************/
+/**
 *
 * Determines if the specified version is valid.
 *
@@ -329,8 +329,7 @@ XVersion_Copy(XVersion * InstancePtr, XVersion * VersionPtr)
 * None.
 *
 ******************************************************************************/
-static u32
-IsVersionStringValid(s8 * StringPtr)
+static u32 IsVersionStringValid(s8 *StringPtr)
 {
 	/* if the input string is not a valid format, "X.YYZ" where X = 0 - 9,
 	 * YY = 00 - 99, and Z = a - z, then indicate it's not valid

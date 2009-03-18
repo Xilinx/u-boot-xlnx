@@ -1,39 +1,30 @@
+/* $Id: xstatus.h,v 1.1 2006/12/13 14:23:26 imanuilov Exp $ */
 /******************************************************************************
 *
-*     Author: Xilinx, Inc.
+*       XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS"
+*       AS A COURTESY TO YOU, SOLELY FOR USE IN DEVELOPING PROGRAMS AND
+*       SOLUTIONS FOR XILINX DEVICES.  BY PROVIDING THIS DESIGN, CODE,
+*       OR INFORMATION AS ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE,
+*       APPLICATION OR STANDARD, XILINX IS MAKING NO REPRESENTATION
+*       THAT THIS IMPLEMENTATION IS FREE FROM ANY CLAIMS OF INFRINGEMENT,
+*       AND YOU ARE RESPONSIBLE FOR OBTAINING ANY RIGHTS YOU MAY REQUIRE
+*       FOR YOUR IMPLEMENTATION.  XILINX EXPRESSLY DISCLAIMS ANY
+*       WARRANTY WHATSOEVER WITH RESPECT TO THE ADEQUACY OF THE
+*       IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OR
+*       REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM CLAIMS OF
+*       INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+*       FOR A PARTICULAR PURPOSE.
 *
+*       (c) Copyright 2002-2009 Xilinx Inc.
+*       All rights reserved.
+* This program is free software; you can redistribute it and/or modify it 
+* under the terms of the GNU General Public License as published by the 
+* Free Software Foundation; either version 2 of the License, or (at your 
+* option) any later version. 
 *
-*     This program is free software; you can redistribute it and/or modify it
-*     under the terms of the GNU General Public License as published by the
-*     Free Software Foundation; either version 2 of the License, or (at your
-*     option) any later version.
-*
-*
-*     XILINX IS PROVIDING THIS DESIGN, CODE, OR INFORMATION "AS IS" AS A
-*     COURTESY TO YOU. BY PROVIDING THIS DESIGN, CODE, OR INFORMATION AS
-*     ONE POSSIBLE IMPLEMENTATION OF THIS FEATURE, APPLICATION OR STANDARD,
-*     XILINX IS MAKING NO REPRESENTATION THAT THIS IMPLEMENTATION IS FREE
-*     FROM ANY CLAIMS OF INFRINGEMENT, AND YOU ARE RESPONSIBLE FOR OBTAINING
-*     ANY THIRD PARTY RIGHTS YOU MAY REQUIRE FOR YOUR IMPLEMENTATION.
-*     XILINX EXPRESSLY DISCLAIMS ANY WARRANTY WHATSOEVER WITH RESPECT TO
-*     THE ADEQUACY OF THE IMPLEMENTATION, INCLUDING BUT NOT LIMITED TO ANY
-*     WARRANTIES OR REPRESENTATIONS THAT THIS IMPLEMENTATION IS FREE FROM
-*     CLAIMS OF INFRINGEMENT, IMPLIED WARRANTIES OF MERCHANTABILITY AND
-*     FITNESS FOR A PARTICULAR PURPOSE.
-*
-*
-*     Xilinx hardware products are not intended for use in life support
-*     appliances, devices, or systems. Use in such applications is
-*     expressly prohibited.
-*
-*
-*     (c) Copyright 2002-2004 Xilinx Inc.
-*     All rights reserved.
-*
-*
-*     You should have received a copy of the GNU General Public License along
-*     with this program; if not, write to the Free Software Foundation, Inc.,
-*     675 Mass Ave, Cambridge, MA 02139, USA.
+* You should have received a copy of the GNU General Public License 
+* along with this program; if not, write to the Free Software 
+* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 ******************************************************************************/
 /*****************************************************************************/
@@ -42,7 +33,7 @@
 * @file xstatus.h
 *
 * This file contains Xilinx software status codes.  Status codes have their
-* own data type called XStatus.  These codes are used throughout the Xilinx
+* own data type called int.  These codes are used throughout the Xilinx
 * device drivers.
 *
 ******************************************************************************/
@@ -50,9 +41,11 @@
 #ifndef XSTATUS_H		/* prevent circular inclusions */
 #define XSTATUS_H		/* by using protection macros */
 
-/***************************** Include Files *********************************/
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "xbasic_types.h"
+/***************************** Include Files *********************************/
 
 /************************** Constant Definitions *****************************/
 
@@ -90,24 +83,31 @@
 						   scatter-gather DMA operation */
 #define XST_LOOPBACK_ERROR              17L	/* a loopback test failed */
 #define XST_NO_CALLBACK                 18L	/* a callback has not yet been
-						 * registered */
+						   registered */
 #define XST_NO_FEATURE                  19L	/* device is not configured with
-						 * the requested feature */
+						   the requested feature */
 #define XST_NOT_INTERRUPT               20L	/* device is not configured for
-						 * interrupt mode operation */
+						   interrupt mode operation */
 #define XST_DEVICE_BUSY                 21L	/* device is busy */
 #define XST_ERROR_COUNT_MAX             22L	/* the error counters of a device
-						 * have maxed out */
+						   have maxed out */
 #define XST_IS_STARTED                  23L	/* used when part of device is
-						 * already started i.e.
-						 * sub channel */
+						   already started i.e.
+						   sub channel */
 #define XST_IS_STOPPED                  24L	/* used when part of device is
-						 * already stopped i.e.
-						 * sub channel */
+						   already stopped i.e.
+						   sub channel */
+#define XST_DATA_LOST                   26L	/* driver defined error */
+#define XST_RECV_ERROR                  27L	/* generic receive error */
+#define XST_SEND_ERROR                  28L	/* generic transmit error */
+#define XST_NOT_ENABLED                 29L	/* a requested service is not
+						   available because it has not
+						   been enabled */
 
 /***************** Utility Component statuses 401 - 500  *********************/
 
 #define XST_MEMTEST_FAILED              401L	/* memory test failed */
+
 
 /***************** Common Components statuses 501 - 1000 *********************/
 
@@ -117,6 +117,10 @@
 #define XST_PFIFO_NO_ROOM               502L	/* not enough room in FIFO   */
 #define XST_PFIFO_BAD_REG_VALUE         503L	/* self test, a register value
 						   was invalid after reset */
+#define XST_PFIFO_ERROR                 504L	/* generic packet FIFO error */
+#define XST_PFIFO_DEADLOCK              505L	/* packet FIFO is reporting
+						 * empty and full simultaneously
+						 */
 
 /************************** DMA statuses 511 - 530 ***************************/
 
@@ -154,6 +158,10 @@
 						   has already been used by the
 						   hardware so it can't be reused
 						 */
+#define XST_DMA_SG_LIST_ERROR           526L	/* general purpose list access
+						   error */
+#define XST_DMA_BD_ERROR                527L	/* general buffer descriptor
+						   error */
 
 /************************** IPIF statuses 531 - 550 ***************************/
 
@@ -184,6 +192,7 @@
 #define XST_IPIF_DEVICE_ID_ERROR        540L	/* The device interrupt ID register
 						   did not indicate the expected
 						   value */
+#define XST_IPIF_ERROR                  541L	/* generic ipif error */
 
 /****************** Device specific statuses 1001 - 4095 *********************/
 
@@ -209,6 +218,7 @@
 #define XST_UART_TEST_FAIL          1054L
 #define XST_UART_BAUD_ERROR         1055L
 #define XST_UART_BAUD_RANGE         1056L
+
 
 /************************ IIC statuses 1076 - 1100 ***************************/
 
@@ -335,13 +345,13 @@
 
 /**************************** Type Definitions *******************************/
 
-/**
- * The status typedef.
- */
-typedef u32 XStatus;
-
 /***************** Macros (Inline Functions) Definitions *********************/
+
 
 /************************** Function Prototypes ******************************/
 
-#endif				/* end of protection macro */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* end of protection macro */

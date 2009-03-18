@@ -87,6 +87,8 @@
 #define CONFIG_LOADS_ECHO		/* echo on for serial download  */
 #define CONFIG_SYS_LOADS_BAUD_CHANGE	/* allow baudrate change        */
 #define CONFIG_SYS_BOOTMAPSZ		(8 << 20)
+#define CONFIG_OF_LIBFDT		1
+					/* Use Flat Device Tree */
 				/* Initial Memory map for Linux */
 
 /*Stack*/
@@ -101,16 +103,14 @@
 
 /*Flash*/
 #ifdef XPAR_FLASH_MEM0_BASEADDR
+#define CONFIG_ENV_IS_IN_FLASH		1
 #define	CONFIG_SYS_FLASH_BASE		XPAR_FLASH_MEM0_BASEADDR
-#define	CONFIG_SYS_FLASH_CFI		1
-#define	CONFIG_FLASH_CFI_DRIVER	1
 #define	CONFIG_SYS_FLASH_EMPTY_INFO	1
 #define	CONFIG_SYS_MAX_FLASH_BANKS	1
 #define	CONFIG_SYS_FLASH_PROTECTION
 #define CONFIG_CMD_JFFS2
 #define CONFIG_JFFS2_CMDLINE
 #else
-#define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_SYS_NO_FLASH
 #endif
 
@@ -131,6 +131,65 @@
 #define CONFIG_BAUDRATE			115200
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 9600, 115200 }
 #endif
+#endif
+
+/* IIC */
+/*
+ * If both flash and IIC EEPROM are in the system, IIC EEPROM wins
+ */
+#ifdef XPAR_IIC_0_BASEADDR
+	#define CONFIG_XILINX_IIC 1
+	#define CONFIG_ENV_IS_IN_EEPROM 1
+	#define CONFIG_CMD_I2C
+	#define CONFIG_CMD_EEPROM
+	#define CONFIG_ENV_OFFSET 256
+	#define CONFIG_ENV_SIZE 512
+	#ifdef XPAR_PERSISTENT_0_IIC_0_EEPROMADDR 
+		#define CONFIG_SYS_I2C_EEPROM_ADDR (XPAR_PERSISTENT_0_IIC_0_EEPROMADDR  >> 1)
+	#else
+		#define CONFIG_SYS_I2C_EEPROM_ADDR (0xA0 >> 1)
+	#endif
+	#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 4
+	#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 5
+	#define CONFIG_SYS_I2C_EEPROM_ADDR_OVERFLOW 0x3
+
+	/*
+	 * Defined in ml507.h/ml405.h/xilinx-ppc-440-generic.h/xilinx-ppc-405-generic.h/etc
+	 * ml507: 8192
+	 * ml405: 1024
+	 * #define CONFIG_SYS_EEPROM_SIZE
+	 */
+	/* TODO: REMOVE */
+	#define CONFIG_SYS_EEPROM_SIZE 4096
+
+	#define CONFIG_ENV_OVERWRITE 1
+
+	#if defined(XPAR_IIC_0_TEN_BIT_ADR) && (XPAR_IIC_0_TEN_BIT_ADR == 1)
+		#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 2
+	#else
+		#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN 1
+	#endif
+#endif 
+
+/* ethernet */
+#ifdef XPAR_LLTEMAC_0_BASEADDR
+	#define CONFIG_XILINX_LL_TEMAC	1
+	#define CONFIG_SYS_ENET
+	#define CONFIG_CMD_NET
+#endif
+
+/* system ace */
+#ifdef XPAR_SYSACE_0_BASEADDR
+	#define	CONFIG_SYSTEMACE
+	/* #define DEBUG_SYSTEMACE */
+	#define	SYSTEMACE_CONFIG_FPGA
+	#define	CONFIG_SYS_SYSTEMACE_BASE	XPAR_SYSACE_0_BASEADDR
+	#define	CONFIG_SYS_SYSTEMACE_WIDTH	XPAR_SYSACE_0_MEM_WIDTH
+	#define	CONFIG_DOS_PARTITION
+#endif
+
+#if !defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_ENV_IS_IN_FLASH)
+#define CONFIG_ENV_IS_NOWHERE
 #endif
 
 #endif						/* __CONFIG_H */

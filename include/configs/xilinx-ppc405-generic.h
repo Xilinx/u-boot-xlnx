@@ -28,31 +28,39 @@
 #ifndef __CONFIG_GEN_H
 #define __CONFIG_GEN_H
 
+/*CPU*/
+#define CONFIG_405		1
+#define CONFIG_XILINX_PPC405_GENERIC	1
 #include "../board/xilinx/ppc405-generic/xparameters.h"
 
-/* sdram */
-#define CONFIG_SYS_SDRAM_SIZE_MB	256
+/*Mem Map*/
+#define CONFIG_SYS_SDRAM_SIZE_MB	64
 
-/* environment */
-#define CONFIG_ENV_IS_IN_FLASH		1
-#define CONFIG_ENV_SIZE			0x10000
+#ifdef XPAR_FLASH_MEM0_BASEADDR
+/*Env for Flash*/
+/*
+ * CONFIG_ENV_IS_IN_FLASH is defined in xilinx_ppc.h
+ */
+#define CONFIG_ENV_SIZE			0x20000
 #define CONFIG_ENV_SECT_SIZE		0x10000
-#define CONFIG_SYS_ENV_OFFSET		0x3F0000
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_FLASH_BASE+CONFIG_SYS_ENV_OFFSET)
+#define CONFIG_ENV_OFFSET		0x3F0000
+#define CONFIG_ENV_ADDR		(XPAR_FLASH_MEM0_BASEADDR+CONFIG_ENV_OFFSET)
 #define CONFIG_ENV_OVERWRITE		1
-
-/*Misc*/
-#define CONFIG_SYS_PROMPT	"xlx-ppc405:/# " /* Monitor Command Prompt */
-#define CONFIG_PREBOOT		"echo U-Boot is up and runnining;"
-
 /*Flash*/
-#define CONFIG_SYS_FLASH_BASE			XPAR_FLASH_MEM0_BASEADDR
 #define CONFIG_SYS_FLASH_SIZE		(32*1024*1024)
 #define CONFIG_SYS_MAX_FLASH_SECT	71
 #define CONFIG_SYS_FLASH_CFI		1
 #define CONFIG_FLASH_CFI_DRIVER		1
 #define MTDIDS_DEFAULT			"nor0=ppc405-flash"
 #define MTDPARTS_DEFAULT		"mtdpartsa=ppc405-flash:-(user)"
+#endif
+
+/*Misc*/
+#define CONFIG_SYS_PROMPT	"xlx-ppc405:/# " /* Monitor Command Prompt */
+#define CONFIG_PREBOOT		"echo U-Boot is up and runnining;"
+
+#define CONFIG_CMD_CACHE
+#undef CONFIG_CMD_JFFS2
 
 #include <configs/xilinx-ppc405.h>
 #endif			/* __CONFIG_H */

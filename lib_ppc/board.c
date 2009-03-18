@@ -883,7 +883,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #if defined (CONFIG_MBX) || \
     defined (CONFIG_RPXCLASSIC) || \
     defined(CONFIG_IAD210) || \
-    defined(CONFIG_V38B)
+    defined(CONFIG_V38B) || \
+    defined(CONFIG_XILINX_405) ||\
+    defined(CONFIG_XILINX_440)
+
 	if (s == NULL)
 		board_get_enetaddr (bd->bi_enetaddr);
 	else

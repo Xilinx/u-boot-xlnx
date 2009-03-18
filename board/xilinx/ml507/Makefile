@@ -22,6 +22,8 @@
 # MA 02111-1307 USA
 #
 
+INCS		:= -I../ml507
+
 COBJS	+= $(BOARD).o
 
 include $(SRCTREE)/board/xilinx/ppc440-generic/Makefile

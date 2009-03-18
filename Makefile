@@ -1399,6 +1399,15 @@ ML2_config:	unconfig
 ml300_config:	unconfig
 	@$(MKCONFIG) $(@:_config=) ppc ppc4xx ml300 xilinx
 
+ml405_config: unconfig
+	@mkdir -p $(obj)include $(obj)board/xilinx/ppc405-generic
+	@mkdir -p $(obj)include $(obj)board/xilinx/ml405
+	@echo "LDSCRIPT:=$(SRCTREE)/board/xilinx/ppc405-generic/u-boot-ram.lds"\
+		> $(obj)board/xilinx/ml405/config.tmp
+	@echo "TEXT_BASE := 0x04000000" \
+		>> $(obj)board/xilinx/ml405/config.tmp
+	@$(MKCONFIG) ml405 ppc ppc4xx ml405 xilinx
+
 ml507_flash_config: unconfig
 	@mkdir -p $(obj)include $(obj)board/xilinx/ppc440-generic
 	@mkdir -p $(obj)include $(obj)board/xilinx/ml507

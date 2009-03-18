@@ -1,3 +1,4 @@
+/* $Id: xbasic_types.h,v 1.1 2006/12/13 14:21:22 imanuilov Exp $ */
 /******************************************************************************
 *
 *     Author: Xilinx, Inc.
@@ -27,7 +28,7 @@
 *     expressly prohibited.
 *
 *
-*     (c) Copyright 2002-2004 Xilinx Inc.
+*     (c) Copyright 2002-2009 Xilinx Inc.
 *     All rights reserved.
 *
 *
@@ -52,12 +53,14 @@
 * <pre>
 * MODIFICATION HISTORY:
 *
-* Ver	Who    Date   Changes
+* Ver   Who    Date   Changes
 * ----- ---- -------- -------------------------------------------------------
 * 1.00a rmm  12/14/01 First release
-*	rmm  05/09/03 Added "xassert always" macros to rid ourselves of diab
-*		      compiler warnings
+*       rmm  05/09/03 Added "xassert always" macros to rid ourselves of diab
+*                     compiler warnings
 * 1.00a rpm  11/07/03 Added XNullHandler function as a stub interrupt handler
+* 1.00a rpm  07/21/04 Added XExceptionHandler typedef for processor exceptions
+* 1.00a xd   11/03/04 Improved support for doxygen.
 * </pre>
 *
 ******************************************************************************/
@@ -65,58 +68,52 @@
 #ifndef XBASIC_TYPES_H		/* prevent circular inclusions */
 #define XBASIC_TYPES_H		/* by using protection macros */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /***************************** Include Files *********************************/
+
+#include <linux/types.h>
 
 /************************** Constant Definitions *****************************/
 
 #ifndef TRUE
 #define TRUE 1
 #endif
+
 #ifndef FALSE
-#define FALSE 0
+#define FALSE !(TRUE)
 #endif
 
-#ifndef NULL
-#define NULL 0
-#endif
-/** Null */
-
-#define XCOMPONENT_IS_READY	0x11111111	/* component has been initialized */
-#define XCOMPONENT_IS_STARTED	0x22222222	/* component has been started */
+#define XCOMPONENT_IS_READY     0x11111111  /**< component has been initialized */
+#define XCOMPONENT_IS_STARTED   0x22222222  /**< component has been started */
 
 /* the following constants and declarations are for unit test purposes and are
  * designed to be used in test applications.
  */
-#define XTEST_PASSED	0
-#define XTEST_FAILED	1
+#define XTEST_PASSED    0
+#define XTEST_FAILED    1
 
-#define XASSERT_NONE	 0
+#define XASSERT_NONE     0
 #define XASSERT_OCCURRED 1
 
 extern unsigned int XAssertStatus;
 extern void XAssert(char *, int);
 
 /**************************** Type Definitions *******************************/
-
-/** @name Primitive types
- * These primitive types are created for transportability.
- * They are dependent upon the target architecture.
- * @{
- */
-#include <linux/types.h>
-
-typedef struct {
-	u32 Upper;
-	u32 Lower;
-} Xuint64;
-
-/*@}*/
-
 /**
  * This data type defines an interrupt handler for a device.
  * The argument points to the instance of the component
  */
 typedef void (*XInterruptHandler) (void *InstancePtr);
+
+/**
+ * This data type defines an exception handler for a processor.
+ * The argument points to the instance of the component
+ */
+typedef void (*XExceptionHandler) (void *InstancePtr);
 
 /**
  * This data type defines a callback to be invoked when an
@@ -126,40 +123,6 @@ typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 
 /***************** Macros (Inline Functions) Definitions *********************/
 
-/*****************************************************************************/
-/**
-* Return the most significant half of the 64 bit data type.
-*
-* @param x is the 64 bit word.
-*
-* @return
-*
-* The upper 32 bits of the 64 bit word.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-#define XUINT64_MSW(x) ((x).Upper)
-
-/*****************************************************************************/
-/**
-* Return the least significant half of the 64 bit data type.
-*
-* @param x is the 64 bit word.
-*
-* @return
-*
-* The lower 32 bits of the 64 bit word.
-*
-* @note
-*
-* None.
-*
-******************************************************************************/
-#define XUINT64_LSW(x) ((x).Lower)
-
 #ifndef NDEBUG
 
 /*****************************************************************************/
@@ -168,28 +131,27 @@ typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 * (void). This in conjunction with the XWaitInAssert boolean can be used to
 * accomodate tests so that asserts which fail allow execution to continue.
 *
-* @param expression is the expression to evaluate. If it evaluates to false,
-*	 the assert occurs.
+* @param    expression is the expression to evaluate. If it evaluates to
+*           false, the assert occurs.
 *
-* @return
+* @return   Returns void unless the XWaitInAssert variable is true, in which
+*           case no return is made and an infinite loop is entered.
 *
-* Returns void unless the XWaitInAssert variable is true, in which case
-* no return is made and an infinite loop is entered.
-*
-* @note
-*
-* None.
+* @note     None.
 *
 ******************************************************************************/
-#define XASSERT_VOID(expression)			\
-{							\
-	if (expression) {				\
-		XAssertStatus = XASSERT_NONE;		\
-	} else {					\
-		XAssert(__FILE__, __LINE__);		\
-		XAssertStatus = XASSERT_OCCURRED;	\
-		return;					\
-	}						\
+#define XASSERT_VOID(expression)                   \
+{                                                  \
+    if (expression)                                \
+    {                                              \
+        XAssertStatus = XASSERT_NONE;              \
+    }                                              \
+    else                                           \
+    {                                              \
+        XAssert(__FILE__, __LINE__);               \
+                XAssertStatus = XASSERT_OCCURRED;  \
+        return;                                    \
+    }                                              \
 }
 
 /*****************************************************************************/
@@ -198,28 +160,27 @@ typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 * conjunction with the XWaitInAssert boolean can be used to accomodate tests so
 * that asserts which fail allow execution to continue.
 *
-* @param expression is the expression to evaluate. If it evaluates to false,
-*	 the assert occurs.
+* @param    expression is the expression to evaluate. If it evaluates to false,
+*           the assert occurs.
 *
-* @return
+* @return   Returns 0 unless the XWaitInAssert variable is true, in which case
+*           no return is made and an infinite loop is entered.
 *
-* Returns 0 unless the XWaitInAssert variable is true, in which case
-* no return is made and an infinite loop is entered.
-*
-* @note
-*
-* None.
+* @note     None.
 *
 ******************************************************************************/
-#define XASSERT_NONVOID(expression)		   \
-{						   \
-	if (expression) {			   \
-		XAssertStatus = XASSERT_NONE;	   \
-	} else {				   \
-		XAssert(__FILE__, __LINE__);	   \
-		XAssertStatus = XASSERT_OCCURRED;  \
-		return 0;			   \
-	}					   \
+#define XASSERT_NONVOID(expression)                \
+{                                                  \
+    if (expression)                                \
+    {                                              \
+        XAssertStatus = XASSERT_NONE;              \
+    }                                              \
+    else                                           \
+    {                                              \
+        XAssert(__FILE__, __LINE__);               \
+                XAssertStatus = XASSERT_OCCURRED;  \
+        return 0;                                  \
+    }                                              \
 }
 
 /*****************************************************************************/
@@ -228,21 +189,17 @@ typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 * return anything (void). Use for instances where an assert should always
 * occur.
 *
-* @return
+* @return Returns void unless the XWaitInAssert variable is true, in which case
+*         no return is made and an infinite loop is entered.
 *
-* Returns void unless the XWaitInAssert variable is true, in which case
-* no return is made and an infinite loop is entered.
-*
-* @note
-*
-* None.
+* @note   None.
 *
 ******************************************************************************/
-#define XASSERT_VOID_ALWAYS()			   \
-{						   \
-	XAssert(__FILE__, __LINE__);		   \
-	XAssertStatus = XASSERT_OCCURRED;	   \
-	return;					   \
+#define XASSERT_VOID_ALWAYS()                      \
+{                                                  \
+   XAssert(__FILE__, __LINE__);                    \
+           XAssertStatus = XASSERT_OCCURRED;       \
+   return;                                         \
 }
 
 /*****************************************************************************/
@@ -250,22 +207,19 @@ typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 * Always assert. This assert macro is to be used for functions that do return
 * a value. Use for instances where an assert should always occur.
 *
-* @return
+* @return Returns void unless the XWaitInAssert variable is true, in which case
+*         no return is made and an infinite loop is entered.
 *
-* Returns void unless the XWaitInAssert variable is true, in which case
-* no return is made and an infinite loop is entered.
-*
-* @note
-*
-* None.
+* @note   None.
 *
 ******************************************************************************/
-#define XASSERT_NONVOID_ALWAYS()		   \
-{						   \
-	XAssert(__FILE__, __LINE__);		   \
-	XAssertStatus = XASSERT_OCCURRED;	   \
-	return 0;				   \
+#define XASSERT_NONVOID_ALWAYS()                   \
+{                                                  \
+   XAssert(__FILE__, __LINE__);                    \
+           XAssertStatus = XASSERT_OCCURRED;       \
+   return 0;                                       \
 }
+
 
 #else
 
@@ -280,4 +234,8 @@ typedef void (*XAssertCallback) (char *FilenamePtr, int LineNumber);
 void XAssertSetCallback(XAssertCallback Routine);
 void XNullHandler(void *NullParameter);
 
-#endif	/* end of protection macro */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* end of protection macro */
