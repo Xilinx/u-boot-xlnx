@@ -1,4 +1,8 @@
 #
+# (C) Copyright 2008
+# Ricardo Ribalda-Universidad Autonoma de Madrid-ricardo.ribalda@uam.es
+# Work supported by Qtechnology http://www.qtec.com
+#
 # See file CREDITS for list of people who contributed to this
 # project.
 #
@@ -17,7 +21,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 #
+#
 
-#TEXT_BASE = 0xFFFC0000
-TEXT_BASE = 0x02000000
-
+sinclude $(SRCTREE)/board/xilinx/ppc405-generic/config.mk

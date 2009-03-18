@@ -58,22 +58,38 @@
 /*Mem Map*/
 #define CONFIG_SYS_SDRAM_SIZE_MB	256
 
-/*Env*/
-#define	CONFIG_ENV_IS_IN_FLASH	1
+#ifdef XPAR_FLASH_MEM0_BASEADDR
+/*Env for Flash*/
+/*
+ * CONFIG_ENV_IS_IN_FLASH is defined in xilinx_ppc.h
+ */
 #define	CONFIG_ENV_SIZE		0x20000
 #define	CONFIG_ENV_SECT_SIZE	0x20000
 #define CONFIG_ENV_OFFSET	0x340000
 #define CONFIG_ENV_ADDR		(XPAR_FLASH_MEM0_BASEADDR+CONFIG_ENV_OFFSET)
+#define CONFIG_ENV_OVERWRITE	1
+
+/*Flash*/
+#define	CONFIG_SYS_FLASH_SIZE		(32*1024*1024)
+#define	CONFIG_SYS_MAX_FLASH_SECT	259
+#define CONFIG_SYS_FLASH_CFI		1
+#define CONFIG_FLASH_CFI_DRIVER		1
+#define MTDIDS_DEFAULT			"nor0=ml507-flash"
+#define MTDPARTS_DEFAULT		"mtdparts=ml507-flash:-(user)"
+#endif
+
+#ifdef XPAR_IIC_0_BASEADDR
+/*Env for EEPROM*/
+/*
+ * CONFIG_ENV_IS_IN_EEPROM is defined in xilinx_ppc.h
+ */
+#define CONFIG_SYS_EEPROM_SIZE 4096
+#endif
+
 
 /*Misc*/
 #define CONFIG_SYS_PROMPT	"ml507:/# "	/* Monitor Command Prompt    */
 #define CONFIG_PREBOOT		"echo U-Boot is up and runnining;"
-
-/*Flash*/
-#define	CONFIG_SYS_FLASH_SIZE	(32*1024*1024)
-#define	CONFIG_SYS_MAX_FLASH_SECT	259
-#define MTDIDS_DEFAULT		"nor0=ml507-flash"
-#define MTDPARTS_DEFAULT	"mtdparts=ml507-flash:-(user)"
 
 /*Generic Configs*/
 #include <configs/xilinx-ppc440.h>

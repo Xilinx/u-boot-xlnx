@@ -15,8 +15,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __CONFIG_GEN_H
-#define __CONFIG_GEN_H
+#ifndef __CONFIG_XILINX_440_H
+#define __CONFIG_XILINX_440_H
 
 /*CPU*/
 #define CONFIG_4xx		1

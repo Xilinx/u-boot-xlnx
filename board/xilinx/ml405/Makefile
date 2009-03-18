@@ -1,6 +1,7 @@
 #
-# (C) Copyright 2000
-# Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# (C) Copyright 2008
+# Ricardo Ribalda,Universidad Autonoma de Madrid, ricardo.ribalda@uam.es
+# This work has been supported by: Qtechnology http://qtec.com/
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -73,3 +74,12 @@ distclean:	clean
 sinclude .depend
 
 #########################################################################
+=======
+#
+
+INCS		:= -I../ml405
+
+COBJS	+= $(BOARD).o
+
+include $(SRCTREE)/board/xilinx/ppc405-generic/Makefile
+>>>>>>> d8d2908e9438f0bab739f70f6ec6e0312697803e:board/xilinx/ml405/Makefile

@@ -26,8 +26,8 @@
  * MA 02111-1307 USA
  */
 
-#ifndef __CONFIG_H
-#define __CONFIG_H
+#ifndef __CONFIG_XILINX_405_H
+#define __CONFIG_XILINX_405_H
 
 /* cpu parameter */
 #define CONFIG_405		1

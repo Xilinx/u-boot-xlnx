@@ -29,13 +29,34 @@ include $(TOPDIR)/config.mk
 ifneq ($(OBJTREE),$(SRCTREE))
 endif
 
-INCS		:=
-CFLAGS		+= $(INCS)
+# Conditionally add Ethernet
+OBJS-$(CONFIG_XILINX_LL_TEMAC)    += ../xilinx_lltemac/xlltemac_adapter.o \
+                           ../xilinx_lltemac/xlltemac.o \
+                           ../xilinx_lltemac/xlltemac_control.o \
+                           ../common/xlldma.o \
+                           ../common/xlldma_bdring.o \
+                           ../common/xipif_v1_23_b.o \
+                           ../common/xbasic_types.o \
+                           ../common/xversion.o \
+                           ../common/xio_dcr.o
+CFLAGS-$(CONFIG_XILINX_LL_TEMAC)  += -I../xilinx_lltemac
+
+# Conditionally add IIC
+OBJS-$(CONFIG_XILINX_IIC)        += ../xilinx_iic/iic_adapter.o \
+                           ../xilinx_iic/xiic_l.o \
+                           ../common/xipif_v1_23_b.o \
+                           ../common/xbasic_types.o \
+                           ../common/xversion.o
+CFLAGS-$(CONFIG_XILINX_IIC)      += -I../xilinx_iic
+
+INCS		+= -I../common -I../ppc440-generic
+CFLAGS		+= $(INCS) $(CFLAGS-y)
 HOST_CFLAGS	+= $(INCS)
 
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	+= ../../xilinx/ppc440-generic/xilinx_ppc440_generic.o
+
+COBJS	+= ../../xilinx/ppc440-generic/xilinx_ppc440_generic.o $(OBJS-y)
 
 SOBJS	+= ../../xilinx/ppc440-generic/init.o
 
