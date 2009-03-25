@@ -283,7 +283,7 @@ eth_init(bd_t * bis)
 	}
 	/*
 	 * We reuse the bd template, as the same one will work for both rx and tx.
-	 */	Status = XLlDma_BdRingClone(TxRingPtr, &BdTemplate);
+	 */	Status = XLlDma_BdRingClone(TxRingPtr, &BdTemplate);
 	if (Status != XST_SUCCESS) {
 		debug_printf("Error initializing TxBD space");
 		return 1;
@@ -442,7 +442,7 @@ eth_rx(void)
 	 */
 	if (BdCount > 0) {
 
-		RecvFrameLength = XLlDma_mBdRead(RxBdPtr, XLLDMA_BD_USR4_OFFSET);
+		RecvFrameLength = XLlDma_mBdRead(RxBdPtr, XLLDMA_BD_USR4_OFFSET) & 0x3fff;
 
 		debug_printf("Received a frame of %d bytes\r\n", RecvFrameLength);
 
