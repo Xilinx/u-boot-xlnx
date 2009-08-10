@@ -78,6 +78,8 @@ int tsi108_eth_initialize(bd_t *bis);
 int uec_initialize(int index);
 int uec_standard_init(bd_t *bis);
 int uli526x_initialize(bd_t *bis);
+int xilinx_emaclite_initialize (bd_t *bis);
+int xilinx_ll_temac_initialize(bd_t *bis);
 int sh_eth_initialize(bd_t *bis);
 int dm9000_initialize(bd_t *bis);
 

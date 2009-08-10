@@ -229,8 +229,10 @@
 
 #ifndef CONFIG_SYS_ENET
 	#undef CONFIG_CMD_NET
+	#undef CONFIG_NET_MULTI
 #else
 	#define CONFIG_CMD_PING
+	#define CONFIG_NET_MULTI
 #endif
 
 #if defined(CONFIG_SYSTEMACE)
