@@ -44,7 +44,7 @@
 	#define CONFIG_CONS_INDEX	1
 	#define CONFIG_SYS_NS16550_COM1	(XILINX_UART16550_BASEADDR + 0x1000 + 0x3)
 	#define CONFIG_SYS_NS16550_CLK	XILINX_UART16550_CLOCK_HZ
-	#define	CONFIG_BAUDRATE		115200
+	#define	CONFIG_BAUDRATE		9600
 
 	/* The following table includes the supported baudrates */
 	#define CONFIG_SYS_BAUDRATE_TABLE  \
@@ -149,7 +149,6 @@
 #define	CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_MONITOR_BASE
 
 /*#define	RAMENV */
-#define	FLASH
 
 #ifdef FLASH
 	#define	CONFIG_SYS_FLASH_BASE		XILINX_FLASH_START
@@ -197,11 +196,17 @@
 	#undef CONFIG_ICACHE
 #endif
 
+/* don't use d cache for now as the LL TEMAC is not working with DMA 
+
 #if defined(XILINX_USE_DCACHE)
 	#define CONFIG_DCACHE
 #else
 	#undef CONFIG_DCACHE
 #endif
+*/
+
+#undef CONFIG_DCACHE
+
 
 /*
  * BOOTP options
@@ -281,8 +286,8 @@
 #define	CONFIG_BOOTARGS		"root=romfs"
 #define	CONFIG_HOSTNAME		XILINX_BOARD_NAME
 #define	CONFIG_BOOTCOMMAND	"base 0;tftp 11000000 image.img;bootm"
-#define	CONFIG_IPADDR		192.168.0.3
-#define	CONFIG_SERVERIP		192.168.0.5
+#define	CONFIG_IPADDR		192.168.0.1
+#define	CONFIG_SERVERIP		192.168.0.2
 #define	CONFIG_GATEWAYIP	192.168.0.1
 #define	CONFIG_ETHADDR		00:E0:0C:00:00:FD
 
