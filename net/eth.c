@@ -71,7 +71,14 @@ static int __def_eth_init(bd_t *bis)
 	return -1;
 }
 int cpu_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
+
+/* the following is not working with the GNU tools being used for MicroBlaze
+   as a linker error is generated, the alterative below works for now
+
 int board_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
+*/
+
+extern int board_eth_init(bd_t *bis);
 
 extern int mv6436x_eth_initialize(bd_t *);
 extern int mv6446x_eth_initialize(bd_t *);
