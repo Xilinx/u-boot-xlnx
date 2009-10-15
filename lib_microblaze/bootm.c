@@ -34,14 +34,17 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int do_bootm_linux(int flag, int argc, char *argv[], bootm_headers_t *images)
 {
-	/* First parameter is mapped to $r5 for kernel boot args */
-	void	(*theKernel) (char *);
+	/* First parameter is mapped to $r5 for kernel boot args, the next
+	   2nd parameter is $r6, not used but could be for initrd address, 
+	   3rd parameter is $r7, has address of the device tree in memory */
+	void	(*theKernel) (char *, ulong, ulong);
 	char	*commandline = getenv ("bootargs");
+	ulong	dtaddress;
 
 	if ((flag != 0) && (flag != BOOTM_STATE_OS_GO))
 		return 1;
 
-	theKernel = (void (*)(char *))images->ep;
+	theKernel = (void (*)(char *, ulong, ulong))images->ep;
 
 	show_boot_progress (15);
 
@@ -50,7 +53,14 @@ int do_bootm_linux(int flag, int argc, char *argv[], bootm_headers_t *images)
 		(ulong) theKernel);
 #endif
 
-	theKernel (commandline);
+	/* the user may have loaded the device tree blob into memory
+	   get the device tree address from the command arguments
+	   an initrd address is not used yet, but is the "-" below 
+	   assumes "bootm <kernel address> - <device tree address>" */
+	if (argc == 4)
+		dtaddress = simple_strtoul (argv[3], NULL, 16);
+
+	theKernel (commandline, 0, dtaddress);
 	/* does not return */
 
 	return 1;
