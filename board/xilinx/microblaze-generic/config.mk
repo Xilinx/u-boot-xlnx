@@ -25,8 +25,5 @@
 # Version: Xilinx EDK 6.3 EDK_Gmm.12.3
 #
 
-TEXT_BASE = 0x29000000
+TEXT_BASE = 0x51000000
 
-PLATFORM_CPPFLAGS += -mno-xl-soft-mul
-PLATFORM_CPPFLAGS += -mno-xl-soft-div
-PLATFORM_CPPFLAGS += -mxl-barrel-shift
