@@ -3452,6 +3452,11 @@ microblaze-generic_config:	unconfig
 	@mkdir -p $(obj)include
 	@$(MKCONFIG) -a $(@:_config=) microblaze microblaze microblaze-generic xilinx
 
+xilinx-microblaze_config:	unconfig
+	@mkdir -p $(obj)include
+	@$(MKCONFIG) -a $(@:_config=) microblaze microblaze microblaze-generic xilinx
+
+
 #========================================================================
 # Blackfin
 #========================================================================
