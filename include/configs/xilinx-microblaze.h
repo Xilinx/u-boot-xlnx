@@ -280,7 +280,7 @@
 #endif
 
 /* Miscellaneous configurable options */
-#define	CONFIG_SYS_PROMPT	"U-Boot-mONStR> "
+#define	CONFIG_SYS_PROMPT	"U-Boot> "
 #define	CONFIG_SYS_CBSIZE	512	/* size of console buffer */
 #define	CONFIG_SYS_PBSIZE	(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16) /* print buffer size */
 #define	CONFIG_SYS_MAXARGS	15	/* max number of command args */
