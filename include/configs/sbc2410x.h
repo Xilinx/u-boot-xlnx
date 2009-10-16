@@ -2,7 +2,7 @@
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
- * Gary Jennejohn <gj@denx.de>
+ * Gary Jennejohn <garyj@denx.de>
  * David Mueller <d.mueller@elsoft.ch>
  *
  * Modified for the friendly-arm SBC-2410X by
@@ -70,6 +70,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_S3C24X0_SERIAL
 #define CONFIG_SERIAL1          1	/* we use SERIAL 1 on SBC2410X */
 
 /************************************************************
@@ -135,8 +136,6 @@
 #define CONFIG_SYS_MEMTEST_START	0x30000000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x33F00000	/* 63 MB in DRAM	*/
 
-#undef  CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-
 #define	CONFIG_SYS_LOAD_ADDR		0x33000000	/* default load address	*/
 
 /* the PWM TImer 4 uses a counter of 15625 for 10 ms, so we need */
@@ -200,30 +199,8 @@
  * NAND flash settings
  */
 #if defined(CONFIG_CMD_NAND)
+#define CONFIG_NAND_S3C2410
 #define CONFIG_SYS_MAX_NAND_DEVICE	1	/* Max number of NAND devices		*/
-#define SECTORSIZE 512
-
-#define ADDR_COLUMN 1
-#define ADDR_PAGE 2
-#define ADDR_COLUMN_PAGE 3
-
-#define NAND_ChipID_UNKNOWN	0x00
-#define NAND_MAX_FLOORS 1
-
-#define NAND_WAIT_READY(nand)	NF_WaitRB()
-#define NAND_DISABLE_CE(nand)	NF_SetCE(NFCE_HIGH)
-#define NAND_ENABLE_CE(nand)	NF_SetCE(NFCE_LOW)
-#define WRITE_NAND_COMMAND(d, adr)	NF_Cmd(d)
-#define WRITE_NAND_COMMANDW(d, adr)	NF_CmdW(d)
-#define WRITE_NAND_ADDRESS(d, adr)	NF_Addr(d)
-#define WRITE_NAND(d, adr)		NF_Write(d)
-#define READ_NAND(adr)			NF_Read()
-/* the following functions are NOP's because S3C24X0 handles this in hardware */
-#define NAND_CTL_CLRALE(nandptr)
-#define NAND_CTL_SETALE(nandptr)
-#define NAND_CTL_CLRCLE(nandptr)
-#define NAND_CTL_SETCLE(nandptr)
-/* #undef CONFIG_MTD_NAND_VERIFY_WRITE */
 #endif	/* CONFIG_CMD_NAND */
 
 #define CONFIG_SETUP_MEMORY_TAGS

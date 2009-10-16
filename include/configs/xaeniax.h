@@ -49,9 +49,13 @@
 
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff */
 
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
+
 /*
  * select serial console configuration
  */
+#define CONFIG_PXA_SERIAL
 #define CONFIG_BTUART	       1       /* we use BTUART on XAENIAX */
 
 
@@ -133,8 +137,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0xa0400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0xa0800000	/* 4 ... 8 MB in DRAM	*/
-
-#undef	CONFIG_SYS_CLKS_IN_HZ				/* everything, incl board info, in Hz */
 
 #define CONFIG_SYS_LOAD_ADDR		0xa1000000	/* default load address */
 

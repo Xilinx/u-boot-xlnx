@@ -51,6 +51,7 @@
  * Misc configuration options
  */
 #define CONFIG_USE_IRQ          1	/* we need IRQ stuff for timer	*/
+#define CONFIG_TIMER_IRQ
 
 #define CONFIG_BOOTCOUNT_LIMIT		/* support for bootcount limit	*/
 #define CONFIG_SYS_BOOTCOUNT_ADDR	0x60003000 /* inside qmrg sram		*/
@@ -117,7 +118,6 @@
 #define CONFIG_SYS_MEMTEST_END         0x00800000      /* 4 ... 8 MB in DRAM   */
 #define CONFIG_SYS_LOAD_ADDR           0x00010000      /* default load address */
 
-#undef  CONFIG_SYS_CLKS_IN_HZ          /* everything, incl board info, in Hz */
 #define CONFIG_SYS_HZ			1000		/* decrementer freq: 1 ms ticks */
 						/* valid baudrates */
 #define CONFIG_SYS_BAUDRATE_TABLE      { 9600, 19200, 38400, 57600, 115200 }
@@ -265,7 +265,8 @@
  * NAND-FLASH stuff
  */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
-#define CONFIG_SYS_NAND_BASE		0x51000000	/* NAND FLASH Base Address	*/
+#define CONFIG_SYS_NAND_BASE		0x51000000	/* NAND FLASH Base Address */
+#define CONFIG_SYS_64BIT_VSPRINTF			/* needed for nand_util.c */
 #endif
 
 /*

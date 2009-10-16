@@ -275,7 +275,9 @@
 					   (= chip selects) */
 
 /* Dynamic MTD partition support */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=TQM5200-0"
 #if defined(CONFIG_TQM5200_B)
 #define MTDPARTS_DEFAULT	"mtdparts=TQM5200-0:768k(firmware),"	\

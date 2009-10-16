@@ -48,7 +48,7 @@ static int do_spi_flash_probe(int argc, char *argv[])
 			goto usage;
 	}
 	if (argc >= 4) {
-		mode = simple_strtoul(argv[3], &endp, 0);
+		mode = simple_strtoul(argv[3], &endp, 16);
 		if (*argv[3] == 0 || *endp != 0)
 			goto usage;
 	}
@@ -188,4 +188,5 @@ U_BOOT_CMD(
 	"				  `offset' to memory at `addr'\n"
 	"sf write addr offset len	- write `len' bytes from memory\n"
 	"				  at `addr' to flash at `offset'\n"
-	"sf erase offset len		- erase `len' bytes from `offset'\n");
+	"sf erase offset len		- erase `len' bytes from `offset'"
+);

@@ -135,7 +135,7 @@
     #define CONFIG_CMD_I2C
     #define CONFIG_CMD_JFFS2
 
-    #undef CONFIG_CMD_AUTOSCRIPT
+    #undef CONFIG_CMD_SOURCE
 #endif
 
 
@@ -146,42 +146,6 @@
 #define CONFIG_BOOTP_GATEWAY
 #define CONFIG_BOOTP_HOSTNAME
 #define CONFIG_BOOTP_BOOTPATH
-
-
-/*
- *  Board NAND Info.
- */
-#define CONFIG_NAND_LEGACY
-#define CONFIG_SYS_NAND_ADDR 0x04000000  /* physical address to access nand at CS0*/
-
-#define CONFIG_SYS_MAX_NAND_DEVICE 1	/* Max number of NAND devices */
-#define SECTORSIZE          512
-
-#define ADDR_COLUMN         1
-#define ADDR_PAGE           2
-#define ADDR_COLUMN_PAGE    3
-
-#define NAND_ChipID_UNKNOWN 0x00
-#define NAND_MAX_FLOORS     1
-
-#define WRITE_NAND_COMMAND(d, adr) do {*(volatile u16 *)0x6800A07C = d;} while(0)
-#define WRITE_NAND_ADDRESS(d, adr) do {*(volatile u16 *)0x6800A080 = d;} while(0)
-#define WRITE_NAND(d, adr) do {*(volatile u16 *)0x6800A084 = d;} while(0)
-#define READ_NAND(adr) (*(volatile u16 *)0x6800A084)
-#define NAND_WAIT_READY(nand)  udelay(10)
-
-#define NAND_NO_RB          1
-
-#define CONFIG_SYS_NAND_WP
-#define NAND_WP_OFF()  do {*(volatile u32 *)(0x6800A050) |= 0x00000010;} while(0)
-#define NAND_WP_ON()  do {*(volatile u32 *)(0x6800A050) &= ~0x00000010;} while(0)
-
-#define NAND_CTL_CLRALE(nandptr)
-#define NAND_CTL_SETALE(nandptr)
-#define NAND_CTL_CLRCLE(nandptr)
-#define NAND_CTL_SETCLE(nandptr)
-#define NAND_DISABLE_CE(nand)
-#define NAND_ENABLE_CE(nand)
 
 #define CONFIG_BOOTDELAY         3
 
@@ -216,22 +180,20 @@
 #define CONFIG_SYS_MEMTEST_START        (OMAP2420_SDRC_CS0)  /* memtest works on */
 #define CONFIG_SYS_MEMTEST_END          (OMAP2420_SDRC_CS0+SZ_31M)
 
-#undef	CONFIG_SYS_CLKS_IN_HZ           /* everything, incl board info, in Hz */
-
 #define CONFIG_SYS_LOAD_ADDR            (OMAP2420_SDRC_CS0) /* default load address */
 
 /* The 2420 has 12 GP timers, they can be driven by the SysClk (12/13/19.2) or by
  * 32KHz clk, or from external sig. This rate is divided by a local divisor.
  */
 #ifdef CONFIG_APTIX
-#define V_PVT                    3
+#define V_PTV			3
 #else
-#define V_PVT                    7  /* use with 12MHz/128 */
+#define V_PTV			7	/* use with 12MHz/128 */
 #endif
 
-#define CONFIG_SYS_TIMERBASE            OMAP2420_GPT2
-#define CONFIG_SYS_PVT                  V_PVT  /* 2^(pvt+1) */
-#define CONFIG_SYS_HZ	                 ((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PVT))
+#define CONFIG_SYS_TIMERBASE		OMAP2420_GPT2
+#define CONFIG_SYS_PTV			V_PTV	/* 2^(PTV+1) */
+#define CONFIG_SYS_HZ			((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PTV))
 
 /*-----------------------------------------------------------------------
  * Stack sizes
@@ -296,7 +258,7 @@
  * JFFS2 partitions
  */
 /* No command line, one static partition, whole device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor1"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
@@ -304,7 +266,7 @@
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor1=omap2420-1"
 #define MTDPARTS_DEFAULT	"mtdparts=omap2420-1:-(jffs2)"
 */

@@ -835,14 +835,19 @@ static int flash_write_cfiword (flash_info_t * info, ulong dest,
 		break;
 	case CFI_CMDSET_AMD_EXTENDED:
 	case CFI_CMDSET_AMD_STANDARD:
-#ifdef CONFIG_FLASH_CFI_LEGACY
-	case CFI_CMDSET_AMD_LEGACY:
-#endif
 		sect = find_sector(info, dest);
 		flash_unlock_seq (info, sect);
 		flash_write_cmd (info, sect, info->addr_unlock1, AMD_CMD_WRITE);
 		sect_found = 1;
 		break;
+#ifdef CONFIG_FLASH_CFI_LEGACY
+	case CFI_CMDSET_AMD_LEGACY:
+		sect = find_sector(info, dest);
+		flash_unlock_seq (info, 0);
+		flash_write_cmd (info, 0, info->addr_unlock1, AMD_CMD_WRITE);
+		sect_found = 1;
+		break;
+#endif
 	}
 
 	switch (info->portwidth) {
@@ -996,7 +1001,7 @@ static int flash_write_cfibuffer (flash_info_t * info, ulong dest, uchar * cp,
 #endif
 		flash_write_cmd(info, sector, offset, AMD_CMD_WRITE_TO_BUFFER);
 		cnt = len >> shift;
-		flash_write_cmd(info, sector, offset, (uchar)cnt - 1);
+		flash_write_cmd(info, sector, offset, cnt - 1);
 
 		switch (info->portwidth) {
 		case FLASH_CFI_8BIT:
@@ -1788,13 +1793,10 @@ static void flash_fixup_atmel(flash_info_t *info, struct cfi_qry *qry)
 
 	/* AT49BV6416(T) list the erase regions in the wrong order.
 	 * However, the device ID is identical with the non-broken
-	 * AT49BV642D since u-boot only reads the low byte (they
-	 * differ in the high byte.) So leave out this fixup for now.
+	 * AT49BV642D they differ in the high byte.
 	 */
-#if 0
 	if (info->device_id == 0xd6 || info->device_id == 0xd2)
 		reverse_geometry = !reverse_geometry;
-#endif
 
 	if (reverse_geometry)
 		cfi_reverse_geometry(qry);
@@ -1806,8 +1808,9 @@ static void flash_fixup_stm(flash_info_t *info, struct cfi_qry *qry)
 	if (qry->num_erase_regions > 1) {
 		/* reverse geometry if top boot part */
 		if (info->cfi_version < 0x3131) {
-			/* CFI < 1.1, guess by device id (only M29W320ET now) */
-			if (info->device_id == 0x2256) {
+			/* CFI < 1.1, guess by device id (M29W320{DT,ET} only) */
+			if (info->device_id == 0x22CA ||
+			    info->device_id == 0x2256) {
 				cfi_reverse_geometry(qry);
 			}
 		}
@@ -2008,7 +2011,9 @@ unsigned long flash_init (void)
 #endif
 
 #ifdef CONFIG_SYS_FLASH_PROTECTION
-	char *s = getenv("unlock");
+	/* read environment from EEPROM */
+	char s[64];
+	getenv_r ("unlock", s, sizeof(s));
 #endif
 
 #define BANK_BASE(i)	(((phys_addr_t [CFI_MAX_FLASH_BANKS])CONFIG_SYS_FLASH_BANKS_LIST)[i])
@@ -2098,7 +2103,7 @@ unsigned long flash_init (void)
 #ifdef CONFIG_ENV_ADDR_REDUND
 	flash_protect (FLAG_PROTECT_SET,
 		       CONFIG_ENV_ADDR_REDUND,
-		       CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SIZE_REDUND - 1,
+		       CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SECT_SIZE - 1,
 		       flash_get_info(CONFIG_ENV_ADDR_REDUND));
 #endif
 

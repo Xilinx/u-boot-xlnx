@@ -25,7 +25,7 @@
  */
 #define CONFIG_E300		1 /* E300 family */
 #define CONFIG_QE		1 /* Has QE */
-#define CONFIG_MPC83XX		1 /* MPC83XX family */
+#define CONFIG_MPC83xx		1 /* MPC83xx family */
 #define CONFIG_MPC8360		1 /* MPC8360 CPU specific */
 #define CONFIG_KMETER1		1 /* KMETER1 board specific */
 #define CONFIG_HOSTNAME		kmeter1
@@ -156,8 +156,7 @@
 #undef	CONFIG_SYS_RAMBOOT
 #endif
 
-#define CONFIG_SYS_MONITOR_LEN		(384 * 1024) /* Reserve 256 kB for Mon */
-#define CONFIG_SYS_MALLOC_LEN		(128 * 1024) /* Reserved for malloc */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024) /* Reserve 384 kB for Mon */
 
 /*
  * Initial RAM Base Address Setup
@@ -291,7 +290,6 @@
 #define CONFIG_ENV_IS_IN_FLASH	1
 #define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
 #define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K(one sector) for env */
-#define CONFIG_ENV_SIZE		0x20000
 #define CONFIG_ENV_OFFSET	(CONFIG_SYS_MONITOR_LEN)
 
 /* Address and size of Redundant Environment Sector	*/
@@ -313,21 +311,10 @@
 #define CONFIG_SYS_I2C_SLAVE	0x7F
 #define CONFIG_SYS_I2C_OFFSET	0x3000
 #define CONFIG_I2C_MULTI_BUS	1
-#define CONFIG_I2C_CMD_TREE	1
-#define CONFIG_SYS_MAX_I2C_BUS		2
 #define CONFIG_I2C_MUX		1
 
 /* EEprom support */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	2
-#define CONFIG_SYS_I2C_MULTI_EEPROMS	1
-#define CONFIG_SYS_EEPROM_PAGE_WRITE_ENABLE
-#define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS 3
-#define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS 10
-
-/* Support the IVM EEprom */
-#define	CONFIG_SYS_IVM_EEPROM_ADR	0x50
-#define CONFIG_SYS_IVM_EEPROM_MAX_LEN	0x400
-#define CONFIG_SYS_IVM_EEPROM_PAGE_LEN	0x100
 
 /* I2C SYSMON (LM75, AD7414 is almost compatible)			*/
 #define CONFIG_DTT_LM75		1	/* ON Semi's LM75		*/
@@ -335,7 +322,7 @@
 #define CONFIG_SYS_DTT_MAX_TEMP	70
 #define CONFIG_SYS_DTT_LOW_TEMP	-30
 #define CONFIG_SYS_DTT_HYSTERESIS	3
-#define CONFIG_SYS_DTT_BUS_NUM		(2)
+#define CONFIG_SYS_DTT_BUS_NUM		(CONFIG_SYS_MAX_I2C_BUS)
 
 #if defined(CONFIG_PCI)
 #define CONFIG_CMD_PCI
@@ -442,7 +429,7 @@
 
 #define CONFIG_PRAM	512	/* protected RAM [KBytes] */
 
-#define MTDIDS_DEFAULT		"nor0=app"
+#define MTDIDS_DEFAULT		"nor2=app"
 #define MTDPARTS_DEFAULT \
 	"mtdparts=app:256k(u-boot),128k(env),128k(envred),"	\
 	"1536k(esw0),8704k(rootfs0),1536k(esw1),2432k(rootfs1),640k(var),768k(cfg)"
@@ -457,47 +444,17 @@
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
        CONFIG_KM_DEF_ENV						\
-	"netdev=eth0\0"							\
 	"rootpath=/opt/eldk/ppc_82xx\0"					\
-	"nfsargs=setenv bootargs root=/dev/nfs rw "			\
-		"nfsroot=${serverip}:${rootpath}\0"			\
-	"ramargs=setenv bootargs root=/dev/ram rw\0"			\
-	"addip=setenv bootargs ${bootargs} "				\
-		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
-		":${hostname}:${netdev}:off panic=1\0"			\
-	"addtty=setenv bootargs ${bootargs}"				\
-		" console=ttyS0,${baudrate}\0"				\
-	"fdt_addr=f0080000\0"						\
-	"kernel_addr=f00a0000\0"					\
-	"ramdisk_addr=f03a0000\0"					\
-	"kernel_addr_r=400000\0"					\
-	"fdt_addr_r=800000\0"						\
-	"ramdisk_addr_r=810000\0"					\
-	"flash_self=run ramargs addip addtty;"				\
-		"bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
-	"flash_nfs=run nfsargs addip addtty;"				\
-		"bootm ${kernel_addr} - ${fdt_addr}\0"			\
-	"net_nfs=tftp ${kernel_addr_r} ${boot_file}; "			\
-		"tftp ${fdt_addr_r} ${fdt_file}; "			\
-		"run nfsargs addip addtty;"				\
-		"bootm ${kernel_addr_r} - ${fdt_addr_r}\0"		\
-	"fdt_file=/tftpboot/kmeter1/kmeter1.dtb\0"			\
-	"boot_file=/tftpboot/kmeter1/uImage\0"				\
+	"addcon=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
 	"ramdisk_file=/tftpboot/kmeter1/uRamdisk\0"			\
-	"u-boot=/tftpboot/kmeter1/u-boot.bin\0"				\
-	"loadaddr=" MK_STR(CONFIG_SYS_LOAD_ADDR) "\0"			\
-	"load=tftp $loadaddr ${u-boot}\0"				\
-	"update=protect off " MK_STR(TEXT_BASE) " +$filesize;"		\
-		"erase " MK_STR(TEXT_BASE) " +$filesize;"		\
-		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize;"	\
-		"protect on " MK_STR(TEXT_BASE) " +$filesize;"		\
-		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize;"	\
-		"setenv filesize;saveenv\0"				\
-	"upd=run load update\0"						\
 	"loadram=tftp ${ramdisk_addr_r} ${ramdisk_file}\0"		\
 	"loadfdt=tftp ${fdt_addr_r} ${fdt_file}\0"			\
-	"loadkernel=tftp ${kernel_addr_r} ${boot_file}\0"		\
+	"loadkernel=tftp ${kernel_addr_r} ${bootfile}\0"		\
 	"unlock=yes\0"							\
+	"fdt_addr=F0080000\0"						\
+	"kernel_addr=F00a0000\0"					\
+	"ramdisk_addr=F03a0000\0"					\
+	"ramdisk_addr_r=F10000\0"					\
 	"EEprom_ivm=pca9547:70:9\0"					\
 	"dtt_bus=pca9547:70:a\0"					\
 	"mtdids=nor0=app \0"						\

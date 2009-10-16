@@ -37,6 +37,7 @@
 #include "part_efi.h"
 
 #if defined(CONFIG_CMD_IDE) || \
+    defined(CONFIG_CMD_MG_DISK) || \
     defined(CONFIG_CMD_SATA) || \
     defined(CONFIG_CMD_SCSI) || \
     defined(CONFIG_CMD_USB) || \
@@ -168,7 +169,7 @@ int get_partition_info_efi(block_dev_desc_t * dev_desc, int part,
 		     - info->start;
 	info->blksz = GPT_BLOCK_SIZE;
 
-	sprintf((char *)info->name, "%s%d\n", GPT_ENTRY_NAME, part);
+	sprintf((char *)info->name, "%s%d", GPT_ENTRY_NAME, part);
 	sprintf((char *)info->type, "U-Boot");
 
 	debug("%s: start 0x%lX, size 0x%lX, name %s", __FUNCTION__,

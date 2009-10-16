@@ -43,6 +43,7 @@
 #define CONFIG_ARM_THUMB	1	/* this is an ARM7TDMI	 */
 #define CONFIG_S3C4510B		1	/* it's a S3C4510B chip	 */
 #define CONFIG_EVB4510		1	/* on an EVB4510 Board	 */
+#define CONFIG_SYS_NO_CP15_CACHE
 
 #define CONFIG_USE_IRQ
 #define CONFIG_STACKSIZE_IRQ    (4*1024)
@@ -121,8 +122,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0x00000000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x00780000	/* 4 ... 8 MB in DRAM	*/
-
-#undef	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
 
 #define CONFIG_SYS_LOAD_ADDR		0x00000000	/* default load address */
 

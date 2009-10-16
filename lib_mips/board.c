@@ -24,7 +24,7 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <timestamp.h>
 #include <version.h>
 #include <net.h>
@@ -323,9 +323,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #ifndef CONFIG_ENV_IS_NOWHERE
 	extern char * env_name_spec;
 #endif
-	char *s, *e;
+	char *s;
 	bd_t *bd;
-	int i;
 
 	gd = id;
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
@@ -371,6 +370,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	bd = gd->bd;
 
+	/* initialize malloc() area */
+	mem_malloc_init();
+	malloc_bin_reloc();
+
 #ifndef CONFIG_SYS_NO_FLASH
 	/* configure available FLASH banks */
 	size = flash_init();
@@ -385,10 +388,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	bd->bi_flashoffset = 0;
 #endif
 
-	/* initialize malloc() area */
-	mem_malloc_init();
-	malloc_bin_reloc();
-
 #ifdef CONFIG_CMD_NAND
 	puts ("NAND:  ");
 	nand_init ();		/* go init the NAND */
@@ -401,14 +400,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	/* relocate environment function pointers etc. */
 	env_relocate();
 
-	/* board MAC address */
-	s = getenv ("ethaddr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-
 	/* IP Address */
 	bd->bi_ip_addr = getenv_IPaddr("ipaddr");
 
@@ -420,8 +411,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 /** leave this here (after malloc(), environment and PCI are working) **/
-	/* Initialize devices */
-	devices_init ();
+	/* Initialize stdio devices */
+	stdio_init ();
 
 	jumptable_init ();
 

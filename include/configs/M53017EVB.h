@@ -77,6 +77,9 @@
 #	define CONFIG_SYS_FEC1_PINMUX	0
 #	define CONFIG_SYS_FEC1_MIIBASE	CONFIG_SYS_FEC1_IOBASE
 #	define MCFFEC_TOUT_LOOP		50000
+
+#	define CONFIG_BOOTARGS		"root=/dev/mtdblock3 rw rootfstype=jffs2"
+
 /* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
 #	ifndef CONFIG_SYS_DISCOVER_PHY
 #		define FECDUPLEX	FULL
@@ -196,6 +199,7 @@
  * the maximum mapped by the Linux kernel during initialization ??
  */
 #define CONFIG_SYS_BOOTMAPSZ		(CONFIG_SYS_SDRAM_BASE + (CONFIG_SYS_SDRAM_SIZE << 20))
+#define CONFIG_SYS_BOOTM_LEN		(CONFIG_SYS_SDRAM_SIZE << 20)
 
 /*-----------------------------------------------------------------------
  * FLASH organization
@@ -203,7 +207,9 @@
 #define CONFIG_SYS_FLASH_CFI
 #ifdef CONFIG_SYS_FLASH_CFI
 #	define CONFIG_FLASH_CFI_DRIVER		1
-#	define CONFIG_SYS_FLASH_SIZE		0x800000	/* Max size that the board might have */
+#	define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
+#	define CONFIG_FLASH_SPANSION_S29WS_N	1
+#	define CONFIG_SYS_FLASH_SIZE		0x1000000	/* Max size that the board might have */
 #	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
 #	define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
 #	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */

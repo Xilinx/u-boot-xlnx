@@ -25,7 +25,7 @@
 #include <watchdog.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #ifdef CONFIG_8xx
 #include <mpc8xx.h>
 #endif
@@ -77,6 +77,10 @@
 
 #ifdef CONFIG_ADDR_MAP
 #include <asm/mmu.h>
+#endif
+
+#ifdef CONFIG_MP
+#include <asm/mp.h>
 #endif
 
 #ifdef CONFIG_SYS_UPDATE_FLASH_SIZE
@@ -317,7 +321,7 @@ init_fnc_t *init_sequence[] = {
 	prt_8260_rsr,
 	prt_8260_clks,
 #endif /* CONFIG_8260 */
-#if defined(CONFIG_MPC83XX)
+#if defined(CONFIG_MPC83xx)
 	prt_83xx_rsr,
 #endif
 	checkcpu,
@@ -404,7 +408,7 @@ void board_init_f (ulong bootflag)
 	/* compiler optimization barrier needed for GCC >= 3.4 */
 	__asm__ __volatile__("": : :"memory");
 
-#if !defined(CONFIG_CPM2) && !defined(CONFIG_MPC83XX) && \
+#if !defined(CONFIG_CPM2) && !defined(CONFIG_MPC83xx) && \
     !defined(CONFIG_MPC85xx) && !defined(CONFIG_MPC86xx)
 	/* Clear initial global data */
 	memset ((void *) gd, 0, sizeof (gd_t));
@@ -443,6 +447,17 @@ void board_init_f (ulong bootflag)
 	gd->ram_size -= CONFIG_SYS_MEM_TOP_HIDE;
 
 	addr = CONFIG_SYS_SDRAM_BASE + get_effective_memsize();
+
+#if defined(CONFIG_MP) && (defined(CONFIG_MPC86xx) || defined(CONFIG_E500))
+	/*
+	 * We need to make sure the location we intend to put secondary core
+	 * boot code is reserved and not used by any part of u-boot
+	 */
+	if (addr > determine_mp_bootpg()) {
+		addr = determine_mp_bootpg();
+		debug ("Reserving MP boot page to %08lx\n", addr);
+	}
+#endif
 
 #ifdef CONFIG_LOGBUFFER
 #ifndef CONFIG_ALT_LB_ADDR
@@ -555,7 +570,7 @@ void board_init_f (ulong bootflag)
 #if defined(CONFIG_MPC5xxx)
 	bd->bi_mbar_base = CONFIG_SYS_MBAR;	/* base of internal registers */
 #endif
-#if defined(CONFIG_MPC83XX)
+#if defined(CONFIG_MPC83xx)
 	bd->bi_immrbar = CONFIG_SYS_IMMR;
 #endif
 #if defined(CONFIG_MPC8220)
@@ -645,9 +660,8 @@ void board_init_f (ulong bootflag)
 void board_init_r (gd_t *id, ulong dest_addr)
 {
 	cmd_tbl_t *cmdtp;
-	char *s, *e;
+	char *s;
 	bd_t *bd;
-	int i;
 	extern void malloc_bin_reloc (void);
 #ifndef CONFIG_ENV_IS_NOWHERE
 	extern char * env_name_spec;
@@ -736,8 +750,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET();
 
-#if defined(CONFIG_IP860) || defined(CONFIG_PCU_E) || \
-	defined (CONFIG_FLAGADM) || defined(CONFIG_MPC83XX)
+#if defined(CONFIG_SYS_DELAYED_ICACHE) || defined(CONFIG_MPC83xx)
 	icache_enable ();	/* it's time to enable the instruction cache */
 #endif
 
@@ -761,6 +774,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 	asm ("sync ; isync");
+
+	/* initialize malloc() area */
+	mem_malloc_init ();
+	malloc_bin_reloc ();
 
 #if !defined(CONFIG_SYS_NO_FLASH)
 	puts ("FLASH: ");
@@ -819,10 +836,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET ();
 
-	/* initialize malloc() area */
-	mem_malloc_init ();
-	malloc_bin_reloc ();
-
 #ifdef CONFIG_SPI
 # if !defined(CONFIG_ENV_IS_IN_EEPROM)
 	spi_init_f ();
@@ -879,6 +892,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	mac_read_from_eeprom();
 #endif
 
+/* was a conflict when merging into the microblaze branch, some hacking
+   had shown that this was an issue for powerpc causing an exception, need
+   more looking at
+
 	s = getenv ("ethaddr");
 #if defined (CONFIG_MBX) || \
     defined (CONFIG_RPXCLASSIC) || \
@@ -896,6 +913,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 			if (s)
 				s = (*e) ? e + 1 : e;
 		}
+*/
+
 #ifdef	CONFIG_HERMES
 	if ((gd->board_type >> 16) == 2)
 		bd->bi_ethspeed = gd->board_type & 0xFFFF;
@@ -903,88 +922,26 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		bd->bi_ethspeed = 0xFFFF;
 #endif
 
-#ifdef CONFIG_NX823
-	load_sernum_ethaddr ();
-#endif
-
+#ifdef CONFIG_CMD_NET
+	/* kept around for legacy kernels only ... ignore the next section */
+	eth_getenv_enetaddr("ethaddr", bd->bi_enetaddr);
 #ifdef CONFIG_HAS_ETH1
-	/* handle the 2nd ethernet address */
-
-	s = getenv ("eth1addr");
-
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet1addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
+	eth_getenv_enetaddr("eth1addr", bd->bi_enet1addr);
 #endif
 #ifdef CONFIG_HAS_ETH2
-	/* handle the 3rd ethernet address */
-
-	s = getenv ("eth2addr");
-#if defined(CONFIG_XPEDITE1K) || defined(CONFIG_METROBOX) || defined(CONFIG_KAREF)
-	if (s == NULL)
-		board_get_enetaddr(bd->bi_enet2addr);
-	else
+	eth_getenv_enetaddr("eth2addr", bd->bi_enet2addr);
 #endif
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet2addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-
 #ifdef CONFIG_HAS_ETH3
-	/* handle 4th ethernet address */
-	s = getenv("eth3addr");
-#if defined(CONFIG_XPEDITE1K) || defined(CONFIG_METROBOX) || defined(CONFIG_KAREF)
-	if (s == NULL)
-		board_get_enetaddr(bd->bi_enet3addr);
-	else
+	eth_getenv_enetaddr("eth3addr", bd->bi_enet3addr);
 #endif
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet3addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-
 #ifdef CONFIG_HAS_ETH4
-	/* handle 5th ethernet address */
-	s = getenv("eth4addr");
-#if defined(CONFIG_XPEDITE1K) || defined(CONFIG_METROBOX) || defined(CONFIG_KAREF)
-	if (s == NULL)
-		board_get_enetaddr(bd->bi_enet4addr);
-	else
+	eth_getenv_enetaddr("eth4addr", bd->bi_enet4addr);
 #endif
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet4addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-
 #ifdef CONFIG_HAS_ETH5
-	/* handle 6th ethernet address */
-	s = getenv("eth5addr");
-#if defined(CONFIG_XPEDITE1K) || defined(CONFIG_METROBOX) || defined(CONFIG_KAREF)
-	if (s == NULL)
-		board_get_enetaddr(bd->bi_enet5addr);
-	else
+	eth_getenv_enetaddr("eth5addr", bd->bi_enet5addr);
 #endif
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet5addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
+#endif /* CONFIG_CMD_NET */
 
-#if defined(CONFIG_TQM8xxL) || defined(CONFIG_TQM8260) || \
-    defined(CONFIG_TQM8272) || \
-    defined(CONFIG_CCM) || defined(CONFIG_KUP4K) || \
-    defined(CONFIG_KUP4X) || defined(CONFIG_PCS440EP)
-	load_sernum_ethaddr ();
-#endif
 	/* IP Address */
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
 
@@ -998,8 +955,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 /** leave this here (after malloc(), environment and PCI are working) **/
-	/* Initialize devices */
-	devices_init ();
+	/* Initialize stdio devices */
+	stdio_init ();
 
 	/* Initialize the jump table for applications */
 	jumptable_init ();
@@ -1223,103 +1180,6 @@ void hang (void)
 	for (;;);
 }
 
-#ifdef CONFIG_MODEM_SUPPORT
-/* called from main loop (common/main.c) */
-/* 'inline' - We have to do it fast */
-static inline void mdm_readline(char *buf, int bufsiz)
-{
-	char c;
-	char *p;
-	int n;
-
-	n = 0;
-	p = buf;
-	for(;;) {
-		c = serial_getc();
-
-		/*		dbg("(%c)", c); */
-
-		switch(c) {
-		case '\r':
-			break;
-		case '\n':
-			*p = '\0';
-			return;
-
-		default:
-			if(n++ > bufsiz) {
-				*p = '\0';
-				return; /* sanity check */
-			}
-			*p = c;
-			p++;
-			break;
-		}
-	}
-}
-
-extern void  dbg(const char *fmt, ...);
-int mdm_init (void)
-{
-	char env_str[16];
-	char *init_str;
-	int i;
-	extern char console_buffer[];
-	extern void enable_putc(void);
-	extern int hwflow_onoff(int);
-
-	enable_putc(); /* enable serial_putc() */
-
-#ifdef CONFIG_HWFLOW
-	init_str = getenv("mdm_flow_control");
-	if (init_str && (strcmp(init_str, "rts/cts") == 0))
-		hwflow_onoff (1);
-	else
-		hwflow_onoff(-1);
-#endif
-
-	for (i = 1;;i++) {
-		sprintf(env_str, "mdm_init%d", i);
-		if ((init_str = getenv(env_str)) != NULL) {
-			serial_puts(init_str);
-			serial_puts("\n");
-			for(;;) {
-				mdm_readline(console_buffer, CONFIG_SYS_CBSIZE);
-				dbg("ini%d: [%s]", i, console_buffer);
-
-				if ((strcmp(console_buffer, "OK") == 0) ||
-					(strcmp(console_buffer, "ERROR") == 0)) {
-					dbg("ini%d: cmd done", i);
-					break;
-				} else /* in case we are originating call ... */
-					if (strncmp(console_buffer, "CONNECT", 7) == 0) {
-						dbg("ini%d: connect", i);
-						return 0;
-					}
-			}
-		} else
-			break; /* no init string - stop modem init */
-
-		udelay(100000);
-	}
-
-	udelay(100000);
-
-	/* final stage - wait for connect */
-	for(;i > 1;) { /* if 'i' > 1 - wait for connection
-				  message from modem */
-		mdm_readline(console_buffer, CONFIG_SYS_CBSIZE);
-		dbg("ini_f: [%s]", console_buffer);
-		if (strncmp(console_buffer, "CONNECT", 7) == 0) {
-			dbg("ini_f: connected");
-			return 0;
-		}
-	}
-
-	return 0;
-}
-
-#endif
 
 #if 0 /* We could use plain global data, but the resulting code is bigger */
 /*

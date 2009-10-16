@@ -2,30 +2,30 @@
  * File: include/asm-blackfin/mach-bf548/anomaly.h
  * Bugs: Enter bugs at http://blackfin.uclinux.org/
  *
- * Copyright (C) 2004-2008 Analog Devices Inc.
+ * Copyright (C) 2004-2009 Analog Devices Inc.
  * Licensed under the GPL-2 or later.
  */
 
-/* This file shoule be up to date with:
- *  - Revision G, 08/07/2008; ADSP-BF542/BF544/BF547/BF548/BF549 Blackfin Processor Anomaly List
+/* This file should be up to date with:
+ *  - Revision H, 01/16/2009; ADSP-BF542/BF544/BF547/BF548/BF549 Blackfin Processor Anomaly List
  */
 
 #ifndef _MACH_ANOMALY_H_
 #define _MACH_ANOMALY_H_
 
-/* Multi-Issue Instruction with dsp32shiftimm in slot1 and P-reg Store in slot2 Not Supported */
+/* Multi-issue instruction with dsp32shiftimm in slot1 and P-reg store in slot 2 not supported */
 #define ANOMALY_05000074 (1)
 /* DMA_RUN Bit Is Not Valid after a Peripheral Receive Channel DMA Stops */
 #define ANOMALY_05000119 (1)
 /* Rx.H Cannot Be Used to Access 16-bit System MMR Registers */
 #define ANOMALY_05000122 (1)
-/* Spurious Hardware Error from an Access in the Shadow of a Conditional Branch */
+/* False Hardware Error from an Access in the Shadow of a Conditional Branch */
 #define ANOMALY_05000245 (1)
 /* Sensitivity To Noise with Slow Input Edge Rates on External SPORT TX and RX Clocks */
 #define ANOMALY_05000265 (1)
 /* Certain Data Cache Writethrough Modes Fail for Vddint <= 0.9V */
 #define ANOMALY_05000272 (1)
-/* False Hardware Error Exception when ISR context is not restored */
+/* False Hardware Error Exception When ISR Context Is Not Restored */
 #define ANOMALY_05000281 (__SILICON_REVISION__ < 1)
 /* SSYNCs After Writes To CAN/DMA MMR Registers Are Not Always Handled Correctly */
 #define ANOMALY_05000304 (__SILICON_REVISION__ < 1)
@@ -59,7 +59,7 @@
 #define ANOMALY_05000340 (__SILICON_REVISION__ < 1)
 /* Boot Host Wait (HWAIT) and Boot Host Wait Alternate (HWAITA) Signals Are Swapped */
 #define ANOMALY_05000344 (__SILICON_REVISION__ < 1)
-/* USB Calibration Value Is Not Intialized */
+/* USB Calibration Value Is Not Initialized */
 #define ANOMALY_05000346 (__SILICON_REVISION__ < 1)
 /* USB Calibration Value to use */
 #define ANOMALY_05000346_value 0x5411
@@ -91,8 +91,6 @@
 #define ANOMALY_05000371 (__SILICON_REVISION__ < 2)
 /* USB DP/DM Data Pins May Lose State When Entering Hibernate */
 #define ANOMALY_05000372 (__SILICON_REVISION__ < 1)
-/* Mobile DDR Operation Not Functional */
-#define ANOMALY_05000377 (1)
 /* Security/Authentication Speedpath Causes Authentication To Fail To Initiate */
 #define ANOMALY_05000378 (__SILICON_REVISION__ < 2)
 /* 16-Bit NAND FLASH Boot Mode Is Not Functional */
@@ -149,32 +147,53 @@
 #define ANOMALY_05000416 (1)
 /* Multichannel SPORT Channel Misalignment Under Specific Configuration */
 #define ANOMALY_05000425 (1)
-/* Speculative Fetches of Indirect-Pointer Instructions Can Cause Spurious Hardware Errors */
+/* Speculative Fetches of Indirect-Pointer Instructions Can Cause False Hardware Errors */
 #define ANOMALY_05000426 (1)
 /* CORE_EPPI_PRIO bit and SYS_EPPI_PRIO bit in the HMDMA1_CONTROL register are not functional */
 #define ANOMALY_05000427 (__SILICON_REVISION__ < 2)
-/* WB_EDGE Bit in NFC_IRQSTAT Incorrectly Behaves as a Buffer Status Bit Instead of an IRQ Status Bit */
+/* WB_EDGE Bit in NFC_IRQSTAT Incorrectly Reflects Buffer Status Instead of IRQ Status */
 #define ANOMALY_05000429 (__SILICON_REVISION__ < 2)
 /* Software System Reset Corrupts PLL_LOCKCNT Register */
 #define ANOMALY_05000430 (__SILICON_REVISION__ >= 2)
+/* Incorrect Use of Stack in Lockbox Firmware During Authentication */
+#define ANOMALY_05000431 (__SILICON_REVISION__ < 3)
+/* OTP Write Accesses Not Supported */
+#define ANOMALY_05000442 (__SILICON_REVISION__ < 1)
 /* IFLUSH Instruction at End of Hardware Loop Causes Infinite Stall */
 #define ANOMALY_05000443 (1)
+/* CDMAPRIO and L2DMAPRIO Bits in the SYSCR Register Are Not Functional */
+#define ANOMALY_05000446 (1)
+/* UART IrDA Receiver Fails on Extended Bit Pulses */
+#define ANOMALY_05000447 (1)
+/* DDR Clock Duty Cycle Spec Violation (tCH, tCL) */
+#define ANOMALY_05000448 (__SILICON_REVISION__ == 1)
+/* Reduced Timing Margins on DDR Output Setup and Hold (tDS and tDH) */
+#define ANOMALY_05000449 (__SILICON_REVISION__ == 1)
+/* USB DMA Mode 1 Short Packet Data Corruption */
+#define ANOMALY_05000450 (1
 
 /* Anomalies that don't exist on this proc */
 #define ANOMALY_05000125 (0)
 #define ANOMALY_05000158 (0)
+#define ANOMALY_05000171 (0)
 #define ANOMALY_05000183 (0)
 #define ANOMALY_05000198 (0)
+#define ANOMALY_05000227 (0)
 #define ANOMALY_05000230 (0)
+#define ANOMALY_05000242 (0)
 #define ANOMALY_05000244 (0)
 #define ANOMALY_05000261 (0)
 #define ANOMALY_05000263 (0)
 #define ANOMALY_05000266 (0)
 #define ANOMALY_05000273 (0)
+#define ANOMALY_05000278 (0)
+#define ANOMALY_05000305 (0)
 #define ANOMALY_05000307 (0)
 #define ANOMALY_05000311 (0)
 #define ANOMALY_05000323 (0)
+#define ANOMALY_05000362 (1)
 #define ANOMALY_05000363 (0)
+#define ANOMALY_05000380 (0)
 #define ANOMALY_05000412 (0)
 #define ANOMALY_05000432 (0)
 #define ANOMALY_05000435 (0)

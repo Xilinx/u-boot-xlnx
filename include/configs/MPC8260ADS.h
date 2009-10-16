@@ -17,6 +17,8 @@
  * Vitaly Bordug <vbordug@ru.mvista.com>
  * Added support for PCI bridge on MPC8272ADS
  *
+ * Copyright (C) Freescale Semiconductor, Inc. 2006-2009.
+ *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
@@ -66,6 +68,13 @@
 #endif /* CONFIG_ADSTYPE */
 
 #if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS
+#define CONFIG_MPC8272		1
+#elif CONFIG_ADSTYPE == CONFIG_SYS_PQ2FADS
+/*
+ * Actually MPC8275, but the code is littered with ifdefs that
+ * apply to both, or which use this ifdef to assume board-specific
+ * details. :-(
+ */
 #define CONFIG_MPC8272		1
 #else
 #define CONFIG_MPC8260		1
@@ -176,7 +185,7 @@
 #endif /* CONFIG_ADSTYPE >= CONFIG_SYS_PQ2FADS */
 
 /*PCI*/
-#ifdef CONFIG_MPC8272
+#if CONFIG_ADSTYPE >= CONFIG_SYS_PQ2FADS
 #define CONFIG_PCI
 #define CONFIG_PCI_PNP
 #define CONFIG_PCI_BOOTDELAY 0
@@ -244,7 +253,6 @@
 #elif CONFIG_ADSTYPE >= CONFIG_SYS_PQ2FADS
     #undef CONFIG_CMD_SDRAM
     #undef CONFIG_CMD_I2C
-    #undef CONFIG_CMD_PCI
 
 #else
     #undef CONFIG_CMD_PCI
@@ -318,7 +326,7 @@
 
 #define CONFIG_SYS_IMMR		0xF0000000
 #define CONFIG_SYS_BCSR		0xF4500000
-#if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS
+#if CONFIG_ADSTYPE >= CONFIG_SYS_PQ2FADS
 #define CONFIG_SYS_PCI_INT		0xF8200000
 #endif
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
@@ -413,6 +421,9 @@
 #if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS
 #define CONFIG_SYS_BR3_PRELIM	(CONFIG_SYS_PCI_INT | 0x1801)	/* PCI interrupt controller */
 #define CONFIG_SYS_OR3_PRELIM	0xFFFF8010
+#elif CONFIG_ADSTYPE == CONFIG_SYS_PQ2FADS
+#define CONFIG_SYS_BR8_PRELIM	(CONFIG_SYS_PCI_INT | 0x1801)	/* PCI interrupt controller */
+#define CONFIG_SYS_OR8_PRELIM	0xFFFF8010
 #endif
 
 #define CONFIG_SYS_RMR			RMR_CSRE
@@ -447,7 +458,7 @@
 
 #define CONFIG_SYS_RESET_ADDRESS	0x04400000
 
-#if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS
+#if CONFIG_ADSTYPE >= CONFIG_SYS_PQ2FADS
 
 /* PCI Memory map (if different from default map */
 #define CONFIG_SYS_PCI_SLV_MEM_LOCAL	CONFIG_SYS_SDRAM_BASE		/* Local base */
@@ -508,8 +519,50 @@
 
 #endif /* CONFIG_ADSTYPE == CONFIG_8272ADS*/
 
+#define CONFIG_HAS_ETH0
+
 #if CONFIG_ADSTYPE == CONFIG_SYS_8272ADS
 #define CONFIG_HAS_ETH1
 #endif
+
+#define CONFIG_NETDEV eth0
+#define CONFIG_LOADADDR 500000 /* default location for tftp and bootm */
+
+#define XMK_STR(x)	#x
+#define MK_STR(x)	XMK_STR(x)
+
+#define CONFIG_EXTRA_ENV_SETTINGS \
+	"netdev=" MK_STR(CONFIG_NETDEV) "\0"				\
+	"tftpflash=tftpboot $loadaddr $uboot; "				\
+		"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
+		"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
+		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
+		"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
+		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
+	"fdtaddr=400000\0"						\
+	"console=ttyCPM0\0"						\
+	"setbootargs=setenv bootargs "					\
+		"root=$rootdev rw console=$console,$baudrate $othbootargs\0" \
+	"setipargs=setenv bootargs nfsroot=$serverip:$rootpath "	 \
+		"ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
+		"root=$rootdev rw console=$console,$baudrate $othbootargs\0"
+
+#define CONFIG_NFSBOOTCOMMAND						\
+	"setenv rootdev /dev/nfs;"					\
+	"run setipargs;"						\
+	"tftp $loadaddr $bootfile;"					\
+	"tftp $fdtaddr $fdtfile;"					\
+	"bootm $loadaddr - $fdtaddr"
+
+#define CONFIG_RAMBOOTCOMMAND						\
+	"setenv rootdev /dev/ram;"					\
+	"run setbootargs;"						\
+	"tftp $ramdiskaddr $ramdiskfile;"				\
+	"tftp $loadaddr $bootfile;"					\
+	"tftp $fdtaddr $fdtfile;"					\
+	"bootm $loadaddr $ramdiskaddr $fdtaddr"
+
+#undef MK_STR
+#undef XMK_STR
 
 #endif /* __CONFIG_H */

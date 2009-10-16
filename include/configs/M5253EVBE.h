@@ -91,7 +91,6 @@
 #define CONFIG_SYS_ATA_REG_OFFSET	0xA0	/* Offset for normal register accesses */
 #define CONFIG_SYS_ATA_ALT_OFFSET	0xC0	/* Offset for alternate registers */
 #define CONFIG_SYS_ATA_STRIDE		4	/* Interval between registers */
-#define _IO_BASE		0
 
 #define CONFIG_SYS_PROMPT		"=> "
 #define CONFIG_SYS_LONGHELP		/* undef to save memory */
@@ -164,6 +163,7 @@
  * the maximum mapped by the Linux kernel during initialization ??
  */
 #define CONFIG_SYS_BOOTMAPSZ		(CONFIG_SYS_SDRAM_BASE + (CONFIG_SYS_SDRAM_SIZE << 20))
+#define CONFIG_SYS_BOOTM_LEN		(CONFIG_SYS_SDRAM_SIZE << 20)
 
 /* FLASH organization */
 #define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_CS0_BASE

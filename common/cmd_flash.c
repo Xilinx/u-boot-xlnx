@@ -31,12 +31,12 @@
 #include <dataflash.h>
 #endif
 
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 #include <jffs2/jffs2.h>
 
 /* parition handling routines */
 int mtdparts_init(void);
-int id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
+int mtd_id_parse(const char *id, const char **ret_id, u8 *dev_type, u8 *dev_num);
 int find_dev_and_part(const char *id, struct mtd_device **dev,
 		u8 *part_num, struct part_info **part);
 #endif
@@ -325,7 +325,7 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	flash_info_t *info;
 	ulong bank, addr_first, addr_last;
 	int n, sect_first, sect_last;
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 dev_type, dev_num, pnum;
@@ -357,9 +357,9 @@ int do_flerase (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return rcode;
 	}
 
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	/* erase <part-id> - erase partition */
-	if ((argc == 2) && (id_parse(argv[1], NULL, &dev_type, &dev_num) == 0)) {
+	if ((argc == 2) && (mtd_id_parse(argv[1], NULL, &dev_type, &dev_num) == 0)) {
 		mtdparts_init();
 		if (find_dev_and_part(argv[1], &dev, &pnum, &part) == 0) {
 			if (dev->id->type == MTD_DEV_TYPE_NOR) {
@@ -468,17 +468,19 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	ulong bank;
 	int i, n, sect_first, sect_last;
 #endif /* CONFIG_SYS_NO_FLASH */
+#if !defined(CONFIG_SYS_NO_FLASH) || defined(CONFIG_HAS_DATAFLASH)
 	ulong addr_first, addr_last;
-	int p;
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#endif
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 dev_type, dev_num, pnum;
 #endif
-	int rcode = 0;
 #ifdef CONFIG_HAS_DATAFLASH
 	int status;
 #endif
+	int p;
+	int rcode = 0;
 
 	if (argc < 3) {
 		cmd_usage(cmdtp);
@@ -563,9 +565,9 @@ int do_protect (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		return rcode;
 	}
 
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 	/* protect on/off <part-id> */
-	if ((argc == 3) && (id_parse(argv[2], NULL, &dev_type, &dev_num) == 0)) {
+	if ((argc == 3) && (mtd_id_parse(argv[2], NULL, &dev_type, &dev_num) == 0)) {
 		mtdparts_init();
 		if (find_dev_and_part(argv[2], &dev, &pnum, &part) == 0) {
 			if (dev->id->type == MTD_DEV_TYPE_NOR) {
@@ -698,7 +700,7 @@ int flash_sect_protect (int p, ulong addr_first, ulong addr_last)
 
 
 /**************************************************/
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_CMD_MTDPARTS)
 # define TMP_ERASE	"erase <part-id>\n    - erase partition\n"
 # define TMP_PROT_ON	"protect on <part-id>\n    - protect partition\n"
 # define TMP_PROT_OFF	"protect off <part-id>\n    - make partition writable\n"
@@ -712,7 +714,7 @@ U_BOOT_CMD(
 	flinfo,    2,    1,    do_flinfo,
 	"print FLASH memory information",
 	"\n    - print information for all FLASH memory banks\n"
-	"flinfo N\n    - print information for FLASH memory bank # N\n"
+	"flinfo N\n    - print information for FLASH memory bank # N"
 );
 
 U_BOOT_CMD(
@@ -726,7 +728,7 @@ U_BOOT_CMD(
 	"erase N:SF[-SL]\n    - erase sectors SF-SL in FLASH bank # N\n"
 	"erase bank N\n    - erase FLASH bank # N\n"
 	TMP_ERASE
-	"erase all\n    - erase all FLASH banks\n"
+	"erase all\n    - erase all FLASH banks"
 );
 
 U_BOOT_CMD(
@@ -751,7 +753,7 @@ U_BOOT_CMD(
 	"    - make sectors SF-SL writable in FLASH bank # N\n"
 	"protect off bank N\n    - make FLASH bank # N writable\n"
 	TMP_PROT_OFF
-	"protect off all\n    - make all FLASH banks writable\n"
+	"protect off all\n    - make all FLASH banks writable"
 );
 
 #undef	TMP_ERASE

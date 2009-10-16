@@ -40,6 +40,24 @@ DECLARE_GLOBAL_DATA_PTR;
 #define BOARD_GLACIER		3
 #define BOARD_ARCHES		4
 
+/*
+ * Override the default functions in cpu/ppc4xx/44x_spd_ddr2.c with
+ * board specific values.
+ */
+#if defined(CONFIG_ARCHES)
+u32 ddr_wrdtr(u32 default_val) {
+	return (SDRAM_WRDTR_LLWP_1_CYC | SDRAM_WRDTR_WTR_0_DEG | 0x823);
+}
+#else
+u32 ddr_wrdtr(u32 default_val) {
+	return (SDRAM_WRDTR_LLWP_1_CYC | SDRAM_WRDTR_WTR_180_DEG_ADV | 0x823);
+}
+
+u32 ddr_clktr(u32 default_val) {
+	return (SDRAM_CLKTR_CLKP_90_DEG_ADV);
+}
+#endif
+
 #if defined(CONFIG_ARCHES)
 /*
  * FPGA read/write helper macros
@@ -76,13 +94,23 @@ static inline void board_cpld_write(int offset, int data)
 	out_8((void *)(CONFIG_SYS_CPLD_ADDR), offset);
 	out_8((void *)(CONFIG_SYS_CPLD_DATA), data);
 }
+#else
+static int pvr_460ex(void)
+{
+	u32 pvr = get_pvr();
+
+	if ((pvr == PVR_460EX_RA) || (pvr == PVR_460EX_SE_RA) ||
+	    (pvr == PVR_460EX_RB))
+		return 1;
+
+	return 0;
+}
 #endif	/* defined(CONFIG_ARCHES) */
 
 int board_early_init_f(void)
 {
 #if !defined(CONFIG_ARCHES)
 	u32 sdr0_cust0;
-	u32 pvr = get_pvr();
 #endif
 
 	/*
@@ -157,7 +185,7 @@ int board_early_init_f(void)
 	mtdcr(AHB_TOP, 0x8000004B);
 	mtdcr(AHB_BOT, 0x8000004B);
 
-	if ((pvr == PVR_460EX_RA) || (pvr == PVR_460EX_SE_RA)) {
+	if (pvr_460ex()) {
 		/*
 		 * Configure USB-STP pins as alternate and not GPIO
 		 * It seems to be neccessary to configure the STP pins as GPIO
@@ -216,17 +244,16 @@ int get_cpu_num(void)
 int checkboard(void)
 {
 	char *s = getenv("serial#");
-	u32 pvr = get_pvr();
 
-	if ((pvr == PVR_460GT_RA) || (pvr == PVR_460GT_SE_RA)) {
-		printf("Board: Glacier - AMCC PPC460GT Evaluation Board");
-		gd->board_type = BOARD_GLACIER;
-	} else {
+	if (pvr_460ex()) {
 		printf("Board: Canyonlands - AMCC PPC460EX Evaluation Board");
 		if (in_8((void *)(CONFIG_SYS_BCSR_BASE + 3)) & CONFIG_SYS_BCSR3_PCIE)
 			gd->board_type = BOARD_CANYONLANDS_PCIE;
 		else
 			gd->board_type = BOARD_CANYONLANDS_SATA;
+	} else {
+		printf("Board: Glacier - AMCC PPC460GT Evaluation Board");
+		gd->board_type = BOARD_GLACIER;
 	}
 
 	switch (gd->board_type) {
@@ -285,18 +312,6 @@ int checkboard(void)
 	return 0;
 }
 #endif	/* !defined(CONFIG_ARCHES) */
-
-/*
- * Override the default functions in cpu/ppc4xx/44x_spd_ddr2.c with
- * board specific values.
- */
-u32 ddr_wrdtr(u32 default_val) {
-	return (SDRAM_WRDTR_LLWP_1_CYC | SDRAM_WRDTR_WTR_180_DEG_ADV | 0x823);
-}
-
-u32 ddr_clktr(u32 default_val) {
-	return (SDRAM_CLKTR_CLKP_90_DEG_ADV);
-}
 
 #if defined(CONFIG_NAND_U_BOOT)
 /*
@@ -492,7 +507,6 @@ int misc_init_r(void)
 {
 	u32 sdr0_srst1 = 0;
 	u32 eth_cfg;
-	u32 pvr = get_pvr();
 	u8 val;
 
 	/*
@@ -507,7 +521,7 @@ int misc_init_r(void)
 	/* Set the for 2 RGMII mode */
 	/* GMC0 EMAC4_0, GMC0 EMAC4_1, RGMII Bridge 0 */
 	eth_cfg &= ~SDR0_ETH_CFG_GMC0_BRIDGE_SEL;
-	if ((pvr == PVR_460EX_RA) || (pvr == PVR_460EX_SE_RA))
+	if (pvr_460ex())
 		eth_cfg |= SDR0_ETH_CFG_GMC1_BRIDGE_SEL;
 	else
 		eth_cfg &= ~SDR0_ETH_CFG_GMC1_BRIDGE_SEL;
@@ -575,24 +589,11 @@ int misc_init_r(void)
 #endif	/* !defined(CONFIG_ARCHES) */
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+extern void __ft_board_setup(void *blob, bd_t *bd);
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
-	u32 val[4];
-	int rc;
-
-	ft_cpu_setup(blob, bd);
-
-	/* Fixup NOR mapping */
-	val[0] = 0;				/* chip select number */
-	val[1] = 0;				/* always 0 */
-	val[2] = CONFIG_SYS_FLASH_BASE_PHYS_L;		/* we fixed up this address */
-	val[3] = gd->bd->bi_flashsize;
-	rc = fdt_find_and_setprop(blob, "/plb/opb/ebc", "ranges",
-				  val, sizeof(val), 1);
-	if (rc) {
-		printf("Unable to update property NOR mapping, err=%s\n",
-		       fdt_strerror(rc));
-	}
+	__ft_board_setup(blob, bd);
 
 	if (gd->board_type == BOARD_CANYONLANDS_SATA) {
 		/*

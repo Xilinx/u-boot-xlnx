@@ -189,7 +189,9 @@
 /*
  * JFFS2 partitions (mtdparts command line support)
  */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=omapflash.0"
 #define MTDPARTS_DEFAULT	"mtdparts=omapflash.0:256k(u-boot),64k(env),64k(r_env),16192k(data0),-(data1)"
 
@@ -210,14 +212,12 @@
 #define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1
 #define CONFIG_SYS_MEMTEST_END		PHYS_SDRAM_1 + PHYS_SDRAM_1_SIZE - PHYS_SDRAM_1_RESERVED
 
-#undef	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-
-/* The 1510 has 3 timers, they can be driven by the RefClk (12Mhz) or by DPLL1.
+/* The 1510 has 3 timers, they can be driven by the RefClk (12MHz) or by DPLL1.
  * This time is further subdivided by a local divisor.
  */
-#define CONFIG_SYS_TIMERBASE		OMAP1510_TIMER1_BASE
-#define CONFIG_SYS_PVT			7		/* 2^(pvt+1), divide by 256 */
-#define CONFIG_SYS_HZ			((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PVT))
+#define CONFIG_SYS_TIMERBASE	OMAP1510_TIMER1_BASE
+#define CONFIG_SYS_PTV		7	/* 2^(PTV+1), divide by 256 */
+#define CONFIG_SYS_HZ		1000
 
 #define OMAP5910_DPLL_DIV	1
 #define OMAP5910_DPLL_MUL	((CONFIG_SYS_CLK_FREQ * \

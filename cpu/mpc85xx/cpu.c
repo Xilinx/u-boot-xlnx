@@ -40,6 +40,8 @@ DECLARE_GLOBAL_DATA_PTR;
 struct cpu_type cpu_type_list [] = {
 	CPU_TYPE_ENTRY(8533, 8533),
 	CPU_TYPE_ENTRY(8533, 8533_E),
+	CPU_TYPE_ENTRY(8535, 8535),
+	CPU_TYPE_ENTRY(8535, 8535_E),
 	CPU_TYPE_ENTRY(8536, 8536),
 	CPU_TYPE_ENTRY(8536, 8536_E),
 	CPU_TYPE_ENTRY(8540, 8540),
@@ -61,6 +63,8 @@ struct cpu_type cpu_type_list [] = {
 	CPU_TYPE_ENTRY(8567, 8567_E),
 	CPU_TYPE_ENTRY(8568, 8568),
 	CPU_TYPE_ENTRY(8568, 8568_E),
+	CPU_TYPE_ENTRY(8569, 8569),
+	CPU_TYPE_ENTRY(8569, 8569_E),
 	CPU_TYPE_ENTRY(8572, 8572),
 	CPU_TYPE_ENTRY(8572, 8572_E),
 	CPU_TYPE_ENTRY(P2020, P2020),
@@ -182,6 +186,10 @@ int checkcpu (void)
 	printf("CPM:   %s MHz\n", strmhz(buf1, sysinfo.freqSystemBus));
 #endif
 
+#ifdef CONFIG_QE
+	printf("       QE:%-4s MHz\n", strmhz(buf1, sysinfo.freqQE));
+#endif
+
 	puts("L1:    D-cache 32 kB enabled\n       I-cache 32 kB enabled\n");
 
 	return 0;
@@ -255,50 +263,6 @@ reset_85xx_watchdog(void)
 	mtspr(SPRN_TSR, val);
 }
 #endif	/* CONFIG_WATCHDOG */
-
-#if defined(CONFIG_DDR_ECC)
-void dma_init(void) {
-	volatile ccsr_dma_t *dma = (void *)(CONFIG_SYS_MPC85xx_DMA_ADDR);
-
-	dma->satr0 = 0x02c40000;
-	dma->datr0 = 0x02c40000;
-	dma->sr0 = 0xfffffff; /* clear any errors */
-	asm("sync; isync; msync");
-	return;
-}
-
-uint dma_check(void) {
-	volatile ccsr_dma_t *dma = (void *)(CONFIG_SYS_MPC85xx_DMA_ADDR);
-	volatile uint status = dma->sr0;
-
-	/* While the channel is busy, spin */
-	while((status & 4) == 4) {
-		status = dma->sr0;
-	}
-
-	/* clear MR0[CS] channel start bit */
-	dma->mr0 &= 0x00000001;
-	asm("sync;isync;msync");
-
-	if (status != 0) {
-		printf ("DMA Error: status = %x\n", status);
-	}
-	return status;
-}
-
-int dma_xfer(void *dest, uint count, void *src) {
-	volatile ccsr_dma_t *dma = (void *)(CONFIG_SYS_MPC85xx_DMA_ADDR);
-
-	dma->dar0 = (uint) dest;
-	dma->sar0 = (uint) src;
-	dma->bcr0 = count;
-	dma->mr0 = 0xf000004;
-	asm("sync;isync;msync");
-	dma->mr0 = 0xf000005;
-	asm("sync;isync;msync");
-	return dma_check();
-}
-#endif
 
 /*
  * Configures a UPM. The function requires the respective MxMR to be set
@@ -375,24 +339,11 @@ int cpu_eth_init(bd_t *bis)
 #if defined(CONFIG_ETHER_ON_FCC)
 	fec_initialize(bis);
 #endif
-#if defined(CONFIG_UEC_ETH1)
-	uec_initialize(0);
+
+#if defined(CONFIG_UEC_ETH)
+	uec_standard_init(bis);
 #endif
-#if defined(CONFIG_UEC_ETH2)
-	uec_initialize(1);
-#endif
-#if defined(CONFIG_UEC_ETH3)
-	uec_initialize(2);
-#endif
-#if defined(CONFIG_UEC_ETH4)
-	uec_initialize(3);
-#endif
-#if defined(CONFIG_UEC_ETH5)
-	uec_initialize(4);
-#endif
-#if defined(CONFIG_UEC_ETH6)
-	uec_initialize(5);
-#endif
+
 #if defined(CONFIG_TSEC_ENET) || defined(CONFIG_MPC85XX_FEC)
 	tsec_standard_init(bis);
 #endif

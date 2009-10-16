@@ -80,8 +80,8 @@
  * SuperH Clock setting
  */
 #define CONFIG_SYS_CLK_FREQ	60000000
-#define TMU_CLK_DIVIDER		4
-#define CONFIG_SYS_HZ			(CONFIG_SYS_CLK_FREQ / TMU_CLK_DIVIDER)
+#define CONFIG_SYS_TMU_CLK_DIV		4
+#define CONFIG_SYS_HZ		1000
 #define	CONFIG_SYS_PLL_SETTLING_TIME	100/* in us */
 
 /*
@@ -114,13 +114,14 @@
 #define CONFIG_PCI_IO_BUS	0xFE240000	/* IO space base address */
 #define CONFIG_PCI_IO_PHYS	CONFIG_PCI_IO_BUS
 #define CONFIG_PCI_IO_SIZE	0x00040000	/* Size of IO window */
+#define CONFIG_PCI_SYS_BUS	(CONFIG_SYS_SDRAM_BASE & 0x1fffffff)
+#define CONFIG_PCI_SYS_PHYS	(CONFIG_SYS_SDRAM_BASE & 0x1fffffff)
+#define CONFIG_PCI_SYS_SIZE	CONFIG_SYS_SDRAM_SIZE
 
 /*
  * Network device (RTL8139) support
  */
 #define CONFIG_NET_MULTI
 #define CONFIG_RTL8139
-#define _IO_BASE		0x00000000
-#define KSEG1ADDR(x)		(x)
 
 #endif /* __CONFIG_H */

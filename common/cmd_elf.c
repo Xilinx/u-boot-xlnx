@@ -131,10 +131,12 @@ int do_bootvx (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 #if defined(CONFIG_WALNUT)
 	tmp = (char *) CONFIG_SYS_NVRAM_BASE_ADDR + 0x500;
-	memcpy ((char *) tmp, (char *) &gd->bd->bi_enetaddr[3], 3);
+	eth_getenv_enetaddr("ethaddr", (uchar *)build_buf);
+	memcpy(tmp, &build_buf[3], 3);
 #elif defined(CONFIG_SYS_VXWORKS_MAC_PTR)
 	tmp = (char *) CONFIG_SYS_VXWORKS_MAC_PTR;
-	memcpy ((char *) tmp, (char *) &gd->bd->bi_enetaddr[0], 6);
+	eth_getenv_enetaddr("ethaddr", (uchar *)build_buf);
+	memcpy(tmp, build_buf, 6);
 #else
 	puts ("## Ethernet MAC address not copied to NV RAM\n");
 #endif
@@ -285,7 +287,7 @@ unsigned long load_elf_image (unsigned long addr)
 		}
 
 		if (strtab) {
-			printf ("%sing %s @ 0x%08lx (%ld bytes)\n",
+			debug("%sing %s @ 0x%08lx (%ld bytes)\n",
 				(shdr->sh_type == SHT_NOBITS) ?
 					"Clear" : "Load",
 				&strtab[shdr->sh_name],
@@ -311,11 +313,11 @@ unsigned long load_elf_image (unsigned long addr)
 U_BOOT_CMD(
 	bootelf,      2,      0,      do_bootelf,
 	"Boot from an ELF image in memory",
-	" [address] - load address of ELF image.\n"
+	" [address] - load address of ELF image."
 );
 
 U_BOOT_CMD(
 	bootvx,      2,      0,      do_bootvx,
 	"Boot vxWorks from an ELF image",
-	" [address] - load address of vxWorks ELF image.\n"
+	" [address] - load address of vxWorks ELF image."
 );

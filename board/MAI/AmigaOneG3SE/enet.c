@@ -297,50 +297,50 @@ static void eth_3com_halt(struct eth_device* dev);
 
 static inline int ETH_INL(struct eth_device* dev, u_long addr)
 {
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 	return le32_to_cpu(*(volatile u32 *)io_to_phys(addr + dev->iobase));
 }
 
 static inline int ETH_INW(struct eth_device* dev, u_long addr)
 {
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 	return le16_to_cpu(*(volatile u16 *)io_to_phys(addr + dev->iobase));
 }
 
 static inline int ETH_INB(struct eth_device* dev, u_long addr)
 {
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 	return *(volatile u8 *)io_to_phys(addr + dev->iobase);
 }
 
 static inline void ETH_OUTB(struct eth_device* dev, int command, u_long addr)
 {
 	*(volatile u8 *)io_to_phys(addr + dev->iobase) = command;
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 }
 
 static inline void ETH_OUTW(struct eth_device* dev, int command, u_long addr)
 {
 	*(volatile u16 *)io_to_phys(addr + dev->iobase) = cpu_to_le16(command);
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 }
 
 static inline void ETH_OUTL(struct eth_device* dev, int command, u_long addr)
 {
 	*(volatile u32 *)io_to_phys(addr + dev->iobase) = cpu_to_le32(command);
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 }
 
 static inline int ETH_STATUS(struct eth_device* dev)
 {
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 	return le16_to_cpu(*(volatile u16 *)io_to_phys(EL3_STATUS + dev->iobase));
 }
 
 static inline void ETH_CMD(struct eth_device* dev, int command)
 {
 	*(volatile u16 *)io_to_phys(EL3_CMD + dev->iobase) = cpu_to_le16(command);
-    __asm volatile ("eieio");
+	__asm__ volatile ("eieio");
 }
 
 /* Command register is always in the same spot in all the register windows */
@@ -600,7 +600,7 @@ static int eth_3com_init (struct eth_device *dev, bd_t * bis)
 	ias_cmd = (struct descriptor *) &tx_ring[tx_cur];
 	ias_cmd->status = cpu_to_le32 (1 << 31);	/* set DnIndicate bit.                  */
 	ias_cmd->next = 0;
-	ias_cmd->addr = cpu_to_le32 ((u32) & bis->bi_enetaddr[0]);
+	ias_cmd->addr = cpu_to_le32 ((u32) dev->enetaddr);
 	ias_cmd->length = cpu_to_le32 (6 | LAST_FRAG);
 
 	/* Tell the adapter where the TX ring is located */
@@ -787,6 +787,10 @@ static void read_hw_addr (struct eth_device *dev, bd_t * bis)
 	unsigned int checksum = 0;
 	int i, j, timer;
 
+	/* First, try the env ... if that works, we're all done! */
+	if (eth_getenv_enetaddr("ethaddr", hw_addr))
+		goto Done;
+
 	/* Read the station address from the EEPROM. */
 
 	EL3WINDOW (dev, 0);
@@ -827,40 +831,10 @@ static void read_hw_addr (struct eth_device *dev, bd_t * bis)
 		hw_addr[j + 1] = (u8) ((ETH_INW (dev, j) >> 8) & 0xff);
 	}
 
-	for (i = 0; i < ETH_ALEN; i++) {
-		if (hw_addr[i] != bis->bi_enetaddr[i]) {
-/*			printf("Warning: HW address don't match:\n"); */
-/*			printf("Address in 3Com Window 2 is	    " */
-/*			       "%02X:%02X:%02X:%02X:%02X:%02X\n", */
-/*			       hw_addr[0], hw_addr[1], hw_addr[2], */
-/*			       hw_addr[3], hw_addr[4], hw_addr[5]); */
-/*			printf("Address used by U-Boot is " */
-/*			       "%02X:%02X:%02X:%02X:%02X:%02X\n", */
-/*			       bis->bi_enetaddr[0], bis->bi_enetaddr[1],  */
-/*			       bis->bi_enetaddr[2], bis->bi_enetaddr[3],  */
-/*			       bis->bi_enetaddr[4], bis->bi_enetaddr[5]); */
-/*			goto Done; */
-			char buffer[256];
-
-			if (bis->bi_enetaddr[0] == 0
-			    && bis->bi_enetaddr[1] == 0
-			    && bis->bi_enetaddr[2] == 0
-			    && bis->bi_enetaddr[3] == 0
-			    && bis->bi_enetaddr[4] == 0
-			    && bis->bi_enetaddr[5] == 0) {
-
-				sprintf (buffer,
-					 "%02X:%02X:%02X:%02X:%02X:%02X",
-					 hw_addr[0], hw_addr[1], hw_addr[2],
-					 hw_addr[3], hw_addr[4], hw_addr[5]);
-				setenv ("ethaddr", buffer);
-			}
-		}
-	}
-
-	for (i = 0; i < ETH_ALEN; i++)
-		dev->enetaddr[i] = hw_addr[i];
+	/* Save the result in the environment */
+	eth_setenv_enetaddr("ethaddr", hw_addr);
 
 Done:
+	memcpy(dev->enetaddr, hw_addr, 6);
 	return;
 }

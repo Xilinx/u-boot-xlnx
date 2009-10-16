@@ -124,10 +124,11 @@
 #define	CONFIG_CMD_JFFS2
 #define	CONFIG_CMD_UBI
 #define	CONFIG_RBTREE
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
 #define CONFIG_MTD_PARTITIONS
 #endif
 
-#undef	CONFIG_CMD_AUTOSCRIPT
+#undef	CONFIG_CMD_SOURCE
 
 #ifndef	CONFIG_SYS_USE_NOR
 # undef	CONFIG_CMD_FLASH
@@ -196,7 +197,6 @@
 #define	CONFIG_SYS_MEMTEST_START	(OMAP2420_SDRC_CS0)
 #define	CONFIG_SYS_MEMTEST_END		(OMAP2420_SDRC_CS0+SZ_31M)
 
-#undef	CONFIG_SYS_CLKS_IN_HZ	/* everything, incl board info, in Hz */
 /* default load address */
 #define	CONFIG_SYS_LOAD_ADDR	(OMAP2420_SDRC_CS0)
 
@@ -204,11 +204,9 @@
  * or by 32KHz clk, or from external sig. This rate is divided by a local
  * divisor.
  */
-#define	V_PVT	7	/* use with 12MHz/128 */
-
 #define	CONFIG_SYS_TIMERBASE	OMAP2420_GPT2
-#define	CONFIG_SYS_PVT	V_PVT	/* 2^(pvt+1) */
-#define	CONFIG_SYS_HZ		((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PVT))
+#define	CONFIG_SYS_PTV		7	/* 2^(PTV+1) */
+#define	CONFIG_SYS_HZ		((CONFIG_SYS_CLK_FREQ)/(2 << CONFIG_SYS_PTV))
 
 /*-----------------------------------------------------------------------
  * Stack sizes
@@ -254,11 +252,14 @@
 
 /* OneNAND boot, OneNAND has CS0, NOR boot ONeNAND has CS2 */
 #define	CONFIG_SYS_ONENAND_BASE	0x00000000
+#define CONFIG_SYS_MONITOR_LEN		SZ_256K	/* U-Boot image size */
 #define	CONFIG_ENV_IS_IN_ONENAND	1
 #define CONFIG_ENV_ADDR		0x00020000
 
+#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
+
 #ifdef CONFIG_SYS_USE_UBI
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"onenand0=onenand"
 #define MTDPARTS_DEFAULT	"mtdparts=onenand:128k(bootloader),"	\
 					"128k(params),"			\

@@ -33,14 +33,13 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300	1
-#define CONFIG_MPC83XX	1
-#define CONFIG_MPC834X	1
+#define CONFIG_MPC83xx	1
+#define CONFIG_MPC834x	1
 #define CONFIG_MPC8343	1
 
 #define CONFIG_SYS_IMMR		0xE0000000
 
 #define CONFIG_PCI
-#define CONFIG_83XX_GENERIC_PCI
 #define CONFIG_PCI_SKIP_HOST_BRIDGE
 #define CONFIG_HARD_I2C
 #define CONFIG_TSEC_ENET
@@ -53,7 +52,6 @@
 
 #define CONFIG_FSL_I2C
 #define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_CMD_TREE
 #define CONFIG_SYS_I2C_OFFSET		0x3000
 #define CONFIG_SYS_I2C2_OFFSET		0x3100
 
@@ -193,8 +191,6 @@
 #define CONFIG_SYS_PCI1_IO_BASE	0x00000000
 #define CONFIG_SYS_PCI1_IO_PHYS	0xE2000000
 #define CONFIG_SYS_PCI1_IO_SIZE	0x01000000
-
-#define _IO_BASE		0x00000000
 
 #define CONFIG_NET_MULTI	1
 #define CONFIG_NET_RETRY_COUNT	3
@@ -360,7 +356,8 @@
 #define CONFIG_SYS_IBAT5U	(CONFIG_SYS_IMMR | BATU_BL_256M | BATU_VS | BATU_VP)
 
 /* stack in DCACHE 0xFDF00000 & FLASH @ 0xFF800000 */
-#define CONFIG_SYS_IBAT6L	(0xF0000000 | BATL_PP_10 | BATL_MEMCOHERENCE)
+#define CONFIG_SYS_IBAT6L	(0xF0000000 | BATL_PP_10 | BATL_MEMCOHERENCE | \
+				 BATL_GUARDEDSTORAGE)
 #define CONFIG_SYS_IBAT6U	(0xF0000000 | BATU_BL_256M | BATU_VS | BATU_VP)
 #define CONFIG_SYS_IBAT7L	0
 #define CONFIG_SYS_IBAT7U	0
@@ -411,8 +408,8 @@
 #define MV_FPGA_SIZE		0x00076ca2
 #define MV_KERNEL_ADDR		0xff810000
 #define MV_INITRD_ADDR		0xffb00000
-#define MV_AUTOSCR_ADDR		0xff804000
-#define MV_AUTOSCR_ADDR2	0xff806000
+#define MV_SOURCE_ADDR		0xff804000
+#define MV_SOURCE_ADDR2		0xff806000
 #define MV_DTB_ADDR		0xff808000
 #define MV_INITRD_LENGTH	0x00400000
 
@@ -423,8 +420,8 @@
 #define MV_INITRD_ADDR_RAM	0x01000000
 
 #define CONFIG_BOOTCOMMAND	"if imi ${autoscr_addr}; \
-					then autoscr ${autoscr_addr};  \
-					else autoscr ${autoscr_addr2}; \
+					then source ${autoscr_addr};  \
+					else source ${autoscr_addr2}; \
 				fi;"
 #define CONFIG_BOOTARGS		"root=/dev/ram ro rootfstype=squashfs"
 
@@ -437,8 +434,8 @@
 	"fpga=0\0"						\
 	"fpgadata=" MK_STR(MV_FPGA_DATA) "\0"			\
 	"fpgadatasize=" MK_STR(MV_FPGA_SIZE) "\0"		\
-	"autoscr_addr=" MK_STR(MV_AUTOSCR_ADDR) "\0"		\
-	"autoscr_addr2=" MK_STR(MV_AUTOSCR_ADDR2) "\0"		\
+	"autoscr_addr=" MK_STR(MV_SOURCE_ADDR) "\0"		\
+	"autoscr_addr2=" MK_STR(MV_SOURCE_ADDR2) "\0"		\
 	"mv_kernel_addr=" MK_STR(MV_KERNEL_ADDR) "\0"		\
 	"mv_kernel_addr_ram=" MK_STR(MV_KERNEL_ADDR_RAM) "\0"	\
 	"mv_initrd_addr=" MK_STR(MV_INITRD_ADDR) "\0"		\

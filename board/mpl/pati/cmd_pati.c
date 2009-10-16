@@ -276,7 +276,7 @@ static int pati_pci_eeprom_write(unsigned short offset, unsigned long addr, unsi
 static int pati_pci_eeprom_read(unsigned short offset, unsigned long addr, unsigned short size)
 {
 	int i;
-	unsigned short value;
+	unsigned short value = 0;
 	unsigned short *buffer =(unsigned short *)addr;
 	if((offset + size) > PATI_EEPROM_LAST_OFFSET) {
 		size = PATI_EEPROM_LAST_OFFSET - offset;
@@ -443,7 +443,7 @@ U_BOOT_CMD(
 	"    era   - erase PCI EEPROM (write all word to 0xffff)\n"
 	"    reload- Reload PCI Bridge with EEPROM Values\n"
 	"    NOTE: <addr> must start on word boundary\n"
-	"          <offset> and <size> must be even byte values\n"
+	"          <offset> and <size> must be even byte values"
 );
 
 /* ------------------------------------------------------------------------- */

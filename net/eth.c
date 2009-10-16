@@ -26,10 +26,43 @@
 #include <net.h>
 #include <miiphy.h>
 
-#if defined(CONFIG_CMD_NET) && defined(CONFIG_NET_MULTI)
+#ifdef CONFIG_CMD_NET
+void eth_parse_enetaddr(const char *addr, uchar *enetaddr)
+{
+	char *end;
+	int i;
 
-static char *act = NULL;
-static int  env_changed_id = 0;
+	for (i = 0; i < 6; ++i) {
+		enetaddr[i] = addr ? simple_strtoul(addr, &end, 16) : 0;
+		if (addr)
+			addr = (*end) ? end + 1 : end;
+	}
+}
+
+int eth_getenv_enetaddr(char *name, uchar *enetaddr)
+{
+	eth_parse_enetaddr(getenv(name), enetaddr);
+	return is_valid_ether_addr(enetaddr);
+}
+
+int eth_setenv_enetaddr(char *name, const uchar *enetaddr)
+{
+	char buf[20];
+
+	sprintf(buf, "%pM", enetaddr);
+
+	return setenv(name, buf);
+}
+
+int eth_getenv_enetaddr_by_index(int index, uchar *enetaddr)
+{
+	char enetvar[32];
+	sprintf(enetvar, index ? "eth%daddr" : "ethaddr", index);
+	return eth_getenv_enetaddr(enetvar, enetaddr);
+}
+#endif
+
+#if defined(CONFIG_CMD_NET) && defined(CONFIG_NET_MULTI)
 
 /*
  * CPU and board-specific Ethernet initializations.  Aliased function
@@ -39,8 +72,15 @@ static int __def_eth_init(bd_t *bis)
 {
 	return -1;
 }
-int cpu_eth_init(bd_t *bis) __attribute((weak, alias("__def_eth_init")));
-int board_eth_init(bd_t *bis) __attribute((weak, alias("__def_eth_init")));
+int cpu_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
+
+/* the following is not working with the GNU tools being used for MicroBlaze
+   as a linker error is generated, the alterative below works for now
+
+int board_eth_init(bd_t *bis) __attribute__((weak, alias("__def_eth_init")));
+*/
+
+extern int board_eth_init(bd_t *bis);
 
 extern int mv6436x_eth_initialize(bd_t *);
 extern int mv6446x_eth_initialize(bd_t *);
@@ -154,10 +194,8 @@ int eth_register(struct eth_device* dev)
 
 int eth_initialize(bd_t *bis)
 {
-	char enetvar[32];
 	unsigned char env_enetaddr[6];
-	int i, eth_number = 0;
-	char *tmp, *end;
+	int eth_number = 0;
 
 	eth_devices = NULL;
 	eth_current = NULL;
@@ -196,14 +234,7 @@ int eth_initialize(bd_t *bis)
 				puts (" [PRIME]");
 			}
 
-			sprintf(enetvar, eth_number ? "eth%daddr" : "ethaddr", eth_number);
-			tmp = getenv (enetvar);
-
-			for (i=0; i<6; i++) {
-				env_enetaddr[i] = tmp ? simple_strtoul(tmp, &end, 16) : 0;
-				if (tmp)
-					tmp = (*end) ? end+1 : end;
-			}
+			eth_getenv_enetaddr_by_index(eth_number, env_enetaddr);
 
 			if (memcmp(env_enetaddr, "\0\0\0\0\0\0", 6)) {
 				if (memcmp(dev->enetaddr, "\0\0\0\0\0\0", 6) &&
@@ -211,16 +242,10 @@ int eth_initialize(bd_t *bis)
 				{
 					printf ("\nWarning: %s MAC addresses don't match:\n",
 						dev->name);
-					printf ("Address in SROM is         "
-					       "%02X:%02X:%02X:%02X:%02X:%02X\n",
-					       dev->enetaddr[0], dev->enetaddr[1],
-					       dev->enetaddr[2], dev->enetaddr[3],
-					       dev->enetaddr[4], dev->enetaddr[5]);
-					printf ("Address in environment is  "
-					       "%02X:%02X:%02X:%02X:%02X:%02X\n",
-					       env_enetaddr[0], env_enetaddr[1],
-					       env_enetaddr[2], env_enetaddr[3],
-					       env_enetaddr[4], env_enetaddr[5]);
+					printf ("Address in SROM is         %pM\n",
+						dev->enetaddr);
+					printf ("Address in environment is  %pM\n",
+						env_enetaddr);
 				}
 
 				memcpy(dev->enetaddr, env_enetaddr, 6);
@@ -246,40 +271,6 @@ int eth_initialize(bd_t *bis)
 	return eth_number;
 }
 
-void eth_set_enetaddr(int num, char *addr) {
-	struct eth_device *dev;
-	unsigned char enetaddr[6];
-	char *end;
-	int i;
-
-	debug ("eth_set_enetaddr(num=%d, addr=%s)\n", num, addr);
-
-	if (!eth_devices)
-		return;
-
-	for (i=0; i<6; i++) {
-		enetaddr[i] = addr ? simple_strtoul(addr, &end, 16) : 0;
-		if (addr)
-			addr = (*end) ? end+1 : end;
-	}
-
-	dev = eth_devices;
-	while(num-- > 0) {
-		dev = dev->next;
-
-		if (dev == eth_devices)
-			return;
-	}
-
-	debug ( "Setting new HW address on %s\n"
-		"New Address is             %02X:%02X:%02X:%02X:%02X:%02X\n",
-		dev->name,
-		enetaddr[0], enetaddr[1],
-		enetaddr[2], enetaddr[3],
-		enetaddr[4], enetaddr[5]);
-
-	memcpy(dev->enetaddr, enetaddr, 6);
-}
 #ifdef CONFIG_MCAST_TFTP
 /* Multicast.
  * mcast_addr: multicast ipaddr from which multicast Mac is made
@@ -328,23 +319,37 @@ u32 ether_crc (size_t len, unsigned char const *p)
 
 int eth_init(bd_t *bis)
 {
-	struct eth_device* old_current;
+	int eth_number;
+	struct eth_device *old_current, *dev;
 
 	if (!eth_current) {
 		puts ("No ethernet found.\n");
 		return -1;
 	}
 
+	/* Sync environment with network devices */
+	eth_number = 0;
+	dev = eth_devices;
+	do {
+		uchar env_enetaddr[6];
+
+		if (eth_getenv_enetaddr_by_index(eth_number, env_enetaddr))
+			memcpy(dev->enetaddr, env_enetaddr, 6);
+
+		++eth_number;
+		dev = dev->next;
+	} while (dev != eth_devices);
+
 	old_current = eth_current;
 	do {
-		debug ("Trying %s\n", eth_current->name);
+		debug("Trying %s\n", eth_current->name);
 
 		if (eth_current->init(eth_current,bis) >= 0) {
 			eth_current->state = ETH_STATE_ACTIVE;
 
 			return 0;
 		}
-		debug  ("FAIL\n");
+		debug("FAIL\n");
 
 		eth_try_another(0);
 	} while (old_current != eth_current);
@@ -464,6 +469,8 @@ void eth_try_another(int first_restart)
 #ifdef CONFIG_NET_MULTI
 void eth_set_current(void)
 {
+	static char *act = NULL;
+	static int  env_changed_id = 0;
 	struct eth_device* old_current;
 	int	env_id;
 
@@ -494,11 +501,11 @@ char *eth_get_name (void)
 }
 #elif defined(CONFIG_CMD_NET) && !defined(CONFIG_NET_MULTI)
 
+#warning Ethernet driver is deprecated.  Please update to use CONFIG_NET_MULTI
+
 extern int at91rm9200_miiphy_initialize(bd_t *bis);
-extern int emac4xx_miiphy_initialize(bd_t *bis);
 extern int mcf52x2_miiphy_initialize(bd_t *bis);
 extern int ns7520_miiphy_initialize(bd_t *bis);
-extern int davinci_eth_miiphy_initialize(bd_t *bis);
 
 
 int eth_initialize(bd_t *bis)
@@ -510,17 +517,11 @@ int eth_initialize(bd_t *bis)
 #if defined(CONFIG_AT91RM9200)
 	at91rm9200_miiphy_initialize(bis);
 #endif
-#if defined(CONFIG_PPC4xx_EMAC)
-	emac4xx_miiphy_initialize(bis);
-#endif
 #if defined(CONFIG_MCF52x2)
 	mcf52x2_miiphy_initialize(bis);
 #endif
 #if defined(CONFIG_DRIVER_NS7520_ETHERNET)
 	ns7520_miiphy_initialize(bis);
-#endif
-#if defined(CONFIG_DRIVER_TI_EMAC)
-	davinci_eth_miiphy_initialize(bis);
 #endif
 	return 0;
 }

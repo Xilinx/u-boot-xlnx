@@ -1,7 +1,8 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <linux/in.h>
+#include <netinet/in.h>
 
 int main (int argc, char *argv[])
 {
@@ -29,7 +30,8 @@ int main (int argc, char *argv[])
 		len = recvfrom (s, buf, sizeof buf, 0, (struct sockaddr *) &addr, &addr_len);
 		if (len < 0)
 			break;
-		write (1, buf, len);
+		if (write (1, buf, len) != len)
+			fprintf(stderr, "WARNING: serial characters dropped\n");
 	}
 
 	return 0;

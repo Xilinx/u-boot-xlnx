@@ -42,6 +42,8 @@
 #define CONFIG_DNP1110		1	/* on an DNP/1110 Board      */
 
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff */
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
 
 /*
  * Size of malloc() pool
@@ -59,6 +61,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_SA1100_SERIAL
 #define CONFIG_SERIAL1          1	/* we use SERIAL 1 */
 
 /* allow to overwrite serial and ethaddr */
@@ -108,8 +111,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0xc0400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0xc0800000	/* 4 ... 8 MB in DRAM	*/
-
-#undef  CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
 
 #define	CONFIG_SYS_LOAD_ADDR		0xc0200000	/* default load address	*/
 

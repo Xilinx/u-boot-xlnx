@@ -28,9 +28,6 @@
  */
 
 #include <config.h>
-
-#if defined(CONFIG_API)
-
 #include <linux/types.h>
 #include <api_public.h>
 
@@ -56,5 +53,3 @@ int platform_sys_info(struct sys_info *si)
 
 	return 1;
 }
-
-#endif /* CONFIG_API */

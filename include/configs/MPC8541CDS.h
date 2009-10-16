@@ -207,41 +207,18 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_SYS_LBC_MRTPR		0x00000000  /* LB refresh timer prescal*/
 
 /*
- * LSDMR masks
- */
-#define CONFIG_SYS_LBC_LSDMR_RFEN	(1 << (31 -  1))
-#define CONFIG_SYS_LBC_LSDMR_BSMA1516	(3 << (31 - 10))
-#define CONFIG_SYS_LBC_LSDMR_BSMA1617	(4 << (31 - 10))
-#define CONFIG_SYS_LBC_LSDMR_RFCR16	(7 << (31 - 16))
-#define CONFIG_SYS_LBC_LSDMR_PRETOACT7	(7 << (31 - 19))
-#define CONFIG_SYS_LBC_LSDMR_ACTTORW7	(7 << (31 - 22))
-#define CONFIG_SYS_LBC_LSDMR_ACTTORW6	(6 << (31 - 22))
-#define CONFIG_SYS_LBC_LSDMR_BL8	(1 << (31 - 23))
-#define CONFIG_SYS_LBC_LSDMR_WRC4	(0 << (31 - 27))
-#define CONFIG_SYS_LBC_LSDMR_CL3	(3 << (31 - 31))
-
-#define CONFIG_SYS_LBC_LSDMR_OP_NORMAL	(0 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_ARFRSH	(1 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_SRFRSH	(2 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_MRW	(3 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_PRECH	(4 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_PCHALL	(5 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_ACTBNK	(6 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_RWINV	(7 << (31 - 4))
-
-/*
  * Common settings for all Local Bus SDRAM commands.
  * At run time, either BSMA1516 (for CPU 1.1)
  *                  or BSMA1617 (for CPU 1.0) (old)
  * is OR'ed in too.
  */
-#define CONFIG_SYS_LBC_LSDMR_COMMON	( CONFIG_SYS_LBC_LSDMR_RFCR16		\
-				| CONFIG_SYS_LBC_LSDMR_PRETOACT7	\
-				| CONFIG_SYS_LBC_LSDMR_ACTTORW7	\
-				| CONFIG_SYS_LBC_LSDMR_BL8		\
-				| CONFIG_SYS_LBC_LSDMR_WRC4		\
-				| CONFIG_SYS_LBC_LSDMR_CL3		\
-				| CONFIG_SYS_LBC_LSDMR_RFEN		\
+#define CONFIG_SYS_LBC_LSDMR_COMMON	( LSDMR_RFCR16		\
+				| LSDMR_PRETOACT7	\
+				| LSDMR_ACTTORW7	\
+				| LSDMR_BL8		\
+				| LSDMR_WRC4		\
+				| LSDMR_CL3		\
+				| LSDMR_RFEN		\
 				)
 
 /*
@@ -463,10 +440,10 @@ extern unsigned long get_clock_freq(void);
 
 /*
  * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
+ * have to be in the first 16 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTMAPSZ	(16 << 20)	/* Initial Memory map for Linux*/
 
 /*
  * Internal Definitions

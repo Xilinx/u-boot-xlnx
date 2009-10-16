@@ -27,7 +27,7 @@
 #include <asm/mmu.h>
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
-#include <asm/immap_fsl_pci.h>
+#include <asm/fsl_pci.h>
 #include <asm/fsl_ddr_sdram.h>
 #include <asm/io.h>
 #include <spd.h>
@@ -60,10 +60,41 @@ int board_early_init_f (void)
 
 int checkboard (void)
 {
-	printf ("Board: MPC8536DS, System ID: 0x%02x, "
-		"System Version: 0x%02x, FPGA Version: 0x%02x\n",
-		in8(PIXIS_BASE + PIXIS_ID), in8(PIXIS_BASE + PIXIS_VER),
-		in8(PIXIS_BASE + PIXIS_PVER));
+	u8 vboot;
+	u8 *pixis_base = (u8 *)PIXIS_BASE;
+
+	puts("Board: MPC8536DS ");
+#ifdef CONFIG_PHYS_64BIT
+	puts("(36-bit addrmap) ");
+#endif
+
+	printf ("Sys ID: 0x%02x, "
+		"Sys Ver: 0x%02x, FPGA Ver: 0x%02x, ",
+		in_8(pixis_base + PIXIS_ID), in_8(pixis_base + PIXIS_VER),
+		in_8(pixis_base + PIXIS_PVER));
+
+	vboot = in_8(pixis_base + PIXIS_VBOOT);
+	switch ((vboot & PIXIS_VBOOT_LBMAP) >> 5) {
+		case PIXIS_VBOOT_LBMAP_NOR0:
+			puts ("vBank: 0\n");
+			break;
+		case PIXIS_VBOOT_LBMAP_NOR1:
+			puts ("vBank: 1\n");
+			break;
+		case PIXIS_VBOOT_LBMAP_NOR2:
+			puts ("vBank: 2\n");
+			break;
+		case PIXIS_VBOOT_LBMAP_NOR3:
+			puts ("vBank: 3\n");
+			break;
+		case PIXIS_VBOOT_LBMAP_PJET:
+			puts ("Promjet\n");
+			break;
+		case PIXIS_VBOOT_LBMAP_NAND:
+			puts ("NAND\n");
+			break;
+	}
+
 	return 0;
 }
 
@@ -157,9 +188,6 @@ static struct pci_controller pcie2_hose;
 #ifdef CONFIG_PCIE3
 static struct pci_controller pcie3_hose;
 #endif
-
-extern int fsl_pci_setup_inbound_windows(struct pci_region *r);
-extern void fsl_pci_init(struct pci_controller *hose);
 
 int first_free_busno=0;
 
@@ -501,20 +529,24 @@ ics307_clk_freq (unsigned char cw0, unsigned char cw1, unsigned char cw2)
 unsigned long
 get_board_sys_clk(ulong dummy)
 {
+	u8 *pixis_base = (u8 *)PIXIS_BASE;
+
 	return ics307_clk_freq (
-	    in8(PIXIS_BASE + PIXIS_VSYSCLK0),
-	    in8(PIXIS_BASE + PIXIS_VSYSCLK1),
-	    in8(PIXIS_BASE + PIXIS_VSYSCLK2)
+	    in_8(pixis_base + PIXIS_VSYSCLK0),
+	    in_8(pixis_base + PIXIS_VSYSCLK1),
+	    in_8(pixis_base + PIXIS_VSYSCLK2)
 	);
 }
 
 unsigned long
 get_board_ddr_clk(ulong dummy)
 {
+	u8 *pixis_base = (u8 *)PIXIS_BASE;
+
 	return ics307_clk_freq (
-	    in8(PIXIS_BASE + PIXIS_VDDRCLK0),
-	    in8(PIXIS_BASE + PIXIS_VDDRCLK1),
-	    in8(PIXIS_BASE + PIXIS_VDDRCLK2)
+	    in_8(pixis_base + PIXIS_VDDRCLK0),
+	    in_8(pixis_base + PIXIS_VDDRCLK1),
+	    in_8(pixis_base + PIXIS_VDDRCLK2)
 	);
 }
 #else
@@ -523,8 +555,9 @@ get_board_sys_clk(ulong dummy)
 {
 	u8 i;
 	ulong val = 0;
+	u8 *pixis_base = (u8 *)PIXIS_BASE;
 
-	i = in8(PIXIS_BASE + PIXIS_SPD);
+	i = in_8(pixis_base + PIXIS_SPD);
 	i &= 0x07;
 
 	switch (i) {
@@ -562,8 +595,9 @@ get_board_ddr_clk(ulong dummy)
 {
 	u8 i;
 	ulong val = 0;
+	u8 *pixis_base = (u8 *)PIXIS_BASE;
 
-	i = in8(PIXIS_BASE + PIXIS_SPD);
+	i = in_8(pixis_base + PIXIS_SPD);
 	i &= 0x38;
 	i >>= 3;
 
@@ -650,9 +684,6 @@ int board_eth_init(bd_t *bis)
 }
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-extern void ft_fsl_pci_setup(void *blob, const char *pci_alias,
-			struct pci_controller *hose);
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);

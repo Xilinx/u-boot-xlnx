@@ -123,7 +123,7 @@ void reconfigure_pll(u32 new_cpu_freq)
 	/* Reset processor if configuration changed */
 	if (reset_needed) {
 		__asm__ __volatile__ ("sync; isync");
-		mtspr(dbcr0, 0x20000000);
+		mtspr(SPRN_DBCR0, 0x20000000);
 	}
 #endif
 }
@@ -174,11 +174,6 @@ cpu_init_f (void)
 	 * Set EMAC noise filter bits
 	 */
 	mtdcr(cpc0_epctl, CPC0_EPRCSR_E0NFE | CPC0_EPRCSR_E1NFE);
-
-	/*
-	 * Enable the internal PCI arbiter
-	 */
-	mtdcr(cpc0_pci, mfdcr(cpc0_pci) | CPC0_PCI_HOST_CFG_EN | CPC0_PCI_ARBIT_EN);
 #endif /* CONFIG_405EP */
 
 #if defined(CONFIG_SYS_4xx_GPIO_TABLE)
@@ -321,33 +316,9 @@ cpu_init_f (void)
  */
 int cpu_init_r (void)
 {
-#if defined(CONFIG_405GP)  || defined(CONFIG_405EP)
-	bd_t *bd = gd->bd;
-	unsigned long reg;
 #if defined(CONFIG_405GP)
 	uint pvr = get_pvr();
-#endif
 
-	/*
-	 * Write Ethernetaddress into on-chip register
-	 */
-	reg = 0x00000000;
-	reg |= bd->bi_enetaddr[0];           /* set high address */
-	reg = reg << 8;
-	reg |= bd->bi_enetaddr[1];
-	out32 (EMAC_IAH, reg);
-
-	reg = 0x00000000;
-	reg |= bd->bi_enetaddr[2];           /* set low address  */
-	reg = reg << 8;
-	reg |= bd->bi_enetaddr[3];
-	reg = reg << 8;
-	reg |= bd->bi_enetaddr[4];
-	reg = reg << 8;
-	reg |= bd->bi_enetaddr[5];
-	out32 (EMAC_IAL, reg);
-
-#if defined(CONFIG_405GP)
 	/*
 	 * Set edge conditioning circuitry on PPC405GPr
 	 * for compatibility to existing PPC405GP designs.
@@ -356,7 +327,6 @@ int cpu_init_r (void)
 		mtdcr(ecr, 0x60606000);
 	}
 #endif  /* defined(CONFIG_405GP) */
-#endif  /* defined(CONFIG_405GP) || defined(CONFIG_405EP) */
 
-	return (0);
+	return 0;
 }

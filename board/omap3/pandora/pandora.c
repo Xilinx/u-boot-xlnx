@@ -30,16 +30,17 @@
  * MA 02111-1307 USA
  */
 #include <common.h>
+#include <twl4030.h>
 #include <asm/io.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-types.h>
 #include "pandora.h"
 
-/******************************************************************************
+/*
  * Routine: board_init
  * Description: Early hardware init.
- *****************************************************************************/
+ */
 int board_init(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
@@ -53,18 +54,19 @@ int board_init(void)
 	return 0;
 }
 
-/******************************************************************************
+/*
  * Routine: misc_init_r
  * Description: Configure board specific parts
- *****************************************************************************/
+ */
 int misc_init_r(void)
 {
-	gpio_t *gpio1_base = (gpio_t *)OMAP34XX_GPIO1_BASE;
-	gpio_t *gpio4_base = (gpio_t *)OMAP34XX_GPIO4_BASE;
-	gpio_t *gpio5_base = (gpio_t *)OMAP34XX_GPIO5_BASE;
-	gpio_t *gpio6_base = (gpio_t *)OMAP34XX_GPIO6_BASE;
+	struct gpio *gpio1_base = (struct gpio *)OMAP34XX_GPIO1_BASE;
+	struct gpio *gpio4_base = (struct gpio *)OMAP34XX_GPIO4_BASE;
+	struct gpio *gpio5_base = (struct gpio *)OMAP34XX_GPIO5_BASE;
+	struct gpio *gpio6_base = (struct gpio *)OMAP34XX_GPIO6_BASE;
 
-	power_init_r();
+	twl4030_power_init();
+	twl4030_led_init();
 
 	/* Configure GPIOs to output */
 	writel(~(GPIO14 | GPIO15 | GPIO16 | GPIO23), &gpio1_base->oe);
@@ -77,15 +79,17 @@ int misc_init_r(void)
 	writel(GPIO28, &gpio5_base->setdataout);
 	writel(GPIO4, &gpio6_base->setdataout);
 
+	dieid_num_r();
+
 	return 0;
 }
 
-/******************************************************************************
+/*
  * Routine: set_muxconf_regs
  * Description: Setting up the configuration Mux registers specific to the
  *		hardware. Many pins need to be moved from protect to primary
  *		mode.
- *****************************************************************************/
+ */
 void set_muxconf_regs(void)
 {
 	MUX_PANDORA();

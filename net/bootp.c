@@ -8,17 +8,6 @@
  *	Copyright 2000-2004 Wolfgang Denk, wd@denx.de
  */
 
-#if 0
-#define DEBUG		1	/* general debug */
-#define DEBUG_BOOTP_EXT 1	/* Debug received vendor fields */
-#endif
-
-#ifdef DEBUG_BOOTP_EXT
-#define debug_ext(fmt,args...)	printf (fmt ,##args)
-#else
-#define debug_ext(fmt,args...)
-#endif
-
 #include <common.h>
 #include <command.h>
 #include <net.h>
@@ -107,7 +96,7 @@ static int BootpCheckPkt(uchar *pkt, unsigned dest, unsigned src, unsigned len)
 		retval = -6;
 	}
 
-	debug ("Filtering pkt = %d\n", retval);
+	debug("Filtering pkt = %d\n", retval);
 
 	return retval;
 }
@@ -124,12 +113,12 @@ static void BootpCopyNetParams(Bootp_t *bp)
 	NetCopyIP(&tmp_ip, &bp->bp_siaddr);
 	if (tmp_ip != 0)
 		NetCopyIP(&NetServerIP, &bp->bp_siaddr);
-	memcpy (NetServerEther, ((Ethernet_t *)NetRxPkt)->et_src, 6);
+	memcpy (NetServerEther, ((Ethernet_t *)NetRxPacket)->et_src, 6);
 #endif
 	if (strlen(bp->bp_file) > 0)
 		copy_filename (BootFile, bp->bp_file, sizeof(BootFile));
 
-	debug ("Bootfile: %s\n", BootFile);
+	debug("Bootfile: %s\n", BootFile);
 
 	/* Propagate to environment:
 	 * don't delete exising entry when BOOTP / DHCP reply does
@@ -156,7 +145,7 @@ static void BootpVendorFieldProcess (u8 * ext)
 {
 	int size = *(ext + 1);
 
-	debug_ext ("[BOOTP] Processing extension %d... (%d bytes)\n", *ext,
+	debug("[BOOTP] Processing extension %d... (%d bytes)\n", *ext,
 		   *(ext + 1));
 
 	NetBootFileSize = 0;
@@ -255,7 +244,7 @@ static void BootpVendorProcess (u8 * ext, int size)
 {
 	u8 *end = ext + size;
 
-	debug_ext ("[BOOTP] Checking extension (%d bytes)...\n", size);
+	debug("[BOOTP] Checking extension (%d bytes)...\n", size);
 
 	while ((ext < end) && (*ext != 0xff)) {
 		if (*ext == 0) {
@@ -269,40 +258,27 @@ static void BootpVendorProcess (u8 * ext, int size)
 		}
 	}
 
-#ifdef DEBUG_BOOTP_EXT
-	puts ("[BOOTP] Received fields: \n");
-	if (NetOurSubnetMask) {
-		puts ("NetOurSubnetMask : ");
-		print_IPaddr (NetOurSubnetMask);
-		putc ('\n');
-	}
+	debug("[BOOTP] Received fields: \n");
+	if (NetOurSubnetMask)
+		debug("NetOurSubnetMask : %pI4\n", &NetOurSubnetMask);
 
-	if (NetOurGatewayIP) {
-		puts ("NetOurGatewayIP	: ");
-		print_IPaddr (NetOurGatewayIP);
-		putc ('\n');
-	}
+	if (NetOurGatewayIP)
+		debug("NetOurGatewayIP	: %pI4", &NetOurGatewayIP);
 
-	if (NetBootFileSize) {
-		printf ("NetBootFileSize : %d\n", NetBootFileSize);
-	}
+	if (NetBootFileSize)
+		debug("NetBootFileSize : %d\n", NetBootFileSize);
 
-	if (NetOurHostName[0]) {
-		printf ("NetOurHostName  : %s\n", NetOurHostName);
-	}
+	if (NetOurHostName[0])
+		debug("NetOurHostName  : %s\n", NetOurHostName);
 
-	if (NetOurRootPath[0]) {
-		printf ("NetOurRootPath  : %s\n", NetOurRootPath);
-	}
+	if (NetOurRootPath[0])
+		debug("NetOurRootPath  : %s\n", NetOurRootPath);
 
-	if (NetOurNISDomain[0]) {
-		printf ("NetOurNISDomain : %s\n", NetOurNISDomain);
-	}
+	if (NetOurNISDomain[0])
+		debug("NetOurNISDomain : %s\n", NetOurNISDomain);
 
-	if (NetBootFileSize) {
-		printf ("NetBootFileSize: %d\n", NetBootFileSize);
-	}
-#endif /* DEBUG_BOOTP_EXT */
+	if (NetBootFileSize)
+		debug("NetBootFileSize: %d\n", NetBootFileSize);
 }
 /*
  *	Handle a BOOTP received packet.
@@ -313,7 +289,7 @@ BootpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 	Bootp_t *bp;
 	char	*s;
 
-	debug ("got BOOTP packet (src=%d, dst=%d, len=%d want_len=%zu)\n",
+	debug("got BOOTP packet (src=%d, dst=%d, len=%d want_len=%zu)\n",
 		src, dest, len, sizeof (Bootp_t));
 
 	bp = (Bootp_t *)pkt;
@@ -336,7 +312,7 @@ BootpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 
 	NetSetTimeout(0, (thand_f *)0);
 
-	debug ("Got good BOOTP\n");
+	debug("Got good BOOTP\n");
 
 	if ((s = getenv("autoload")) != NULL) {
 		if (*s == 'n') {
@@ -579,29 +555,15 @@ BootpRequest (void)
 #ifdef CONFIG_BOOTP_RANDOM_DELAY		/* Random BOOTP delay */
 	unsigned char bi_enetaddr[6];
 	int   reg;
-	char  *e,*s;
-	char tmp[64];
 	ulong tst1, tst2, sum, m_mask, m_value = 0;
 
 	if (BootpTry ==0) {
 		/* get our mac */
-		reg = getenv_r ("ethaddr", tmp, sizeof(tmp));
-		s = (reg > 0) ? tmp : NULL;
+		eth_getenv_enetaddr("ethaddr", bi_enetaddr);
 
-		for (reg=0; reg<6; ++reg) {
-			bi_enetaddr[reg] = s ? simple_strtoul(s, &e, 16) : 0;
-			if (s) {
-				s = (*e) ? e+1 : e;
-			}
-		}
-#ifdef DEBUG
-		puts ("BootpRequest => Our Mac: ");
-		for (reg=0; reg<6; reg++) {
-			printf ("%x%c",
-				bi_enetaddr[reg],
-				reg==5 ? '\n' : ':');
-		}
-#endif /* DEBUG */
+		debug("BootpRequest => Our Mac: ");
+		for (reg=0; reg<6; reg++)
+			debug("%x%c", bi_enetaddr[reg], reg==5 ? '\n' : ':');
 
 		/* Mac-Manipulation 2 get seed1 */
 		tst1=0;
@@ -702,7 +664,7 @@ BootpRequest (void)
 	 * Calculate proper packet lengths taking into account the
 	 * variable size of the options field
 	 */
-	pktlen = BOOTP_SIZE - sizeof(bp->bp_vend) + ext_len;
+	pktlen = ((int)(pkt-NetTxPacket)) + BOOTP_HDR_SIZE - sizeof(bp->bp_vend) + ext_len;
 	iplen = BOOTP_HDR_SIZE - sizeof(bp->bp_vend) + ext_len;
 	NetSetIP(iphdr, 0xFFFFFFFFL, PORT_BOOTPS, PORT_BOOTPC, iplen);
 	NetSetTimeout(SELECT_TIMEOUT, BootpTimeout);
@@ -835,7 +797,7 @@ static void DhcpSendRequestPkt(Bootp_t *bp_offer)
 	int pktlen, iplen, extlen;
 	IPaddr_t OfferedIP;
 
-	debug ("DhcpSendRequestPkt: Sending DHCPREQUEST\n");
+	debug("DhcpSendRequestPkt: Sending DHCPREQUEST\n");
 	pkt = NetTxPacket;
 	memset ((void*)pkt, 0, PKTSIZE);
 
@@ -875,11 +837,11 @@ static void DhcpSendRequestPkt(Bootp_t *bp_offer)
 	NetCopyIP(&OfferedIP, &bp_offer->bp_yiaddr);
 	extlen = DhcpExtended((u8 *)bp->bp_vend, DHCP_REQUEST, NetDHCPServerIP, OfferedIP);
 
-	pktlen = BOOTP_SIZE - sizeof(bp->bp_vend) + extlen;
+	pktlen = ((int)(pkt-NetTxPacket)) + BOOTP_HDR_SIZE - sizeof(bp->bp_vend) + extlen;
 	iplen = BOOTP_HDR_SIZE - sizeof(bp->bp_vend) + extlen;
 	NetSetIP(iphdr, 0xFFFFFFFFL, PORT_BOOTPS, PORT_BOOTPC, iplen);
 
-	debug ("Transmitting DHCPREQUEST packet: len = %d\n", pktlen);
+	debug("Transmitting DHCPREQUEST packet: len = %d\n", pktlen);
 #ifdef CONFIG_BOOTP_DHCP_REQUEST_DELAY
 	udelay(CONFIG_BOOTP_DHCP_REQUEST_DELAY);
 #endif	/* CONFIG_BOOTP_DHCP_REQUEST_DELAY */
@@ -894,13 +856,13 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 {
 	Bootp_t *bp = (Bootp_t *)pkt;
 
-	debug ("DHCPHandler: got packet: (src=%d, dst=%d, len=%d) state: %d\n",
+	debug("DHCPHandler: got packet: (src=%d, dst=%d, len=%d) state: %d\n",
 		src, dest, len, dhcp_state);
 
 	if (BootpCheckPkt(pkt, dest, src, len)) /* Filter out pkts we don't want */
 		return;
 
-	debug ("DHCPHandler: got DHCP packet: (src=%d, dst=%d, len=%d) state: %d\n",
+	debug("DHCPHandler: got DHCP packet: (src=%d, dst=%d, len=%d) state: %d\n",
 		src, dest, len, dhcp_state);
 
 	switch (dhcp_state) {
@@ -911,14 +873,14 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 		 * If filename is in format we recognize, assume it is a valid
 		 * OFFER from a server we want.
 		 */
-		debug ("DHCP: state=SELECTING bp_file: \"%s\"\n", bp->bp_file);
+		debug("DHCP: state=SELECTING bp_file: \"%s\"\n", bp->bp_file);
 #ifdef CONFIG_SYS_BOOTFILE_PREFIX
 		if (strncmp(bp->bp_file,
 			    CONFIG_SYS_BOOTFILE_PREFIX,
 			    strlen(CONFIG_SYS_BOOTFILE_PREFIX)) == 0 ) {
 #endif	/* CONFIG_SYS_BOOTFILE_PREFIX */
 
-			debug ("TRANSITIONING TO REQUESTING STATE\n");
+			debug("TRANSITIONING TO REQUESTING STATE\n");
 			dhcp_state = REQUESTING;
 
 			if (NetReadLong((ulong*)&bp->bp_vend[0]) == htonl(BOOTP_VENDOR_MAGIC))
@@ -933,7 +895,7 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 		return;
 		break;
 	case REQUESTING:
-		debug ("DHCP State: REQUESTING\n");
+		debug("DHCP State: REQUESTING\n");
 
 		if ( DhcpMessageType((u8 *)bp->bp_vend) == DHCP_ACK ) {
 			char *s;
@@ -942,9 +904,7 @@ DhcpHandler(uchar * pkt, unsigned dest, unsigned src, unsigned len)
 				DhcpOptionsProcess((u8 *)&bp->bp_vend[4], bp);
 			BootpCopyNetParams(bp); /* Store net params from reply */
 			dhcp_state = BOUND;
-			puts ("DHCP client bound to address ");
-			print_IPaddr(NetOurIP);
-			putc ('\n');
+			printf ("DHCP client bound to address %pI4\n", &NetOurIP);
 
 			/* Obey the 'autoload' setting */
 			if ((s = getenv("autoload")) != NULL) {

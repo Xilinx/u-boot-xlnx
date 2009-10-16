@@ -43,8 +43,8 @@
 #endif
 
 #define	CONFIG_8xx_CONS_SMC1	1	/* Console is on SMC1		*/
-#undef	CONFIG_8xx_CONS_SMC2
-#undef	CONFIG_8xx_CONS_NONE
+#define CONFIG_SYS_SMC_RXBUFLEN	128
+#define CONFIG_SYS_MAXIDLE	10
 #define CONFIG_BAUDRATE		115200	/* console baudrate = 115kbps	*/
 
 #define	CONFIG_BOOTCOUNT_LIMIT
@@ -231,7 +231,9 @@
 /*-----------------------------------------------------------------------
  * Dynamic MTD partition support
  */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=TQM8xxL-0"
 
 #define MTDPARTS_DEFAULT	"mtdparts=TQM8xxL-0:256k(u-boot),"	\

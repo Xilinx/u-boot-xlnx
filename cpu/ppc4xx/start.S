@@ -25,6 +25,8 @@
  * MA 02111-1307 USA
  */
 /*------------------------------------------------------------------------------+
+ *   This source code is dual-licensed.  You may use it under the terms of the
+ *   GNU General Public License version 2, or under the license below.
  *
  *	 This source code has been made available to you by IBM on an AS-IS
  *	 basis.	 Anyone receiving this source is licensed under IBM
@@ -257,6 +259,14 @@
 	bl	board_init_f
 #endif
 
+#if defined(CONFIG_SYS_RAMBOOT)
+	/*
+	 * 4xx RAM-booting U-Boot image is started from offset 0
+	 */
+	.text
+	bl	_start_440
+#endif
+
 /*
  * 440 Startup -- on reset only the top 4k of the effective
  * address space is mapped in by an entry in the instruction
@@ -289,7 +299,7 @@ _start_440:
 	| Core bug fix.  Clear the esr
 	+-----------------------------------------------------------------*/
 	li	r0,0
-	mtspr	esr,r0
+	mtspr	SPRN_ESR,r0
 	/*----------------------------------------------------------------*/
 	/* Clear and set up some registers. */
 	/*----------------------------------------------------------------*/
@@ -297,16 +307,16 @@ _start_440:
 	dccci	r0,r0		/* NOTE: operands not used for 440 */
 	sync
 	li	r0,0
-	mtspr	srr0,r0
-	mtspr	srr1,r0
-	mtspr	csrr0,r0
-	mtspr	csrr1,r0
+	mtspr	SPRN_SRR0,r0
+	mtspr	SPRN_SRR1,r0
+	mtspr	SPRN_CSRR0,r0
+	mtspr	SPRN_CSRR1,r0
 	/* NOTE: 440GX adds machine check status regs */
 #if defined(CONFIG_440) && !defined(CONFIG_440GP)
-	mtspr	mcsrr0,r0
-	mtspr	mcsrr1,r0
-	mfspr	r1,mcsr
-	mtspr	mcsr,r1
+	mtspr	SPRN_MCSRR0,r0
+	mtspr	SPRN_MCSRR1,r0
+	mfspr	r1,SPRN_MCSR
+	mtspr	SPRN_MCSR,r1
 #endif
 
 	/*----------------------------------------------------------------*/
@@ -318,27 +328,27 @@ _start_440:
 	*/
 	lis	r1,0x0030	/* store gathering & broadcast disable */
 	ori	r1,r1,0x6000	/* cache touch */
-	mtspr	ccr0,r1
+	mtspr	SPRN_CCR0,r1
 
 	/*----------------------------------------------------------------*/
 	/* Initialize debug */
 	/*----------------------------------------------------------------*/
-	mfspr	r1,dbcr0
+	mfspr	r1,SPRN_DBCR0
 	andis.	r1, r1, 0x8000	/* test DBCR0[EDM] bit			*/
 	bne	skip_debug_init	/* if set, don't clear debug register	*/
-	mtspr	dbcr0,r0
-	mtspr	dbcr1,r0
-	mtspr	dbcr2,r0
-	mtspr	iac1,r0
-	mtspr	iac2,r0
-	mtspr	iac3,r0
-	mtspr	dac1,r0
-	mtspr	dac2,r0
-	mtspr	dvc1,r0
-	mtspr	dvc2,r0
+	mtspr	SPRN_DBCR0,r0
+	mtspr	SPRN_DBCR1,r0
+	mtspr	SPRN_DBCR2,r0
+	mtspr	SPRN_IAC1,r0
+	mtspr	SPRN_IAC2,r0
+	mtspr	SPRN_IAC3,r0
+	mtspr	SPRN_DAC1,r0
+	mtspr	SPRN_DAC2,r0
+	mtspr	SPRN_DVC1,r0
+	mtspr	SPRN_DVC2,r0
 
-	mfspr	r1,dbsr
-	mtspr	dbsr,r1		/* Clear all valid bits */
+	mfspr	r1,SPRN_DBSR
+	mtspr	SPRN_DBSR,r1	/* Clear all valid bits */
 skip_debug_init:
 
 #if defined (CONFIG_440SPE)
@@ -356,68 +366,68 @@ skip_debug_init:
 	| j. TCS:    Timebase increments from CPU clock.
 	+-----------------------------------------------------------------*/
 	li	r0,0
-	mtspr	ccr1, r0
+	mtspr	SPRN_CCR1, r0
 
 	/*----------------------------------------------------------------+
 	| Reset the timebase.
 	| The previous write to CCR1 sets the timebase source.
 	+-----------------------------------------------------------------*/
-	mtspr	tbl, r0
-	mtspr	tbu, r0
+	mtspr	SPRN_TBWL, r0
+	mtspr	SPRN_TBWU, r0
 #endif
 
 	/*----------------------------------------------------------------*/
 	/* Setup interrupt vectors */
 	/*----------------------------------------------------------------*/
-	mtspr	ivpr,r0		/* Vectors start at 0x0000_0000 */
+	mtspr	SPRN_IVPR,r0		/* Vectors start at 0x0000_0000 */
 	li	r1,0x0100
-	mtspr	ivor0,r1	/* Critical input */
+	mtspr	SPRN_IVOR0,r1	/* Critical input */
 	li	r1,0x0200
-	mtspr	ivor1,r1	/* Machine check */
+	mtspr	SPRN_IVOR1,r1	/* Machine check */
 	li	r1,0x0300
-	mtspr	ivor2,r1	/* Data storage */
+	mtspr	SPRN_IVOR2,r1	/* Data storage */
 	li	r1,0x0400
-	mtspr	ivor3,r1	/* Instruction storage */
+	mtspr	SPRN_IVOR3,r1	/* Instruction storage */
 	li	r1,0x0500
-	mtspr	ivor4,r1	/* External interrupt */
+	mtspr	SPRN_IVOR4,r1	/* External interrupt */
 	li	r1,0x0600
-	mtspr	ivor5,r1	/* Alignment */
+	mtspr	SPRN_IVOR5,r1	/* Alignment */
 	li	r1,0x0700
-	mtspr	ivor6,r1	/* Program check */
+	mtspr	SPRN_IVOR6,r1	/* Program check */
 	li	r1,0x0800
-	mtspr	ivor7,r1	/* Floating point unavailable */
+	mtspr	SPRN_IVOR7,r1	/* Floating point unavailable */
 	li	r1,0x0c00
-	mtspr	ivor8,r1	/* System call */
+	mtspr	SPRN_IVOR8,r1	/* System call */
 	li	r1,0x0a00
-	mtspr	ivor9,r1	/* Auxiliary Processor unavailable */
+	mtspr	SPRN_IVOR9,r1	/* Auxiliary Processor unavailable */
 	li	r1,0x0900
-	mtspr	ivor10,r1	/* Decrementer */
+	mtspr	SPRN_IVOR10,r1	/* Decrementer */
 	li	r1,0x1300
-	mtspr	ivor13,r1	/* Data TLB error */
+	mtspr	SPRN_IVOR13,r1	/* Data TLB error */
 	li	r1,0x1400
-	mtspr	ivor14,r1	/* Instr TLB error */
+	mtspr	SPRN_IVOR14,r1	/* Instr TLB error */
 	li	r1,0x2000
-	mtspr	ivor15,r1	/* Debug */
+	mtspr	SPRN_IVOR15,r1	/* Debug */
 
 	/*----------------------------------------------------------------*/
 	/* Configure cache regions  */
 	/*----------------------------------------------------------------*/
-	mtspr	inv0,r0
-	mtspr	inv1,r0
-	mtspr	inv2,r0
-	mtspr	inv3,r0
-	mtspr	dnv0,r0
-	mtspr	dnv1,r0
-	mtspr	dnv2,r0
-	mtspr	dnv3,r0
-	mtspr	itv0,r0
-	mtspr	itv1,r0
-	mtspr	itv2,r0
-	mtspr	itv3,r0
-	mtspr	dtv0,r0
-	mtspr	dtv1,r0
-	mtspr	dtv2,r0
-	mtspr	dtv3,r0
+	mtspr	SPRN_INV0,r0
+	mtspr	SPRN_INV1,r0
+	mtspr	SPRN_INV2,r0
+	mtspr	SPRN_INV3,r0
+	mtspr	SPRN_DNV0,r0
+	mtspr	SPRN_DNV1,r0
+	mtspr	SPRN_DNV2,r0
+	mtspr	SPRN_DNV3,r0
+	mtspr	SPRN_ITV0,r0
+	mtspr	SPRN_ITV1,r0
+	mtspr	SPRN_ITV2,r0
+	mtspr	SPRN_ITV3,r0
+	mtspr	SPRN_DTV0,r0
+	mtspr	SPRN_DTV1,r0
+	mtspr	SPRN_DTV2,r0
+	mtspr	SPRN_DTV3,r0
 
 	/*----------------------------------------------------------------*/
 	/* Cache victim limits */
@@ -426,28 +436,40 @@ skip_debug_init:
 	*/
 	lis	r1,0x0001
 	ori	r1,r1,0xf800
-	mtspr	ivlim,r1
-	mtspr	dvlim,r1
+	mtspr	SPRN_IVLIM,r1
+	mtspr	SPRN_DVLIM,r1
 
 	/*----------------------------------------------------------------+
 	|Initialize MMUCR[STID] = 0.
 	+-----------------------------------------------------------------*/
-	mfspr	r0,mmucr
+	mfspr	r0,SPRN_MMUCR
 	addis	r1,0,0xFFFF
 	ori	r1,r1,0xFF00
 	and	r0,r0,r1
-	mtspr	mmucr,r0
+	mtspr	SPRN_MMUCR,r0
 
 	/*----------------------------------------------------------------*/
 	/* Clear all TLB entries -- TID = 0, TS = 0 */
 	/*----------------------------------------------------------------*/
 	addis	r0,0,0x0000
-	li	r1,0x003f	/* 64 TLB entries */
+#ifdef CONFIG_SYS_RAMBOOT
+	li	r4,0		/* Start with TLB #0 */
+#else
+	li	r4,1		/* Start with TLB #1 */
+#endif
+	li	r1,64		/* 64 TLB entries */
+	sub	r1,r1,r4	/* calculate last TLB # */
 	mtctr	r1
-rsttlb:	tlbwe	r0,r1,0x0000	/* Invalidate all entries (V=0)*/
-	tlbwe	r0,r1,0x0001
-	tlbwe	r0,r1,0x0002
-	subi	r1,r1,0x0001
+rsttlb:
+#ifdef CONFIG_SYS_RAMBOOT
+	tlbre	r3,r4,0		/* Read contents from TLB word #0 to get EPN */
+	rlwinm.	r3,r3,0,0xfffffc00	/* Mask EPN */
+	beq	tlbnxt		/* Skip EPN=0 TLB, this is the SDRAM TLB */
+#endif
+	tlbwe	r0,r4,0		/* Invalidate all entries (V=0)*/
+	tlbwe	r0,r4,1
+	tlbwe	r0,r4,2
+tlbnxt:	addi	r4,r4,1		/* Next TLB */
 	bdnz	rsttlb
 
 	/*----------------------------------------------------------------*/
@@ -476,7 +498,13 @@ rsttlb:	tlbwe	r0,r1,0x0000	/* Invalidate all entries (V=0)*/
 	li	r4,0		/* TLB # */
 
 	addi	r5,r5,-4
-1:	lwzu	r0,4(r5)
+1:
+#ifdef CONFIG_SYS_RAMBOOT
+	tlbre	r3,r4,0		/* Read contents from TLB word #0 */
+	rlwinm.	r3,r3,0,0x00000200	/* Mask V (valid) bit */
+	bne	tlbnx2		/* Skip V=1 TLB, this is the SDRAM TLB */
+#endif
+	lwzu	r0,4(r5)
 	cmpwi	r0,0
 	beq	2f		/* 0 marks end */
 	lwzu	r1,4(r5)
@@ -484,7 +512,7 @@ rsttlb:	tlbwe	r0,r1,0x0000	/* Invalidate all entries (V=0)*/
 	tlbwe	r0,r4,0		/* TLB Word 0 */
 	tlbwe	r1,r4,1		/* TLB Word 1 */
 	tlbwe	r2,r4,2		/* TLB Word 2 */
-	addi	r4,r4,1		/* Next TLB */
+tlbnx2:	addi	r4,r4,1		/* Next TLB */
 	bdnz	1b
 
 	/*----------------------------------------------------------------*/
@@ -498,9 +526,9 @@ rsttlb:	tlbwe	r0,r1,0x0000	/* Invalidate all entries (V=0)*/
 	blr
 
 3:	li	r0,0
-	mtspr	srr1,r0		/* Keep things disabled for now */
+	mtspr	SPRN_SRR1,r0		/* Keep things disabled for now */
 	mflr	r1
-	mtspr	srr0,r1
+	mtspr	SPRN_SRR0,r1
 	rfi
 #endif /* CONFIG_440 */
 
@@ -604,12 +632,12 @@ _start:
 	/*----------------------------------------------------------------*/
 	li	r0,0x0000
 	lis	r1,0xffff
-	mtspr	dec,r0			/* prevent dec exceptions */
-	mtspr	tbl,r0			/* prevent fit & wdt exceptions */
-	mtspr	tbu,r0
-	mtspr	tsr,r1			/* clear all timer exception status */
-	mtspr	tcr,r0			/* disable all */
-	mtspr	esr,r0			/* clear exception syndrome register */
+	mtspr	SPRN_DEC,r0			/* prevent dec exceptions */
+	mtspr	SPRN_TBWL,r0			/* prevent fit & wdt exceptions */
+	mtspr	SPRN_TBWU,r0
+	mtspr	SPRN_TSR,r1			/* clear all timer exception status */
+	mtspr	SPRN_TCR,r0			/* disable all */
+	mtspr	SPRN_ESR,r0			/* clear exception syndrome register */
 	mtxer	r0			/* clear integer exception register */
 
 	/*----------------------------------------------------------------*/
@@ -620,10 +648,10 @@ _start:
 #if defined(CONFIG_SYS_INIT_DBCR)
 	lis	r1,0xffff
 	ori	r1,r1,0xffff
-	mtspr	dbsr,r1			/* Clear all status bits */
+	mtspr	SPRN_DBSR,r1			/* Clear all status bits */
 	lis	r0,CONFIG_SYS_INIT_DBCR@h
 	ori	r0,r0,CONFIG_SYS_INIT_DBCR@l
-	mtspr	dbcr0,r0
+	mtspr	SPRN_DBCR0,r0
 	isync
 #endif
 
@@ -662,17 +690,17 @@ _start:
 	/* 8. set TFLOOR/NFLOOR to 8 (-> 8*16*32 bytes locked -> 4k) */
 	lis	r1,0x0201
 	ori	r1,r1,0xf808
-	mtspr	dvlim,r1
+	mtspr	SPRN_DVLIM,r1
 	lis	r1,0x0808
 	ori	r1,r1,0x0808
-	mtspr	dnv0,r1
-	mtspr	dnv1,r1
-	mtspr	dnv2,r1
-	mtspr	dnv3,r1
-	mtspr	dtv0,r1
-	mtspr	dtv1,r1
-	mtspr	dtv2,r1
-	mtspr	dtv3,r1
+	mtspr	SPRN_DNV0,r1
+	mtspr	SPRN_DNV1,r1
+	mtspr	SPRN_DNV2,r1
+	mtspr	SPRN_DNV3,r1
+	mtspr	SPRN_DTV0,r1
+	mtspr	SPRN_DTV1,r1
+	mtspr	SPRN_DTV2,r1
+	mtspr	SPRN_DTV3,r1
 	msync
 	isync
 #endif /* CONFIG_SYS_INIT_RAM_DCACHE */
@@ -791,7 +819,7 @@ _start:
 	/* Set up some machine state registers. */
 	/*----------------------------------------------------------------------- */
 	addi	r0,r0,0x0000		/* initialize r0 to zero */
-	mtspr	esr,r0			/* clear Exception Syndrome Reg */
+	mtspr	SPRN_ESR,r0		/* clear Exception Syndrome Reg */
 	mttcr	r0			/* timer control register */
 	mtexier r0			/* disable all interrupts */
 	addis	r4,r0,0xFFFF		/* set r4 to 0xFFFFFFFF (status in the */
@@ -901,7 +929,7 @@ _start:
 	/*----------------------------------------------------------------------- */
 	addi	r4,r0,0x0000
 #if !defined(CONFIG_405EX)
-	mtspr	sgr,r4
+	mtspr	SPRN_SGR,r4
 #else
 	/*
 	 * On 405EX, completely clearing the SGR leads to PPC hangup
@@ -910,9 +938,9 @@ _start:
 	 */
 	lis	r3,0x0000
 	ori	r3,r3,0x7FFC
-	mtspr	sgr,r3
+	mtspr	SPRN_SGR,r3
 #endif
-	mtspr	dcwr,r4
+	mtspr	SPRN_DCWR,r4
 	mtesr	r4			/* clear Exception Syndrome Reg */
 	mttcr	r4			/* clear Timer Control Reg */
 	mtxer	r4			/* clear Fixed-Point Exception Reg */
@@ -1248,8 +1276,8 @@ crit_return:
 	REST_GPR(31, r1)
 	lwz	r2,_NIP(r1)	/* Restore environment */
 	lwz	r0,_MSR(r1)
-	mtspr	csrr0,r2
-	mtspr	csrr1,r0
+	mtspr	SPRN_CSRR0,r2
+	mtspr	SPRN_CSRR1,r0
 	lwz	r0,GPR0(r1)
 	lwz	r2,GPR2(r1)
 	lwz	r1,GPR1(r1)
@@ -1279,8 +1307,8 @@ mck_return:
 	REST_GPR(31, r1)
 	lwz	r2,_NIP(r1)	/* Restore environment */
 	lwz	r0,_MSR(r1)
-	mtspr	mcsrr0,r2
-	mtspr	mcsrr1,r0
+	mtspr	SPRN_MCSRR0,r2
+	mtspr	SPRN_MCSRR1,r0
 	lwz	r0,GPR0(r1)
 	lwz	r2,GPR2(r1)
 	lwz	r1,GPR1(r1)
@@ -1430,17 +1458,17 @@ relocate_code:
 	/* set TFLOOR/NFLOOR to 0 again */
 	lis	r6,0x0001
 	ori	r6,r6,0xf800
-	mtspr	dvlim,r6
+	mtspr	SPRN_DVLIM,r6
 	lis	r6,0x0000
 	ori	r6,r6,0x0000
-	mtspr	dnv0,r6
-	mtspr	dnv1,r6
-	mtspr	dnv2,r6
-	mtspr	dnv3,r6
-	mtspr	dtv0,r6
-	mtspr	dtv1,r6
-	mtspr	dtv2,r6
-	mtspr	dtv3,r6
+	mtspr	SPRN_DNV0,r6
+	mtspr	SPRN_DNV1,r6
+	mtspr	SPRN_DNV2,r6
+	mtspr	SPRN_DNV3,r6
+	mtspr	SPRN_DTV0,r6
+	mtspr	SPRN_DTV1,r6
+	mtspr	SPRN_DTV2,r6
+	mtspr	SPRN_DTV3,r6
 	msync
 	isync
 #endif /* CONFIG_SYS_INIT_RAM_DCACHE */
@@ -1460,8 +1488,8 @@ relocate_code:
 	isync
 
 	/* Clear all potential pending exceptions */
-	mfspr	r1,mcsr
-	mtspr	mcsr,r1
+	mfspr	r1,SPRN_MCSR
+	mtspr	SPRN_MCSR,r1
 #ifdef CONFIG_SYS_TLB_FOR_BOOT_FLASH
 	addi	r1,r0,CONFIG_SYS_TLB_FOR_BOOT_FLASH	/* Use defined TLB */
 #else
@@ -1705,9 +1733,9 @@ trap_init:
 __440_msr_set:
 	addi	r7,r0,0x1000		/* set ME bit (Machine Exceptions) */
 	oris	r7,r7,0x0002		/* set CE bit (Critical Exceptions) */
-	mtspr	srr1,r7
+	mtspr	SPRN_SRR1,r7
 	mflr	r7
-	mtspr	srr0,r7
+	mtspr	SPRN_SRR0,r7
 	rfi
 __440_msr_continue:
 #endif
@@ -2003,6 +2031,7 @@ pci_wait:
 ! Output r3 = none
 !-----------------------------------------------------------------------------
 */
+	.globl	pll_write
 pll_write:
 	mfdcr  r5, CPC0_UCR
 	andis. r5,r5,0xFFFF
@@ -2040,7 +2069,7 @@ pll_wait:
 	 * Not sure if this is needed...
 	 */
 	addis r3,0,0x1000
-	mtspr dbcr0,r3			/* This will cause a CPU core reset, and */
+	mtspr SPRN_DBCR0,r3		/* This will cause a CPU core reset, and */
 					/* execution will continue from the poweron */
 					/* vector of 0xfffffffc */
 #endif /* CONFIG_405EP */

@@ -210,6 +210,9 @@
  * NAND-FLASH stuff
  *-----------------------------------------------------------------------
  */
+
+#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
+
 /*
  * nand device 1 on dave (PPChameleonEVB) needs more time,
  * so we just introduce additional wait in nand_wait(),
@@ -309,32 +312,6 @@
 	} \
 } while(0)
 
-#if 0
-#define SECTORSIZE 512
-#define NAND_NO_RB
-
-#define ADDR_COLUMN 1
-#define ADDR_PAGE 2
-#define ADDR_COLUMN_PAGE 3
-
-#define NAND_ChipID_UNKNOWN	0x00
-#define NAND_MAX_FLOORS 1
-
-#ifdef NAND_NO_RB
-/* constant delay (see also tR in the datasheet) */
-#define NAND_WAIT_READY(nand) do { \
-	udelay(12); \
-} while (0)
-#else
-/* use the R/B pin */
-/* TBD */
-#endif
-
-#define WRITE_NAND_COMMAND(d, adr) do{ *(volatile __u8 *)((unsigned long)adr) = (__u8)(d); } while(0)
-#define WRITE_NAND_ADDRESS(d, adr) do{ *(volatile __u8 *)((unsigned long)adr) = (__u8)(d); } while(0)
-#define WRITE_NAND(d, adr) do{ *(volatile __u8 *)((unsigned long)adr) = (__u8)d; } while(0)
-#define READ_NAND(adr) ((volatile unsigned char)(*(volatile __u8 *)(unsigned long)adr))
-#endif
 /*-----------------------------------------------------------------------
  * PCI stuff
  *-----------------------------------------------------------------------
@@ -804,14 +781,14 @@
  */
 
 /* No command line, one static partition */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nand0"
 #define CONFIG_JFFS2_PART_SIZE		0x00400000
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
 
 /* mtdparts command line support */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor0=PPChameleon-0,nand0=ppchameleonevb-nand"
 */
 

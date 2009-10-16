@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2002
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -108,12 +108,12 @@ ulong flash_init (void)
 
 	flash_protect ( FLAG_PROTECT_SET,
 			CONFIG_ENV_ADDR,
-			CONFIG_ENV_ADDR + CONFIG_ENV_SIZE - 1, &flash_info[0]);
+			CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE - 1, &flash_info[0]);
 
 #ifdef CONFIG_ENV_ADDR_REDUND
 	flash_protect ( FLAG_PROTECT_SET,
 			CONFIG_ENV_ADDR_REDUND,
-			CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SIZE_REDUND - 1,
+			CONFIG_ENV_ADDR_REDUND + CONFIG_ENV_SECT_SIZE - 1,
 			&flash_info[0]);
 #endif
 

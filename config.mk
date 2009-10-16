@@ -83,7 +83,7 @@ RANLIB	= $(CROSS_COMPILE)RANLIB
 sinclude $(OBJTREE)/include/autoconf.mk
 
 ifdef	ARCH
-sinclude $(TOPDIR)/$(ARCH)_config.mk	# include architecture dependend rules
+sinclude $(TOPDIR)/lib_$(ARCH)/config.mk	# include architecture dependend rules
 endif
 ifdef	CPU
 sinclude $(TOPDIR)/cpu/$(CPU)/config.mk	# include  CPU	specific rules
@@ -198,35 +198,25 @@ BFD_ROOT_DIR =		/opt/powerpc
 endif
 endif
 
-ifeq ($(PCI_CLOCK),PCI_66M)
-CFLAGS := $(CFLAGS) -DPCI_66M
-endif
-
 #########################################################################
 
-export	HPATH HOSTCC HOSTCFLAGS CROSS_COMPILE \
+export	HOSTCC HOSTCFLAGS CROSS_COMPILE \
 	AS LD CC CPP AR NM STRIP OBJCOPY OBJDUMP MAKE
 export	TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS AFLAGS
 
 #########################################################################
 
-ifndef REMOTE_BUILD
-
-%.s:	%.S
-	$(CPP) $(AFLAGS) -o $@ $<
-%.o:	%.S
-	$(CC) $(AFLAGS) -c -o $@ $<
-%.o:	%.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-
-else
-
+# Allow boards to use custom optimize flags on a per dir/file basis
+BCURDIR := $(notdir $(CURDIR))
 $(obj)%.s:	%.S
-	$(CPP) $(AFLAGS) -o $@ $<
+	$(CPP) $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $<
 $(obj)%.o:	%.S
-	$(CC) $(AFLAGS) -c -o $@ $<
+	$(CC)  $(AFLAGS) $(AFLAGS_$(@F)) $(AFLAGS_$(BCURDIR)) -o $@ $< -c
 $(obj)%.o:	%.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-endif
+	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
+$(obj)%.i:	%.c
+	$(CPP) $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c
+$(obj)%.s:	%.c
+	$(CC)  $(CFLAGS) $(CFLAGS_$(@F)) $(CFLAGS_$(BCURDIR)) -o $@ $< -c -S
 
 #########################################################################

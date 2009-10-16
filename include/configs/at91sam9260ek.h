@@ -3,7 +3,7 @@
  * Stelian Pop <stelian.pop@leadtechdesign.com>
  * Lead Tech Design <www.leadtechdesign.com>
  *
- * Configuation settings for the AT91SAM9260EK board.
+ * Configuation settings for the AT91SAM9260EK & AT91SAM9G20EK boards.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -28,18 +28,18 @@
 #define __CONFIG_H
 
 /* ARM asynchronous clock */
-#define AT91_CPU_NAME		"AT91SAM9260"
 #define AT91_MAIN_CLOCK		18432000	/* 18.432 MHz crystal */
-#define AT91_MASTER_CLOCK	100000000	/* peripheral */
-#define AT91_CPU_CLOCK		200000000	/* cpu */
-#define CONFIG_SYS_AT91_PLLB	0x107c3e18	/* PLLB settings for USB */
-#define CONFIG_SYS_HZ		1000000		/* 1us resolution */
-
-#define AT91_SLOW_CLOCK		32768	/* slow clock */
+#define CONFIG_SYS_HZ		1000
 
 #define CONFIG_ARM926EJS	1	/* This is an ARM926EJS Core	*/
+
+#ifdef CONFIG_AT91SAM9G20EK
+#define CONFIG_AT91SAM9G20	1	/* It's an Atmel AT91SAM9G20 SoC*/
+#else
 #define CONFIG_AT91SAM9260	1	/* It's an Atmel AT91SAM9260 SoC*/
-#define CONFIG_AT91SAM9260EK	1	/* on an AT91SAM9260EK Board	*/
+#endif
+
+#define CONFIG_ARCH_CPU_INIT
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff	*/
 
 #define CONFIG_CMDLINE_TAG	1	/* enable passing of ATAGs	*/
@@ -58,6 +58,11 @@
 #undef CONFIG_USART2
 #define CONFIG_USART3		1	/* USART 3 is DBGU */
 
+/* LED */
+#define CONFIG_AT91_LED
+#define	CONFIG_RED_LED		AT91_PIN_PA9	/* this is the power led */
+#define	CONFIG_GREEN_LED	AT91_PIN_PA6	/* this is the user led */
+
 #define CONFIG_BOOTDELAY	3
 
 /*
@@ -73,11 +78,11 @@
  */
 #include <config_cmd_default.h>
 #undef CONFIG_CMD_BDI
-#undef CONFIG_CMD_IMI
-#undef CONFIG_CMD_AUTOSCRIPT
 #undef CONFIG_CMD_FPGA
-#undef CONFIG_CMD_LOADS
+#undef CONFIG_CMD_IMI
 #undef CONFIG_CMD_IMLS
+#undef CONFIG_CMD_LOADS
+#undef CONFIG_CMD_SOURCE
 
 #define CONFIG_CMD_PING		1
 #define CONFIG_CMD_DHCP		1
@@ -90,19 +95,36 @@
 #define PHYS_SDRAM_SIZE			0x04000000	/* 64 megs */
 
 /* DataFlash */
+#define CONFIG_ATMEL_DATAFLASH_SPI
 #define CONFIG_HAS_DATAFLASH		1
 #define CONFIG_SYS_SPI_WRITE_TOUT		(5*CONFIG_SYS_HZ)
 #define CONFIG_SYS_MAX_DATAFLASH_BANKS		2
 #define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS0	0xC0000000	/* CS0 */
 #define CONFIG_SYS_DATAFLASH_LOGIC_ADDR_CS1	0xD0000000	/* CS1 */
 #define AT91_SPI_CLK			15000000
+
+#ifdef CONFIG_AT91SAM9G20EK
+#define DATAFLASH_TCSS			(0x22 << 16)
+#else
 #define DATAFLASH_TCSS			(0x1a << 16)
+#endif
 #define DATAFLASH_TCHS			(0x1 << 24)
 
 /* NAND flash */
+#ifdef CONFIG_CMD_NAND
+#define CONFIG_NAND_ATMEL
 #define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define CONFIG_SYS_NAND_BASE			0x40000000
 #define CONFIG_SYS_NAND_DBW_8			1
+/* our ALE is AD21 */
+#define CONFIG_SYS_NAND_MASK_ALE		(1 << 21)
+/* our CLE is AD22 */
+#define CONFIG_SYS_NAND_MASK_CLE		(1 << 22)
+#define CONFIG_SYS_NAND_ENABLE_PIN		AT91_PIN_PC14
+#define CONFIG_SYS_NAND_READY_PIN		AT91_PIN_PC13
+
+#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
+#endif
 
 /* NOR flash - no real flash on this board */
 #define CONFIG_SYS_NO_FLASH			1
@@ -115,6 +137,7 @@
 #define CONFIG_RESET_PHY_R		1
 
 /* USB */
+#define CONFIG_USB_ATMEL
 #define CONFIG_USB_OHCI_NEW		1
 #define CONFIG_DOS_PARTITION		1
 #define CONFIG_SYS_USB_OHCI_CPU_INIT		1
@@ -140,7 +163,7 @@
 #define CONFIG_BOOTCOMMAND	"cp.b 0xC0042000 0x22000000 0x210000; bootm"
 #define CONFIG_BOOTARGS		"console=ttyS0,115200 "			\
 				"root=/dev/mtdblock0 "			\
-				"mtdparts=at91_nand:-(root) "		\
+				"mtdparts=atmel_nand:-(root) "		\
 				"rw rootfstype=jffs2"
 
 #elif CONFIG_SYS_USE_DATAFLASH_CS1
@@ -154,7 +177,7 @@
 #define CONFIG_BOOTCOMMAND	"cp.b 0xD0042000 0x22000000 0x210000; bootm"
 #define CONFIG_BOOTARGS		"console=ttyS0,115200 "			\
 				"root=/dev/mtdblock0 "			\
-				"mtdparts=at91_nand:-(root) "		\
+				"mtdparts=atmel_nand:-(root) "		\
 				"rw rootfstype=jffs2"
 
 #else /* CONFIG_SYS_USE_NANDFLASH */
@@ -167,7 +190,7 @@
 #define CONFIG_BOOTCOMMAND	"nand read 0x22000000 0xA0000 0x200000; bootm"
 #define CONFIG_BOOTARGS		"console=ttyS0,115200 "			\
 				"root=/dev/mtdblock5 "			\
-				"mtdparts=at91_nand:128k(bootstrap)ro,"	\
+				"mtdparts=atmel_nand:128k(bootstrap)ro,"	\
 				"256k(uboot)ro,128k(env1)ro,"		\
 				"128k(env2)ro,2M(linux),-(root) "	\
 				"rw rootfstype=jffs2"
@@ -184,7 +207,6 @@
 #define CONFIG_SYS_LONGHELP		1
 #define CONFIG_CMDLINE_EDITING	1
 
-#define ROUND(A, B)		(((A) + (B)) & ~((B) - 1))
 /*
  * Size of malloc() pool
  */

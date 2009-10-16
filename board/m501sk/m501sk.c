@@ -105,11 +105,6 @@ uchar m501sk_gpio_clear(M501SK_PIO io)
 	return status;
 }
 
-void load_sernum_ethaddr(void)
-{
-	return;
-}
-
 /*
  * Miscelaneous platform dependent initialisations
  */
@@ -132,7 +127,7 @@ int board_init(void)
 	m501sk_gpio_init();
 
 	/* Do interrupt init here, because flash needs timers */
-	interrupt_init();
+	timer_init();
 	flash_init();
 
 	return 0;

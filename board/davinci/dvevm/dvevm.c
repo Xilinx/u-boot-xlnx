@@ -27,7 +27,6 @@
 #include <common.h>
 #include <i2c.h>
 #include <asm/arch/hardware.h>
-#include "../common/psc.h"
 #include "../common/misc.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -70,14 +69,9 @@ int misc_init_r(void)
 	uint8_t video_mode;
 	uint8_t eeprom_enetaddr[6];
 
-	dv_display_clk_infos();
-
 	/* Read Ethernet MAC address from EEPROM if available. */
 	if (dvevm_read_mac_address(eeprom_enetaddr))
 		dv_configure_mac_address(eeprom_enetaddr);
-
-	if (!eth_hw_init())
-		printf("ethernet init failed!\n");
 
 	i2c_read(0x39, 0x00, 1, &video_mode, 1);
 

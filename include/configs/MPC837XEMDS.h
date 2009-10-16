@@ -25,8 +25,8 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC83XX		1 /* MPC83XX family */
-#define CONFIG_MPC837X		1 /* MPC837X CPU specific */
+#define CONFIG_MPC83xx		1 /* MPC83xx family */
+#define CONFIG_MPC837x		1 /* MPC837x CPU specific */
 #define CONFIG_MPC837XEMDS	1 /* MPC837XEMDS board specific */
 
 /*
@@ -111,6 +111,7 @@
 
 #define CONFIG_BOARD_EARLY_INIT_F /* call board_pre_init */
 #define CONFIG_BOARD_EARLY_INIT_R
+#define CONFIG_HWCONFIG
 
 /*
  * IMMR new address
@@ -380,8 +381,7 @@
 #ifndef __ASSEMBLY__
 extern int board_pci_host_broken(void);
 #endif
-#define CONFIG_83XX_GENERIC_PCI	1 /* Use generic PCI setup */
-#define CONFIG_83XX_GENERIC_PCIE	1
+#define CONFIG_PCIE
 #define CONFIG_PQ_MDS_PIB	1 /* PQ MDS Platform IO Board */
 
 #define CONFIG_HAS_FSL_DR_USB	1 /* fixup device tree for the DR USB */

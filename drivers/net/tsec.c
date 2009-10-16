@@ -5,7 +5,7 @@
  * terms of the GNU Public License, Version 2, incorporated
  * herein by reference.
  *
- * Copyright 2004, 2007 Freescale Semiconductor, Inc.
+ * Copyright (C) 2004-2009 Freescale Semiconductor, Inc.
  * (C) Copyright 2003, Motorola, Inc.
  * author Andy Fleming
  *
@@ -197,7 +197,10 @@ int tsec_init(struct eth_device *dev, bd_t * bd)
 	for (i = 0; i < MAC_ADDR_LEN; i++) {
 		tmpbuf[MAC_ADDR_LEN - 1 - i] = dev->enetaddr[i];
 	}
-	regs->macstnaddr1 = *((uint *) (tmpbuf));
+	tempval = (tmpbuf[0] << 24) | (tmpbuf[1] << 16) | (tmpbuf[2] << 8) |
+		  tmpbuf[3];
+
+	regs->macstnaddr1 = tempval;
 
 	tempval = *((uint *) (tmpbuf + 4));
 
@@ -465,6 +468,18 @@ uint mii_parse_link(uint mii_reg, struct tsec_private *priv)
 	}
 
 	return 0;
+}
+
+/*
+ * "Ethernet@Wirespeed" needs to be enabled to achieve link in certain
+ * circumstances.  eg a gigabit TSEC connected to a gigabit switch with
+ * a 4-wire ethernet cable.  Both ends advertise gigabit, but can't
+ * link.  "Ethernet@Wirespeed" reduces advertised speed until link
+ * can be achieved.
+ */
+uint mii_BCM54xx_wirespeed(uint mii_reg, struct tsec_private *priv)
+{
+	return (read_phy_reg(priv, mii_reg) & 0x8FFF) | 0x8010;
 }
 
 /*
@@ -1070,6 +1085,34 @@ struct phy_info phy_info_BCM5464S = {
 	},
 };
 
+struct phy_info phy_info_BCM5482S =  {
+	0x0143bcb,
+	"Broadcom BCM5482S",
+	4,
+	(struct phy_cmd[]) { /* config */
+		/* Reset and configure the PHY */
+		{MIIM_CONTROL, MIIM_CONTROL_RESET, NULL},
+		/* Setup read from auxilary control shadow register 7 */
+		{MIIM_BCM54xx_AUXCNTL, MIIM_BCM54xx_AUXCNTL_ENCODE(7), NULL},
+		/* Read Misc Control register and or in Ethernet@Wirespeed */
+		{MIIM_BCM54xx_AUXCNTL, 0, &mii_BCM54xx_wirespeed},
+		{MIIM_CONTROL, MIIM_CONTROL_INIT, &mii_cr_init},
+		{miim_end,}
+	},
+	(struct phy_cmd[]) { /* startup */
+		/* Status is read once to clear old link state */
+		{MIIM_STATUS, miim_read, NULL},
+		/* Auto-negotiate */
+		{MIIM_STATUS, miim_read, &mii_parse_sr},
+		/* Read the status */
+		{MIIM_BCM54xx_AUXSTATUS, miim_read, &mii_parse_BCM54xx_sr},
+		{miim_end,}
+	},
+	(struct phy_cmd[]) { /* shutdown */
+		{miim_end,}
+	},
+};
+
 struct phy_info phy_info_M88E1011S = {
 	0x01410c6,
 	"Marvell 88E1011S",
@@ -1386,6 +1429,54 @@ struct phy_info phy_info_VSC8244 = {
 			   },
 };
 
+struct phy_info phy_info_VSC8641 = {
+	0x7043,
+	"Vitesse VSC8641",
+	4,
+	(struct phy_cmd[]){	/* config */
+			   /* Configure some basic stuff */
+			   {MIIM_CONTROL, MIIM_CONTROL_INIT, &mii_cr_init},
+			   {miim_end,}
+			   },
+	(struct phy_cmd[]){	/* startup */
+			   /* Read the Status (2x to make sure link is right) */
+			   {MIIM_STATUS, miim_read, NULL},
+			   /* Auto-negotiate */
+			   {MIIM_STATUS, miim_read, &mii_parse_sr},
+			   /* Read the status */
+			   {MIIM_VSC8244_AUX_CONSTAT, miim_read,
+			    &mii_parse_vsc8244},
+			   {miim_end,}
+			   },
+	(struct phy_cmd[]){	/* shutdown */
+			   {miim_end,}
+			   },
+};
+
+struct phy_info phy_info_VSC8221 = {
+	0xfc55,
+	"Vitesse VSC8221",
+	4,
+	(struct phy_cmd[]){	/* config */
+			   /* Configure some basic stuff */
+			   {MIIM_CONTROL, MIIM_CONTROL_INIT, &mii_cr_init},
+			   {miim_end,}
+			   },
+	(struct phy_cmd[]){	/* startup */
+			   /* Read the Status (2x to make sure link is right) */
+			   {MIIM_STATUS, miim_read, NULL},
+			   /* Auto-negotiate */
+			   {MIIM_STATUS, miim_read, &mii_parse_sr},
+			   /* Read the status */
+			   {MIIM_VSC8244_AUX_CONSTAT, miim_read,
+			    &mii_parse_vsc8244},
+			   {miim_end,}
+			   },
+	(struct phy_cmd[]){	/* shutdown */
+			   {miim_end,}
+			   },
+};
+
 struct phy_info phy_info_VSC8601 = {
 		0x00007042,
 		"Vitesse VSC8601",
@@ -1611,6 +1702,7 @@ struct phy_info *phy_info[] = {
 	&phy_info_cis8201,
 	&phy_info_BCM5461S,
 	&phy_info_BCM5464S,
+	&phy_info_BCM5482S,
 	&phy_info_M88E1011S,
 	&phy_info_M88E1111S,
 	&phy_info_M88E1118,
@@ -1622,9 +1714,11 @@ struct phy_info *phy_info[] = {
 	&phy_info_VSC8211,
 	&phy_info_VSC8244,
 	&phy_info_VSC8601,
+	&phy_info_VSC8641,
+	&phy_info_VSC8221,
 	&phy_info_dp83865,
 	&phy_info_rtl8211b,
-	&phy_info_generic,
+	&phy_info_generic,	/* must be last; has ID 0 and 32 bit mask */
 	NULL
 };
 
@@ -1656,9 +1750,8 @@ struct phy_info *get_phy_info(struct eth_device *dev)
 		}
 	}
 
-	if (theInfo == NULL) {
-		printf("%s: PHY id %x is not supported!\n", dev->name, phy_ID);
-		return NULL;
+	if (theInfo == &phy_info_generic) {
+		printf("%s: No support for PHY id %x; assuming generic\n", dev->name, phy_ID);
 	} else {
 		debug("%s: PHY is %s (%x)\n", dev->name, theInfo->name, phy_ID);
 	}

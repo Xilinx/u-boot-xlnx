@@ -23,6 +23,7 @@
 
 #include <common.h>
 #include <mpc824x.h>
+#include <net.h>
 #include <pci.h>
 #include <i2c.h>
 #include <netdev.h>
@@ -173,9 +174,13 @@ void nvram_write(long dest, const void *src, size_t count)
 
 int misc_init_r(void)
 {
-	/* Write ethernet addr in NVRAM for VxWorks */
-	nvram_write(CONFIG_ENV_ADDR + CONFIG_SYS_NVRAM_VXWORKS_OFFS,
-			(char*)&gd->bd->bi_enetaddr[0], 6);
+	uchar ethaddr[6];
+
+	if (eth_getenv_enetaddr("ethaddr", ethaddr))
+		/* Write ethernet addr in NVRAM for VxWorks */
+		nvram_write(CONFIG_ENV_ADDR + CONFIG_SYS_NVRAM_VXWORKS_OFFS,
+				ethaddr, 6);
+
 	return 0;
 }
 

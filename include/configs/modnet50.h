@@ -56,6 +56,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_NETARM_SERIAL
 #define CONFIG_SERIAL1		1	/* we use Serial line 1 */
 
 /* allow to overwrite serial and ethaddr */
@@ -110,8 +111,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0x00400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x00800000	/* 4 ... 8 MB in DRAM	*/
-
-#undef  CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
 
 #define	CONFIG_SYS_LOAD_ADDR		0x00500000	/* default load address	*/
 
@@ -182,7 +181,7 @@
  *
  */
 /* No command line, one static partition, whole device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor0"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00080000
@@ -190,7 +189,7 @@
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor0=modnet50-0"
 #define MTDPARTS_DEFAULT	"mtdparts=modnet50-0:-@512k(jffs2)"
 */

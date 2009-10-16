@@ -81,6 +81,7 @@
 
 #define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0	/* PHY address			*/
+#define CONFIG_NET_MULTI
 
 
 /*
@@ -128,8 +129,6 @@
 #define CONFIG_SYS_BAUDRATE_TABLE      \
 	{ 300, 600, 1200, 2400, 4800, 9600, 19200, 38400,     \
 	 57600, 115200, 230400, 460800, 921600 }
-
-#define CONFIG_SYS_CLKS_IN_HZ		1	/* everything, incl board info, in Hz */
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address */
 #define CONFIG_SYS_EXTBDINFO		1	/* To use extended board_into (bd_t) */

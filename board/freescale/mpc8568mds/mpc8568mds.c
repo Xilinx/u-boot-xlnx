@@ -27,7 +27,7 @@
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/immap_85xx.h>
-#include <asm/immap_fsl_pci.h>
+#include <asm/fsl_pci.h>
 #include <asm/fsl_ddr_sdram.h>
 #include <spd_sdram.h>
 #include <i2c.h>
@@ -243,12 +243,12 @@ sdram_init(void)
 	 * MPC8568 uses "new" 15-16 style addressing.
 	 */
 	lsdmr_common = CONFIG_SYS_LBC_LSDMR_COMMON;
-	lsdmr_common |= CONFIG_SYS_LBC_LSDMR_BSMA1516;
+	lsdmr_common |= LSDMR_BSMA1516;
 
 	/*
 	 * Issue PRECHARGE ALL command.
 	 */
-	lbc->lsdmr = lsdmr_common | CONFIG_SYS_LBC_LSDMR_OP_PCHALL;
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_PCHALL;
 	asm("sync;msync");
 	*sdram_addr = 0xff;
 	ppcDcbf((unsigned long) sdram_addr);
@@ -258,7 +258,7 @@ sdram_init(void)
 	 * Issue 8 AUTO REFRESH commands.
 	 */
 	for (idx = 0; idx < 8; idx++) {
-		lbc->lsdmr = lsdmr_common | CONFIG_SYS_LBC_LSDMR_OP_ARFRSH;
+		lbc->lsdmr = lsdmr_common | LSDMR_OP_ARFRSH;
 		asm("sync;msync");
 		*sdram_addr = 0xff;
 		ppcDcbf((unsigned long) sdram_addr);
@@ -268,7 +268,7 @@ sdram_init(void)
 	/*
 	 * Issue 8 MODE-set command.
 	 */
-	lbc->lsdmr = lsdmr_common | CONFIG_SYS_LBC_LSDMR_OP_MRW;
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_MRW;
 	asm("sync;msync");
 	*sdram_addr = 0xff;
 	ppcDcbf((unsigned long) sdram_addr);
@@ -277,7 +277,7 @@ sdram_init(void)
 	/*
 	 * Issue NORMAL OP command.
 	 */
-	lbc->lsdmr = lsdmr_common | CONFIG_SYS_LBC_LSDMR_OP_NORMAL;
+	lbc->lsdmr = lsdmr_common | LSDMR_OP_NORMAL;
 	asm("sync;msync");
 	*sdram_addr = 0xff;
 	ppcDcbf((unsigned long) sdram_addr);
@@ -310,9 +310,6 @@ static struct pci_controller pci1_hose = {
 #ifdef CONFIG_PCIE1
 static struct pci_controller pcie1_hose;
 #endif  /* CONFIG_PCIE1 */
-
-extern int fsl_pci_setup_inbound_windows(struct pci_region *r);
-extern void fsl_pci_init(struct pci_controller *hose);
 
 int first_free_busno = 0;
 
@@ -483,9 +480,6 @@ pci_init_board(void)
 #endif /* CONFIG_PCI */
 
 #if defined(CONFIG_OF_BOARD_SETUP)
-extern void ft_fsl_pci_setup(void *blob, const char *pci_alias,
-			struct pci_controller *hose);
-
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);

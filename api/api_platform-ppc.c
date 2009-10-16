@@ -28,9 +28,6 @@
  */
 
 #include <config.h>
-
-#if defined(CONFIG_API)
-
 #include <linux/types.h>
 #include <api_public.h>
 
@@ -56,7 +53,7 @@ int platform_sys_info(struct sys_info *si)
 #define bi_bar	bi_immr_base
 #elif defined(CONFIG_MPC5xxx)
 #define bi_bar	bi_mbar_base
-#elif defined(CONFIG_MPC83XX)
+#elif defined(CONFIG_MPC83xx)
 #define bi_bar	bi_immrbar
 #elif defined(CONFIG_MPC8220)
 #define bi_bar	bi_mbar_base
@@ -75,5 +72,3 @@ int platform_sys_info(struct sys_info *si)
 
 	return 1;
 }
-
-#endif /* CONFIG_API */

@@ -32,6 +32,10 @@
 #include <i2c.h>
 #include "../common/ppc440gx_i2c.h"
 #include "../common/sb_common.h"
+#if defined(CONFIG_HAS_ETH0) || defined(CONFIG_HAS_ETH1) || \
+    defined(CONFIG_HAS_ETH2) || defined(CONFIG_HAS_ETH3)
+#include <net.h>
+#endif
 
 void fpga_init (void);
 
@@ -321,6 +325,7 @@ int misc_init_r (void)
 {
 	unsigned short sernum;
 	char envstr[255];
+	uchar enetaddr[6];
 	unsigned char opto_rev;
 	OPTO_FPGA_REGS_ST *opto_ps;
 
@@ -378,6 +383,34 @@ int misc_init_r (void)
 			opto_ps->control_ul &= ~ SAND_HAL_XC_XCVR_CNTL_CNTL_ERROR_LED_MASK;
 		}
 	}
+
+#ifdef CONFIG_HAS_ETH0
+	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
+		board_get_enetaddr(0, enetaddr);
+		eth_setenv_enetaddr("ethaddr", enetaddr);
+	}
+#endif
+
+#ifdef CONFIG_HAS_ETH1
+	if (!eth_getenv_enetaddr("eth1addr", enetaddr)) {
+		board_get_enetaddr(1, enetaddr);
+		eth_setenv_enetaddr("eth1addr", enetaddr);
+	}
+#endif
+
+#ifdef CONFIG_HAS_ETH2
+	if (!eth_getenv_enetaddr("eth2addr", enetaddr)) {
+		board_get_enetaddr(2, enetaddr);
+		eth_setenv_enetaddr("eth2addr", enetaddr);
+	}
+#endif
+
+#ifdef CONFIG_HAS_ETH3
+	if (!eth_getenv_enetaddr("eth3addr", enetaddr)) {
+		board_get_enetaddr(3, enetaddr);
+		eth_setenv_enetaddr("eth3addr", enetaddr);
+	}
+#endif
 
 	return (0);
 }
@@ -544,7 +577,7 @@ int metroboxRecover(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(mbsetup, 1, 1, metroboxSetupVars,
-	   "Set environment to factory defaults", NULL);
+	   "Set environment to factory defaults", "");
 
 U_BOOT_CMD(mbrecover, 1, 1, metroboxRecover,
-	   "Set environment to allow for fs recovery", NULL);
+	   "Set environment to allow for fs recovery", "");

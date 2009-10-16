@@ -58,6 +58,7 @@
 #define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0	/* PHY address			*/
 #define CONFIG_LXT971_NO_SLEEP  1       /* disable sleep mode in LXT971 */
+#define CONFIG_NET_MULTI
 
 #define CONFIG_PHY_CLK_FREQ	EMAC_STACR_CLK_66MHZ /* 66 MHz OPB clock*/
 
@@ -155,6 +156,8 @@
 #define CONFIG_SYS_NAND_ALE            (0x80000000 >> 3)   /* our ALE is GPIO3 */
 
 #define CONFIG_SYS_NAND_SKIP_BAD_DOT_I      1  /* ".i" read skips bad blocks   */
+
+#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 
 /*-----------------------------------------------------------------------
  * PCI stuff

@@ -84,11 +84,8 @@
 
 #if !defined(CONFIG_MIP405T)
     #define CONFIG_CMD_USB
-    #define CONFIG_CMD_DOC
 #endif
 
-
-#define CONFIG_NAND_LEGACY
 
 #define	 CONFIG_SYS_HUSH_PARSER
 #define	 CONFIG_SYS_PROMPT_HUSH_PS2 "> "
@@ -243,7 +240,7 @@
  *
  */
 /* No command line, one static partition, whole device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor0"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
@@ -251,7 +248,7 @@
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor0=mip405-0"
 #define MTDPARTS_DEFAULT	"mtdparts=mip405-0:-(jffs2)"
 */
@@ -341,6 +338,7 @@
 #define CONFIG_PHY_ADDR		1	/* PHY address			*/
 #define CONFIG_PHY_RESET_DELAY	300	/* Intel LXT971A needs this */
 #define CONFIG_PHY_CMD_DELAY	40	/* Intel LXT971A needs this */
+#define CONFIG_NET_MULTI
 /************************************************************
  * RTC
  ***********************************************************/
@@ -383,13 +381,6 @@
 #define CONFIG_ISO_PARTITION /* Experimental */
 
 /************************************************************
- * Disk-On-Chip configuration
- ************************************************************/
-#define CONFIG_SYS_MAX_DOC_DEVICE	1	/* Max number of DOC devices		*/
-#define CONFIG_SYS_DOC_SHORT_TIMEOUT
-#define CONFIG_SYS_DOC_SUPPORT_2000
-#define CONFIG_SYS_DOC_SUPPORT_MILLENNIUM
-/************************************************************
  * Keyboard support
  ************************************************************/
 #undef CONFIG_ISA_KEYBOARD
@@ -414,7 +405,7 @@
 #define CONFIG_USB_STORAGE
 
 /* Enable needed helper functions */
-#define CONFIG_SYS_DEVICE_DEREGISTER		/* needs device_deregister */
+#define CONFIG_SYS_STDIO_DEREGISTER		/* needs stdio_deregister */
 #endif
 /************************************************************
  * Debug support

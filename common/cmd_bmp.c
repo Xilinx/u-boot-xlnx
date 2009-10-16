@@ -26,6 +26,7 @@
  */
 
 #include <common.h>
+#include <lcd.h>
 #include <bmp_layout.h>
 #include <command.h>
 #include <asm/byteorder.h>
@@ -46,7 +47,7 @@ int gunzip(void *, int, unsigned char *, unsigned long *);
  * didn't contain a valid BMP signature.
  */
 #ifdef CONFIG_VIDEO_BMP_GZIP
-static bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
+bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
 {
 	void *dst;
 	unsigned long len;
@@ -85,7 +86,7 @@ static bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
 	return bmp;
 }
 #else
-static bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
+bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp)
 {
 	return NULL;
 }
@@ -141,7 +142,7 @@ U_BOOT_CMD(
 	bmp,	5,	1,	do_bmp,
 	"manipulate BMP image data",
 	"info <imageAddr>          - display image info\n"
-	"bmp display <imageAddr> [x y] - display image at x,y\n"
+	"bmp display <imageAddr> [x y] - display image at x,y"
 );
 
 /*

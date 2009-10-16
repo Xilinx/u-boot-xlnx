@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 2001	Marius Gröger <mag@sysgo.de>
  *  Copyright (c) 2002	Alex Züpke <azu@sysgo.de>
- *  Copyright (c) 2002	Gary Jennejohn <gj@denx.de>
+ *  Copyright (c) 2002	Gary Jennejohn <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -24,9 +24,8 @@
  * MA 02111-1307 USA
  */
 
+#include <common.h>
 #include <config.h>
-#include <version.h>
-#include <status_led.h>
 
 /*
  *************************************************************************
@@ -258,11 +257,9 @@ cpu_init_crit:
 	 * find a lowlevel_init.S in your board directory.
 	 */
 	mov	ip, lr
-#if	defined(CONFIG_AT91RM9200EK)
 
-#else
 	bl	lowlevel_init
-#endif
+
 	mov	lr, ip
 	mov	pc, lr
 #endif /* CONFIG_SKIP_LOWLEVEL_INIT */

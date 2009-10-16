@@ -39,6 +39,9 @@
 #undef CONFIG_SKIP_RELOCATE_UBOOT
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff */
 
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
+
 /*
  * Size of malloc() pool
  */
@@ -79,6 +82,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_PXA_SERIAL
 #define CONFIG_FFUART		1
 
 /* allow to overwrite serial and ethaddr */
@@ -166,8 +170,6 @@
 #define CONFIG_SYS_MEMTEST_START	0x80400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x80800000	/* 4 ... 8 MB in DRAM	*/
 
-#undef	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-
 #define CONFIG_SYS_LOAD_ADDR	(CONFIG_SYS_DRAM_BASE + 0x8000) /* default load address */
 
 #define CONFIG_SYS_HZ			1000
@@ -218,13 +220,13 @@
 /*
  * NAND Flash
  */
-#undef CONFIG_NAND_LEGACY
-
 #define CONFIG_SYS_NAND0_BASE		0x0 /* 0x43100040 */ /* 0x10000000 */
 #undef CONFIG_SYS_NAND1_BASE
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND0_BASE }
 #define CONFIG_SYS_MAX_NAND_DEVICE	1	/* Max number of NAND devices */
+
+#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
 
 /* nand timeout values */
 #define CONFIG_SYS_NAND_PROG_ERASE_TO	3000
@@ -252,13 +254,6 @@
 
 #define CONFIG_MTD_DEBUG
 #define CONFIG_MTD_DEBUG_VERBOSE 1
-
-#define ADDR_COLUMN		1
-#define ADDR_PAGE		2
-#define ADDR_COLUMN_PAGE	3
-
-#define NAND_ChipID_UNKNOWN	0x00
-#define NAND_MAX_FLOORS		1
 
 #define CONFIG_SYS_NO_FLASH		1
 

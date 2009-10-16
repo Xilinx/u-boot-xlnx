@@ -253,7 +253,7 @@
 #define CUSTOM_ENV_SETTINGS						\
 	"bootfile=cam5200/uImage\0"					\
 	"u-boot=cam5200/u-boot.bin\0"					\
-	"setup=tftp 200000 cam5200/setup.img; autoscr 200000\0"
+	"setup=tftp 200000 cam5200/setup.img; source 200000\0"
 #endif
 
 #if defined(CONFIG_TQM5200_B)
@@ -407,7 +407,9 @@
 #endif
 
 /* Dynamic MTD partition support */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=TQM5200-0"
 
 #ifdef CONFIG_STK52XX

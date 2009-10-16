@@ -11,7 +11,7 @@
  * Alex Zuepke <azu@sysgo.de>
  *
  * (C) Copyright 2002-2004
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * (C) Copyright 2004
  * Philippe Robin, ARM Ltd. <philippe.robin@arm.com>
@@ -36,7 +36,6 @@
  */
 
 #include <common.h>
-#include <arm926ejs.h>
 
 #define TIMER_LOAD_VAL 0xffffffff
 

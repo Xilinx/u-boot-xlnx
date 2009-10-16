@@ -31,7 +31,7 @@
 #include <mpc86xx.h>
 #include <asm/mmu.h>
 #include <asm/fsl_law.h>
-#include "mp.h"
+#include <asm/mp.h>
 
 void setup_bats(void);
 
@@ -112,6 +112,9 @@ void cpu_init_f(void)
 #if defined(CONFIG_SYS_BR7_PRELIM) && defined(CONFIG_SYS_OR7_PRELIM)
 	memctl->or7 = CONFIG_SYS_OR7_PRELIM;
 	memctl->br7 = CONFIG_SYS_BR7_PRELIM;
+#endif
+#if defined(CONFIG_FSL_DMA)
+	dma_init();
 #endif
 
 	/* enable the timebase bit in HID0 */

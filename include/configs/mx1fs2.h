@@ -51,12 +51,12 @@
 
 #define CONFIG_CMD_JFFS2
 
-#undef CONFIG_CMD_LOADS
 #undef CONFIG_CMD_CONSOLE
-#undef CONFIG_CMD_AUTOSCRIPT
+#undef CONFIG_CMD_DHCP
+#undef CONFIG_CMD_LOADS
 #undef CONFIG_CMD_NET
 #undef CONFIG_CMD_PING
-#undef CONFIG_CMD_DHCP
+#undef CONFIG_CMD_SOURCE
 
 
 /*
@@ -79,8 +79,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0x08100000	      /* memtest test area   */
 #define CONFIG_SYS_MEMTEST_END		0x08F00000
-
-#undef	CONFIG_SYS_CLKS_IN_HZ			     /* use HZ for freq. display     */
 
 #define CONFIG_SYS_HZ			3686400	     /* incrementer freq: 3.6864 MHz */
 #define CONFIG_SYS_CPUSPEED		0x141	     /* core clock - register value  */
@@ -176,7 +174,7 @@
  */
 /* No command line, one static partition, whole device */
 /*
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor0"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00050000
@@ -184,7 +182,9 @@
 
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=mx1fs2-0"
 
 #ifdef BUS32BIT_VERSION
@@ -291,11 +291,12 @@
    0x000b00b ->3<- -> 64MHz/4=16MHz */
 
 #ifdef _CONFIG_UART1
+#define CONFIG_IMX_SERIAL
 #define CONFIG_IMX_SERIAL1
 #elif defined _CONFIG_UART2
+#define CONFIG_IMX_SERIAL
 #define CONFIG_IMX_SERIAL2
 #elif defined _CONFIG_UART3 | defined _CONFIG_UART4
-#define CONFIG_IMX_SERIAL_NONE
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_CLK		3686400

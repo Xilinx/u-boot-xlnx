@@ -25,7 +25,7 @@
  */
 
 #include <common.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <watchdog.h>
 #include <net.h>
 #ifdef CONFIG_STATUS_LED
@@ -143,22 +143,19 @@ void board_init (void)
 	}
 
 	WATCHDOG_RESET ();
+	mem_malloc_init();
+	malloc_bin_reloc();
+
+	WATCHDOG_RESET ();
 	bd->bi_flashsize = flash_init();
 
 	WATCHDOG_RESET ();
-	mem_malloc_init();
-	malloc_bin_reloc();
 	env_relocate();
 
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
-	s = getenv ("ethaddr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s) s = (*e) ? e + 1 : e;
-	}
 
 	WATCHDOG_RESET ();
-	devices_init();
+	stdio_init();
 	jumptable_init();
 	console_init_r();
 	/*

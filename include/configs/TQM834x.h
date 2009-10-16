@@ -32,8 +32,8 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1	/* E300 Family */
-#define CONFIG_MPC83XX		1	/* MPC83XX family */
-#define CONFIG_MPC834X		1	/* MPC834X specific */
+#define CONFIG_MPC83xx		1	/* MPC83xx family */
+#define CONFIG_MPC834x		1	/* MPC834x specific */
 #define CONFIG_MPC8349		1	/* MPC8349 specific */
 #define CONFIG_TQM834X		1	/* TQM834X board specific */
 
@@ -78,13 +78,12 @@
  * FLASH on the Local Bus
  */
 #define CONFIG_SYS_FLASH_CFI				/* use the Common Flash Interface */
-#define CONFIG_FLASH_CFI_DRIVER			/* use the CFI driver */
+#define CONFIG_FLASH_CFI_DRIVER				/* use the CFI driver */
 #undef CONFIG_SYS_FLASH_CHECKSUM
 #define CONFIG_SYS_FLASH_BASE		0x80000000	/* start of FLASH   */
 #define CONFIG_SYS_FLASH_SIZE		8		/* FLASH size in MB */
-
-/* buffered writes in the AMD chip set is not supported yet */
-#undef CONFIG_SYS_FLASH_USE_BUFFER_WRITE
+#define CONFIG_SYS_FLASH_EMPTY_INFO			/* print 'E' for empty sectors */
+#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE
 
 /*
  * FLASH bank number detection
@@ -140,35 +139,15 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_SYS_LBLAWBAR3_PRELIM	0x00000000
 #define CONFIG_SYS_LBLAWAR3_PRELIM	0x00000000
 
-#define CONFIG_SYS_BR4_PRELIM		0x00000000
-#define CONFIG_SYS_OR4_PRELIM		0x00000000
-#define CONFIG_SYS_LBLAWBAR4_PRELIM	0x00000000
-#define CONFIG_SYS_LBLAWAR4_PRELIM	0x00000000
-
-#define CONFIG_SYS_BR5_PRELIM		0x00000000
-#define CONFIG_SYS_OR5_PRELIM		0x00000000
-#define CONFIG_SYS_LBLAWBAR5_PRELIM	0x00000000
-#define CONFIG_SYS_LBLAWAR5_PRELIM	0x00000000
-
-#define CONFIG_SYS_BR6_PRELIM		0x00000000
-#define CONFIG_SYS_OR6_PRELIM		0x00000000
-#define CONFIG_SYS_LBLAWBAR6_PRELIM	0x00000000
-#define CONFIG_SYS_LBLAWAR6_PRELIM	0x00000000
-
-#define CONFIG_SYS_BR7_PRELIM		0x00000000
-#define CONFIG_SYS_OR7_PRELIM		0x00000000
-#define CONFIG_SYS_LBLAWBAR7_PRELIM	0x00000000
-#define CONFIG_SYS_LBLAWAR7_PRELIM	0x00000000
-
 /*
  * Monitor config
  */
 #define CONFIG_SYS_MONITOR_BASE	TEXT_BASE	/* start of monitor */
 
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE)
-#define CONFIG_SYS_RAMBOOT
+# define CONFIG_SYS_RAMBOOT
 #else
-#undef  CONFIG_SYS_RAMBOOT
+# undef  CONFIG_SYS_RAMBOOT
 #endif
 
 #define CONFIG_SYS_INIT_RAM_LOCK	1
@@ -179,8 +158,8 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
-#define CONFIG_SYS_MALLOC_LEN		(256 * 1024) /* Reserve 256 kB for malloc */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024) /* Reserve 384 kB = 3 sect. for Mon */
+#define CONFIG_SYS_MALLOC_LEN		(512 * 1024) /* Reserve 512 kB for malloc */
 
 /*
  * Serial Port
@@ -271,9 +250,12 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_PCI_SCAN_SHOW            /* show pci devices on startup */
 
 /* PCI1 host bridge */
-#define CONFIG_SYS_PCI1_MEM_BASE       0xc0000000
+#define CONFIG_SYS_PCI1_MEM_BASE       0x80000000
 #define CONFIG_SYS_PCI1_MEM_PHYS       CONFIG_SYS_PCI1_MEM_BASE
-#define CONFIG_SYS_PCI1_MEM_SIZE       0x20000000      /* 512M */
+#define CONFIG_SYS_PCI1_MEM_SIZE       0x10000000      /* 256M */
+#define CONFIG_SYS_PCI1_MMIO_BASE      (CONFIG_SYS_PCI1_MEM_BASE + CONFIG_SYS_PCI1_MEM_SIZE)
+#define CONFIG_SYS_PCI1_MMIO_PHYS      CONFIG_SYS_PCI1_MMIO_BASE
+#define CONFIG_SYS_PCI1_MMIO_SIZE      0x10000000     /* 256M */
 #define CONFIG_SYS_PCI1_IO_BASE        0xe2000000
 #define CONFIG_SYS_PCI1_IO_PHYS        CONFIG_SYS_PCI1_IO_BASE
 #define CONFIG_SYS_PCI1_IO_SIZE        0x1000000       /* 16M */
@@ -295,22 +277,15 @@ extern int tqm834x_num_flash_banks;
 /*
  * Environment
  */
-#define CONFIG_ENV_OVERWRITE
-
-#ifndef CONFIG_SYS_RAMBOOT
-	#define CONFIG_ENV_IS_IN_FLASH	1
-	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x40000)
-	#define CONFIG_ENV_SECT_SIZE	0x40000	/* 256K(one sector) for env */
-	#define CONFIG_ENV_SIZE		0x2000
-#else
-	#define CONFIG_SYS_NO_FLASH		1	/* Flash is not usable now */
-	#define CONFIG_ENV_IS_NOWHERE	1	/* Store ENV in memory only */
-	#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE - 0x1000)
-	#define CONFIG_ENV_SIZE		0x2000
-#endif
+#define CONFIG_ENV_IS_IN_FLASH		1
+#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
+#define CONFIG_ENV_SECT_SIZE		0x20000	/* 128K (one sector) for env */
+#define CONFIG_ENV_SIZE			0x8000	/*  32K max size */
+#define CONFIG_ENV_ADDR_REDUND	(CONFIG_ENV_ADDR + CONFIG_ENV_SECT_SIZE)
+#define CONFIG_ENV_SIZE_REDUND	(CONFIG_ENV_SIZE)
 
 #define CONFIG_LOADS_ECHO		1	/* echo on for serial download */
-#define CONFIG_SYS_LOADS_BAUD_CHANGE		1	/* allow baudrate change */
+#define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change */
 
 /*
  * BOOTP options
@@ -326,14 +301,18 @@ extern int tqm834x_num_flash_banks;
  */
 #include <config_cmd_default.h>
 
+#define CONFIG_CMD_ASKENV
 #define CONFIG_CMD_DATE
+#define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DTT
 #define CONFIG_CMD_EEPROM
 #define CONFIG_CMD_I2C
+#define CONFIG_CMD_NFS
 #define CONFIG_CMD_JFFS2
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
-#define CONFIG_CMD_DHCP
+#define CONFIG_CMD_REGINFO
+#define CONFIG_CMD_SNTP
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
@@ -369,6 +348,11 @@ extern int tqm834x_num_flash_banks;
 #define CONFIG_SYS_HZ			1000		/* decrementer freq: 1ms ticks */
 
 #undef CONFIG_WATCHDOG				/* watchdog disabled */
+
+/* pass open firmware flat tree */
+#define CONFIG_OF_LIBFDT	1
+#define CONFIG_OF_BOARD_SETUP	1
+#define CONFIG_OF_STDOUT_VIA_ALIAS	1
 
 /*
  * For booting Linux, the board info and command line data
@@ -413,7 +397,7 @@ extern int tqm834x_num_flash_banks;
 #endif
 
 /* System IO Config */
-#define CONFIG_SYS_SICRH	SICRH_TSOBI1
+#define CONFIG_SYS_SICRH	0
 #define CONFIG_SYS_SICRL	SICRL_LDP_A
 
 /* i-cache and d-cache disabled */
@@ -437,10 +421,10 @@ extern int tqm834x_num_flash_banks;
 #ifdef CONFIG_PCI
 #define CONFIG_SYS_IBAT3L	(CONFIG_SYS_PCI1_MEM_BASE | BATL_PP_10 | BATL_MEMCOHERENCE)
 #define CONFIG_SYS_IBAT3U	(CONFIG_SYS_PCI1_MEM_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
-#define CONFIG_SYS_IBAT4L	(CONFIG_SYS_PCI1_MEM_BASE + 0x10000000 | BATL_PP_10 | BATL_MEMCOHERENCE)
-#define CONFIG_SYS_IBAT4U	(CONFIG_SYS_PCI1_MEM_BASE + 0x10000000 | BATU_BL_256M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT4L	(CONFIG_SYS_PCI1_MMIO_BASE | BATL_PP_10 | BATL_MEMCOHERENCE | BATL_GUARDEDSTORAGE)
+#define CONFIG_SYS_IBAT4U	(CONFIG_SYS_PCI1_MMIO_BASE | BATU_BL_256M | BATU_VS | BATU_VP)
 #define CONFIG_SYS_IBAT5L	(CONFIG_SYS_PCI1_IO_BASE | BATL_PP_10 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_IBAT5U	(CONFIG_SYS_PCI1_IO_BASE + 0x10000000 | BATU_BL_16M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_IBAT5U	(CONFIG_SYS_PCI1_IO_BASE | BATU_BL_16M | BATU_VS | BATU_VP)
 #else
 #define CONFIG_SYS_IBAT3L	(0)
 #define CONFIG_SYS_IBAT3U	(0)
@@ -514,20 +498,35 @@ extern int tqm834x_num_flash_banks;
 	"addip=setenv bootargs ${bootargs} "				\
 		"ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}"	\
 		":${hostname}:${netdev}:off panic=1\0"			\
-	"addtty=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
-	"flash_nfs=run nfsargs addip addtty;"				\
+	"addcons=setenv bootargs ${bootargs} console=ttyS0,${baudrate}\0"\
+	"flash_nfs_old=run nfsargs addip addcons;"			\
 		"bootm ${kernel_addr}\0"				\
-	"flash_self=run ramargs addip addtty;"				\
+	"flash_nfs=run nfsargs addip addcons;"				\
+		"bootm ${kernel_addr} - ${fdt_addr}\0"			\
+	"flash_self_old=run ramargs addip addcons;"			\
 		"bootm ${kernel_addr} ${ramdisk_addr}\0"		\
-	"net_nfs=tftp 400000 ${bootfile};run nfsargs addip addtty;"     \
-		"bootm\0"						\
+	"flash_self=run ramargs addip addcons;"				\
+		"bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
+	"net_nfs_old=tftp 400000 ${bootfile};"				\
+		"run nfsargs addip addcons;bootm\0"			\
+	"net_nfs=tftp ${kernel_addr_r} ${bootfile}; "			\
+		"tftp ${fdt_addr_r} ${fdt_file}; "			\
+		"run nfsargs addip addcons; "				\
+		"bootm ${kernel_addr_r} - ${fdt_addr_r}\0"		\
 	"rootpath=/opt/eldk/ppc_6xx\0"					\
-	"bootfile=/tftpboot/tqm834x/uImage\0"				\
-	"kernel_addr=80060000\0"					\
-	"ramdisk_addr=80160000\0"					\
-	"load=tftp 100000 /tftpboot/tqm834x/u-boot.bin\0"		\
-	"update=protect off 80000000 8003ffff; "			\
-		"era 80000000 8003ffff; cp.b 100000 80000000 40000\0"	\
+	"bootfile=tqm834x/uImage\0"					\
+	"fdtfile=tqm834x/tqm834x.dtb\0"					\
+	"kernel_addr_r=400000\0"					\
+	"fdt_addr_r=600000\0"						\
+	"ramdisk_addr_r=800000\0"					\
+	"kernel_addr=800C0000\0"					\
+	"fdt_addr=800A0000\0"						\
+	"ramdisk_addr=80300000\0"					\
+	"u-boot=tqm834x/u-boot.bin\0"					\
+	"load=tftp 200000 ${u-boot}\0"					\
+	"update=protect off 80000000 +${filesize};"			\
+		"era 80000000 +${filesize};"				\
+		"cp.b 200000 80000000 ${filesize}\0"			\
 	"upd=run load update\0"						\
 	""
 
@@ -537,7 +536,9 @@ extern int tqm834x_num_flash_banks;
  * JFFS2 partitions
  */
 /* mtdparts command line support */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=TQM834x-0"
 
 /* default mtd partition table */

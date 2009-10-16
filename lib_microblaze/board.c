@@ -30,6 +30,7 @@
 #include <timestamp.h>
 #include <version.h>
 #include <watchdog.h>
+#include <net.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -40,10 +41,6 @@ extern int gpio_init (void);
 #endif
 #ifdef CONFIG_SYS_INTC_0
 extern int interrupts_init (void);
-#endif
-#if defined(CONFIG_CMD_NET)
-extern int eth_init (bd_t * bis);
-extern int getenv_IPaddr (char *);
 #endif
 
 /*
@@ -112,10 +109,6 @@ void board_init (void)
 #if defined(CONFIG_CMD_FLASH)
 	ulong flash_size = 0;
 #endif
-#if defined(CONFIG_CMD_NET)
-	char *s, *e;
-	int i;
-#endif
 	asm ("nop");	/* FIXME gd is not initialize - wait */
 	memset ((void *)gd, 0, CONFIG_SYS_GBL_DATA_SIZE);
 	gd->bd = (bd_t *) (gd + 1);	/* At end of global data */
@@ -172,22 +165,20 @@ void board_init (void)
 	}
 #endif
 
-#if defined(CONFIG_CMD_NET)
-	/* board MAC address */
-	s = getenv ("ethaddr");
-	printf ("MAC:%s\n",s);
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-	/* IP Address */
-	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
-	eth_init (bd);
-#endif
-
 	/* relocate environment function pointers etc. */
 	env_relocate ();
+
+#if defined(CONFIG_CMD_NET)
+	/* IP Address */
+	bd->bi_ip_addr = getenv_IPaddr("ipaddr");
+
+	printf("Net:   ");
+	eth_initialize(gd->bd);
+
+	uchar enetaddr[6];
+	eth_getenv_enetaddr("ethaddr", enetaddr);
+	printf("MAC:   %pM\n", enetaddr);
+#endif
 
 	/* main_loop */
 	for (;;) {

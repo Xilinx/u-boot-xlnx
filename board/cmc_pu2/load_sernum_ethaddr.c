@@ -27,6 +27,7 @@
 /* #define DEBUG */
 
 #include <common.h>
+#include <net.h>
 
 #define I2C_CHIP	0x50	/* I2C bus address of onboard EEPROM */
 #define I2C_ALEN	1	/* length of EEPROM addresses in bytes */
@@ -66,14 +67,13 @@ int i2c_read (unsigned char chip, unsigned int addr, int alen,
  * Internal structure: see struct definition
  */
 
-void load_sernum_ethaddr (void)
+int misc_init_r(void)
 {
 	struct manufacturer_data data;
-	char  ethaddr[18];
 	char  serial [9];
 	unsigned short chksum;
 	unsigned char *p;
-	unsigned short i, is, id;
+	unsigned short i;
 
 #if !defined(CONFIG_HARD_I2C) && !defined(CONFIG_SOFT_I2C)
 #error you must define some I2C support (CONFIG_HARD_I2C or CONFIG_SOFT_I2C)
@@ -81,7 +81,7 @@ void load_sernum_ethaddr (void)
 	if (i2c_read(I2C_CHIP, I2C_OFFSET, I2C_ALEN, (unsigned char *)&data,
 		     sizeof(data)) != 0) {
 		puts ("Error reading manufacturer data from EEPROM\n");
-		return;
+		return -1;
 	}
 
 	/* check if manufacturer data block is valid  */
@@ -94,19 +94,8 @@ void load_sernum_ethaddr (void)
 
 	if (chksum != data.chksum) {
 		puts ("Error: manufacturer data block has invalid checksum\n");
-		return;
+		return -1;
 	}
-
-	/* copy MAC address */
-	is = 0;
-	id = 0;
-	for (i = 0; i < 6; i++) {
-		sprintf (&ethaddr[id], "%02x", data.macadr[is++]);
-		id += 2;
-		if (is < 6)
-			ethaddr[id++] = ':';
-	}
-	ethaddr[id] = '\0';	/* just to be sure */
 
 	/* copy serial number */
 	sprintf (serial, "%d", data.serial_number);
@@ -117,6 +106,8 @@ void load_sernum_ethaddr (void)
 	}
 
 	if (getenv("ethaddr") == NULL) {
-		setenv ("ethaddr", ethaddr);
+		eth_setenv_enetaddr("ethaddr", data.macadr);
 	}
+
+	return 0;
 }

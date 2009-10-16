@@ -209,15 +209,7 @@
 
 /* For CATcenter there is only NAND on the module */
 #define CONFIG_SYS_MAX_NAND_DEVICE	1	/* Max number of NAND devices		*/
-#define SECTORSIZE 512
 #define NAND_NO_RB
-
-#define ADDR_COLUMN 1
-#define ADDR_PAGE 2
-#define ADDR_COLUMN_PAGE 3
-
-#define NAND_ChipID_UNKNOWN	0x00
-#define NAND_MAX_FLOORS 1
 
 #define CONFIG_SYS_NAND0_CE  (0x80000000 >> 1)	 /* our CE is GPIO1 */
 #define CONFIG_SYS_NAND0_CLE (0x80000000 >> 2)	 /* our CLE is GPIO2 */
@@ -781,7 +773,7 @@
  *
  */
 /* No command line, one static partition */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nand"
 #define CONFIG_JFFS2_PART_SIZE		0x00200000
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
@@ -791,7 +783,7 @@
  * Note: fake mtd_id used, no linux mtd map file
  */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nand0=catcenter"
 #define MTDPARTS_DEFAULT	"mtdparts=catcenter:2m(nand)"
 */

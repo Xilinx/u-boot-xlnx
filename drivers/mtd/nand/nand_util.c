@@ -36,11 +36,14 @@
 #include <malloc.h>
 #include <div64.h>
 
-
 #include <asm/errno.h>
 #include <linux/mtd/mtd.h>
 #include <nand.h>
 #include <jffs2/jffs2.h>
+
+#if !defined(CONFIG_SYS_64BIT_VSPRINTF)
+#warning Please define CONFIG_SYS_64BIT_VSPRINTF for correct output!
+#endif
 
 typedef struct erase_info erase_info_t;
 typedef struct mtd_info	  mtd_info_t;
@@ -127,7 +130,7 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 			if (ret > 0) {
 				if (!opts->quiet)
 					printf("\rSkipping bad block at  "
-					       "0x%08x                   "
+					       "0x%08llx                 "
 					       "                         \n",
 					       erase.addr);
 				continue;
@@ -181,11 +184,11 @@ int nand_erase_opts(nand_info_t *meminfo, const nand_erase_options_t *opts)
 			if (percent != percent_complete) {
 				percent_complete = percent;
 
-				printf("\rErasing at 0x%x -- %3d%% complete.",
+				printf("\rErasing at 0x%llx -- %3d%% complete.",
 				       erase.addr, percent);
 
 				if (opts->jffs2 && result == 0)
-					printf(" Cleanmarker written at 0x%x.",
+					printf(" Cleanmarker written at 0x%llx.",
 					       erase.addr);
 			}
 		}
@@ -312,7 +315,7 @@ int nand_lock(struct mtd_info *mtd, int tight)
  *			  NAND_LOCK_STATUS_UNLOCK: page unlocked
  *
  */
-int nand_get_lock_status(struct mtd_info *mtd, ulong offset)
+int nand_get_lock_status(struct mtd_info *mtd, loff_t offset)
 {
 	int ret = 0;
 	int chipnr;
@@ -433,7 +436,7 @@ int nand_unlock(struct mtd_info *mtd, ulong start, ulong length)
  * @param length image length
  * @return image length including bad blocks
  */
-static size_t get_len_incl_bad (nand_info_t *nand, size_t offset,
+static size_t get_len_incl_bad (nand_info_t *nand, loff_t offset,
 				const size_t length)
 {
 	size_t len_incl_bad = 0;
@@ -470,7 +473,7 @@ static size_t get_len_incl_bad (nand_info_t *nand, size_t offset,
  * @param buf           buffer to read from
  * @return		0 in case of success
  */
-int nand_write_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
+int nand_write_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 			u_char *buffer)
 {
 	int rval;
@@ -495,7 +498,7 @@ int nand_write_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
 	if (len_incl_bad == *length) {
 		rval = nand_write (nand, offset, length, buffer);
 		if (rval != 0)
-			printf ("NAND write to offset %zx failed %d\n",
+			printf ("NAND write to offset %llx failed %d\n",
 				offset, rval);
 
 		return rval;
@@ -506,7 +509,7 @@ int nand_write_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
 		size_t write_size;
 
 		if (nand_block_isbad (nand, offset & ~(nand->erasesize - 1))) {
-			printf ("Skip bad block 0x%08zx\n",
+			printf ("Skip bad block 0x%08llx\n",
 				offset & ~(nand->erasesize - 1));
 			offset += nand->erasesize - block_offset;
 			continue;
@@ -519,7 +522,7 @@ int nand_write_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
 
 		rval = nand_write (nand, offset, &write_size, p_buffer);
 		if (rval != 0) {
-			printf ("NAND write to offset %zx failed %d\n",
+			printf ("NAND write to offset %llx failed %d\n",
 				offset, rval);
 			*length -= left_to_write;
 			return rval;
@@ -547,7 +550,7 @@ int nand_write_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
  * @param buffer buffer to write to
  * @return 0 in case of success
  */
-int nand_read_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
+int nand_read_skip_bad(nand_info_t *nand, loff_t offset, size_t *length,
 		       u_char *buffer)
 {
 	int rval;
@@ -564,10 +567,10 @@ int nand_read_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
 
 	if (len_incl_bad == *length) {
 		rval = nand_read (nand, offset, length, buffer);
-		if (rval != 0)
-			printf ("NAND read from offset %zx failed %d\n",
-				offset, rval);
-
+		if (!rval || rval == -EUCLEAN)
+			return 0;
+		printf ("NAND read from offset %llx failed %d\n",
+			offset, rval);
 		return rval;
 	}
 
@@ -576,7 +579,7 @@ int nand_read_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
 		size_t read_length;
 
 		if (nand_block_isbad (nand, offset & ~(nand->erasesize - 1))) {
-			printf ("Skipping bad block 0x%08zx\n",
+			printf ("Skipping bad block 0x%08llx\n",
 				offset & ~(nand->erasesize - 1));
 			offset += nand->erasesize - block_offset;
 			continue;
@@ -588,8 +591,8 @@ int nand_read_skip_bad(nand_info_t *nand, size_t offset, size_t *length,
 			read_length = nand->erasesize - block_offset;
 
 		rval = nand_read (nand, offset, &read_length, p_buffer);
-		if (rval != 0) {
-			printf ("NAND read from offset %zx failed %d\n",
+		if (rval && rval != -EUCLEAN) {
+			printf ("NAND read from offset %llx failed %d\n",
 				offset, rval);
 			*length -= left_to_read;
 			return rval;

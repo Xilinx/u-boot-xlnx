@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2002
- * Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+ * Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -45,7 +45,7 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
-	.rodata : { *(.rodata) }
+	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
 
 	. = ALIGN(4);
 	.data : { *(.data) }

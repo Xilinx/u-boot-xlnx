@@ -1,7 +1,7 @@
 /*
  * MPC85xx Internal Memory Map
  *
- * Copyright 2007 Freescale Semiconductor.
+ * Copyright 2007-2009 Freescale Semiconductor, Inc.
  *
  * Copyright(c) 2002,2003 Motorola Inc.
  * Xianghua Xiao (x.xiao@motorola.com)
@@ -12,6 +12,7 @@
 #define __IMMAP_85xx__
 
 #include <asm/types.h>
+#include <asm/fsl_dma.h>
 #include <asm/fsl_i2c.h>
 #include <asm/fsl_lbc.h>
 
@@ -258,6 +259,21 @@ typedef struct ccsr_lbc {
 } ccsr_lbc_t;
 
 /*
+ * eSPI Registers(0x7000-0x8000)
+ */
+typedef struct ccsr_espi {
+	uint	mode;		/* 0x00 - eSPI mode register  */
+	uint	event;		/* 0x04 - eSPI event register */
+	uint	mask;		/* 0x08 - eSPI mask register  */
+	uint	com;		/* 0x0c - eSPI command register */
+	uint	tx;		/* 0x10 - eSPI transmit FIFO access register */
+	uint	rx;		/* 0x14 - eSPI receive FIFO access register */
+	char	res1[8];	/* reserved */
+	uint	csmode[4];	/* 0x20 - 0x2c: sSPI CS0/1/2/3 mode register */
+	char	res2[4048];	/* fill up to 0x1000 */
+} ccsr_espi_t;
+
+/*
  * PCI Registers(0x8000-0x9000)
  */
 typedef struct ccsr_pcix {
@@ -325,6 +341,15 @@ typedef struct ccsr_pcix {
 	char	res11[476];
 } ccsr_pcix_t;
 
+typedef struct ccsr_gpio {
+	uint	gpdir;
+	uint	gpodr;
+	uint	gpdat;
+	uint	gpier;
+	uint	gpimr;
+	uint	gpicr;
+} ccsr_gpio_t;
+
 #define PCIX_COMMAND	0x62
 #define POWAR_EN	0x80000000
 #define POWAR_IO_READ	0x00080000
@@ -391,80 +416,9 @@ typedef struct ccsr_l2cache {
  */
 typedef struct ccsr_dma {
 	char	res1[256];
-	uint	mr0;		/* 0x21100 - DMA 0 Mode Register */
-	uint	sr0;		/* 0x21104 - DMA 0 Status Register */
-	char	res2[4];
-	uint	clndar0;	/* 0x2110c - DMA 0 Current Link Descriptor Address Register */
-	uint	satr0;		/* 0x21110 - DMA 0 Source Attributes Register */
-	uint	sar0;		/* 0x21114 - DMA 0 Source Address Register */
-	uint	datr0;		/* 0x21118 - DMA 0 Destination Attributes Register */
-	uint	dar0;		/* 0x2111c - DMA 0 Destination Address Register */
-	uint	bcr0;		/* 0x21120 - DMA 0 Byte Count Register */
-	char	res3[4];
-	uint	nlndar0;	/* 0x21128 - DMA 0 Next Link Descriptor Address Register */
-	char	res4[8];
-	uint	clabdar0;	/* 0x21134 - DMA 0 Current List - Alternate Base Descriptor Address Register */
-	char	res5[4];
-	uint	nlsdar0;	/* 0x2113c - DMA 0 Next List Descriptor Address Register */
-	uint	ssr0;		/* 0x21140 - DMA 0 Source Stride Register */
-	uint	dsr0;		/* 0x21144 - DMA 0 Destination Stride Register */
-	char	res6[56];
-	uint	mr1;		/* 0x21180 - DMA 1 Mode Register */
-	uint	sr1;		/* 0x21184 - DMA 1 Status Register */
-	char	res7[4];
-	uint	clndar1;	/* 0x2118c - DMA 1 Current Link Descriptor Address Register */
-	uint	satr1;		/* 0x21190 - DMA 1 Source Attributes Register */
-	uint	sar1;		/* 0x21194 - DMA 1 Source Address Register */
-	uint	datr1;		/* 0x21198 - DMA 1 Destination Attributes Register */
-	uint	dar1;		/* 0x2119c - DMA 1 Destination Address Register */
-	uint	bcr1;		/* 0x211a0 - DMA 1 Byte Count Register */
-	char	res8[4];
-	uint	nlndar1;	/* 0x211a8 - DMA 1 Next Link Descriptor Address Register */
-	char	res9[8];
-	uint	clabdar1;	/* 0x211b4 - DMA 1 Current List - Alternate Base Descriptor Address Register */
-	char	res10[4];
-	uint	nlsdar1;	/* 0x211bc - DMA 1 Next List Descriptor Address Register */
-	uint	ssr1;		/* 0x211c0 - DMA 1 Source Stride Register */
-	uint	dsr1;		/* 0x211c4 - DMA 1 Destination Stride Register */
-	char	res11[56];
-	uint	mr2;		/* 0x21200 - DMA 2 Mode Register */
-	uint	sr2;		/* 0x21204 - DMA 2 Status Register */
-	char	res12[4];
-	uint	clndar2;	/* 0x2120c - DMA 2 Current Link Descriptor Address Register */
-	uint	satr2;		/* 0x21210 - DMA 2 Source Attributes Register */
-	uint	sar2;		/* 0x21214 - DMA 2 Source Address Register */
-	uint	datr2;		/* 0x21218 - DMA 2 Destination Attributes Register */
-	uint	dar2;		/* 0x2121c - DMA 2 Destination Address Register */
-	uint	bcr2;		/* 0x21220 - DMA 2 Byte Count Register */
-	char	res13[4];
-	uint	nlndar2;	/* 0x21228 - DMA 2 Next Link Descriptor Address Register */
-	char	res14[8];
-	uint	clabdar2;	/* 0x21234 - DMA 2 Current List - Alternate Base Descriptor Address Register */
-	char	res15[4];
-	uint	nlsdar2;	/* 0x2123c - DMA 2 Next List Descriptor Address Register */
-	uint	ssr2;		/* 0x21240 - DMA 2 Source Stride Register */
-	uint	dsr2;		/* 0x21244 - DMA 2 Destination Stride Register */
-	char	res16[56];
-	uint	mr3;		/* 0x21280 - DMA 3 Mode Register */
-	uint	sr3;		/* 0x21284 - DMA 3 Status Register */
-	char	res17[4];
-	uint	clndar3;	/* 0x2128c - DMA 3 Current Link Descriptor Address Register */
-	uint	satr3;		/* 0x21290 - DMA 3 Source Attributes Register */
-	uint	sar3;		/* 0x21294 - DMA 3 Source Address Register */
-	uint	datr3;		/* 0x21298 - DMA 3 Destination Attributes Register */
-	uint	dar3;		/* 0x2129c - DMA 3 Destination Address Register */
-	uint	bcr3;		/* 0x212a0 - DMA 3 Byte Count Register */
-	char	res18[4];
-	uint	nlndar3;	/* 0x212a8 - DMA 3 Next Link Descriptor Address Register */
-	char	res19[8];
-	uint	clabdar3;	/* 0x212b4 - DMA 3 Current List - Alternate Base Descriptor Address Register */
-	char	res20[4];
-	uint	nlsdar3;	/* 0x212bc - DMA 3 Next List Descriptor Address Register */
-	uint	ssr3;		/* 0x212c0 - DMA 3 Source Stride Register */
-	uint	dsr3;		/* 0x212c4 - DMA 3 Destination Stride Register */
-	char	res21[56];
+	struct fsl_dma dma[4];
 	uint	dgsr;		/* 0x21300 - DMA General Status Register */
-	char	res22[11516];
+	char	res2[11516];
 } ccsr_dma_t;
 
 /*
@@ -1581,8 +1535,11 @@ typedef struct ccsr_gur {
 #define MPC85xx_PORPLLSR_DDR_RATIO	0x00003e00
 #define MPC85xx_PORPLLSR_DDR_RATIO_SHIFT	9
 #endif
+#define MPC85xx_PORPLLSR_QE_RATIO	0x3e000000
+#define MPC85xx_PORPLLSR_QE_RATIO_SHIFT		25
 	uint	porbmsr;	/* 0xe0004 - POR boot mode status register */
 #define MPC85xx_PORBMSR_HA		0x00070000
+#define MPC85xx_PORBMSR_HA_SHIFT	16
 	uint	porimpscr;	/* 0xe0008 - POR I/O impedance status and control register */
 	uint	pordevsr;	/* 0xe000c - POR I/O device status regsiter */
 #define MPC85xx_PORDEVSR_SGMII1_DIS	0x20000000
@@ -1592,6 +1549,7 @@ typedef struct ccsr_gur {
 #define MPC85xx_PORDEVSR_SRDS2_IO_SEL   0x38000000
 #define MPC85xx_PORDEVSR_PCI1		0x00800000
 #define MPC85xx_PORDEVSR_IO_SEL		0x00780000
+#define MPC85xx_PORDEVSR_IO_SEL_SHIFT	19
 #define MPC85xx_PORDEVSR_PCI2_ARB	0x00040000
 #define MPC85xx_PORDEVSR_PCI1_ARB	0x00020000
 #define MPC85xx_PORDEVSR_PCI1_PCI32	0x00010000
@@ -1609,8 +1567,19 @@ typedef struct ccsr_gur {
 	char	res2[12];
 	uint	gpiocr;		/* 0xe0030 - GPIO control register */
 	char	res3[12];
+#if defined(CONFIG_MPC8569)
+	uint	plppar1;
+			/* 0xe0040 - Platform port pin assignment register 1 */
+	uint	plppar2;
+			/* 0xe0044 - Platform port pin assignment register 2 */
+	uint	plpdir1;
+			/* 0xe0048 - Platform port pin direction register 1 */
+	uint	plpdir2;
+			/* 0xe004c - Platform port pin direction register 2 */
+#else
 	uint	gpoutdr;	/* 0xe0040 - General-purpose output data register */
 	char	res4[12];
+#endif
 	uint	gpindr;		/* 0xe0050 - General-purpose input data register */
 	char	res5[12];
 	uint	pmuxcr;		/* 0xe0060 - Alternate function signal multiplex control */
@@ -1651,7 +1620,7 @@ typedef struct ccsr_gur {
 	uint	svr;		/* 0xe00a4 - System version register */
 	char	res10a[8];
 	uint	rstcr;		/* 0xe00b0 - Reset control register */
-#ifdef CONFIG_MPC8568
+#if defined(CONFIG_MPC8568)||defined(CONFIG_MPC8569)
 	char	res10b[76];
 	par_io_t qe_par_io[7];  /* 0xe0100 - 0xe01bf */
 	char	res10c[3136];
@@ -1667,7 +1636,7 @@ typedef struct ccsr_gur {
 	uint	lbiuiplldcr0;	/* 0xe0f1c -- LBIU PLL Debug Reg 0 */
 	uint	lbiuiplldcr1;	/* 0xe0f20 -- LBIU PLL Debug Reg 1 */
 	uint	ddrioovcr;	/* 0xe0f24 - DDR IO Override Control */
-	uint	res14;		/* 0xe0f28 */
+	uint	tsec12ioovcr;	/* 0xe0f28 - eTSEC 1/2 IO override control */
 	uint	tsec34ioovcr;	/* 0xe0f2c - eTSEC 3/4 IO override control */
 	char	res15[61648];	/* 0xe0f30 to 0xefffff */
 } ccsr_gur_t;
@@ -1682,10 +1651,14 @@ typedef struct ccsr_gur {
 #define CONFIG_SYS_MPC85xx_DDR2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_DDR2_OFFSET)
 #define CONFIG_SYS_MPC85xx_LBC_OFFSET	(0x5000)
 #define CONFIG_SYS_MPC85xx_LBC_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_LBC_OFFSET)
+#define CONFIG_SYS_MPC85xx_ESPI_OFFSET	(0x7000)
+#define CONFIG_SYS_MPC85xx_ESPI_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_ESPI_OFFSET)
 #define CONFIG_SYS_MPC85xx_PCIX_OFFSET	(0x8000)
 #define CONFIG_SYS_MPC85xx_PCIX_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_PCIX_OFFSET)
 #define CONFIG_SYS_MPC85xx_PCIX2_OFFSET	(0x9000)
 #define CONFIG_SYS_MPC85xx_PCIX2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_PCIX2_OFFSET)
+#define CONFIG_SYS_MPC85xx_GPIO_OFFSET	(0xF000)
+#define CONFIG_SYS_MPC85xx_GPIO_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_GPIO_OFFSET)
 #define CONFIG_SYS_MPC85xx_SATA1_OFFSET	(0x18000)
 #define CONFIG_SYS_MPC85xx_SATA1_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SATA1_OFFSET)
 #define CONFIG_SYS_MPC85xx_SATA2_OFFSET	(0x19000)
@@ -1704,5 +1677,8 @@ typedef struct ccsr_gur {
 #define CONFIG_SYS_MPC85xx_SERDES1_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SERDES2_OFFSET)
 #define CONFIG_SYS_MPC85xx_SERDES2_OFFSET	(0xE3100)
 #define CONFIG_SYS_MPC85xx_SERDES2_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_SERDES2_OFFSET)
+#define CONFIG_SYS_MPC85xx_USB_OFFSET		0x22000
+#define CONFIG_SYS_MPC85xx_USB_ADDR \
+			(CONFIG_SYS_IMMR + CONFIG_SYS_MPC85xx_USB_OFFSET)
 
 #endif /*__IMMAP_85xx__*/

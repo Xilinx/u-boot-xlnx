@@ -34,7 +34,7 @@
 #include <command.h>
 #include <stdarg.h>
 #include <linux/types.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #if defined(CONFIG_POST)
 #include <post.h>
 #endif
@@ -79,25 +79,13 @@ static inline void lcd_putc_xy (ushort x, ushort y, uchar  c);
 static int lcd_init (void *lcdbase);
 
 static int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[]);
-extern void lcd_ctrl_init (void *lcdbase);
-extern void lcd_enable (void);
 static void *lcd_logo (void);
-
-
-#if (LCD_BPP == LCD_COLOR8) || (LCD_BPP == LCD_COLOR16)
-extern void lcd_setcolreg (ushort regno,
-				ushort red, ushort green, ushort blue);
-#endif
-#if LCD_BPP == LCD_MONOCHROME
-extern void lcd_initcolregs (void);
-#endif
 
 static int lcd_getbgcolor (void);
 static void lcd_setfgcolor (int color);
 static void lcd_setbgcolor (int color);
 
 char lcd_is_enabled = 0;
-extern vidinfo_t panel_info;
 
 #ifdef	NOT_USED_SO_FAR
 static void lcd_getcolreg (ushort regno,
@@ -355,7 +343,7 @@ static void test_pattern (void)
 
 int drv_lcd_init (void)
 {
-	device_t lcddev;
+	struct stdio_dev lcddev;
 	int rc;
 
 	lcd_base = (void *)(gd->fb_base);
@@ -373,7 +361,7 @@ int drv_lcd_init (void)
 	lcddev.putc  = lcd_putc;		/* 'putc' function */
 	lcddev.puts  = lcd_puts;		/* 'puts' function */
 
-	rc = device_register (&lcddev);
+	rc = stdio_register (&lcddev);
 
 	return (rc == 0) ? 1 : rc;
 }
@@ -427,7 +415,7 @@ static int lcd_clear (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	cls,	1,	1,	lcd_clear,
 	"clear screen",
-	NULL
+	""
 );
 
 /*----------------------------------------------------------------------*/
@@ -620,6 +608,11 @@ void bitmap_plot (int x, int y)
  * Display the BMP file located at address bmp_image.
  * Only uncompressed.
  */
+
+#ifdef CONFIG_SPLASH_SCREEN_ALIGN
+#define BMP_ALIGN_CENTER	0x7FFF
+#endif
+
 int lcd_display_bitmap(ulong bmp_image, int x, int y)
 {
 #if !defined(CONFIG_MCC200)
@@ -731,6 +724,19 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 #endif
 
 	padded_line = (width&0x3) ? ((width&~0x3)+4) : (width);
+
+#ifdef CONFIG_SPLASH_SCREEN_ALIGN
+	if (x == BMP_ALIGN_CENTER)
+		x = max(0, (pwidth - width) / 2);
+	else if (x < 0)
+		x = max(0, pwidth - width + x + 1);
+
+	if (y == BMP_ALIGN_CENTER)
+		y = max(0, (panel_info.vl_row - height) / 2);
+	else if (y < 0)
+		y = max(0, panel_info.vl_row - height + y + 1);
+#endif /* CONFIG_SPLASH_SCREEN_ALIGN */
+
 	if ((x + width)>pwidth)
 		width = pwidth - x;
 	if ((y + height)>panel_info.vl_row)
@@ -797,10 +803,6 @@ int lcd_display_bitmap(ulong bmp_image, int x, int y)
 }
 #endif
 
-#ifdef CONFIG_VIDEO_BMP_GZIP
-extern bmp_image_t *gunzip_bmp(unsigned long addr, unsigned long *lenp);
-#endif
-
 static void *lcd_logo (void)
 {
 #ifdef CONFIG_SPLASH_SCREEN
@@ -809,8 +811,25 @@ static void *lcd_logo (void)
 	static int do_splash = 1;
 
 	if (do_splash && (s = getenv("splashimage")) != NULL) {
-		addr = simple_strtoul(s, NULL, 16);
+		int x = 0, y = 0;
 		do_splash = 0;
+
+		addr = simple_strtoul (s, NULL, 16);
+#ifdef CONFIG_SPLASH_SCREEN_ALIGN
+		if ((s = getenv ("splashpos")) != NULL) {
+			if (s[0] == 'm')
+				x = BMP_ALIGN_CENTER;
+			else
+				x = simple_strtol (s, NULL, 0);
+
+			if ((s = strchr (s + 1, ',')) != NULL) {
+				if (s[1] == 'm')
+					y = BMP_ALIGN_CENTER;
+				else
+					y = simple_strtol (s + 1, NULL, 0);
+			}
+		}
+#endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 
 #ifdef CONFIG_VIDEO_BMP_GZIP
 		bmp_image_t *bmp = (bmp_image_t *)addr;
@@ -822,7 +841,7 @@ static void *lcd_logo (void)
 		}
 #endif
 
-		if (lcd_display_bitmap (addr, 0, 0) == 0) {
+		if (lcd_display_bitmap (addr, x, y) == 0) {
 			return ((void *)lcd_base);
 		}
 	}

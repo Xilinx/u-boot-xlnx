@@ -21,13 +21,13 @@
  * MA 02111-1307 USA
  */
 
+#include "os_support.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include "sha1.h"
 
@@ -36,16 +36,6 @@
 #endif
 #include <config.h>
 #undef	__ASSEMBLY__
-
-#ifndef	O_BINARY		/* should be define'd on __WIN32__ */
-#define O_BINARY	0
-#endif
-
-#ifndef MAP_FAILED
-#define MAP_FAILED (-1)
-#endif
-
-extern int errno;
 
 extern void sha1_csum (unsigned char *input, int ilen, unsigned char output[20]);
 

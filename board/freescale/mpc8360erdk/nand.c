@@ -57,7 +57,7 @@ static void upm_setup(struct fsl_upm *upm)
 		eieio();
 }
 
-static int dev_ready(void)
+static int dev_ready(int chip_nr)
 {
 	if (in_be32(&im->qepio.ioport[4].pdat) & 0x00002000) {
 		debug("nand ready\n");
@@ -76,7 +76,7 @@ static struct fsl_upm_nand fun = {
 	.upm_cmd_offset = 8,
 	.upm_addr_offset = 16,
 	.dev_ready = dev_ready,
-	.wait_pattern = 1,
+	.wait_flags = FSL_UPM_WAIT_RUN_PATTERN,
 	.chip_delay = 50,
 };
 

@@ -162,27 +162,8 @@ int step_assign_addresses(fsl_ddr_info_t *pinfo,
 			j++;
 		}
 	}
-	if (j == 2) {
+	if (j == 2)
 		*memctl_interleaving = 1;
-
-		printf("\nMemory controller interleaving enabled: ");
-
-		switch (pinfo->memctl_opts[0].memctl_interleaving_mode) {
-		case FSL_DDR_CACHE_LINE_INTERLEAVING:
-			printf("Cache-line interleaving!\n");
-			break;
-		case FSL_DDR_PAGE_INTERLEAVING:
-			printf("Page interleaving!\n");
-			break;
-		case FSL_DDR_BANK_INTERLEAVING:
-			printf("Bank interleaving!\n");
-			break;
-		case FSL_DDR_SUPERBANK_INTERLEAVING:
-			printf("Super bank interleaving\n");
-		default:
-			break;
-		}
-	}
 
 	/* Check that all controllers are rank interleaving. */
 	j = 0;
@@ -191,33 +172,11 @@ int step_assign_addresses(fsl_ddr_info_t *pinfo,
 			j++;
 		}
 	}
-	if (j == 2) {
+	if (j == 2)
 		*rank_interleaving = 1;
 
-		printf("Bank(chip-select) interleaving enabled: ");
-
-		switch (pinfo->memctl_opts[0].ba_intlv_ctl &
-						FSL_DDR_CS0_CS1_CS2_CS3) {
-		case FSL_DDR_CS0_CS1_CS2_CS3:
-			printf("CS0+CS1+CS2+CS3\n");
-			break;
-		case FSL_DDR_CS0_CS1:
-			printf("CS0+CS1\n");
-			break;
-		case FSL_DDR_CS2_CS3:
-			printf("CS2+CS3\n");
-			break;
-		case FSL_DDR_CS0_CS1_AND_CS2_CS3:
-			printf("CS0+CS1 and CS2+CS3\n");
-		default:
-			break;
-		}
-	}
-
 	if (*memctl_interleaving) {
-		phys_addr_t addr;
-		phys_size_t total_mem_per_ctlr = 0;
-
+		unsigned long long addr, total_mem_per_ctlr = 0;
 		/*
 		 * If interleaving between memory controllers,
 		 * make each controller start at a base address
@@ -235,14 +194,13 @@ int step_assign_addresses(fsl_ddr_info_t *pinfo,
 
 		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
 			addr = 0;
-			pinfo->common_timing_params[i].base_address =
-						(phys_addr_t)addr;
+			pinfo->common_timing_params[i].base_address = 0ull;
 			for (j = 0; j < CONFIG_DIMM_SLOTS_PER_CTLR; j++) {
 				unsigned long long cap
 					= pinfo->dimm_params[i][j].capacity;
 
 				pinfo->dimm_params[i][j].base_address = addr;
-				addr += (phys_addr_t)(cap >> dbw_cap_adj[i]);
+				addr += cap >> dbw_cap_adj[i];
 				total_mem_per_ctlr += cap >> dbw_cap_adj[i];
 			}
 		}
@@ -252,18 +210,17 @@ int step_assign_addresses(fsl_ddr_info_t *pinfo,
 		 * Simple linear assignment if memory
 		 * controllers are not interleaved.
 		 */
-		phys_size_t cur_memsize = 0;
+		unsigned long long cur_memsize = 0;
 		for (i = 0; i < CONFIG_NUM_DDR_CONTROLLERS; i++) {
-			phys_size_t total_mem_per_ctlr = 0;
+			u64 total_mem_per_ctlr = 0;
 			pinfo->common_timing_params[i].base_address =
-						(phys_addr_t)cur_memsize;
+						cur_memsize;
 			for (j = 0; j < CONFIG_DIMM_SLOTS_PER_CTLR; j++) {
 				/* Compute DIMM base addresses. */
 				unsigned long long cap =
 					pinfo->dimm_params[i][j].capacity;
-
 				pinfo->dimm_params[i][j].base_address =
-					(phys_addr_t)cur_memsize;
+					cur_memsize;
 				cur_memsize += cap >> dbw_cap_adj[i];
 				total_mem_per_ctlr += cap >> dbw_cap_adj[i];
 			}
@@ -275,13 +232,13 @@ int step_assign_addresses(fsl_ddr_info_t *pinfo,
 	return 0;
 }
 
-phys_size_t
+unsigned long long
 fsl_ddr_compute(fsl_ddr_info_t *pinfo, unsigned int start_step)
 {
 	unsigned int i, j;
 	unsigned int all_controllers_memctl_interleaving = 0;
 	unsigned int all_controllers_rank_interleaving = 0;
-	phys_size_t total_mem = 0;
+	unsigned long long total_mem = 0;
 
 	fsl_ddr_cfg_regs_t *ddr_reg = pinfo->fsl_ddr_config_reg;
 	common_timing_params_t *timing_params = pinfo->common_timing_params;
@@ -424,15 +381,6 @@ fsl_ddr_compute(fsl_ddr_info_t *pinfo, unsigned int start_step)
 			}
 		}
 
-#if !defined(CONFIG_PHYS_64BIT)
-		/* Check for 4G or more with a 32-bit phys_addr_t.  Bad. */
-		if (max_end >= 0xff) {
-			printf("This U-Boot only supports < 4G of DDR\n");
-			printf("You could rebuild it with CONFIG_PHYS_64BIT\n");
-			return CONFIG_MAX_MEM_MAPPED;
-		}
-#endif
-
 		total_mem = 1 + (((unsigned long long)max_end << 24ULL)
 				    | 0xFFFFFFULL);
 	}
@@ -450,7 +398,7 @@ phys_size_t fsl_ddr_sdram(void)
 {
 	unsigned int i;
 	unsigned int memctl_interleaved;
-	phys_size_t total_memory;
+	unsigned long long total_memory;
 	fsl_ddr_info_t info;
 
 	/* Reset info structure. */
@@ -515,7 +463,17 @@ phys_size_t fsl_ddr_sdram(void)
 		}
 	}
 
-	debug("total_memory = %llu\n", (u64)total_memory);
+	debug("total_memory = %llu\n", total_memory);
+
+#if !defined(CONFIG_PHYS_64BIT)
+	/* Check for 4G or more.  Bad. */
+	if (total_memory >= (1ull << 32)) {
+		printf("Detected %lld MB of memory\n", total_memory >> 20);
+		printf("This U-Boot only supports < 4G of DDR\n");
+		printf("You could rebuild it with CONFIG_PHYS_64BIT\n");
+		total_memory = CONFIG_MAX_MEM_MAPPED;
+	}
+#endif
 
 	return total_memory;
 }

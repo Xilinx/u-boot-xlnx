@@ -124,8 +124,6 @@
 
 /* Networking Configuration */
 
-#define KSEG1ADDR(a)	(a)	/* Needed by the rtl8139 driver */
-
 #define CONFIG_TSI108_ETH
 #define CONFIG_TSI108_ETH_NUM_PORTS	2
 
@@ -179,6 +177,7 @@
  */
 #define CONFIG_VERSION_VARIABLE		1
 #define CONFIG_TSI108_I2C
+#define CONFIG_SYS_I2C_SPEED		100000	/* I2C speed */
 
 #define CONFIG_SYS_I2C_EEPROM_ADDR		0x50	/* I2C EEPROM page 1 */
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN		1	/* Bytes of address */
@@ -301,8 +300,6 @@
 #define CONFIG_SYS_PCI_IO_PHYS		0xfa000000	/* Changed from fd000000 */
 
 #define CONFIG_SYS_PCI_IO_SIZE		0x01000000	/* 16MB */
-
-#define _IO_BASE		0x00000000	/* points to PCI I/O space      */
 
 /* PCI Config Space mapping */
 #define CONFIG_SYS_PCI_CFG_BASE	0xfb000000	/* Changed from FE000000 */

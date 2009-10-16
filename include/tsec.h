@@ -28,7 +28,7 @@
 
 /* FIXME:  Should these be pushed back to 83xx and 85xx config files? */
 #if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx) \
-	|| defined(CONFIG_MPC83XX)
+	|| defined(CONFIG_MPC83xx)
     #define TSEC_BASE_ADDR	(CONFIG_SYS_IMMR + CONFIG_SYS_TSEC1_OFFSET)
 #endif
 
@@ -152,6 +152,8 @@
 #define MIIM_EXT_PAGE_ACCESS	0x1f
 
 /* Broadcom BCM54xx -- taken from linux sungem_phy */
+#define MIIM_BCM54xx_AUXCNTL			0x18
+#define MIIM_BCM54xx_AUXCNTL_ENCODE(val)	((val & 0x7) << 12)|(val & 0x7)
 #define MIIM_BCM54xx_AUXSTATUS			0x19
 #define MIIM_BCM54xx_AUXSTATUS_LINKMODE_MASK	0x0700
 #define MIIM_BCM54xx_AUXSTATUS_LINKMODE_SHIFT	8

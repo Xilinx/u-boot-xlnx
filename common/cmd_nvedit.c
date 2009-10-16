@@ -52,15 +52,17 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if !defined(CONFIG_ENV_IS_IN_NVRAM)	&& \
-    !defined(CONFIG_ENV_IS_IN_EEPROM)	&& \
+#if !defined(CONFIG_ENV_IS_IN_EEPROM)	&& \
     !defined(CONFIG_ENV_IS_IN_FLASH)	&& \
     !defined(CONFIG_ENV_IS_IN_DATAFLASH)	&& \
+    !defined(CONFIG_ENV_IS_IN_MG_DISK)	&& \
     !defined(CONFIG_ENV_IS_IN_NAND)	&& \
+    !defined(CONFIG_ENV_IS_IN_NVRAM)	&& \
     !defined(CONFIG_ENV_IS_IN_ONENAND)	&& \
     !defined(CONFIG_ENV_IS_IN_SPI_FLASH)	&& \
     !defined(CONFIG_ENV_IS_NOWHERE)
-# error Define one of CONFIG_ENV_IS_IN_{NVRAM|EEPROM|FLASH|DATAFLASH|ONENAND|SPI_FLASH|NOWHERE}
+# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|DATAFLASH|ONENAND|\
+SPI_FLASH|MG_DISK|NVRAM|NOWHERE}
 #endif
 
 #define XMK_STR(x)	#x
@@ -75,6 +77,13 @@ DECLARE_GLOBAL_DATA_PTR;
 static const unsigned long baudrate_table[] = CONFIG_SYS_BAUDRATE_TABLE;
 #define	N_BAUDRATES (sizeof(baudrate_table) / sizeof(baudrate_table[0]))
 
+/*
+ * This variable is incremented on each do_setenv (), so it can
+ * be used via get_env_id() as an indication, if the environment
+ * has changed or not. So it is possible to reread an environment
+ * variable only if the environment was changed ... done so for
+ * example in NetInitLoop()
+ */
 static int env_id = 1;
 
 int get_env_id (void)
@@ -85,56 +94,72 @@ int get_env_id (void)
  * Command interface: print one or all environment variables
  */
 
-int do_printenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+/*
+ * state 0: finish printing this string and return (matched!)
+ * state 1: no matching to be done; print everything
+ * state 2: continue searching for matched name
+ */
+static int printenv(char *name, int state)
 {
-	int i, j, k, nxt;
-	int rcode = 0;
+	int i, j;
+	char c, buf[17];
 
-	if (argc == 1) {		/* Print all env variables	*/
-		for (i=0; env_get_char(i) != '\0'; i=nxt+1) {
-			for (nxt=i; env_get_char(nxt) != '\0'; ++nxt)
-				;
-			for (k=i; k<nxt; ++k)
-				putc(env_get_char(k));
-			putc  ('\n');
+	i = 0;
+	buf[16] = '\0';
 
-			if (ctrlc()) {
-				puts ("\n ** Abort\n");
-				return 1;
+	while (state && env_get_char(i) != '\0') {
+		if (state == 2 && envmatch((uchar *)name, i) >= 0)
+			state = 0;
+
+		j = 0;
+		do {
+			buf[j++] = c = env_get_char(i++);
+			if (j == sizeof(buf) - 1) {
+				if (state <= 1)
+					puts(buf);
+				j = 0;
 			}
+		} while (c != '\0');
+
+		if (state <= 1) {
+			if (j)
+				puts(buf);
+			putc('\n');
 		}
 
-		printf("\nEnvironment size: %d/%ld bytes\n",
-			i, (ulong)ENV_SIZE);
+		if (ctrlc())
+			return -1;
+	}
 
+	if (state == 0)
+		i = 0;
+	return i;
+}
+
+int do_printenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	int i;
+	int rcode = 0;
+
+	if (argc == 1) {
+		/* print all env vars */
+		rcode = printenv(NULL, 1);
+		if (rcode < 0)
+			return 1;
+		printf("\nEnvironment size: %d/%ld bytes\n",
+			rcode, (ulong)ENV_SIZE);
 		return 0;
 	}
 
-	for (i=1; i<argc; ++i) {	/* print single env variables	*/
+	/* print selected env vars */
+	for (i = 1; i < argc; ++i) {
 		char *name = argv[i];
-
-		k = -1;
-
-		for (j=0; env_get_char(j) != '\0'; j=nxt+1) {
-
-			for (nxt=j; env_get_char(nxt) != '\0'; ++nxt)
-				;
-			k = envmatch((uchar *)name, j);
-			if (k < 0) {
-				continue;
-			}
-			puts (name);
-			putc ('=');
-			while (k < nxt)
-				putc(env_get_char(k++));
-			putc ('\n');
-			break;
-		}
-		if (k < 0) {
-			printf ("## Error: \"%s\" not defined\n", name);
-			rcode ++;
+		if (printenv(name, 2)) {
+			printf("## Error: \"%s\" not defined\n", name);
+			++rcode;
 		}
 	}
+
 	return rcode;
 }
 
@@ -283,18 +308,6 @@ int _do_setenv (int flag, int argc, char *argv[])
 		*++env = '\0';
 	}
 
-#ifdef CONFIG_NET_MULTI
-	if (strncmp(name, "eth", 3) == 0) {
-		char *end;
-		int   num = simple_strtoul(name+3, &end, 10);
-
-		if (strcmp(end, "addr") == 0) {
-			eth_set_enetaddr(num, argv[2]);
-		}
-	}
-#endif
-
-
 	/* Delete only ? */
 	if ((argc < 3) || argv[2] == NULL) {
 		env_crc_update ();
@@ -342,18 +355,8 @@ int _do_setenv (int flag, int argc, char *argv[])
 	 * entry in the enviornment is changed
 	 */
 
-	if (strcmp(argv[1],"ethaddr") == 0) {
-		char *s = argv[2];	/* always use only one arg */
-		char *e;
-		for (i=0; i<6; ++i) {
-			bd->bi_enetaddr[i] = s ? simple_strtoul(s, &e, 16) : 0;
-			if (s) s = (*e) ? e+1 : e;
-		}
-#ifdef CONFIG_NET_MULTI
-		eth_set_enetaddr(0, argv[2]);
-#endif
+	if (strcmp(argv[1],"ethaddr") == 0)
 		return 0;
-	}
 
 	if (strcmp(argv[1],"ipaddr") == 0) {
 		char *s = argv[2];	/* always use only one arg */
@@ -566,7 +569,7 @@ int do_saveenv (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	saveenv, 1, 0,	do_saveenv,
 	"save environment variables to persistent storage",
-	NULL
+	""
 );
 
 #endif
@@ -599,7 +602,7 @@ U_BOOT_CMD(
 	"print environment variables",
 	"\n    - print values of all environment variables\n"
 	"printenv name ...\n"
-	"    - print value of environment variable 'name'\n"
+	"    - print value of environment variable 'name'"
 );
 
 U_BOOT_CMD(
@@ -608,7 +611,7 @@ U_BOOT_CMD(
 	"name value ...\n"
 	"    - set environment variable 'name' to 'value ...'\n"
 	"setenv name\n"
-	"    - delete environment variable 'name'\n"
+	"    - delete environment variable 'name'"
 );
 
 #if defined(CONFIG_CMD_ASKENV)
@@ -624,7 +627,7 @@ U_BOOT_CMD(
 	"    - get environment variable 'name' from stdin (max 'size' chars)\n"
 	"askenv name [message] size\n"
 	"    - display 'message' string and get environment variable 'name'"
-	"from stdin (max 'size' chars)\n"
+	"from stdin (max 'size' chars)"
 );
 #endif
 
@@ -634,6 +637,6 @@ U_BOOT_CMD(
 	run,	CONFIG_SYS_MAXARGS,	1,	do_run,
 	"run commands in an environment variable",
 	"var [...]\n"
-	"    - run the commands in the environment variable(s) 'var'\n"
+	"    - run the commands in the environment variable(s) 'var'"
 );
 #endif

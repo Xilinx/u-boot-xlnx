@@ -41,13 +41,14 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <timestamp.h>
 #include <version.h>
 #include <net.h>
 #include <serial.h>
 #include <nand.h>
 #include <onenand_uboot.h>
+#include <mmc.h>
 
 #ifdef CONFIG_DRIVER_SMC91111
 #include "../drivers/net/smc91111.h"
@@ -73,7 +74,7 @@ const char version_string[] =
 	U_BOOT_VERSION" (" U_BOOT_DATE " - " U_BOOT_TIME ")"CONFIG_IDENT_STRING;
 
 #ifdef CONFIG_DRIVER_CS8900
-extern void cs8900_get_enetaddr (uchar * addr);
+extern void cs8900_get_enetaddr (void);
 #endif
 
 #ifdef CONFIG_DRIVER_RTL8019
@@ -136,6 +137,10 @@ void inline __yellow_LED_on(void) {}
 void inline yellow_LED_on(void)__attribute__((weak, alias("__yellow_LED_on")));
 void inline __yellow_LED_off(void) {}
 void inline yellow_LED_off(void)__attribute__((weak, alias("__yellow_LED_off")));
+void inline __blue_LED_on(void) {}
+void inline blue_LED_on(void)__attribute__((weak, alias("__blue_LED_on")));
+void inline __blue_LED_off(void) {}
+void inline blue_LED_off(void)__attribute__((weak, alias("__blue_LED_off")));
 
 /************************************************************************
  * Init Utilities							*
@@ -258,12 +263,17 @@ static int arm_pci_init(void)
  */
 typedef int (init_fnc_t) (void);
 
-int print_cpuinfo (void); /* test-only */
+int print_cpuinfo (void);
 
 init_fnc_t *init_sequence[] = {
-	cpu_init,		/* basic cpu dependent setup */
+#if defined(CONFIG_ARCH_CPU_INIT)
+	arch_cpu_init,		/* basic arch cpu dependent setup */
+#endif
 	board_init,		/* basic board dependent setup */
+#if defined(CONFIG_USE_IRQ)
 	interrupt_init,		/* set up exceptions */
+#endif
+	timer_init,		/* initialize timer */
 	env_init,		/* initialize environment */
 	init_baudrate,		/* initialze baudrate settings */
 	serial_init,		/* serial communications setup */
@@ -313,6 +323,9 @@ void start_armboot (void)
 		}
 	}
 
+	/* armboot_start is defined in the board-specific linker script */
+	mem_malloc_init (_armboot_start - CONFIG_SYS_MALLOC_LEN);
+
 #ifndef CONFIG_SYS_NO_FLASH
 	/* configure available FLASH banks */
 	display_flash_config (flash_init ());
@@ -347,9 +360,6 @@ void start_armboot (void)
 	}
 #endif /* CONFIG_LCD */
 
-	/* armboot_start is defined in the board-specific linker script */
-	mem_malloc_init (_armboot_start - CONFIG_SYS_MALLOC_LEN);
-
 #if defined(CONFIG_CMD_NAND)
 	puts ("NAND:  ");
 	nand_init();		/* go init the NAND */
@@ -379,39 +389,7 @@ void start_armboot (void)
 	/* IP Address */
 	gd->bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
 
-	/* MAC Address */
-	{
-		int i;
-		ulong reg;
-		char *s, *e;
-		char tmp[64];
-
-		i = getenv_r ("ethaddr", tmp, sizeof (tmp));
-		s = (i > 0) ? tmp : NULL;
-
-		for (reg = 0; reg < 6; ++reg) {
-			gd->bd->bi_enetaddr[reg] = s ? simple_strtoul (s, &e, 16) : 0;
-			if (s)
-				s = (*e) ? e + 1 : e;
-		}
-
-#ifdef CONFIG_HAS_ETH1
-		i = getenv_r ("eth1addr", tmp, sizeof (tmp));
-		s = (i > 0) ? tmp : NULL;
-
-		for (reg = 0; reg < 6; ++reg) {
-			gd->bd->bi_enet1addr[reg] = s ? simple_strtoul (s, &e, 16) : 0;
-			if (s)
-				s = (*e) ? e + 1 : e;
-		}
-#endif
-	}
-
-	devices_init ();	/* get the devices list going. */
-
-#ifdef CONFIG_CMC_PU2
-	load_sernum_ethaddr ();
-#endif /* CONFIG_CMC_PU2 */
+	stdio_init ();	/* get the devices list going. */
 
 	jumptable_init ();
 
@@ -422,6 +400,10 @@ void start_armboot (void)
 
 	console_init_r ();	/* fully init console as a device */
 
+#if defined(CONFIG_ARCH_MISC_INIT)
+	/* miscellaneous arch dependent initialisations */
+	arch_misc_init ();
+#endif
 #if defined(CONFIG_MISC_INIT_R)
 	/* miscellaneous platform dependent initialisations */
 	misc_init_r ();
@@ -432,19 +414,26 @@ void start_armboot (void)
 
 	/* Perform network card initialisation if necessary */
 #ifdef CONFIG_DRIVER_TI_EMAC
+	/* XXX: this needs to be moved to board init */
 extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
 	if (getenv ("ethaddr")) {
-		davinci_eth_set_mac_addr(gd->bd->bi_enetaddr);
+		uchar enetaddr[6];
+		eth_getenv_enetaddr("ethaddr", enetaddr);
+		davinci_eth_set_mac_addr(enetaddr);
 	}
 #endif
 
 #ifdef CONFIG_DRIVER_CS8900
-	cs8900_get_enetaddr (gd->bd->bi_enetaddr);
+	/* XXX: this needs to be moved to board init */
+	cs8900_get_enetaddr ();
 #endif
 
 #if defined(CONFIG_DRIVER_SMC91111) || defined (CONFIG_DRIVER_LAN91C96)
+	/* XXX: this needs to be moved to board init */
 	if (getenv ("ethaddr")) {
-		smc_set_mac_addr(gd->bd->bi_enetaddr);
+		uchar enetaddr[6];
+		eth_getenv_enetaddr("ethaddr", enetaddr);
+		smc_set_mac_addr(enetaddr);
 	}
 #endif /* CONFIG_DRIVER_SMC91111 || CONFIG_DRIVER_LAN91C96 */
 
@@ -461,6 +450,12 @@ extern void davinci_eth_set_mac_addr (const u_int8_t *addr);
 #ifdef BOARD_LATE_INIT
 	board_late_init ();
 #endif
+
+#ifdef CONFIG_GENERIC_MMC
+	puts ("MMC:   ");
+	mmc_initialize (gd->bd);
+#endif
+
 #if defined(CONFIG_CMD_NET)
 #if defined(CONFIG_NET_MULTI)
 	puts ("Net:   ");
@@ -484,102 +479,3 @@ void hang (void)
 	puts ("### ERROR ### Please RESET the board ###\n");
 	for (;;);
 }
-
-#ifdef CONFIG_MODEM_SUPPORT
-static inline void mdm_readline(char *buf, int bufsiz);
-
-/* called from main loop (common/main.c) */
-extern void  dbg(const char *fmt, ...);
-int mdm_init (void)
-{
-	char env_str[16];
-	char *init_str;
-	int i;
-	extern char console_buffer[];
-	extern void enable_putc(void);
-	extern int hwflow_onoff(int);
-
-	enable_putc(); /* enable serial_putc() */
-
-#ifdef CONFIG_HWFLOW
-	init_str = getenv("mdm_flow_control");
-	if (init_str && (strcmp(init_str, "rts/cts") == 0))
-		hwflow_onoff (1);
-	else
-		hwflow_onoff(-1);
-#endif
-
-	for (i = 1;;i++) {
-		sprintf(env_str, "mdm_init%d", i);
-		if ((init_str = getenv(env_str)) != NULL) {
-			serial_puts(init_str);
-			serial_puts("\n");
-			for(;;) {
-				mdm_readline(console_buffer, CONFIG_SYS_CBSIZE);
-				dbg("ini%d: [%s]", i, console_buffer);
-
-				if ((strcmp(console_buffer, "OK") == 0) ||
-					(strcmp(console_buffer, "ERROR") == 0)) {
-					dbg("ini%d: cmd done", i);
-					break;
-				} else /* in case we are originating call ... */
-					if (strncmp(console_buffer, "CONNECT", 7) == 0) {
-						dbg("ini%d: connect", i);
-						return 0;
-					}
-			}
-		} else
-			break; /* no init string - stop modem init */
-
-		udelay(100000);
-	}
-
-	udelay(100000);
-
-	/* final stage - wait for connect */
-	for(;i > 1;) { /* if 'i' > 1 - wait for connection
-				  message from modem */
-		mdm_readline(console_buffer, CONFIG_SYS_CBSIZE);
-		dbg("ini_f: [%s]", console_buffer);
-		if (strncmp(console_buffer, "CONNECT", 7) == 0) {
-			dbg("ini_f: connected");
-			return 0;
-		}
-	}
-
-	return 0;
-}
-
-/* 'inline' - We have to do it fast */
-static inline void mdm_readline(char *buf, int bufsiz)
-{
-	char c;
-	char *p;
-	int n;
-
-	n = 0;
-	p = buf;
-	for(;;) {
-		c = serial_getc();
-
-		/*		dbg("(%c)", c); */
-
-		switch(c) {
-		case '\r':
-			break;
-		case '\n':
-			*p = '\0';
-			return;
-
-		default:
-			if(n++ > bufsiz) {
-				*p = '\0';
-				return; /* sanity check */
-			}
-			*p = c;
-			p++;
-			break;
-		}
-	}
-}
-#endif	/* CONFIG_MODEM_SUPPORT */

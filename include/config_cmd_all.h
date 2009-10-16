@@ -15,7 +15,6 @@
 
 #define CONFIG_CMD_AMBAPP	/* AMBA Plug & Play Bus print utility */
 #define CONFIG_CMD_ASKENV	/* ask for env variable		*/
-#define CONFIG_CMD_AUTOSCRIPT	/* Autoscript Support		*/
 #define CONFIG_CMD_BDI		/* bdinfo			*/
 #define CONFIG_CMD_BEDBUG	/* Include BedBug Debugger	*/
 #define CONFIG_CMD_BMP		/* BMP support			*/
@@ -58,6 +57,7 @@
 #define CONFIG_CMD_MII		/* MII support			*/
 #define CONFIG_CMD_MISC		/* Misc functions like sleep etc*/
 #define CONFIG_CMD_MMC		/* MMC support			*/
+#define CONFIG_CMD_MTDPARTS	/* mtd parts support		*/
 #define CONFIG_CMD_NAND		/* NAND support			*/
 #define CONFIG_CMD_NET		/* bootp, tftpboot, rarpboot	*/
 #define CONFIG_CMD_NFS		/* NFS support			*/
@@ -75,6 +75,7 @@
 #define CONFIG_CMD_SETEXPR	/* setexpr support		*/
 #define CONFIG_CMD_SETGETDCR	/* DCR support on 4xx		*/
 #define CONFIG_CMD_SNTP		/* SNTP support			*/
+#define CONFIG_CMD_SOURCE	/* "source" command support	*/
 #define CONFIG_CMD_SPI		/* SPI utility			*/
 #define CONFIG_CMD_TERMINAL	/* built-in Serial Terminal	*/
 #define CONFIG_CMD_UNIVERSE	/* Tundra Universe Support	*/
@@ -83,5 +84,6 @@
 #define CONFIG_CMD_VFD		/* VFD support (TRAB)		*/
 #define CONFIG_CMD_XIMG		/* Load part of Multi Image	*/
 #define CONFIG_CMD_AT91_SPIMUX	/* AT91 MMC/SPI Mux Support     */
+#define CONFIG_CMD_MG_DISK	/* mGine m(g)flash IO node support */
 
 #endif	/* _CONFIG_CMD_ALL_H */
