@@ -39,6 +39,10 @@
 
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff      */
 					/* for timer/console/ethernet       */
+
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
+
 /*
  * Hardware drivers
  */
@@ -46,6 +50,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_PXA_SERIAL
 #define CONFIG_FFUART		1	/* we use FFUART on CSB226 */
 
 /* allow to overwrite serial and ethaddr */
@@ -114,8 +119,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0xa0400000      /* memtest works on     */
 #define CONFIG_SYS_MEMTEST_END         0xa0800000      /* 4 ... 8 MB in DRAM   */
-
-#undef  CONFIG_SYS_CLKS_IN_HZ          /* everything, incl board info, in Hz */
 
 #define CONFIG_SYS_LOAD_ADDR           0xa3000000      /* load kernel to this address   */
 
@@ -203,7 +206,7 @@
 */
 
 /* No command line, one static partition, whole device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor0"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
@@ -211,7 +214,7 @@
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor0=innokom-0"
 */
 

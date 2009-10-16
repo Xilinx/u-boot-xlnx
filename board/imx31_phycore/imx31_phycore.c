@@ -24,6 +24,7 @@
 
 #include <common.h>
 #include <s6e63d6.h>
+#include <netdev.h>
 #include <asm/arch/mx31.h>
 #include <asm/arch/mx31-regs.h>
 
@@ -61,8 +62,8 @@ int board_init (void)
 	mx31_gpio_mux(MUX_CSPI2_MOSI__I2C2_SCL);
 	mx31_gpio_mux(MUX_CSPI2_MISO__I2C2_SDA);
 
-	gd->bd->bi_arch_number = 447;		/* board id for linux */
-	gd->bd->bi_boot_params = (0x80000100);	/* adress of boot parameters */
+	gd->bd->bi_arch_number = MACH_TYPE_PCM037;	/* board id for linux */
+	gd->bd->bi_boot_params = (0x80000100);		/* adress of boot parameters */
 
 	return 0;
 }
@@ -127,4 +128,13 @@ int checkboard (void)
 {
 	printf("Board: Phytec phyCore i.MX31\n");
 	return 0;
+}
+
+int board_eth_init(bd_t *bis)
+{
+	int rc = 0;
+#ifdef CONFIG_SMC911X
+	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
+#endif
+	return rc;
 }

@@ -3,7 +3,7 @@
  * The Internal Memory Map for devices with QE on them. This
  * is the superset of all QE devices (8360, etc.).
  *
- * Copyright (c) 2006 Freescale Semiconductor, Inc.
+ * Copyright (c) 2006-2009 Freescale Semiconductor, Inc.
  * Author: Shlomi Gridih <gridish@freescale.com>
  *
  * This program is free software; you can redistribute  it and/or modify it
@@ -20,7 +20,9 @@
 typedef struct qe_iram {
 	u32 iadd;		/* I-RAM Address Register */
 	u32 idata;		/* I-RAM Data Register    */
-	u8 res0[0x78];
+	u8 res0[0x4];
+	u32 iready;
+	u8 res1[0x70];
 } __attribute__ ((packed)) qe_iram_t;
 
 /* QE Interrupt Controller
@@ -583,6 +585,9 @@ typedef struct qe_immap {
 #if defined(CONFIG_MPC8568)
 	u8 muram[0x10000];	/* 0x1_0000 -  0x2_0000 Multi-user RAM */
 	u8 res17[0x20000];	/* 0x2_0000 -  0x4_0000 */
+#elif defined(CONFIG_MPC8569)
+	u8 muram[0x20000];	/* 0x1_0000 -  0x3_0000 Multi-user RAM */
+	u8 res17[0x10000];	/* 0x3_0000 -  0x4_0000 */
 #else
 	u8 muram[0xC000];	/* 0x110000 -  0x11C000 Multi-user RAM */
 	u8 res17[0x24000];	/* 0x11C000 -  0x140000 */
@@ -594,10 +599,23 @@ extern qe_map_t *qe_immr;
 
 #if defined(CONFIG_MPC8568)
 #define QE_MURAM_SIZE		0x10000UL
+#elif defined(CONFIG_MPC8569)
+#define QE_MURAM_SIZE		0x20000UL
 #elif defined(CONFIG_MPC8360)
 #define QE_MURAM_SIZE		0xc000UL
-#elif defined(CONFIG_MPC832X)
+#elif defined(CONFIG_MPC832x)
 #define QE_MURAM_SIZE		0x4000UL
+#endif
+
+#if defined(CONFIG_MPC8323)
+#define MAX_QE_RISC     1
+#define QE_NUM_OF_SNUM	28
+#elif defined(CONFIG_MPC8569)
+#define MAX_QE_RISC     4
+#define QE_NUM_OF_SNUM	46
+#else
+#define MAX_QE_RISC	2
+#define QE_NUM_OF_SNUM	28
 #endif
 
 #endif				/* __IMMAP_QE_H__ */

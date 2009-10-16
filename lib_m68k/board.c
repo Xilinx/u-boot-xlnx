@@ -28,7 +28,7 @@
 #include <watchdog.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 
 #include <asm/immap.h>
 
@@ -438,9 +438,8 @@ board_init_f (ulong bootflag)
 void board_init_r (gd_t *id, ulong dest_addr)
 {
 	cmd_tbl_t *cmdtp;
-	char *s, *e;
+	char *s;
 	bd_t *bd;
-	int i;
 	extern void malloc_bin_reloc (void);
 
 #ifndef CONFIG_ENV_IS_NOWHERE
@@ -519,6 +518,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 */
 	trap_init (CONFIG_SYS_SDRAM_BASE);
 
+	/* initialize malloc() area */
+	mem_malloc_init ();
+	malloc_bin_reloc ();
+
 #if !defined(CONFIG_SYS_NO_FLASH)
 	puts ("FLASH: ");
 
@@ -532,7 +535,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		 */
 		s = getenv ("flashchecksum");
 		if (s && (*s == 'y')) {
-			printf ("  CRC: %08lX",
+			printf ("  CRC: %08X",
 					crc32 (0,
 						   (const unsigned char *) CONFIG_SYS_FLASH_BASE,
 						   flash_size)
@@ -563,10 +566,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET ();
 
-	/* initialize malloc() area */
-	mem_malloc_init ();
-	malloc_bin_reloc ();
-
 #ifdef CONFIG_SPI
 # if !defined(CONFIG_ENV_IS_IN_EEPROM)
 	spi_init_f ();
@@ -584,44 +583,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 * where had to use getenv_r(), which can be pretty slow when
 	 * the environment is in EEPROM.
 	 */
-	s = getenv ("ethaddr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enetaddr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#ifdef CONFIG_HAS_ETH1
-	/* handle the 2nd ethernet address */
-
-	s = getenv ("eth1addr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet1addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-#ifdef CONFIG_HAS_ETH2
-	/* handle the 3rd ethernet address */
-
-	s = getenv ("eth2addr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet2addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-
-#ifdef CONFIG_HAS_ETH3
-	/* handle 4th ethernet address */
-	s = getenv("eth3addr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet3addr[i] = s ? simple_strtoul (s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-#endif
-
-	/* IP Address */
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
 
 	WATCHDOG_RESET ();
@@ -634,8 +595,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 	/** leave this here (after malloc(), environment and PCI are working) **/
-	/* Initialize devices */
-	devices_init ();
+	/* Initialize stdio devices */
+	stdio_init ();
 
 	/* Initialize the jump table for applications */
 	jumptable_init ();

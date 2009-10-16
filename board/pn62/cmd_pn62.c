@@ -54,8 +54,8 @@ int do_led (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	led    ,	3,	1,	do_led,
 	"set LED 0..11 on the PN62 board",
-	"i fun\n"
-	"    - set 'i'th LED to function 'fun'\n"
+	"i fun"
+	"    - set 'i'th LED to function 'fun'"
 );
 
 /*
@@ -152,12 +152,13 @@ int do_loadpci (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	rcode = do_bootm (cmdtp, 0, 1, local_args);
     }
 
-#ifdef CONFIG_AUTOSCRIPT
+#ifdef CONFIG_SOURCE
     if (load_addr) {
 	char *s;
 
 	if (((s = getenv("autoscript")) != NULL) && (strcmp(s,"yes") == 0)) {
-		printf ("Running autoscript at addr 0x%08lX", load_addr);
+		printf ("Running \"source\" command at addr 0x%08lX",
+			load_addr);
 
 		s = getenv ("autoscript_uname");
 		if (s)
@@ -165,7 +166,7 @@ int do_loadpci (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		else
 			puts (" ...\n");
 
-		rcode = autoscript (load_addr, s);
+		rcode = source (load_addr, s);
 	}
     }
 #endif
@@ -176,7 +177,7 @@ U_BOOT_CMD(
 	loadpci,	2,	1,	do_loadpci,
 	"load binary file over PCI",
 	"[addr]\n"
-	"    - load binary file over PCI to address 'addr'\n"
+	"    - load binary file over PCI to address 'addr'"
 );
 
 #endif

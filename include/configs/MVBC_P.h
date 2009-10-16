@@ -68,13 +68,13 @@
 #define MV_VCI			mvBlueCOUGAR-P
 #define MV_FPGA_DATA		0xff860000
 #define MV_FPGA_SIZE		0x0003c886
-#define MV_KERNEL_ADDR		0xffc00000
+#define MV_KERNEL_ADDR		0xffd00000
 #define MV_INITRD_ADDR		0xff900000
-#define MV_INITRD_LENGTH	0x00300000
+#define MV_INITRD_LENGTH	0x00400000
 #define MV_SCRATCH_ADDR		0x00000000
 #define MV_SCRATCH_LENGTH	MV_INITRD_LENGTH
-#define MV_AUTOSCR_ADDR		0xff840000
-#define MV_AUTOSCR_ADDR2	0xff850000
+#define MV_SOURCE_ADDR		0xff840000
+#define MV_SOURCE_ADDR2		0xff850000
 #define MV_DTB_ADDR		0xfffc0000
 
 #define CONFIG_SHOW_BOOT_PROGRESS 1
@@ -105,6 +105,7 @@
 #define CONFIG_CMD_SDRAM
 #define CONFIG_CMD_PCI
 #define CONFIG_CMD_FPGA
+#define CONFIG_CMD_I2C
 
 #undef CONFIG_WATCHDOG
 
@@ -130,8 +131,8 @@
 #define CONFIG_RESET_TO_RETRY		1000
 
 #define CONFIG_BOOTCOMMAND	"if imi ${autoscr_addr}; \
-					then autoscr ${autoscr_addr};	\
-					else autoscr ${autoscr_addr2};	\
+					then source ${autoscr_addr};	\
+					else source ${autoscr_addr2};	\
 				fi;"
 
 #define CONFIG_BOOTARGS		"root=/dev/ram ro rootfstype=squashfs"
@@ -149,8 +150,8 @@
 	"fpga=0\0"						\
 	"fpgadata=" MK_STR(MV_FPGA_DATA) "\0"			\
 	"fpgadatasize=" MK_STR(MV_FPGA_SIZE) "\0"		\
-	"autoscr_addr=" MK_STR(MV_AUTOSCR_ADDR) "\0"		\
-	"autoscr_addr2=" MK_STR(MV_AUTOSCR_ADDR2) "\0"		\
+	"autoscr_addr=" MK_STR(MV_SOURCE_ADDR) "\0"		\
+	"autoscr_addr2=" MK_STR(MV_SOURCE_ADDR2) "\0"		\
 	"mv_kernel_addr=" MK_STR(MV_KERNEL_ADDR) "\0"		\
 	"mv_kernel_addr_ram=" MK_STR(MV_KERNEL_ADDR_RAM) "\0"	\
 	"mv_initrd_addr=" MK_STR(MV_INITRD_ADDR) "\0"		\
@@ -182,6 +183,7 @@
 	"propdev_debug=0\0"					\
 	"gevss_debug=0\0"					\
 	"watchdog=1\0"						\
+	"sensor_cnt=1\0"					\
 	""
 
 #undef XMK_STR
@@ -247,6 +249,14 @@
 #define CONFIG_SYS_MONITOR_LEN		(512 << 10)
 #define CONFIG_SYS_MALLOC_LEN		(512 << 10)
 #define CONFIG_SYS_BOOTMAPSZ		(8 << 20)
+
+/*
+ * I2C configuration
+ */
+#define CONFIG_HARD_I2C		1
+#define CONFIG_SYS_I2C_MODULE	1
+#define CONFIG_SYS_I2C_SPEED	86000
+#define CONFIG_SYS_I2C_SLAVE	0x7F
 
 /*
  * Ethernet configuration

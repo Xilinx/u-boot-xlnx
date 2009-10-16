@@ -14,11 +14,10 @@
  */
 #define CONFIG_E300		1	/* E300 family */
 #define CONFIG_QE		1	/* Has QE */
-#define CONFIG_MPC83XX		1	/* MPC83xx family */
-#define CONFIG_MPC832X		1	/* MPC832x CPU specific */
+#define CONFIG_MPC83xx		1	/* MPC83xx family */
+#define CONFIG_MPC832x		1	/* MPC832x CPU specific */
 
 #define CONFIG_PCI		1
-#define CONFIG_83XX_GENERIC_PCI	1
 
 /*
  * System Clock Setup
@@ -156,7 +155,7 @@
 #endif
 
 /* CONFIG_SYS_MONITOR_LEN must be a multiple of CONFIG_ENV_SECT_SIZE */
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024)	/* Reserve 256 kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024)	/* Reserve 384 kB for Mon */
 #define CONFIG_SYS_MALLOC_LEN		(128 * 1024)	/* Reserved for malloc */
 
 /*
@@ -248,33 +247,7 @@
 #define CONFIG_SYS_LBC_LSRT	0x32000000	/* LB sdram refresh timer, about 6us */
 #define CONFIG_SYS_LBC_MRTPR	0x20000000	/* LB refresh timer prescal, 266MHz/32 */
 
-/*
- * LSDMR masks
- */
-#define CONFIG_SYS_LBC_LSDMR_OP_NORMAL	(0 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_ARFRSH	(1 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_SRFRSH	(2 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_MRW	(3 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_PRECH	(4 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_PCHALL	(5 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_ACTBNK	(6 << (31 - 4))
-#define CONFIG_SYS_LBC_LSDMR_OP_RWINV	(7 << (31 - 4))
-
 #define CONFIG_SYS_LBC_LSDMR_COMMON	0x0063b723
-
-/*
- * SDRAM Controller configuration sequence.
- */
-#define CONFIG_SYS_LBC_LSDMR_1		( CONFIG_SYS_LBC_LSDMR_COMMON \
-				| CONFIG_SYS_LBC_LSDMR_OP_PCHALL)
-#define CONFIG_SYS_LBC_LSDMR_2		( CONFIG_SYS_LBC_LSDMR_COMMON \
-				| CONFIG_SYS_LBC_LSDMR_OP_ARFRSH)
-#define CONFIG_SYS_LBC_LSDMR_3		( CONFIG_SYS_LBC_LSDMR_COMMON \
-				| CONFIG_SYS_LBC_LSDMR_OP_ARFRSH)
-#define CONFIG_SYS_LBC_LSDMR_4		( CONFIG_SYS_LBC_LSDMR_COMMON \
-				| CONFIG_SYS_LBC_LSDMR_OP_MRW)
-#define CONFIG_SYS_LBC_LSDMR_5		( CONFIG_SYS_LBC_LSDMR_COMMON \
-				| CONFIG_SYS_LBC_LSDMR_OP_NORMAL)
 
 #endif
 

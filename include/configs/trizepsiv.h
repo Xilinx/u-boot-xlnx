@@ -47,6 +47,9 @@
 
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff */
 
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
+
 #define RTC
 
 /*
@@ -62,6 +65,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_PXA_SERIAL
 #define CONFIG_SERIAL_MULTI
 #define CONFIG_FFUART	       1       /* we use FFUART on Conxs */
 #define CONFIG_BTUART	       1       /* we use BTUART on Conxs */
@@ -163,8 +167,6 @@
 #define CONFIG_SYS_MEMTEST_START	0xa0400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0xa0800000	/* 4 ... 8 MB in DRAM	*/
 
-#undef	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-
 #define CONFIG_SYS_LOAD_ADDR		0xa1000000	/* default load address */
 
 #define CONFIG_SYS_HZ			1000
@@ -237,11 +239,17 @@
 #define CONFIG_SYS_GRER1_VAL		0x00000000
 #define CONFIG_SYS_GRER2_VAL		0x00000000
 #define CONFIG_SYS_GRER3_VAL		0x00000000
-#define CONFIG_SYS_GFER0_VAL		0x00000000
+
 #define CONFIG_SYS_GFER1_VAL		0x00000000
-#define CONFIG_SYS_GFER2_VAL		0x00000000
 #define CONFIG_SYS_GFER3_VAL		0x00000020
 
+#if CONFIG_POLARIS
+#define CONFIG_SYS_GFER0_VAL		0x00000001
+#define CONFIG_SYS_GFER2_VAL		0x00200000
+#else
+#define CONFIG_SYS_GFER0_VAL		0x00000000
+#define CONFIG_SYS_GFER2_VAL		0x00000000
+#endif
 
 #define CONFIG_SYS_PSSR_VAL		0x20	/* CHECK */
 
@@ -257,7 +265,11 @@
 
 #define CONFIG_SYS_MSC0_VAL		0x4df84df0
 #define CONFIG_SYS_MSC1_VAL		0x7ff87ff4
+#if CONFIG_POLARIS
+#define CONFIG_SYS_MSC2_VAL		0xa2697ff8
+#else
 #define CONFIG_SYS_MSC2_VAL		0xa26936d4
+#endif
 #define CONFIG_SYS_MDCNFG_VAL		0x880009C9
 #define CONFIG_SYS_MDREFR_VAL		0x20ca201e
 #define CONFIG_SYS_MDMRS_VAL		0x00220022
@@ -276,8 +288,15 @@
 #define CONFIG_SYS_MCIO0_VAL		0x00008407
 #define CONFIG_SYS_MCIO1_VAL		0x0000c108
 
+#define CONFIG_NET_MULTI		1
 #define CONFIG_DRIVER_DM9000		1
-#define CONFIG_DM9000_BASE	0x08000000
+
+#if CONFIG_POLARIS
+#define CONFIG_DM9000_BASE		0x0C800000
+#else
+#define CONFIG_DM9000_BASE		0x08000000
+#endif
+
 #define DM9000_IO			CONFIG_DM9000_BASE
 #define DM9000_DATA			(CONFIG_DM9000_BASE+0x8004)
 
@@ -308,6 +327,9 @@
 
 /* write flash less slowly */
 #define CONFIG_SYS_FLASH_USE_BUFFER_WRITE 1
+
+/* Unlock to be used with Intel chips */
+#define CONFIG_SYS_FLASH_PROTECTION	1
 
 /* Flash environment locations */
 #define CONFIG_ENV_IS_IN_FLASH	1

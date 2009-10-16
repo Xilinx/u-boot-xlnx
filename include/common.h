@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2000-2007
+ * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -26,6 +26,8 @@
 
 #undef	_LINUX_CONFIG_H
 #define _LINUX_CONFIG_H 1	/* avoid reading Linux autoconf.h file	*/
+
+#ifndef __ASSEMBLY__		/* put C only stuff in this section */
 
 typedef unsigned char		uchar;
 typedef volatile unsigned long	vu_long;
@@ -66,7 +68,6 @@ typedef volatile unsigned char	vu_char;
 #elif defined(CONFIG_MPC5xxx)
 #include <mpc5xxx.h>
 #elif defined(CONFIG_MPC512X)
-#include <mpc512x.h>
 #include <asm/immap_512x.h>
 #elif defined(CONFIG_MPC8220)
 #include <asm/immap_8220.h>
@@ -90,7 +91,7 @@ typedef volatile unsigned char	vu_char;
 #include <mpc85xx.h>
 #include <asm/immap_85xx.h>
 #endif
-#ifdef CONFIG_MPC83XX
+#ifdef CONFIG_MPC83xx
 #include <mpc83xx.h>
 #include <asm/immap_83xx.h>
 #endif
@@ -234,8 +235,8 @@ int mac_read_from_eeprom(void);
 /* common/flash.c */
 void flash_perror (int);
 
-/* common/cmd_autoscript.c */
-int	autoscript (ulong addr, const char *fit_uname);
+/* common/cmd_source.c */
+int	source (ulong addr, const char *fit_uname);
 
 extern ulong load_addr;		/* Default Load Address */
 
@@ -276,7 +277,8 @@ void	pci_init_board(void);
 void	pciinfo	      (int, int);
 
 #if defined(CONFIG_PCI) && (defined(CONFIG_4xx) && !defined(CONFIG_AP1000))
-    int	   pci_pre_init	       (struct pci_controller * );
+    int	   pci_pre_init	       (struct pci_controller *);
+    int	   is_pci_host	       (struct pci_controller *);
 #endif
 
 #if defined(CONFIG_PCI) && (defined(CONFIG_440) || defined(CONFIG_405EX))
@@ -286,7 +288,6 @@ void	pciinfo	      (int, int);
 #   if defined(CONFIG_SYS_PCI_MASTER_INIT)
 	void	pci_master_init	     (struct pci_controller *);
 #   endif
-    int	    is_pci_host		(struct pci_controller *);
 #if defined(CONFIG_440SPE) || \
     defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
     defined(CONFIG_405EX)
@@ -299,6 +300,9 @@ int	misc_init_r   (void);
 
 /* common/exports.c */
 void	jumptable_init(void);
+
+/* common/kallsysm.c */
+const char *symbol_lookup(unsigned long addr, unsigned long *caddr);
 
 /* api/api.c */
 void	api_init (void);
@@ -352,13 +356,6 @@ void	board_serial_init (void);
 void	board_ether_init (void);
 #endif
 
-#if defined(CONFIG_RPXCLASSIC)	|| defined(CONFIG_MBX) || \
-    defined(CONFIG_IAD210)	|| defined(CONFIG_XPEDITE1K) || \
-    defined(CONFIG_METROBOX)    || defined(CONFIG_KAREF) || \
-    defined(CONFIG_V38B)
-void	board_get_enetaddr (uchar *addr);
-#endif
-
 #ifdef CONFIG_HERMES
 /* $(BOARD)/hermes.c */
 void hermes_start_lxt980 (int speed);
@@ -370,8 +367,6 @@ void  debug_led(int, int);
 void  display_mem_map(void);
 void  perform_soft_reset(void);
 #endif
-
-void	load_sernum_ethaddr (void);
 
 /* $(BOARD)/$(BOARD).c */
 int board_early_init_f (void);
@@ -419,7 +414,7 @@ void	trap_init     (ulong);
     defined (CONFIG_MPC8220)	|| \
     defined (CONFIG_MPC85xx)	|| \
     defined (CONFIG_MPC86xx)	|| \
-    defined (CONFIG_MPC83XX)
+    defined (CONFIG_MPC83xx)
 unsigned char	in8(unsigned int);
 void		out8(unsigned int, unsigned char);
 unsigned short	in16(unsigned int);
@@ -440,7 +435,7 @@ unsigned short	in16(unsigned int);
 void		out16(unsigned int, unsigned short value);
 #endif
 
-#if defined (CONFIG_MPC83XX)
+#if defined (CONFIG_MPC83xx)
 void		ppcDWload(unsigned int *addr, unsigned int *ret);
 void		ppcDWstore(unsigned int *addr, unsigned int *value);
 #endif
@@ -462,6 +457,7 @@ void ft_pci_setup(void *blob, bd_t *bd);
 
 /* $(CPU)/serial.c */
 int	serial_init   (void);
+void	serial_exit   (void);
 void	serial_addr   (unsigned int);
 void	serial_setbrg (void);
 void	serial_putc   (const char);
@@ -499,8 +495,6 @@ ulong	get_PCI_freq (void);
 #endif
 #if defined(CONFIG_S3C2400) || defined(CONFIG_S3C2410) || \
 	defined(CONFIG_LH7A40X) || defined(CONFIG_S3C6400)
-void	s3c2410_irq(void);
-#define ARM920_IRQ_CALLBACK s3c2410_irq
 ulong	get_FCLK (void);
 ulong	get_HCLK (void);
 ulong	get_PCLK (void);
@@ -556,7 +550,7 @@ void	cpu_init_f    (void);
 int	cpu_init_r    (void);
 #if defined(CONFIG_8260)
 int	prt_8260_rsr  (void);
-#elif defined(CONFIG_MPC83XX)
+#elif defined(CONFIG_MPC83xx)
 int	prt_83xx_rsr  (void);
 #endif
 
@@ -644,11 +638,9 @@ int	disable_ctrlc (int);	/* 1 to disable, 0 to enable Control-C detect */
 /*
  * STDIO based functions (can always be used)
  */
-
 /* serial stuff */
 void	serial_printf (const char *fmt, ...)
 		__attribute__ ((format (__printf__, 1, 2)));
-
 /* stdin */
 int	getc(void);
 int	tstc(void);
@@ -668,7 +660,6 @@ void	vprintf(const char *fmt, va_list args);
 /*
  * FILE based functions (can only be used AFTER relocation!)
  */
-
 #define stdin		0
 #define stdout		1
 #define stderr		2
@@ -696,21 +687,7 @@ int	pcmcia_init (void);
 /*
  * Board-specific Platform code can reimplement show_boot_progress () if needed
  */
-void __attribute__((weak)) show_boot_progress (int val);
-
-#ifdef CONFIG_INIT_CRITICAL
-#error CONFIG_INIT_CRITICAL is deprecated!
-#error Read section CONFIG_SKIP_LOWLEVEL_INIT in README.
-#endif
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-
-#define DIV_ROUND(n,d)		(((n) + ((d)/2)) / (d))
-#define DIV_ROUND_UP(n,d)	(((n) + (d) - 1) / (d))
-#define roundup(x, y)		((((x) + ((y) - 1)) / (y)) * (y))
-
-#define ALIGN(x,a)		__ALIGN_MASK((x),(typeof(x))(a)-1)
-#define __ALIGN_MASK(x,mask)	(((x)+(mask))&~(mask))
+void show_boot_progress(int val);
 
 /* Multicore arch functions */
 #ifdef CONFIG_MP
@@ -719,8 +696,27 @@ int cpu_reset(int nr);
 int cpu_release(int nr, int argc, char *argv[]);
 #endif
 
+#endif /* __ASSEMBLY__ */
+
+/* Put only stuff here that the assembler can digest */
+
 #ifdef CONFIG_POST
 #define CONFIG_HAS_POST
 #endif
+
+#ifdef CONFIG_INIT_CRITICAL
+#error CONFIG_INIT_CRITICAL is deprecated!
+#error Read section CONFIG_SKIP_LOWLEVEL_INIT in README.
+#endif
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+#define ROUND(a,b)		(((a) + (b)) & ~((b) - 1))
+#define DIV_ROUND(n,d)		(((n) + ((d)/2)) / (d))
+#define DIV_ROUND_UP(n,d)	(((n) + (d) - 1) / (d))
+#define roundup(x, y)		((((x) + ((y) - 1)) / (y)) * (y))
+
+#define ALIGN(x,a)		__ALIGN_MASK((x),(typeof(x))(a)-1)
+#define __ALIGN_MASK(x,mask)	(((x)+(mask))&~(mask))
 
 #endif	/* __COMMON_H_ */

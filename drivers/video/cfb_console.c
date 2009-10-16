@@ -183,7 +183,7 @@ CONFIG_VIDEO_HW_CURSOR:	     - Uses the hardware cursor capability of the
 
 #include <version.h>
 #include <linux/types.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <video_font.h>
 
 #if defined(CONFIG_CMD_DATE)
@@ -193,6 +193,11 @@ CONFIG_VIDEO_HW_CURSOR:	     - Uses the hardware cursor capability of the
 #if defined(CONFIG_CMD_BMP) || defined(CONFIG_SPLASH_SCREEN)
 #include <watchdog.h>
 #include <bmp_layout.h>
+
+#ifdef CONFIG_SPLASH_SCREEN_ALIGN
+#define BMP_ALIGN_CENTER	0x7FFF
+#endif
+
 #endif
 
 /*****************************************************************************/
@@ -877,6 +882,18 @@ int video_display_bitmap (ulong bmp_image, int x, int y)
 
 	padded_line = (((width * bpp + 7) / 8) + 3) & ~0x3;
 
+#ifdef CONFIG_SPLASH_SCREEN_ALIGN
+	if (x == BMP_ALIGN_CENTER)
+		x = max(0, (VIDEO_VISIBLE_COLS - width) / 2);
+	else if (x < 0)
+		x = max(0, VIDEO_VISIBLE_COLS - width + x + 1);
+
+	if (y == BMP_ALIGN_CENTER)
+		y = max(0, (VIDEO_VISIBLE_ROWS - height) / 2);
+	else if (y < 0)
+		y = max(0, VIDEO_VISIBLE_ROWS - height + y + 1);
+#endif /* CONFIG_SPLASH_SCREEN_ALIGN */
+
 	if ((x + width) > VIDEO_VISIBLE_COLS)
 		width = VIDEO_VISIBLE_COLS - x;
 	if ((y + height) > VIDEO_VISIBLE_ROWS)
@@ -1181,15 +1198,33 @@ static void *video_logo (void)
 {
 	char info[128];
 	extern char version_string;
+	int space, len, y_off = 0;
 
 #ifdef CONFIG_SPLASH_SCREEN
 	char *s;
 	ulong addr;
 
 	if ((s = getenv ("splashimage")) != NULL) {
-		addr = simple_strtoul (s, NULL, 16);
+		int x = 0, y = 0;
 
-		if (video_display_bitmap (addr, 0, 0) == 0) {
+		addr = simple_strtoul (s, NULL, 16);
+#ifdef CONFIG_SPLASH_SCREEN_ALIGN
+		if ((s = getenv ("splashpos")) != NULL) {
+			if (s[0] == 'm')
+				x = BMP_ALIGN_CENTER;
+			else
+				x = simple_strtol (s, NULL, 0);
+
+			if ((s = strchr (s + 1, ',')) != NULL) {
+				if (s[1] == 'm')
+					y = BMP_ALIGN_CENTER;
+				else
+					y = simple_strtol (s + 1, NULL, 0);
+			}
+		}
+#endif /* CONFIG_SPLASH_SCREEN_ALIGN */
+
+		if (video_display_bitmap (addr, x, y) == 0) {
 			return ((void *) (video_fb_address));
 		}
 	}
@@ -1198,7 +1233,19 @@ static void *video_logo (void)
 	logo_plot (video_fb_address, VIDEO_COLS, 0, 0);
 
 	sprintf (info, " %s", &version_string);
-	video_drawstring (VIDEO_INFO_X, VIDEO_INFO_Y, (uchar *)info);
+
+	space = (VIDEO_LINE_LEN / 2 - VIDEO_INFO_X) / VIDEO_FONT_WIDTH;
+	len = strlen(info);
+
+	if (len > space) {
+		video_drawchars (VIDEO_INFO_X, VIDEO_INFO_Y,
+				 (uchar *)info, space);
+		video_drawchars (VIDEO_INFO_X + VIDEO_FONT_WIDTH,
+				 VIDEO_INFO_Y + VIDEO_FONT_HEIGHT,
+				 (uchar *)info + space, len - space);
+		y_off = 1;
+	} else
+		video_drawstring (VIDEO_INFO_X, VIDEO_INFO_Y, (uchar *)info);
 
 #ifdef CONFIG_CONSOLE_EXTRA_INFO
 	{
@@ -1206,10 +1253,27 @@ static void *video_logo (void)
 
 		for (i = 1; i < n; i++) {
 			video_get_info_str (i, info);
-			if (*info)
+			if (!*info)
+				continue;
+
+			len = strlen(info);
+			if (len > space) {
+				video_drawchars (VIDEO_INFO_X,
+						 VIDEO_INFO_Y +
+						 (i + y_off) * VIDEO_FONT_HEIGHT,
+						 (uchar *)info, space);
+				y_off++;
+				video_drawchars (VIDEO_INFO_X + VIDEO_FONT_WIDTH,
+						 VIDEO_INFO_Y +
+						 (i + y_off) * VIDEO_FONT_HEIGHT,
+						 (uchar *)info + space,
+						 len - space);
+			} else {
 				video_drawstring (VIDEO_INFO_X,
-						  VIDEO_INFO_Y + i * VIDEO_FONT_HEIGHT,
+						  VIDEO_INFO_Y +
+						  (i + y_off) * VIDEO_FONT_HEIGHT,
 						  (uchar *)info);
+			}
 		}
 	}
 #endif
@@ -1300,53 +1364,57 @@ static int video_init (void)
 
 /*****************************************************************************/
 
+/*
+ * Implement a weak default function for boards that optionally
+ * need to skip the video initialization.
+ */
+int __board_video_skip(void)
+{
+	/* As default, don't skip test */
+	return 0;
+}
+int board_video_skip(void) __attribute__((weak, alias("__board_video_skip")));
+
 int drv_video_init (void)
 {
 	int skip_dev_init;
-	device_t console_dev;
+	struct stdio_dev console_dev;
 
-	skip_dev_init = 0;
+	/* Check if video initialization should be skipped */
+	if (board_video_skip())
+		return 0;
 
 	/* Init video chip - returns with framebuffer cleared */
-	if (video_init () == -1)
-		skip_dev_init = 1;
+	skip_dev_init = (video_init () == -1);
 
-#ifdef CONFIG_VGA_AS_SINGLE_DEVICE
-	/* Devices VGA and Keyboard will be assigned seperately */
-	/* Init vga device */
-	if (!skip_dev_init) {
-		memset (&console_dev, 0, sizeof (console_dev));
-		strcpy (console_dev.name, "vga");
-		console_dev.ext = DEV_EXT_VIDEO;	/* Video extensions */
-		console_dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_SYSTEM;
-		console_dev.putc = video_putc;	/* 'putc' function */
-		console_dev.puts = video_puts;	/* 'puts' function */
-		console_dev.tstc = NULL;	/* 'tstc' function */
-		console_dev.getc = NULL;	/* 'getc' function */
-
-		if (device_register (&console_dev) == 0)
-			return 1;
-	}
-#else
+#if !defined(CONFIG_VGA_AS_SINGLE_DEVICE)
 	PRINTD ("KBD: Keyboard init ...\n");
-	if (VIDEO_KBD_INIT_FCT == -1)
-		skip_dev_init = 1;
+	skip_dev_init |= (VIDEO_KBD_INIT_FCT == -1);
+#endif
 
-	/* Init console device */
-	if (!skip_dev_init) {
-		memset (&console_dev, 0, sizeof (console_dev));
-		strcpy (console_dev.name, "vga");
-		console_dev.ext = DEV_EXT_VIDEO;	/* Video extensions */
-		console_dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_INPUT | DEV_FLAGS_SYSTEM;
-		console_dev.putc = video_putc;	/* 'putc' function */
-		console_dev.puts = video_puts;	/* 'puts' function */
-		console_dev.tstc = VIDEO_TSTC_FCT;	/* 'tstc' function */
-		console_dev.getc = VIDEO_GETC_FCT;	/* 'getc' function */
+	if (skip_dev_init)
+		return 0;
 
-		if (device_register (&console_dev) == 0)
-			return 1;
-	}
+	/* Init vga device */
+	memset (&console_dev, 0, sizeof (console_dev));
+	strcpy (console_dev.name, "vga");
+	console_dev.ext = DEV_EXT_VIDEO;	/* Video extensions */
+	console_dev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_SYSTEM;
+	console_dev.putc = video_putc;	/* 'putc' function */
+	console_dev.puts = video_puts;	/* 'puts' function */
+	console_dev.tstc = NULL;	/* 'tstc' function */
+	console_dev.getc = NULL;	/* 'getc' function */
+
+#if !defined(CONFIG_VGA_AS_SINGLE_DEVICE)
+	/* Also init console device */
+	console_dev.flags |= DEV_FLAGS_INPUT;
+	console_dev.tstc = VIDEO_TSTC_FCT;	/* 'tstc' function */
+	console_dev.getc = VIDEO_GETC_FCT;	/* 'getc' function */
 #endif /* CONFIG_VGA_AS_SINGLE_DEVICE */
-	/* No console dev available */
-	return 0;
+
+	if (stdio_register (&console_dev) != 0)
+		return 0;
+
+	/* Return success */
+	return 1;
 }

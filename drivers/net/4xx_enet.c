@@ -1,4 +1,6 @@
 /*-----------------------------------------------------------------------------+
+ *   This source code is dual-licensed.  You may use it under the terms of the
+ *   GNU General Public License version 2, or under the license below.
  *
  *	 This source code has been made available to you by IBM on an AS-IS
  *	 basis.	 Anyone receiving this source is licensed under IBM
@@ -259,9 +261,6 @@ static const struct fixed_phy_port fixed_phy_port[] = {
 /*-----------------------------------------------------------------------------+
  * Global variables. TX and RX descriptors and buffers.
  *-----------------------------------------------------------------------------*/
-#if !defined(CONFIG_NET_MULTI)
-struct eth_device *emac0_dev = NULL;
-#endif
 
 /*
  * Get count of EMAC devices (doesn't have to be the max. possible number
@@ -871,8 +870,9 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
     defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
     defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
     defined(CONFIG_405EX)
+	u32 opbfreq;
 	sys_info_t sysinfo;
-#if defined(CONFIG_440GX) || defined(CONFIG_440SPE) || \
+#if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
     defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
     defined(CONFIG_405EX)
@@ -997,12 +997,13 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 	/* Whack the M1 register */
 	mode_reg = 0x0;
 	mode_reg &= ~0x00000038;
-	if (sysinfo.freqOPB <= 50000000);
-	else if (sysinfo.freqOPB <= 66666667)
+	opbfreq = sysinfo.freqOPB / 1000000;
+	if (opbfreq <= 50);
+	else if (opbfreq <= 66)
 		mode_reg |= EMAC_M1_OBCI_66;
-	else if (sysinfo.freqOPB <= 83333333)
+	else if (opbfreq <= 83)
 		mode_reg |= EMAC_M1_OBCI_83;
-	else if (sysinfo.freqOPB <= 100000000)
+	else if (opbfreq <= 100)
 		mode_reg |= EMAC_M1_OBCI_100;
 	else
 		mode_reg |= EMAC_M1_OBCI_GT100;
@@ -1120,7 +1121,6 @@ static int ppc_4xx_eth_init (struct eth_device *dev, bd_t * bis)
 
 #if defined(CONFIG_440GX) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX) || \
-    defined(CONFIG_440SP) || defined(CONFIG_440SPE) || \
     defined(CONFIG_460EX) || defined(CONFIG_460GT) || \
     defined(CONFIG_405EX)
 
@@ -1641,11 +1641,7 @@ int enetInt (struct eth_device *dev)
 	 * Because the mal is generic, we need to get the current
 	 * eth device
 	 */
-#if defined(CONFIG_NET_MULTI)
 	dev = eth_get_dev();
-#else
-	dev = emac0_dev;
-#endif
 
 	hw_p = dev->priv;
 
@@ -1927,24 +1923,22 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 		memcpy(ethaddr[eth_num], "\0\0\0\0\0\0", 6);
 
 	for (eth_num = 0; eth_num < LAST_EMAC_NUM; eth_num++) {
+		int ethaddr_idx = eth_num + CONFIG_EMAC_NR_START;
 		switch (eth_num) {
 		default:		/* fall through */
 		case 0:
-			memcpy(ethaddr[eth_num + CONFIG_EMAC_NR_START],
-			       bis->bi_enetaddr, 6);
+			eth_getenv_enetaddr("ethaddr", ethaddr[ethaddr_idx]);
 			hw_addr[eth_num] = 0x0;
 			break;
 #ifdef CONFIG_HAS_ETH1
 		case 1:
-			memcpy(ethaddr[eth_num + CONFIG_EMAC_NR_START],
-			       bis->bi_enet1addr, 6);
+			eth_getenv_enetaddr("eth1addr", ethaddr[ethaddr_idx]);
 			hw_addr[eth_num] = 0x100;
 			break;
 #endif
 #ifdef CONFIG_HAS_ETH2
 		case 2:
-			memcpy(ethaddr[eth_num + CONFIG_EMAC_NR_START],
-			       bis->bi_enet2addr, 6);
+			eth_getenv_enetaddr("eth2addr", ethaddr[ethaddr_idx]);
 #if defined(CONFIG_460GT)
 			hw_addr[eth_num] = 0x300;
 #else
@@ -1954,8 +1948,7 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 #endif
 #ifdef CONFIG_HAS_ETH3
 		case 3:
-			memcpy(ethaddr[eth_num + CONFIG_EMAC_NR_START],
-			       bis->bi_enet3addr, 6);
+			eth_getenv_enetaddr("eth3addr", ethaddr[ethaddr_idx]);
 #if defined(CONFIG_460GT)
 			hw_addr[eth_num] = 0x400;
 #else
@@ -2067,60 +2060,13 @@ int ppc_4xx_eth_initialize (bd_t * bis)
 			virgin = 1;
 		}
 
-#if defined(CONFIG_NET_MULTI)
 		eth_register (dev);
-#else
-		emac0_dev = dev;
-#endif
 
-#if defined(CONFIG_NET_MULTI)
 #if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 		miiphy_register (dev->name,
 				 emac4xx_miiphy_read, emac4xx_miiphy_write);
-#endif
 #endif
 	}			/* end for each supported device */
 
 	return 0;
 }
-
-#if !defined(CONFIG_NET_MULTI)
-void eth_halt (void) {
-	if (emac0_dev) {
-		ppc_4xx_eth_halt(emac0_dev);
-		free(emac0_dev);
-		emac0_dev = NULL;
-	}
-}
-
-int eth_init (bd_t *bis)
-{
-	ppc_4xx_eth_initialize(bis);
-	if (emac0_dev) {
-		return ppc_4xx_eth_init(emac0_dev, bis);
-	} else {
-		printf("ERROR: ethaddr not set!\n");
-		return -1;
-	}
-}
-
-int eth_send(volatile void *packet, int length)
-{
-	return (ppc_4xx_eth_send(emac0_dev, packet, length));
-}
-
-int eth_rx(void)
-{
-	return (ppc_4xx_eth_rx(emac0_dev));
-}
-
-int emac4xx_miiphy_initialize (bd_t * bis)
-{
-#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
-	miiphy_register ("ppc_4xx_eth0",
-			 emac4xx_miiphy_read, emac4xx_miiphy_write);
-#endif
-
-	return 0;
-}
-#endif /* !defined(CONFIG_NET_MULTI) */

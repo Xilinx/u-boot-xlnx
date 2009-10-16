@@ -119,7 +119,10 @@ extern struct eth_device *eth_get_dev(void);	/* get the current device MAC */
 extern struct eth_device *eth_get_dev_by_name(char *devname); /* get device */
 extern struct eth_device *eth_get_dev_by_index(int index); /* get dev @ index */
 extern int eth_get_dev_index (void);		/* get the device index */
-extern void eth_set_enetaddr(int num, char* a);	/* Set new MAC address */
+extern void eth_parse_enetaddr(const char *addr, uchar *enetaddr);
+extern int eth_getenv_enetaddr(char *name, uchar *enetaddr);
+extern int eth_setenv_enetaddr(char *name, const uchar *enetaddr);
+extern int eth_getenv_enetaddr_by_index(int index, uchar *enetaddr);
 
 extern int eth_init(bd_t *bis);			/* Initialize the device */
 extern int eth_send(volatile void *packet, int length);	   /* Send a packet */
@@ -328,8 +331,8 @@ extern IPaddr_t		NetOurIP;		/* Our    IP addr (0 = unknown)	*/
 extern IPaddr_t		NetServerIP;		/* Server IP addr (0 = unknown)	*/
 extern volatile uchar * NetTxPacket;		/* THE transmit packet		*/
 extern volatile uchar * NetRxPackets[PKTBUFSRX];/* Receive packets		*/
-extern volatile uchar * NetRxPkt;		/* Current receive packet	*/
-extern int		NetRxPktLen;		/* Current rx packet length	*/
+extern volatile uchar * NetRxPacket;		/* Current receive packet	*/
+extern int		NetRxPacketLen;		/* Current rx packet length	*/
 extern unsigned		NetIPID;		/* IP ID (counting)		*/
 extern uchar		NetBcastAddr[6];	/* Ethernet boardcast address	*/
 extern uchar		NetEtherNullAddr[6];
@@ -357,6 +360,11 @@ typedef enum { BOOTP, RARP, ARP, TFTP, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP 
 
 /* from net/net.c */
 extern char	BootFile[128];			/* Boot File name		*/
+
+#if defined(CONFIG_CMD_DNS)
+extern char *NetDNSResolve;		/* The host to resolve  */
+extern char *NetDNSenvvar;		/* the env var to put the ip into */
+#endif
 
 #if defined(CONFIG_CMD_PING)
 extern IPaddr_t	NetPingIP;			/* the ip address to ping		*/
@@ -407,9 +415,6 @@ extern int	NetSendUDPPacket(uchar *ether, IPaddr_t dest, int dport, int sport, i
 
 /* Processes a received packet */
 extern void	NetReceive(volatile uchar *, int);
-
-/* Print an IP address on the console */
-extern void	print_IPaddr (IPaddr_t);
 
 /*
  * The following functions are a bit ugly, but necessary to deal with

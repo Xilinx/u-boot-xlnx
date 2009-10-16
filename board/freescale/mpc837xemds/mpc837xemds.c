@@ -11,6 +11,7 @@
  */
 
 #include <common.h>
+#include <hwconfig.h>
 #include <i2c.h>
 #include <asm/io.h>
 #include <asm/fsl_serdes.h>
@@ -18,30 +19,18 @@
 #include <tsec.h>
 #include <libfdt.h>
 #include <fdt_support.h>
+#include <fsl_esdhc.h>
 #include "pci.h"
 #include "../common/pq-mds-pib.h"
 
 int board_early_init_f(void)
 {
-	struct immap __iomem *im = (struct immap __iomem *)CONFIG_SYS_IMMR;
 	u8 *bcsr = (u8 *)CONFIG_SYS_BCSR;
 
 	/* Enable flash write */
 	bcsr[0x9] &= ~0x04;
 	/* Clear all of the interrupt of BCSR */
 	bcsr[0xe] = 0xff;
-
-#ifdef CONFIG_MMC
-	/* Set SPI_SD, SER_SD, and IRQ4_WP so that SD signals go through */
-	bcsr[0xc] |= 0x4c;
-
-	/* Set proper bits in SICR to allow SD signals through */
-	clrsetbits_be32(&im->sysconf.sicrl, SICRL_USB_B, SICRL_USB_B_SD);
-
-	clrsetbits_be32(&im->sysconf.sicrh, (SICRH_GPIO2_E | SICRH_SPI),
-			(SICRH_GPIO2_E_SD | SICRH_SPI_SD));
-
-#endif
 
 #ifdef CONFIG_FSL_SERDES
 	immap_t *immr = (immap_t *)CONFIG_SYS_IMMR;
@@ -71,6 +60,27 @@ int board_early_init_f(void)
 #endif /* CONFIG_FSL_SERDES */
 	return 0;
 }
+
+#ifdef CONFIG_FSL_ESDHC
+int board_mmc_init(bd_t *bd)
+{
+	struct immap __iomem *im = (struct immap __iomem *)CONFIG_SYS_IMMR;
+	u8 *bcsr = (u8 *)CONFIG_SYS_BCSR;
+
+	if (!hwconfig("esdhc"))
+		return 0;
+
+	/* Set SPI_SD, SER_SD, and IRQ4_WP so that SD signals go through */
+	bcsr[0xc] |= 0x4c;
+
+	/* Set proper bits in SICR to allow SD signals through */
+	clrsetbits_be32(&im->sysconf.sicrl, SICRL_USB_B, SICRL_USB_B_SD);
+	clrsetbits_be32(&im->sysconf.sicrh, SICRH_GPIO2_E | SICRH_SPI,
+			SICRH_GPIO2_E_SD | SICRH_SPI_SD);
+
+	return fsl_esdhc_mmc_init(bd);
+}
+#endif
 
 #if defined(CONFIG_TSEC1) || defined(CONFIG_TSEC2)
 int board_eth_init(bd_t *bd)
@@ -199,7 +209,7 @@ int board_early_init_r(void)
 	return 0;
 }
 
-#if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRC)
+#if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 extern void ddr_enable_ecc(unsigned int dram_size);
 #endif
 int fixed_sdram(void);
@@ -218,7 +228,7 @@ phys_size_t initdram(int board_type)
 	msize = fixed_sdram();
 #endif
 
-#if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRC)
+#if defined(CONFIG_DDR_ECC) && !defined(CONFIG_ECC_INIT_VIA_DDRCONTROLLER)
 	/* Initialize DDR ECC byte */
 	ddr_enable_ecc(msize * 1024 * 1024);
 #endif
@@ -282,10 +292,9 @@ int board_pci_host_broken(void)
 {
 	struct immap __iomem *im = (struct immap __iomem *)CONFIG_SYS_IMMR;
 	const u32 rcw_mask = HRCWH_PCI1_ARBITER_ENABLE | HRCWH_PCI_HOST;
-	const char *pci_ea = getenv("pci_external_arbiter");
 
 	/* It's always OK in case of external arbiter. */
-	if (pci_ea && !strcmp(pci_ea, "yes"))
+	if (hwconfig_subarg_cmp("pci", "arbiter", "external"))
 		return 0;
 
 	if ((in_be32(&im->reset.rcwh) & rcw_mask) != rcw_mask)
@@ -322,6 +331,7 @@ void ft_board_setup(void *blob, bd_t *bd)
 	ft_cpu_setup(blob, bd);
 	ft_tsec_fixup(blob, bd);
 	fdt_fixup_dr_usb(blob, bd);
+	fdt_fixup_esdhc(blob, bd);
 #ifdef CONFIG_PCI
 	ft_pci_setup(blob, bd);
 	if (board_pci_host_broken())

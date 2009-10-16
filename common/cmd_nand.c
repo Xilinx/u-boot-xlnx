@@ -11,7 +11,6 @@
 #include <common.h>
 
 
-#ifndef CONFIG_NAND_LEGACY
 /*
  *
  * New NAND support
@@ -29,7 +28,7 @@
 #include <jffs2/jffs2.h>
 #include <nand.h>
 
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_MTDPARTS)
 
 /* parition handling routines */
 int mtdparts_init(void);
@@ -105,7 +104,7 @@ static int
 arg_off_size(int argc, char *argv[], nand_info_t *nand, ulong *off, size_t *size)
 {
 	int idx = nand_curr_device;
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_MTDPARTS)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 pnum;
@@ -153,7 +152,7 @@ arg_off_size(int argc, char *argv[], nand_info_t *nand, ulong *off, size_t *size
 		*size = nand->size - *off;
 	}
 
-#if  defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_MTDPARTS)
 out:
 #endif
 	printf("device %d ", idx);
@@ -205,6 +204,17 @@ static void do_nand_status(nand_info_t *nand)
 }
 #endif
 
+static void nand_print_info(int idx)
+{
+	nand_info_t *nand = &nand_info[idx];
+	struct nand_chip *chip = nand->priv;
+	printf("Device %d: ", idx);
+	if (chip->numchips > 1)
+		printf("%dx ", chip->numchips);
+	printf("%s, sector size %u KiB\n",
+	       nand->name, nand->erasesize >> 10);
+}
+
 int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 {
 	int i, dev, ret = 0;
@@ -233,9 +243,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		putc('\n');
 		for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; i++) {
 			if (nand_info[i].name)
-				printf("Device %d: %s, sector size %u KiB\n",
-				       i, nand_info[i].name,
-				       nand_info[i].erasesize >> 10);
+				nand_print_info(i);
 		}
 		return 0;
 	}
@@ -243,12 +251,12 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	if (strcmp(cmd, "device") == 0) {
 
 		if (argc < 3) {
+			putc('\n');
 			if ((nand_curr_device < 0) ||
 			    (nand_curr_device >= CONFIG_SYS_MAX_NAND_DEVICE))
-				puts("\nno devices available\n");
+				puts("no devices available\n");
 			else
-				printf("\nDevice %d: %s\n", nand_curr_device,
-				       nand_info[nand_curr_device].name);
+				nand_print_info(nand_curr_device);
 			return 0;
 		}
 		dev = (int)simple_strtoul(argv[2], NULL, 10);
@@ -381,7 +389,7 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 			else
 				ret = nand_write_skip_bad(nand, off, &size,
 							  (u_char *)addr);
-		} else if (s != NULL && !strcmp(s, ".oob")) {
+		} else if (!strcmp(s, ".oob")) {
 			/* out-of-band data */
 			mtd_oob_ops_t ops = {
 				.oobbuf = (u8 *)addr,
@@ -405,18 +413,29 @@ int do_nand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	}
 
 	if (strcmp(cmd, "markbad") == 0) {
-		addr = (ulong)simple_strtoul(argv[2], NULL, 16);
+		argc -= 2;
+		argv += 2;
 
-		int ret = nand->block_markbad(nand, addr);
-		if (ret == 0) {
-			printf("block 0x%08lx successfully marked as bad\n",
-			       (ulong) addr);
-			return 0;
-		} else {
-			printf("block 0x%08lx NOT marked as bad! ERROR %d\n",
-			       (ulong) addr, ret);
+		if (argc <= 0)
+			goto usage;
+
+		while (argc > 0) {
+			addr = simple_strtoul(*argv, NULL, 16);
+
+			if (nand->block_markbad(nand, addr)) {
+				printf("block 0x%08lx NOT marked "
+					"as bad! ERROR %d\n",
+					addr, ret);
+				ret = 1;
+			} else {
+				printf("block 0x%08lx successfully "
+					"marked as bad\n",
+					addr);
+			}
+			--argc;
+			++argv;
 		}
-		return 1;
+		return ret;
 	}
 
 	if (strcmp(cmd, "biterr") == 0) {
@@ -467,25 +486,26 @@ usage:
 	return 1;
 }
 
-U_BOOT_CMD(nand, 5, 1, do_nand,
-	   "NAND sub-system",
-	   "info - show available NAND devices\n"
-	   "nand device [dev] - show or set current device\n"
-	   "nand read - addr off|partition size\n"
-	   "nand write - addr off|partition size\n"
-	   "    read/write 'size' bytes starting at offset 'off'\n"
-	   "    to/from memory address 'addr', skipping bad blocks.\n"
-	   "nand erase [clean] [off size] - erase 'size' bytes from\n"
-	   "    offset 'off' (entire device if not specified)\n"
-	   "nand bad - show bad blocks\n"
-	   "nand dump[.oob] off - dump page\n"
-	   "nand scrub - really clean NAND erasing bad blocks (UNSAFE)\n"
-	   "nand markbad off - mark bad block at offset (UNSAFE)\n"
-	   "nand biterr off - make a bit error at offset (UNSAFE)\n"
+U_BOOT_CMD(nand, CONFIG_SYS_MAXARGS, 1, do_nand,
+	"NAND sub-system",
+	"info - show available NAND devices\n"
+	"nand device [dev] - show or set current device\n"
+	"nand read - addr off|partition size\n"
+	"nand write - addr off|partition size\n"
+	"    read/write 'size' bytes starting at offset 'off'\n"
+	"    to/from memory address 'addr', skipping bad blocks.\n"
+	"nand erase [clean] [off size] - erase 'size' bytes from\n"
+	"    offset 'off' (entire device if not specified)\n"
+	"nand bad - show bad blocks\n"
+	"nand dump[.oob] off - dump page\n"
+	"nand scrub - really clean NAND erasing bad blocks (UNSAFE)\n"
+	"nand markbad off [...] - mark bad block(s) at offset (UNSAFE)\n"
+	"nand biterr off - make a bit error at offset (UNSAFE)"
 #ifdef CONFIG_CMD_NAND_LOCK_UNLOCK
-	   "nand lock [tight] [status]\n"
-	   "    bring nand to lock state or display locked pages\n"
-	   "nand unlock [offset] [size] - unlock section\n"
+	"\n"
+	"nand lock [tight] [status]\n"
+	"    bring nand to lock state or display locked pages\n"
+	"nand unlock [offset] [size] - unlock section"
 #endif
 );
 
@@ -502,7 +522,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 
 	s = strchr(cmd, '.');
 	if (s != NULL &&
-	    (strcmp(s, ".jffs2") && !strcmp(s, ".e") && !strcmp(s, ".i"))) {
+	    (strcmp(s, ".jffs2") && strcmp(s, ".e") && strcmp(s, ".i"))) {
 		printf("Unknown nand load suffix '%s'\n", s);
 		show_boot_progress(-53);
 		return 1;
@@ -511,7 +531,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	printf("\nLoading from %s, offset 0x%lx\n", nand->name, offset);
 
 	cnt = nand->writesize;
-	r = nand_read(nand, offset, &cnt, (u_char *) addr);
+	r = nand_read_skip_bad(nand, offset, &cnt, (u_char *) addr);
 	if (r) {
 		puts("** Read error\n");
 		show_boot_progress (-56);
@@ -543,8 +563,7 @@ static int nand_load_image(cmd_tbl_t *cmdtp, nand_info_t *nand,
 	}
 	show_boot_progress (57);
 
-	/* FIXME: skip bad blocks */
-	r = nand_read(nand, offset, &cnt, (u_char *) addr);
+	r = nand_read_skip_bad(nand, offset, &cnt, (u_char *) addr);
 	if (r) {
 		puts("** Read error\n");
 		show_boot_progress (-58);
@@ -590,7 +609,7 @@ int do_nandboot(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	char *boot_device = NULL;
 	int idx;
 	ulong addr, offset = 0;
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_MTDPARTS)
 	struct mtd_device *dev;
 	struct part_info *part;
 	u8 pnum;
@@ -635,7 +654,7 @@ int do_nandboot(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		offset = simple_strtoul(argv[3], NULL, 16);
 		break;
 	default:
-#if defined(CONFIG_CMD_JFFS2) && defined(CONFIG_JFFS2_CMDLINE)
+#if defined(CONFIG_CMD_MTDPARTS)
 usage:
 #endif
 		cmd_usage(cmdtp);
@@ -665,417 +684,6 @@ usage:
 
 U_BOOT_CMD(nboot, 4, 1, do_nandboot,
 	"boot from NAND device",
-	"[partition] | [[[loadAddr] dev] offset]\n");
-
-#endif
-
-#else /* CONFIG_NAND_LEGACY */
-/*
- *
- * Legacy NAND support - to be phased out
- *
- */
-#include <command.h>
-#include <malloc.h>
-#include <asm/io.h>
-#include <watchdog.h>
-
-#ifdef CONFIG_show_boot_progress
-# include <status_led.h>
-# define show_boot_progress(arg)	show_boot_progress(arg)
-#else
-# define show_boot_progress(arg)
-#endif
-
-#if defined(CONFIG_CMD_NAND)
-#include <linux/mtd/nand_legacy.h>
-#if 0
-#include <linux/mtd/nand_ids.h>
-#include <jffs2/jffs2.h>
-#endif
-
-#ifdef CONFIG_OMAP1510
-void archflashwp(void *archdata, int wp);
-#endif
-
-#define ROUND_DOWN(value,boundary)      ((value) & (~((boundary)-1)))
-
-#undef	NAND_DEBUG
-#undef	PSYCHO_DEBUG
-
-/* ****************** WARNING *********************
- * When ALLOW_ERASE_BAD_DEBUG is non-zero the erase command will
- * erase (or at least attempt to erase) blocks that are marked
- * bad. This can be very handy if you are _sure_ that the block
- * is OK, say because you marked a good block bad to test bad
- * block handling and you are done testing, or if you have
- * accidentally marked blocks bad.
- *
- * Erasing factory marked bad blocks is a _bad_ idea. If the
- * erase succeeds there is no reliable way to find them again,
- * and attempting to program or erase bad blocks can affect
- * the data in _other_ (good) blocks.
- */
-#define	 ALLOW_ERASE_BAD_DEBUG 0
-
-#define CONFIG_MTD_NAND_ECC  /* enable ECC */
-#define CONFIG_MTD_NAND_ECC_JFFS2
-
-/* bits for nand_legacy_rw() `cmd'; or together as needed */
-#define NANDRW_READ         0x01
-#define NANDRW_WRITE        0x00
-#define NANDRW_JFFS2	    0x02
-#define NANDRW_JFFS2_SKIP   0x04
-
-/*
- * Imports from nand_legacy.c
- */
-extern struct nand_chip nand_dev_desc[CONFIG_SYS_MAX_NAND_DEVICE];
-extern int curr_device;
-extern int nand_legacy_erase(struct nand_chip *nand, size_t ofs,
-			    size_t len, int clean);
-extern int nand_legacy_rw(struct nand_chip *nand, int cmd, size_t start,
-			 size_t len, size_t *retlen, u_char *buf);
-extern void nand_print(struct nand_chip *nand);
-extern void nand_print_bad(struct nand_chip *nand);
-extern int nand_read_oob(struct nand_chip *nand, size_t ofs,
-			       size_t len, size_t *retlen, u_char *buf);
-extern int nand_write_oob(struct nand_chip *nand, size_t ofs,
-				size_t len, size_t *retlen, const u_char *buf);
-
-
-int do_nand (cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
-{
-	int rcode = 0;
-
-	switch (argc) {
-	case 0:
-	case 1:
-		cmd_usage(cmdtp);
-		return 1;
-	case 2:
-		if (strcmp (argv[1], "info") == 0) {
-			int i;
-
-			putc ('\n');
-
-			for (i = 0; i < CONFIG_SYS_MAX_NAND_DEVICE; ++i) {
-				if (nand_dev_desc[i].ChipID ==
-				    NAND_ChipID_UNKNOWN)
-					continue;	/* list only known devices */
-				printf ("Device %d: ", i);
-				nand_print (&nand_dev_desc[i]);
-			}
-			return 0;
-
-		} else if (strcmp (argv[1], "device") == 0) {
-			if ((curr_device < 0)
-			    || (curr_device >= CONFIG_SYS_MAX_NAND_DEVICE)) {
-				puts ("\nno devices available\n");
-				return 1;
-			}
-			printf ("\nDevice %d: ", curr_device);
-			nand_print (&nand_dev_desc[curr_device]);
-			return 0;
-
-		} else if (strcmp (argv[1], "bad") == 0) {
-			if ((curr_device < 0)
-			    || (curr_device >= CONFIG_SYS_MAX_NAND_DEVICE)) {
-				puts ("\nno devices available\n");
-				return 1;
-			}
-			printf ("\nDevice %d bad blocks:\n", curr_device);
-			nand_print_bad (&nand_dev_desc[curr_device]);
-			return 0;
-
-		}
-		cmd_usage(cmdtp);
-		return 1;
-	case 3:
-		if (strcmp (argv[1], "device") == 0) {
-			int dev = (int) simple_strtoul (argv[2], NULL, 10);
-
-			printf ("\nDevice %d: ", dev);
-			if (dev >= CONFIG_SYS_MAX_NAND_DEVICE) {
-				puts ("unknown device\n");
-				return 1;
-			}
-			nand_print (&nand_dev_desc[dev]);
-			/*nand_print (dev); */
-
-			if (nand_dev_desc[dev].ChipID == NAND_ChipID_UNKNOWN) {
-				return 1;
-			}
-
-			curr_device = dev;
-
-			puts ("... is now current device\n");
-
-			return 0;
-		} else if (strcmp (argv[1], "erase") == 0
-			   && strcmp (argv[2], "clean") == 0) {
-			struct nand_chip *nand = &nand_dev_desc[curr_device];
-			ulong off = 0;
-			ulong size = nand->totlen;
-			int ret;
-
-			printf ("\nNAND erase: device %d offset %ld, size %ld ... ", curr_device, off, size);
-
-			ret = nand_legacy_erase (nand, off, size, 1);
-
-			printf ("%s\n", ret ? "ERROR" : "OK");
-
-			return ret;
-		}
-
-		cmd_usage(cmdtp);
-		return 1;
-	default:
-		/* at least 4 args */
-
-		if (strncmp (argv[1], "read", 4) == 0 ||
-		    strncmp (argv[1], "write", 5) == 0) {
-			ulong addr = simple_strtoul (argv[2], NULL, 16);
-			off_t off = simple_strtoul (argv[3], NULL, 16);
-			size_t size = simple_strtoul (argv[4], NULL, 16);
-			int cmd = (strncmp (argv[1], "read", 4) == 0) ?
-				  NANDRW_READ : NANDRW_WRITE;
-			size_t total;
-			int ret;
-			char *cmdtail = strchr (argv[1], '.');
-
-			if (cmdtail && !strncmp (cmdtail, ".oob", 2)) {
-				/* read out-of-band data */
-				if (cmd & NANDRW_READ) {
-					ret = nand_read_oob (nand_dev_desc + curr_device,
-							     off, size, &total,
-							     (u_char *) addr);
-				} else {
-					ret = nand_write_oob (nand_dev_desc + curr_device,
-							      off, size, &total,
-							      (u_char *) addr);
-				}
-				return ret;
-			} else if (cmdtail && !strncmp (cmdtail, ".jffs2s", 7)) {
-				cmd |= NANDRW_JFFS2;	/* skip bad blocks (on read too) */
-				if (cmd & NANDRW_READ)
-					cmd |= NANDRW_JFFS2_SKIP;	/* skip bad blocks (on read too) */
-			} else if (cmdtail && !strncmp (cmdtail, ".jffs2", 2))
-				cmd |= NANDRW_JFFS2;	/* skip bad blocks */
-#ifdef SXNI855T
-			/* need ".e" same as ".j" for compatibility with older units */
-			else if (cmdtail && !strcmp (cmdtail, ".e"))
-				cmd |= NANDRW_JFFS2;	/* skip bad blocks */
-#endif
-#ifdef CONFIG_SYS_NAND_SKIP_BAD_DOT_I
-			/* need ".i" same as ".jffs2s" for compatibility with older units (esd) */
-			/* ".i" for image -> read skips bad block (no 0xff) */
-			else if (cmdtail && !strcmp (cmdtail, ".i")) {
-				cmd |= NANDRW_JFFS2;	/* skip bad blocks (on read too) */
-				if (cmd & NANDRW_READ)
-					cmd |= NANDRW_JFFS2_SKIP;	/* skip bad blocks (on read too) */
-			}
-#endif /* CONFIG_SYS_NAND_SKIP_BAD_DOT_I */
-			else if (cmdtail) {
-				cmd_usage(cmdtp);
-				return 1;
-			}
-
-			printf ("\nNAND %s: device %d offset %ld, size %lu ...\n",
-				(cmd & NANDRW_READ) ? "read" : "write",
-				curr_device, off, (ulong)size);
-
-			ret = nand_legacy_rw (nand_dev_desc + curr_device,
-					      cmd, off, size,
-					      &total, (u_char *) addr);
-
-			printf (" %d bytes %s: %s\n", total,
-				(cmd & NANDRW_READ) ? "read" : "written",
-				ret ? "ERROR" : "OK");
-
-			return ret;
-		} else if (strcmp (argv[1], "erase") == 0 &&
-			   (argc == 4 || strcmp ("clean", argv[2]) == 0)) {
-			int clean = argc == 5;
-			ulong off =
-				simple_strtoul (argv[2 + clean], NULL, 16);
-			ulong size =
-				simple_strtoul (argv[3 + clean], NULL, 16);
-			int ret;
-
-			printf ("\nNAND erase: device %d offset %ld, size %ld ...\n",
-				curr_device, off, size);
-
-			ret = nand_legacy_erase (nand_dev_desc + curr_device,
-						 off, size, clean);
-
-			printf ("%s\n", ret ? "ERROR" : "OK");
-
-			return ret;
-		} else {
-			cmd_usage(cmdtp);
-			rcode = 1;
-		}
-
-		return rcode;
-	}
-}
-
-U_BOOT_CMD(
-	nand,	5,	1,	do_nand,
-	"legacy NAND sub-system",
-	"info  - show available NAND devices\n"
-	"nand device [dev] - show or set current device\n"
-	"nand read[.jffs2[s]]  addr off size\n"
-	"nand write[.jffs2] addr off size - read/write `size' bytes starting\n"
-	"    at offset `off' to/from memory address `addr'\n"
-	"nand erase [clean] [off size] - erase `size' bytes from\n"
-	"    offset `off' (entire device if not specified)\n"
-	"nand bad - show bad blocks\n"
-	"nand read.oob addr off size - read out-of-band data\n"
-	"nand write.oob addr off size - read out-of-band data\n"
+	"[partition] | [[[loadAddr] dev] offset]"
 );
-
-int do_nandboot (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
-{
-	char *boot_device = NULL;
-	char *ep;
-	int dev;
-	ulong cnt;
-	ulong addr;
-	ulong offset = 0;
-	image_header_t *hdr;
-	int rcode = 0;
-#if defined(CONFIG_FIT)
-	const void *fit_hdr = NULL;
 #endif
-
-	show_boot_progress (52);
-	switch (argc) {
-	case 1:
-		addr = CONFIG_SYS_LOAD_ADDR;
-		boot_device = getenv ("bootdevice");
-		break;
-	case 2:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = getenv ("bootdevice");
-		break;
-	case 3:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = argv[2];
-		break;
-	case 4:
-		addr = simple_strtoul(argv[1], NULL, 16);
-		boot_device = argv[2];
-		offset = simple_strtoul(argv[3], NULL, 16);
-		break;
-	default:
-		cmd_usage(cmdtp);
-		show_boot_progress (-53);
-		return 1;
-	}
-
-	show_boot_progress (53);
-	if (!boot_device) {
-		puts ("\n** No boot device **\n");
-		show_boot_progress (-54);
-		return 1;
-	}
-	show_boot_progress (54);
-
-	dev = simple_strtoul(boot_device, &ep, 16);
-
-	if ((dev >= CONFIG_SYS_MAX_NAND_DEVICE) ||
-	    (nand_dev_desc[dev].ChipID == NAND_ChipID_UNKNOWN)) {
-		printf ("\n** Device %d not available\n", dev);
-		show_boot_progress (-55);
-		return 1;
-	}
-	show_boot_progress (55);
-
-	printf ("\nLoading from device %d: %s at 0x%lx (offset 0x%lx)\n",
-	    dev, nand_dev_desc[dev].name, nand_dev_desc[dev].IO_ADDR,
-	    offset);
-
-	if (nand_legacy_rw (nand_dev_desc + dev, NANDRW_READ, offset,
-			    SECTORSIZE, NULL, (u_char *)addr)) {
-		printf ("** Read error on %d\n", dev);
-		show_boot_progress (-56);
-		return 1;
-	}
-	show_boot_progress (56);
-
-	switch (genimg_get_format ((void *)addr)) {
-	case IMAGE_FORMAT_LEGACY:
-		hdr = (image_header_t *)addr;
-		image_print_contents (hdr);
-
-		cnt = image_get_image_size (hdr);
-		cnt -= SECTORSIZE;
-		break;
-#if defined(CONFIG_FIT)
-	case IMAGE_FORMAT_FIT:
-		fit_hdr = (const void *)addr;
-		puts ("Fit image detected...\n");
-
-		cnt = fit_get_size (fit_hdr);
-		break;
-#endif
-	default:
-		show_boot_progress (-57);
-		puts ("** Unknown image type\n");
-		return 1;
-	}
-	show_boot_progress (57);
-
-	if (nand_legacy_rw (nand_dev_desc + dev, NANDRW_READ,
-			    offset + SECTORSIZE, cnt, NULL,
-			    (u_char *)(addr+SECTORSIZE))) {
-		printf ("** Read error on %d\n", dev);
-		show_boot_progress (-58);
-		return 1;
-	}
-	show_boot_progress (58);
-
-#if defined(CONFIG_FIT)
-	/* This cannot be done earlier, we need complete FIT image in RAM first */
-	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
-		if (!fit_check_format (fit_hdr)) {
-			show_boot_progress (-150);
-			puts ("** Bad FIT image format\n");
-			return 1;
-		}
-		show_boot_progress (151);
-		fit_print_contents (fit_hdr);
-	}
-#endif
-
-	/* Loading ok, update default load address */
-
-	load_addr = addr;
-
-	/* Check if we should attempt an auto-start */
-	if (((ep = getenv("autostart")) != NULL) && (strcmp(ep,"yes") == 0)) {
-		char *local_args[2];
-		extern int do_bootm (cmd_tbl_t *, int, int, char *[]);
-
-		local_args[0] = argv[0];
-		local_args[1] = NULL;
-
-		printf ("Automatic boot of image at addr 0x%08lx ...\n", addr);
-
-		do_bootm (cmdtp, 0, 1, local_args);
-		rcode = 1;
-	}
-	return rcode;
-}
-
-U_BOOT_CMD(
-	nboot,	4,	1,	do_nandboot,
-	"boot from NAND device",
-	"loadAddr dev\n"
-);
-
-#endif
-
-#endif /* CONFIG_NAND_LEGACY */

@@ -68,6 +68,7 @@
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1		/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		0		/* PHY address			*/
+#define CONFIG_NET_MULTI
 
 #define CONFIG_RTC_M48T35A	1		/* ST Electronics M48 timekeeper */
 
@@ -130,8 +131,6 @@
 
 /* The following table includes the supported baudrates */
 #define CONFIG_SYS_BAUDRATE_TABLE	{9600}
-
-#define CONFIG_SYS_CLKS_IN_HZ		1		/* everything, incl board info, in Hz */
 
 #define CONFIG_SYS_LOAD_ADDR		0x100000	/* default load address		*/
 #define CONFIG_SYS_EXTBDINFO		1		/* use extended board_info (bd_t) */

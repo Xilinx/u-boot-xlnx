@@ -4,7 +4,7 @@
  *  Copyright (C) 2008 Samsung Electronics
  *  Kyungmin Park <kyungmin.park@samsung.com>
  *
- * Copyright 2008 Stefan Roese <sr@denx.de>, DENX Software Engineering
+ * Copyright 2008-2009 Stefan Roese <sr@denx.de>, DENX Software Engineering
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,9 +34,8 @@ static char buffer[80];
 static int ubi_initialized;
 
 struct selected_dev {
-	char dev_name[32];	/* NAND/OneNAND etc */
 	char part_name[80];
-	int type;
+	int selected;
 	int nr;
 	struct mtd_info *mtd_info;
 };
@@ -328,7 +327,7 @@ static int ubi_volume_read(char *volume, char *buf, size_t size)
 	}
 	if (i == ubi->vtbl_slots) {
 		printf("%s volume not found\n", volume);
-		return 0;
+		return -ENODEV;
 	}
 
 	printf("read %i bytes from volume %d to %x(buf address)\n",
@@ -396,16 +395,15 @@ static int ubi_volume_read(char *volume, char *buf, size_t size)
 	return err ? err : count_save - size;
 }
 
-static int ubi_dev_scan(struct mtd_info *info, char *ubidev)
+static int ubi_dev_scan(struct mtd_info *info, char *ubidev,
+		const char *vid_header_offset)
 {
 	struct mtd_device *dev;
 	struct part_info *part;
 	struct mtd_partition mtd_part;
+	char ubi_mtd_param_buffer[80];
 	u8 pnum;
 	int err;
-
-	if (mtdparts_init() != 0)
-		return 1;
 
 	if (find_dev_and_part(ubidev, &dev, &pnum, &part) != 0)
 		return 1;
@@ -417,7 +415,11 @@ static int ubi_dev_scan(struct mtd_info *info, char *ubidev)
 	mtd_part.offset = part->offset;
 	add_mtd_partitions(info, &mtd_part, 1);
 
-	err = ubi_mtd_param_parse(buffer, NULL);
+	strcpy(ubi_mtd_param_buffer, buffer);
+	if (vid_header_offset)
+		sprintf(ubi_mtd_param_buffer, "mtd=%d,%s", pnum,
+				vid_header_offset);
+	err = ubi_mtd_param_parse(ubi_mtd_param_buffer, NULL);
 	if (err) {
 		del_mtd_partitions(info);
 		return err;
@@ -445,20 +447,31 @@ static int do_ubi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 1;
 	}
 
+	if (mtdparts_init() != 0) {
+		printf("Error initializing mtdparts!\n");
+		return 1;
+	}
+
 	if (strcmp(argv[1], "part") == 0) {
+		char mtd_dev[16];
+		struct mtd_device *dev;
+		struct part_info *part;
+		const char *vid_header_offset = NULL;
+		u8 pnum;
+
 		/* Print current partition */
 		if (argc == 2) {
-			if (ubi_dev.type == DEV_TYPE_NONE) {
+			if (!ubi_dev.selected) {
 				printf("Error, no UBI device/partition selected!\n");
 				return 1;
 			}
 
-			printf("%s Device %d: %s, partition %s\n", ubi_dev.dev_name,
+			printf("Device %d: %s, partition %s\n",
 			       ubi_dev.nr, ubi_dev.mtd_info->name, ubi_dev.part_name);
 			return 0;
 		}
 
-		if (argc < 4) {
+		if (argc < 3) {
 			cmd_usage(cmdtp);
 			return 1;
 		}
@@ -475,40 +488,30 @@ static int do_ubi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		}
 
 		/*
-		 * Check for nand|onenand selection
+		 * Search the mtd device number where this partition
+		 * is located
 		 */
-#if defined(CONFIG_CMD_NAND)
-		if (strcmp(argv[2], "nand") == 0) {
-			strcpy(ubi_dev.dev_name, "NAND");
-			ubi_dev.type = DEV_TYPE_NAND;
-			ubi_dev.mtd_info = &nand_info[ubi_dev.nr];
+		if (find_dev_and_part(argv[2], &dev, &pnum, &part)) {
+			printf("Partition %s not found!\n", argv[2]);
+			return 1;
 		}
-#endif
-#if defined(CONFIG_FLASH_CFI_MTD)
-		if (strcmp(argv[2], "nor") == 0) {
-			strcpy(ubi_dev.dev_name, "NOR");
-			ubi_dev.type = DEV_TYPE_NOR;
-			ubi_dev.mtd_info = get_mtd_device_nm(CFI_MTD_DEV_NAME);
-		}
-#endif
-#if defined(CONFIG_CMD_ONENAND)
-		if (strcmp(argv[2], "onenand") == 0) {
-			strcpy(ubi_dev.dev_name, "OneNAND");
-			ubi_dev.type = DEV_TYPE_ONENAND;
-			ubi_dev.mtd_info = &onenand_mtd;
-		}
-#endif
-
-		if (ubi_dev.type == DEV_TYPE_NONE) {
-			printf("Error, no UBI device/partition selected!\n");
+		sprintf(mtd_dev, "%s%d", MTD_DEV_TYPE(dev->id->type), dev->id->num);
+		ubi_dev.mtd_info = get_mtd_device_nm(mtd_dev);
+		if (IS_ERR(ubi_dev.mtd_info)) {
+			printf("Partition %s not found on device %s!\n", argv[2], mtd_dev);
 			return 1;
 		}
 
-		strcpy(ubi_dev.part_name, argv[3]);
-		err = ubi_dev_scan(ubi_dev.mtd_info, ubi_dev.part_name);
+		ubi_dev.selected = 1;
+
+		if (argc > 3)
+			vid_header_offset = argv[3];
+		strcpy(ubi_dev.part_name, argv[2]);
+		err = ubi_dev_scan(ubi_dev.mtd_info, ubi_dev.part_name,
+				vid_header_offset);
 		if (err) {
 			printf("UBI init error %d\n", err);
-			ubi_dev.type = DEV_TYPE_NONE;
+			ubi_dev.selected = 0;
 			return err;
 		}
 
@@ -517,7 +520,7 @@ static int do_ubi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		return 0;
 	}
 
-	if ((strcmp(argv[1], "part") != 0) && (ubi_dev.type == DEV_TYPE_NONE)) {
+	if ((strcmp(argv[1], "part") != 0) && (!ubi_dev.selected)) {
 		printf("Error, no UBI device/partition selected!\n");
 		return 1;
 	}
@@ -601,8 +604,9 @@ static int do_ubi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(ubi, 6, 1, do_ubi,
 	"ubi commands",
-	"part [nand|nor|onenand] [part]"
-		" - Show or set current partition\n"
+	"part [part] [offset]\n"
+		" - Show or set current partition (with optional VID"
+		" header offset)\n"
 	"ubi info [l[ayout]]"
 		" - Display volume and ubi layout information\n"
 	"ubi create[vol] volume [size] [type]"
@@ -614,7 +618,7 @@ U_BOOT_CMD(ubi, 6, 1, do_ubi,
 	"ubi remove[vol] volume"
 		" - Remove volume\n"
 	"[Legends]\n"
-	" volume: charater name\n"
-	" size: KiB, MiB, GiB, and bytes\n"
-	" type: s[tatic] or d[ynamic] (default=dynamic)\n"
+	" volume: character name\n"
+	" size: specified in bytes\n"
+	" type: s[tatic] or d[ynamic] (default=dynamic)"
 );

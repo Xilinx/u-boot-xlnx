@@ -130,6 +130,46 @@ lbsc_29bit:
 	write32	CS6WCR_A,	CS_SD_WCR_D
 
 lbsc_end:
+#if defined(CONFIG_SH_32BIT)
+	/*------- set PMB -------*/
+	write32	PASCR_A,	PASCR_29BIT_D
+	write32	MMUCR_A,	MMUCR_D
+
+	/*****************************************************************
+	 * ent	virt		phys		v	sz	c	wt
+	 * 0	0xa0000000	0x00000000	1	64M	0	0
+	 * 1	0xa4000000	0x04000000	1	16M	0	0
+	 * 2	0xa6000000	0x08000000	1	16M	0	0
+	 * 9	0x88000000	0x48000000	1	128M	1	1
+	 * 10	0x90000000	0x50000000	1	128M	1	1
+	 * 11	0x98000000	0x58000000	1	128M	1	1
+	 * 13	0xa8000000	0x48000000	1	128M	0	0
+	 * 14	0xb0000000	0x50000000	1	128M	0	0
+	 * 15	0xb8000000	0x58000000	1	128M	0	0
+	 */
+	write32	PMB_ADDR_FLASH_A,	PMB_ADDR_FLASH_D
+	write32	PMB_DATA_FLASH_A,	PMB_DATA_FLASH_D
+	write32	PMB_ADDR_CPLD_A,	PMB_ADDR_CPLD_D
+	write32	PMB_DATA_CPLD_A,	PMB_DATA_CPLD_D
+	write32	PMB_ADDR_USB_A,		PMB_ADDR_USB_D
+	write32	PMB_DATA_USB_A,		PMB_DATA_USB_D
+	write32	PMB_ADDR_DDR_C1_A,	PMB_ADDR_DDR_C1_D
+	write32	PMB_DATA_DDR_C1_A,	PMB_DATA_DDR_C1_D
+	write32	PMB_ADDR_DDR_C2_A,	PMB_ADDR_DDR_C2_D
+	write32	PMB_DATA_DDR_C2_A,	PMB_DATA_DDR_C2_D
+	write32	PMB_ADDR_DDR_C3_A,	PMB_ADDR_DDR_C3_D
+	write32	PMB_DATA_DDR_C3_A,	PMB_DATA_DDR_C3_D
+	write32	PMB_ADDR_DDR_N1_A,	PMB_ADDR_DDR_N1_D
+	write32	PMB_DATA_DDR_N1_A,	PMB_DATA_DDR_N1_D
+	write32	PMB_ADDR_DDR_N2_A,	PMB_ADDR_DDR_N2_D
+	write32	PMB_DATA_DDR_N2_A,	PMB_DATA_DDR_N2_D
+	write32	PMB_ADDR_DDR_N3_A,	PMB_ADDR_DDR_N3_D
+	write32	PMB_DATA_DDR_N3_A,	PMB_DATA_DDR_N3_D
+
+	write32	PASCR_A,	PASCR_INIT
+	mov.l	DUMMY_ADDR, r0
+	icbi	@r0
+#endif
 
 	write32	CCR_A,	CCR_D
 
@@ -140,7 +180,11 @@ lbsc_end:
 
 /*------- LBSC -------*/
 MMSELR_A:	.long	0xfc400020
+#if defined(CONFIG_SH_32BIT)
+MMSELR_D:	.long	0xa5a50005
+#else
 MMSELR_D:	.long	0xa5a50002
+#endif
 
 /*------- DBSC2 -------*/
 #define DBSC2_BASE	0xfe800000
@@ -189,35 +233,6 @@ DBSC2_DBRFCNT0_D:	.long	0x00010000
 WAIT_200US:	.long	33333
 
 /*------- GPIO -------*/
-#define GPIO_BASE	0xffe70000
-PACR_A:		.long	GPIO_BASE + 0x00
-PBCR_A:		.long	GPIO_BASE + 0x02
-PCCR_A:		.long	GPIO_BASE + 0x04
-PDCR_A:		.long	GPIO_BASE + 0x06
-PECR_A:		.long	GPIO_BASE + 0x08
-PFCR_A:		.long	GPIO_BASE + 0x0a
-PGCR_A:		.long	GPIO_BASE + 0x0c
-PHCR_A:		.long	GPIO_BASE + 0x0e
-PJCR_A:		.long	GPIO_BASE + 0x10
-PKCR_A:		.long	GPIO_BASE + 0x12
-PLCR_A:		.long	GPIO_BASE + 0x14
-PMCR_A:		.long	GPIO_BASE + 0x16
-PNCR_A:		.long	GPIO_BASE + 0x18
-PPCR_A:		.long	GPIO_BASE + 0x1a
-PQCR_A:		.long	GPIO_BASE + 0x1c
-PRCR_A:		.long	GPIO_BASE + 0x1e
-PEPUPR_A:	.long	GPIO_BASE + 0x48
-PHPUPR_A:	.long	GPIO_BASE + 0x4e
-PJPUPR_A:	.long	GPIO_BASE + 0x50
-PKPUPR_A:	.long	GPIO_BASE + 0x52
-PLPUPR_A:	.long	GPIO_BASE + 0x54
-PMPUPR_A:	.long	GPIO_BASE + 0x56
-PNPUPR_A:	.long	GPIO_BASE + 0x58
-PPUPR1_A:	.long	GPIO_BASE + 0x60
-PPUPR2_A:	.long	GPIO_BASE + 0x62
-P1MSELR_A:	.long	GPIO_BASE + 0x80
-P2MSELR_A:	.long	GPIO_BASE + 0x82
-
 PACR_D:		.long	0x0000
 PBCR_D:		.long	0x0000
 PCCR_D:		.long	0x0000
@@ -246,6 +261,35 @@ PPUPR1_D:	.long	0xffbf
 PPUPR2_D:	.long	0xff00
 P1MSELR_D:	.long	0x3780
 P2MSELR_D:	.long	0x0000
+
+#define GPIO_BASE	0xffe70000
+PACR_A:		.long	GPIO_BASE + 0x00
+PBCR_A:		.long	GPIO_BASE + 0x02
+PCCR_A:		.long	GPIO_BASE + 0x04
+PDCR_A:		.long	GPIO_BASE + 0x06
+PECR_A:		.long	GPIO_BASE + 0x08
+PFCR_A:		.long	GPIO_BASE + 0x0a
+PGCR_A:		.long	GPIO_BASE + 0x0c
+PHCR_A:		.long	GPIO_BASE + 0x0e
+PJCR_A:		.long	GPIO_BASE + 0x10
+PKCR_A:		.long	GPIO_BASE + 0x12
+PLCR_A:		.long	GPIO_BASE + 0x14
+PMCR_A:		.long	GPIO_BASE + 0x16
+PNCR_A:		.long	GPIO_BASE + 0x18
+PPCR_A:		.long	GPIO_BASE + 0x1a
+PQCR_A:		.long	GPIO_BASE + 0x1c
+PRCR_A:		.long	GPIO_BASE + 0x1e
+PEPUPR_A:	.long	GPIO_BASE + 0x48
+PHPUPR_A:	.long	GPIO_BASE + 0x4e
+PJPUPR_A:	.long	GPIO_BASE + 0x50
+PKPUPR_A:	.long	GPIO_BASE + 0x52
+PLPUPR_A:	.long	GPIO_BASE + 0x54
+PMPUPR_A:	.long	GPIO_BASE + 0x56
+PNPUPR_A:	.long	GPIO_BASE + 0x58
+PPUPR1_A:	.long	GPIO_BASE + 0x60
+PPUPR2_A:	.long	GPIO_BASE + 0x62
+P1MSELR_A:	.long	GPIO_BASE + 0x80
+P2MSELR_A:	.long	GPIO_BASE + 0x82
 
 /*------- LBSC -------*/
 PASCR_A:		.long	0xff000070
@@ -286,6 +330,56 @@ CS_SD_WCR_D:	.long	0x00030108
 /* I2C setting : 32bit mode = CS5, 29bit mode = CS1(already setting) */
 CS_I2C_BCR_D:	.long	0x11111100
 CS_I2C_WCR_D:	.long	0x00000003
+
+#if defined(CONFIG_SH_32BIT)
+/*------- set PMB -------*/
+PMB_ADDR_FLASH_A:	.long	PMB_ADDR_BASE(0)
+PMB_ADDR_CPLD_A:	.long	PMB_ADDR_BASE(1)
+PMB_ADDR_USB_A:		.long	PMB_ADDR_BASE(2)
+PMB_ADDR_DDR_C1_A:	.long	PMB_ADDR_BASE(9)
+PMB_ADDR_DDR_C2_A:	.long	PMB_ADDR_BASE(10)
+PMB_ADDR_DDR_C3_A:	.long	PMB_ADDR_BASE(11)
+PMB_ADDR_DDR_N1_A:	.long	PMB_ADDR_BASE(13)
+PMB_ADDR_DDR_N2_A:	.long	PMB_ADDR_BASE(14)
+PMB_ADDR_DDR_N3_A:	.long	PMB_ADDR_BASE(15)
+
+PMB_ADDR_FLASH_D:	.long	mk_pmb_addr_val(0xa0)
+PMB_ADDR_CPLD_D:	.long	mk_pmb_addr_val(0xa4)
+PMB_ADDR_USB_D:		.long	mk_pmb_addr_val(0xa6)
+PMB_ADDR_DDR_C1_D:	.long	mk_pmb_addr_val(0x88)
+PMB_ADDR_DDR_C2_D:	.long	mk_pmb_addr_val(0x90)
+PMB_ADDR_DDR_C3_D:	.long	mk_pmb_addr_val(0x98)
+PMB_ADDR_DDR_N1_D:	.long	mk_pmb_addr_val(0xa8)
+PMB_ADDR_DDR_N2_D:	.long	mk_pmb_addr_val(0xb0)
+PMB_ADDR_DDR_N3_D:	.long	mk_pmb_addr_val(0xb8)
+
+PMB_DATA_FLASH_A:	.long	PMB_DATA_BASE(0)
+PMB_DATA_CPLD_A:	.long	PMB_DATA_BASE(1)
+PMB_DATA_USB_A:		.long	PMB_DATA_BASE(2)
+PMB_DATA_DDR_C1_A:	.long	PMB_DATA_BASE(9)
+PMB_DATA_DDR_C2_A:	.long	PMB_DATA_BASE(10)
+PMB_DATA_DDR_C3_A:	.long	PMB_DATA_BASE(11)
+PMB_DATA_DDR_N1_A:	.long	PMB_DATA_BASE(13)
+PMB_DATA_DDR_N2_A:	.long	PMB_DATA_BASE(14)
+PMB_DATA_DDR_N3_A:	.long	PMB_DATA_BASE(15)
+
+/*						ppn   ub v s1 s0  c  wt */
+PMB_DATA_FLASH_D:	.long	mk_pmb_data_val(0x00, 1, 1, 0, 1, 0, 1)
+PMB_DATA_CPLD_D:	.long	mk_pmb_data_val(0x04, 1, 1, 0, 0, 0, 1)
+PMB_DATA_USB_D:		.long	mk_pmb_data_val(0x08, 1, 1, 0, 0, 0, 1)
+PMB_DATA_DDR_C1_D:	.long	mk_pmb_data_val(0x48, 0, 1, 1, 0, 1, 1)
+PMB_DATA_DDR_C2_D:	.long	mk_pmb_data_val(0x50, 0, 1, 1, 0, 1, 1)
+PMB_DATA_DDR_C3_D:	.long	mk_pmb_data_val(0x58, 0, 1, 1, 0, 1, 1)
+PMB_DATA_DDR_N1_D:	.long	mk_pmb_data_val(0x48, 1, 1, 1, 0, 0, 1)
+PMB_DATA_DDR_N2_D:	.long	mk_pmb_data_val(0x50, 1, 1, 1, 0, 0, 1)
+PMB_DATA_DDR_N3_D:	.long	mk_pmb_data_val(0x58, 1, 1, 1, 0, 0, 1)
+
+DUMMY_ADDR:	.long	0xa0000000
+PASCR_29BIT_D:	.long	0x00000000
+PASCR_INIT:	.long	0x80000080	/* check booting mode */
+MMUCR_A:	.long	0xff000010
+MMUCR_D:	.long	0x00000004	/* clear ITLB */
+#endif	/* CONFIG_SH_32BIT */
 
 CCR_A:		.long	0xff00001c
 CCR_D:		.long	0x0000090b

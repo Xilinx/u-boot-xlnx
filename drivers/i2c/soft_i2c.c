@@ -40,7 +40,7 @@
 #ifdef CONFIG_LPC2292
 #include <asm/arch/hardware.h>
 #endif
-#ifdef	CONFIG_MPC866			/* only valid for MPC866 */
+#if defined(CONFIG_MPC852T) || defined(CONFIG_MPC866)
 #include <asm/io.h>
 #endif
 #include <i2c.h>
@@ -51,13 +51,11 @@
 DECLARE_GLOBAL_DATA_PTR;
 #endif
 
-
 /*-----------------------------------------------------------------------
  * Definitions
  */
 
 #define RETRIES		0
-
 
 #define I2C_ACK		0		/* PD_SDA level to ack a byte */
 #define I2C_NOACK	1		/* PD_SDA level to noack a byte */
@@ -154,7 +152,6 @@ static void send_stop(void)
 	I2C_TRISTATE;
 }
 
-
 /*-----------------------------------------------------------------------
  * ack should be I2C_ACK or I2C_NOACK
  */
@@ -173,7 +170,6 @@ static void send_ack(int ack)
 	I2C_SCL(0);
 	I2C_DELAY;
 }
-
 
 /*-----------------------------------------------------------------------
  * Send 8 bits and look for an acknowledgement.
@@ -244,20 +240,6 @@ int i2c_set_bus_num(unsigned int bus)
 		return -1;
 	i2c_bus_num = bus;
 #endif
-	return 0;
-}
-
-/* TODO: add 100/400k switching */
-unsigned int i2c_get_bus_speed(void)
-{
-	return CONFIG_SYS_I2C_SPEED;
-}
-
-int i2c_set_bus_speed(unsigned int speed)
-{
-	if (speed != CONFIG_SYS_I2C_SPEED)
-		return -1;
-
 	return 0;
 }
 #endif

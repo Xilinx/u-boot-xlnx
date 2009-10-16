@@ -513,12 +513,13 @@ int do_load_serial_bin (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 		}
 	}
 
-#ifdef CONFIG_AUTOSCRIPT
+#ifdef CONFIG_SOURCE
 	if (load_addr) {
 		char *s;
 
 		if (((s = getenv("autoscript")) != NULL) && (strcmp(s,"yes") == 0)) {
-			printf ("Running autoscript at addr 0x%08lX", load_addr);
+			printf ("Running \"source\" command at addr 0x%08lX",
+				load_addr);
 
 			s = getenv ("autoscript_uname");
 			if (s)
@@ -526,7 +527,7 @@ int do_load_serial_bin (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 			else
 				puts (" ...\n");
 
-			rcode = autoscript (load_addr, s);
+			rcode = source (load_addr, s);
 		}
 	}
 #endif
@@ -1048,7 +1049,7 @@ U_BOOT_CMD(
 	"load S-Record file over serial line",
 	"[ off ] [ baud ]\n"
 	"    - load S-Record file over serial line"
-	" with offset 'off' and baudrate 'baud'\n"
+	" with offset 'off' and baudrate 'baud'"
 );
 
 #else	/* ! CONFIG_SYS_LOADS_BAUD_CHANGE */
@@ -1056,7 +1057,7 @@ U_BOOT_CMD(
 	loads, 2, 0,	do_load_serial,
 	"load S-Record file over serial line",
 	"[ off ]\n"
-	"    - load S-Record file over serial line with offset 'off'\n"
+	"    - load S-Record file over serial line with offset 'off'"
 );
 #endif	/* CONFIG_SYS_LOADS_BAUD_CHANGE */
 
@@ -1072,14 +1073,14 @@ U_BOOT_CMD(
 	"save S-Record file over serial line",
 	"[ off ] [size] [ baud ]\n"
 	"    - save S-Record file over serial line"
-	" with offset 'off', size 'size' and baudrate 'baud'\n"
+	" with offset 'off', size 'size' and baudrate 'baud'"
 );
 #else	/* ! CONFIG_SYS_LOADS_BAUD_CHANGE */
 U_BOOT_CMD(
 	saves, 3, 0,	do_save_serial,
 	"save S-Record file over serial line",
 	"[ off ] [size]\n"
-	"    - save S-Record file over serial line with offset 'off' and size 'size'\n"
+	"    - save S-Record file over serial line with offset 'off' and size 'size'"
 );
 #endif	/* CONFIG_SYS_LOADS_BAUD_CHANGE */
 #endif
@@ -1092,7 +1093,7 @@ U_BOOT_CMD(
 	"load binary file over serial line (kermit mode)",
 	"[ off ] [ baud ]\n"
 	"    - load binary file over serial line"
-	" with offset 'off' and baudrate 'baud'\n"
+	" with offset 'off' and baudrate 'baud'"
 );
 
 U_BOOT_CMD(
@@ -1100,7 +1101,7 @@ U_BOOT_CMD(
 	"load binary file over serial line (ymodem mode)",
 	"[ off ] [ baud ]\n"
 	"    - load binary file over serial line"
-	" with offset 'off' and baudrate 'baud'\n"
+	" with offset 'off' and baudrate 'baud'"
 );
 
 #endif
@@ -1129,8 +1130,8 @@ int do_hwflow (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 U_BOOT_CMD(
 	hwflow, 2, 0,	do_hwflow,
-	"turn the harwdare flow control on/off",
-	"[on|off]\n - change RTS/CTS hardware flow control over serial line\n"
+	"turn RTS/CTS hardware flow control in serial line on/off",
+	"[on|off]"
 );
 
 #endif

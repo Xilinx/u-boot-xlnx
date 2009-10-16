@@ -36,7 +36,7 @@
 #include <version.h>
 #include <stdarg.h>
 #include <linux/types.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <s3c2400.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -369,7 +369,7 @@ int vfd_init_clocks (void)
 	gpio->PCCON = (gpio->PCCON & 0xFFFFFF00);	/* configure GPC0...GPC3 as inputs */
 	/* allow signals to settle */
 	for (i=0; i<10000; i++)	/* udelay isn't working yet at this point! */
-		__asm("NOP");
+		__asm__("NOP");
 	vfd_board_id = (~gpio->PCDAT) & 0x000F;	/* read GPC0...GPC3 port pins */
 
 	VFD_DISABLE;				/* activate blank for the vfd */

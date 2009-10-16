@@ -297,18 +297,18 @@ int checkboard (void)
 }
 
 #ifdef CONFIG_IDE_RESET
+#define FPGA_MODE (CONFIG_SYS_FPGA_BASE_ADDR + CONFIG_SYS_FPGA_CTRL)
 void ide_set_reset(int on)
 {
-	volatile unsigned short *fpga_mode =
-		(unsigned short *)((ulong)CONFIG_SYS_FPGA_BASE_ADDR + CONFIG_SYS_FPGA_CTRL);
-
 	/*
 	 * Assert or deassert CompactFlash Reset Pin
 	 */
 	if (on) {		/* assert RESET */
-		*fpga_mode &= ~(CONFIG_SYS_FPGA_CTRL_CF_RESET);
+		out_be16((void *)FPGA_MODE,
+			 in_be16((void *)FPGA_MODE) & ~CONFIG_SYS_FPGA_CTRL_CF_RESET);
 	} else {		/* release RESET */
-		*fpga_mode |= CONFIG_SYS_FPGA_CTRL_CF_RESET;
+		out_be16((void *)FPGA_MODE,
+			 in_be16((void *)FPGA_MODE) | CONFIG_SYS_FPGA_CTRL_CF_RESET);
 	}
 }
 #endif /* CONFIG_IDE_RESET */
@@ -392,6 +392,7 @@ int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(eepwren,	2,	0,	do_eep_wren,
-	   "Enable / disable / query EEPROM write access",
-	   NULL);
+	"Enable / disable / query EEPROM write access",
+	""
+);
 #endif /* #if defined(CONFIG_SYS_EEPROM_WREN) */

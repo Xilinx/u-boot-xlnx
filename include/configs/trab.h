@@ -1,6 +1,6 @@
 /*
  * (C) Copyright 2002-2005
- * Gary Jennejohn <gj@denx.de>
+ * Gary Jennejohn <garyj@denx.de>
  *
  * Configuation settings for the TRAB board.
  *
@@ -111,6 +111,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_S3C24X0_SERIAL
 #define CONFIG_SERIAL1		1	/* we use SERIAL 1 on TRAB */
 
 #define CONFIG_HWFLOW			/* include RTS/CTS flow control support	*/
@@ -316,8 +317,6 @@
 #define CONFIG_SYS_MEMTEST_START	0x0C000000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x0D000000	/* 16 MB in DRAM	*/
 
-#undef CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
-
 #define	CONFIG_SYS_LOAD_ADDR		0x0CF00000	/* default load address	*/
 
 #ifdef CONFIG_TRAB_50MHZ
@@ -375,7 +374,9 @@
 #define	CONFIG_SYS_MONITOR_LEN		(256 << 10)
 
 /* Dynamic MTD partition support */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=0"
 
 /* production flash layout */

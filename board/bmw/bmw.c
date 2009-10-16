@@ -26,7 +26,7 @@
 #include <watchdog.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <net.h>
 #include <timestamp.h>
 #include <dtt.h>
@@ -117,6 +117,7 @@ sys_led_msg(char* msg)
     LED_REG(3) = msg[0];
 }
 
+#ifdef CONFIG_CMD_DOC
 /*
  * Map onboard TSOP-16MB DOC FLASH chip.
  */
@@ -124,6 +125,7 @@ void doc_init (void)
 {
     doc_probe(DOC_BASE_ADDR);
 }
+#endif
 
 #define NV_ADDR	((volatile unsigned char *) CONFIG_ENV_ADDR)
 

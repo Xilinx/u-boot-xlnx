@@ -57,9 +57,7 @@ SECTIONS
     *(.fixup)
     *(.got1)
     . = ALIGN(16);
-    *(.rodata)
-    *(.rodata1)
-    *(.rodata.str1.4)
+    *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
   }
   .fini      : { *(.fini)    } =0
   .ctors     : { *(.ctors)   }
@@ -92,11 +90,13 @@ SECTIONS
   _edata  =  .;
   PROVIDE (edata = .);
 
+  . = .;
   __u_boot_cmd_start = .;
   .u_boot_cmd : { *(.u_boot_cmd) }
   __u_boot_cmd_end = .;
 
 
+  . = .;
   __start___ex_table = .;
   __ex_table : { *(__ex_table) }
   __stop___ex_table = .;

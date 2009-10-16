@@ -22,9 +22,9 @@
 #include <common.h>
 #include <command.h>
 #include <image.h>
-#include <zlib.h>
+#include <u-boot/zlib.h>
 #include <asm/byteorder.h>
-#include <asm/addrspace.h>
+#include <asm/arch/addrspace.h>
 #include <asm/io.h>
 #include <asm/setup.h>
 #include <asm/arch/clk.h>

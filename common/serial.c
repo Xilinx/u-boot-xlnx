@@ -23,7 +23,7 @@
 
 #include <common.h>
 #include <serial.h>
-#include <devices.h>
+#include <stdio_dev.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -40,7 +40,8 @@ struct serial_device *__default_serial_console (void)
 	return &serial_scc_device;
 #elif defined(CONFIG_405GP) || defined(CONFIG_405CR) || defined(CONFIG_440) \
    || defined(CONFIG_405EP) || defined(CONFIG_405EZ) || defined(CONFIG_405EX) \
-   || defined(CONFIG_MPC5xxx)
+   || defined(CONFIG_MPC5xxx) || defined(CONFIG_MPC83xx) \
+   || defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
 #if defined(CONFIG_CONS_INDEX) && defined(CONFIG_SYS_NS16550_SERIAL)
 #if (CONFIG_CONS_INDEX==1)
 	return &eserial1_device;
@@ -68,6 +69,8 @@ struct serial_device *__default_serial_console (void)
 #else
 #error "CONFIG_SERIAL? missing."
 #endif
+#elif defined(CONFIG_OMAP3_ZOOM2)
+		return ZOOM2_DEFAULT_SERIAL_DEVICE;
 #else
 #error No default console
 #endif
@@ -139,9 +142,9 @@ void serial_initialize (void)
 	serial_assign (default_serial_console ()->name);
 }
 
-void serial_devices_init (void)
+void serial_stdio_init (void)
 {
-	device_t dev;
+	struct stdio_dev dev;
 	struct serial_device *s = serial_devices;
 
 	while (s) {
@@ -156,7 +159,7 @@ void serial_devices_init (void)
 		dev.getc = s->getc;
 		dev.tstc = s->tstc;
 
-		device_register (&dev);
+		stdio_register (&dev);
 
 		s = s->next;
 	}

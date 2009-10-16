@@ -54,7 +54,7 @@
 #define BR_MS_UPMA			0x00000080	/* UPMA */
 #define BR_MS_UPMB			0x000000A0	/* UPMB */
 #define BR_MS_UPMC			0x000000C0	/* UPMC */
-#if !defined(CONFIG_MPC834X)
+#if !defined(CONFIG_MPC834x)
 #define BR_ATOM				0x0000000C
 #define BR_ATOM_SHIFT			2
 #endif
@@ -65,7 +65,7 @@
 #define UPMB			1
 #define UPMC			2
 
-#if defined(CONFIG_MPC834X)
+#if defined(CONFIG_MPC834x)
 #define BR_RES				~(BR_BA | BR_PS | BR_DECC | BR_WP | BR_MSEL | BR_V)
 #else
 #define BR_RES				~(BR_BA | BR_PS | BR_DECC | BR_WP | BR_MSEL | BR_ATOM | BR_V)
@@ -396,6 +396,33 @@
 #define FPAR_LP_MS             0x00000800
 #define FPAR_LP_CI             0x000007FF
 #define FPAR_LP_CI_SHIFT       0
+
+/* LSDMR - SDRAM Machine Mode Register
+ */
+#define LSDMR_RFEN	(1 << (31 -  1))
+#define LSDMR_BSMA1516	(3 << (31 - 10))
+#define LSDMR_BSMA1617	(4 << (31 - 10))
+#define LSDMR_RFCR5	(3 << (31 - 16))
+#define LSDMR_RFCR16	(7 << (31 - 16))
+#define LSDMR_PRETOACT3 (3 << (31 - 19))
+#define LSDMR_PRETOACT7	(7 << (31 - 19))
+#define LSDMR_ACTTORW3	(3 << (31 - 22))
+#define LSDMR_ACTTORW7	(7 << (31 - 22))
+#define LSDMR_ACTTORW6	(6 << (31 - 22))
+#define LSDMR_BL8	(1 << (31 - 23))
+#define LSDMR_WRC2	(2 << (31 - 27))
+#define LSDMR_WRC4	(0 << (31 - 27))
+#define LSDMR_BUFCMD	(1 << (31 - 29))
+#define LSDMR_CL3	(3 << (31 - 31))
+
+#define LSDMR_OP_NORMAL	(0 << (31 - 4))
+#define LSDMR_OP_ARFRSH	(1 << (31 - 4))
+#define LSDMR_OP_SRFRSH	(2 << (31 - 4))
+#define LSDMR_OP_MRW	(3 << (31 - 4))
+#define LSDMR_OP_PRECH	(4 << (31 - 4))
+#define LSDMR_OP_PCHALL	(5 << (31 - 4))
+#define LSDMR_OP_ACTBNK	(6 << (31 - 4))
+#define LSDMR_OP_RWINV	(7 << (31 - 4))
 
 /* LTESR - Transfer Error Status Register
  */

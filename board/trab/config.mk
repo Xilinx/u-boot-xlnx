@@ -1,6 +1,6 @@
 #
 # (C) Copyright 2002
-# Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+# Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
 #
 # TRAB board with S3C2400X (arm920t) cpu
 #
@@ -24,3 +24,5 @@ sinclude $(OBJTREE)/board/$(BOARDDIR)/config.tmp
 ifndef TEXT_BASE
 TEXT_BASE = 0x0DF40000
 endif
+
+LDSCRIPT := $(SRCTREE)/board/$(BOARDDIR)/u-boot.lds

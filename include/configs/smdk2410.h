@@ -2,7 +2,7 @@
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
- * Gary Jennejohn <gj@denx.de>
+ * Gary Jennejohn <garyj@denx.de>
  * David Mueller <d.mueller@elsoft.ch>
  *
  * Configuation settings for the SAMSUNG SMDK2410 board.
@@ -60,6 +60,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_S3C24X0_SERIAL
 #define CONFIG_SERIAL1          1	/* we use SERIAL 1 on SMDK2410 */
 
 /************************************************************
@@ -119,8 +120,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0x30000000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0x33F00000	/* 63 MB in DRAM	*/
-
-#undef  CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
 
 #define	CONFIG_SYS_LOAD_ADDR		0x33000000	/* default load address	*/
 

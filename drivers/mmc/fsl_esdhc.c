@@ -28,11 +28,13 @@
 #include <config.h>
 #include <common.h>
 #include <command.h>
+#include <hwconfig.h>
 #include <mmc.h>
 #include <part.h>
 #include <malloc.h>
 #include <mmc.h>
 #include <fsl_esdhc.h>
+#include <fdt_support.h>
 #include <asm/io.h>
 
 
@@ -206,12 +208,12 @@ esdhc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
 		cmdrsp2 = in_be32(&regs->cmdrsp2);
 		cmdrsp1 = in_be32(&regs->cmdrsp1);
 		cmdrsp0 = in_be32(&regs->cmdrsp0);
-		((uint *)(cmd->response))[0] = (cmdrsp3 << 8) | (cmdrsp2 >> 24);
-		((uint *)(cmd->response))[1] = (cmdrsp2 << 8) | (cmdrsp1 >> 24);
-		((uint *)(cmd->response))[2] = (cmdrsp1 << 8) | (cmdrsp0 >> 24);
-		((uint *)(cmd->response))[3] = (cmdrsp0 << 8);
+		cmd->response[0] = (cmdrsp3 << 8) | (cmdrsp2 >> 24);
+		cmd->response[1] = (cmdrsp2 << 8) | (cmdrsp1 >> 24);
+		cmd->response[2] = (cmdrsp1 << 8) | (cmdrsp0 >> 24);
+		cmd->response[3] = (cmdrsp0 << 8);
 	} else
-		((uint *)(cmd->response))[0] = in_be32(&regs->cmdrsp0);
+		cmd->response[0] = in_be32(&regs->cmdrsp0);
 
 	/* Wait until all of the blocks are transferred */
 	if (data) {
@@ -345,4 +347,21 @@ static int esdhc_initialize(bd_t *bis)
 int fsl_esdhc_mmc_init(bd_t *bis)
 {
 	return esdhc_initialize(bis);
+}
+
+void fdt_fixup_esdhc(void *blob, bd_t *bd)
+{
+	const char *compat = "fsl,esdhc";
+	const char *status = "okay";
+
+	if (!hwconfig("esdhc")) {
+		status = "disabled";
+		goto out;
+	}
+
+	do_fixup_by_compat_u32(blob, compat, "clock-frequency",
+			       gd->sdhc_clk, 1);
+out:
+	do_fixup_by_compat(blob, compat, "status", status,
+			   strlen(status) + 1, 1);
 }

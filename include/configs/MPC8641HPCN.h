@@ -36,6 +36,7 @@
 #define CONFIG_MPC86xx		1	/* MPC86xx */
 #define CONFIG_MPC8641		1	/* MPC8641 specific */
 #define CONFIG_MPC8641HPCN	1	/* MPC8641HPCN board specific */
+#define CONFIG_MP		1	/* support multiple processors */
 #define CONFIG_NUM_CPUS		2	/* Number of CPUs in the system */
 #define CONFIG_LINUX_RESET_VEC	0x100	/* Reset vector used by Linux */
 /*#define CONFIG_PHYS_64BIT	1*/	/* Place devices in 36-bit space */
@@ -223,6 +224,8 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define PIXIS_VCFGEN0		0x12	/* VELA Config Enable 0 */
 #define PIXIS_VCFGEN1		0x13	/* VELA Config Enable 1 */
 #define PIXIS_VBOOT		0x16	/* VELA VBOOT Register */
+#define PIXIS_VBOOT_FMAP	0x80	/* VBOOT - CFG_FLASHMAP */
+#define PIXIS_VBOOT_FBANK	0x40	/* VBOOT - CFG_FLASHBANK */
 #define PIXIS_VSPEED0		0x17	/* VELA VSpeed 0 */
 #define PIXIS_VSPEED1		0x18	/* VELA VSpeed 1 */
 #define PIXIS_VCLKH		0x19	/* VELA VCLKH register */
@@ -334,7 +337,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #define CONFIG_SYS_PCI1_MEM_VIRT	0x80000000
 #ifdef CONFIG_PHYS_64BIT
-#define CONFIG_SYS_PCI1_MEM_BUS		0xc0000000
+#define CONFIG_SYS_PCI1_MEM_BUS		0xe0000000
 #define CONFIG_SYS_PCI1_MEM_PHYS	0x0000000c00000000ULL
 #else
 #define CONFIG_SYS_PCI1_MEM_BUS		CONFIG_SYS_PCI1_MEM_VIRT
@@ -346,10 +349,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_SYS_PCI1_IO_PHYS	(CONFIG_SYS_PCI1_IO_VIRT \
 				 | CONFIG_SYS_PHYS_ADDR_HIGH)
 #define CONFIG_SYS_PCI1_IO_SIZE	0x00010000	/* 64K */
-
-/* For RTL8139 */
-#define KSEG1ADDR(x)		({u32 _x=le32_to_cpu(*(u32 *)(x)); (&_x);})
-#define _IO_BASE		0x00000000
 
 #ifdef CONFIG_PHYS_64BIT
 /*
@@ -394,7 +393,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define CONFIG_PCI_OHCI			1
 #define CONFIG_USB_OHCI_NEW		1
 #define CONFIG_USB_KEYBOARD		1
-#define CONFIG_SYS_DEVICE_DEREGISTER
+#define CONFIG_SYS_STDIO_DEREGISTER
 #define CONFIG_SYS_USB_EVENT_POLL		1
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"ohci_pci"
 #define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	15

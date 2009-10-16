@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Freescale Semiconductor, Inc.
+ * Copyright (C) 2007-2009 Freescale Semiconductor, Inc.
  *
  * Dave Liu <daveliu@freescale.com>
  *
@@ -29,8 +29,8 @@
  * High Level Configuration Options
  */
 #define CONFIG_E300		1 /* E300 family */
-#define CONFIG_MPC83XX		1 /* MPC83xx family */
-#define CONFIG_MPC831X		1 /* MPC831x CPU family */
+#define CONFIG_MPC83xx		1 /* MPC83xx family */
+#define CONFIG_MPC831x		1 /* MPC831x CPU family */
 #define CONFIG_MPC8315		1 /* MPC8315 CPU specific */
 #define CONFIG_MPC8315ERDB	1 /* MPC8315ERDB board specific */
 
@@ -72,6 +72,7 @@
 #define CONFIG_SYS_SICRL		0x00000000 /* 3.3V, no delay */
 
 #define CONFIG_BOARD_EARLY_INIT_F /* call board_pre_init */
+#define CONFIG_HWCONFIG
 
 /*
  * IMMR new address
@@ -226,6 +227,7 @@
 #define CONFIG_MTD_NAND_VERIFY_WRITE	1
 #define CONFIG_CMD_NAND			1
 #define CONFIG_NAND_FSL_ELBC		1
+#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 
 #define CONFIG_SYS_BR1_PRELIM	( CONFIG_SYS_NAND_BASE \
 				| (2<<BR_DECC_SHIFT)	/* Use HW ECC */ \
@@ -330,8 +332,7 @@
 #define CONFIG_SYS_PCIE2_IO_SIZE	0x00800000
 
 #define CONFIG_PCI
-#define CONFIG_83XX_GENERIC_PCI	1 /* Use generic PCI setup */
-#define CONFIG_83XX_GENERIC_PCIE	1
+#define CONFIG_PCIE
 
 #define CONFIG_NET_MULTI
 #define CONFIG_PCI_PNP		/* do pci plug-and-play */
@@ -345,6 +346,14 @@
 #endif
 
 #define CONFIG_HAS_FSL_DR_USB
+#define CONFIG_SYS_SCCR_USBDRCM		3
+
+#define CONFIG_CMD_USB
+#define CONFIG_USB_STORAGE
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_FSL
+#define CONFIG_USB_PHY_TYPE 	"utmi"
+#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 
 /*
  * TSEC
@@ -569,6 +578,7 @@
    "ramdiskfile=ramfs.83xx\0"						\
    "fdtaddr=400000\0"							\
    "fdtfile=mpc8315erdb.dtb\0"						\
+   "usb_phy_type=utmi\0"						\
    ""
 
 #define CONFIG_NFSBOOTCOMMAND						\

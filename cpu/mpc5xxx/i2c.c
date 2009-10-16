@@ -38,7 +38,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #error CONFIG_SYS_I2C_MODULE is not properly configured
 #endif
 
-#define I2C_TIMEOUT	100
+#define I2C_TIMEOUT	6667
 #define I2C_RETRIES	3
 
 struct mpc5xxx_i2c_tap {
@@ -94,7 +94,7 @@ static int wait_for_bb(void)
 		mpc_reg_out(&regs->mcr, 0, 0);
 		mpc_reg_out(&regs->mcr, I2C_EN, 0);
 #endif
-		udelay(1000);
+		udelay(15);
 		status = mpc_reg_in(&regs->msr);
 	}
 
@@ -109,7 +109,7 @@ static int wait_for_pin(int *status)
 	*status = mpc_reg_in(&regs->msr);
 
 	while (timeout-- && !(*status & I2C_IF)) {
-		udelay(1000);
+		udelay(15);
 		*status = mpc_reg_in(&regs->msr);
 	}
 
@@ -269,7 +269,8 @@ static int mpc_get_fdr(int speed)
 		if (gd->flags & GD_FLG_RELOC) {
 			fdr = divider;
 		} else {
-			printf("%ld kHz, ", best_speed / 1000);
+			if (gd->have_console)
+				printf("%ld kHz, ", best_speed / 1000);
 			return divider;
 		}
 	}
@@ -310,29 +311,34 @@ int i2c_read(uchar chip, uint addr, int alen, uchar *buf, int len)
 	xaddr[3] =  addr	& 0xFF;
 
 	if (wait_for_bb()) {
-		printf("i2c_read: bus is busy\n");
+		if (gd->have_console)
+			printf("i2c_read: bus is busy\n");
 		goto Done;
 	}
 
 	mpc_reg_out(&regs->mcr, I2C_STA, I2C_STA);
 	if (do_address(chip, 0)) {
-		printf("i2c_read: failed to address chip\n");
+		if (gd->have_console)
+			printf("i2c_read: failed to address chip\n");
 		goto Done;
 	}
 
 	if (send_bytes(chip, &xaddr[4-alen], alen)) {
-		printf("i2c_read: send_bytes failed\n");
+		if (gd->have_console)
+			printf("i2c_read: send_bytes failed\n");
 		goto Done;
 	}
 
 	mpc_reg_out(&regs->mcr, I2C_RSTA, I2C_RSTA);
 	if (do_address(chip, 1)) {
-		printf("i2c_read: failed to address chip\n");
+		if (gd->have_console)
+			printf("i2c_read: failed to address chip\n");
 		goto Done;
 	}
 
 	if (receive_bytes(chip, (char *)buf, len)) {
-		printf("i2c_read: receive_bytes failed\n");
+		if (gd->have_console)
+			printf("i2c_read: receive_bytes failed\n");
 		goto Done;
 	}
 
@@ -354,23 +360,27 @@ int i2c_write(uchar chip, uint addr, int alen, uchar *buf, int len)
 	xaddr[3] =  addr	& 0xFF;
 
 	if (wait_for_bb()) {
-		printf("i2c_write: bus is busy\n");
+		if (gd->have_console)
+			printf("i2c_write: bus is busy\n");
 		goto Done;
 	}
 
 	mpc_reg_out(&regs->mcr, I2C_STA, I2C_STA);
 	if (do_address(chip, 0)) {
-		printf("i2c_write: failed to address chip\n");
+		if (gd->have_console)
+			printf("i2c_write: failed to address chip\n");
 		goto Done;
 	}
 
 	if (send_bytes(chip, &xaddr[4-alen], alen)) {
-		printf("i2c_write: send_bytes failed\n");
+		if (gd->have_console)
+			printf("i2c_write: send_bytes failed\n");
 		goto Done;
 	}
 
 	if (send_bytes(chip, (char *)buf, len)) {
-		printf("i2c_write: send_bytes failed\n");
+		if (gd->have_console)
+			printf("i2c_write: send_bytes failed\n");
 		goto Done;
 	}
 

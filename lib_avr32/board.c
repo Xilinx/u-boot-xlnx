@@ -22,7 +22,7 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <timestamp.h>
 #include <version.h>
 #include <net.h>
@@ -47,6 +47,14 @@ unsigned long monitor_flash_len;
 static unsigned long mem_malloc_start = 0;
 static unsigned long mem_malloc_end = 0;
 static unsigned long mem_malloc_brk = 0;
+
+/* Weak aliases for optional board functions */
+static int __do_nothing(void)
+{
+	return 0;
+}
+int board_postclk_init(void) __attribute__((weak, alias("__do_nothing")));
+int board_early_init_r(void) __attribute__((weak, alias("__do_nothing")));
 
 /* The malloc area is right below the monitor image in RAM */
 static void mem_malloc_init(void)
@@ -78,7 +86,7 @@ void *sbrk(ptrdiff_t increment)
 }
 
 #ifdef CONFIG_SYS_DMA_ALLOC_LEN
-#include <asm/cacheflush.h>
+#include <asm/arch/cacheflush.h>
 #include <asm/io.h>
 
 static unsigned long dma_alloc_start;
@@ -188,6 +196,7 @@ void board_init_f(ulong board_type)
 	/* Perform initialization sequence */
 	board_early_init_f();
 	cpu_init();
+	board_postclk_init();
 	env_init();
 	init_baudrate();
 	serial_init();
@@ -229,6 +238,18 @@ void board_init_f(ulong board_type)
 	addr &= ~(CONFIG_SYS_DCACHE_LINESZ - 1);
 	addr -= CONFIG_SYS_DMA_ALLOC_LEN;
 #endif
+
+#ifdef CONFIG_LCD
+#ifdef CONFIG_FB_ADDR
+	printf("LCD: Frame buffer allocated at preset 0x%08x\n",
+	       CONFIG_FB_ADDR);
+	gd->fb_base = (void *)CONFIG_FB_ADDR;
+#else
+	addr = lcd_setmem(addr);
+	printf("LCD: Frame buffer allocated at 0x%08lx\n", addr);
+	gd->fb_base = (void *)addr;
+#endif /* CONFIG_FB_ADDR */
+#endif /* CONFIG_LCD */
 
 	/* Allocate a Board Info struct on a word boundary */
 	addr -= sizeof(bd_t);
@@ -275,6 +296,8 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 	gd->flags |= GD_FLG_RELOC;
 	gd->reloc_off = dest_addr - CONFIG_SYS_MONITOR_BASE;
 
+	board_early_init_r();
+
 	monitor_flash_len = _edata - _text;
 
 	/*
@@ -311,7 +334,6 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 	mem_malloc_init();
 	malloc_bin_reloc();
 	dma_alloc_init();
-	board_init_info();
 
 	enable_interrupts();
 
@@ -340,7 +362,7 @@ void board_init_r(gd_t *new_gd, ulong dest_addr)
 
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
 
-	devices_init();
+	stdio_init();
 	jumptable_init();
 	console_init_r();
 

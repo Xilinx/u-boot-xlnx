@@ -49,7 +49,7 @@
  * Hardware drivers
  */
 
-#define CONFIG_MX31_UART	1
+#define CONFIG_MXC_UART	1
 #define CONFIG_SYS_MX31_UART1	1
 
 /* FPGA */
@@ -212,7 +212,9 @@
 /*
  * JFFS2 partitions
  */
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE		/* needed for mtdparts commands */
+#define CONFIG_FLASH_CFI_MTD
 #define MTDIDS_DEFAULT		"nor0=physmap-flash.0"
 #define MTDPARTS_DEFAULT	\
 	"mtdparts=physmap-flash.0:256k(U-Boot),128k(env1),"	\

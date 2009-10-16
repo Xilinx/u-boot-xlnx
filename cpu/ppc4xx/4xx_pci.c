@@ -1,4 +1,6 @@
 /*-----------------------------------------------------------------------------+
+ *       This source code is dual-licensed.  You may use it under the terms of
+ *       the GNU General Public license version 2, or under the license below.
  *
  *       This source code has been made available to you by IBM on an AS-IS
  *       basis.  Anyone receiving this source is licensed under IBM
@@ -87,6 +89,20 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 int __pci_pre_init(struct pci_controller *hose)
 {
+#if defined (CONFIG_405EP)
+	/*
+	 * Enable the internal PCI arbiter by default.
+	 *
+	 * On 405EP CPUs the internal arbiter can be controlled
+	 * by the I2C strapping EEPROM. If you want to do so
+	 * or if you want to disable the arbiter pci_pre_init()
+	 * must be reimplemented without enabling the arbiter.
+	 * The arbiter is enabled in this place because of
+	 * compatibility reasons.
+	 */
+	mtdcr(cpc0_pci, mfdcr(cpc0_pci) | CPC0_PCI_ARBIT_EN);
+#endif /* CONFIG_405EP */
+
 	return 1;
 }
 int pci_pre_init(struct pci_controller *hose) __attribute__((weak, alias("__pci_pre_init")));
@@ -98,6 +114,19 @@ ushort pmc405_pci_subsys_deviceid(void);
 #endif
 
 /*#define DEBUG*/
+
+int __is_pci_host(struct pci_controller *hose)
+{
+#if defined(CONFIG_405GP)
+	if (mfdcr(strap) & PSR_PCI_ARBIT_EN)
+		return 1;
+#elif defined (CONFIG_405EP)
+	if (mfdcr(cpc0_pci) & CPC0_PCI_ARBIT_EN)
+		return 1;
+#endif
+	return 0;
+}
+int is_pci_host(struct pci_controller *hose) __attribute__((weak, alias("__is_pci_host")));
 
 /*-----------------------------------------------------------------------------+
  * pci_init.  Initializes the 405GP PCI Configuration regs.
@@ -270,7 +299,7 @@ void pci_405gp_init(struct pci_controller *hose)
 	 */
 	pci_write_config_word(PCIDEVID_405GP, PCI_SUBSYSTEM_VENDOR_ID, CONFIG_SYS_PCI_SUBSYS_VENDORID);
 #ifdef CONFIG_CPCI405
-	if (mfdcr(strap) & PSR_PCI_ARBIT_EN)
+	if (is_pci_host(hose))
 		pci_write_config_word(PCIDEVID_405GP, PCI_SUBSYSTEM_ID, CONFIG_SYS_PCI_SUBSYS_DEVICEID);
 	else
 		pci_write_config_word(PCIDEVID_405GP, PCI_SUBSYSTEM_ID, CONFIG_SYS_PCI_SUBSYS_DEVICEID2);
@@ -295,7 +324,7 @@ void pci_405gp_init(struct pci_controller *hose)
 
 #if (CONFIG_PCI_HOST != PCI_HOST_ADAPTER)
 #if (CONFIG_PCI_HOST == PCI_HOST_AUTO)
-	if ((mfdcr(strap) & PSR_PCI_ARBIT_EN) ||
+	if (is_pci_host(hose) ||
 	    (((s = getenv("pciscan")) != NULL) && (strcmp(s, "yes") == 0)))
 #endif
 	{
@@ -310,8 +339,15 @@ void pci_405gp_init(struct pci_controller *hose)
 	}
 #endif
 
-#if defined(CONFIG_405EP) /* on ppc405ep vendor id is not set */
-	pci_write_config_word(PCIDEVID_405GP, PCI_VENDOR_ID, 0x1014); /* IBM */
+#if defined(CONFIG_405EP)
+	/*
+	 * on ppc405ep vendor/device id is not set
+	 * The user manual says 0x1014 (IBM) / 0x0156 (405GP!)
+	 * are the correct values.
+	 */
+	pci_write_config_word(PCIDEVID_405GP, PCI_VENDOR_ID, PCI_VENDOR_ID_IBM);
+	pci_write_config_word(PCIDEVID_405GP,
+			      PCI_DEVICE_ID, PCI_DEVICE_ID_IBM_405GP);
 #endif
 
 	/*
@@ -325,7 +361,7 @@ void pci_405gp_init(struct pci_controller *hose)
 	 * Scan the PCI bus and configure devices found.
 	 *--------------------------------------------------------------------------*/
 #if (CONFIG_PCI_HOST == PCI_HOST_AUTO)
-	if ((mfdcr(strap) & PSR_PCI_ARBIT_EN) ||
+	if (is_pci_host(hose) ||
 	    (((s = getenv("pciscan")) != NULL) && (strcmp(s, "yes") == 0)))
 #endif
 	{
@@ -550,9 +586,11 @@ int pci_440_init (struct pci_controller *hose)
 	out32r( PCIX0_POM0SA, 0 ); /* disable */
 	out32r( PCIX0_POM1SA, 0 ); /* disable */
 	out32r( PCIX0_POM2SA, 0 ); /* disable */
-#if defined(CONFIG_440SPE) || \
-    defined(CONFIG_460EX) || defined(CONFIG_460GT)
+#if defined(CONFIG_440SPE)
 	out32r( PCIX0_POM0LAL, 0x10000000 );
+	out32r( PCIX0_POM0LAH, 0x0000000c );
+#elif defined(CONFIG_460EX) || defined(CONFIG_460GT)
+	out32r( PCIX0_POM0LAL, 0x20000000 );
 	out32r( PCIX0_POM0LAH, 0x0000000c );
 #else
 	out32r( PCIX0_POM0LAL, 0x00000000 );

@@ -30,7 +30,6 @@
 #include <common.h>
 #include <i2c.h>
 #include <asm/arch/hardware.h>
-#include "../common/psc.h"
 #include "../common/misc.h"
 
 #define DAVINCI_A3CR     (0x01E00014)	/* EMIF-A CS3 config register. */
@@ -132,8 +131,6 @@ int misc_init_r(void)
 	/* EMIF-A CS3 configuration for FPGA. */
 	REG(DAVINCI_A3CR) = DAVINCI_A3CR_VAL;
 
-	dv_display_clk_infos();
-
 	/* Configure I2C switch (PCA9543) to enable channel 0. */
 	i2cbuf = CONFIG_SYS_I2C_PCA9543_ENABLE_CH0;
 	if (i2c_write(CONFIG_SYS_I2C_PCA9543_ADDR, 0,
@@ -145,9 +142,6 @@ int misc_init_r(void)
 	/* Read Ethernet MAC address from EEPROM if available. */
 	if (sffsdr_read_mac_address(eeprom_enetaddr))
 		dv_configure_mac_address(eeprom_enetaddr);
-
-	if (!eth_hw_init())
-		printf("Ethernet init failed\n");
 
 	return(0);
 }

@@ -26,14 +26,17 @@
 #include <asm/arch/at91sam9261.h>
 #include <asm/arch/at91sam9261_matrix.h>
 #include <asm/arch/at91sam9_smc.h>
+#include <asm/arch/at91_common.h>
 #include <asm/arch/at91_pmc.h>
 #include <asm/arch/at91_rstc.h>
+#include <asm/arch/clk.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/io.h>
 #include <lcd.h>
 #include <atmel_lcdc.h>
 #if defined(CONFIG_RESET_PHY_R) && defined(CONFIG_DRIVER_DM9000)
 #include <net.h>
+#include <netdev.h>
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -42,33 +45,6 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Miscelaneous platform dependent initialisations
  */
-
-static void at91sam9261ek_serial_hw_init(void)
-{
-#ifdef CONFIG_USART0
-	at91_set_A_periph(AT91_PIN_PC8, 1);		/* TXD0 */
-	at91_set_A_periph(AT91_PIN_PC9, 0);		/* RXD0 */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_US0);
-#endif
-
-#ifdef CONFIG_USART1
-	at91_set_A_periph(AT91_PIN_PC12, 1);		/* TXD1 */
-	at91_set_A_periph(AT91_PIN_PC13, 0);		/* RXD1 */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_US1);
-#endif
-
-#ifdef CONFIG_USART2
-	at91_set_A_periph(AT91_PIN_PC14, 1);		/* TXD2 */
-	at91_set_A_periph(AT91_PIN_PC15, 0);		/* RXD2 */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_US2);
-#endif
-
-#ifdef CONFIG_USART3	/* DBGU */
-	at91_set_A_periph(AT91_PIN_PA9, 0);		/* DRXD */
-	at91_set_A_periph(AT91_PIN_PA10, 1);		/* DTXD */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91_ID_SYS);
-#endif
-}
 
 #ifdef CONFIG_CMD_NAND
 static void at91sam9261ek_nand_hw_init(void)
@@ -81,6 +57,16 @@ static void at91sam9261ek_nand_hw_init(void)
 		       csa | AT91_MATRIX_CS3A_SMC_SMARTMEDIA);
 
 	/* Configure SMC CS3 for NAND/SmartMedia */
+#ifdef CONFIG_AT91SAM9G10EK
+	at91_sys_write(AT91_SMC_SETUP(3),
+		       AT91_SMC_NWESETUP_(2) | AT91_SMC_NCS_WRSETUP_(0) |
+		       AT91_SMC_NRDSETUP_(2) | AT91_SMC_NCS_RDSETUP_(0));
+	at91_sys_write(AT91_SMC_PULSE(3),
+		       AT91_SMC_NWEPULSE_(3) | AT91_SMC_NCS_WRPULSE_(7) |
+		       AT91_SMC_NRDPULSE_(3) | AT91_SMC_NCS_RDPULSE_(7));
+	at91_sys_write(AT91_SMC_CYCLE(3),
+		       AT91_SMC_NWECYCLE_(7) | AT91_SMC_NRDCYCLE_(7));
+#else
 	at91_sys_write(AT91_SMC_SETUP(3),
 		       AT91_SMC_NWESETUP_(1) | AT91_SMC_NCS_WRSETUP_(0) |
 		       AT91_SMC_NRDSETUP_(1) | AT91_SMC_NCS_RDSETUP_(0));
@@ -89,6 +75,7 @@ static void at91sam9261ek_nand_hw_init(void)
 		       AT91_SMC_NRDPULSE_(3) | AT91_SMC_NCS_RDPULSE_(3));
 	at91_sys_write(AT91_SMC_CYCLE(3),
 		       AT91_SMC_NWECYCLE_(5) | AT91_SMC_NRDCYCLE_(5));
+#endif
 	at91_sys_write(AT91_SMC_MODE(3),
 		       AT91_SMC_READMODE | AT91_SMC_WRITEMODE |
 		       AT91_SMC_EXNWMODE_DISABLE |
@@ -102,27 +89,13 @@ static void at91sam9261ek_nand_hw_init(void)
 	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_PIOC);
 
 	/* Configure RDY/BSY */
-	at91_set_gpio_input(AT91_PIN_PC15, 1);
+	at91_set_gpio_input(CONFIG_SYS_NAND_READY_PIN, 1);
 
 	/* Enable NandFlash */
-	at91_set_gpio_output(AT91_PIN_PC14, 1);
+	at91_set_gpio_output(CONFIG_SYS_NAND_ENABLE_PIN, 1);
 
 	at91_set_A_periph(AT91_PIN_PC0, 0);	/* NANDOE */
 	at91_set_A_periph(AT91_PIN_PC1, 0);	/* NANDWE */
-}
-#endif
-
-#ifdef CONFIG_HAS_DATAFLASH
-static void at91sam9261ek_spi_hw_init(void)
-{
-	at91_set_A_periph(AT91_PIN_PA3, 0);	/* SPI0_NPCS0 */
-
-	at91_set_A_periph(AT91_PIN_PA0, 0);	/* SPI0_MISO */
-	at91_set_A_periph(AT91_PIN_PA1, 0);	/* SPI0_MOSI */
-	at91_set_A_periph(AT91_PIN_PA2, 0);	/* SPI0_SPCK */
-
-	/* Enable clock */
-	at91_sys_write(AT91_PMC_PCER, 1 << AT91SAM9261_ID_SPI0);
 }
 #endif
 
@@ -130,6 +103,21 @@ static void at91sam9261ek_spi_hw_init(void)
 static void at91sam9261ek_dm9000_hw_init(void)
 {
 	/* Configure SMC CS2 for DM9000 */
+#ifdef CONFIG_AT91SAM9G10EK
+	at91_sys_write(AT91_SMC_SETUP(2),
+		       AT91_SMC_NWESETUP_(3) | AT91_SMC_NCS_WRSETUP_(0) |
+		       AT91_SMC_NRDSETUP_(3) | AT91_SMC_NCS_RDSETUP_(0));
+	at91_sys_write(AT91_SMC_PULSE(2),
+		       AT91_SMC_NWEPULSE_(6) | AT91_SMC_NCS_WRPULSE_(8) |
+		       AT91_SMC_NRDPULSE_(6) | AT91_SMC_NCS_RDPULSE_(8));
+	at91_sys_write(AT91_SMC_CYCLE(2),
+		       AT91_SMC_NWECYCLE_(20) | AT91_SMC_NRDCYCLE_(20));
+	at91_sys_write(AT91_SMC_MODE(2),
+		       AT91_SMC_READMODE | AT91_SMC_WRITEMODE |
+		       AT91_SMC_EXNWMODE_DISABLE |
+		       AT91_SMC_BAT_WRITE | AT91_SMC_DBW_16 |
+		       AT91_SMC_TDF_(1));
+#else
 	at91_sys_write(AT91_SMC_SETUP(2),
 		       AT91_SMC_NWESETUP_(2) | AT91_SMC_NCS_WRSETUP_(0) |
 		       AT91_SMC_NRDSETUP_(2) | AT91_SMC_NCS_RDSETUP_(0));
@@ -143,6 +131,7 @@ static void at91sam9261ek_dm9000_hw_init(void)
 		       AT91_SMC_EXNWMODE_DISABLE |
 		       AT91_SMC_BAT_WRITE | AT91_SMC_DBW_16 |
 		       AT91_SMC_TDF_(1));
+#endif
 
 	/* Configure Reset signal as output */
 	at91_set_gpio_output(AT91_PIN_PC10, 0);
@@ -207,7 +196,11 @@ static void at91sam9261ek_lcd_hw_init(void)
 
 	at91_sys_write(AT91_PMC_SCER, AT91_PMC_HCK1);
 
+#ifdef CONFIG_AT91SAM9G10EK
+	gd->fb_base = CONFIG_AT91SAM9G10_LCD_BASE;
+#else
 	gd->fb_base = AT91SAM9261_SRAM_BASE;
+#endif
 }
 
 #ifdef CONFIG_LCD_INFO
@@ -225,7 +218,7 @@ void lcd_show_board_info(void)
 	lcd_printf ("at91support@atmel.com\n");
 	lcd_printf ("%s CPU at %s MHz\n",
 		AT91_CPU_NAME,
-		strmhz(temp, AT91_CPU_CLOCK));
+		strmhz(temp, get_cpu_clk_rate()));
 
 	dram_size = 0;
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++)
@@ -245,17 +238,22 @@ int board_init(void)
 	/* Enable Ctrlc */
 	console_init_f();
 
+#ifdef CONFIG_AT91SAM9G10EK
+	/* arch number of AT91SAM9G10EK-Board */
+	gd->bd->bi_arch_number = MACH_TYPE_AT91SAM9G10EK;
+#else
 	/* arch number of AT91SAM9261EK-Board */
 	gd->bd->bi_arch_number = MACH_TYPE_AT91SAM9261EK;
+#endif
 	/* adress of boot parameters */
 	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
 
-	at91sam9261ek_serial_hw_init();
+	at91_serial_hw_init();
 #ifdef CONFIG_CMD_NAND
 	at91sam9261ek_nand_hw_init();
 #endif
 #ifdef CONFIG_HAS_DATAFLASH
-	at91sam9261ek_spi_hw_init();
+	at91_spi0_hw_init(1 << 0);
 #endif
 #ifdef CONFIG_DRIVER_DM9000
 	at91sam9261ek_dm9000_hw_init();
@@ -266,6 +264,12 @@ int board_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_DRIVER_DM9000
+ int board_eth_init(bd_t *bis)
+ {
+	return dm9000_initialize(bis);
+ }
+ #endif
 int dram_init(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM;

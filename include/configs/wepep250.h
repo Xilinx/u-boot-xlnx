@@ -27,10 +27,13 @@
 #define CONFIG_WEPEP250        1        /* config for wepep250 board */
 #undef  CONFIG_USE_IRQ                  /* don't need use IRQ/FIQ    */
 
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
 
 /*
  * Select serial console configuration
  */
+#define CONFIG_PXA_SERIAL
 #define CONFIG_BTUART          1       /* BTUART is default on WEP dev board */
 #define CONFIG_BAUDRATE   115200
 
@@ -49,10 +52,10 @@
  */
 #include <config_cmd_default.h>
 
-#undef CONFIG_CMD_NET
-#undef CONFIG_CMD_LOADS
 #undef CONFIG_CMD_CONSOLE
-#undef CONFIG_CMD_AUTOSCRIPT
+#undef CONFIG_CMD_LOADS
+#undef CONFIG_CMD_NET
+#undef CONFIG_CMD_SOURCE
 
 
 /*
@@ -78,8 +81,6 @@
 
 #define CONFIG_SYS_MEMTEST_START       0xa0400000            /* memtest test area   */
 #define CONFIG_SYS_MEMTEST_END         0xa0800000
-
-#undef  CONFIG_SYS_CLKS_IN_HZ                       /* use HZ for freq. display     */
 
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_CPUSPEED            0x141        /* core clock - register value  */

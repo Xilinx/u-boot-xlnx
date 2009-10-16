@@ -25,6 +25,7 @@
 
 #include <asm/arch/clk.h>
 #include <asm/arch/memory-map.h>
+#include <asm/arch/portmux.h>
 
 #include "sm.h"
 
@@ -64,5 +65,34 @@ void clk_init(void)
 #ifdef CONFIG_PLL
 	/* Use PLL0 as main clock */
 	sm_writel(PM_MCCTRL, SM_BIT(PLLSEL));
+
+#ifdef CONFIG_LCD
+	/* Set up pixel clock for the LCDC */
+	sm_writel(PM_GCCTRL(7), SM_BIT(PLLSEL) | SM_BIT(CEN));
 #endif
+#endif
+}
+
+unsigned long __gclk_set_rate(unsigned int id, enum gclk_parent parent,
+		unsigned long rate, unsigned long parent_rate)
+{
+	unsigned long divider;
+
+	if (rate == 0 || parent_rate == 0) {
+		sm_writel(PM_GCCTRL(id), 0);
+		return 0;
+	}
+
+	divider = (parent_rate + rate / 2) / rate;
+	if (divider <= 1) {
+		sm_writel(PM_GCCTRL(id), parent | SM_BIT(CEN));
+		rate = parent_rate;
+	} else {
+		divider = min(255, divider / 2 - 1);
+		sm_writel(PM_GCCTRL(id), parent | SM_BIT(CEN) | SM_BIT(DIVEN)
+				| SM_BF(DIV, divider));
+		rate = parent_rate / (2 * (divider + 1));
+	}
+
+	return rate;
 }

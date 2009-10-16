@@ -46,11 +46,6 @@
  */
 #define CONFIG_SYS_USE_MAIN_OSCILLATOR		1
 /* flash */
-#define CONFIG_SYS_MC_PUIA_VAL	0x00000000
-#define CONFIG_SYS_MC_PUP_VAL	0x00000000
-#define CONFIG_SYS_MC_PUER_VAL	0x00000000
-#define CONFIG_SYS_MC_ASR_VAL	0x00000000
-#define CONFIG_SYS_MC_AASR_VAL	0x00000000
 #define CONFIG_SYS_EBI_CFGR_VAL	0x00000000
 #define CONFIG_SYS_SMC_CSR0_VAL	0x00003284 /* 16bit, 2 TDF, 4 WS */
 
@@ -110,6 +105,7 @@
 #define CONFIG_CMC_PU2
 
 /* define one of these to choose the DBGU, USART0  or USART1 as console */
+#define CONFIG_AT91RM9200_USART
 #define CONFIG_DBGU
 #undef CONFIG_USART0
 #undef CONFIG_USART1
@@ -161,11 +157,6 @@
 #define CONFIG_SYS_PROMPT_HUSH_PS2	    ">>"
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	0 /* Max number of NAND devices */
-#define SECTORSIZE			     512
-
-#define ADDR_COLUMN		1
-#define ADDR_PAGE		2
-#define ADDR_COLUMN_PAGE	3
 
 #define CONFIG_NR_DRAM_BANKS	1
 #define PHYS_SDRAM		0x20000000

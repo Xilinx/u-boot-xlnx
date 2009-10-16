@@ -1,6 +1,6 @@
 #
 # (C) Copyright 2002
-# Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
+# Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
 # David Mueller, ELSOFT AG, <d.mueller@elsoft.ch>
 #
 # (C) Copyright 2008
@@ -28,3 +28,5 @@ TEXT_BASE = $(RAM_TEXT)
 else
 TEXT_BASE = 0
 endif
+
+LDSCRIPT := $(SRCTREE)/board/$(BOARDDIR)/u-boot-nand.lds

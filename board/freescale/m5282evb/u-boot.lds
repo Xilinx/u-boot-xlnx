@@ -61,7 +61,7 @@ SECTIONS
     lib_generic/vsprintf.o	(.text)
     lib_generic/crc32.o	(.text)
 
-    . = env_offset;
+    . = DEFINED(env_offset) ? env_offset : .;
     common/env_embedded.o(.text)
 
     *(.text)
@@ -72,8 +72,7 @@ SECTIONS
   PROVIDE (etext = .);
   .rodata    :
   {
-    *(.rodata)
-    *(.rodata1)
+    *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
   }
   .fini      : { *(.fini)    } =0
   .ctors     : { *(.ctors)   }

@@ -36,7 +36,7 @@
  * e.g. bootp/tftp download of the kernel is a far more convenient
  * when testing new kernels on this target. However the ADS GCPlus Linux
  * boot ROM leaves the MMU enabled when it passes control to U-Boot. So
- * we use lowlevel_init (CONFIG_INIT_CRITICAL) to remedy that problem.
+ * we use lowlevel_init (!CONFIG_SKIP_LOWLEVEL_INIT) to remedy that problem.
  */
 #undef  CONFIG_SKIP_LOWLEVEL_INIT
 #define CONFIG_SKIP_RELOCATE_UBOOT	1
@@ -49,6 +49,8 @@
 #define CONFIG_GCPLUS		1	/* on an ADS GCPlus Board      */
 
 #undef CONFIG_USE_IRQ			/* we don't need IRQ/FIQ stuff */
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
 
 #define CONFIG_CMDLINE_TAG	 1	/* enable passing of ATAGs	*/
 #define CONFIG_SETUP_MEMORY_TAGS 1
@@ -70,6 +72,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_SA1100_SERIAL
 #define CONFIG_SERIAL3          1	/* we use SERIAL 3 on ADS GCPlus */
 
 /* allow to overwrite serial and ethaddr */
@@ -117,8 +120,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0xc0400000	/* memtest works on	*/
 #define CONFIG_SYS_MEMTEST_END		0xc0800000	/* 4 ... 8 MB in DRAM	*/
-
-#undef  CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, in Hz */
 
 #define	CONFIG_SYS_LOAD_ADDR		0xc0000000	/* default load address	*/
 

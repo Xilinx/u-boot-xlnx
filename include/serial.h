@@ -24,7 +24,8 @@ extern struct serial_device * default_serial_console (void);
 
 #if defined(CONFIG_405GP) || defined(CONFIG_405CR) || defined(CONFIG_440) || \
     defined(CONFIG_405EP) || defined(CONFIG_405EZ) || defined(CONFIG_405EX) || \
-    defined(CONFIG_MPC5xxx)
+    defined(CONFIG_MPC5xxx) || defined(CONFIG_MPC83xx) || \
+    defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx)
 extern struct serial_device serial0_device;
 extern struct serial_device serial1_device;
 #if defined(CONFIG_SYS_NS16550_SERIAL)
@@ -42,12 +43,19 @@ extern struct serial_device s3c24xx_serial1_device;
 extern struct serial_device s3c24xx_serial2_device;
 #endif
 
+#if defined(CONFIG_OMAP3_ZOOM2)
+extern struct serial_device zoom2_serial_device0;
+extern struct serial_device zoom2_serial_device1;
+extern struct serial_device zoom2_serial_device2;
+extern struct serial_device zoom2_serial_device3;
+#endif
+
 extern struct serial_device serial_ffuart_device;
 extern struct serial_device serial_btuart_device;
 extern struct serial_device serial_stuart_device;
 
 extern void serial_initialize(void);
-extern void serial_devices_init(void);
+extern void serial_stdio_init(void);
 extern int serial_assign(char * name);
 extern void serial_reinit_all(void);
 

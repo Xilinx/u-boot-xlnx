@@ -33,11 +33,6 @@
 # include <status_led.h>
 #endif
 
-#if defined(CONFIG_CMD_NAND)
-#include <linux/mtd/nand_legacy.h>
-extern struct nand_chip nand_dev_desc[CONFIG_SYS_MAX_NAND_DEVICE];
-#endif
-
 DECLARE_GLOBAL_DATA_PTR;
 
 #define ORMASK(size) ((-size) & OR_AM_MSK)
@@ -260,10 +255,8 @@ int misc_init_r (void)
 {
 	volatile immap_t     *immap = (immap_t *)CONFIG_SYS_IMMR;
 	volatile memctl8xx_t *memctl = &immap->im_memctl;
-	char* s;
-	char* e;
-	int reg;
 	bd_t *bd = gd->bd;
+	uchar enetaddr[6];
 
 	memctl->memc_or2 = NVRAM_OR_PRELIM;
 	memctl->memc_br2 = NVRAM_BR_VALUE;
@@ -315,13 +308,9 @@ int misc_init_r (void)
 	 * is present it gets a unique address, otherwise it
 	 * shares the FEC address.
 	 */
-	s = getenv("eth1addr");
-	if (s == NULL)
-		s = getenv("ethaddr");
-	for (reg=0; reg<6; ++reg) {
-		bd->bi_enet1addr[reg] = s ? simple_strtoul(s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e+1 : e;
+	if (!eth_getenv_enetaddr("eth1addr", enetaddr)) {
+		eth_getenv_enetaddr("ethaddr", enetaddr);
+		eth_setenv_enetaddr("eth1addr", enetaddr);
 	}
 
 	return (0);

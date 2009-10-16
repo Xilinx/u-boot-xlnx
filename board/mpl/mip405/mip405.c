@@ -68,6 +68,7 @@
 #include <4xx_i2c.h>
 #include <miiphy.h>
 #include "../common/common_util.h"
+#include <stdio_dev.h>
 #include <i2c.h>
 #include <rtc.h>
 
@@ -687,7 +688,7 @@ int misc_init_r (void)
 	start=get_timer(0);
 	/* if MIP405 has booted from PCI, reset CCR0[24] as described in errata PCI_18 */
 	if (mfdcr(strap) & PSR_ROM_LOC)
-	       mtspr(ccr0, (mfspr(ccr0) & ~0x80));
+	       mtspr(SPRN_CCR0, (mfspr(SPRN_CCR0) & ~0x80));
 
 	return (0);
 }
@@ -735,7 +736,7 @@ int last_stage_init (void)
 		printf ("Error writing to the PHY\n");
 	}
 	print_mip405_rev ();
-	show_stdio_dev ();
+	stdio_print_current_devices ();
 	check_env ();
 	/* check if RTC time is valid */
 	stop=get_timer(start);

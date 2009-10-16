@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2000-2006
+ * (C) Copyright 2000-2009
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *
  * See file CREDITS for list of people who contributed to this
@@ -30,7 +30,7 @@
 #include <command.h>
 #include <image.h>
 #include <malloc.h>
-#include <zlib.h>
+#include <u-boot/zlib.h>
 #include <bzlib.h>
 #include <environment.h>
 #include <lmb.h>
@@ -52,9 +52,8 @@
 #endif
 
 #ifdef CONFIG_LZMA
-#define _7ZIP_BYTE_DEFINED /* Byte already defined by zlib */
 #include <lzma/LzmaTypes.h>
-#include <lzma/LzmaDecode.h>
+#include <lzma/LzmaDec.h>
 #include <lzma/LzmaTools.h>
 #endif /* CONFIG_LZMA */
 
@@ -390,7 +389,7 @@ static int bootm_load_os(image_info_t os, ulong *load_end, int boot_progress)
 		int ret = lzmaBuffToBuffDecompress(
 			(unsigned char *)load, &unc_len,
 			(unsigned char *)image_start, image_len);
-		if (ret != LZMA_RESULT_OK) {
+		if (ret != SZ_OK) {
 			printf ("LZMA: uncompress or overwrite error %d "
 				"- must RESET board to recover\n", ret);
 			show_boot_progress (-6);
@@ -414,6 +413,24 @@ static int bootm_load_os(image_info_t os, ulong *load_end, int boot_progress)
 
 		return BOOTM_ERR_OVERLAP;
 	}
+
+	return 0;
+}
+
+static int bootm_start_standalone(ulong iflag, int argc, char *argv[])
+{
+	char  *s;
+	int   (*appl)(int, char *[]);
+
+	/* Don't start if "autostart" is set to "no" */
+	if (((s = getenv("autostart")) != NULL) && (strcmp(s, "no") == 0)) {
+		char buf[32];
+		sprintf(buf, "%lX", images.os.image_len);
+		setenv("filesize", buf);
+		return 0;
+	}
+	appl = (int (*)(int, char *[]))ntohl(images.ep);
+	(*appl)(argc-1, &argv[1]);
 
 	return 0;
 }
@@ -549,7 +566,8 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (!relocated) {
 		int i;
 		for (i = 0; i < ARRAY_SIZE(boot_os); i++)
-			boot_os[i] += gd->reloc_off;
+			if (boot_os[i] != NULL)
+				boot_os[i] += gd->reloc_off;
 		relocated = 1;
 	}
 
@@ -629,6 +647,14 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 
 	lmb_reserve(&images.lmb, images.os.load, (load_end - images.os.load));
 
+	if (images.os.type == IH_TYPE_STANDALONE) {
+		if (iflag)
+			enable_interrupts();
+		/* This may return when 'autostart' is 'no' */
+		bootm_start_standalone(iflag, argc, argv);
+		return 0;
+	}
+
 	show_boot_progress (8);
 
 #ifdef CONFIG_SILENT_CONSOLE
@@ -637,6 +663,16 @@ int do_bootm (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 #endif
 
 	boot_fn = boot_os[images.os.os];
+
+	if (boot_fn == NULL) {
+		if (iflag)
+			enable_interrupts();
+		printf ("ERROR: booting os '%s' (%d) is not supported\n",
+			genimg_get_os_name(images.os.os), images.os.os);
+		show_boot_progress (-8);
+		return 1;
+	}
+
 	boot_fn(0, argc, argv, &images);
 
 	show_boot_progress (-9);
@@ -818,6 +854,13 @@ static void *boot_get_kernel (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]
 		case IH_TYPE_MULTI:
 			image_multi_getimg (hdr, 0, os_data, os_len);
 			break;
+		case IH_TYPE_STANDALONE:
+			if (argc >2) {
+				hdr->ih_load = htonl(simple_strtoul(argv[2], NULL, 16));
+			}
+			*os_data = image_get_data (hdr);
+			*os_len = image_get_data_size (hdr);
+			break;
 		default:
 			printf ("Wrong Image Type for %s command\n", cmdtp->name);
 			show_boot_progress (-5);
@@ -948,7 +991,7 @@ U_BOOT_CMD(
 	"\tbdt     - OS specific bd_t processing\n"
 	"\tcmdline - OS specific command line processing/setup\n"
 	"\tprep    - OS specific prep before relocation or go\n"
-	"\tgo      - start OS\n"
+	"\tgo      - start OS"
 );
 
 /*******************************************************************/
@@ -973,14 +1016,14 @@ int do_bootd (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	boot,	1,	1,	do_bootd,
 	"boot default, i.e., run 'bootcmd'",
-	NULL
+	""
 );
 
 /* keep old command name "bootd" for backward compatibility */
 U_BOOT_CMD(
 	bootd, 1,	1,	do_bootd,
 	"boot default, i.e., run 'bootcmd'",
-	NULL
+	""
 );
 
 #endif
@@ -1068,7 +1111,7 @@ U_BOOT_CMD(
 	"addr [addr ...]\n"
 	"    - print header information for application image starting at\n"
 	"      address 'addr' in memory; this includes verification of the\n"
-	"      image contents (magic number, header and payload checksums)\n"
+	"      image contents (magic number, header and payload checksums)"
 );
 #endif
 
@@ -1135,7 +1178,7 @@ U_BOOT_CMD(
 	"list all images found in flash",
 	"\n"
 	"    - Prints information about all images found at sector\n"
-	"      boundaries in flash.\n"
+	"      boundaries in flash."
 );
 #endif
 

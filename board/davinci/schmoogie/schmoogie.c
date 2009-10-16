@@ -27,7 +27,6 @@
 #include <common.h>
 #include <i2c.h>
 #include <asm/arch/hardware.h>
-#include "../common/psc.h"
 #include "../common/misc.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -105,8 +104,6 @@ int misc_init_r(void)
 			0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35
 		};
 
-	dv_display_clk_infos();
-
 	/* Set serial number from UID chip */
 	if (i2c_read(CONFIG_SYS_UID_ADDR, 0, 1, buf, 8)) {
 		printf("\nUID @ 0x%02x read FAILED!!!\n", CONFIG_SYS_UID_ADDR);
@@ -132,9 +129,6 @@ int misc_init_r(void)
 			buf[6], buf[5], buf[4], buf[3], buf[2], buf[1]);
 		forceenv("serial#", (char *)&tmp[0]);
 	}
-
-	if (!eth_hw_init())
-		printf("ethernet init failed!\n");
 
 	return(0);
 }

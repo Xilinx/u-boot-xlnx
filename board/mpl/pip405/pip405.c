@@ -28,6 +28,7 @@
 #include "pip405.h"
 #include <asm/processor.h>
 #include <i2c.h>
+#include <stdio_dev.h>
 #include "../common/isa.h"
 #include "../common/common_util.h"
 
@@ -668,7 +669,7 @@ int misc_init_r (void)
 
 	/* if PIP405 has booted from PCI, reset CCR0[24] as described in errata PCI_18 */
 	if (mfdcr(strap) & PSR_ROM_LOC)
-	       mtspr(ccr0, (mfspr(ccr0) & ~0x80));
+	       mtspr(SPRN_CCR0, (mfspr(SPRN_CCR0) & ~0x80));
 
 	return (0);
 }
@@ -705,7 +706,7 @@ int last_stage_init (void)
 {
 	print_pip405_rev ();
 	isa_init ();
-	show_stdio_dev ();
+	stdio_print_current_devices ();
 	check_env();
 	return 0;
 }

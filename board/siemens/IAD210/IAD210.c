@@ -23,6 +23,7 @@
 
 #include <common.h>
 #include <mpc8xx.h>
+#include <net.h>
 #include "atm.h"
 #include <i2c.h>
 
@@ -258,7 +259,7 @@ int board_early_init_f (void)
 	return 0;
 }
 
-void board_get_enetaddr (uchar * addr)
+static void board_get_enetaddr(uchar *addr)
 {
 	int i;
 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
@@ -283,4 +284,16 @@ void board_get_enetaddr (uchar * addr)
 		i2c_reg_read (0xa0, 0), i2c_reg_read (0xa0, 0));
 
 	cpm->cp_rccr = rccrtmp;
+}
+
+int misc_init_r(void)
+{
+	uchar enetaddr[6];
+
+	if (!eth_getenv_enetaddr("ethaddr", enetaddr)) {
+		board_get_enetaddr(enetaddr);
+		eth_setenv_enetaddr("ethaddr", enetaddr);
+	}
+
+	return 0;
 }

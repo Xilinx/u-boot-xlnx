@@ -84,11 +84,19 @@
 # endif
 #endif /* CONFIG_ENV_IS_IN_NAND */
 
-#ifdef USE_HOSTCC
-# include <stdint.h>
-#else
-# include <linux/types.h>
-#endif
+#if defined(CONFIG_ENV_IS_IN_MG_DISK)
+# ifndef CONFIG_ENV_ADDR
+#  error "Need to define CONFIG_ENV_ADDR when using CONFIG_ENV_IS_IN_MG_DISK"
+# endif
+# ifndef CONFIG_ENV_SIZE
+#  error "Need to define CONFIG_ENV_SIZE when using CONFIG_ENV_IS_IN_MG_DISK"
+# endif
+# ifdef CONFIG_ENV_IS_EMBEDDED
+#  error "CONFIG_ENV_IS_EMBEDDED not supported when using CONFIG_ENV_IS_IN_MG_DISK"
+# endif
+#endif /* CONFIG_ENV_IS_IN_MG_DISK */
+
+#include "compiler.h"
 
 #ifdef CONFIG_SYS_REDUNDAND_ENVIRONMENT
 # define ENV_HEADER_SIZE	(sizeof(uint32_t) + 1)

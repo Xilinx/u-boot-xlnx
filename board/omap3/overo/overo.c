@@ -29,16 +29,17 @@
  * MA 02111-1307 USA
  */
 #include <common.h>
+#include <twl4030.h>
 #include <asm/io.h>
 #include <asm/arch/mux.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-types.h>
 #include "overo.h"
 
-/******************************************************************************
+/*
  * Routine: board_init
  * Description: Early hardware init.
- *****************************************************************************/
+ */
 int board_init(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
@@ -52,23 +53,26 @@ int board_init(void)
 	return 0;
 }
 
-/******************************************************************************
+/*
  * Routine: misc_init_r
  * Description: Configure board specific parts
- *****************************************************************************/
+ */
 int misc_init_r(void)
 {
-	power_init_r();
+	twl4030_power_init();
+	twl4030_led_init();
+
+	dieid_num_r();
 
 	return 0;
 }
 
-/******************************************************************************
+/*
  * Routine: set_muxconf_regs
  * Description: Setting up the configuration Mux registers specific to the
  *		hardware. Many pins need to be moved from protect to primary
  *		mode.
- *****************************************************************************/
+ */
 void set_muxconf_regs(void)
 {
 	MUX_OVERO();

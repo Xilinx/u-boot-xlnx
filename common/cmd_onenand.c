@@ -19,6 +19,10 @@
 
 #include <asm/io.h>
 
+#if !defined(CONFIG_SYS_64BIT_VSPRINTF)
+#warning Please define CONFIG_SYS_64BIT_VSPRINTF for correct output!
+#endif
+
 static struct mtd_info *mtd;
 
 static loff_t next_ofs;
@@ -53,7 +57,7 @@ static int arg_off_size(int argc, char *argv[], ulong *off, size_t *size)
 	}
 
 	if ((*off + *size) > mtd->size) {
-		printf("total chip size (0x%x) exceeded!\n", mtd->size);
+		printf("total chip size (0x%llx) exceeded!\n", mtd->size);
 		return -1;
 	}
 
@@ -336,7 +340,7 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	int blocksize;
 	ulong addr, ofs;
 	size_t len, retlen = 0;
-	int ret;
+	int ret = 0;
 	char *cmd, *s;
 
 	mtd = &onenand_mtd;
@@ -430,18 +434,29 @@ int do_onenand(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 		}
 
 		if (strcmp(cmd, "markbad") == 0) {
-			addr = (ulong)simple_strtoul(argv[2], NULL, 16);
+			argc -= 2;
+			argv += 2;
 
-			int ret = mtd->block_markbad(mtd, addr);
-			if (ret == 0) {
-				printf("block 0x%08lx successfully marked as bad\n",
-						(ulong) addr);
-				return 0;
-			} else {
-				printf("block 0x%08lx NOT marked as bad! ERROR %d\n",
-						(ulong) addr, ret);
+			if (argc <= 0)
+				goto usage;
+
+			while (argc > 0) {
+				addr = simple_strtoul(*argv, NULL, 16);
+
+				if (mtd->block_markbad(mtd, addr)) {
+					printf("block 0x%08lx NOT marked "
+						"as bad! ERROR %d\n",
+						addr, ret);
+					ret = 1;
+				} else {
+					printf("block 0x%08lx successfully "
+						"marked as bad\n",
+						addr);
+				}
+				--argc;
+				++argv;
 			}
-			return 1;
+			return ret;
 		}
 
 		if (strncmp(cmd, "dump", 4) == 0) {
@@ -470,7 +485,7 @@ usage:
 }
 
 U_BOOT_CMD(
-	onenand,	6,	1,	do_onenand,
+	onenand,	CONFIG_SYS_MAXARGS,	1,	do_onenand,
 	"OneNAND sub-system",
 	"info - show available OneNAND devices\n"
 	"onenand bad - show bad blocks\n"
@@ -482,5 +497,5 @@ U_BOOT_CMD(
 	"onenand test [off size] - test 'size' bytes from\n"
 	"    offset 'off' (entire device if not specified)\n"
 	"onenand dump[.oob] off - dump page\n"
-	"onenand markbad off - mark bad block at offset (UNSAFE)\n"
+	"onenand markbad off [...] - mark bad block(s) at offset (UNSAFE)"
 );

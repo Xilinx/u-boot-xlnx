@@ -22,7 +22,7 @@
  */
 #define CONFIG_E300		1 /* E300 family */
 #define CONFIG_QE		1 /* Has QE */
-#define CONFIG_MPC83XX		1 /* MPC83XX family */
+#define CONFIG_MPC83xx		1 /* MPC83xx family */
 #define CONFIG_MPC8360		1 /* MPC8360 CPU specific */
 #define CONFIG_MPC8360ERDK	1 /* MPC8360ERDK board specific */
 
@@ -162,7 +162,7 @@
 #undef	CONFIG_SYS_RAMBOOT
 #endif
 
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024) /* Reserve 384 kB for Mon */
 #define CONFIG_SYS_MALLOC_LEN		(128 * 1024) /* Reserved for malloc */
 
 /*
@@ -212,6 +212,7 @@
 #define CONFIG_NAND_FSL_UPM	1
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
+#define CONFIG_SYS_64BIT_VSPRINTF	/* needed for nand_util.c */
 
 #define CONFIG_SYS_LBLAWBAR1_PRELIM	CONFIG_SYS_NAND_BASE
 #define CONFIG_SYS_LBLAWAR1_PRELIM	0x8000001b /* Access window size 4K */
@@ -265,7 +266,6 @@
 #undef	CONFIG_SOFT_I2C		/* I2C bit-banged */
 #define CONFIG_FSL_I2C
 #define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_CMD_TREE
 #define CONFIG_SYS_I2C_SPEED	400000	/* I2C speed and slave address */
 #define CONFIG_SYS_I2C_SLAVE	0x7F
 #define CONFIG_SYS_I2C_NOPROBES	{{0x52}} /* Don't probe these addrs */
@@ -277,7 +277,6 @@
  * Addresses are mapped 1-1.
  */
 #define CONFIG_PCI
-#define CONFIG_83XX_GENERIC_PCI	1
 
 #define CONFIG_SYS_PCI1_MEM_BASE	0x80000000
 #define CONFIG_SYS_PCI1_MEM_PHYS	CONFIG_SYS_PCI1_MEM_BASE
@@ -339,7 +338,7 @@
 
 #ifndef CONFIG_SYS_RAMBOOT
 #define CONFIG_ENV_IS_IN_FLASH	1
-#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + 0x40000)
+#define CONFIG_ENV_ADDR		(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
 #define CONFIG_ENV_SECT_SIZE	0x20000 /* 128K(one sector) for env */
 #define CONFIG_ENV_SIZE		0x20000
 #else /* CONFIG_SYS_RAMBOOT */

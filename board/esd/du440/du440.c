@@ -310,8 +310,8 @@ int misc_init_r(void)
 
 int pld_revision(void)
 {
-	out8(CONFIG_SYS_CPLD_BASE, 0x00);
-	return (int)(in8(CONFIG_SYS_CPLD_BASE) & CPLD_VERSION_MASK);
+	out_8((void *)CONFIG_SYS_CPLD_BASE, 0x00);
+	return (int)(in_8((void *)CONFIG_SYS_CPLD_BASE) & CPLD_VERSION_MASK);
 }
 
 int board_revision(void)
@@ -607,8 +607,8 @@ int do_dcf77(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	dcf77, 1, 1, do_dcf77,
 	"Check DCF77 receiver",
-	NULL
-	);
+	""
+);
 
 /*
  * initialize USB hub via I2C1
@@ -657,8 +657,8 @@ int do_hubinit(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	hubinit, 1, 1, do_hubinit,
 	"Initialize USB hub",
-	NULL
-	);
+	""
+);
 #endif /* CONFIG_I2C_MULTI_BUS */
 
 #define CONFIG_SYS_BOOT_EEPROM_PAGE_WRITE_BITS 3
@@ -790,8 +790,8 @@ int do_setup_boot_eeprom(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	sbe, 2, 0, do_setup_boot_eeprom,
 	"setup boot eeprom",
-	NULL
-	);
+	""
+);
 
 #if defined(CONFIG_SYS_EEPROM_WREN)
 /*
@@ -863,8 +863,9 @@ int do_eep_wren (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(eepwren, 2, 0, do_eep_wren,
-	   "Enable / disable / query EEPROM write access",
-	   NULL);
+	"Enable / disable / query EEPROM write access",
+	""
+);
 #endif /* #if defined(CONFIG_SYS_EEPROM_WREN) */
 
 static int got_pldirq;
@@ -872,12 +873,12 @@ static int got_pldirq;
 static int pld_interrupt(u32 arg)
 {
 	int rc = -1; /* not for us */
-	u8 status = in8(CONFIG_SYS_CPLD_BASE);
+	u8 status = in_8((void *)CONFIG_SYS_CPLD_BASE);
 
 	/* check for PLD interrupt */
 	if (status & PWR_INT_FLAG) {
 		/* reset this int */
-		out8(CONFIG_SYS_CPLD_BASE, 0);
+		out_8((void *)CONFIG_SYS_CPLD_BASE, 0);
 		rc = 0;
 		got_pldirq = 1; /* trigger backend */
 	}
@@ -890,7 +891,7 @@ int do_waitpwrirq(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	got_pldirq = 0;
 
 	/* clear any pending interrupt */
-	out8(CONFIG_SYS_CPLD_BASE, 0);
+	out_8((void *)CONFIG_SYS_CPLD_BASE, 0);
 
 	irq_install_handler(CPLD_IRQ,
 			    (interrupt_handler_t *)pld_interrupt, 0);
@@ -906,7 +907,8 @@ int do_waitpwrirq(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 	if (got_pldirq) {
 		printf("Got interrupt!\n");
 		printf("Power %sready!\n",
-		       in8(CONFIG_SYS_CPLD_BASE) & PWR_RDY ? "":"NOT ");
+		       in_8((void *)CONFIG_SYS_CPLD_BASE) &
+		       PWR_RDY ? "":"NOT ");
 	}
 
 	irq_free_handler(CPLD_IRQ);
@@ -915,8 +917,8 @@ int do_waitpwrirq(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	wpi,	1,	1,	do_waitpwrirq,
 	"Wait for power change interrupt",
-	NULL
-	);
+	""
+);
 
 /*
  * initialize DVI panellink transmitter
@@ -960,8 +962,8 @@ int do_dviinit(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	dviinit, 1, 1, do_dviinit,
 	"Initialize DVI Panellink transmitter",
-	NULL
-	);
+	""
+);
 
 /*
  * TODO: 'time' command might be useful for others as well.
@@ -1000,8 +1002,8 @@ int do_time(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	time,	CONFIG_SYS_MAXARGS,	1,	do_time,
 	"run command and output execution time",
-	NULL
-	);
+	""
+);
 
 extern void video_hw_rectfill (
 	unsigned int bpp,		/* bytes per pixel */
@@ -1050,5 +1052,5 @@ int do_gfxdemo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	gfxdemo,	CONFIG_SYS_MAXARGS,	1,	do_gfxdemo,
 	"demo",
-	NULL
-	);
+	""
+);

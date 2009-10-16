@@ -41,6 +41,8 @@ unsigned int boot_flash_sec;
 unsigned int boot_flash_type;
 volatile unsigned int boot_flash_env_addr;
 
+struct gpmc *gpmc_cfg;
+
 #if defined(CONFIG_CMD_NAND)
 static u32 gpmc_m_nand[GPMC_MAX_REG] = {
 	M_NAND_GPMC_CONFIG1,
@@ -50,9 +52,6 @@ static u32 gpmc_m_nand[GPMC_MAX_REG] = {
 	M_NAND_GPMC_CONFIG5,
 	M_NAND_GPMC_CONFIG6, 0
 };
-
-gpmc_csx_t *nand_cs_base;
-gpmc_t *gpmc_cfg_base;
 
 #if defined(CONFIG_ENV_IS_IN_NAND)
 #define GPMC_CS 0
@@ -72,8 +71,6 @@ static u32 gpmc_onenand[GPMC_MAX_REG] = {
 	ONENAND_GPMC_CONFIG6, 0
 };
 
-gpmc_csx_t *onenand_cs_base;
-
 #if defined(CONFIG_ENV_IS_IN_ONENAND)
 #define GPMC_CS 0
 #else
@@ -82,7 +79,7 @@ gpmc_csx_t *onenand_cs_base;
 
 #endif
 
-static sdrc_t *sdrc_base = (sdrc_t *)OMAP34XX_SDRC_BASE;
+static struct sdrc *sdrc_base = (struct sdrc *)OMAP34XX_SDRC_BASE;
 
 /**************************************************************************
  * make_cs1_contiguous() - for es2 and above remap cs1 behind cs0 to allow
@@ -149,12 +146,12 @@ void sdrc_init(void)
 
 void do_sdrc_init(u32 cs, u32 early)
 {
-	sdrc_actim_t *sdrc_actim_base;
+	struct sdrc_actim *sdrc_actim_base;
 
 	if(cs)
-		sdrc_actim_base = (sdrc_actim_t *)SDRC_ACTIM_CTRL1_BASE;
+		sdrc_actim_base = (struct sdrc_actim *)SDRC_ACTIM_CTRL1_BASE;
 	else
-		sdrc_actim_base = (sdrc_actim_t *)SDRC_ACTIM_CTRL0_BASE;
+		sdrc_actim_base = (struct sdrc_actim *)SDRC_ACTIM_CTRL0_BASE;
 
 	if (early) {
 		/* reset sdrc controller */
@@ -195,21 +192,21 @@ void do_sdrc_init(u32 cs, u32 early)
 		writel(0, &sdrc_base->cs[cs].mcfg);
 }
 
-void enable_gpmc_config(u32 *gpmc_config, gpmc_csx_t *gpmc_cs_base, u32 base,
+void enable_gpmc_cs_config(u32 *gpmc_config, struct gpmc_cs *cs, u32 base,
 			u32 size)
 {
-	writel(0, &gpmc_cs_base->config7);
+	writel(0, &cs->config7);
 	sdelay(1000);
 	/* Delay for settling */
-	writel(gpmc_config[0], &gpmc_cs_base->config1);
-	writel(gpmc_config[1], &gpmc_cs_base->config2);
-	writel(gpmc_config[2], &gpmc_cs_base->config3);
-	writel(gpmc_config[3], &gpmc_cs_base->config4);
-	writel(gpmc_config[4], &gpmc_cs_base->config5);
-	writel(gpmc_config[5], &gpmc_cs_base->config6);
+	writel(gpmc_config[0], &cs->config1);
+	writel(gpmc_config[1], &cs->config2);
+	writel(gpmc_config[2], &cs->config3);
+	writel(gpmc_config[3], &cs->config4);
+	writel(gpmc_config[4], &cs->config5);
+	writel(gpmc_config[5], &cs->config6);
 	/* Enable the config */
 	writel((((size & 0xF) << 8) | ((base >> 24) & 0x3F) |
-		(1 << 6)), &gpmc_cs_base->config7);
+		(1 << 6)), &cs->config7);
 	sdelay(2000);
 }
 
@@ -222,8 +219,7 @@ void gpmc_init(void)
 {
 	/* putting a blanket check on GPMC based on ZeBu for now */
 	u32 *gpmc_config = NULL;
-	gpmc_t *gpmc_base = (gpmc_t *)GPMC_BASE;
-	gpmc_csx_t *gpmc_cs_base = (gpmc_csx_t *)GPMC_CONFIG_CS0_BASE;
+	gpmc_cfg = (struct gpmc *)GPMC_BASE;
 	u32 base = 0;
 	u32 size = 0;
 	u32 f_off = CONFIG_SYS_MONITOR_LEN;
@@ -231,28 +227,26 @@ void gpmc_init(void)
 	u32 config = 0;
 
 	/* global settings */
-	writel(0, &gpmc_base->irqenable); /* isr's sources masked */
-	writel(0, &gpmc_base->timeout_control);/* timeout disable */
+	writel(0, &gpmc_cfg->irqenable); /* isr's sources masked */
+	writel(0, &gpmc_cfg->timeout_control);/* timeout disable */
 
-	config = readl(&gpmc_base->config);
+	config = readl(&gpmc_cfg->config);
 	config &= (~0xf00);
-	writel(config, &gpmc_base->config);
+	writel(config, &gpmc_cfg->config);
 
 	/*
 	 * Disable the GPMC0 config set by ROM code
 	 * It conflicts with our MPDB (both at 0x08000000)
 	 */
-	writel(0, &gpmc_cs_base->config7);
+	writel(0, &gpmc_cfg->cs[0].config7);
 	sdelay(1000);
 
 #if defined(CONFIG_CMD_NAND)	/* CS 0 */
 	gpmc_config = gpmc_m_nand;
-	gpmc_cfg_base = gpmc_base;
-	nand_cs_base = (gpmc_csx_t *)(GPMC_CONFIG_CS0_BASE +
-					(GPMC_CS * GPMC_CONFIG_WIDTH));
+
 	base = PISMO1_NAND_BASE;
 	size = PISMO1_NAND_SIZE;
-	enable_gpmc_config(gpmc_config, nand_cs_base, base, size);
+	enable_gpmc_cs_config(gpmc_config, &gpmc_cfg->cs[0], base, size);
 #if defined(CONFIG_ENV_IS_IN_NAND)
 	f_off = SMNAND_ENV_OFFSET;
 	f_sec = SZ_128K;
@@ -266,11 +260,9 @@ void gpmc_init(void)
 
 #if defined(CONFIG_CMD_ONENAND)
 	gpmc_config = gpmc_onenand;
-	onenand_cs_base = (gpmc_csx_t *)(GPMC_CONFIG_CS0_BASE +
-					(GPMC_CS * GPMC_CONFIG_WIDTH));
 	base = PISMO1_ONEN_BASE;
 	size = PISMO1_ONEN_SIZE;
-	enable_gpmc_config(gpmc_config, onenand_cs_base, base, size);
+	enable_gpmc_cs_config(gpmc_config, &gpmc_cfg->cs[0], base, size);
 #if defined(CONFIG_ENV_IS_IN_ONENAND)
 	f_off = ONENAND_ENV_OFFSET;
 	f_sec = SZ_128K;

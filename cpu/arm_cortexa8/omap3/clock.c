@@ -41,10 +41,10 @@
 u32 get_osc_clk_speed(void)
 {
 	u32 start, cstart, cend, cdiff, val;
-	prcm_t *prcm_base = (prcm_t *)PRCM_BASE;
-	prm_t *prm_base = (prm_t *)PRM_BASE;
-	gptimer_t *gpt1_base = (gptimer_t *)OMAP34XX_GPT1;
-	s32ktimer_t *s32k_base = (s32ktimer_t *)SYNC_32KTIMER_BASE;
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
+	struct prm *prm_base = (struct prm *)PRM_BASE;
+	struct gptimer *gpt1_base = (struct gptimer *)OMAP34XX_GPT1;
+	struct s32ktimer *s32k_base = (struct s32ktimer *)SYNC_32KTIMER_BASE;
 
 	val = readl(&prm_base->clksrc_ctrl);
 
@@ -132,9 +132,9 @@ void prcm_init(void)
 	void (*f_lock_pll) (u32, u32, u32, u32);
 	int xip_safe, p0, p1, p2, p3;
 	u32 osc_clk = 0, sys_clkin_sel;
-	u32 clk_index, sil_index;
-	prm_t *prm_base = (prm_t *)PRM_BASE;
-	prcm_t *prcm_base = (prcm_t *)PRCM_BASE;
+	u32 clk_index, sil_index = 0;
+	struct prm *prm_base = (struct prm *)PRM_BASE;
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
 	dpll_param *dpll_param_p;
 
 	f_lock_pll = (void *) ((u32) &_end_vect - (u32) &_start +
@@ -170,7 +170,8 @@ void prcm_init(void)
 	 * and sil_index will get the values for that SysClk for the
 	 * appropriate silicon rev.
 	 */
-	sil_index = get_cpu_rev() - 1;
+	if (get_cpu_rev())
+		sil_index = 1;
 
 	/* Unlock MPU DPLL (slows things down, and needed later) */
 	sr32(&prcm_base->clken_pll_mpu, 0, 3, PLL_LOW_POWER_BYPASS);
@@ -340,7 +341,7 @@ void prcm_init(void)
  *****************************************************************************/
 void per_clocks_enable(void)
 {
-	prcm_t *prcm_base = (prcm_t *)PRCM_BASE;
+	struct prcm *prcm_base = (struct prcm *)PRCM_BASE;
 
 	/* Enable GP2 timer. */
 	sr32(&prcm_base->clksel_per, 0, 1, 0x1);	/* GPT2 = sys clk */
@@ -356,6 +357,28 @@ void per_clocks_enable(void)
 	sr32(&prcm_base->fclken_per, 11, 1, 0x1);
 	sr32(&prcm_base->iclken_per, 11, 1, 0x1);
 #endif
+
+#ifdef CONFIG_OMAP3_GPIO_2
+	sr32(&prcm_base->fclken_per, 13, 1, 1);
+	sr32(&prcm_base->iclken_per, 13, 1, 1);
+#endif
+#ifdef CONFIG_OMAP3_GPIO_3
+	sr32(&prcm_base->fclken_per, 14, 1, 1);
+	sr32(&prcm_base->iclken_per, 14, 1, 1);
+#endif
+#ifdef CONFIG_OMAP3_GPIO_4
+	sr32(&prcm_base->fclken_per, 15, 1, 1);
+	sr32(&prcm_base->iclken_per, 15, 1, 1);
+#endif
+#ifdef CONFIG_OMAP3_GPIO_5
+	sr32(&prcm_base->fclken_per, 16, 1, 1);
+	sr32(&prcm_base->iclken_per, 16, 1, 1);
+#endif
+#ifdef CONFIG_OMAP3_GPIO_6
+	sr32(&prcm_base->fclken_per, 17, 1, 1);
+	sr32(&prcm_base->iclken_per, 17, 1, 1);
+#endif
+
 #ifdef CONFIG_DRIVER_OMAP34XX_I2C
 	/* Turn on all 3 I2C clocks */
 	sr32(&prcm_base->fclken1_core, 15, 3, 0x7);

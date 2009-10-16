@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Freescale Semiconductor, Inc.
+ * Copyright 2008-2009 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -45,6 +45,7 @@
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 
 #define CONFIG_FSL_LAW		1	/* Use common FSL init code */
+#define CONFIG_E1000		1	/* Defind e1000 pci Ethernet card*/
 
 #define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
@@ -218,6 +219,13 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 #define PIXIS_VCFGEN1		0x13	/* VELA Config Enable 1 */
 #define PIXIS_VCORE0	 	0x14	/* VELA VCORE0 Register */
 #define PIXIS_VBOOT		0x16	/* VELA VBOOT Register */
+#define PIXIS_VBOOT_LBMAP	0xe0	/* VBOOT - CFG_LBMAP */
+#define PIXIS_VBOOT_LBMAP_NOR0	0x00	/* cfg_lbmap - boot from NOR 0 */
+#define PIXIS_VBOOT_LBMAP_NOR1	0x01	/* cfg_lbmap - boot from NOR 1 */
+#define PIXIS_VBOOT_LBMAP_NOR2	0x02	/* cfg_lbmap - boot from NOR 2 */
+#define PIXIS_VBOOT_LBMAP_NOR3	0x03	/* cfg_lbmap - boot from NOR 3 */
+#define PIXIS_VBOOT_LBMAP_PJET	0x04	/* cfg_lbmap - boot from projet */
+#define PIXIS_VBOOT_LBMAP_NAND	0x05	/* cfg_lbmap - boot from NAND */
 #define PIXIS_VSPEED0		0x17	/* VELA VSpeed 0 */
 #define PIXIS_VSPEED1		0x18	/* VELA VSpeed 1 */
 #define PIXIS_VSPEED2		0x19	/* VELA VSpeed 2 */
@@ -337,7 +345,6 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 #define CONFIG_HARD_I2C		/* I2C with hardware support */
 #undef	CONFIG_SOFT_I2C		/* I2C bit-banged */
 #define CONFIG_I2C_MULTI_BUS
-#define CONFIG_I2C_CMD_TREE
 #define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address */
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 #define CONFIG_SYS_I2C_NOPROBES	{{0, 0x29}}	/* Don't probe these addrs */
@@ -428,12 +435,6 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 #undef CONFIG_TULIP
 #undef CONFIG_RTL8139
 
-#ifdef CONFIG_RTL8139
-/* This macro is used by RTL8139 but not defined in PPC architecture */
-#define KSEG1ADDR(x)		({u32 _x=le32_to_cpu(*(u32 *)(x)); (&_x);})
-#define _IO_BASE	0x00000000
-#endif
-
 #ifndef CONFIG_PCI_PNP
 	#define PCI_ENET0_IOADDR	CONFIG_SYS_PCI1_IO_BUS
 	#define PCI_ENET0_MEMADDR	CONFIG_SYS_PCI1_IO_BUS
@@ -462,6 +463,15 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 #define CONFIG_DOS_PARTITION
 #define CONFIG_CMD_EXT2
 #endif
+
+/*
+ * USB
+ */
+#define CONFIG_CMD_USB
+#define CONFIG_USB_STORAGE
+#define CONFIG_USB_EHCI
+#define CONFIG_USB_EHCI_FSL
+#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 
 #if defined(CONFIG_TSEC_ENET)
 
@@ -524,7 +534,6 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 
 #if defined(CONFIG_PCI)
 #define CONFIG_CMD_PCI
-#define CONFIG_CMD_BEDBUG
 #define CONFIG_CMD_NET
 #endif
 
@@ -561,10 +570,10 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 
 /*
  * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
+ * have to be in the first 16 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTMAPSZ	(16 << 20)	/* Initial Memory map for Linux*/
 
 /*
  * Internal Definitions
@@ -628,7 +637,8 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
  "ramdiskfile=8536ds/ramdisk.uboot\0"		\
  "fdtaddr=c00000\0"				\
  "fdtfile=8536ds/mpc8536ds.dtb\0"		\
- "bdev=sda3\0"
+ "bdev=sda3\0"					\
+ "usb_phy_type=ulpi\0"
 
 #define CONFIG_HDBOOT				\
  "setenv bootargs root=/dev/$bdev rw "		\

@@ -2,7 +2,7 @@
  * (C) Copyright 2002
  * Sysgo Real-Time Solutions, GmbH <www.elinos.com>
  * Marius Groeger <mgroeger@sysgo.de>
- * Gary Jennejohn <gj@denx.de>
+ * Gary Jennejohn <garyj@denx.de>
  * David Mueller <d.mueller@elsoft.ch>
  *
  * (C) Copyright 2008
@@ -209,6 +209,9 @@
 /* total memory available to uboot */
 #define CONFIG_SYS_UBOOT_SIZE		(1024 * 1024)
 
+/* Put environment copies after the end of U-Boot owned RAM */
+#define CONFIG_NAND_ENV_DST	(CONFIG_SYS_UBOOT_BASE + CONFIG_SYS_UBOOT_SIZE)
+
 #ifdef CONFIG_ENABLE_MMU
 #define CONFIG_SYS_MAPPED_RAM_BASE	0xc0000000
 #define CONFIG_BOOTCOMMAND	"nand read 0xc0018000 0x60000 0x1c0000;" \
@@ -266,6 +269,8 @@
 				 48, 49, 50, 51, 52, 53, 54, 55, \
 				 56, 57, 58, 59, 60, 61, 62, 63}
 
+#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
+
 /* Boot configuration (define only one of next 3) */
 #define CONFIG_BOOT_NAND
 /* None of these are currently implemented. Left from the original Samsung
@@ -288,6 +293,7 @@
 
 #if !defined(CONFIG_ENABLE_MMU)
 #define CONFIG_CMD_USB			1
+#define CONFIG_USB_S3C64XX
 #define CONFIG_USB_OHCI_NEW		1
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		0x74300000
 #define CONFIG_SYS_USB_OHCI_SLOT_NAME		"s3c6400"

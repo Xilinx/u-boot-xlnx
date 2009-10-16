@@ -28,7 +28,7 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <config.h>
 #if defined(CONFIG_CMD_IDE)
 #include <ide.h>
@@ -331,6 +331,10 @@ void board_init_f(ulong bootflag)
 	 */
 	interrupt_init();
 
+	/* initialize malloc() area */
+	mem_malloc_init();
+	malloc_bin_reloc();
+
 #if !defined(CONFIG_SYS_NO_FLASH)
 	puts("FLASH: ");
 
@@ -371,11 +375,6 @@ void board_init_f(ulong bootflag)
 	bd->bi_flashoffset = 0;
 #endif				/* !CONFIG_SYS_NO_FLASH */
 
-	/* initialize malloc() area */
-	mem_malloc_init();
-
-	malloc_bin_reloc();
-
 #ifdef CONFIG_SPI
 # if !defined(CONFIG_ENV_IS_IN_EEPROM)
 	spi_init_f();
@@ -388,25 +387,6 @@ void board_init_f(ulong bootflag)
 
 #if defined(CONFIG_BOARD_LATE_INIT)
 	board_late_init();
-#endif
-
-	s = getenv("ethaddr");
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enetaddr[i] = s ? simple_strtoul(s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-
-#ifdef CONFIG_HAS_ETH1
-	/* handle the 2nd ethernet address */
-
-	s = getenv("eth1addr");
-
-	for (i = 0; i < 6; ++i) {
-		bd->bi_enet1addr[i] = s ? simple_strtoul(s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
 #endif
 
 #ifdef CONFIG_ID_EEPROM
@@ -422,8 +402,8 @@ void board_init_f(ulong bootflag)
 	pci_init();
 #endif
 
-	/* Initialize devices */
-	devices_init();
+	/* Initialize stdio devices */
+	stdio_init();
 
 	/* Initialize the jump table for applications */
 	jumptable_init();

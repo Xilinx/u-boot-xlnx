@@ -71,13 +71,9 @@
 #define CONFIG_CMD_USB
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_SDRAM
-#define CONFIG_CMD_DOC
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SAVES
 #define CONFIG_CMD_BSP
-
-
-#define CONFIG_NAND_LEGACY
 
 #define	 CONFIG_SYS_HUSH_PARSER
 #define	 CONFIG_SYS_PROMPT_HUSH_PS2 "> "
@@ -281,6 +277,7 @@
 #define CONFIG_PPC4xx_EMAC
 #define CONFIG_MII		1	/* MII PHY management		*/
 #define CONFIG_PHY_ADDR		1	/* PHY address			*/
+#define CONFIG_NET_MULTI
 /************************************************************
  * RTC
  ***********************************************************/
@@ -360,7 +357,7 @@
 #define CONFIG_USB_STORAGE
 
 /* Enable needed helper functions */
-#define CONFIG_SYS_DEVICE_DEREGISTER		/* needs device_deregister */
+#define CONFIG_SYS_STDIO_DEREGISTER		/* needs stdio_deregister */
 
 /************************************************************
  * Debug support

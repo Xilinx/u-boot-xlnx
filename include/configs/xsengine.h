@@ -35,6 +35,9 @@
 #define CONFIG_DOS_PARTITION		1
 #define BOARD_LATE_INIT			1
 #undef  CONFIG_USE_IRQ					/* we don't need IRQ/FIQ stuff */
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
+
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SYS_CPUSPEED			0x161           /* set core clock to 400/200/100 MHz */
 
@@ -62,7 +65,7 @@
  * JFFS2 partitions
  */
 /* No command line, one static partition, whole device */
-#undef CONFIG_JFFS2_CMDLINE
+#undef CONFIG_CMD_MTDPARTS
 #define CONFIG_JFFS2_DEV		"nor0"
 #define CONFIG_JFFS2_PART_SIZE		0xFFFFFFFF
 #define CONFIG_JFFS2_PART_OFFSET	0x00000000
@@ -70,7 +73,7 @@
 /* mtdparts command line support */
 /* Note: fake mtd_id used, no linux mtd map file */
 /*
-#define CONFIG_JFFS2_CMDLINE
+#define CONFIG_CMD_MTDPARTS
 #define MTDIDS_DEFAULT		"nor0=xsengine-0"
 #define MTDPARTS_DEFAULT	"mtdparts=xsengine-0:256k(uboot),1m(kernel1),8m(kernel2)"
 */
@@ -96,6 +99,7 @@
 #define CONFIG_SMC_USE_32_BIT		1
 
 /* select serial console configuration */
+#define CONFIG_PXA_SERIAL
 #define CONFIG_FFUART			1
 
 /* allow to overwrite serial and ethaddr */
@@ -139,7 +143,6 @@
 #define CONFIG_SYS_BARGSIZE			CONFIG_SYS_CBSIZE				/* Boot Argument Buffer Size */
 #define CONFIG_SYS_MEMTEST_START		0xA0400000				/* memtest works on     */
 #define CONFIG_SYS_MEMTEST_END			0xA0800000				/* 4 ... 8 MB in DRAM   */
-#undef  CONFIG_SYS_CLKS_IN_HZ								/* everything, incl board info, in Hz */
 #define CONFIG_SYS_BAUDRATE_TABLE		{ 9600, 19200, 38400, 57600, 115200 }	/* valid baudrates */
 #define CONFIG_SYS_LOAD_ADDR			0xA0000000				/* load kernel to this address   */
 

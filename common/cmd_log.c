@@ -42,7 +42,7 @@
 
 #include <common.h>
 #include <command.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <post.h>
 #include <logbuff.h>
 
@@ -142,7 +142,7 @@ void logbuff_reset (void)
 
 int drv_logbuff_init (void)
 {
-	device_t logdev;
+	struct stdio_dev logdev;
 	int rc;
 
 	/* Device initialization */
@@ -154,7 +154,7 @@ int drv_logbuff_init (void)
 	logdev.putc  = logbuff_putc;		/* 'putc' function */
 	logdev.puts  = logbuff_puts;		/* 'puts' function */
 
-	rc = device_register (&logdev);
+	rc = stdio_register (&logdev);
 
 	return (rc == 0) ? 1 : rc;
 }
@@ -256,7 +256,7 @@ U_BOOT_CMD(
 	"info   - show pointer details\n"
 	"log reset  - clear contents\n"
 	"log show   - show contents\n"
-	"log append <msg> - append <msg> to the logbuffer\n"
+	"log append <msg> - append <msg> to the logbuffer"
 );
 
 static int logbuff_printk(const char *line)

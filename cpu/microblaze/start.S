@@ -98,7 +98,13 @@ _start:
 
 	/* enable instruction and data cache */
 	mfs	r12, rmsr
+	ori	r12, r12, 0x20
+
+/* disable d cache for ll temac dma to work, fix the ll temac
+   driver or the cache functions?
+
 	ori	r12, r12, 0xa0
+*/
 	mts	rmsr, r12
 
 clear_bss:

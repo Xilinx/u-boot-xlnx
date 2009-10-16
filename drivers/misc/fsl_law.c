@@ -35,7 +35,7 @@ DECLARE_GLOBAL_DATA_PTR;
     defined(CONFIG_MPC8560) || defined(CONFIG_MPC8555)
 #define FSL_HW_NUM_LAWS 8
 #elif defined(CONFIG_MPC8548) || defined(CONFIG_MPC8544) || \
-      defined(CONFIG_MPC8568) || \
+      defined(CONFIG_MPC8568) || defined(CONFIG_MPC8569) || \
       defined(CONFIG_MPC8641) || defined(CONFIG_MPC8610)
 #define FSL_HW_NUM_LAWS 10
 #elif defined(CONFIG_MPC8536) || defined(CONFIG_MPC8572) || \
@@ -138,6 +138,9 @@ int set_ddr_laws(u64 start, u64 sz, enum law_trgt_if id)
 
 	if (set_last_law(start, law_sz_enc, id) < 0)
 		return -1;
+
+	/* recalculate size based on what was actually covered by the law */
+	law_sz = 1ull << __ilog2_u64(law_sz);
 
 	/* do we still have anything to map */
 	sz = sz - law_sz;

@@ -44,6 +44,7 @@
 #define CONFIG_SYS_PCI_64BIT	1	/* enable 64-bit PCI resources */
 
 #define CONFIG_FSL_LAW		1	/* Use common FSL init code */
+#define CONFIG_E1000		1	/* Defind e1000 pci Ethernet card*/
 
 #define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
@@ -192,6 +193,8 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #define PIXIS_VCFGEN0		0x12	/* VELA Config Enable 0 */
 #define PIXIS_VCFGEN1		0x13	/* VELA Config Enable 1 */
 #define PIXIS_VBOOT		0x16	/* VELA VBOOT Register */
+#define PIXIS_VBOOT_FMAP	0x80	/* VBOOT - CFG_FLASHMAP */
+#define PIXIS_VBOOT_FBANK	0x40	/* VBOOT - CFG_FLASHBANK */
 #define PIXIS_VSPEED0		0x17	/* VELA VSpeed 0 */
 #define PIXIS_VSPEED1		0x18	/* VELA VSpeed 1 */
 #define PIXIS_VCLKH		0x19	/* VELA VCLKH register */
@@ -340,12 +343,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #undef CONFIG_TULIP
 #define CONFIG_RTL8139
 
-#ifdef CONFIG_RTL8139
-/* This macro is used by RTL8139 but not defined in PPC architecture */
-#define KSEG1ADDR(x)		(x)
-#define _IO_BASE	0x00000000
-#endif
-
 #ifndef CONFIG_PCI_PNP
 	#define PCI_ENET0_IOADDR	CONFIG_SYS_PCI1_IO_BUS
 	#define PCI_ENET0_MEMADDR	CONFIG_SYS_PCI1_IO_BUS
@@ -436,7 +433,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
-    #define CONFIG_CMD_BEDBUG
     #define CONFIG_CMD_NET
     #define CONFIG_CMD_SCSI
     #define CONFIG_CMD_EXT2
@@ -464,10 +460,10 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 /*
  * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
+ * have to be in the first 16 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTMAPSZ	(16 << 20)	/* Initial Memory map for Linux*/
 
 /*
  * Internal Definitions

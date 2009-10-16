@@ -225,7 +225,7 @@ int do_otp(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 }
 
 U_BOOT_CMD(otp, 7, 0, do_otp,
-	"One-Time-Programmable sub-system\n",
+	"One-Time-Programmable sub-system",
 	"read <addr> <page> [count] [half]\n"
 	" - read 'count' half-pages starting at 'page' (offset 'half') to 'addr'\n"
 	"otp dump <addr> <page> [count] [half]\n"
@@ -233,4 +233,5 @@ U_BOOT_CMD(otp, 7, 0, do_otp,
 	"otp write [--force] <addr> <page> [count] [half]\n"
 	" - write 'count' half-pages starting at 'page' (offset 'half') from 'addr'\n"
 	"otp lock <page> <count>\n"
-	" - lock 'count' pages starting at 'page'\n");
+	" - lock 'count' pages starting at 'page'"
+);

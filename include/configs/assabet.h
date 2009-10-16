@@ -37,6 +37,8 @@
 #define CONFIG_ASSABET		1	/* on an Intel Assabet Board    */
 
 #undef CONFIG_USE_IRQ
+/* we will never enable dcache, because we have to setup MMU first */
+#define CONFIG_SYS_NO_DCACHE
 
 #define CONFIG_CMDLINE_TAG	 1	/* enable passing of ATAGs      */
 #define CONFIG_SETUP_MEMORY_TAGS 1
@@ -57,6 +59,7 @@
 /*
  * select serial console configuration
  */
+#define CONFIG_SA1100_SERIAL
 #define CONFIG_SERIAL1          1	/* we use SERIAL 1 on Intel Assabet */
 
 /* allow to overwrite serial and ethaddr */
@@ -104,8 +107,6 @@
 
 #define CONFIG_SYS_MEMTEST_START	0xc0400000	/* memtest works on     */
 #define CONFIG_SYS_MEMTEST_END		0xc0800000	/* 4 ... 8 MB in DRAM   */
-
-#undef  CONFIG_SYS_CLKS_IN_HZ
 
 #define CONFIG_SYS_LOAD_ADDR		0xc0000000	/* default load address */
 

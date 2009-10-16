@@ -36,6 +36,12 @@
 #include <asm/arch/cpu.h>	/* get chip and board defs */
 #include <asm/arch/omap3.h>
 
+/*
+ * Display CPU and Board information
+ */
+#define CONFIG_DISPLAY_CPUINFO		1
+#define CONFIG_DISPLAY_BOARDINFO	1
+
 /* Clock Defines */
 #define V_OSCK			26000000	/* Clock output from T2 */
 #define V_SCLK			(V_OSCK >> 1)
@@ -113,6 +119,12 @@
 #define CONFIG_DRIVER_OMAP34XX_I2C	1
 
 /*
+ * TWL4030
+ */
+#define CONFIG_TWL4030_POWER		1
+#define CONFIG_TWL4030_LED		1
+
+/*
  * Board NAND Info.
  */
 #define CONFIG_NAND_OMAP_GPMC
@@ -125,18 +137,8 @@
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1	/* Max number of NAND */
 						/* devices */
-#define SECTORSIZE			512
 
-#define NAND_ALLOW_ERASE_ALL
-#define ADDR_COLUMN			1
-#define ADDR_PAGE			2
-#define ADDR_COLUMN_PAGE		3
-
-#define NAND_ChipID_UNKNOWN		0x00
-#define NAND_MAX_FLOORS			1
-#define NAND_MAX_CHIPS			1
-#define NAND_NO_RB			1
-#define CONFIG_SYS_NAND_WP
+#define CONFIG_SYS_64BIT_VSPRINTF		/* needed for nand_util.c */
 
 #define CONFIG_JFFS2_NAND
 /* nand device jffs2 lives on */
@@ -163,7 +165,7 @@
 		"rootfstype=jffs2\0" \
 	"loadbootscript=fatload mmc 0 ${loadaddr} boot.scr\0" \
 	"bootscript=echo Running bootscript from mmc ...; " \
-		"autoscr ${loadaddr}\0" \
+		"source ${loadaddr}\0" \
 	"loaduimage=fatload mmc 0 ${loadaddr} uImage\0" \
 	"mmcboot=echo Booting from mmc ...; " \
 		"run mmcargs; " \
@@ -174,7 +176,7 @@
 		"bootm ${loadaddr}\0" \
 
 #define CONFIG_BOOTCOMMAND \
-	"if mmcinit; then " \
+	"if mmc init; then " \
 		"if run loadbootscript; then " \
 			"run bootscript; " \
 		"else " \
@@ -208,21 +210,17 @@
 #define CONFIG_SYS_MEMTEST_END		(OMAP34XX_SDRC_CS0 + \
 					0x01F00000) /* 31MB */
 
-#undef	CONFIG_SYS_CLKS_IN_HZ		/* everything, incl board info, */
-					/* in Hz */
-
 #define CONFIG_SYS_LOAD_ADDR		(OMAP34XX_SDRC_CS0) /* default load */
 								/* address */
 
 /*
- * 2430 has 12 GP timers, they can be driven by the SysClk (12/13/19.2) or by
- * 32KHz clk, or from external sig. This rate is divided by a local divisor.
+ * OMAP3 has 12 GP timers, they can be driven by the system clock
+ * (12/13/16.8/19.2/38.4MHz) or by 32KHz clock. We use 13MHz (V_SCLK).
+ * This rate is divided by a local divisor.
  */
-#define V_PVT				7
-
-#define CONFIG_SYS_TIMERBASE		(OMAP34XX_GPT2)
-#define CONFIG_SYS_PVT			V_PVT	/* 2^(pvt+1) */
-#define CONFIG_SYS_HZ			((V_SCLK) / (2 << CONFIG_SYS_PVT))
+#define CONFIG_SYS_TIMERBASE		OMAP34XX_GPT2
+#define CONFIG_SYS_PTV			2	/* Divisor: 2^(PTV+1) => 8 */
+#define CONFIG_SYS_HZ			1000
 
 /*-----------------------------------------------------------------------
  * Stack sizes
@@ -291,30 +289,12 @@
 #define CONFIG_SYS_JFFS2_NUM_BANKS	1
 
 #ifndef __ASSEMBLY__
-extern gpmc_csx_t *nand_cs_base;
-extern gpmc_t *gpmc_cfg_base;
+extern struct gpmc *gpmc_cfg;
 extern unsigned int boot_flash_base;
 extern volatile unsigned int boot_flash_env_addr;
 extern unsigned int boot_flash_off;
 extern unsigned int boot_flash_sec;
 extern unsigned int boot_flash_type;
 #endif
-
-
-#define WRITE_NAND_COMMAND(d, adr)\
-			writel(d, &nand_cs_base->nand_cmd)
-#define WRITE_NAND_ADDRESS(d, adr)\
-			writel(d, &nand_cs_base->nand_adr)
-#define WRITE_NAND(d, adr) writew(d, &nand_cs_base->nand_dat)
-#define READ_NAND(adr) readl(&nand_cs_base->nand_dat)
-
-/* Other NAND Access APIs */
-#define NAND_WP_OFF() do {readl(&gpmc_cfg_base->config) |= GPMC_CONFIG_WP; } \
-			while (0)
-#define NAND_WP_ON() do {readl(&gpmc_cfg_base->config) &= ~GPMC_CONFIG_WP; } \
-			while (0)
-#define NAND_DISABLE_CE(nand)
-#define NAND_ENABLE_CE(nand)
-#define NAND_WAIT_READY(nand)	udelay(10)
 
 #endif				/* __CONFIG_H */

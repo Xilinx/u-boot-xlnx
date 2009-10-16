@@ -36,6 +36,11 @@ MAKE_SPI_FUNC(SPI_BAUD, 0x14)
 __attribute__((weak))
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
+#if defined(__ADSPBF538__) || defined(__ADSPBF539__)
+	/* The SPI1/SPI2 buses are weird ... only 1 CS */
+	if (bus > 0 && cs != 1)
+		return 0;
+#endif
 	return (cs >= 1 && cs <= 7);
 }
 
@@ -47,6 +52,7 @@ void spi_cs_activate(struct spi_slave *slave)
 		(read_SPI_FLG(bss) &
 		~((!bss->flg << 8) << slave->cs)) |
 		(1 << slave->cs));
+	SSYNC();
 	debug("%s: SPI_FLG:%x\n", __func__, read_SPI_FLG(bss));
 }
 
@@ -54,7 +60,20 @@ __attribute__((weak))
 void spi_cs_deactivate(struct spi_slave *slave)
 {
 	struct bfin_spi_slave *bss = to_bfin_spi_slave(slave);
-	write_SPI_FLG(bss, read_SPI_FLG(bss) & ~(1 << slave->cs));
+	u16 flg;
+
+	/* make sure we force the cs to deassert rather than let the
+	 * pin float back up.  otherwise, exact timings may not be
+	 * met some of the time leading to random behavior (ugh).
+	 */
+	flg = read_SPI_FLG(bss) | ((!bss->flg << 8) << slave->cs);
+	write_SPI_FLG(bss, flg);
+	SSYNC();
+	debug("%s: SPI_FLG:%x\n", __func__, read_SPI_FLG(bss));
+
+	flg &= ~(1 << slave->cs);
+	write_SPI_FLG(bss, flg);
+	SSYNC();
 	debug("%s: SPI_FLG:%x\n", __func__, read_SPI_FLG(bss));
 }
 
@@ -137,7 +156,7 @@ static void spi_portmux(struct spi_slave *slave)
 			case 1: SET_MUX(f, 2, 1); f_fer |= PF7;  break;
 			case 2: /* see G above */ g_fer |= PG15; break;
 			case 3: SET_MUX(h, 1, 3); f_fer |= PH4;  break;
-			case 4: /* no muxing */                  break;
+			case 4: /* no muxing */   h_fer |= PH8;  break;
 			case 5: SET_MUX(g, 1, 3); h_fer |= PG3;  break;
 			case 6: /* no muxing */                  break;
 			case 7: /* no muxing */                  break;
@@ -191,21 +210,32 @@ static void spi_portmux(struct spi_slave *slave)
 #elif defined(__ADSPBF534__) || defined(__ADSPBF536__) || defined(__ADSPBF537__)
 	u16 mux = bfin_read_PORT_MUX();
 	u16 f_fer = bfin_read_PORTF_FER();
-	u16 j_fer = bfin_read_PORTJ_FER();
 	/* set SCK/MISO/MOSI */
 	f_fer |= PF11 | PF12 | PF13;
 	switch (slave->cs) {
 		case 1: f_fer |= PF10; break;
-		case 2: mux |= PJSE; j_fer |= PJ11; break;
-		case 3: mux |= PJSE; j_fer |= PJ10; break;
+		case 2: mux |= PJSE; break;
+		case 3: mux |= PJSE; break;
 		case 4: mux |= PFS4E; f_fer |= PF6; break;
 		case 5: mux |= PFS5E; f_fer |= PF5; break;
 		case 6: mux |= PFS6E; f_fer |= PF4; break;
-		case 7: mux |= PJCE_SPI; j_fer |= PJ5; break;
+		case 7: mux |= PJCE_SPI; break;
 	}
 	bfin_write_PORT_MUX(mux);
 	bfin_write_PORTF_FER(f_fer);
-	bfin_write_PORTJ_FER(j_fer);
+#elif defined(__ADSPBF538__) || defined(__ADSPBF539__)
+	u16 fer, pins;
+	if (slave->bus == 1)
+		pins = PD0 | PD1 | PD2 | (slave->cs == 1 ? PD4 : 0);
+	else if (slave->bus == 2)
+		pins = PD5 | PD6 | PD7 | (slave->cs == 1 ? PD9 : 0);
+	else
+		pins = 0;
+	if (pins) {
+		fer = bfin_read_PORTDIO_FER();
+		fer &= ~pins;
+		bfin_write_PORTDIO_FER(fer);
+	}
 #elif defined(__ADSPBF54x__)
 #define DO_MUX(port, pin) \
 	mux = ((mux & ~PORT_x_MUX_##pin##_MASK) | PORT_x_MUX_##pin##_FUNC_1); \

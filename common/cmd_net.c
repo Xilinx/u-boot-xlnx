@@ -40,7 +40,7 @@ int do_bootp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	bootp,	3,	1,	do_bootp,
 	"boot image via network using BOOTP/TFTP protocol",
-	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]"
 );
 
 int do_tftpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -51,7 +51,7 @@ int do_tftpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	tftpboot,	3,	1,	do_tftpb,
 	"boot image via network using TFTP protocol",
-	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]"
 );
 
 int do_rarpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
@@ -62,7 +62,7 @@ int do_rarpb (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	rarpboot,	3,	1,	do_rarpb,
 	"boot image via network using RARP/TFTP protocol",
-	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]"
 );
 
 #if defined(CONFIG_CMD_DHCP)
@@ -74,7 +74,7 @@ int do_dhcp (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	dhcp,	3,	1,	do_dhcp,
 	"boot image via network using DHCP/TFTP protocol",
-	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]"
 );
 #endif
 
@@ -87,7 +87,7 @@ int do_nfs (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	nfs,	3,	1,	do_nfs,
 	"boot image via network using NFS protocol",
-	"[loadAddress] [[hostIPaddr:]bootfilename]\n"
+	"[loadAddress] [[hostIPaddr:]bootfilename]"
 );
 #endif
 
@@ -222,9 +222,10 @@ netboot_common (proto_t proto, cmd_tbl_t *cmdtp, int argc, char *argv[])
 		rcode = do_bootm (cmdtp, 0, 1, local_args);
 	}
 
-#ifdef CONFIG_AUTOSCRIPT
+#ifdef CONFIG_SOURCE
 	if (((s = getenv("autoscript")) != NULL) && (strcmp(s,"yes") == 0)) {
-		printf ("Running autoscript at addr 0x%08lX", load_addr);
+		printf ("Running \"source\" command at addr 0x%08lX",
+			load_addr);
 
 		s = getenv ("autoscript_uname");
 		if (s)
@@ -233,7 +234,7 @@ netboot_common (proto_t proto, cmd_tbl_t *cmdtp, int argc, char *argv[])
 			puts (" ...\n");
 
 		show_boot_progress (83);
-		rcode = autoscript (load_addr, s);
+		rcode = source (load_addr, s);
 	}
 #endif
 	if (rcode < 0)
@@ -268,7 +269,7 @@ int do_ping (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 U_BOOT_CMD(
 	ping,	2,	1,	do_ping,
 	"send ICMP ECHO_REQUEST to network host",
-	"pingAddress\n"
+	"pingAddress"
 );
 #endif
 
@@ -352,3 +353,51 @@ U_BOOT_CMD(
 	"[NTP server IP]\n"
 );
 #endif
+
+#if defined(CONFIG_CMD_DNS)
+int do_dns(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+{
+	if (argc == 1) {
+		cmd_usage(cmdtp);
+		return -1;
+	}
+
+	/*
+	 * We should check for a valid hostname:
+	 * - Each label must be between 1 and 63 characters long
+	 * - the entire hostname has a maximum of 255 characters
+	 * - only the ASCII letters 'a' through 'z' (case-insensitive),
+	 *   the digits '0' through '9', and the hyphen
+	 * - cannot begin or end with a hyphen
+	 * - no other symbols, punctuation characters, or blank spaces are
+	 *   permitted
+	 * but hey - this is a minimalist implmentation, so only check length
+	 * and let the name server deal with things.
+	 */
+	if (strlen(argv[1]) >= 255) {
+		printf("dns error: hostname too long\n");
+		return 1;
+	}
+
+	NetDNSResolve = argv[1];
+
+	if (argc == 3)
+		NetDNSenvvar = argv[2];
+	else
+		NetDNSenvvar = NULL;
+
+	if (NetLoop(DNS) < 0) {
+		printf("dns lookup of %s failed, check setup\n", argv[1]);
+		return 1;
+	}
+
+	return 0;
+}
+
+U_BOOT_CMD(
+	dns,	3,	1,	do_dns,
+	"lookup the IP of a hostname",
+	"hostname [envvar]"
+);
+
+#endif	/* CONFIG_CMD_DNS */

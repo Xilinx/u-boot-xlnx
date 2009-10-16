@@ -68,6 +68,10 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/nand_ecc.h>
 
+#ifdef CONFIG_MTD_PARTITIONS
+#include <linux/mtd/partitions.h>
+#endif
+
 #include <asm/io.h>
 #include <asm/errno.h>
 
@@ -2652,8 +2656,10 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips)
 		    type->id != chip->read_byte(mtd))
 			break;
 	}
+#ifdef DEBUG
 	if (i > 1)
 		printk(KERN_INFO "%d NAND chips detected\n", i);
+#endif
 
 	/* Store the number of chips and calc total size for mtd */
 	chip->numchips = i;

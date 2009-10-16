@@ -21,7 +21,7 @@
 #include <common.h>
 #include <command.h>
 #include <malloc.h>
-#include <devices.h>
+#include <stdio_dev.h>
 #include <timestamp.h>
 #include <version.h>
 #include <watchdog.h>
@@ -125,17 +125,7 @@ static int sh_mem_env_init(void)
 static int sh_net_init(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
-	char *s, *e;
-	int i;
-
 	gd->bd->bi_ip_addr = getenv_IPaddr("ipaddr");
-	s = getenv("ethaddr");
-	for (i = 0; i < 6; ++i) {
-		gd->bd->bi_enetaddr[i] = s ? simple_strtoul(s, &e, 16) : 0;
-		if (s)
-			s = (*e) ? e + 1 : e;
-	}
-
 	return 0;
 }
 #endif
@@ -156,11 +146,11 @@ init_fnc_t *init_sequence[] =
 	checkboard,		/* Check support board */
 	dram_init,		/* SDRAM init */
 	timer_init,		/* SuperH Timer (TCNT0 only) init */
-	sh_flash_init,	/* Flash memory(NOR) init*/
 	sh_mem_env_init,
+	sh_flash_init,	/* Flash memory(NOR) init*/
 	INIT_FUNC_NAND_INIT/* Flash memory (NAND) init */
 	INIT_FUNC_PCI_INIT	/* PCI init */
-	devices_init,
+	stdio_init,
 	console_init_r,
 	interrupt_init,
 #ifdef BOARD_LATE_INIT

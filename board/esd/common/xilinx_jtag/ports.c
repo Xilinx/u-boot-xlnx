@@ -32,6 +32,7 @@
 
 #include <common.h>
 #include <asm/processor.h>
+#include <asm/io.h>
 
 #include "ports.h"
 
@@ -41,9 +42,7 @@ static int oldstate = 0;
 static int newstate = 0;
 static int readptr = 0;
 
-extern long filesize;
-extern const unsigned char fpgadata[];
-
+extern const unsigned char *xsvfdata;
 
 /* if in debugging mode, then just set the variables */
 void setPort(short p,short val)
@@ -68,7 +67,7 @@ void setPort(short p,short val)
 		} else {
 			output &= ~JTAG_TCK;
 		}
-		out32(GPIO0_OR, output);
+		out_be32((void *)GPIO0_OR, output);
 	}
 }
 
@@ -85,10 +84,10 @@ void pulseClock(void)
 void readByte(unsigned char *data)
 {
 	/* pretend reading using a file */
-	*data = fpgadata[readptr++];
-	newstate = (100 * filepos++) / filesize;
+	*data = xsvfdata[readptr++];
+	newstate = filepos++ >> 10;
 	if (newstate != oldstate) {
-		printf("%4d\r\r\r\r", newstate);
+		printf("%4d kB\r\r\r\r", newstate);
 		oldstate = newstate;
 	}
 }
@@ -98,7 +97,7 @@ unsigned char readTDOBit(void)
 {
 	unsigned long inputs;
 
-	inputs = in32(GPIO0_IR);
+	inputs = in_be32((void *)GPIO0_IR);
 	if (inputs & JTAG_TDO)
 		return 1;
 	else

@@ -43,6 +43,7 @@
  */
 #define OMAP34XX_CORE_L4_IO_BASE	0x48000000
 #define OMAP34XX_WAKEUP_L4_IO_BASE	0x48300000
+#define OMAP34XX_ID_L4_IO_BASE		0x4830A200
 #define OMAP34XX_L4_PER			0x49000000
 #define OMAP34XX_L4_IO_BASE		OMAP34XX_CORE_L4_IO_BASE
 
@@ -78,10 +79,10 @@
 
 #ifndef __ASSEMBLY__
 
-typedef struct s32ktimer {
+struct s32ktimer {
 	unsigned char res[0x10];
 	unsigned int s32k_cr;		/* 0x10 */
-} s32ktimer_t;
+};
 
 #endif /* __ASSEMBLY__ */
 
@@ -94,14 +95,14 @@ typedef struct s32ktimer {
 #define OMAP34XX_GPIO6_BASE		0x49058000
 
 #ifndef __ASSEMBLY__
-typedef struct gpio {
+struct gpio {
 	unsigned char res1[0x34];
 	unsigned int oe;		/* 0x34 */
 	unsigned int datain;		/* 0x38 */
 	unsigned char res2[0x54];
 	unsigned int cleardataout;	/* 0x90 */
 	unsigned int setdataout;	/* 0x94 */
-} gpio_t;
+};
 #endif /* __ASSEMBLY__ */
 
 #define GPIO0				(0x1 << 0)
@@ -166,57 +167,18 @@ typedef struct gpio {
  * 343x real hardware:
  *  ES1     = rev 0
  *
- * 343x code defines:
- * ES1     = 0+1 = 1
- * ES1     = 1+1 = 1
+ *  ES2 onwards, the value maps to contents of IDCODE register [31:28].
  */
-#define CPU_3430_ES1		1
-#define CPU_3430_ES2		2
+#define CPU_3XX_ES10		0
+#define CPU_3XX_ES20		1
+#define CPU_3XX_ES21		2
+#define CPU_3XX_ES30		3
+#define CPU_3XX_ES31		4
+#define CPU_3XX_MAX_REV		(CPU_3XX_ES31 + 1)
+
+#define CPU_3XX_ID_SHIFT	28
 
 #define WIDTH_8BIT		0x0000
 #define WIDTH_16BIT		0x1000	/* bit pos for 16 bit in gpmc */
-
-/* SDP definitions according to FPGA Rev. Is this OK?? */
-#define SDP_3430_V1		0x1
-#define SDP_3430_V2		0x2
-
-/* EVM definitions */
-#define OMAP3EVM_V1		0x1
-#define OMAP3EVM_V2		0x2
-
-/* I2C power management companion definitions */
-#define PWRMGT_ADDR_ID1		0x48
-#define PWRMGT_ADDR_ID2		0x49
-#define PWRMGT_ADDR_ID3		0x4A
-#define PWRMGT_ADDR_ID4		0x4B
-
-/* I2C ID3 (slave3) register */
-#define LEDEN			0xEE
-
-#define LEDAON			(0x1 << 0)
-#define LEDBON			(0x1 << 1)
-#define LEDAPWM			(0x1 << 4)
-#define LEDBPWM			(0x1 << 5)
-
-/* I2C ID4 (slave4) register */
-#define VAUX2_DEV_GRP		0x76
-#define VAUX2_DEDICATED		0x79
-#define VAUX3_DEV_GRP		0x7A
-#define VAUX3_DEDICATED		0x7D
-#define VMMC1_DEV_GRP		0x82
-#define VMMC1_DEDICATED		0x85
-#define VPLL2_DEV_GRP		0x8E
-#define VPLL2_DEDICATED		0x91
-#define VDAC_DEV_GRP		0x96
-#define VDAC_DEDICATED		0x99
-
-#define DEV_GRP_P1		0x20
-#define DEV_GRP_ALL		0xE0
-
-#define VAUX2_VSEL_28		0x09
-#define VAUX3_VSEL_28		0x03
-#define VPLL2_VSEL_18		0x05
-#define VDAC_VSEL_18		0x03
-#define VMMC1_VSEL_30		0x02
 
 #endif

@@ -46,6 +46,10 @@
 #include <ubi_uboot.h>
 #include "ubi.h"
 
+#if (CONFIG_SYS_MALLOC_LEN < (512 << 10))
+#error Malloc area too small for UBI, increase CONFIG_SYS_MALLOC_LEN to >= 512k
+#endif
+
 /* Maximum length of the 'mtd=' parameter */
 #define MTD_PARAM_LEN_MAX 64
 
@@ -532,7 +536,7 @@ static int io_init(struct ubi_device *ubi)
 	 */
 
 	ubi->peb_size   = ubi->mtd->erasesize;
-	ubi->peb_count  = ubi->mtd->size / ubi->mtd->erasesize;
+	ubi->peb_count  = mtd_div_by_eb(ubi->mtd->size, ubi->mtd);
 	ubi->flash_size = ubi->mtd->size;
 
 	if (ubi->mtd->block_isbad && ubi->mtd->block_markbad)
