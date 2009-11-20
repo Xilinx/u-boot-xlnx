@@ -344,7 +344,8 @@ static void
 BootpTimeout(void)
 {
 	if (BootpTry >= TIMEOUT_COUNT) {
-		puts ("\nRetry count exceeded; starting again\n");
+		//puts ("\nRetry count exceeded; starting again\n");
+		NetState = NETLOOP_FAIL;
 		NetStartAgain ();
 	} else {
 		NetSetTimeout (TIMEOUT, BootpTimeout);
