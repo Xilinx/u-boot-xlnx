@@ -42,7 +42,7 @@ extern int gpio_init (void);
 extern int interrupts_init (void);
 #endif
 #if defined(CONFIG_CMD_NET)
-extern int eth_init (bd_t * bis);
+extern int eth_initialize (bd_t * bis);
 #endif
 
 /*
@@ -142,7 +142,13 @@ void board_init (void)
 #if defined(CONFIG_CMD_NET)
 	/* IP Address */
 	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
-	eth_init (bd);
+
+	printf("Net:   ");
+	eth_initialize(gd->bd);
+
+	uchar enetaddr[6];
+	eth_getenv_enetaddr("ethaddr", enetaddr);
+	printf("MAC:   %pM\n", enetaddr);
 #endif
 
 	/* relocate environment function pointers etc. */
