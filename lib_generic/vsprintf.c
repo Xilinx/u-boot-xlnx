@@ -93,6 +93,7 @@ int ustrtoul(const char *cp, char **endp, unsigned int base)
 	return result;
 }
 
+#ifdef CONFIG_SYS_64BIT_STRTOUL
 unsigned long long simple_strtoull (const char *cp, char **endp, unsigned int base)
 {
 	unsigned long long result = 0, value;
@@ -120,6 +121,7 @@ unsigned long long simple_strtoull (const char *cp, char **endp, unsigned int ba
 		*endp = (char *) cp;
 	return result;
 }
+#endif /* CONFIG_SYS_64BIT_STRTOUL */
 
 /* we use this so that we can do without the ctype library */
 #define is_digit(c)	((c) >= '0' && (c) <= '9')
