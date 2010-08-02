@@ -78,4 +78,7 @@ int board_eth_init(bd_t *bis)
 #ifdef CONFIG_XILINX_EMACLITE
 	return xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR);
 #endif
+#ifdef CONFIG_XILINX_LL_TEMAC
+	return xilinx_ll_temac_initialize(bis, XILINX_LLTEMAC_BASEADDR);
+#endif
 }
