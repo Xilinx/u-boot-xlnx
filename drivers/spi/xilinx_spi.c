@@ -132,7 +132,7 @@ int spi_claim_bus(struct spi_slave *slave)
 		// Toggle CS
 		u8 sr;
 	
-		out_8(BaseAddr + XSPI_SSR_OFFSET, 0xfffe);
+		out_8(BaseAddr + XSPI_SSR_OFFSET, ~(0x0001 << slave->cs));
 		//sr = in_8(BaseAddr + XSPI_SR_OFFSET);
 		//DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 	
@@ -189,7 +189,7 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 	 */
 	DEBUGF("%s[%d] going to claim cs\n",__FUNCTION__,__LINE__);
 	if (flags & SPI_XFER_BEGIN)
-		out_8(BaseAddr + XSPI_SSR_OFFSET, 0xfffe);
+		out_8(BaseAddr + XSPI_SSR_OFFSET, ~(0x0001 << slave->cs));
 	sr = in_8(BaseAddr + XSPI_SR_OFFSET);
 	DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 	
