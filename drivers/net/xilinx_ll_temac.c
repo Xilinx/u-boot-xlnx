@@ -29,93 +29,15 @@
 #endif
 
 # if XILINX_LLTEMAC_SDMA_USE_DCR==1
-/* I am deeply, deeply regretful for what follows.
-   Apart from ripping up this entire driver, there's no other option
-
-   JW */
-
-#define MTDCR_CASE(i,v) case i:			\
-				mtdcr(i,v);	\
-				break;		\
-			case i+1:		\
-				mtdcr(i+1,v);	\
-				break;		\
-			case i+2:		\
-				mtdcr(i+2,v);	\
-				break;		\
-			case i+3:		\
-				mtdcr(i+3,v);	\
-				break;		\
-			case i+4:		\
-				mtdcr(i+4,v);	\
-				break;		\
-			case i+5:		\
-				mtdcr(i+5,v);	\
-				break;		\
-			case i+6:		\
-				mtdcr(i+6,v);	\
-				break;		\
-			case i+7:		\
-				mtdcr(i+7,v);	\
-				break;
-#define MFDCR_CASE(i,v) case i:			\
-				v=mfdcr(i);	\
-				break;		\
-			case i+1:		\
-				v=mfdcr(i+1);	\
-				break;		\
-			case i+2:		\
-				v=mfdcr(i+1);	\
-				break;		\
-			case i+3:		\
-				v=mfdcr(i+1);	\
-				break;		\
-			case i+4:		\
-				v=mfdcr(i+1);	\
-				break;		\
-			case i+5:		\
-				v=mfdcr(i+1);	\
-				break;		\
-			case i+6:		\
-				v=mfdcr(i+1);	\
-				break;		\
-			case i+7:		\
-				v=mfdcr(i+1);	\
-				break;	
-
-void mtdcr_local(u32 reg, u32 val) {
-	switch(reg) {
-	MTDCR_CASE(0x80,val)
-	MTDCR_CASE(0x88,val)
-	MTDCR_CASE(0x90,val)
-	MTDCR_CASE(0x98,val)
-	MTDCR_CASE(0xA0,val)
-	MTDCR_CASE(0xA8,val)
-	MTDCR_CASE(0xB0,val)
-	MTDCR_CASE(0xB8,val)
-	MTDCR_CASE(0xC0,val)
-	MTDCR_CASE(0xC8,val)
-	MTDCR_CASE(0xD0,val)
-	MTDCR_CASE(0xD8,val)
-	}
+static void mtdcr_local(u32 reg, u32 val) {
+	mtdcr(0x00, reg);
+	mtdcr(0x01, val);
 }
 
-u32 mfdcr_local(u32 reg) {
+static u32 mfdcr_local(u32 reg) {
 	u32 val;
-	switch(reg) {
-	MFDCR_CASE(0x80,val)
-	MFDCR_CASE(0x88,val)
-	MFDCR_CASE(0x90,val)
-	MFDCR_CASE(0x98,val)
-	MFDCR_CASE(0xA0,val)
-	MFDCR_CASE(0xA8,val)
-	MFDCR_CASE(0xB0,val)
-	MFDCR_CASE(0xB8,val)
-	MFDCR_CASE(0xC0,val)
-	MFDCR_CASE(0xC8,val)
-	MFDCR_CASE(0xD0,val)
-	MFDCR_CASE(0xD8,val)
-	}
+	mtdcr(0x00, reg);
+	val = mfdcr(0x01);
 	return val;
 }
 #endif
@@ -138,6 +60,28 @@ u32 mfdcr_local(u32 reg) {
 #undef ETH_HALTING
 
 #ifdef SDMA_MODE
+# if XILINX_LLTEMAC_SDMA_USE_DCR==1
+/* XPS_LL_TEMAC SDMA registers definition */
+# define TX_NXTDESC_PTR		(((struct ll_priv *)(dev->priv))->sdma + 0x00)
+# define TX_CURBUF_ADDR		(((struct ll_priv *)(dev->priv))->sdma + 0x01)
+# define TX_CURBUF_LENGTH	(((struct ll_priv *)(dev->priv))->sdma + 0x02)
+# define TX_CURDESC_PTR		(((struct ll_priv *)(dev->priv))->sdma + 0x03)
+# define TX_TAILDESC_PTR	(((struct ll_priv *)(dev->priv))->sdma + 0x04)
+# define TX_CHNL_CTRL		(((struct ll_priv *)(dev->priv))->sdma + 0x05)
+# define TX_IRQ_REG		(((struct ll_priv *)(dev->priv))->sdma + 0x06)
+# define TX_CHNL_STS		(((struct ll_priv *)(dev->priv))->sdma + 0x07)
+
+# define RX_NXTDESC_PTR		(((struct ll_priv *)(dev->priv))->sdma + 0x08)
+# define RX_CURBUF_ADDR		(((struct ll_priv *)(dev->priv))->sdma + 0x09)
+# define RX_CURBUF_LENGTH	(((struct ll_priv *)(dev->priv))->sdma + 0x0a)
+# define RX_CURDESC_PTR		(((struct ll_priv *)(dev->priv))->sdma + 0x0b)
+# define RX_TAILDESC_PTR	(((struct ll_priv *)(dev->priv))->sdma + 0x0c)
+# define RX_CHNL_CTRL		(((struct ll_priv *)(dev->priv))->sdma + 0x0d)
+# define RX_IRQ_REG		(((struct ll_priv *)(dev->priv))->sdma + 0x0e)
+# define RX_CHNL_STS		(((struct ll_priv *)(dev->priv))->sdma + 0x0f)
+
+# define DMA_CONTROL_REG	(((struct ll_priv *)(dev->priv))->sdma + 0x10)
+#else
 /* XPS_LL_TEMAC SDMA registers definition */
 # define TX_NXTDESC_PTR		(((struct ll_priv *)(dev->priv))->sdma + 0x00)
 # define TX_CURBUF_ADDR		(((struct ll_priv *)(dev->priv))->sdma + 0x04)
@@ -158,6 +102,7 @@ u32 mfdcr_local(u32 reg) {
 # define RX_CHNL_STS		(((struct ll_priv *)(dev->priv))->sdma + 0x3c)
 
 # define DMA_CONTROL_REG	(((struct ll_priv *)(dev->priv))->sdma + 0x40)
+#endif
 #endif
 
 /* XPS_LL_TEMAC direct registers definition */
