@@ -98,7 +98,7 @@ extern int cramfs_info (struct part_info *info);
  * @param argv arguments list
  * @return 0 on success, 1 otherwise
  */
-int do_cramfs_load(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_cramfs_load(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *filename;
 	int size;
@@ -163,7 +163,7 @@ int do_cramfs_load(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
  * @param argv arguments list
  * @return 0 on success, 1 otherwise
  */
-int do_cramfs_ls(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_cramfs_ls(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *filename = "/";
 	int ret;
@@ -199,14 +199,14 @@ int do_cramfs_ls(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
 /***************************************************/
 U_BOOT_CMD(
 	cramfsload,	3,	0,	do_cramfs_load,
-	"cramfsload\t- load binary file from a filesystem image",
+	"load binary file from a filesystem image",
 	"[ off ] [ filename ]\n"
 	"    - load binary file from address 'cramfsaddr'\n"
 	"      with offset 'off'\n"
 );
 U_BOOT_CMD(
 	cramfsls,	2,	1,	do_cramfs_ls,
-	"cramfsls\t- list files in a directory (default /)",
+	"list files in a directory (default /)",
 	"[ directory ]\n"
 	"    - list files in a directory.\n"
 );

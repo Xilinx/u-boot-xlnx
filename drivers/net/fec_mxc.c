@@ -62,7 +62,7 @@ struct fec_priv gfec = {
 /*
  * MII-interface related functions
  */
-static int fec_miiphy_read(char *dev, uint8_t phyAddr, uint8_t regAddr,
+static int fec_miiphy_read(const char *dev, uint8_t phyAddr, uint8_t regAddr,
 		uint16_t *retVal)
 {
 	struct eth_device *edev = eth_get_dev_by_name(dev);
@@ -119,7 +119,7 @@ static void fec_mii_setspeed(struct fec_priv *fec)
 	debug("fec_init: mii_speed %#lx\n",
 			fec->eth->mii_speed);
 }
-static int fec_miiphy_write(char *dev, uint8_t phyAddr, uint8_t regAddr,
+static int fec_miiphy_write(const char *dev, uint8_t phyAddr, uint8_t regAddr,
 		uint16_t data)
 {
 	struct eth_device *edev = eth_get_dev_by_name(dev);
@@ -314,9 +314,9 @@ static int fec_get_hwaddr(struct eth_device *dev, unsigned char *mac)
 {
 /*
  * The MX27 can store the mac address in internal eeprom
- * This mechanism is not supported now by MX51
+ * This mechanism is not supported now by MX51 or MX25
  */
-#ifdef CONFIG_MX51
+#if defined(CONFIG_MX51) || defined(CONFIG_MX25)
 	return -1;
 #else
 	struct iim_regs *iim = (struct iim_regs *)IMX_IIM_BASE;
@@ -325,7 +325,7 @@ static int fec_get_hwaddr(struct eth_device *dev, unsigned char *mac)
 	for (i = 0; i < 6; i++)
 		mac[6-1-i] = readl(&iim->iim_bank_area0[IIM0_MAC + i]);
 
-	return is_valid_ether_addr(mac);
+	return !is_valid_ether_addr(mac);
 #endif
 }
 
@@ -505,7 +505,6 @@ static int fec_init(struct eth_device *dev, bd_t* bd)
 		miiphy_restart_aneg(dev);
 
 	fec_open(dev);
-	fec_set_hwaddr(dev);
 	return 0;
 }
 
@@ -713,6 +712,7 @@ static int fec_probe(bd_t *bd)
 	edev->send = fec_send;
 	edev->recv = fec_recv;
 	edev->halt = fec_halt;
+	edev->write_hwaddr = fec_set_hwaddr;
 
 	fec->eth = (struct ethernet_regs *)IMX_FEC_BASE;
 	fec->bd = bd;
@@ -743,7 +743,7 @@ static int fec_probe(bd_t *bd)
 	writel(0x05ee0024, &fec->eth->r_cntrl);	/* FIXME 0x05ee0004 */
 	fec_mii_setspeed(fec);
 
-	sprintf(edev->name, "FEC_MXC");
+	sprintf(edev->name, "FEC");
 
 	miiphy_register(edev->name, fec_miiphy_read, fec_miiphy_write);
 

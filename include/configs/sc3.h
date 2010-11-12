@@ -251,6 +251,7 @@
  */
 #define  CONFIG_HARD_I2C		/* I2C with hardware support	*/
 #undef	CONFIG_SOFT_I2C			/* I2C bit-banged		*/
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 
 #define I2C_INIT
 #define I2C_ACTIVE 0
@@ -378,8 +379,9 @@
  */
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
 #define CONFIG_SYS_FLASH_BASE		0xFFE00000
-#define CONFIG_SYS_MONITOR_BASE	0xFFFC0000     /* placed last 256k */
-#define CONFIG_SYS_MONITOR_LEN		(224 * 1024)	/* Reserve 224 KiB for Monitor	*/
+
+#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE	/* Start of U-Boot	*/
+#define CONFIG_SYS_MONITOR_LEN		(0xFFFFFFFF - CONFIG_SYS_MONITOR_BASE + 1)
 #define CONFIG_SYS_MALLOC_LEN		(128 * 1024)	/* Reserve 128 KiB for malloc()	*/
 
 /*
@@ -455,7 +457,7 @@
  * - internal SRAM (OCM=On Chip Memory) is placed to CONFIG_SYS_OCM_DATA_ADDR
  * - Stackpointer will be located to
  *   (CONFIG_SYS_INIT_RAM_ADDR&0xFFFF0000) | (CONFIG_SYS_INIT_SP_OFFSET&0x0000FFFF)
- *   in cpu/ppc4xx/start.S
+ *   in arch/powerpc/cpu/ppc4xx/start.S
  */
 
 #undef CONFIG_SYS_INIT_DCACHE_CS
@@ -494,7 +496,7 @@
 #define BOOTFLAG_WARM	0x02		/* Software reboot			*/
 
 /* ################################################################################### */
-/* These defines will be used in cpu/ppc4xx/cpu_init.c to setup external chip selects  */
+/* These defines will be used in arch/powerpc/cpu/ppc4xx/cpu_init.c to setup external chip selects  */
 /* They are currently undefined cause they are initiaized in board/solidcard3/init.S   */
 
 /* This chip select accesses the boot device */

@@ -60,7 +60,7 @@ static int fit_check_ramdisk (const void *fit, int os_noffset,
 #endif
 
 #ifdef CONFIG_CMD_BDI
-extern int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[]);
+extern int do_bdinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[]);
 #endif
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -84,7 +84,6 @@ static table_entry_t uimage_arch[] = {
 	{	IH_ARCH_MICROBLAZE,	"microblaze",	"MicroBlaze",	},
 	{	IH_ARCH_MIPS,		"mips",		"MIPS",		},
 	{	IH_ARCH_MIPS64,		"mips64",	"MIPS 64 Bit",	},
-	{	IH_ARCH_NIOS,		"nios",		"NIOS",		},
 	{	IH_ARCH_NIOS2,		"nios2",	"NIOS II",	},
 	{	IH_ARCH_PPC,		"powerpc",	"PowerPC",	},
 	{	IH_ARCH_PPC,		"ppc",		"PowerPC",	},
@@ -434,9 +433,9 @@ ulong getenv_bootm_low(void)
 
 phys_size_t getenv_bootm_size(void)
 {
+	phys_size_t tmp;
 	char *s = getenv ("bootm_size");
 	if (s) {
-		phys_size_t tmp;
 #ifdef CONFIG_SYS_64BIT_STRTOUL
 		tmp = (phys_size_t)simple_strtoull (s, NULL, 16);
 #else
@@ -444,16 +443,29 @@ phys_size_t getenv_bootm_size(void)
 #endif
 		return tmp;
 	}
+	s = getenv("bootm_low");
+	if (s)
+#ifdef CONFIG_SYS_64BIT_STRTOUL
+		tmp = (phys_size_t)simple_strtoull (s, NULL, 16);
+#else
+		tmp = (phys_size_t)simple_strtoul (s, NULL, 16);
+#endif
+	else
+		tmp = 0;
+
 
 #if defined(CONFIG_ARM)
-	return gd->bd->bi_dram[0].size;
+	return gd->bd->bi_dram[0].size - tmp;
 #else
-	return gd->bd->bi_memsize;
+	return gd->bd->bi_memsize - tmp;
 #endif
 }
 
 void memmove_wd (void *to, void *from, size_t len, ulong chunksz)
 {
+	if (to == from)
+		return;
+
 #if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
 	while (len > 0) {
 		size_t tail = (len > chunksz) ? chunksz : len;
@@ -758,7 +770,7 @@ int genimg_has_config (bootm_headers_t *images)
  *     1, if ramdisk image is found but corrupted, or invalid
  *     rd_start and rd_end are set to 0 if no ramdisk exists
  */
-int boot_get_ramdisk (int argc, char *argv[], bootm_headers_t *images,
+int boot_get_ramdisk (int argc, char * const argv[], bootm_headers_t *images,
 		uint8_t arch, ulong *rd_start, ulong *rd_end)
 {
 	ulong rd_addr, rd_load;
@@ -1180,6 +1192,7 @@ static int fit_check_fdt (const void *fit, int fdt_noffset, int verify)
  *      0 - success
  *      1 - failure
  */
+#if defined(CONFIG_SYS_BOOTMAPSZ)
 int boot_relocate_fdt (struct lmb *lmb, ulong bootmap_base,
 		char **of_flat_tree, ulong *of_size)
 {
@@ -1259,6 +1272,7 @@ int boot_relocate_fdt (struct lmb *lmb, ulong bootmap_base,
 error:
 	return 1;
 }
+#endif /* CONFIG_SYS_BOOTMAPSZ */
 
 /**
  * boot_get_fdt - main fdt handling routine
@@ -1281,7 +1295,7 @@ error:
  *     1, if fdt image is found but corrupted
  *     of_flat_tree and of_size are set to 0 if no fdt exists
  */
-int boot_get_fdt (int flag, int argc, char *argv[], bootm_headers_t *images,
+int boot_get_fdt (int flag, int argc, char * const argv[], bootm_headers_t *images,
 		char **of_flat_tree, ulong *of_size)
 {
 	const image_header_t *fdt_hdr;

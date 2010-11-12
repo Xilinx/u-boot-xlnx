@@ -53,7 +53,7 @@
  * Base addresses -- Note these are effective addresses where the
  * actual resources get mapped (not physical addresses)
  *----------------------------------------------------------------------*/
-#define CONFIG_SYS_MONITOR_LEN		(384  * 1024)	/* Reserve 384 kB for Monitor   */
+#define CONFIG_SYS_MONITOR_LEN		(~(TEXT_BASE) + 1)
 #define CONFIG_SYS_MALLOC_LEN		(1024 * 1024)	/* Reserve 256 kB for malloc()  */
 
 #define CONFIG_PRAM		0	/* use pram variable to overwrite */
@@ -61,7 +61,7 @@
 #define CONFIG_SYS_BOOT_BASE_ADDR	0xf0000000
 #define CONFIG_SYS_SDRAM_BASE		0x00000000	/* _must_ be 0          */
 #define CONFIG_SYS_FLASH_BASE		0xfc000000	/* start of FLASH       */
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE		TEXT_BASE
 #define CONFIG_SYS_NAND_ADDR		0xd0000000	/* NAND Flash           */
 #define CONFIG_SYS_OCM_BASE		0xe0010000	/* ocm                  */
 #define CONFIG_SYS_OCM_DATA_ADDR	CONFIG_SYS_OCM_BASE
@@ -90,7 +90,7 @@
 #define CONFIG_SYS_INIT_RAM_END	(4 << 10)
 #define CONFIG_SYS_GBL_DATA_SIZE	256	/* num bytes initial data */
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_POST_WORD_ADDR
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 
 /*-----------------------------------------------------------------------
  * Serial Port
@@ -226,6 +226,7 @@
  *----------------------------------------------------------------------*/
 #define CONFIG_HARD_I2C		1	/* I2C with hardware support    */
 #undef	CONFIG_SOFT_I2C		/* I2C bit-banged               */
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 #define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address  */
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 
@@ -300,8 +301,8 @@
 	"fdt_addr_r=800000\0"						\
 	"fpga=fpga loadb 0 ${fpga_addr}\0"				\
 	"load=tftp 200000 /tftpboot/pmc440/u-boot.bin\0"		\
-	"update=protect off fffa0000 ffffffff;era fffa0000 ffffffff;"	\
-		"cp.b 200000 fffa0000 60000\0"				\
+	"update=protect off fff90000 ffffffff;era fff90000 ffffffff;"	\
+		"cp.b 200000 fff90000 70000\0"				\
 	""
 
 #define CONFIG_BOOTDELAY	3	/* autoboot after 3 seconds     */
@@ -372,7 +373,6 @@
 				 CONFIG_SYS_POST_ETHER  |	\
 				 CONFIG_SYS_POST_SPR)
 
-#define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 #define CONFIG_LOGBUFFER
 #define CONFIG_SYS_POST_CACHE_ADDR	0x7fff0000	/* free virtual address     */
 

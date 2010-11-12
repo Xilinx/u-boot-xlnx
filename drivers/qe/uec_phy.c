@@ -47,7 +47,7 @@
 /*--------------------------------------------------------------------+
  * Fixed PHY (PHY-less) support for Ethernet Ports.
  *
- * Copied from cpu/ppc4xx/4xx_enet.c
+ * Copied from arch/powerpc/cpu/ppc4xx/4xx_enet.c
  *--------------------------------------------------------------------*/
 
 /*
@@ -71,8 +71,8 @@
  *                 {name, speed, duplex},
  *
  *     #define CONFIG_SYS_FIXED_PHY_PORTS \
- *                 CONFIG_SYS_FIXED_PHY_PORT("FSL UEC0",SPEED_100,DUPLEX_FULL) \
- *                 CONFIG_SYS_FIXED_PHY_PORT("FSL UEC2",SPEED_100,DUPLEX_HALF)
+ *                 CONFIG_SYS_FIXED_PHY_PORT("UEC0",SPEED_100,DUPLEX_FULL) \
+ *                 CONFIG_SYS_FIXED_PHY_PORT("UEC2",SPEED_100,DUPLEX_HALF)
  */
 
 #ifndef CONFIG_FIXED_PHY
@@ -93,6 +93,27 @@ static const struct fixed_phy_port fixed_phy_port[] = {
 	CONFIG_SYS_FIXED_PHY_PORTS /* defined in board configuration file */
 };
 
+/*--------------------------------------------------------------------+
+ * BitBang MII support for ethernet ports
+ *
+ * Based from MPC8560ADS implementation
+ *--------------------------------------------------------------------*/
+/*
+ * Example board header file to define bitbang ethernet ports:
+ *
+ * #define CONFIG_SYS_BITBANG_PHY_PORT(name) name,
+ * #define CONFIG_SYS_BITBANG_PHY_PORTS CONFIG_SYS_BITBANG_PHY_PORT("UEC0")
+*/
+#ifndef CONFIG_SYS_BITBANG_PHY_PORTS
+#define CONFIG_SYS_BITBANG_PHY_PORTS	/* default is an empty array */
+#endif
+
+#if defined(CONFIG_BITBANGMII)
+static const char *bitbang_phy_port[] = {
+	CONFIG_SYS_BITBANG_PHY_PORTS /* defined in board configuration file */
+};
+#endif /* CONFIG_BITBANGMII */
+
 static void config_genmii_advert (struct uec_mii_info *mii_info);
 static void genmii_setup_forced (struct uec_mii_info *mii_info);
 static void genmii_restart_aneg (struct uec_mii_info *mii_info);
@@ -112,6 +133,19 @@ void uec_write_phy_reg (struct eth_device *dev, int mii_id, int regnum, int valu
 	uec_mii_t *ug_regs;
 	enet_tbi_mii_reg_e mii_reg = (enet_tbi_mii_reg_e) regnum;
 	u32 tmp_reg;
+
+
+#if defined(CONFIG_BITBANGMII)
+	u32 i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(bitbang_phy_port); i++) {
+		if (strncmp(dev->name, bitbang_phy_port[i],
+			sizeof(dev->name)) == 0) {
+			(void)bb_miiphy_write(NULL, mii_id, regnum, value);
+			return;
+		}
+	}
+#endif /* CONFIG_BITBANGMII */
 
 	ug_regs = ugeth->uec_mii_regs;
 
@@ -139,6 +173,19 @@ int uec_read_phy_reg (struct eth_device *dev, int mii_id, int regnum)
 	enet_tbi_mii_reg_e mii_reg = (enet_tbi_mii_reg_e) regnum;
 	u32 tmp_reg;
 	u16 value;
+
+
+#if defined(CONFIG_BITBANGMII)
+	u32 i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(bitbang_phy_port); i++) {
+		if (strncmp(dev->name, bitbang_phy_port[i],
+			sizeof(dev->name)) == 0) {
+			(void)bb_miiphy_read(NULL, mii_id, regnum, &value);
+			return (value);
+		}
+	}
+#endif /* CONFIG_BITBANGMII */
 
 	ug_regs = ugeth->uec_mii_regs;
 

@@ -103,11 +103,10 @@
 
 #if defined(CONFIG_SYS_INIT_DCACHE_CS)
 # define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-# define CONFIG_SYS_POST_ALT_WORD_ADDR	(CONFIG_SYS_PERIPHERAL_BASE + GPT0_COMP6)
+# define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_PERIPHERAL_BASE + GPT0_COMP6)
 #else
 # define CONFIG_SYS_INIT_EXTRA_SIZE	16
 # define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - CONFIG_SYS_INIT_EXTRA_SIZE)
-# define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 4)
 # define CONFIG_SYS_OCM_DATA_ADDR	CONFIG_SYS_INIT_RAM_ADDR
 #endif /* defined(CONFIG_SYS_INIT_DCACHE_CS) */
 
@@ -230,7 +229,7 @@
  *       SDRAM Controller DDR autocalibration values and takes a lot longer
  *       to run than Method_B.
  * (See the Method_A and Method_B algorithm discription in the file:
- *	cpu/ppc4xx/4xx_ibm_ddr2_autocalib.c)
+ *	arch/powerpc/cpu/ppc4xx/4xx_ibm_ddr2_autocalib.c)
  * Define CONFIG_PPC4xx_DDR_METHOD_A to use DDR autocalibration Method_A
  *
  * DDR Autocalibration Method_B is the default.

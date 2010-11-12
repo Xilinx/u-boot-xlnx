@@ -1,5 +1,5 @@
 /*
- * Copyright 2007,2009 Freescale Semiconductor, Inc.
+ * Copyright 2007,2009-2010 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -35,13 +35,12 @@
 #include <tsec.h>
 #include <netdev.h>
 
-#include "../common/pixis.h"
 #include "../common/sgmii_riser.h"
 
 int checkboard (void)
 {
 	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	volatile ccsr_lbc_t *lbc = (void *)(CONFIG_SYS_MPC85xx_LBC_ADDR);
+	volatile fsl_lbc_t *lbc = LBC_BASE_ADDR;
 	volatile ccsr_local_ecm_t *ecm = (void *)(CONFIG_SYS_MPC85xx_ECM_ADDR);
 	u8 vboot;
 	u8 *pixis_base = (u8 *)PIXIS_BASE;
@@ -361,19 +360,8 @@ void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
+	FT_FSL_PCI_SETUP;
 
-#ifdef CONFIG_PCI1
-	ft_fsl_pci_setup(blob, "pci0", &pci1_hose);
-#endif
-#ifdef CONFIG_PCIE2
-	ft_fsl_pci_setup(blob, "pci1", &pcie1_hose);
-#endif
-#ifdef CONFIG_PCIE1
-	ft_fsl_pci_setup(blob, "pci2", &pcie3_hose);
-#endif
-#ifdef CONFIG_PCIE3
-	ft_fsl_pci_setup(blob, "pci3", &pcie2_hose);
-#endif
 #ifdef CONFIG_FSL_SGMII_RISER
 	fsl_sgmii_riser_fdt_fixup(blob);
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2007,2009 Freescale Semiconductor, Inc.
+ * Copyright 2007,2009-2010 Freescale Semiconductor, Inc.
  *
  * (C) Copyright 2002 Scott McNutt <smcnutt@artesyncp.com>
  *
@@ -181,7 +181,7 @@ void
 local_bus_init(void)
 {
 	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	volatile ccsr_lbc_t *lbc = (void *)(CONFIG_SYS_MPC85xx_LBC_ADDR);
+	volatile fsl_lbc_t *lbc = LBC_BASE_ADDR;
 
 	uint clkdiv;
 	uint lbc_hz;
@@ -214,7 +214,7 @@ sdram_init(void)
 #if defined(CONFIG_SYS_OR2_PRELIM) && defined(CONFIG_SYS_BR2_PRELIM)
 
 	uint idx;
-	volatile ccsr_lbc_t *lbc = (void *)(CONFIG_SYS_MPC85xx_LBC_ADDR);
+	volatile fsl_lbc_t *lbc = LBC_BASE_ADDR;
 	uint *sdram_addr = (uint *)CONFIG_SYS_LBC_SDRAM_BASE;
 	uint lsdmr_common;
 
@@ -225,15 +225,12 @@ sdram_init(void)
 	/*
 	 * Setup SDRAM Base and Option Registers
 	 */
-	lbc->or2 = CONFIG_SYS_OR2_PRELIM;
-	asm("msync");
-
-	lbc->br2 = CONFIG_SYS_BR2_PRELIM;
+	set_lbc_or(2, CONFIG_SYS_OR2_PRELIM);
+	set_lbc_br(2, CONFIG_SYS_BR2_PRELIM);
 	asm("msync");
 
 	lbc->lbcr = CONFIG_SYS_LBC_LBCR;
 	asm("msync");
-
 
 	lbc->lsrt = CONFIG_SYS_LBC_LSRT;
 	lbc->mrtpr = CONFIG_SYS_LBC_MRTPR;
@@ -429,11 +426,6 @@ void ft_board_setup(void *blob, bd_t *bd)
 {
 	ft_cpu_setup(blob, bd);
 
-#ifdef CONFIG_PCI1
-	ft_fsl_pci_setup(blob, "pci0", &pci1_hose);
-#endif
-#ifdef CONFIG_PCIE1
-	ft_fsl_pci_setup(blob, "pci1", &pcie1_hose);
-#endif
+	FT_FSL_PCI_SETUP;
 }
 #endif

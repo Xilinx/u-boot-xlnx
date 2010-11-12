@@ -26,11 +26,13 @@
 /*
  * High Level Configuration Options
  */
-#define CONFIG_ARMCORTEXA8	1	/* This is an ARM V7 CPU core */
+#define CONFIG_ARMV7		1	/* This is an ARM V7 CPU core */
 #define CONFIG_OMAP		1	/* in a TI OMAP core */
 #define CONFIG_OMAP34XX		1	/* which is a 34XX */
 #define CONFIG_OMAP3430		1	/* which is in a 3430 */
 #define CONFIG_OMAP3_PANDORA	1	/* working with pandora */
+
+#define CONFIG_SDRC	/* The chip has SDRC controller */
 
 #include <asm/arch/cpu.h>	/* get chip and board defs */
 #include <asm/arch/omap3.h>

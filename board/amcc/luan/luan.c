@@ -119,7 +119,7 @@ int checkboard(void)
 }
 
 /*
- * Override the default functions in cpu/ppc4xx/44x_spd_ddr2.c with
+ * Override the default functions in arch/powerpc/cpu/ppc4xx/44x_spd_ddr2.c with
  * board specific values.
  */
 u32 ddr_clktr(u32 default_val) {
@@ -207,7 +207,7 @@ static int l2cache_status(void)
  *  int do_l2cache()
  *
  ************************************************************************/
-int do_l2cache( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] )
+int do_l2cache( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[] )
 {
 	switch (argc) {
 	case 2:			/* on / off	*/
@@ -223,8 +223,7 @@ int do_l2cache( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] )
 			l2cache_status() ? "ON" : "OFF");
 		return 0;
 	default:
-		cmd_usage(cmdtp);
-		return 1;
+		return cmd_usage(cmdtp);
 	}
 
 	return  0;

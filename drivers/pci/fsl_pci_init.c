@@ -1,9 +1,10 @@
 /*
- * Copyright 2007-2009 Freescale Semiconductor, Inc.
+ * Copyright 2007-2010 Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * Version 2 as published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -509,14 +510,26 @@ void fsl_pci_config_unlock(struct pci_controller *hose)
 #include <libfdt.h>
 #include <fdt_support.h>
 
-void ft_fsl_pci_setup(void *blob, const char *pci_alias,
-			struct pci_controller *hose)
+void ft_fsl_pci_setup(void *blob, const char *pci_compat,
+			struct pci_controller *hose, unsigned long ctrl_addr)
 {
-	int off = fdt_path_offset(blob, pci_alias);
+	int off;
+	u32 bus_range[2];
+	phys_addr_t p_ctrl_addr = (phys_addr_t)ctrl_addr;
 
-	if (off >= 0) {
-		u32 bus_range[2];
+	/* convert ctrl_addr to true physical address */
+	p_ctrl_addr = (phys_addr_t)ctrl_addr - CONFIG_SYS_CCSRBAR;
+	p_ctrl_addr += CONFIG_SYS_CCSRBAR_PHYS;
 
+	off = fdt_node_offset_by_compat_reg(blob, pci_compat, p_ctrl_addr);
+
+	if (off < 0)
+		return;
+
+	/* We assume a cfg_addr not being set means we didn't setup the controller */
+	if ((hose == NULL) || (hose->cfg_addr == NULL)) {
+		fdt_del_node(blob, off);
+	} else {
 		bus_range[0] = 0;
 		bus_range[1] = hose->last_busno - hose->first_busno;
 		fdt_setprop(blob, off, "bus-range", &bus_range[0], 2*4);

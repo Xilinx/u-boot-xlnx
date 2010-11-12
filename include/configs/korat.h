@@ -88,7 +88,7 @@
 #define CONFIG_SYS_INIT_RAM_END	(4 << 10)
 #define CONFIG_SYS_GBL_DATA_SIZE	256	/* num bytes initial data	*/
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_POST_WORD_ADDR
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 
 /*
  * Serial Port
@@ -153,6 +153,7 @@
  */
 #define CONFIG_HARD_I2C		1	/* I2C with hardware support	*/
 #undef	CONFIG_SOFT_I2C			/* I2C bit-banged		*/
+#define CONFIG_PPC4XX_I2C		/* use PPC4xx driver		*/
 #define CONFIG_SYS_I2C_SPEED		400000	/* I2C speed and slave address	*/
 #define CONFIG_SYS_I2C_SLAVE		0x7F
 
@@ -305,7 +306,6 @@
 				 CONFIG_SYS_POST_SPR	| \
 				 CONFIG_SYS_POST_UART)
 
-#define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 #define CONFIG_LOGBUFFER
 #define CONFIG_SYS_POST_CACHE_ADDR	0xC8000000	/* free virtual address     */
 

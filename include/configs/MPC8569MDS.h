@@ -103,9 +103,6 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_SYS_CCSRBAR_DEFAULT	0xff700000	/* CCSRBAR Default */
 #endif
 
-#define CONFIG_SYS_PCI1_ADDR           (CONFIG_SYS_CCSRBAR+0x8000)
-#define CONFIG_SYS_PCIE1_ADDR          (CONFIG_SYS_CCSRBAR+0xa000)
-
 /* DDR Setup */
 #define CONFIG_FSL_DDR3
 #undef CONFIG_FSL_DDR_INTERACTIVE
@@ -284,6 +281,9 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE    1
 #define CONFIG_SYS_NS16550_CLK		get_bus_freq(0)
+#ifdef CONFIG_NAND_SPL
+#define CONFIG_NS16550_MIN_FUNCTIONS
+#endif
 
 #define CONFIG_SYS_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
@@ -363,7 +363,7 @@ extern unsigned long get_clock_freq(void);
 
 #define CONFIG_MIIM_ADDRESS	(CONFIG_SYS_CCSRBAR + 0x82120)
 #define CONFIG_UEC_ETH
-#define CONFIG_ETHPRIME         "FSL UEC0"
+#define CONFIG_ETHPRIME         "UEC0"
 #define CONFIG_PHY_MODE_NEED_CHANGE
 
 #define CONFIG_UEC_ETH1         /* GETH1 */
@@ -536,6 +536,7 @@ extern unsigned long get_clock_freq(void);
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_SETEXPR
+#define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI
@@ -559,8 +560,9 @@ extern unsigned long get_clock_freq(void);
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_LONGHELP		/* undef to save memory	*/
-#define CONFIG_CMDLINE_EDITING		/* Command-line editing */
+#define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
+#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
+#define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #if defined(CONFIG_CMD_KGDB)

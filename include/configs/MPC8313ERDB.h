@@ -36,6 +36,7 @@
 #define CONFIG_MPC8313ERDB	1
 
 #define CONFIG_PCI
+#define CONFIG_FSL_ELBC 1
 
 #define CONFIG_MISC_INIT_R
 
@@ -435,7 +436,7 @@
 #endif
 
 #define CONFIG_CMDLINE_EDITING 1
-
+#define CONFIG_AUTO_COMPLETE	/* add autocompletion support   */
 
 /*
  * Miscellaneous configurable options
@@ -513,11 +514,12 @@
 
 /* System IO Config */
 #define CONFIG_SYS_SICRH	(SICRH_TSOBI1 | SICRH_TSOBI2)	/* RGMII */
-#define CONFIG_SYS_SICRL	SICRL_USBDR			/* Enable Internal USB Phy  */
+#define CONFIG_SYS_SICRL	SICRL_USBDR_10			/* Enable Internal USB Phy  */
 
 #define CONFIG_SYS_HID0_INIT	0x000000000
 #define CONFIG_SYS_HID0_FINAL	(HID0_ENABLE_MACHINE_CHECK | \
-			 HID0_ENABLE_DYNAMIC_POWER_MANAGMENT)
+				 HID0_ENABLE_INSTRUCTION_CACHE | \
+				 HID0_ENABLE_DYNAMIC_POWER_MANAGMENT)
 
 #define CONFIG_SYS_HID2 HID2_HBE
 

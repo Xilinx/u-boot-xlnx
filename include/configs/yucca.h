@@ -37,6 +37,7 @@
 #define CONFIG_4xx			1	/* ... PPC4xx family	*/
 #define CONFIG_440			1	/* ... PPC440 family	*/
 #define CONFIG_440SPE			1	/* Specifc SPe support	*/
+#define CONFIG_440SPE_REVA		1	/* Support old Rev A.	*/
 #define CONFIG_BOARD_EARLY_INIT_F	1	/* Call board_pre_init	*/
 #define CONFIG_SYS_CLK_FREQ	33333333	/* external freq to pll	*/
 #define EXTCLK_33_33		33333333
@@ -99,8 +100,7 @@
 #define CONFIG_SYS_GBL_DATA_SIZE	128		/* num bytes initial data */
 
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
-#define CONFIG_SYS_POST_WORD_ADDR	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_POST_WORD_ADDR
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_GBL_DATA_OFFSET - 0x4)
 
 /*-----------------------------------------------------------------------
  * Serial Port

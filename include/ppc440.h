@@ -1711,12 +1711,20 @@
 #if defined(CONFIG_440EP) || defined(CONFIG_440GR) || \
     defined(CONFIG_440EPX) || defined(CONFIG_440GRX)
 #define CPR0_ICFG_RLI_MASK	0x80000000
+#define CPR0_ICFG_ICS_MASK	0x00000007
 #define CPR0_SPCID_SPCIDV0_MASK	0x03000000
 #define CPR0_SPCID_SPCIDV0_DIV1	0x01000000
 #define CPR0_SPCID_SPCIDV0_DIV2	0x02000000
 #define CPR0_SPCID_SPCIDV0_DIV3	0x03000000
 #define CPR0_SPCID_SPCIDV0_DIV4	0x00000000
 #define CPR0_PERD_PERDV0_MASK	0x07000000
+#endif
+
+#if defined(CONFIG_460EX) || defined(CONFIG_460GT)
+#define CPR0_ICFG_RLI_MASK	0x80000000
+
+#define CPR0_PLLC_RST		0x80000000
+#define CPR0_PLLC_ENG		0x40000000
 #endif
 
 /*-----------------------------------------------------------------------------

@@ -82,10 +82,6 @@
 #define CONFIG_SYS_CCSRBAR_PHYS_HIGH	0x0
 #define CONFIG_SYS_CCSRBAR_PHYS		CONFIG_SYS_CCSRBAR_PHYS_LOW
 
-#define CONFIG_SYS_PCI1_ADDR		(CONFIG_SYS_CCSRBAR+0x8000)
-#define CONFIG_SYS_PCIE1_ADDR		(CONFIG_SYS_CCSRBAR+0xa000)
-#define CONFIG_SYS_PCIE2_ADDR		(CONFIG_SYS_CCSRBAR+0x9000)
-
 #define CONFIG_SYS_DIU_ADDR		(CONFIG_SYS_CCSRBAR+0x2c000)
 
 /* DDR Setup */
@@ -177,7 +173,7 @@
 #define PIXIS_VSPEED1		0x18	/* VELA VSpeed 1 */
 #define PIXIS_VCLKH		0x19	/* VELA VCLKH register */
 #define PIXIS_VCLKL		0x1A	/* VELA VCLKL register */
-#define CONFIG_SYS_PIXIS_VBOOT_MASK	0x0C    /* Reset altbank mask*/
+#define CONFIG_SYS_PIXIS_VBOOT_MASK	0xC0    /* Reset altbank mask */
 
 #define CONFIG_SYS_MAX_FLASH_BANKS	2		/* number of banks */
 #define CONFIG_SYS_MAX_FLASH_SECT	1024		/* sectors per device */

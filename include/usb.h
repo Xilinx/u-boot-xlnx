@@ -133,7 +133,7 @@ struct usb_device {
 	defined(CONFIG_USB_SL811HS) || defined(CONFIG_USB_ISP116X_HCD) || \
 	defined(CONFIG_USB_R8A66597_HCD) || defined(CONFIG_USB_DAVINCI) || \
 	defined(CONFIG_USB_OMAP3) || defined(CONFIG_USB_DA8XX) || \
-	defined(CONFIG_USB_BLACKFIN)
+	defined(CONFIG_USB_BLACKFIN) || defined(CONFIG_USB_AM35X)
 
 int usb_lowlevel_init(void);
 int usb_lowlevel_stop(void);
@@ -259,7 +259,7 @@ int usb_set_interface(struct usb_device *dev, int interface, int alternate);
  */
 /* Create various pipes... */
 #define create_pipe(dev,endpoint) \
-		(((dev)->devnum << 8) | (endpoint << 15) | \
+		(((dev)->devnum << 8) | ((endpoint) << 15) | \
 		((dev)->speed << 26) | (dev)->maxpacketsize)
 #define default_pipe(dev) ((dev)->speed << 26)
 

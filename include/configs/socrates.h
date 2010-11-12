@@ -174,7 +174,7 @@
 #define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(256 * 1024)	/* Reserve 256kB for Mon */
+#define CONFIG_SYS_MONITOR_LEN		(384 * 1024)	/* Reserve 384KiB for Mon */
 #define CONFIG_SYS_MALLOC_LEN		(4 << 20)	/* Reserve 4 MB for malloc */
 
 /* FPGA and NAND */
@@ -233,6 +233,7 @@
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400,115200}
 
 #define CONFIG_CMDLINE_EDITING	1	/* add command line history	*/
+#define CONFIG_AUTO_COMPLETE	1	/* add autocompletion support */
 #define CONFIG_SYS_HUSH_PARSER		1	/* Use the HUSH parser		*/
 #ifdef	CONFIG_SYS_HUSH_PARSER
 #define	CONFIG_SYS_PROMPT_HUSH_PS2	"> "
@@ -342,19 +343,20 @@
  */
 #include <config_cmd_default.h>
 
+#define CONFIG_CMD_BMP
 #define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_DTT
 #undef CONFIG_CMD_EEPROM
+#define CONFIG_CMD_EXT2		/* EXT2 Support			*/
 #define CONFIG_CMD_I2C
 #define CONFIG_CMD_SDRAM
 #define CONFIG_CMD_MII
-#define CONFIG_CMD_NFS
+#undef CONFIG_CMD_NFS
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SNTP
 #define CONFIG_CMD_USB
-#define CONFIG_CMD_EXT2		/* EXT2 Support			*/
-#define CONFIG_CMD_BMP
+#define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
     #define CONFIG_CMD_PCI

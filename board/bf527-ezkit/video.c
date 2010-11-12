@@ -11,6 +11,7 @@
 #include <config.h>
 #include <malloc.h>
 #include <asm/blackfin.h>
+#include <asm/portmux.h>
 #include <asm/mach-common/bits/dma.h>
 #include <spi.h>
 #include <linux/types.h>
@@ -171,13 +172,11 @@ void DisablePPI(void)
 
 void Init_Ports(void)
 {
-	*pPORTF_MUX &= ~PORT_x_MUX_0_MASK;
-	*pPORTF_MUX |= PORT_x_MUX_0_FUNC_1;
-	*pPORTF_FER |= PF0 | PF1 | PF2 | PF3 | PF4 | PF5 | PF6 | PF7;
-
-	*pPORTG_MUX &= ~PORT_x_MUX_1_MASK;
-	*pPORTG_MUX |= PORT_x_MUX_1_FUNC_1;
-	*pPORTG_FER |= PG5;
+	const unsigned short pins[] = {
+		P_PPI0_D0, P_PPI0_D1, P_PPI0_D2, P_PPI0_D3, P_PPI0_D4,
+		P_PPI0_D5, P_PPI0_D6, P_PPI0_D7, P_PPI0_FS2, 0,
+	};
+	peripheral_request_list(pins, "lcd");
 }
 
 void Init_PPI(void)
@@ -377,6 +376,17 @@ static void dma_bitblit(void *dst, fastimage_t *logo, int x, int y)
 	bfin_write_MDMA_S0_IRQ_STATUS(bfin_read_MDMA_S0_IRQ_STATUS() | DMA_DONE | DMA_ERR);
 	bfin_write_MDMA_D0_IRQ_STATUS(bfin_read_MDMA_D0_IRQ_STATUS() | DMA_DONE | DMA_ERR);
 
+}
+
+void video_stop(void)
+{
+	DisablePPI();
+	DisableDMA();
+	DisableTIMER0();
+	DisableTIMER1();
+#ifdef CONFIG_MK_BF527_EZKIT_REV_2_1
+	lq035q1_control(LQ035_SHUT_CTL, LQ035_SHUT);
+#endif
 }
 
 void video_putc(const char c)

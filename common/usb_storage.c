@@ -175,13 +175,13 @@ void uhci_show_temp_int_td(void);
 
 block_dev_desc_t *usb_stor_get_dev(int index)
 {
-	return (index < USB_MAX_STOR_DEV) ? &usb_dev_desc[index] : NULL;
+	return (index < usb_max_devs) ? &usb_dev_desc[index] : NULL;
 }
 
 
 void usb_show_progress(void)
 {
-	printf(".");
+	debug(".");
 }
 
 /*******************************************************************************
@@ -224,10 +224,11 @@ int usb_stor_scan(int mode)
 
 	for (i = 0; i < USB_MAX_STOR_DEV; i++) {
 		memset(&usb_dev_desc[i], 0, sizeof(block_dev_desc_t));
-		usb_dev_desc[i].target = 0xff;
 		usb_dev_desc[i].if_type = IF_TYPE_USB;
 		usb_dev_desc[i].dev = i;
 		usb_dev_desc[i].part_type = PART_TYPE_UNKNOWN;
+		usb_dev_desc[i].target = 0xff;
+		usb_dev_desc[i].type = DEV_TYPE_UNKNOWN;
 		usb_dev_desc[i].block_read = usb_stor_read;
 		usb_dev_desc[i].block_write = usb_stor_write;
 	}
@@ -244,7 +245,7 @@ int usb_stor_scan(int mode)
 			 * get info and fill it in
 			 */
 			if (usb_stor_get_info(dev, &usb_stor[usb_max_devs],
-						&usb_dev_desc[usb_max_devs]))
+						&usb_dev_desc[usb_max_devs]) == 1)
 				usb_max_devs++;
 		}
 		/* if storage device */
@@ -888,7 +889,7 @@ static int usb_inquiry(ccb *srb, struct us_data *ss)
 		USB_STOR_PRINTF("inquiry returns %d\n", i);
 		if (i == 0)
 			break;
-	} while (retry--);
+	} while (--retry);
 
 	if (!retry) {
 		printf("error in inquiry\n");
@@ -1080,7 +1081,7 @@ retry_it:
 
 	usb_disable_asynch(0); /* asynch transfer allowed */
 	if (blkcnt >= USB_MAX_READ_BLK)
-		printf("\n");
+		debug("\n");
 	return blkcnt;
 }
 
@@ -1160,7 +1161,7 @@ retry_it:
 
 	usb_disable_asynch(0); /* asynch transfer allowed */
 	if (blkcnt >= USB_MAX_WRITE_BLK)
-		printf("\n");
+		debug("\n");
 	return blkcnt;
 
 }

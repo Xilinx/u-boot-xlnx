@@ -1201,7 +1201,8 @@ static IP_t *__NetDefragment(IP_t *ip, int *lenp)
 		h = payload + h->next_hole;
 	}
 
-	if (offset8 + (len / 8) <= h - payload) {
+	/* last fragment may be 1..7 bytes, the "+7" forces acceptance */
+	if (offset8 + ((len + 7) / 8) <= h - payload) {
 		/* no overlap with holes (dup fragment?) */
 		return NULL;
 	}
@@ -1872,11 +1873,13 @@ void copy_filename (char *dst, char *src, int size)
 
 #if defined(CONFIG_CMD_NFS) || defined(CONFIG_CMD_SNTP) || defined(CONFIG_CMD_DNS)
 /*
- * make port a little random, but use something trivial to compute
+ * make port a little random (1024-17407)
+ * This keeps the math somewhat trivial to compute, and seems to work with
+ * all supported protocols/clients/servers
  */
 unsigned int random_port(void)
 {
-	return 1024 + (get_timer(0) % 0x8000);;
+	return 1024 + (get_timer(0) % 0x4000);
 }
 #endif
 

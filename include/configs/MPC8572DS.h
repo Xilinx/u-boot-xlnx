@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2008 Freescale Semiconductor, Inc.
+ * Copyright 2007-2008,2010 Freescale Semiconductor, Inc.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -27,6 +27,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+#include "../board/freescale/common/ics307_clk.h"
+
 #ifdef CONFIG_MK_36BIT
 #define CONFIG_PHYS_64BIT
 #endif
@@ -53,15 +55,9 @@
 #define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
-#ifndef __ASSEMBLY__
-extern unsigned long get_board_sys_clk(unsigned long dummy);
-extern unsigned long get_board_ddr_clk(unsigned long dummy);
-#endif
-#define CONFIG_SYS_CLK_FREQ	get_board_sys_clk(0) /* sysclk for MPC85xx */
-#define CONFIG_DDR_CLK_FREQ	get_board_ddr_clk(0) /* ddrclk for MPC85xx */
+#define CONFIG_SYS_CLK_FREQ	get_board_sys_clk() /* sysclk for MPC85xx */
+#define CONFIG_DDR_CLK_FREQ	get_board_ddr_clk() /* ddrclk for MPC85xx */
 #define CONFIG_ICS307_REFCLK_HZ	33333000  /* ICS307 clock chip ref freq */
-#define CONFIG_GET_CLK_FROM_ICS307	  /* decode sysclk and ddrclk freq
-					     from ICS307 instead of switches */
 
 /*
  * These can be toggled for performance analysis, otherwise use default.
@@ -92,10 +88,6 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 #define CONFIG_SYS_CCSRBAR_PHYS	CONFIG_SYS_CCSRBAR	/* physical addr of CCSRBAR */
 #endif
 #define CONFIG_SYS_IMMR		CONFIG_SYS_CCSRBAR	/* PQII uses CONFIG_SYS_IMMR */
-
-#define CONFIG_SYS_PCIE3_ADDR		(CONFIG_SYS_CCSRBAR+0x8000)
-#define CONFIG_SYS_PCIE2_ADDR		(CONFIG_SYS_CCSRBAR+0x9000)
-#define CONFIG_SYS_PCIE1_ADDR		(CONFIG_SYS_CCSRBAR+0xa000)
 
 /* DDR Setup */
 #define CONFIG_VERY_BIG_RAM
@@ -574,6 +566,7 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
 #define CONFIG_CMD_ELF
 #define CONFIG_CMD_IRQ
 #define CONFIG_CMD_SETEXPR
+#define CONFIG_CMD_REGINFO
 
 #if defined(CONFIG_PCI)
 #define CONFIG_CMD_PCI
@@ -588,7 +581,8 @@ extern unsigned long get_board_ddr_clk(unsigned long dummy);
  * Miscellaneous configurable options
  */
 #define CONFIG_SYS_LONGHELP			/* undef to save memory	*/
-#define CONFIG_CMDLINE_EDITING		/* Command-line editing */
+#define CONFIG_CMDLINE_EDITING			/* Command-line editing */
+#define CONFIG_AUTO_COMPLETE			/* add autocompletion support */
 #define CONFIG_SYS_LOAD_ADDR	0x2000000	/* default load address */
 #define CONFIG_SYS_PROMPT	"=> "		/* Monitor Command Prompt */
 #if defined(CONFIG_CMD_KGDB)

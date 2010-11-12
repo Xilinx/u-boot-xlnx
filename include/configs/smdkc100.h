@@ -32,9 +32,9 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_ARMCORTEXA8	1	/* This is an ARM V7 CPU core */
+#define CONFIG_ARMV7		1	/* This is an ARM V7 CPU core */
 #define CONFIG_SAMSUNG		1	/* in a SAMSUNG core */
-#define CONFIG_S5PC1XX		1	/* which is in a S5PC1XX Family */
+#define CONFIG_S5P		1	/* which is in a S5P Family */
 #define CONFIG_S5PC100		1	/* which is in a S5PC100 */
 #define CONFIG_SMDKC100		1	/* working with SMDKC100 */
 
@@ -83,7 +83,6 @@
 #undef CONFIG_CMD_FLASH
 #undef CONFIG_CMD_IMLS
 #undef CONFIG_CMD_NAND
-#undef CONFIG_CMD_NET
 
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_REGINFO
@@ -234,5 +233,16 @@
 #define CONFIG_SYS_ONENAND_BASE		0xE7100000
 
 #define CONFIG_DOS_PARTITION		1
+
+/*
+ * Ethernet Contoller driver
+ */
+#ifdef CONFIG_CMD_NET
+#define CONFIG_NET_MULTI
+#define CONFIG_SMC911X         1       /* we have a SMC9115 on-board   */
+#define CONFIG_SMC911X_16_BIT  1       /* SMC911X_16_BIT Mode          */
+#define CONFIG_SMC911X_BASE    0x98800300      /* SMC911X Drive Base   */
+#define CONFIG_ENV_SROM_BANK   3       /* Select SROM Bank-3 for Ethernet*/
+#endif /* CONFIG_CMD_NET */
 
 #endif	/* __CONFIG_H */

@@ -917,6 +917,13 @@ int submit_control_msg(struct usb_device *dev, unsigned long pipe, void *buffer,
 
 	dev->status = 0;
 	dev->act_len = len;
+
+#ifdef MUSB_NO_MULTIPOINT
+	/* Set device address to USB_FADDR register */
+	if (setup->request == USB_REQ_SET_ADDRESS)
+		writeb(dev->devnum, &musbr->faddr);
+#endif
+
 	return len;
 }
 
@@ -986,6 +993,11 @@ int submit_bulk_msg(struct usb_device *dev, unsigned long pipe,
 		while (txlen < len) {
 			nextlen = ((len-txlen) < dev->epmaxpacketout[ep]) ?
 					(len-txlen) : dev->epmaxpacketout[ep];
+
+#ifdef CONFIG_USB_BLACKFIN
+			/* Set the transfer data size */
+			writew(nextlen, &musbr->txcount);
+#endif
 
 			/* Write the data to the FIFO */
 			write_fifo(MUSB_BULK_EP, nextlen,

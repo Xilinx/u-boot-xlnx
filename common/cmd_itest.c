@@ -160,15 +160,13 @@ int binary_test (char *op, char *arg1, char *arg2, int w)
 }
 
 /* command line interface to the shell test */
-int do_itest ( cmd_tbl_t *cmdtp, int flag, int argc, char *argv[] )
+int do_itest ( cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[] )
 {
 	int	value, w;
 
 	/* Validate arguments */
-	if ((argc != 4)){
-		cmd_usage(cmdtp);
-		return 1;
-	}
+	if ((argc != 4))
+		return cmd_usage(cmdtp);
 
 	/* Check for a data width specification.
 	 * Defaults to long (4) if no specification.

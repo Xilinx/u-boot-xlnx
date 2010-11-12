@@ -43,7 +43,7 @@
 #endif
 
 int
-do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
+do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
 {
 	ulong		addr = load_addr;
 	ulong		dest = 0;
@@ -262,7 +262,8 @@ do_imgextract(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 	return 0;
 }
 
-U_BOOT_CMD(imxtract, 4, 1, do_imgextract,
+U_BOOT_CMD(
+	imxtract, 4, 1, do_imgextract,
 	"extract a part of a multi-image",
 	"addr part [dest]\n"
 	"    - extract <part> from legacy image at <addr> and copy to <dest>"

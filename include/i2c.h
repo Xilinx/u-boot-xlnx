@@ -111,6 +111,9 @@ void i2c_init(int speed, int slaveaddr);
 #ifdef CONFIG_SYS_I2C_INIT_BOARD
 void i2c_init_board(void);
 #endif
+#ifdef CONFIG_SYS_I2C_BOARD_LATE_INIT
+void i2c_board_late_init(void);
+#endif
 
 #if defined(CONFIG_I2C_MUX)
 
@@ -126,8 +129,6 @@ typedef struct _mux_device {
 	I2C_MUX	*mux;	/* List of muxes, to reach the device */
 	struct _mux_device	*next;
 } I2C_MUX_DEVICE;
-
-int	i2c_mux_add_device(I2C_MUX_DEVICE *dev);
 
 I2C_MUX_DEVICE	*i2c_mux_search_device(int id);
 I2C_MUX_DEVICE *i2c_mux_ident_muxstring (uchar *buf);
