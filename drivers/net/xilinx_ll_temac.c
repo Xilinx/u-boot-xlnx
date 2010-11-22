@@ -230,19 +230,16 @@ static int link;
 /* setting ll_temac and phy to proper setting */
 static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 {
-	int i;
+	int i, retries;
 	unsigned int result;
-	unsigned retries = 10;
 
+	 /* link is setup */
 	if (link == 1)
-		return 1; /* link is setup */
+		return 1;
 
-	/* wait for link up */
-	while (retries-- &&
-		((xps_ll_temac_hostif_get(dev, 0, phy_addr, 1) & 0x24) == 0x24))
-		;
-
+	/* try out if have ever found the right phy? */
 	if (phy_addr == -1) {
+		puts("Looking for phy ... ");
 		for (i = 31; i >= 0; i--) {
 			result = xps_ll_temac_hostif_get(dev, 0, i, 1);
 			if ((result & 0x0ffff) != 0x0ffff) {
@@ -251,7 +248,27 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 				break;
 			}
 		}
+
+		/* no success? -- wery bad */
+		if (phy_addr == -1) {
+			puts("ERROR\n");
+			return 0;
+		}
+		puts("OK\n");
 	}
+
+	/* wait for link up */
+	puts("Waiting for link ... ");
+	retries = 10;
+	while (retries-- &&
+		((xps_ll_temac_hostif_get(dev, 0, phy_addr, 1) & 0x24) != 0x24))
+		;
+
+	if (retries < 0) {
+		puts("ERROR\n");
+		return 0;
+	}
+	puts("OK\n");
 
 	/* get PHY id */
 	i = (xps_ll_temac_hostif_get(dev, 0, phy_addr, 2) << 16) | \
@@ -275,19 +292,21 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 		result = xps_ll_temac_hostif_get(dev, 0, phy_addr, 5);
 		if ((result & 0x8000) == 0x8000) {
 			xps_ll_temac_indirect_set(dev, 0, EMMC, 0x80000000);
-			printf("1000BASE-T/FD\n");
+			puts("1000BASE-T/FD\n");
 			link = 1;
 		} else if ((result & 0x4000) == 0x4000) {
 			xps_ll_temac_indirect_set(dev, 0, EMMC, 0x40000000);
-			printf("100BASE-T/FD\n");
+			puts("100BASE-T/FD\n");
 			link = 1;
 		} else {
-			printf("Unsupported mode\n");
+			puts("Unsupported mode\n");
 			link = 0;
 			return 0;
 		}
 		return 1;
 	}
+
+	puts("Unsupported PHY\n");
 	return 0;
 }
 
@@ -491,7 +510,6 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 #endif
 	if (!first)
 		return 0;
-	first = 0;
 
 	xps_ll_temac_init(dev, bis);
 
@@ -502,7 +520,13 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 	for (i = 0; i < 32; i++)
 		read_phy_reg(dev, i);
 #endif
-	xps_ll_temac_phy_ctrl(dev);
+
+	if (xps_ll_temac_phy_ctrl(dev) == 0) {
+		xps_ll_temac_halt(dev);
+		return -1;
+	}
+
+	first = 0;
 	return 1;
 }
 
