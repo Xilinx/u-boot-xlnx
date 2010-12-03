@@ -1,5 +1,4 @@
 /*
- *
  * Xilinx xps_ll_temac ethernet driver for u-boot
  *
  * Author: Yoshio Kashiwagi kashiwagi@co-nss.co.jp
@@ -7,7 +6,7 @@
  * Copyright (C) 2008 Nissin Systems Co.,Ltd.
  * March 2008 created
  *
- * Copyright (C) 2008 - 2009 Michal Simek <monstr@monstr.eu>
+ * Copyright (C) 2008 - 2010 Michal Simek <monstr@monstr.eu>
  * June 2008 Microblaze optimalization, FIFO mode support
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -169,7 +168,7 @@ static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 	out_be32((u32 *)TEMAC_LSW0, phy_data);
 	out_be32((u32 *)TEMAC_CTL0, CNTLREG_WRITE_ENABLE_MASK | MIIMWD);
 	out_be32((u32 *)TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
-	out_be32((u32 *)TEMAC_CTL0, \
+	out_be32((u32 *)TEMAC_CTL0,
 			CNTLREG_WRITE_ENABLE_MASK | MIIMAI | (emac << 10));
 	while (!(in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_MIIM_WR_MASK))
 		;
@@ -192,7 +191,7 @@ static void xps_ll_temac_indirect_set(struct eth_device *dev,
 				int emac, int reg_offset, int reg_data)
 {
 	out_be32((u32 *)TEMAC_LSW0, reg_data);
-	out_be32((u32 *)TEMAC_CTL0, \
+	out_be32((u32 *)TEMAC_CTL0,
 			CNTLREG_WRITE_ENABLE_MASK | (emac << 10) | reg_offset);
 	while (!(in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_CFG_WR_MASK))
 		;
@@ -215,12 +214,12 @@ static int xps_ll_temac_indirect_get(struct eth_device *dev,
 static void read_phy_reg (struct eth_device *dev, int phy_addr)
 {
 	int j, result;
-	debug ("phy%d ", phy_addr);
+	debug("phy%d ", phy_addr);
 	for (j = 0; j < 32; j++) {
 		result = xps_ll_temac_hostif_get(dev, 0, phy_addr, j);
-		debug ("%d: 0x%x ", j, result);
+		debug("%d: 0x%x ", j, result);
 	}
-	debug ("\n");
+	debug("\n");
 }
 #endif
 
@@ -243,7 +242,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 		for (i = 31; i >= 0; i--) {
 			result = xps_ll_temac_hostif_get(dev, 0, i, 1);
 			if ((result & 0x0ffff) != 0x0ffff) {
-				debug ("phy %x result %x\n", i, result);
+				debug("phy %x result %x\n", i, result);
 				phy_addr = i;
 				break;
 			}
@@ -262,7 +261,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	retries = 10;
 	while (retries-- &&
 		((xps_ll_temac_hostif_get(dev, 0, phy_addr, 1) & 0x24) != 0x24))
-		;
+			;
 
 	if (retries < 0) {
 		puts("ERROR\n");
@@ -271,9 +270,9 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	puts("OK\n");
 
 	/* get PHY id */
-	i = (xps_ll_temac_hostif_get(dev, 0, phy_addr, 2) << 16) | \
+	i = (xps_ll_temac_hostif_get(dev, 0, phy_addr, 2) << 16) |
 		xps_ll_temac_hostif_get(dev, 0, phy_addr, 3);
-	debug ("LL_TEMAC: Phy ID 0x%x\n", i);
+	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
 #ifdef DEBUG
 	xps_ll_temac_hostif_set(dev, 0, 0, 0, 0x8000); /* phy reset */
@@ -344,7 +343,7 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 	memcpy (tx_buffer, buffer, length);
 	flush_cache ((u32)tx_buffer, length);
 
-	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK | \
+	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK |
 			BDSTAT_STOP_ON_END_MASK;
 	tx_bd.buf_len = length;
 	flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
@@ -389,8 +388,8 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 #ifdef DEBUG
 static void debugll(int count)
 {
-	printf ("%d fifo isr 0x%08x, fifo_ier 0x%08x, fifo_rdfr 0x%08x, "
-		"fifo_rdfo 0x%08x fifo_rlr 0x%08x\n", count, ll_fifo->isr, \
+	printf("%d fifo isr 0x%08x, fifo_ier 0x%08x, fifo_rdfr 0x%08x, "
+		"fifo_rdfo 0x%08x fifo_rlr 0x%08x\n", count, ll_fifo->isr,
 		ll_fifo->ier, ll_fifo->rdfr, ll_fifo->rdfo, ll_fifo->rlf);
 }
 #endif
@@ -553,7 +552,7 @@ static int ll_temac_recv(struct eth_device *dev)
 #endif
 }
 
-int xilinx_ll_temac_initialize (bd_t *bis, int base_addr)
+int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 {
 	struct eth_device *dev;
 
