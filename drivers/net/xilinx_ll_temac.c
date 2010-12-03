@@ -322,6 +322,7 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	rx_bd.next_p = &rx_bd;
 	rx_bd.buf_len = ETHER_MTU;
 	flush_cache((u32)&rx_bd, sizeof(cdmac_bd));
+	flush_cache ((u32)rx_bd.phys_buf_p, ETHER_MTU);
 
 	out_be32((u32 *)RX_CURDESC_PTR, (u32)&rx_bd);
 	out_be32((u32 *)RX_TAILDESC_PTR, (u32)&rx_bd);
@@ -368,6 +369,9 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 		return 0;
 
 	length = rx_bd.app5 & 0x3FFF;
+	if (length > 0)
+		NetReceive(rx_bd.phys_buf_p, length);
+
 	flush_cache ((u32)rx_bd.phys_buf_p, length);
 
 	rx_bd.buf_len = ETHER_MTU;
@@ -376,9 +380,6 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 
 	flush_cache ((u32)&rx_bd, sizeof(cdmac_bd));
 	out_be32((u32 *)RX_TAILDESC_PTR, (u32)&rx_bd);
-
-	if (length > 0)
-		NetReceive(rx_bd.phys_buf_p, length);
 
 	return length;
 }
