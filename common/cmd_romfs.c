@@ -44,7 +44,7 @@ u32 address; /* physical address of fs */
  * @return 0 on success, 1 otherwise
  */
 /* FIXME here is not clean handling with load_addr */
-int do_romfs_fsload(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_romfs_fsload(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *fsname = NULL;
 	char *filename = NULL;
@@ -98,7 +98,7 @@ int do_romfs_fsload(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
  * @param argv arguments list
  * @return 0 on success, 1 otherwise
  */
-int do_romfs_ls (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_romfs_ls (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *filename = "/";
 	int loc_addr = 0;
@@ -131,7 +131,7 @@ int do_romfs_ls (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
  * @param argv arguments list
  * @return 0 on success, 1 otherwise
  */
-int do_romfs_cat (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_romfs_cat (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *filename = "/";
 	int loc_addr = 0;
@@ -163,7 +163,7 @@ int do_romfs_cat (cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
  * @param argv arguments list
  * @return 0 on success, 1 otherwise
  */
-int do_romfs_fsinfo(cmd_tbl_t *cmdtp, int flag, int argc, char *argv[])
+int do_romfs_fsinfo(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	int loc_addr;
 
