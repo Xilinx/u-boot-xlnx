@@ -1,5 +1,5 @@
 /*
- * Copyright (C) Freescale Semiconductor, Inc. 2006.
+ * Copyright (C) Freescale Semiconductor, Inc. 2006, 2010.
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -34,6 +34,10 @@
 #define CONFIG_MPC831x		1
 #define CONFIG_MPC8313		1
 #define CONFIG_MPC8313ERDB	1
+
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xFE000000
+#endif
 
 #define CONFIG_PCI
 #define CONFIG_FSL_ELBC 1
@@ -196,7 +200,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
 
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE	/* start of monitor */
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 
 #if (CONFIG_SYS_MONITOR_BASE < CONFIG_SYS_FLASH_BASE) && !defined(CONFIG_NAND_SPL)
 #define CONFIG_SYS_RAMBOOT
@@ -204,10 +208,9 @@
 
 #define CONFIG_SYS_INIT_RAM_LOCK	1
 #define CONFIG_SYS_INIT_RAM_ADDR	0xFD000000	/* Initial RAM address */
-#define CONFIG_SYS_INIT_RAM_END	0x1000		/* End of used area in RAM*/
+#define CONFIG_SYS_INIT_RAM_SIZE	0x1000		/* Size of used area in RAM*/
 
-#define CONFIG_SYS_GBL_DATA_SIZE	0x100		/* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /* CONFIG_SYS_MONITOR_LEN must be a multiple of CONFIG_ENV_SECT_SIZE */
@@ -231,6 +234,13 @@
 #else
 #define CONFIG_SYS_NAND_BASE		0xE2800000
 #endif
+
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITION
+#define CONFIG_CMD_MTDPARTS
+#define MTDIDS_DEFAULT			"nand0=e2800000.flash"
+#define MTDPARTS_DEFAULT 		\
+	"mtdparts=e0600000.flash:512k(uboot),128k(env),3m@1m(kernel),-(fs)"
 
 #define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
@@ -453,10 +463,10 @@
 
 /*
  * For booting Linux, the board info and command line data
- * have to be in the first 8 MB of memory, since this is
+ * have to be in the first 256 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
+#define CONFIG_SYS_BOOTMAPSZ	(256 << 20)	/* Initial Memory map for Linux*/
 
 #define CONFIG_SYS_RCWH_PCIHOST 0x80000000	/* PCIHOST  */
 
@@ -570,14 +580,6 @@
 #define CONFIG_SYS_DBAT7U	CONFIG_SYS_IBAT7U
 
 /*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01	/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM	0x02	/* Software reboot */
-
-/*
  * Environment Configuration
  */
 #define CONFIG_ENV_OVERWRITE
@@ -602,11 +604,11 @@
 	"ethprime=TSEC1\0"						\
 	"uboot=" MK_STR(CONFIG_UBOOTPATH) "\0"				\
 	"tftpflash=tftpboot $loadaddr $uboot; "				\
-		"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
-		"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
-		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
-		"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
-		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
+		"protect off " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "	\
+		"erase " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+		"cp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize; "	\
+		"protect on " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+		"cmp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize\0"	\
 	"fdtaddr=780000\0"						\
 	"fdtfile=" MK_STR(CONFIG_FDTFILE) "\0"				\
 	"console=ttyS0\0"						\

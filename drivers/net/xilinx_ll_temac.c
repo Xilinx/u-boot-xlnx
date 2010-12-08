@@ -344,7 +344,7 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 		return 0;
 	}
 
-	length = rx_bd.app5 & 0x3FFF;
+	length = rx_bd.app5;
 	flush_cache ((u32)rx_bd.phys_buf_p, length);
 
 	rx_bd.buf_len = ETHER_MTU;

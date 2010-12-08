@@ -29,7 +29,7 @@
 
 #include "../board/freescale/common/ics307_clk.h"
 
-#ifdef CONFIG_MK_36BIT
+#ifdef CONFIG_36BIT
 #define CONFIG_PHYS_64BIT
 #endif
 
@@ -40,6 +40,10 @@
 #define CONFIG_P2020		1
 #define CONFIG_P2020DS		1
 #define CONFIG_MP		1	/* support multiple processors */
+
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xeff80000
+#endif
 
 #define CONFIG_FSL_ELBC		1	/* Has Enhanced localbus controller */
 #define CONFIG_PCI		1	/* Enable PCI/PCIE */
@@ -73,8 +77,9 @@
 #define CONFIG_SYS_NUM_ADDR_MAP		16	/* number of TLB1 entries */
 #endif
 
-#define CONFIG_SYS_MEMTEST_START	0x00000000	/* memtest works on */
-#define CONFIG_SYS_MEMTEST_END		0x7fffffff
+#define CONFIG_POST CONFIG_SYS_POST_MEMORY	/* test POST memory test */
+#define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest works on */
+#define CONFIG_SYS_MEMTEST_END		0x00400000
 #define CONFIG_PANIC_HANG	/* do not reset board on panic */
 
 /*
@@ -92,7 +97,7 @@
 
 /* DDR Setup */
 #define CONFIG_VERY_BIG_RAM
-#ifdef CONFIG_MK_DDR2
+#ifdef CONFIG_DDR2
 #define CONFIG_FSL_DDR2
 #else
 #define CONFIG_FSL_DDR3		1
@@ -224,7 +229,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000		/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500		/* Flash Write Timeout (ms) */
 
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE	/* start of monitor */
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor */
 
 #define CONFIG_FLASH_CFI_DRIVER
 #define CONFIG_SYS_FLASH_CFI
@@ -267,10 +272,9 @@
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH 0
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW CONFIG_SYS_INIT_RAM_ADDR_PHYS
 #endif
-#define CONFIG_SYS_INIT_RAM_END	0x00004000	/* End of used area in RAM */
+#define CONFIG_SYS_INIT_RAM_SIZE	0x00004000	/* Size of used area in RAM */
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_SYS_MONITOR_LEN		(256 * 1024) /* Reserve 256 kB for Mon */
@@ -337,7 +341,6 @@
  * shorted - index 1
  */
 #define CONFIG_CONS_INDEX	1
-#undef	CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -606,14 +609,6 @@
  */
 #define CONFIG_SYS_BOOTMAPSZ	(16 << 20)	/* Initial Memory map for Linux*/
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM	0x02		/* Software reboot */
-
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
 #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
@@ -660,11 +655,11 @@
  "netdev=eth0\0"						\
  "uboot=" MK_STR(CONFIG_UBOOTPATH) "\0"				\
  "tftpflash=tftpboot $loadaddr $uboot; "			\
-	"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
-	"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
-	"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
-	"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
-	"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
+	"protect off " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "	\
+	"erase " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+	"cp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize; "	\
+	"protect on " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+	"cmp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize\0"	\
  "consoledev=ttyS0\0"				\
  "ramdiskaddr=2000000\0"			\
  "ramdiskfile=p2020ds/ramdisk.uboot\0"		\

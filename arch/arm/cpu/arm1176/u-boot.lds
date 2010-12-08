@@ -39,10 +39,25 @@ SECTIONS
 	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
 
 	. = ALIGN(4);
-	.data : { *(.data) }
+	.data : {
+		*(.data)
+	__datarel_start = .;
+		*(.data.rel)
+	__datarelrolocal_start = .;
+		*(.data.rel.ro.local)
+	__datarellocal_start = .;
+		*(.data.rel.local)
+	__datarelro_start = .;
+		*(.data.rel.ro)
+	}
 
 	. = ALIGN(4);
-	.got : { *(.got) }
+	__rel_dyn_start = .;
+	.rel.dyn : { *(.rel.dyn) }
+	__rel_dyn_end = .;
+
+	__dynsym_start = .;
+	.dynsym : { *(.dynsym) }
 
 	. = .;
 	__u_boot_cmd_start = .;
@@ -53,4 +68,10 @@ SECTIONS
 	__bss_start = .;
 	.bss (NOLOAD) : { *(.bss) . = ALIGN(4); }
 	_end = .;
+
+	/DISCARD/ : { *(.dynstr*) }
+	/DISCARD/ : { *(.dynamic*) }
+	/DISCARD/ : { *(.plt*) }
+	/DISCARD/ : { *(.interp*) }
+	/DISCARD/ : { *(.gnu*) }
 }

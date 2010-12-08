@@ -26,6 +26,7 @@
 /*
  * Board
  */
+#define CONFIG_DRIVER_TI_EMAC
 
 /*
  * SoC Configuration
@@ -39,15 +40,15 @@
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
 #define CONFIG_SYS_HZ			1000
 #define CONFIG_SKIP_LOWLEVEL_INIT
-#define CONFIG_SKIP_RELOCATE_UBOOT	/* to a proper address, init done */
+#define CONFIG_SYS_TEXT_BASE		0xc1080000
 
 /*
  * Memory Info
  */
 #define CONFIG_SYS_MALLOC_LEN	(0x10000 + 1*1024*1024) /* malloc() len */
-#define CONFIG_SYS_GBL_DATA_SIZE	128 /* reserved for initial data */
 #define PHYS_SDRAM_1		DAVINCI_DDR_EMIF_DATA_BASE /* DDR Start */
 #define PHYS_SDRAM_1_SIZE	(64 << 20) /* SDRAM size 64MB */
+#define CONFIG_MAX_RAM_BANK_SIZE (512 << 20) /* max size from SPRS586*/
 
 /* memtest start addr */
 #define CONFIG_SYS_MEMTEST_START	(PHYS_SDRAM_1 + 0x2000000)
@@ -79,6 +80,43 @@
 #define CONFIG_SYS_I2C_SLAVE		10 /* Bogus, master-only in U-Boot */
 
 /*
+ * Flash & Environment
+ */
+#ifdef CONFIG_USE_NAND
+#undef CONFIG_ENV_IS_IN_FLASH
+#define CONFIG_NAND_DAVINCI
+#define CONFIG_SYS_NO_FLASH
+#define CONFIG_ENV_IS_IN_NAND		/* U-Boot env in NAND Flash  */
+#define CONFIG_ENV_OFFSET		0x0 /* Block 0--not used by bootcode */
+#define CONFIG_ENV_SIZE			(128 << 10)
+#define	CONFIG_SYS_NAND_USE_FLASH_BBT
+#define CONFIG_SYS_NAND_4BIT_HW_ECC_OOBFIRST
+#define	CONFIG_SYS_NAND_PAGE_2K
+#define CONFIG_SYS_NAND_CS		3
+#define CONFIG_SYS_NAND_BASE		DAVINCI_ASYNC_EMIF_DATA_CE3_BASE
+#define CONFIG_SYS_CLE_MASK		0x10
+#define CONFIG_SYS_ALE_MASK		0x8
+#undef CONFIG_SYS_NAND_HW_ECC
+#define CONFIG_SYS_MAX_NAND_DEVICE	1 /* Max number of NAND devices */
+#define NAND_MAX_CHIPS			1
+#define DEF_BOOTM			""
+#endif
+
+/*
+ * Network & Ethernet Configuration
+ */
+#ifdef CONFIG_DRIVER_TI_EMAC
+#define CONFIG_EMAC_MDIO_PHY_NUM	0
+#define CONFIG_MII
+#define CONFIG_BOOTP_DEFAULT
+#define CONFIG_BOOTP_DNS
+#define CONFIG_BOOTP_DNS2
+#define CONFIG_BOOTP_SEND_HOSTNAME
+#define CONFIG_NET_RETRY_COUNT	10
+#define CONFIG_NET_MULTI
+#endif
+
+/*
  * U-Boot general configuration
  */
 #define CONFIG_BOOTFILE		"uImage" /* Boot file name */
@@ -100,7 +138,7 @@
 /*
  * Linux Information
  */
-#define LINUX_BOOT_PARAM_ADDR	(CONFIG_SYS_MEMTEST_START + 0x100)
+#define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
 #define CONFIG_CMDLINE_TAG
 #define CONFIG_SETUP_MEMORY_TAGS
 #define CONFIG_BOOTARGS		\
@@ -127,6 +165,20 @@
 #undef CONFIG_CMD_PING
 #endif
 
+#ifdef CONFIG_USE_NAND
+#undef CONFIG_CMD_FLASH
+#undef CONFIG_CMD_IMLS
+#define CONFIG_CMD_NAND
+
+#define CONFIG_CMD_MTDPARTS
+#define CONFIG_MTD_DEVICE
+#define CONFIG_MTD_PARTITIONS
+#define CONFIG_LZO
+#define CONFIG_RBTREE
+#define CONFIG_CMD_UBI
+#define CONFIG_CMD_UBIFS
+#endif
+
 #if !defined(CONFIG_USE_NAND) && \
 	!defined(CONFIG_USE_NOR) && \
 	!defined(CONFIG_USE_SPIFLASH)
@@ -137,4 +189,8 @@
 #undef CONFIG_CMD_ENV
 #endif
 
+/* additions for new relocation code, must added to all boards */
+#define CONFIG_SYS_SDRAM_BASE		0xc0000000
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + 0x1000 - /* Fix this */ \
+					GENERATED_GBL_DATA_SIZE)
 #endif /* __CONFIG_H */

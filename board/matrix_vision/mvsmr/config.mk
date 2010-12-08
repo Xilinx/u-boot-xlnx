@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2003
+# (C) Copyright 2003-2010
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 #
 # See file CREDITS for list of people who contributed to this
@@ -21,11 +21,4 @@
 # MA 02111-1307 USA
 #
 
-sinclude $(OBJTREE)/board/$(BOARDDIR)/config.tmp
-
-ifndef TEXT_BASE
-TEXT_BASE = 0xFF800000
-endif
-
-PLATFORM_CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE) -I$(TOPDIR)/board
 LDSCRIPT := $(SRCTREE)/board/matrix_vision/mvsmr/u-boot.lds

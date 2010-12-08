@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005 Freescale Semiconductor, Inc.
+ * Copyright (C) 2005,2010 Freescale Semiconductor, Inc.
  *
  * Author: Shlomi Gridish
  *
@@ -351,6 +351,15 @@ static int marvell_config_aneg (struct uec_mii_info *mii_info)
 static int genmii_config_aneg (struct uec_mii_info *mii_info)
 {
 	if (mii_info->autoneg) {
+		/* Speed up the common case, if link is already up, speed and
+		   duplex match, skip auto neg as it already matches */
+		if (!genmii_read_status(mii_info) && mii_info->link)
+			if (mii_info->duplex == DUPLEX_FULL &&
+			    mii_info->speed == SPEED_100)
+				if (mii_info->advertising &
+				    ADVERTISED_100baseT_Full)
+					return 0;
+
 		config_genmii_advert (mii_info);
 		genmii_restart_aneg (mii_info);
 	} else
@@ -389,7 +398,6 @@ static int genmii_update_link (struct uec_mii_info *mii_info)
 			status = phy_read(mii_info, PHY_BMSR);
 		}
 		mii_info->link = 1;
-		udelay(500000);	/* another 500 ms (results in faster booting) */
 	} else {
 		if (status & PHY_BMSR_LS)
 			mii_info->link = 1;
@@ -477,7 +485,7 @@ static int marvell_init(struct uec_mii_info *mii_info)
 {
 	struct eth_device *edev = mii_info->dev;
 	uec_private_t *uec = edev->priv;
-	enum enet_interface_type iface = uec->uec_info->enet_interface_type;
+	enum fsl_phy_enet_if iface = uec->uec_info->enet_interface_type;
 	int	speed = uec->uec_info->speed;
 
 	if ((speed == 1000) &&
@@ -845,7 +853,7 @@ struct phy_info *uec_get_phy_info (struct uec_mii_info *mii_info)
 }
 
 void marvell_phy_interface_mode (struct eth_device *dev,
-				 enet_interface_type_e type,
+				 enum fsl_phy_enet_if type,
 				 int speed
 				)
 {
@@ -899,7 +907,7 @@ void marvell_phy_interface_mode (struct eth_device *dev,
 }
 
 void change_phy_interface_mode (struct eth_device *dev,
-				enet_interface_type_e type, int speed)
+				enum fsl_phy_enet_if type, int speed)
 {
 #ifdef CONFIG_PHY_MODE_NEED_CHANGE
 	marvell_phy_interface_mode (dev, type, speed);

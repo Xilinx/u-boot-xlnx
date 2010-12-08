@@ -30,6 +30,7 @@
 #define CONFIG_4xx		1	/* ...member of PPC4xx family   */
 #define CONFIG_ML2	1	/* ...on a ML2 board	*/
 
+#define	CONFIG_SYS_TEXT_BASE	0x18000000
 
 #define CONFIG_ENV_IS_IN_FLASH     1
 
@@ -51,16 +52,6 @@
 #endif
 
 #define CONFIG_PREBOOT		"fsload 0x00100000 /boot/image"
-
-/* Size (bytes) of interrupt driven serial port buffer.
- * Set to 0 to use polling instead of interrupts.
- * Setting to 0 will also disable RTS/CTS handshaking.
- */
-#if 0
-#define CONFIG_SERIAL_SOFTWARE_FIFO 4000
-#else
-#undef	CONFIG_SERIAL_SOFTWARE_FIFO
-#endif
 
 #if 0
 #define CONFIG_BOOTARGS		"root=/dev/nfs "                        \
@@ -220,9 +211,8 @@
  */
 
 #define CONFIG_SYS_INIT_RAM_ADDR       0x800000  /* inside of SDRAM                     */
-#define CONFIG_SYS_INIT_RAM_END        0x2000  /* End of used area in RAM             */
-#define CONFIG_SYS_GBL_DATA_SIZE      128  /* size in bytes reserved for initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET    (CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_SIZE        0x2000  /* Size of used area in RAM             */
+#define CONFIG_SYS_GBL_DATA_OFFSET    (CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET      CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
@@ -230,14 +220,6 @@
  * (to get SDRAM settings)
  */
 #define SPD_EEPROM_ADDRESS      0x50
-
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot			*/
 
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */

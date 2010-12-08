@@ -29,7 +29,6 @@
 #include <asm/cache.h>
 #include <asm/immap_85xx.h>
 #include <asm/fsl_law.h>
-#include <asm/fsl_ddr_sdram.h>
 #include <asm/fsl_serdes.h>
 #include <asm/fsl_portals.h>
 #include <asm/fsl_liodn.h>
@@ -46,6 +45,8 @@ int checkboard (void)
 {
 	u8 sw;
 	struct cpu_type *cpu = gd->cpu;
+	ccsr_gur_t *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
+	unsigned int i;
 
 	printf("Board: %sDS, ", cpu->name);
 	printf("Sys ID: 0x%02x, Sys Ver: 0x%02x, FPGA Ver: 0x%02x, ",
@@ -66,6 +67,19 @@ int checkboard (void)
 #ifdef CONFIG_PHYS_64BIT
 	puts("36-bit Addressing\n");
 #endif
+
+	/* Display the RCW, so that no one gets confused as to what RCW
+	 * we're actually using for this boot.
+	 */
+	puts("Reset Configuration Word (RCW):");
+	for (i = 0; i < ARRAY_SIZE(gur->rcwsr); i++) {
+		u32 rcw = in_be32(&gur->rcwsr[i]);
+
+		if ((i % 4) == 0)
+			printf("\n       %08x:", i * 4);
+		printf(" %08x", rcw);
+	}
+	puts("\n");
 
 	/* Display the actual SERDES reference clocks as configured by the
 	 * dip switches on the board.  Note that the SWx registers could
@@ -194,20 +208,6 @@ int misc_init_r(void)
 	}
 
 	return 0;
-}
-
-phys_size_t initdram(int board_type)
-{
-	phys_size_t dram_size;
-
-	puts("Initializing....\n");
-
-	dram_size = fsl_ddr_sdram();
-
-	setup_ddr_tlbs(dram_size / 0x100000);
-
-	puts("    DDR: ");
-	return dram_size;
 }
 
 #ifdef CONFIG_MP

@@ -22,10 +22,7 @@
 #
 
 #
-# EPQ Board Configuration
+# CMI Board Configuration
 #
 
-# Boot from flash at location 0x00000000
-TEXT_BASE = 0x02000000
-
-PLATFORM_CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE) -I$(TOPDIR)
+PLATFORM_CPPFLAGS += -I$(TOPDIR)

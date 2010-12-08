@@ -30,7 +30,7 @@
  * MA 02111-1307 USA
  */
 
-
+#include <asm-offsets.h>
 #include <config.h>
 #include <version.h>
 
@@ -83,12 +83,9 @@ _fiq:
  *************************************************************************
  */
 
+.globl _TEXT_BASE
 _TEXT_BASE:
-	.word	TEXT_BASE /* address of _start in the linked image */
-
-.globl _armboot_start
-_armboot_start:
-	.word _start
+	.word	CONFIG_SYS_TEXT_BASE /* address of _start in the linked image */
 
 /*
  * These are defined in the board-specific linker script.
@@ -113,11 +110,39 @@ FIQ_STACK_START:
 	.word 0x0badc0de
 #endif
 
+/* IRQ stack memory (calculated at run-time) + 8 bytes */
+.globl IRQ_STACK_START_IN
+IRQ_STACK_START_IN:
+	.word	0x0badc0de
+
+.globl _datarel_start
+_datarel_start:
+	.word __datarel_start
+
+.globl _datarelrolocal_start
+_datarelrolocal_start:
+	.word __datarelrolocal_start
+
+.globl _datarellocal_start
+_datarellocal_start:
+	.word __datarellocal_start
+
+.globl _datarelro_start
+_datarelro_start:
+	.word __datarelro_start
+
+.globl _got_start
+_got_start:
+	.word __got_start
+
+.globl _got_end
+_got_end:
+	.word __got_end
 
 /*
  * the actual reset code
  */
-.globl reset
+
 reset:
 	/*
 	 * set the cpu to SVC32 mode
@@ -135,48 +160,104 @@ reset:
 	bl	cpu_init_crit
 #endif
 
-relocate:				/* relocate U-Boot to RAM	    */
-	adr	r0, _start		/* pc relative  address of label    */
-	ldr	r1, _TEXT_BASE		/* linked image address of label    */
-	cmp	r0, r1                  /* test if we run from flash or RAM */
-	beq	stack_setup             /* ifeq we are in the RAM copy      */
+/* Set stackpointer in internal RAM to call board_init_f */
+call_board_init_f:
+	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
+	ldr	r0,=0x00000000
+	bl	board_init_f
 
-	ldr	r2, _armboot_start
-	ldr	r3, _bss_start
-	sub	r2, r3, r2		/* r2 <- size of armboot            */
-	add	r2, r0, r2		/* r2 <- source end address         */
+/*------------------------------------------------------------------------------*/
 
-copy_loop:
-	ldmia	r0!, {r3-r10}		/* copy from source address [r0]    */
-	stmia	r1!, {r3-r10}		/* copy to   target address [r1]    */
-	cmp	r0, r2			/* until source end addreee [r2]    */
-	ble	copy_loop
+/*
+ * void relocate_code (addr_sp, gd, addr_moni)
+ *
+ * This "function" does not return, instead it continues in RAM
+ * after relocating the monitor code.
+ *
+ */
+	.globl	relocate_code
+relocate_code:
+	mov	r4, r0	/* save addr_sp */
+	mov	r5, r1	/* save addr of gd */
+	mov	r6, r2	/* save addr of destination */
+	mov	r7, r2	/* save addr of destination */
 
 	/* Set up the stack						    */
 stack_setup:
-	ldr	r0, _TEXT_BASE		/* upper 128 KiB: relocated uboot   */
-	sub	r0, r0, #CONFIG_SYS_MALLOC_LEN	/* malloc area                      */
-	sub	r0, r0, #CONFIG_SYS_GBL_DATA_SIZE /* bdinfo                        */
-#ifdef CONFIG_USE_IRQ
-	sub	r0, r0, #(CONFIG_STACKSIZE_IRQ+CONFIG_STACKSIZE_FIQ)
+	mov	sp, r4
+
+	adr	r0, _start
+	ldr	r2, _TEXT_BASE
+	ldr	r3, _bss_start
+	sub	r2, r3, r2		/* r2 <- size of armboot	    */
+	add	r2, r0, r2		/* r2 <- source end address	    */
+	cmp	r0, r6
+	beq	clear_bss
+
+copy_loop:
+	ldmia	r0!, {r9-r10}		/* copy from source address [r0]    */
+	stmia	r6!, {r9-r10}		/* copy to   target address [r1]    */
+	cmp	r0, r2			/* until source end address [r2]    */
+	blo	copy_loop
+
+#ifndef CONFIG_PRELOADER
+	/* fix got entries */
+	ldr	r1, _TEXT_BASE		/* Text base */
+	mov	r0, r7			/* reloc addr */
+	ldr	r2, _got_start		/* addr in Flash */
+	ldr	r3, _got_end		/* addr in Flash */
+	sub	r3, r3, r1
+	add	r3, r3, r0
+	sub	r2, r2, r1
+	add	r2, r2, r0
+
+fixloop:
+	ldr	r4, [r2]
+	sub	r4, r4, r1
+	add	r4, r4, r0
+	str	r4, [r2]
+	add	r2, r2, #4
+	cmp	r2, r3
+	blo	fixloop
 #endif
-	sub	sp, r0, #12		/* leave 3 words for abort-stack    */
-	bic	sp, sp, #7		/* 8-byte alignment for ABI compliance */
 
 clear_bss:
-	ldr	r0, _bss_start		/* find start of bss segment        */
-	ldr	r1, _bss_end		/* stop here                        */
-	mov	r2, #0x00000000		/* clear                            */
+#ifndef CONFIG_PRELOADER
+	ldr	r0, _bss_start
+	ldr	r1, _bss_end
+	ldr	r3, _TEXT_BASE		/* Text base */
+	mov	r4, r7			/* reloc addr */
+	sub	r0, r0, r3
+	add	r0, r0, r4
+	sub	r1, r1, r3
+	add	r1, r1, r4
+	mov	r2, #0x00000000		/* clear			    */
 
-clbss_l:str	r2, [r0]		/* clear loop...                    */
+clbss_l:str	r2, [r0]		/* clear loop...		    */
 	add	r0, r0, #4
 	cmp	r0, r1
-	ble	clbss_l
+	bne	clbss_l
 
-	ldr	pc, _start_armboot
+	bl coloured_LED_init
+	bl red_LED_on
+#endif
 
-_start_armboot:
-	.word start_armboot
+/*
+ * We are done. Do not return, instead branch to second part of board
+ * initialization, now running from RAM.
+ */
+	ldr	r0, _TEXT_BASE
+	ldr	r2, _board_init_r
+	sub	r2, r2, r0
+	add	r2, r2, r7	/* position from board_init_r in RAM */
+	/* setup parameters for board_init_r */
+	mov	r0, r5		/* gd_t */
+	mov	r1, r7		/* dest_addr */
+	/* jump to it ... */
+	mov	lr, r2
+	mov	pc, lr
+
+_board_init_r: .word board_init_r
 
 /*
  *************************************************************************
@@ -242,9 +323,7 @@ cpu_init_crit:
 	sub	sp, sp, #S_FRAME_SIZE
 	stmia	sp, {r0 - r12}	@ Save user registers (now in svc mode) r0-r12
 
-	ldr	r2, _armboot_start
-	sub	r2, r2, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
-	sub	r2, r2, #(CONFIG_SYS_GBL_DATA_SIZE+8)  @ set base 2 words into abort stack
+	ldr	r2, IRQ_STACK_START_IN
 	@ get values for "aborted" pc and cpsr (into parm regs)
 	ldmia	r2, {r2 - r3}
 	add	r0, sp, #S_FRAME_SIZE		@ grab pointer to old stack
@@ -276,9 +355,7 @@ cpu_init_crit:
 	.endm
 
 	.macro get_bad_stack
-	ldr	r13, _armboot_start		@ setup our mode stack
-	sub	r13, r13, #(CONFIG_STACKSIZE+CONFIG_SYS_MALLOC_LEN)
-	sub	r13, r13, #(CONFIG_SYS_GBL_DATA_SIZE+8) @ reserved a couple spots in abort stack
+	ldr	r13, IRQ_STACK_START_IN		@ setup our mode stack
 
 	str	lr, [r13]	@ save caller lr in position 0 of saved stack
 	mrs	lr, spsr	@ get the spsr

@@ -73,7 +73,7 @@ static xemaclite emaclite;
 
 static u32 etherrxbuff[PKTSIZE_ALIGN/4]; /* Receive buffer */
 
-static void xemaclite_alignedread (u32 * srcptr, void *destptr, u32 bytecount)
+static void xemaclite_alignedread (u32 *srcptr, void *destptr, u32 bytecount)
 {
 	u32 i;
 	u32 alignbuffer;
@@ -180,7 +180,7 @@ static int emaclite_init(struct eth_device *dev, bd_t *bis)
 	return 0;
 }
 
-static int xemaclite_txbufferavailable (xemaclite * instanceptr)
+static int xemaclite_txbufferavailable (xemaclite *instanceptr)
 {
 	u32 reg;
 	u32 txpingbusy;
@@ -308,7 +308,7 @@ static int emaclite_recv(struct eth_device *dev)
 #endif
 	}
 	/* Get the length of the frame that arrived */
-	switch(((in_be32 (baseaddress + XEL_RXBUFF_OFFSET + 0xC)) &
+	switch(((ntohl(in_be32 (baseaddress + XEL_RXBUFF_OFFSET + 0xC))) &
 			0xFFFF0000 ) >> 16) {
 		case 0x806:
 			length = 42 + 20; /* FIXME size of ARP */
@@ -316,7 +316,7 @@ static int emaclite_recv(struct eth_device *dev)
 			break;
 		case 0x800:
 			length = 14 + 14 +
-			(((in_be32 (baseaddress + XEL_RXBUFF_OFFSET + 0x10)) &
+			(((ntohl(in_be32 (baseaddress + XEL_RXBUFF_OFFSET + 0x10))) &
 			0xFFFF0000) >> 16); /* FIXME size of IP packet */
 			debug ("IP Packet\n");
 			break;
@@ -340,7 +340,7 @@ static int emaclite_recv(struct eth_device *dev)
 
 }
 
-int xilinx_emaclite_initialize (bd_t *bis)
+int xilinx_emaclite_initialize (bd_t *bis, int base_addr)
 {
 	struct eth_device *dev;
 
@@ -349,9 +349,9 @@ int xilinx_emaclite_initialize (bd_t *bis)
 		hang();
 
 	memset(dev, 0, sizeof(*dev));
-	sprintf(dev->name, "Xilinx Emaclite");
+	sprintf(dev->name, "Xilinx_Emaclite");
 
-	dev->iobase = XILINX_EMACLITE_BASEADDR;
+	dev->iobase = base_addr;
 	dev->priv = 0;
 	dev->init = emaclite_init;
 	dev->halt = emaclite_halt;

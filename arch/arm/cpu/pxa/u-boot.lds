@@ -39,10 +39,19 @@ SECTIONS
 	.rodata : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
 
 	. = ALIGN(4);
-	.data : { *(.data) }
+	.data : {
+		*(.data)
+	}
 
 	. = ALIGN(4);
-	.got : { *(.got) }
+	__rel_dyn_start = .;
+	.rel.dyn : { *(.rel.dyn) }
+	__rel_dyn_end = .;
+
+	__dynsym_start = .;
+	.dynsym : { *(.dynsym) }
+
+	. = ALIGN(4);
 
 	. = .;
 	__u_boot_cmd_start = .;

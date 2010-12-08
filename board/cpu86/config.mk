@@ -25,16 +25,4 @@
 # CPU86 boards
 #
 
-# This should be equal to the CONFIG_SYS_FLASH_BASE define in config_CPU86.h
-# for the "final" configuration, with U-Boot in flash, or the address
-# in RAM where U-Boot is loaded at for debugging.
-#
-
-ifeq ($(CONFIG_BOOT_ROM),y)
-	TEXT_BASE := 0xFF800000
-	PLATFORM_CPPFLAGS += -DCONFIG_BOOT_ROM
-else
-	TEXT_BASE := 0xFF000000
-endif
-
-PLATFORM_CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE) -I$(TOPDIR)
+PLATFORM_CPPFLAGS += -I$(TOPDIR)

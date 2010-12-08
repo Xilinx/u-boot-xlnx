@@ -23,7 +23,7 @@
 #include <common.h>
 #include <asm/io.h>
 #include <asm/arch/imx-regs.h>
-#include <asm/arch/mx51_pins.h>
+#include <asm/arch/mx5x_pins.h>
 #include <asm/arch/iomux.h>
 #include <asm/errno.h>
 #include <asm/arch/sys_proto.h>
@@ -33,12 +33,10 @@
 #include <fsl_esdhc.h>
 #include <fsl_pmic.h>
 #include <mc13892.h>
-#include "mx51evk.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
 static u32 system_rev;
-struct io_board_ctrl *mx51_io_board;
 
 #ifdef CONFIG_FSL_ESDHC
 struct fsl_esdhc_cfg esdhc_cfg[2] = {
@@ -54,9 +52,9 @@ u32 get_board_rev(void)
 
 int dram_init(void)
 {
-	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = get_ram_size((long *)PHYS_SDRAM_1,
-			PHYS_SDRAM_1_SIZE);
+	/* dram_init must store complete ramsize in gd->ram_size */
+	gd->ram_size = get_ram_size((volatile void *)CONFIG_SYS_SDRAM_BASE,
+				PHYS_SDRAM_1_SIZE);
 	return 0;
 }
 
@@ -190,10 +188,10 @@ static void power_init(void)
 	val &= ~PWGT2SPIEN;
 	pmic_reg_write(REG_POWER_MISC, val);
 
-	/* Write needed to update Charger 0 */
-	pmic_reg_write(REG_CHARGE, VCHRG0 | VCHRG1 | VCHRG2 |
-		ICHRG0 | ICHRG1 | ICHRG2 | ICHRG3 | ICHRGTR0 |
-		OVCTRL1 | UCHEN | CHRGLEDEN | CYCLB);
+	/* Externally powered */
+	val = pmic_reg_read(REG_CHARGE);
+	val |= ICHRG0 | ICHRG1 | ICHRG2 | ICHRG3 | CHGAUTOB;
+	pmic_reg_write(REG_CHARGE, val);
 
 	/* power up the system first */
 	pmic_reg_write(REG_POWER_MISC, PWUP);

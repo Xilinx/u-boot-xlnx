@@ -24,7 +24,4 @@
 #
 # MOUSSE boards
 #
-TEXT_BASE = 0xFFF00000
-PLATFORM_CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE)
-
 LDSCRIPT := $(SRCTREE)/board/mousse/u-boot.lds

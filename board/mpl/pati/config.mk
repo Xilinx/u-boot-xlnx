@@ -21,11 +21,4 @@
 # MA 02111-1307 USA
 #
 
-#
-# EPQ Board Configuration
-#
-
-# Boot from flash at location 0x00000000
-TEXT_BASE = 0xFFF00000
-
-PLATFORM_CPPFLAGS += -DTEXT_BASE=$(TEXT_BASE) -I$(TOPDIR)
+PLATFORM_CPPFLAGS += -I$(TOPDIR)

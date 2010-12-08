@@ -99,7 +99,7 @@ u32 get_sdr_cs_offset(u32 cs)
 		return 0;
 
 	offset = readl(&sdrc_base->cs_cfg);
-	offset = (offset & 15) << 27 | (offset & 0x30) >> 17;
+	offset = (offset & 15) << 27 | (offset & 0x30) << 17;
 
 	return offset;
 }
@@ -180,13 +180,23 @@ int dram_init(void)
 
 		size1 = get_sdr_cs_size(CS1);
 	}
+	gd->ram_size = size0 + size1;
+
+	return 0;
+}
+
+void dram_init_banksize (void)
+{
+	DECLARE_GLOBAL_DATA_PTR;
+	unsigned int size0 = 0, size1 = 0;
+
+	size0 = get_sdr_cs_size(CS0);
+	size1 = get_sdr_cs_size(CS1);
 
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = size0;
 	gd->bd->bi_dram[1].start = PHYS_SDRAM_1 + get_sdr_cs_offset(CS1);
 	gd->bd->bi_dram[1].size = size1;
-
-	return 0;
 }
 
 /*

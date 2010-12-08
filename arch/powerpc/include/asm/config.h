@@ -22,6 +22,9 @@
 #define _ASM_CONFIG_H_
 
 #define CONFIG_LMB
+#define CONFIG_SYS_BOOT_RAMDISK_HIGH
+#define CONFIG_SYS_BOOT_GET_CMDLINE
+#define CONFIG_SYS_BOOT_GET_KBD
 
 #ifndef CONFIG_MAX_MEM_MAPPED
 #if defined(CONFIG_4xx) || defined(CONFIG_E500) || defined(CONFIG_MPC86xx)
@@ -85,9 +88,6 @@
 #elif defined(CONFIG_E500)
 #define CONFIG_SYS_NUM_TLBCAMS	16
 #endif
-
-/* Relocation to SDRAM works on all PPC boards */
-#define CONFIG_RELOC_FIXUP_WORKS
 
 /* Since so many PPC SOCs have a semi-common LBC, define this here */
 #if defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx) || \

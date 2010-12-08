@@ -23,8 +23,4 @@
 #
 # p2020ds board
 #
-ifndef TEXT_BASE
-TEXT_BASE = 0xeff80000
-endif
-
 RESET_VECTOR_ADDRESS = 0xeffffffc

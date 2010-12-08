@@ -37,6 +37,10 @@
 #define CONFIG_FSL_CORENET		/* Freescale CoreNet platform */
 #define CONFIG_MP			/* support multiple processors */
 
+#ifndef CONFIG_SYS_TEXT_BASE
+#define CONFIG_SYS_TEXT_BASE	0xeff80000
+#endif
+
 #define CONFIG_SYS_FSL_CPC		/* Corenet Platform Cache */
 #define CONFIG_SYS_NUM_CPC		CONFIG_NUM_DDR_CONTROLLERS
 #define CONFIG_FSL_ELBC			/* Has Enhanced localbus controller */
@@ -64,7 +68,6 @@
 #endif
 
 #define CONFIG_SYS_CLK_FREQ	get_board_sys_clk() /* sysclk for MPC85xx */
-#define CONFIG_ICS307_REFCLK_HZ	33333000  /* ICS307 clock chip ref freq */
 
 /*
  * These can be toggled for performance analysis, otherwise use default.
@@ -86,6 +89,7 @@
 #define CONFIG_SYS_NUM_ADDR_MAP		64	/* number of TLB1 entries */
 #endif
 
+#define CONFIG_POST CONFIG_SYS_POST_MEMORY	/* test POST memory test */
 #define CONFIG_SYS_MEMTEST_START	0x00200000	/* memtest works on */
 #define CONFIG_SYS_MEMTEST_END		0x00400000
 #define CONFIG_SYS_ALT_MEMTEST
@@ -129,68 +133,10 @@
 #define CONFIG_DDR_SPD
 #define CONFIG_FSL_DDR3
 
-#ifdef CONFIG_DDR_SPD
 #define CONFIG_SYS_SPD_BUS_NUM	1
 #define SPD_EEPROM_ADDRESS1	0x51
 #define SPD_EEPROM_ADDRESS2	0x52
-#else
-#define CONFIG_SYS_SDRAM_SIZE		4096
-
-#define CONFIG_SYS_DDR_CS0_BNDS		0x0000003f
-#define CONFIG_SYS_DDR_CS1_BNDS		0x0040007f
-#define CONFIG_SYS_DDR_CS0_CONFIG	0x80014202
-#define CONFIG_SYS_DDR_CS1_CONFIG	0x80014202
-#define CONFIG_SYS_DDR_TIMING_3		0x01031000
-#define CONFIG_SYS_DDR_TIMING_0		0x55440804
-#define CONFIG_SYS_DDR_TIMING_1		0x74713a66
-#define CONFIG_SYS_DDR_TIMING_2		0x0fb8911b
-#define CONFIG_SYS_DDR_MODE_1		0x00421850
-#define CONFIG_SYS_DDR_MODE_2		0x00100000
-#define CONFIG_SYS_DDR_MODE_CTRL	0x00000000
-#define CONFIG_SYS_DDR_INTERVAL		0x10400100
-#define CONFIG_SYS_DDR_DATA_INIT	0xdeadbeef
-#define CONFIG_SYS_DDR_CLK_CTRL		0x03000000
-#define CONFIG_SYS_DDR_TIMING_4		0x00220001
-#define CONFIG_SYS_DDR_TIMING_5		0x03401500
-#define CONFIG_SYS_DDR_ZQ_CNTL		0x89080600
-#define CONFIG_SYS_DDR_WRLVL_CNTL	0x8655a608
-#define CONFIG_SYS_DDR_CONTROL		0xc7048000
-#define CONFIG_SYS_DDR_CONTROL2		0x24400011
-#define CONFIG_SYS_DDR_CDR1		0x00000000
-#define CONFIG_SYS_DDR_CDR2		0x00000000
-#define CONFIG_SYS_DDR_ERR_INT_EN	0x0000000d
-#define CONFIG_SYS_DDR_ERR_DIS		0x00000000
-#define CONFIG_SYS_DDR_SBE		0x00010000
-#define CONFIG_SYS_DDR_DEBUG_18		0x40100400
-
-#define CONFIG_SYS_DDR2_CS0_BNDS	0x008000bf
-#define CONFIG_SYS_DDR2_CS1_BNDS	0x00C000ff
-#define CONFIG_SYS_DDR2_CS0_CONFIG	CONFIG_SYS_DDR_CS0_CONFIG
-#define CONFIG_SYS_DDR2_CS1_CONFIG	CONFIG_SYS_DDR_CS1_CONFIG
-#define CONFIG_SYS_DDR2_TIMING_3	CONFIG_SYS_DDR_TIMING_3
-#define CONFIG_SYS_DDR2_TIMING_0	CONFIG_SYS_DDR_TIMING_0
-#define CONFIG_SYS_DDR2_TIMING_1	CONFIG_SYS_DDR_TIMING_1
-#define CONFIG_SYS_DDR2_TIMING_2	CONFIG_SYS_DDR_TIMING_2
-#define CONFIG_SYS_DDR2_MODE_1		CONFIG_SYS_DDR_MODE_1
-#define CONFIG_SYS_DDR2_MODE_2		CONFIG_SYS_DDR_MODE_2
-#define CONFIG_SYS_DDR2_MODE_CTRL	CONFIG_SYS_DDR_MODE_CTRL
-#define CONFIG_SYS_DDR2_INTERVAL	CONFIG_SYS_DDR_INTERVAL
-#define CONFIG_SYS_DDR2_DATA_INIT	CONFIG_SYS_DDR_DATA_INIT
-#define CONFIG_SYS_DDR2_CLK_CTRL	CONFIG_SYS_DDR_CLK_CTRL
-#define CONFIG_SYS_DDR2_TIMING_4	CONFIG_SYS_DDR_TIMING_4
-#define CONFIG_SYS_DDR2_TIMING_5	CONFIG_SYS_DDR_TIMING_5
-#define CONFIG_SYS_DDR2_ZQ_CNTL		CONFIG_SYS_DDR_ZQ_CNTL
-#define CONFIG_SYS_DDR2_WRLVL_CNTL	CONFIG_SYS_DDR_WRLVL_CNTL
-#define CONFIG_SYS_DDR2_CONTROL		CONFIG_SYS_DDR_CONTROL
-#define CONFIG_SYS_DDR2_CONTROL2	CONFIG_SYS_DDR_CONTROL2
-#define CONFIG_SYS_DDR2_CDR1		CONFIG_SYS_DDR_CDR1
-#define CONFIG_SYS_DDR2_CDR2		CONFIG_SYS_DDR_CDR2
-#define CONFIG_SYS_DDR2_ERR_INT_EN	CONFIG_SYS_DDR_ERR_INT_EN
-#define CONFIG_SYS_DDR2_ERR_DIS		CONFIG_SYS_DDR_ERR_DIS
-#define CONFIG_SYS_DDR2_SBE		CONFIG_SYS_DDR_SBE
-#define CONFIG_SYS_DDR2_DEBUG_18	CONFIG_SYS_DDR_DEBUG_18
-
-#endif
+#define CONFIG_SYS_SDRAM_SIZE	4096	/* for fixed parameter use */
 
 /*
  * Local Bus Definitions
@@ -240,7 +186,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000		/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500		/* Flash Write Timeout (ms) */
 
-#define CONFIG_SYS_MONITOR_BASE		TEXT_BASE	/* start of monitor */
+#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE	/* start of monitor */
 
 #define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_FLASH_AMD_CHECK_DQ7
@@ -268,10 +214,9 @@
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH 0
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_LOW CONFIG_SYS_INIT_RAM_ADDR_PHYS
 #endif
-#define CONFIG_SYS_INIT_RAM_END		0x00004000	/* End of used area in RAM */
+#define CONFIG_SYS_INIT_RAM_SIZE		0x00004000	/* Size of used area in RAM */
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
@@ -399,6 +344,14 @@
 #endif
 #define CONFIG_SYS_PCIE3_IO_SIZE	0x00010000	/* 64k */
 
+/* controller 4, Base address 203000 */
+#define CONFIG_SYS_PCIE4_MEM_BUS	0xe0000000
+#define CONFIG_SYS_PCIE4_MEM_PHYS	0xc60000000ull
+#define CONFIG_SYS_PCIE4_MEM_SIZE	0x20000000	/* 512M */
+#define CONFIG_SYS_PCIE4_IO_BUS		0x00000000
+#define CONFIG_SYS_PCIE4_IO_PHYS	0xff8030000ull
+#define CONFIG_SYS_PCIE4_IO_SIZE	0x00010000	/* 64k */
+
 /* Qman/Bman */
 #define CONFIG_SYS_BMAN_NUM_PORTALS	10
 #define CONFIG_SYS_BMAN_MEM_BASE	0xf4000000
@@ -525,6 +478,7 @@
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
 #define CONFIG_CMD_SETEXPR
+#define CONFIG_CMD_DHCP
 
 #ifdef CONFIG_PCI
 #define CONFIG_CMD_PCI
@@ -579,14 +533,6 @@
  */
 #define CONFIG_SYS_BOOTMAPSZ	(16 << 20)	/* Initial Memory map for Linux*/
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM	0x02		/* Software reboot */
-
 #ifdef CONFIG_CMD_KGDB
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
 #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
@@ -607,14 +553,17 @@
 #define CONFIG_BAUDRATE	115200
 
 #define	CONFIG_EXTRA_ENV_SETTINGS				\
+	"hwconfig=fsl_ddr:ctlr_intlv=cacheline,"		\
+	"bank_intlv=cs0_cs1\0"					\
 	"netdev=eth0\0"						\
 	"uboot=" MK_STR(CONFIG_UBOOTPATH) "\0"			\
-	"tftpflash=tftpboot $loadaddr $uboot; "			\
-	"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
-	"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
-	"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
-	"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
-	"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
+	"ubootaddr=" MK_STR(CONFIG_SYS_TEXT_BASE) "\0"			\
+	"tftpflash=tftpboot $loadaddr $uboot && "		\
+	"protect off $ubootaddr +$filesize && "			\
+	"erase $ubootaddr +$filesize && "			\
+	"cp.b $loadaddr $ubootaddr $filesize && "		\
+	"protect on $ubootaddr +$filesize && "			\
+	"cmp.b $loadaddr $ubootaddr $filesize\0"		\
 	"consoledev=ttyS0\0"					\
 	"ramdiskaddr=2000000\0"					\
 	"ramdiskfile=p4080ds/ramdisk.uboot\0"			\

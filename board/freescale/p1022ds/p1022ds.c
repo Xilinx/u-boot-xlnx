@@ -27,6 +27,7 @@
 #include <asm/mp.h>
 #include <netdev.h>
 #include <i2c.h>
+#include <hwconfig.h>
 
 #include "../common/ngpixis.h"
 
@@ -90,33 +91,57 @@ phys_size_t initdram(int board_type)
 
 #define CONFIG_TFP410_I2C_ADDR	0x38
 
+/* Masks for the SSI_TDM and AUDCLK bits of the ngPIXIS BRDCFG1 register. */
+#define CONFIG_PIXIS_BRDCFG1_SSI_TDM_MASK	0x0c
+#define CONFIG_PIXIS_BRDCFG1_AUDCLK_MASK	0x03
+
+/* Route the I2C1 pins to the SSI port instead. */
+#define CONFIG_PIXIS_BRDCFG1_SSI_TDM_SSI	0x08
+
+/* Choose the 12.288Mhz codec reference clock */
+#define CONFIG_PIXIS_BRDCFG1_AUDCLK_12		0x02
+
+/* Choose the 11.2896Mhz codec reference clock */
+#define CONFIG_PIXIS_BRDCFG1_AUDCLK_11		0x01
+
 int misc_init_r(void)
 {
 	u8 temp;
+	const char *audclk;
+	size_t arglen;
 
-	/*  Enable the TFP410 Encoder */
+	/* For DVI, enable the TFP410 Encoder. */
 
 	temp = 0xBF;
 	if (i2c_write(CONFIG_TFP410_I2C_ADDR, 0x08, 1, &temp, sizeof(temp)) < 0)
 		return -1;
-
-	/* Verify if enabled */
-	temp = 0;
 	if (i2c_read(CONFIG_TFP410_I2C_ADDR, 0x08, 1, &temp, sizeof(temp)) < 0)
 		return -1;
-
 	debug("DVI Encoder Read: 0x%02x\n", temp);
 
 	temp = 0x10;
 	if (i2c_write(CONFIG_TFP410_I2C_ADDR, 0x0A, 1, &temp, sizeof(temp)) < 0)
 		return -1;
-
-	/* Verify if enabled */
-	temp = 0;
 	if (i2c_read(CONFIG_TFP410_I2C_ADDR, 0x0A, 1, &temp, sizeof(temp)) < 0)
 		return -1;
-
 	debug("DVI Encoder Read: 0x%02x\n",temp);
+
+	/*
+	 * Enable the reference clock for the WM8776 codec, and route the MUX
+	 * pins for SSI. The default is the 12.288 MHz clock
+	 */
+
+	temp = in_8(&pixis->brdcfg1) & ~(CONFIG_PIXIS_BRDCFG1_SSI_TDM_MASK |
+		CONFIG_PIXIS_BRDCFG1_AUDCLK_MASK);
+	temp |= CONFIG_PIXIS_BRDCFG1_SSI_TDM_SSI;
+
+	audclk = hwconfig_arg("audclk", &arglen);
+	/* Check the first two chars only */
+	if (audclk && (strncmp(audclk, "11", 2) == 0))
+		temp |= CONFIG_PIXIS_BRDCFG1_AUDCLK_11;
+	else
+		temp |= CONFIG_PIXIS_BRDCFG1_AUDCLK_12;
+	out_8(&pixis->brdcfg1, temp);
 
 	return 0;
 }
@@ -200,7 +225,7 @@ static void configure_pcie(struct fsl_pci_info *info,
 	set_next_law(info->mem_phys, law_size_bits(info->mem_size), info->law);
 	set_next_law(info->io_phys, law_size_bits(info->io_size), info->law);
 	is_endpoint = fsl_setup_hose(hose, info->regs);
-	printf("    PCIE%u connected to %s as %s (base addr %lx)\n",
+	printf("PCIE%u: connected to %s as %s (base addr %lx)\n",
 	       info->pci_num, connected,
 	       is_endpoint ? "Endpoint" : "Root Complex", info->regs);
 	bus_number = fsl_pci_init_port(info, hose, bus_number);
@@ -230,7 +255,7 @@ void pci_init_board(void)
 		SET_STD_PCIE_INFO(pci_info, 1);
 		configure_pcie(&pci_info, &pcie1_hose, serdes_slot_name(PCIE1));
 	} else {
-		printf("    PCIE1: disabled\n");
+		printf("PCIE1: disabled\n");
 	}
 #else
 	setbits_be32(&gur->devdisr, MPC85xx_DEVDISR_PCIE); /* disable */
@@ -241,7 +266,7 @@ void pci_init_board(void)
 		SET_STD_PCIE_INFO(pci_info, 2);
 		configure_pcie(&pci_info, &pcie2_hose, serdes_slot_name(PCIE2));
 	} else {
-		printf("    PCIE2: disabled\n");
+		printf("PCIE2: disabled\n");
 	}
 #else
 	setbits_be32(&gur->devdisr, MPC85xx_DEVDISR_PCIE2); /* disable */
@@ -252,7 +277,7 @@ void pci_init_board(void)
 		SET_STD_PCIE_INFO(pci_info, 3);
 		configure_pcie(&pci_info, &pcie3_hose, serdes_slot_name(PCIE3));
 	} else {
-		printf("    PCIE3: disabled\n");
+		printf("PCIE3: disabled\n");
 	}
 #else
 	setbits_be32(&gur->devdisr, MPC85xx_DEVDISR_PCIE3); /* disable */
@@ -310,6 +335,27 @@ int board_eth_init(bd_t *bis)
 }
 
 #ifdef CONFIG_OF_BOARD_SETUP
+/**
+ * ft_codec_setup - fix up the clock-frequency property of the codec node
+ *
+ * Update the clock-frequency property based on the value of the 'audclk'
+ * hwconfig option.  If audclk is not specified, then default to 12.288MHz.
+ */
+static void ft_codec_setup(void *blob, const char *compatible)
+{
+	const char *audclk;
+	size_t arglen;
+	u32 freq;
+
+	audclk = hwconfig_arg("audclk", &arglen);
+	if (audclk && (strncmp(audclk, "11", 2) == 0))
+		freq = 11289600;
+	else
+		freq = 12288000;
+
+	do_fixup_by_compat_u32(blob, compatible, "clock-frequency", freq, 1);
+}
+
 void ft_board_setup(void *blob, bd_t *bd)
 {
 	phys_addr_t base;
@@ -327,6 +373,9 @@ void ft_board_setup(void *blob, bd_t *bd)
 #ifdef CONFIG_FSL_SGMII_RISER
 	fsl_sgmii_riser_fdt_fixup(blob);
 #endif
+
+	/* Update the WM8776 node's clock frequency property */
+	ft_codec_setup(blob, "wlf,wm8776");
 }
 #endif
 

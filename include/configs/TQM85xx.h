@@ -41,6 +41,12 @@
 #define CONFIG_E500		1	/* BOOKE e500 family		*/
 #define CONFIG_MPC85xx		1	/* MPC8540/60/55/41		*/
 
+#if defined(CONFIG_TQM8548_BE)
+#define CONFIG_SYS_TEXT_BASE	0xfff80000
+#else
+#define CONFIG_SYS_TEXT_BASE	0xfffc0000
+#endif
+
 #if defined(CONFIG_TQM8548_AG) || defined(CONFIG_TQM8548_BE)
 #define CONFIG_TQM8548
 #endif
@@ -75,7 +81,7 @@
  * NAND flash support (disabled by default)
  *
  * Warning: NAND support will likely increase the U-Boot image size
- * to more than 256 KB. Please adjust TEXT_BASE if necessary.
+ * to more than 256 KB. Please adjust CONFIG_SYS_TEXT_BASE if necessary.
  */
 #ifdef CONFIG_TQM8548_BE
 #define CONFIG_NAND
@@ -219,7 +225,7 @@
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms)	*/
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms)	*/
 
-#define CONFIG_SYS_MONITOR_BASE	TEXT_BASE	/* start of monitor	*/
+#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor	*/
 
 /*
  * Note: when changing the Local Bus clock divider you have to
@@ -237,13 +243,12 @@
 #define CONFIG_SYS_INIT_RAM_LOCK	1
 #define CONFIG_SYS_INIT_RAM_ADDR	(CONFIG_SYS_CCSRBAR \
 				 + 0x04010000)	/* Initial RAM address	*/
-#define CONFIG_SYS_INIT_RAM_END	0x4000		/* End used area in RAM	*/
+#define CONFIG_SYS_INIT_RAM_SIZE	0x4000		/* Size used area in RAM	*/
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128	/* num bytes initial data	*/
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
-#define CONFIG_SYS_MONITOR_LEN		(~TEXT_BASE + 1)/* Reserved for Monitor	*/
+#define CONFIG_SYS_MONITOR_LEN		(~CONFIG_SYS_TEXT_BASE + 1)/* Reserved for Monitor	*/
 #define CONFIG_SYS_MALLOC_LEN		(384 * 1024)	/* Reserved for malloc	*/
 
 /* Serial Port */
@@ -256,7 +261,6 @@
 #else /* !CONFIG_TQM8560 */
 
 #define CONFIG_CONS_INDEX     1
-#undef	CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -375,11 +379,11 @@
  * General PCI
  * Addresses are mapped 1-1.
  */
-#define CONFIG_SYS_PCI1_MEM_BASE	0x80000000
-#define CONFIG_SYS_PCI1_MEM_PHYS	CONFIG_SYS_PCI1_MEM_BASE
+#define CONFIG_SYS_PCI1_MEM_BUS		0x80000000
+#define CONFIG_SYS_PCI1_MEM_PHYS	CONFIG_SYS_PCI1_MEM_BUS
 #define CONFIG_SYS_PCI1_MEM_SIZE	0x20000000	/* 512M			*/
-#define CONFIG_SYS_PCI1_IO_BASE	(CONFIG_SYS_CCSRBAR + 0x02000000)
-#define CONFIG_SYS_PCI1_IO_PHYS	CONFIG_SYS_PCI1_IO_BASE
+#define CONFIG_SYS_PCI1_IO_BUS	(CONFIG_SYS_CCSRBAR + 0x02000000)
+#define CONFIG_SYS_PCI1_IO_PHYS	CONFIG_SYS_PCI1_IO_BUS
 #define CONFIG_SYS_PCI1_IO_SIZE	0x1000000	/*  16M			*/
 
 #ifdef CONFIG_PCIE1
@@ -388,16 +392,16 @@
  * Addresses are mapped 1-1.
  */
 #ifdef CONFIG_TQM_BIGFLASH
-#define CONFIG_SYS_PCIE1_MEM_BASE	0xb0000000
+#define CONFIG_SYS_PCIE1_MEM_BUS	0xb0000000
 #define CONFIG_SYS_PCIE1_MEM_SIZE	0x10000000      /* 512M                 */
-#define CONFIG_SYS_PCIE1_IO_BASE	0xaf000000
+#define CONFIG_SYS_PCIE1_IO_BUS		0xaf000000
 #else /* !CONFIG_TQM_BIGFLASH */
-#define CONFIG_SYS_PCIE1_MEM_BASE	0xc0000000
+#define CONFIG_SYS_PCIE1_MEM_BUS	0xc0000000
 #define CONFIG_SYS_PCIE1_MEM_SIZE	0x20000000      /* 512M                 */
-#define CONFIG_SYS_PCIE1_IO_BASE	0xef000000
+#define CONFIG_SYS_PCIE1_IO_BUS		0xef000000
 #endif /* CONFIG_TQM_BIGFLASH */
-#define CONFIG_SYS_PCIE1_MEM_PHYS	CONFIG_SYS_PCIE1_MEM_BASE
-#define CONFIG_SYS_PCIE1_IO_PHYS	CONFIG_SYS_PCIE1_IO_BASE
+#define CONFIG_SYS_PCIE1_MEM_PHYS	CONFIG_SYS_PCIE1_MEM_BUS
+#define CONFIG_SYS_PCIE1_IO_PHYS	CONFIG_SYS_PCIE1_IO_BUS
 #define CONFIG_SYS_PCIE1_IO_SIZE	0x1000000       /* 16M                  */
 #endif /* CONFIG_PCIE1 */
 
@@ -624,14 +628,6 @@
  */
 #define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux	*/
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Power-On: Boot from FLASH	*/
-#define BOOTFLAG_WARM	0x02		/* Software reboot		*/
-
 #if defined(CONFIG_CMD_KGDB)
 #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port*/
 #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use	*/
@@ -660,7 +656,7 @@
 				MK_STR(CONFIG_HOSTNAME)".dtb\0"
 #define CONFIG_ENV_BOOTFILE	"bootfile="MK_STR(CONFIG_HOSTNAME)"/uImage\0"
 #define CONFIG_ENV_UBOOT		"uboot="MK_STR(CONFIG_HOSTNAME)"/u-boot.bin\0" \
-				"uboot_addr="MK_STR(TEXT_BASE)"\0"
+				"uboot_addr="MK_STR(CONFIG_SYS_TEXT_BASE)"\0"
 
 #define	CONFIG_EXTRA_ENV_SETTINGS					\
 	CONFIG_ENV_BOOTFILE						\

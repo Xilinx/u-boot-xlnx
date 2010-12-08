@@ -18,12 +18,14 @@
 # MA 02111-1307 USA
 
 #
-# TEXT_BASE refers to image _after_ relocation.
+# CONFIG_SYS_TEXT_BASE refers to image _after_ relocation.
 #
 # NOTE: Must match value used in u-boot.lds (in this directory).
 #
 sinclude $(OBJTREE)/board/$(BOARDDIR)/config.tmp
 
-ifndef TEXT_BASE
-TEXT_BASE = 0x0ff80000
+ifdef CONFIG_SH_32BIT
+CONFIG_SYS_TEXT_BASE = 0x8FF80000
+else
+CONFIG_SYS_TEXT_BASE = 0x0ff80000
 endif

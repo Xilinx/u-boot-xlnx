@@ -41,6 +41,12 @@
 /*#define CONFIG_PHYS_64BIT	1*/	/* Place devices in 36-bit space */
 #define CONFIG_ADDR_MAP		1	/* Use addr map */
 
+/*
+ * default CCSRBAR is at 0xff700000
+ * assume U-Boot is less than 0.5MB
+ */
+#define	CONFIG_SYS_TEXT_BASE	0xeff00000
+
 #ifdef RUN_DIAG
 #define CONFIG_SYS_DIAG_ADDR	     CONFIG_SYS_FLASH_BASE
 #endif
@@ -68,6 +74,7 @@
 #define CONFIG_TSEC_ENET		/* tsec ethernet support */
 #define CONFIG_ENV_OVERWRITE
 
+#define CONFIG_BAT_RW		1	/* Use common BAT rw code */
 #define CONFIG_HIGH_BATS	1	/* High BATs supported and enabled */
 #define CONFIG_SYS_NUM_ADDR_MAP 8	/* Number of addr map slots = 8 dbats */
 
@@ -238,7 +245,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #undef	CONFIG_SYS_FLASH_CHECKSUM
 #define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
 #define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
-#define CONFIG_SYS_MONITOR_BASE		TEXT_BASE	/* start of monitor */
+#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE	/* start of monitor */
 #define CONFIG_SYS_MONITOR_BASE_EARLY   0xfff00000	/* early monitor loc */
 
 #define CONFIG_FLASH_CFI_DRIVER
@@ -264,10 +271,9 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 #else
 #define CONFIG_SYS_INIT_RAM_ADDR	0xf8400000	/* Initial RAM address */
 #endif
-#define CONFIG_SYS_INIT_RAM_END	0x4000		/* End of used area in RAM */
+#define CONFIG_SYS_INIT_RAM_SIZE	0x4000		/* Size of used area in RAM */
 
-#define CONFIG_SYS_GBL_DATA_SIZE	128		/* num bytes initial data */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_END - CONFIG_SYS_GBL_DATA_SIZE)
+#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 #define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_SYS_MONITOR_LEN		(256 * 1024)	/* Reserve 256 kB for Mon */
@@ -275,7 +281,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 
 /* Serial Port */
 #define CONFIG_CONS_INDEX     1
-#undef	CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	1
@@ -587,7 +592,7 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 /* Map the last 1M of flash where we're running from reset */
 #define CONFIG_SYS_DBAT6L_EARLY	(CONFIG_SYS_MONITOR_BASE_EARLY | BATL_PP_RW \
 				 | BATL_CACHEINHIBIT | BATL_GUARDEDSTORAGE)
-#define CONFIG_SYS_DBAT6U_EARLY	(TEXT_BASE | BATU_BL_1M | BATU_VS | BATU_VP)
+#define CONFIG_SYS_DBAT6U_EARLY	(CONFIG_SYS_TEXT_BASE | BATU_BL_1M | BATU_VS | BATU_VP)
 #define CONFIG_SYS_IBAT6L_EARLY	(CONFIG_SYS_MONITOR_BASE_EARLY | BATL_PP_RW \
 				 | BATL_MEMCOHERENCE)
 #define CONFIG_SYS_IBAT6U_EARLY	CONFIG_SYS_DBAT6U_EARLY
@@ -675,14 +680,6 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
  */
 #define CONFIG_SYS_BOOTMAPSZ	(8 << 20)	/* Initial Memory map for Linux*/
 
-/*
- * Internal Definitions
- *
- * Boot Flags
- */
-#define BOOTFLAG_COLD	0x01		/* Normal Power-On: Boot from FLASH */
-#define BOOTFLAG_WARM	0x02		/* Software reboot */
-
 #if defined(CONFIG_CMD_KGDB)
     #define CONFIG_KGDB_BAUDRATE	230400	/* speed to run kgdb serial port */
     #define CONFIG_KGDB_SER_INDEX	2	/* which serial port to use */
@@ -728,11 +725,11 @@ extern unsigned long get_board_sys_clk(unsigned long dummy);
 	"netdev=eth0\0"							\
 	"uboot=" MK_STR(CONFIG_UBOOTPATH) "\0"				\
 	"tftpflash=tftpboot $loadaddr $uboot; "				\
-		"protect off " MK_STR(TEXT_BASE) " +$filesize; "	\
-		"erase " MK_STR(TEXT_BASE) " +$filesize; "		\
-		"cp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize; "	\
-		"protect on " MK_STR(TEXT_BASE) " +$filesize; "		\
-		"cmp.b $loadaddr " MK_STR(TEXT_BASE) " $filesize\0"	\
+		"protect off " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "	\
+		"erase " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+		"cp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize; "	\
+		"protect on " MK_STR(CONFIG_SYS_TEXT_BASE) " +$filesize; "		\
+		"cmp.b $loadaddr " MK_STR(CONFIG_SYS_TEXT_BASE) " $filesize\0"	\
 	"consoledev=ttyS0\0"						\
 	"ramdiskaddr=2000000\0"						\
 	"ramdiskfile=your.ramdisk.u-boot\0"				\

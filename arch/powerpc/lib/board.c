@@ -107,7 +107,7 @@ void doc_init (void);
 
 static char *failed = "*** failed ***\n";
 
-#if defined(CONFIG_OXC) || defined(CONFIG_PCU_E) || defined(CONFIG_RMU)
+#if defined(CONFIG_OXC) || defined(CONFIG_RMU)
 extern flash_info_t flash_info[];
 #endif
 
@@ -117,16 +117,6 @@ extern int board_start_ide(void);
 #include <environment.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#if defined(CONFIG_ENV_IS_EMBEDDED)
-#define TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
-#elif ( ((CONFIG_ENV_ADDR+CONFIG_ENV_SIZE) < CONFIG_SYS_MONITOR_BASE) || \
-	(CONFIG_ENV_ADDR >= (CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)) ) || \
-      defined(CONFIG_ENV_IS_IN_NVRAM)
-#define	TOTAL_MALLOC_LEN	(CONFIG_SYS_MALLOC_LEN + CONFIG_ENV_SIZE)
-#else
-#define	TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
-#endif
 
 #if !defined(CONFIG_SYS_MEM_TOP_HIDE)
 #define CONFIG_SYS_MEM_TOP_HIDE	0
@@ -185,6 +175,16 @@ void __board_add_ram_info(int use_default)
 }
 void board_add_ram_info(int) __attribute__((weak, alias("__board_add_ram_info")));
 
+int __board_flash_wp_on(void)
+{
+	/*
+	 * Most flashes can't be detected when write protection is enabled,
+	 * so provide a way to let U-Boot gracefully ignore write protected
+	 * devices.
+	 */
+	return 0;
+}
+int board_flash_wp_on(void) __attribute__((weak, alias("__board_flash_wp_on")));
 
 static int init_func_ram (void)
 {
@@ -490,6 +490,7 @@ void board_init_f (ulong bootflag)
 	 */
 	addr_sp -= sizeof (bd_t);
 	bd = (bd_t *) addr_sp;
+	memset(bd, 0, sizeof(bd_t));
 	gd->bd = bd;
 	debug ("Reserving %zu Bytes for Board Info at: %08lx\n",
 			sizeof (bd_t), addr_sp);
@@ -519,15 +520,9 @@ void board_init_f (ulong bootflag)
 	bd->bi_memstart  = CONFIG_SYS_SDRAM_BASE;	/* start of  DRAM memory	*/
 	bd->bi_memsize   = gd->ram_size;	/* size  of  DRAM memory in bytes */
 
-#ifdef CONFIG_IP860
-	bd->bi_sramstart = SRAM_BASE;	/* start of  SRAM memory	*/
-	bd->bi_sramsize  = SRAM_SIZE;	/* size  of  SRAM memory	*/
-#elif defined CONFIG_MPC8220
+#ifdef CONFIG_SYS_SRAM_BASE
 	bd->bi_sramstart = CONFIG_SYS_SRAM_BASE;	/* start of  SRAM memory	*/
 	bd->bi_sramsize  = CONFIG_SYS_SRAM_SIZE;	/* size  of  SRAM memory	*/
-#else
-	bd->bi_sramstart = 0;		/* FIXME */ /* start of  SRAM memory	*/
-	bd->bi_sramsize  = 0;		/* FIXME */ /* size  of  SRAM memory	*/
 #endif
 
 #if defined(CONFIG_8xx) || defined(CONFIG_8260) || defined(CONFIG_5xx) || \
@@ -560,8 +555,6 @@ void board_init_f (ulong bootflag)
 		*sram++ = 0xb8c3ba11;  /* boot signature */
 	}
 #endif
-
-	bd->bi_bootflags = bootflag;	/* boot / reboot flag (for LynxOS)    */
 
 	WATCHDOG_RESET ();
 	bd->bi_intfreq = gd->cpu_clk;	/* Internal Freq, in Hz */
@@ -694,11 +687,10 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	unlock_ram_in_cache();	/* it's time to unlock D-cache in e500 */
 #endif
 
-#if defined(CONFIG_BAB7xx) || defined(CONFIG_CPC45)
+#if defined(CONFIG_PCI) && defined(CONFIG_SYS_EARLY_PCI_INIT)
 	/*
-	 * Do PCI configuration on BAB7xx and CPC45 _before_ the flash
-	 * gets initialised, because we need the ISA resp. PCI_to_LOCAL bus
-	 * bridge there.
+	 * Do early PCI configuration _before_ the flash gets initialised,
+	 * because PCU ressources are crucial for flash access on some boards.
 	 */
 	pci_init ();
 #endif
@@ -716,7 +708,11 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #if !defined(CONFIG_SYS_NO_FLASH)
 	puts ("FLASH: ");
 
-	if ((flash_size = flash_init ()) > 0) {
+	if (board_flash_wp_on()) {
+		printf("Uninitialized - Write Protect On\n");
+		/* Since WP is on, we can't find real size.  Set to 0 */
+		flash_size = 0;
+	} else if ((flash_size = flash_init ()) > 0) {
 # ifdef CONFIG_SYS_FLASH_CHECKSUM
 		print_size (flash_size, "");
 		/*
@@ -748,19 +744,12 @@ void board_init_r (gd_t *id, ulong dest_addr)
 #endif
 
 
-# if defined(CONFIG_PCU_E) || defined(CONFIG_OXC) || defined(CONFIG_RMU)
+# if defined(CONFIG_OXC) || defined(CONFIG_RMU)
 	/* flash mapped at end of memory map */
-	bd->bi_flashoffset = TEXT_BASE + flash_size;
+	bd->bi_flashoffset = CONFIG_SYS_TEXT_BASE + flash_size;
 # elif CONFIG_SYS_MONITOR_BASE == CONFIG_SYS_FLASH_BASE
 	bd->bi_flashoffset = monitor_flash_len;	/* reserved area for startup monitor  */
-# else
-	bd->bi_flashoffset = 0;
 # endif
-#else	/* CONFIG_SYS_NO_FLASH */
-
-	bd->bi_flashsize = 0;
-	bd->bi_flashstart = 0;
-	bd->bi_flashoffset = 0;
 #endif /* !CONFIG_SYS_NO_FLASH */
 
 	WATCHDOG_RESET ();
@@ -817,14 +806,8 @@ void board_init_r (gd_t *id, ulong dest_addr)
 		if (s && ((*s == 'y') || (*s == 'Y'))) {
 			bd->bi_iic_fast[0] = 1;
 			bd->bi_iic_fast[1] = 1;
-		} else {
-			bd->bi_iic_fast[0] = 0;
-			bd->bi_iic_fast[1] = 0;
 		}
 	}
-#else
-	bd->bi_iic_fast[0] = 0;
-	bd->bi_iic_fast[1] = 0;
 #endif	/* CONFIG_I2CFAST */
 #endif	/* CONFIG_405GP, CONFIG_405EP */
 #endif	/* CONFIG_SYS_EXTBDINFO */
@@ -869,7 +852,7 @@ void board_init_r (gd_t *id, ulong dest_addr)
 
 	WATCHDOG_RESET ();
 
-#if defined(CONFIG_PCI) && !defined(CONFIG_BAB7xx) && !defined(CONFIG_CPC45)
+#if defined(CONFIG_PCI) && !defined(CONFIG_SYS_EARLY_PCI_INIT)
 	/*
 	 * Do pci configuration
 	 */
@@ -913,13 +896,6 @@ void board_init_r (gd_t *id, ulong dest_addr)
 	 * Enable Interrupts
 	 */
 	interrupt_init ();
-
-	/* Must happen after interrupts are initialized since
-	 * an irq handler gets installed
-	 */
-#ifdef CONFIG_SERIAL_SOFTWARE_FIFO
-	serial_buffered_init();
-#endif
 
 #if defined(CONFIG_STATUS_LED) && defined(STATUS_LED_BOOT)
 	status_led_set (STATUS_LED_BOOT, STATUS_LED_BLINKING);

@@ -91,6 +91,9 @@ int fsl_setup_hose(struct pci_controller *hose, unsigned long addr)
 {
 	volatile ccsr_fsl_pci_t *pci = (ccsr_fsl_pci_t *) addr;
 
+	/* Reset hose to make sure its in a clean state */
+	memset(hose, 0, sizeof(struct pci_controller));
+
 	pci_setup_indirect(hose, (u32)&pci->cfg_addr, (u32)&pci->cfg_data);
 
 	return fsl_is_pci_agent(hose);
@@ -388,11 +391,11 @@ void fsl_pci_init(struct pci_controller *hose, u32 cfg_addr, u32 cfg_data)
 	 * 1 == pci agent or pcie end-point
 	 */
 	if (!temp8) {
-		printf("               Scanning PCI bus %02x\n",
+		debug("           Scanning PCI bus %02x\n",
 			hose->current_busno);
 		hose->last_busno = pci_hose_scan_bus(hose, hose->current_busno);
 	} else {
-		debug("               Not scanning PCI bus %02x. PI=%x\n",
+		debug("           Not scanning PCI bus %02x. PI=%x\n",
 			hose->current_busno, temp8);
 		hose->last_busno = hose->current_busno;
 	}
@@ -438,6 +441,8 @@ int fsl_pci_init_port(struct fsl_pci_info *pci_info,
 {
 	volatile ccsr_fsl_pci_t *pci;
 	struct pci_region *r;
+	pci_dev_t dev = PCI_BDF(busno,0,0);
+	u8 pcie_cap;
 
 	pci = (ccsr_fsl_pci_t *) pci_info->regs;
 
@@ -476,8 +481,10 @@ int fsl_pci_init_port(struct fsl_pci_info *pci_info,
 		hose->last_busno = hose->first_busno;
 	}
 
-	printf("    PCIE%x on bus %02x - %02x\n", pci_info->pci_num,
-			hose->first_busno, hose->last_busno);
+	pci_hose_read_config_byte(hose, dev, FSL_PCIE_CAP_ID, &pcie_cap);
+	printf("PCI%s%x: Bus %02x - %02x\n", pcie_cap == PCI_CAP_ID_EXP ?
+		"E" : "", pci_info->pci_num,
+		hose->first_busno, hose->last_busno);
 
 	return(hose->last_busno + 1);
 }

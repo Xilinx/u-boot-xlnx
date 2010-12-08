@@ -102,8 +102,8 @@ int dram_init(void)
 {
 	DECLARE_GLOBAL_DATA_PTR;
 
-	gd->bd->bi_dram[0].start = 0x80000000;
-	gd->bd->bi_dram[0].size = sdram_size();
+	gd->ram_size = sdram_size();
+
 	return 0;
 }
 

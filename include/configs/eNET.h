@@ -29,8 +29,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_RELOC_FIXUP_WORKS
-
 /*
  * Stuff still to be dealt with -
  */
@@ -59,7 +57,6 @@
   * Serial Configuration
   */
 #define CONFIG_SERIAL_MULTI
-#undef CONFIG_SERIAL_SOFTWARE_FIFO
 #define CONFIG_CONS_INDEX		1
 #define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
@@ -175,7 +172,7 @@
 #define CONFIG_SYS_STACK_SIZE		0x8000  	/* Size of bootloader stack */
 #define CONFIG_SYS_BL_START_FLASH	0x38040000	/* Address of relocated code */
 #define CONFIG_SYS_BL_START_RAM		0x03fd0000	/* Address of relocated code */
-#define CONFIG_SYS_MONITOR_BASE		TEXT_BASE
+#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_MONITOR_LEN		(256 * 1024)    /* Reserve 256 kB for Mon	*/
 #define CONFIG_SYS_FLASH_BASE		0x38000000	/* Boot Flash */
 #define CONFIG_SYS_FLASH_BASE_1		0x10000000	/* StrataFlash 1 */

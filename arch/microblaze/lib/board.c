@@ -31,6 +31,7 @@
 #include <version.h>
 #include <watchdog.h>
 #include <stdio_dev.h>
+#include <net.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -42,6 +43,7 @@ extern int gpio_init (void);
 #ifdef CONFIG_SYS_INTC_0
 extern int interrupts_init (void);
 #endif
+
 #if defined(CONFIG_CMD_NET)
 extern int eth_initialize (bd_t * bis);
 #endif
@@ -94,7 +96,7 @@ void board_init (void)
 	ulong flash_size = 0;
 #endif
 	asm ("nop");	/* FIXME gd is not initialize - wait */
-	memset ((void *)gd, 0, CONFIG_SYS_GBL_DATA_SIZE);
+	memset ((void *)gd, 0, GENERATED_GBL_DATA_SIZE);
 	gd->bd = (bd_t *) (gd + 1);	/* At end of global data */
 	gd->baudrate = CONFIG_BAUDRATE;
 	bd = gd->bd;
@@ -120,7 +122,7 @@ void board_init (void)
 	puts ("SDRAM :\n");
 	printf ("\t\tIcache:%s\n", icache_status() ? "ON" : "OFF");
 	printf ("\t\tDcache:%s\n", dcache_status() ? "ON" : "OFF");
-	printf ("\tU-Boot Start:0x%08x\n", TEXT_BASE);
+	printf ("\tU-Boot Start:0x%08x\n", CONFIG_SYS_TEXT_BASE);
 
 #if defined(CONFIG_CMD_FLASH)
 	puts ("FLASH: ");
@@ -165,7 +167,7 @@ void board_init (void)
 
 #if defined(CONFIG_CMD_NET)
 	/* IP Address */
-	bd->bi_ip_addr = getenv_IPaddr ("ipaddr");
+	bd->bi_ip_addr = getenv_IPaddr("ipaddr");
 
 	printf("Net:   ");
 	eth_initialize(gd->bd);

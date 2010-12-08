@@ -30,6 +30,12 @@
 #define	CONFIG_MICROBLAZE	1	/* MicroBlaze CPU */
 #define	MICROBLAZE_V5		1
 
+/* could be little or big endian */
+
+#ifdef XPAR_MICROBLAZE_ENDIANNESS
+#define __LITTLE_ENDIAN		1
+#endif
+
 /* uart, note 16550 is checked 1st as there can be a 16550 and a lite in the system
    for the mdm
 */
@@ -40,7 +46,11 @@
 	#define CONFIG_SYS_NS16550_SERIAL
 	#define CONFIG_SYS_NS16550_REG_SIZE	-4
 	#define CONFIG_CONS_INDEX	1
+#ifndef __LITTLE_ENDIAN
 	#define CONFIG_SYS_NS16550_COM1	(XPAR_UARTNS550_0_BASEADDR + 0x1000 + 0x3)
+#else
+	#define CONFIG_SYS_NS16550_COM1	(XPAR_UARTNS550_0_BASEADDR + 0x1000)
+#endif
 	#define CONFIG_SYS_NS16550_CLK	XPAR_UARTNS550_0_CLOCK_FREQ_HZ
 	#define	CONFIG_BAUDRATE		9600
 
@@ -152,6 +162,10 @@
 	#define	CONFIG_SYS_SDRAM_BASE		XPAR_MPMC_0_MPMC_BASEADDR
 	#define	CONFIG_SYS_SDRAM_SIZE		(XPAR_MPMC_0_MPMC_HIGHADDR - \
 					 XPAR_MPMC_0_MPMC_BASEADDR + 1)
+#elif  XPAR_DDR3_SDRAM_S0_AXI_BASEADDR
+	#define	CONFIG_SYS_SDRAM_BASE		XPAR_DDR3_SDRAM_S0_AXI_BASEADDR
+	#define	CONFIG_SYS_SDRAM_SIZE		(XPAR_DDR3_SDRAM_S0_AXI_HIGHADDR - \
+					 XPAR_DDR3_SDRAM_S0_AXI_BASEADDR + 1)
 #else
 	#error "DDR is not included in the system"
 #endif
