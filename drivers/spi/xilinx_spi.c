@@ -98,24 +98,24 @@ struct spi_slave *spi_setup_slave(unsigned int bus, unsigned int cs,
 	xspi->bus = bus;
 	xspi->cs = cs;
 	/* Reset the SPI device */
-	out_8(BaseAddr + XIPIF_V123B_RESETR_OFFSET,
+	out_be32(BaseAddr + XIPIF_V123B_RESETR_OFFSET,
 		 XIPIF_V123B_RESET_MASK);
 	DEBUGF("%s[%d] SPI Reset \n",__FUNCTION__,__LINE__);
 	
-	sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+	sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 	DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 	
 	/* Disable all the interrupts just in case */
-	out_8(BaseAddr + XIPIF_V123B_IIER_OFFSET, 0);
-	sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+	out_be32(BaseAddr + XIPIF_V123B_IIER_OFFSET, 0);
+	sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 	DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 	
 	/* Disable the transmitter, enable Manual Slave Select Assertion,
 	 * put SPI controller into master mode, and enable it */
-	out_be16(BaseAddr + XSPI_CR_OFFSET,
+	out_be32(BaseAddr + XSPI_CR_OFFSET,
 		 XSPI_CR_TRANS_INHIBIT | XSPI_CR_MANUAL_SSELECT
 		 | XSPI_CR_MASTER_MODE | XSPI_CR_ENABLE);
-	sr = in_be16(BaseAddr + XSPI_CR_OFFSET);
+	sr = in_be32(BaseAddr + XSPI_CR_OFFSET);
 	DEBUGF("%s[%d] transfer control reg %x \n",__FUNCTION__,__LINE__,sr);
 
 	return xspi;
@@ -132,8 +132,8 @@ int spi_claim_bus(struct spi_slave *slave)
 		// Toggle CS
 		u8 sr;
 	
-		out_8(BaseAddr + XSPI_SSR_OFFSET, ~(0x0001 << slave->cs));
-		//sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+		out_be32(BaseAddr + XSPI_SSR_OFFSET, ~(0x0001 << slave->cs));
+		//sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 		//DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 	
 		return 0;
@@ -142,9 +142,9 @@ int spi_claim_bus(struct spi_slave *slave)
 void spi_release_bus(struct spi_slave *slave)
 {
 	// Release Bus
-	out_8(BaseAddr + XSPI_SSR_OFFSET, 0xffff);
+	out_be32(BaseAddr + XSPI_SSR_OFFSET, 0xffff);
 	// Disable Device
-	out_be16(BaseAddr + XSPI_CR_OFFSET,
+	out_be32(BaseAddr + XSPI_CR_OFFSET,
 		 XSPI_CR_TRANS_INHIBIT | XSPI_CR_MANUAL_SSELECT
 		 | XSPI_CR_MASTER_MODE);
 	DEBUGF("SPI bus released\n");
@@ -189,8 +189,8 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 	 */
 	DEBUGF("%s[%d] going to claim cs\n",__FUNCTION__,__LINE__);
 	if (flags & SPI_XFER_BEGIN)
-		out_8(BaseAddr + XSPI_SSR_OFFSET, ~(0x0001 << slave->cs));
-	sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+		out_be32(BaseAddr + XSPI_SSR_OFFSET, ~(0x0001 << slave->cs));
+	sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 	DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 	
 	for (len_tx = 0, len_rx = 0; len_tx < len; ) {
@@ -199,54 +199,54 @@ int spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 			// Write bytes
 			if (len_tx < len) {
 				if (txp) 
-					out_8(BaseAddr + XSPI_TXD_OFFSET, *txp++);
+					out_be32(BaseAddr + XSPI_TXD_OFFSET, *txp++);
 				else 
-					out_8(BaseAddr + XSPI_TXD_OFFSET, 0);
+					out_be32(BaseAddr + XSPI_TXD_OFFSET, 0);
 				len_tx++;
 			}
-			sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+			sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 			while (!(sr & XSPI_SR_RX_EMPTY_MASK)) {
-				value = in_8(BaseAddr + XSPI_RXD_OFFSET);
-				DEBUGF("%s[%d] received byte 0x%x\n ",__FUNCTION__,__LINE__,value);
+				value = in_be32(BaseAddr + XSPI_RXD_OFFSET);
+				DEBUGF("%s[%d] received3 byte 0x%x\n ",__FUNCTION__,__LINE__,value);
 				if (rxp)
 					*rxp++ = value;
 				len_rx++;
-				sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+				sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 			}
 		}
 		//Activate
 
-		out_be16(BaseAddr + XSPI_CR_OFFSET,
+		out_be32(BaseAddr + XSPI_CR_OFFSET,
 			 XSPI_CR_MANUAL_SSELECT
 			 | XSPI_CR_MASTER_MODE | XSPI_CR_ENABLE);
 
 		// Wait for transmitter to get empty
 		do {
-			sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+			sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 			DEBUGF("%s[%d] transfer status reg %x \n",__FUNCTION__,__LINE__,sr);
 			while (!(sr & XSPI_SR_RX_EMPTY_MASK)) {
-				value = in_8(BaseAddr + XSPI_RXD_OFFSET);
-				DEBUGF("%s[%d] received byte 0x%x\n ",__FUNCTION__,__LINE__,value);
+				value = in_be32(BaseAddr + XSPI_RXD_OFFSET);
+				DEBUGF("%s[%d] received2 byte 0x%x\n ",__FUNCTION__,__LINE__,value);
 				if (rxp)
 					*rxp++ = value;
 				len_rx++;
-				sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+				sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 			}
 		} while (!(sr & XSPI_SR_TX_EMPTY_MASK));
 	}
 
 out:
-	sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+	sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 	while (!(sr & XSPI_SR_RX_EMPTY_MASK)) {
-		value = in_8(BaseAddr + XSPI_RXD_OFFSET);
-		DEBUGF("%s[%d] received byte 0x%x\n ",__FUNCTION__,__LINE__,value);
+		value = in_be32(BaseAddr + XSPI_RXD_OFFSET);
+		DEBUGF("%s[%d] received1 byte 0x%x\n ",__FUNCTION__,__LINE__,value);
 		if (rxp)
 			*rxp++ = value;
 		len_rx++;
-		sr = in_8(BaseAddr + XSPI_SR_OFFSET);
+		sr = in_be32(BaseAddr + XSPI_SR_OFFSET);
 	}	
 
-	out_be16(BaseAddr + XSPI_CR_OFFSET,
+	out_be32(BaseAddr + XSPI_CR_OFFSET,
 			 XSPI_CR_MANUAL_SSELECT	 | XSPI_CR_MASTER_MODE |
 			 XSPI_CR_ENABLE |  XSPI_CR_TRANS_INHIBIT);
 
@@ -256,7 +256,7 @@ out:
 		 * Wait until the transfer is completely done before
 		 * we deactivate CS and inhibit transmission.
 		 */
-		out_8(BaseAddr + XSPI_SSR_OFFSET, 0xffff);
+		out_be32(BaseAddr + XSPI_SSR_OFFSET, 0xffff);
 	}
 	return 0;
 }
