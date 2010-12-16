@@ -32,10 +32,6 @@
 
 /* could be little or big endian */
 
-#ifdef XPAR_MICROBLAZE_ENDIANNESS
-#define __LITTLE_ENDIAN		1
-#endif
-
 /* uart, note 16550 is checked 1st as there can be a 16550 and a lite in the system
    for the mdm
 */
@@ -46,7 +42,7 @@
 	#define CONFIG_SYS_NS16550_SERIAL
 	#define CONFIG_SYS_NS16550_REG_SIZE	-4
 	#define CONFIG_CONS_INDEX	1
-#ifndef __LITTLE_ENDIAN
+#ifndef __MICROBLAZEEL__
 	#define CONFIG_SYS_NS16550_COM1	(XPAR_UARTNS550_0_BASEADDR + 0x1000 + 0x3)
 #else
 	#define CONFIG_SYS_NS16550_COM1	(XPAR_UARTNS550_0_BASEADDR + 0x1000)
@@ -192,12 +188,19 @@
 /* stack */
 #define	CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_MALLOC_BASE
 
-/*#define	RAMENV */
-
+#define	RAMENV 
+#define FLASH
 #ifdef FLASH
+/*
 	#define	CONFIG_SYS_FLASH_BASE		XPAR_FLASH_MEM0_BASEADDR
 	#define	CONFIG_SYS_FLASH_SIZE		(XPAR_FLASH_MEM0_HIGHADDR - XPAR_FLASH_MEM0_BASEADDR + 1)
+*/
+	#define	CONFIG_SYS_FLASH_BASE		XPAR_FLASH_S_AXI_MEM0_BASEADDR
+	#define	CONFIG_SYS_FLASH_SIZE		(XPAR_FLASH_S_AXI_MEM0_HIGHADDR - XPAR_FLASH_S_AXI_MEM0_BASEADDR + 1)
+
 	#define	CONFIG_SYS_FLASH_CFI		1
+	#define CONFIG_FLASH_SHOW_PROGRESS	1
+	#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1
 	#define	CONFIG_FLASH_CFI_DRIVER		1
 	#define	CONFIG_SYS_FLASH_EMPTY_INFO	1	/* ?empty sector */
 	#define	CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
@@ -234,7 +237,10 @@
 	#define	CONFIG_DOS_PARTITION
 #endif
 
-/* Data Cache */
+/* Data Cache, leave it disabled for now as writing to flash is not working
+   with it on
+*/
+#undef XPAR_MICROBLAZE_0_USE_DCACHE
 #ifdef XPAR_MICROBLAZE_0_USE_DCACHE
 	#define CONFIG_DCACHE
 #else

@@ -119,6 +119,17 @@ void board_init (void)
 		}
 	}
 
+	/* if caches are turned off in the build, then turn them off as
+	   they default to on in the startup code.
+	*/
+
+#ifndef CONFIG_DCACHE
+	dcache_disable();
+#endif
+
+#ifndef CONFIG_ICACHE
+	icache_disable();
+#endif
 	puts ("SDRAM :\n");
 	printf ("\t\tIcache:%s\n", icache_status() ? "ON" : "OFF");
 	printf ("\t\tDcache:%s\n", dcache_status() ? "ON" : "OFF");
