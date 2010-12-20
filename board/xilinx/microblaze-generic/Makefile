@@ -25,7 +25,19 @@ include $(TOPDIR)/config.mk
 
 LIB	= $(obj)lib$(BOARD).a
 
-COBJS	= $(BOARD).o
+COBJS-y	+= $(BOARD).o 
+
+COBJS-$(CONFIG_XILINX_AXIEMAC)	+=				\
+		../xilinx_axi_emac/axi_emac_adapter.o 		\
+		../xilinx_axi_emac/xaxidma.o 			\
+		../xilinx_axi_emac/xaxidma_bd.o 		\
+		../xilinx_axi_emac/xaxidma_bdring.o 		\
+		../xilinx_axi_emac/xaxiethernet.o 		\
+		../xilinx_axi_emac/xaxiethernet_control.o 	\
+		../xilinx_axi_emac/xil_assert.o 		\
+		../xilinx_axi_emac/xil_io.o
+
+COBJS   := $(COBJS-y)
 
 SRCS	:= $(SOBJS:.o=.S) $(COBJS:.o=.c)
 OBJS	:= $(addprefix $(obj),$(COBJS))
