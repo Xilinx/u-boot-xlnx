@@ -73,6 +73,10 @@ int board_eth_init(bd_t *bis)
 {
 	int ret = 0;
 
+#ifdef CONFIG_XILINX_AXIEMAC
+	ret |= xilinx_axiemac_initialize(bis, XILINX_AXIEMAC_BASEADDR,
+						XILINX_AXIDMA_BASEADDR);
+#endif
 #ifdef CONFIG_XILINX_EMACLITE
 	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR);
 #endif
