@@ -71,12 +71,10 @@ int fsl_init2 (void) {
 
 int board_eth_init(bd_t *bis)
 {
-	/*
-	 * This board either has PCI NICs or uses the CPU's TSECs
-	 * pci_eth_init() will return 0 if no NICs found, so in that case
-	 * returning -1 will force cpu_eth_init() to be called.
-	 */
+	int ret = 0;
+
 #ifdef CONFIG_XILINX_EMACLITE
-	return xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR);
+	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR);
 #endif
+	return ret;
 }
