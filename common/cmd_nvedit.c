@@ -293,7 +293,10 @@ int _do_env_set (int flag, int argc, char * const argv[])
 			serial_setbrg();
 			udelay(50000);
 			for (;;) {
-				if (getc() == '\r')
+				/* Xilinx: DT 614252 */
+				char c;
+				c = getc();
+				if (c == '\r' || c == '\n')
 					break;
 			}
 		}
