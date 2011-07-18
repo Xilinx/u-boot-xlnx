@@ -41,9 +41,16 @@
 #include <common.h>
 #include <asm/proc-armv/ptrace.h>
 #include <div64.h>
+#include <asm/io.h>
 
-#include "xparameters.h"
-#include "xscutimer_hw.h"
+#define XSCUTIMER_LOAD_OFFSET		0x00 /**< Timer Load Register */
+#define XSCUTIMER_COUNTER_OFFSET	0x04 /**< Timer Counter Register */
+#define XSCUTIMER_CONTROL_OFFSET	0x08 /**< Timer Control Register */
+
+#define XSCUTIMER_CONTROL_PRESCALER_MASK	0x0000FF00 /**< Prescaler */
+#define XSCUTIMER_CONTROL_PRESCALER_SHIFT	8
+#define XSCUTIMER_CONTROL_AUTO_RELOAD_MASK	0x00000002 /**< Auto-reload */
+#define XSCUTIMER_CONTROL_ENABLE_MASK		0x00000001 /**< Timer enable */
 
 #define TIMER_LOAD_VAL 0xFFFFFFFF
 
@@ -53,33 +60,25 @@ static unsigned long lastdec;
 /* Monotonic incrementing timer */
 static unsigned long long timestamp;
 
-static void XScuTimer_WriteReg (u32 Reg, u32 Data)
+static void xscutimer_writereg (u32 Reg, u32 Data)
 {
-	*(volatile u32 *) (XPAR_SCUTIMER_BASEADDR + Reg) = Data;
+	writel(Data, XPAR_SCUTIMER_BASEADDR + Reg);
 }
 
-static u32 XScuTimer_ReadReg (u32 Reg)
+static u32 xscutimer_readreg (u32 Reg)
 {
-	return *(u32 *) (XPAR_SCUTIMER_BASEADDR + Reg);
+	return readl(XPAR_SCUTIMER_BASEADDR + Reg);
 }
-
-#define XScuTimer_GetCounterValue()                          \
-        XScuTimer_ReadReg(XSCUTIMER_COUNTER_OFFSET)
-
 
 int timer_init()
 {
 	u32 val;
 
-	/*
-	 * Load the timer counter register.
-	 */
-	XScuTimer_WriteReg(XSCUTIMER_LOAD_OFFSET, 0xFFFFFFFF);
+	/* Load the timer counter register. */
+	xscutimer_writereg(XSCUTIMER_LOAD_OFFSET, 0xFFFFFFFF);
 
-	/*
-	 * Start the A9Timer device.
-	 */
-	val = XScuTimer_ReadReg(XSCUTIMER_CONTROL_OFFSET);
+	/* Start the A9Timer device. */
+	val = xscutimer_readreg(XSCUTIMER_CONTROL_OFFSET);
 	/* Enable Auto reload mode.  */
 	val |= XSCUTIMER_CONTROL_AUTO_RELOAD_MASK;
 	/* Clear prescaler control bits */
@@ -88,7 +87,7 @@ int timer_init()
 	val |= (CONFIG_TIMER_PRESCALE << XSCUTIMER_CONTROL_PRESCALER_SHIFT);
 	/* Enable the decrementer */
 	val |= XSCUTIMER_CONTROL_ENABLE_MASK;
-	XScuTimer_WriteReg(XSCUTIMER_CONTROL_OFFSET, val);
+	xscutimer_writereg(XSCUTIMER_CONTROL_OFFSET, val);
 	
 	reset_timer_masked();
 
@@ -107,7 +106,7 @@ unsigned long long get_ticks(void)
 {
 	ulong now;
 
-	now = XScuTimer_GetCounterValue() /  (TIMER_TICK_HZ/CONFIG_SYS_HZ);
+	now = xscutimer_readreg(XSCUTIMER_COUNTER_OFFSET) /  (TIMER_TICK_HZ/CONFIG_SYS_HZ);
 
 	if (lastdec >= now) {
 		/* normal mode */
@@ -133,7 +132,7 @@ ulong get_tbclk(void)
 void reset_timer_masked(void)
 {
 	/* reset time */
-	lastdec = XScuTimer_GetCounterValue() /  (TIMER_TICK_HZ/CONFIG_SYS_HZ);
+	lastdec = xscutimer_readreg(XSCUTIMER_COUNTER_OFFSET) /  (TIMER_TICK_HZ/CONFIG_SYS_HZ);
 	timestamp = 0;
 }
 
@@ -170,4 +169,3 @@ void __udelay(unsigned long usec)
 		 /*NOP*/;
 	}
 }
-
