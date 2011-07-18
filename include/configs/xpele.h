@@ -138,6 +138,16 @@
 #define CONFIG_TTC0	1
 #define CONFIG_GEM0	1
 
+/* UART setting */
+#if defined(CONFIG_UART0)
+# define UART_BASE XPSS_UART0_BASEADDR
+#elif defined(CONFIG_UART1)
+# define UART_BASE XPSS_UART1_BASEADDR
+#else
+# error "Need to configure a UART (0 or 1)"
+#endif
+
+
 #define TIMER_INPUT_CLOCK               5000000
 #define CONFIG_TIMER_PRESCALE           255
 #define TIMER_TICK_HZ                   (TIMER_INPUT_CLOCK / CONFIG_TIMER_PRESCALE)
