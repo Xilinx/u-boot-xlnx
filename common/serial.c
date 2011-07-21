@@ -42,7 +42,7 @@ struct serial_device *__default_serial_console (void)
    || defined(CONFIG_MB86R0x) || defined(CONFIG_MPC5xxx) \
    || defined(CONFIG_MPC83xx) || defined(CONFIG_MPC85xx) \
    || defined(CONFIG_MPC86xx) || defined(CONFIG_SYS_SC520) \
-   || defined(CONFIG_TEGRA2)
+   || defined(CONFIG_TEGRA2) || defined(CONFIG_MICROBLAZE)
 #if defined(CONFIG_CONS_INDEX) && defined(CONFIG_SYS_NS16550_SERIAL)
 #if (CONFIG_CONS_INDEX==1)
 	return &eserial1_device;
@@ -55,6 +55,23 @@ struct serial_device *__default_serial_console (void)
 #else
 #error "Bad CONFIG_CONS_INDEX."
 #endif
+
+#elif defined(CONFIG_XILINX_UARTLITE)
+
+# ifdef XILINX_UARTLITE_BASEADDR
+	return &uartlite_serial0_device;
+# endif /* XILINX_UARTLITE_BASEADDR */
+# ifdef XILINX_UARTLITE_BASEADDR1
+	return &uartlite_serial1_device;
+# endif /* XILINX_UARTLITE_BASEADDR1 */
+# ifdef XILINX_UARTLITE_BASEADDR2
+	return &uartlite_serial2_device;
+# endif /* XILINX_UARTLITE_BASEADDR2 */
+# ifdef XILINX_UARTLITE_BASEADDR3
+	return &uartlite_serial3_device;
+# endif /* XILINX_UARTLITE_BASEADDR3 */
+#elif defined(CONFIG_UART1_CONSOLE)
+		return &serial1_device;
 #else
 	return &serial0_device;
 #endif
@@ -173,7 +190,20 @@ void serial_initialize (void)
 	serial_register(&serial6_device);
 #endif
 #endif
-	serial_assign (default_serial_console ()->name);
+#if defined(CONFIG_XILINX_UARTLITE)
+# ifdef XILINX_UARTLITE_BASEADDR
+	serial_register(&uartlite_serial0_device);
+# endif /* XILINX_UARTLITE_BASEADDR */
+# ifdef XILINX_UARTLITE_BASEADDR1
+	serial_register(&uartlite_serial1_device);
+# endif /* XILINX_UARTLITE_BASEADDR1 */
+# ifdef XILINX_UARTLITE_BASEADDR2
+	serial_register(&uartlite_serial2_device);
+# endif /* XILINX_UARTLITE_BASEADDR2 */
+# ifdef XILINX_UARTLITE_BASEADDR3
+	serial_register(&uartlite_serial3_device);
+# endif /* XILINX_UARTLITE_BASEADDR3 */
+#endif /* CONFIG_XILINX_UARTLITE */
 }
 
 void serial_stdio_init (void)

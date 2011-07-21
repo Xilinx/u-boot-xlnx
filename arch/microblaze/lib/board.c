@@ -114,6 +114,9 @@ void board_init (void)
 
 	monitor_flash_len = __end - __text_start;
 
+#ifdef CONFIG_SERIAL_MULTI
+	serial_initialize();
+#endif
 	/*
 	 * The Malloc area is immediately below the monitor copy in DRAM
 	 * aka CONFIG_SYS_MONITOR_BASE - Note there is no need for reloc_off
