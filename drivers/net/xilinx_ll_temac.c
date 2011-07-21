@@ -196,6 +196,11 @@ static u32 mfdcr_local(u32 reg) {
                                                                reset for both
                                                                channels */
 
+#define XTE_EMMC_LINKSPEED_MASK   0xC0000000  /* Link speed */
+#define XTE_EMMC_LINKSPD_10       0x00000000  /* XTE_EMCFG_LINKSPD_MASK for 10 Mbit */
+#define XTE_EMMC_LINKSPD_100      0x40000000  /* XTE_EMCFG_LINKSPD_MASK for 100 Mbit */
+#define XTE_EMMC_LINKSPD_1000     0x80000000  /* XTE_EMCFG_LINKSPD_MASK for 1000 Mbit */
+
 /* SDMA Buffer Descriptor */
 
 typedef struct cdmac_bd_t {
@@ -281,7 +286,6 @@ static void xps_ll_temac_indirect_set(struct eth_device *dev,
 		;
 }
 
-#if DEBUG
 /* undirect read from ll_temac */
 static int xps_ll_temac_indirect_get(struct eth_device *dev,
 			int emac, int reg_offset)
@@ -291,7 +295,6 @@ static int xps_ll_temac_indirect_get(struct eth_device *dev,
 		;
 	return in_be32((u32 *)TEMAC_LSW0);
 }
-#endif
 
 #ifdef DEBUG
 /* read from phy */
@@ -315,6 +318,8 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 {
 	int i, retries;
 	unsigned int result;
+	unsigned retries = 10;
+	unsigned int phyreg = 0;
 
 	 /* link is setup */
 	if (link == 1)
@@ -359,34 +364,32 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
 #ifdef DEBUG
-	xps_ll_temac_hostif_set(dev, 0, 0, 0, 0x8000); /* phy reset */
+	xps_ll_temac_hostif_set(dev, 0, phy_addr, 0, 0x8000); /* phy reset */
+	read_phy_reg(dev, phy_addr);
 #endif
+	phyreg = xps_ll_temac_indirect_get(dev, 0, EMMC) & (~XTE_EMMC_LINKSPEED_MASK);
 	/* FIXME this part will be replaced by PHY lib */
 	/* s3e boards */
 	if (i == 0x7c0a3) {
 		/* 100BASE-T/FD */
-		xps_ll_temac_indirect_set(dev, 0, EMMC, 0x40000000);
+		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_100));
 		link = 1;
 		return 1;
 	}
 
-	/* Marwell 88e1111 id - ml50x */
-	if (i == 0x1410cc2) {
-		result = xps_ll_temac_hostif_get(dev, 0, phy_addr, 5);
-		if ((result & 0x8000) == 0x8000) {
-			xps_ll_temac_indirect_set(dev, 0, EMMC, 0x80000000);
-			puts("1000BASE-T/FD\n");
-			link = 1;
-		} else if ((result & 0x4000) == 0x4000) {
-			xps_ll_temac_indirect_set(dev, 0, EMMC, 0x40000000);
-			puts("100BASE-T/FD\n");
-			link = 1;
-		} else {
-			puts("Unsupported mode\n");
-			link = 0;
-			return 0;
-		}
-		return 1;
+	result = xps_ll_temac_hostif_get(dev, 0, phy_addr, 5);
+	if((result & 0x8000) == 0x8000) {
+		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_1000));
+		printf("1000BASE-T/FD\n");
+		link = 1;
+	} else if((result & 0x4000) == 0x4000) {
+		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_100));
+		printf("100BASE-T/FD\n");
+		link = 1;
+	} else {
+		printf("Unsupported mode\n");
+		link = 0;
+		return 0;
 	}
 
 	puts("Unsupported PHY\n");
