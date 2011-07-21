@@ -7,6 +7,7 @@
  * Licensed under the GPL-2 or later.
  */
 
+#define DEBUG 1
 #include <common.h>
 #include <malloc.h>
 #include <spi.h>
@@ -275,11 +276,12 @@ struct spi_flash *spi_flash_probe(unsigned int bus, unsigned int cs,
 	if (ret)
 		goto err_read_id;
 
-#ifdef DEBUG
-	printf("SF: Got idcodes\n");
-	print_buffer(0, idcode, 1, sizeof(idcode), 0);
-#endif
+	debug("SF: Got idcode %02x %02x %02x %02x %02x\n", idcode[0],
+			idcode[1], idcode[2], idcode[3], idcode[4]);
 
+#ifdef CONFIG_SPI_FLASH_PLNX
+	flash = spi_flash_probe_plnx(spi, idcode);
+#else
 	/* count the number of continuation bytes */
 	for (shift = 0, idp = idcode;
 	     shift < IDCODE_CONT_LEN && *idp == 0x7f;
@@ -294,7 +296,7 @@ struct spi_flash *spi_flash_probe(unsigned int bus, unsigned int cs,
 			if (flash)
 				break;
 		}
-
+#endif
 	if (!flash) {
 		printf("SF: Unsupported manufacturer %02x\n", *idp);
 		goto err_manufacturer_probe;
