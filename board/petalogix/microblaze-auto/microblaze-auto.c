@@ -31,7 +31,7 @@
 #include <asm/microblaze_intc.h>
 #include <asm/asm.h>
 
-void do_reset (void)
+int do_reset(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 #ifdef CONFIG_SYS_GPIO_0
 	*((unsigned long *)(CONFIG_SYS_GPIO_0_ADDR)) =
@@ -39,6 +39,7 @@ void do_reset (void)
 #endif
 	puts ("Reseting board\n");
 	asm ("bra r0");
+	return 0;
 }
 
 int gpio_init (void)
@@ -69,19 +70,17 @@ void fsl_init2 (void) {
 
 int board_eth_init(bd_t *bis)
 {
-	/*
-	 * This board either has PCI NICs or uses the CPU's TSECs
-	 * pci_eth_init() will return 0 if no NICs found, so in that case
-	 * returning -1 will force cpu_eth_init() to be called.
-	 */
+	int ret = 0;
+
 #ifdef CONFIG_XILINX_AXIEMAC
-	return xilinx_axiemac_initialize(bis, XILINX_AXIEMAC_BASEADDR,
-							XILINX_AXIDMA_BASEADDR);
+	ret |= xilinx_axiemac_initialize(bis, XILINX_AXIEMAC_BASEADDR,
+						XILINX_AXIDMA_BASEADDR);
 #endif
 #ifdef CONFIG_XILINX_EMACLITE
-	return xilinx_emaclite_initialize(bis);
+	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR);
 #endif
 #ifdef CONFIG_XILINX_LL_TEMAC
-	return xilinx_ll_temac_initialize(bis);
+	ret |= xilinx_ll_temac_initialize(bis, XILINX_LLTEMAC_BASEADDR);
 #endif
+	return ret;
 }

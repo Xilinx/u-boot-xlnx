@@ -25,7 +25,7 @@ include $(TOPDIR)/config.mk
 
 CONF_FILES=xparameters.h flash-partition.h config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
 COBJS	= $(BOARD).o
 
@@ -34,7 +34,7 @@ OBJS	:= $(addprefix $(obj),$(COBJS))
 SOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 $(LIB):	$(OBJS) $(SOBJS)
-	$(AR) $(ARFLAGS) $@ $^
+	$(call cmd_link_o_target, $^)
 
 clean:
 	rm -f $(SOBJS) $(OBJS) $(CONF_FILES)

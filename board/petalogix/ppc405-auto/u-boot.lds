@@ -124,7 +124,7 @@ SECTIONS
    *(.bss)
    *(COMMON)
   }
-
+  __bss_end__ = .;
   ppcenv_assert = ASSERT(. < 0xFFFFB000, ".bss section too big, overlaps .ppcenv section. Please update your configuration: CONFIG_SYS_MONITOR_BASE, CONFIG_SYS_MONITOR_LEN and TEXT_BASE may need to be modified.");
 
   _end = . ;

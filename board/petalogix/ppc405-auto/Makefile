@@ -25,7 +25,7 @@ include $(TOPDIR)/config.mk
 
 CONF_FILES=xparameters.h flash-partition.h config.mk
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
 COBJS	= $(BOARD).o
 
