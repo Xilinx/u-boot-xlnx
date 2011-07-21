@@ -1,4 +1,5 @@
 /*
+ *
  * Xilinx xps_ll_temac ethernet driver for u-boot
  *
  * Author: Yoshio Kashiwagi kashiwagi@co-nss.co.jp
@@ -6,8 +7,9 @@
  * Copyright (C) 2008 Nissin Systems Co.,Ltd.
  * March 2008 created
  *
- * Copyright (C) 2008 - 2010 Michal Simek <monstr@monstr.eu>
+ * Copyright (C) 2008 - 2009 Michal Simek <monstr@monstr.eu>
  * June 2008 Microblaze optimalization, FIFO mode support
+ * September 2009 Support versions new 2.00 versions
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -238,9 +240,7 @@ typedef struct ll_fifo_s {
 ll_fifo_s *ll_fifo = (ll_fifo_s *) (XILINX_LLTEMAC_FIFO_BASEADDR);
 #endif
 
-#ifdef SDMA_MODE
 static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(32)));
-#endif
 static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
 static unsigned char rx_buffer2[ETHER_MTU] __attribute((aligned(32)));
 
@@ -257,10 +257,9 @@ static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 	out_be32((u32 *)TEMAC_LSW0, phy_data);
 	out_be32((u32 *)TEMAC_CTL0, CNTLREG_WRITE_ENABLE_MASK | MIIMWD);
 	out_be32((u32 *)TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
-	out_be32((u32 *)TEMAC_CTL0,
+	out_be32((u32 *)TEMAC_CTL0, \
 			CNTLREG_WRITE_ENABLE_MASK | MIIMAI | (emac << 10));
-	while (!(in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_MIIM_WR_MASK))
-		;
+	while(! (in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_MIIM_WR_MASK));
 }
 #endif
 
@@ -270,8 +269,7 @@ static unsigned int xps_ll_temac_hostif_get(struct eth_device *dev,
 {
 	out_be32((u32 *)TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
 	out_be32((u32 *)TEMAC_CTL0, MIIMAI | (emac << 10));
-	while (!(in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_MIIM_RR_MASK))
-		;
+	while(! (in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_MIIM_RR_MASK));
 	return in_be32((u32 *)TEMAC_LSW0);
 }
 
@@ -280,10 +278,9 @@ static void xps_ll_temac_indirect_set(struct eth_device *dev,
 				int emac, int reg_offset, int reg_data)
 {
 	out_be32((u32 *)TEMAC_LSW0, reg_data);
-	out_be32((u32 *)TEMAC_CTL0,
+	out_be32((u32 *)TEMAC_CTL0, \
 			CNTLREG_WRITE_ENABLE_MASK | (emac << 10) | reg_offset);
-	while (!(in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_CFG_WR_MASK))
-		;
+	while(! (in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_CFG_WR_MASK));
 }
 
 /* undirect read from ll_temac */
@@ -291,8 +288,7 @@ static int xps_ll_temac_indirect_get(struct eth_device *dev,
 			int emac, int reg_offset)
 {
 	out_be32((u32 *)TEMAC_CTL0, (emac << 10) | reg_offset);
-	while (!(in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_CFG_RR_MASK))
-		;
+	while(! (in_be32((u32 *)TEMAC_RDY0) & XTE_RSE_CFG_RR_MASK));
 	return in_be32((u32 *)TEMAC_LSW0);
 }
 
@@ -301,17 +297,17 @@ static int xps_ll_temac_indirect_get(struct eth_device *dev,
 static void read_phy_reg (struct eth_device *dev, int phy_addr)
 {
 	int j, result;
-	debug("phy%d ", phy_addr);
-	for (j = 0; j < 32; j++) {
+	debug ("phy%d ",phy_addr);
+	for ( j = 0; j < 32; j++) {
 		result = xps_ll_temac_hostif_get(dev, 0, phy_addr, j);
-		debug("%d: 0x%x ", j, result);
+		debug ("%d: 0x%x ", j, result);
 	}
-	debug("\n");
+	debug ("\n");
 }
 #endif
 
 static int phy_addr = -1;
-static int link;
+static int link = 0;
 
 /* setting ll_temac and phy to proper setting */
 static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
@@ -321,23 +317,19 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	unsigned retries = 10;
 	unsigned int phyreg = 0;
 
-	 /* link is setup */
-	if (link == 1)
-		return 1;
+	if(link == 1)
+		return 1; /* link is setup */
 
 	/* wait for link up */
-	puts("Waiting for link ... ");
-	retries = 10;
 	while (retries-- &&
-		((xps_ll_temac_hostif_get(dev, 0, phy_addr, 1) & 0x24) != 0x24))
-			;
+		((xps_ll_temac_hostif_get(dev, 0, phy_addr, 1) & 0x24) == 0x24))
+		;
 
-	/* try out if have ever found the right phy? */
-	if (phy_addr == -1) {
-		for (i = 31; i >= 0; i--) {
+	if(phy_addr == -1) {
+		for(i = 31; i >= 0; i--) {
 			result = xps_ll_temac_hostif_get(dev, 0, i, 1);
-			if ((result & 0x0ffff) != 0x0ffff) {
-				debug("phy %x result %x\n", i, result);
+			if((result & 0x0ffff) != 0x0ffff) {
+				debug ("phy %x result %x\n", i, result);
 				phy_addr = i;
 				break;
 			}
@@ -345,9 +337,9 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	}
 
 	/* get PHY id */
-	i = (xps_ll_temac_hostif_get(dev, 0, phy_addr, 2) << 16) |
+	i = (xps_ll_temac_hostif_get(dev, 0, phy_addr, 2) << 16) | \
 		xps_ll_temac_hostif_get(dev, 0, phy_addr, 3);
-	debug("LL_TEMAC: Phy ID 0x%x\n", i);
+	debug ("LL_TEMAC: Phy ID 0x%x\n", i);
 
 #ifdef DEBUG
 	xps_ll_temac_hostif_set(dev, 0, phy_addr, 0, 0x8000); /* phy reset */
@@ -377,9 +369,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 		link = 0;
 		return 0;
 	}
-
-	puts("Unsupported PHY\n");
-	return 0;
+	return 1;
 }
 
 #ifdef SDMA_MODE
@@ -449,7 +439,7 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 static int xps_ll_temac_send_sdma(struct eth_device *dev,
 				unsigned char *buffer, int length)
 {
-	if (xps_ll_temac_phy_ctrl(dev) == 0)
+	if( xps_ll_temac_phy_ctrl(dev) == 0)
 		return 0;
 
 	if (xps_ll_temac_dma_error(dev)) {
@@ -460,7 +450,7 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 	memcpy (tx_buffer, buffer, length);
 	flush_cache ((u32)tx_buffer, length);
 
-	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK |
+	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK | \
 			BDSTAT_STOP_ON_END_MASK;
 	tx_bd.buf_len = length;
 	flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
@@ -470,10 +460,11 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 
 	do {
 		flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
-	} while (!(((volatile int)tx_bd.stat) & BDSTAT_COMPLETED_MASK));
+	} while(!(((volatile int)tx_bd.stat) & BDSTAT_COMPLETED_MASK));
 
 	return length;
 }
+
 
 static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 {
@@ -486,8 +477,9 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 
 	flush_cache ((u32)&rx_bd, sizeof(cdmac_bd));
 
-	if (!(rx_bd.stat & BDSTAT_COMPLETED_MASK))
+	if(!(rx_bd.stat & BDSTAT_COMPLETED_MASK)) {
 		return 0;
+	}
 
 	/* Read out the packet info and start the DMA
 	   onto the second buffer to enable the ethernet rx
@@ -513,18 +505,16 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 #endif
 
 #ifdef FIFO_MODE
-#ifdef DEBUG
 static void debugll(int count)
 {
-	printf("%d fifo isr 0x%08x, fifo_ier 0x%08x, fifo_rdfr 0x%08x, "
-		"fifo_rdfo 0x%08x fifo_rlr 0x%08x\n", count, ll_fifo->isr,
+	printf ("%d fifo isr 0x%08x, fifo_ier 0x%08x, fifo_rdfr 0x%08x, "
+		"fifo_rdfo 0x%08x fifo_rlr 0x%08x\n",count, ll_fifo->isr, \
 		ll_fifo->ier, ll_fifo->rdfr, ll_fifo->rdfo, ll_fifo->rlf);
 }
-#endif
 
 static int xps_ll_temac_send_fifo(unsigned char *buffer, int length)
 {
-	u32 *buf = (u32 *)buffer;
+	u32 *buf = buffer;
 	u32 len, i, val;
 
 	len = (length / 4) + 1;
@@ -539,25 +529,26 @@ static int xps_ll_temac_send_fifo(unsigned char *buffer, int length)
 	return length;
 }
 
-static int xps_ll_temac_recv_fifo(void)
+static int xps_ll_temac_recv_fifo()
 {
-	u32 len, len2, i, val;
-	u32 *buf = (u32 *)&rx_buffer;
+	int len, len2, i, val;
+	int *buf;
+	buf = &rx_buffer;
 
-	if (ll_fifo->isr & 0x04000000) {
+	if (ll_fifo->isr & 0x04000000 ) {
 		ll_fifo->isr = 0xffffffff; /* reset isr */
-
+	
 		/* while (ll_fifo->isr); */
 		len = ll_fifo->rlf & 0x7FF;
 		len2 = (len / 4) + 1;
-
+	
 		for (i = 0; i < len2; i++) {
 			val = ll_fifo->rdfd;
 			*buf++ = val ;
 		}
-
+	
 		/* debugll(1); */
-		NetReceive ((uchar *)&rx_buffer, len);
+		NetReceive (&rx_buffer, len);
 	}
 	return 0;
 }
@@ -570,7 +561,7 @@ static int xps_ll_temac_addr_setup(struct eth_device *dev)
 
 	/* set up unicast MAC address filter */
 	val = ((dev->enetaddr[3] << 24) | (dev->enetaddr[2] << 16) |
-		(dev->enetaddr[1] << 8) | (dev->enetaddr[0]));
+		(dev->enetaddr[1] << 8) | (dev->enetaddr[0] ));
 	xps_ll_temac_indirect_set(dev, 0, UAW0, val);
 	val = (dev->enetaddr[5] << 8) | dev->enetaddr[4] ;
 	xps_ll_temac_indirect_set(dev, 0, UAW1, val);
@@ -615,14 +606,14 @@ static void xps_ll_temac_halt(struct eth_device *dev)
 
 #ifdef SDMA_MODE
 	sdma_out_be32((u32 *)DMA_CONTROL_REG, 0x00000001);
-	while (sdma_in_be32((u32 *)DMA_CONTROL_REG) & 1)
-		;
+	while(sdma_in_be32((u32 *)DMA_CONTROL_REG) & 1);
 #endif
 #ifdef FIFO_MODE
 	/* reset fifos */
 #endif
 #endif
 }
+
 
 /* halt device */
 static void ll_temac_halt(struct eth_device *dev)
@@ -637,25 +628,21 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 #if DEBUG
 	int i;
 #endif
-	if (!first)
+	if(!first)
 		return 0;
+	first = 0;
 
 	xps_ll_temac_init(dev, bis);
 
 	printf("%s: Xilinx XPS LocalLink Tri-Mode Ether MAC #%d at 0x%08X.\n",
-		dev->name, 0, dev->iobase);
+		dev->name, 0, XILINX_LLTEMAC_BASEADDR);
 
 #if DEBUG
-	for (i = 0; i < 32; i++)
+	for(i = 0; i < 32; i++) {
 		read_phy_reg(dev, i);
-#endif
-
-	if (xps_ll_temac_phy_ctrl(dev) == 0) {
-		xps_ll_temac_halt(dev);
-		return -1;
 	}
-
-	first = 0;
+#endif
+	xps_ll_temac_phy_ctrl(dev);
 	return 1;
 }
 
@@ -681,7 +668,7 @@ static int ll_temac_recv(struct eth_device *dev)
 #endif
 }
 
-int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
+int xilinx_ll_temac_initialize (bd_t *bis)
 {
 	struct eth_device *dev;
 
@@ -695,9 +682,9 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 	if (dev->priv == NULL)
 		hang();
 
-	sprintf(dev->name, "Xilinx_LL_TEMAC");
+	sprintf(dev->name, "Xilinx LL TEMAC");
 
-	dev->iobase = base_addr;
+	dev->iobase = XILINX_LLTEMAC_BASEADDR;
 #ifdef SDMA_MODE
 	((struct ll_priv *)(dev->priv))->sdma =
 					XILINX_LLTEMAC_SDMA_CTRL_BASEADDR;
