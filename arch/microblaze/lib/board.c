@@ -179,6 +179,10 @@ void board_init (void)
 	printf("MAC:   %pM\n", enetaddr);
 #endif
 
+	if ((s = getenv ("bootfile")) != NULL) {
+		copy_filename (BootFile, s, sizeof (BootFile));
+	}
+
 	/* main_loop */
 	for (;;) {
 		WATCHDOG_RESET ();
