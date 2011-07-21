@@ -23,10 +23,114 @@
 #include <asm/processor.h>
 #include <asm/io.h>
 
+/* Backwards compatability to older xparameters.h files */
+#ifndef XILINX_LLTEMAC_SDMA_USE_DCR
+#define XILINX_LLTEMAC_SDMA_USE_DCR 0
+#endif
+
+# if XILINX_LLTEMAC_SDMA_USE_DCR==1
+/* I am deeply, deeply regretful for what follows.
+   Apart from ripping up this entire driver, there's no other option
+
+   JW */
+
+#define MTDCR_CASE(i,v) case i:			\
+				mtdcr(i,v);	\
+				break;		\
+			case i+1:		\
+				mtdcr(i+1,v);	\
+				break;		\
+			case i+2:		\
+				mtdcr(i+2,v);	\
+				break;		\
+			case i+3:		\
+				mtdcr(i+3,v);	\
+				break;		\
+			case i+4:		\
+				mtdcr(i+4,v);	\
+				break;		\
+			case i+5:		\
+				mtdcr(i+5,v);	\
+				break;		\
+			case i+6:		\
+				mtdcr(i+6,v);	\
+				break;		\
+			case i+7:		\
+				mtdcr(i+7,v);	\
+				break;
+#define MFDCR_CASE(i,v) case i:			\
+				v=mfdcr(i);	\
+				break;		\
+			case i+1:		\
+				v=mfdcr(i+1);	\
+				break;		\
+			case i+2:		\
+				v=mfdcr(i+1);	\
+				break;		\
+			case i+3:		\
+				v=mfdcr(i+1);	\
+				break;		\
+			case i+4:		\
+				v=mfdcr(i+1);	\
+				break;		\
+			case i+5:		\
+				v=mfdcr(i+1);	\
+				break;		\
+			case i+6:		\
+				v=mfdcr(i+1);	\
+				break;		\
+			case i+7:		\
+				v=mfdcr(i+1);	\
+				break;	
+
+void mtdcr_local(u32 reg, u32 val) {
+	switch(reg) {
+	MTDCR_CASE(0x80,val)
+	MTDCR_CASE(0x88,val)
+	MTDCR_CASE(0x90,val)
+	MTDCR_CASE(0x98,val)
+	MTDCR_CASE(0xA0,val)
+	MTDCR_CASE(0xA8,val)
+	MTDCR_CASE(0xB0,val)
+	MTDCR_CASE(0xB8,val)
+	MTDCR_CASE(0xC0,val)
+	MTDCR_CASE(0xC8,val)
+	MTDCR_CASE(0xD0,val)
+	MTDCR_CASE(0xD8,val)
+	}
+}
+
+u32 mfdcr_local(u32 reg) {
+	u32 val;
+	switch(reg) {
+	MFDCR_CASE(0x80,val)
+	MFDCR_CASE(0x88,val)
+	MFDCR_CASE(0x90,val)
+	MFDCR_CASE(0x98,val)
+	MFDCR_CASE(0xA0,val)
+	MFDCR_CASE(0xA8,val)
+	MFDCR_CASE(0xB0,val)
+	MFDCR_CASE(0xB8,val)
+	MFDCR_CASE(0xC0,val)
+	MFDCR_CASE(0xC8,val)
+	MFDCR_CASE(0xD0,val)
+	MFDCR_CASE(0xD8,val)
+	}
+	return val;
+}
+#endif
+
 #ifdef XILINX_LLTEMAC_FIFO_BASEADDR
 # define FIFO_MODE	1
 #elif XILINX_LLTEMAC_SDMA_CTRL_BASEADDR
 # define SDMA_MODE	1
+# if XILINX_LLTEMAC_SDMA_USE_DCR==1
+#define sdma_out_be32(addr,val) mtdcr_local((addr),(val))
+#define sdma_in_be32(addr) mfdcr_local((addr))
+# else
+#define sdma_out_be32(addr,val) out_be32((addr),(val))
+#define sdma_in_be32(addr) in_be32((addr))
+# endif
 #else
 # error Xilinx LL Temac: Unsupported mode - Please setup SDMA or FIFO mode
 #endif
@@ -158,6 +262,7 @@ static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
 
 struct ll_priv {
 	unsigned int sdma;
+	unsigned int use_dcr;
 };
 
 #ifdef DEBUG
@@ -323,15 +428,15 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	flush_cache((u32)&rx_bd, sizeof(cdmac_bd));
 	flush_cache ((u32)rx_bd.phys_buf_p, ETHER_MTU);
 
-	out_be32((u32 *)RX_CURDESC_PTR, (u32)&rx_bd);
-	out_be32((u32 *)RX_TAILDESC_PTR, (u32)&rx_bd);
-	out_be32((u32 *)RX_NXTDESC_PTR, (u32)&rx_bd); /* setup first fd */
+	sdma_out_be32((u32 *)RX_CURDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32((u32 *)RX_TAILDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32((u32 *)RX_NXTDESC_PTR, (u32)&rx_bd); /* setup first fd */
 
 	tx_bd.phys_buf_p = &tx_buffer[0];
 	tx_bd.next_p = &tx_bd;
 
 	flush_cache((u32)&tx_bd, sizeof(cdmac_bd));
-	out_be32((u32 *)TX_CURDESC_PTR, (u32)&tx_bd);
+	sdma_out_be32((u32 *)TX_CURDESC_PTR, (u32)&tx_bd);
 }
 
 static int xps_ll_temac_send_sdma(struct eth_device *dev,
@@ -348,8 +453,8 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 	tx_bd.buf_len = length;
 	flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
 
-	out_be32((u32 *)TX_CURDESC_PTR, (u32)&tx_bd);
-	out_be32((u32 *)TX_TAILDESC_PTR, (u32)&tx_bd); /* DMA start */
+	sdma_out_be32((u32 *)TX_CURDESC_PTR, (u32)&tx_bd);
+	sdma_out_be32((u32 *)TX_TAILDESC_PTR, (u32)&tx_bd); /* DMA start */
 
 	do {
 		flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
@@ -378,7 +483,7 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 	rx_bd.app5 = 0;
 
 	flush_cache ((u32)&rx_bd, sizeof(cdmac_bd));
-	out_be32((u32 *)RX_TAILDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32((u32 *)RX_TAILDESC_PTR, (u32)&rx_bd);
 
 	return length;
 }
@@ -485,8 +590,8 @@ static void xps_ll_temac_halt(struct eth_device *dev)
 	xps_ll_temac_indirect_set(dev, 0, TC, 0x00000000);
 
 #ifdef SDMA_MODE
-	out_be32((u32 *)DMA_CONTROL_REG, 0x00000001);
-	while (in_be32((u32 *)DMA_CONTROL_REG) & 1)
+	sdma_out_be32((u32 *)DMA_CONTROL_REG, 0x00000001);
+	while (sdma_in_be32((u32 *)DMA_CONTROL_REG) & 1)
 		;
 #endif
 #ifdef FIFO_MODE
@@ -572,6 +677,7 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 #ifdef SDMA_MODE
 	((struct ll_priv *)(dev->priv))->sdma =
 					XILINX_LLTEMAC_SDMA_CTRL_BASEADDR;
+	((struct ll_priv *)(dev->priv))->use_dcr = XILINX_LLTEMAC_SDMA_USE_DCR;
 #endif
 
 	dev->init = ll_temac_init;
