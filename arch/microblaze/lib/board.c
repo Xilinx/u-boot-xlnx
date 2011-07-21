@@ -87,6 +87,10 @@ init_fnc_t *init_sequence[] = {
 	NULL,
 };
 
+unsigned long monitor_flash_len;
+extern char *__end;
+extern char *__text_start;
+
 void board_init (void)
 {
 	bd_t *bd;
@@ -107,6 +111,8 @@ void board_init (void)
 	bd->bi_memstart = CONFIG_SYS_SDRAM_BASE;
 	bd->bi_memsize = CONFIG_SYS_SDRAM_SIZE;
 	gd->flags |= GD_FLG_RELOC;      /* tell others: relocation done */
+
+	monitor_flash_len = __end - __text_start;
 
 	/*
 	 * The Malloc area is immediately below the monitor copy in DRAM
