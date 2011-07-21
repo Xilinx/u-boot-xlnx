@@ -46,17 +46,18 @@
 #define CMD_M25PXX_DP		0xb9	/* Deep Power-down */
 #define CMD_M25PXX_RES		0xab	/* Release from DP, and Read Signature */
 
-#define STM_ID_M25P10		0x11
-#define STM_ID_M25P16		0x15
-#define STM_ID_M25P20		0x12
-#define STM_ID_M25P32		0x16
-#define STM_ID_M25P40		0x13
-#define STM_ID_M25P64		0x17
-#define STM_ID_M25P80		0x14
-#define STM_ID_M25P128		0x18
+#define STM_ID_M25P10		0x2011
+#define STM_ID_M25P16		0x2015
+#define STM_ID_M25P20		0x2012
+#define STM_ID_M25P32		0x2016
+#define STM_ID_M25P40		0x2013
+#define STM_ID_M25P64		0x2017
+#define STM_ID_M25P80		0x2014
+#define STM_ID_M25P128		0x2018
+#define NUMONYX_ID_N25Q128	0xba18
 
 struct stmicro_spi_flash_params {
-	u8 idcode1;
+	u16 idcode;
 	u16 page_size;
 	u16 pages_per_sector;
 	u16 nr_sectors;
@@ -77,60 +78,67 @@ static inline struct stmicro_spi_flash *to_stmicro_spi_flash(struct spi_flash
 
 static const struct stmicro_spi_flash_params stmicro_spi_flash_table[] = {
 	{
-		.idcode1 = STM_ID_M25P10,
+		.idcode = STM_ID_M25P10,
 		.page_size = 256,
 		.pages_per_sector = 128,
 		.nr_sectors = 4,
 		.name = "M25P10",
 	},
 	{
-		.idcode1 = STM_ID_M25P16,
+		.idcode = STM_ID_M25P16,
 		.page_size = 256,
 		.pages_per_sector = 256,
 		.nr_sectors = 32,
 		.name = "M25P16",
 	},
 	{
-		.idcode1 = STM_ID_M25P20,
+		.idcode = STM_ID_M25P20,
 		.page_size = 256,
 		.pages_per_sector = 256,
 		.nr_sectors = 4,
 		.name = "M25P20",
 	},
 	{
-		.idcode1 = STM_ID_M25P32,
+		.idcode = STM_ID_M25P32,
 		.page_size = 256,
 		.pages_per_sector = 256,
 		.nr_sectors = 64,
 		.name = "M25P32",
 	},
 	{
-		.idcode1 = STM_ID_M25P40,
+		.idcode = STM_ID_M25P40,
 		.page_size = 256,
 		.pages_per_sector = 256,
 		.nr_sectors = 8,
 		.name = "M25P40",
 	},
 	{
-		.idcode1 = STM_ID_M25P64,
+		.idcode = STM_ID_M25P64,
 		.page_size = 256,
 		.pages_per_sector = 256,
 		.nr_sectors = 128,
 		.name = "M25P64",
 	},
 	{
-		.idcode1 = STM_ID_M25P80,
+		.idcode = STM_ID_M25P80,
 		.page_size = 256,
 		.pages_per_sector = 256,
 		.nr_sectors = 16,
 		.name = "M25P80",
 	},
 	{
-		.idcode1 = STM_ID_M25P128,
+		.idcode = STM_ID_M25P128,
 		.page_size = 256,
 		.pages_per_sector = 1024,
 		.nr_sectors = 64,
 		.name = "M25P128",
+	},
+	{
+		.idcode = NUMONYX_ID_N25Q128,
+		.page_size = 256,
+		.pages_per_sector = 256,
+		.nr_sectors = 256,
+		.name = "N25Q128",
 	},
 };
 
@@ -223,7 +231,7 @@ struct spi_flash *spi_flash_probe_stmicro(struct spi_slave *spi, u8 * idcode)
 
 	for (i = 0; i < ARRAY_SIZE(stmicro_spi_flash_table); i++) {
 		params = &stmicro_spi_flash_table[i];
-		if (params->idcode1 == idcode[2]) {
+		if (params->idcode == ((idcode[1] << 8) | idcode[2])) {
 			break;
 		}
 	}
