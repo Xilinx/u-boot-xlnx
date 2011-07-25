@@ -43,6 +43,38 @@ _start: b	reset
 	ldr	pc, _irq
 	ldr	pc, _fiq
 
+#ifdef CONFIG_PELE_XILINX_FLASH_HEADER
+/* These fields MUST immediately follow the vectors */
+#define HDR_20 0xAA995566
+#define HDR_24 0x584C4E58
+#define HDR_28 0x00000000
+#define HDR_2C 0x544F4F42
+#define HDR_30 0x00000120
+#define HDR_34 0x00000000
+#define HDR_38 0x00000000
+#define HDR_3C CONFIG_PELE_XIP_START
+#define HDR_40 0x00000000
+#define HDR_44 0x00000001
+#define HDR_CSUM (~(HDR_20+HDR_24+HDR_28+HDR_2C+HDR_30+HDR_34+HDR_38+HDR_3C+HDR_40+HDR_44))
+
+.word   HDR_20	/* 0xaa995566 required for sizing of the FLASH */
+.word   HDR_24	/* signature 0x584C4E58 identifies the format of the image */
+.word   HDR_28	/* 0xA5C3C5A3 for encrypted images */
+.word   HDR_2C	/* UserData can be anything */
+.word   HDR_30	/* LoadStart offset into FLASH where image starts */
+.word   HDR_34	/* LoadLength length of image in bytes */
+.word   HDR_38	/* DestinationAddress where in OCM the image is to be written to */
+.word   HDR_3C	/* ImageStartAddress where to jump to at handoff (_start) */
+.word   HDR_40	/* TotalImageLength - should be the same for unencrypted images */
+.word   HDR_44	/* QSPIConfigWord x1 device */
+.word   HDR_CSUM	/* checksum - 0x20 - 0x44, complement */
+.word   0,0,0,0,0,0,0,0
+.word   0,0,0,0,0,0,0,0
+.word   0,0,0,0,0
+.word   0xFFFFFFFF      /* 0xA0 */
+.word   0x00000000
+#endif
+
 _undefined_instruction: .word undefined_instruction
 _software_interrupt:	.word software_interrupt
 _prefetch_abort:	.word prefetch_abort
@@ -283,6 +315,7 @@ _dynsym_start_ofs:
  * setup memory timing
  *
  *************************************************************************/
+#ifndef CONFIG_SKIP_LOWLEVEL_INIT
 cpu_init_crit:
 	/*
 	 * Invalidate L1 I/D
@@ -311,6 +344,7 @@ cpu_init_crit:
 	bl	lowlevel_init		@ go setup pll,mux,memory
 	mov	lr, ip			@ restore link
 	mov	pc, lr			@ back to my caller
+#endif
 /*
  *************************************************************************
  *

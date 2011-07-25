@@ -1,6 +1,6 @@
 #
 # (C) Copyright 2002
-# Gary Jennejohn, DENX Software Engineering, <garyj@denx.de>
+# Gary Jennejohn, DENX Software Engineering, <gj@denx.de>
 #
 # See file CREDITS for list of people who contributed to this
 # project.
@@ -20,16 +20,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 #
-PLATFORM_RELFLAGS += -fno-common -ffixed-r8 -msoft-float
+PLATFORM_RELFLAGS += -fno-strict-aliasing  -fno-common -ffixed-r8 \
+	-msoft-float
 
-# Make ARMv5 to allow more compilers to work, even though its v7a.
-# PLATFORM_CPPFLAGS += -march=armv5
 PLATFORM_CPPFLAGS += -march=armv7-a
+PLATFORM_CPPFLAGS += -I$(TOPDIR)/board/xilinx/common
+PLATFORM_CPPFLAGS += -I$(TOPDIR)/board/$(BOARDDIR)
 
 # =========================================================================
 #
 # Supply options according to compiler version
 #
 # =========================================================================
-PLATFORM_RELFLAGS +=$(call cc-option,-mshort-load-bytes,\
-		    $(call cc-option,-malignment-traps,))
+#PLATFORM_CPPFLAGS +=$(call cc-option,-mapcs-32,-mabi=apcs-gnu)
+PLATFORM_RELFLAGS +=$(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
