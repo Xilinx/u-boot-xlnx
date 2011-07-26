@@ -26,7 +26,7 @@ ifneq ($(OBJTREE),$(SRCTREE))
 $(shell mkdir -p $(obj)../common)
 endif
 
-LIB	= $(obj)lib$(BOARD).a
+LIB	= $(obj)lib$(BOARD).o
 
 COBJS	:= board.o \
 	   xemacpss_g.o xemacpss_control.o xemacpss_sinit.o \

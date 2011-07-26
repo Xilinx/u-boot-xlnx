@@ -26,7 +26,7 @@
 
 include $(TOPDIR)/config.mk
 
-LIB	= $(obj)lib$(SOC).a
+LIB	= $(obj)lib$(SOC).o
 
 COBJS-y	= timer.o 
 
