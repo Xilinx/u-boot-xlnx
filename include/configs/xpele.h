@@ -82,8 +82,6 @@
 /* Uncomment it if you don't want Flash */
 //#define CONFIG_SYS_NO_FLASH	
 
-#define CONFIG_SYS_SDRAM_BASE	0
-
 #define CONFIG_L2_OFF
 
 //#define CONFIG_PELE_INIT_GEM	//this is to initialize GEM at uboot start
@@ -145,23 +143,12 @@
 #define TIMER_TICK_HZ                   (TIMER_INPUT_CLOCK / CONFIG_TIMER_PRESCALE)
 #define CONFIG_SYS_HZ                   1000
 
-/* And here... */
-#define CONFIG_SYS_LOAD_ADDR	0 /* default? */
-/* Semi-educated guess based on p.48 of DF Arch spec */
-#define PHYS_SDRAM_1		(256 * 1024)
-#define PHYS_SDRAM_1_SIZE	(256 * 1024 * 1024) /* Cameron guessed 256 or 512 MB */
-
-#define CONFIG_SYS_MEMTEST_START	PHYS_SDRAM_1
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_MEMTEST_START + 0x10000)
-
 /*
  * These were lifted straight from imx31_phycore, and may well be very wrong.
  */
 //#define CONFIG_ENV_SIZE			4096
 #define CONFIG_ENV_SIZE			0x10000
 #define CONFIG_NR_DRAM_BANKS		1
-#define CONFIG_SYS_MALLOC_LEN		0x400000
-#define CONFIG_SYS_GBL_DATA_SIZE	128
 #define CONFIG_SYS_MAXARGS		16
 #define CONFIG_SYS_CBSIZE		256
 #define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE+sizeof(CONFIG_SYS_PROMPT)+16) /* phycore */
@@ -217,4 +204,43 @@
 
 #define BOARD_LATE_INIT	1
 
+#undef CONFIG_CMD_IMLS
+
+/*-----------------------------------------------------------------------
+ * Main Memory 
+ */
+#define CONFIG_SYS_LOAD_ADDR	0 /* default? */
+/*
+ * if DDR memory is map to address 0x0. first 256k is used for on-chip ram
+ * however if set to 0x40000(256k) it will reboot and hangs at relocation offset
+ * if set to 0x0 system hangs during environment settings
+ */
+#define PHYS_SDRAM_1		0x0
+#define CONFIG_SYS_SDRAM_BASE	PHYS_SDRAM_1
+#define PHYS_SDRAM_1_SIZE	0x10000000
+#define CONFIG_SYS_SDRAM_SIZE	PHYS_SDRAM_1_SIZE
+
+/* MALLOC */
+#define CONFIG_SYS_MALLOC_LEN		0x400000
+
+/* global pointer */
+#define CONFIG_SYS_GBL_DATA_SIZE	128	/* size of global data */
+/* start of global data */
+//#define	CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_SDRAM_SIZE - CONFIG_SYS_GBL_DATA_SIZE)
+
+
+/* Memory test handling */
+#define	CONFIG_SYS_MEMTEST_START	CONFIG_SYS_SDRAM_BASE
+#define	CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x100000)
+
+/*-----------------------------------------------------------------------
+ * Physical Memory Map
+ */
+#define CONFIG_SYS_INIT_RAM_ADDR	CONFIG_SYS_SDRAM_BASE
+#define CONFIG_SYS_INIT_RAM_SIZE	CONFIG_SYS_MALLOC_LEN
+#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_INIT_RAM_ADDR + \
+						CONFIG_SYS_INIT_RAM_SIZE - \
+						GENERATED_GBL_DATA_SIZE)
+
+#define DEBUG
 #endif /* __CONFIG_H */
