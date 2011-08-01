@@ -380,10 +380,10 @@
 #undef CONFIG_BOOTARGS
 #define	CONFIG_HOSTNAME		XILINX_BOARD_NAME
 #ifdef FLASH
-#define	CONFIG_BOOTCOMMAND	"setenv var if test ${dtbsize} -le 0\\; then bootm ${kernstart}\\; else run dtbboot\\; fi; run var; setenv var" \
+#define	CONFIG_BOOTCOMMAND	"setenv var \"if test ${dtbsize} -le 0\\; then bootm ${kernstart}\\; else run dtbboot\\; fi\"; run var; setenv var" \
 
 #elif defined(CONFIG_SPI_FLASH)
-#define CONFIG_BOOTCOMMAND	"setenv var if test ${dtbsize} -le 0\\; then run sfboot\\; else run dtbboot\\; fi; run var; setenv var" \
+#define CONFIG_BOOTCOMMAND	"setenv var \"if test ${dtbsize} -le 0\\; then run sfboot\\; else run dtbboot\\; fi\"; run var; setenv var" \
 
 #endif
 
