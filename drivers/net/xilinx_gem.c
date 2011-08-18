@@ -139,7 +139,7 @@ static void phy_wr(struct eth_device *dev, u32 regnum, u32 data)
 	phy_setup_op(dev, regnum, XEMACPSS_PHYMNTNC_OP_W_MASK, data);
 }
 
-static void phy_rst(struct eth_device *dev)
+static int phy_rst(struct eth_device *dev)
 {
 	int tmp;
 
@@ -149,9 +149,12 @@ static void phy_rst(struct eth_device *dev)
 	phy_wr(dev, 0, tmp);
 
 	while (phy_rd(dev, 0) & 0x8000) {
-   	     putc('.');
+		putc('.');
+		if (ctrlc())
+			return 1;
 	}
 	puts("\nPHY reset complete.\n");
+	return 0;
 }
 
 #define MAC 0
@@ -219,7 +222,7 @@ int gem_init(struct eth_device *dev, bd_t * bis)
 	struct gemac_priv *priv = dev->priv;
 
 	if (priv->initialized)
-		return 1;
+		return 0;
 
 	/* Disable all interrupts */
 	out32(dev->iobase, XEMACPSS_IDR_OFFSET, 0xFFFFFFFF);
@@ -331,13 +334,16 @@ int gem_init(struct eth_device *dev, bd_t * bis)
 	tmp = phy_rd(dev, 0);
 	phy_wr(dev, 0, 0x3300 | (tmp & 0x1F));
 
-	phy_rst(dev);
+	if (phy_rst(dev))
+		return -1;
 
 	puts("\nWaiting for PHY to complete autonegotiation.");
 	tmp = 0;
 	while (!(phy_rd(dev, 1) & (1 << 5))) {
 		if ((tmp % 50) == 0) {
 			putc('.');
+			if (ctrlc())
+				return -1;
 		}
 		tmp++;
 	}
