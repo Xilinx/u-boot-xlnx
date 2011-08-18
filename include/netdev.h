@@ -95,6 +95,7 @@ int xilinx_emaclite_initialize(bd_t *bis, unsigned long base_addr,
 int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
 							int mode, unsigned long ctrl);
 int xilinx_axiemac_initialize(bd_t *bis, unsigned long base_addr, int dma_addr);
+int xilinx_gem_initialize(bd_t *bis, int base_addr);
 int sh_eth_initialize(bd_t *bis);
 int dm9000_initialize(bd_t *bis);
 int fecmxc_initialize(bd_t *bis);
