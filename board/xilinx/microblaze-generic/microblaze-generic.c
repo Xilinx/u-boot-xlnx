@@ -78,7 +78,16 @@ int board_eth_init(bd_t *bis)
 						XILINX_AXIDMA_BASEADDR);
 #endif
 #ifdef CONFIG_XILINX_EMACLITE
-	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR);
+	u32 txpp = 0;
+	u32 rxpp = 0;
+# ifdef CONFIG_XILINX_EMACLITE_TX_PING_PONG
+	txpp = 1;
+# endif
+# ifdef CONFIG_XILINX_EMACLITE_RX_PING_PONG
+	rxpp = 1;
+# endif
+	ret |= xilinx_emaclite_initialize(bis, XILINX_EMACLITE_BASEADDR,
+			txpp, rxpp);
 #endif
 #ifdef CONFIG_XILINX_LL_TEMAC
 	ret |= xilinx_ll_temac_initialize(bis, XILINX_LLTEMAC_BASEADDR);
