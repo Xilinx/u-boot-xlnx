@@ -35,9 +35,8 @@
 #define	CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + 0x1000)
 
 /* global pointer */
-#define	CONFIG_SYS_GBL_DATA_SIZE	128	/* size of global data */
 /* start of global data */
-#define	CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_SDRAM_SIZE - CONFIG_SYS_GBL_DATA_SIZE)
+#define	CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_SDRAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /* monitor code */
 #define	SIZE			0x40000
