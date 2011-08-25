@@ -378,8 +378,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 		return 0;
 	}
 
-	puts("Unsupported PHY\n");
-	return 0;
+	return 1;
 }
 
 #ifdef SDMA_MODE
