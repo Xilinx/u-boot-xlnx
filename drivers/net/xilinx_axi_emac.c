@@ -151,7 +151,7 @@ static axidma_bd rx_bd;
  */
 #define PHY_DETECT_MASK 0x1808
 
-static u16 phy_read(struct eth_device *dev, u32 phyaddress, u32 registernum)
+static u16 phyread(struct eth_device *dev, u32 phyaddress, u32 registernum)
 {
 	u32 mdioctrlreg = 0;
 
@@ -192,14 +192,14 @@ static void setup_phy(struct eth_device *dev)
 
 	/* wait for link up and autonegotiation completed */
 	while (retries-- &&
-		((phy_read(dev, priv->phyaddr, PHY_DETECT_REG) & 0x24) != 0x24))
+		((phyread(dev, priv->phyaddr, PHY_DETECT_REG) & 0x24) != 0x24))
 			;
 
 	debug("detecting phy address\n");
 	if (priv->phyaddr == -1) {
 		/* detect the PHY address */
 		for (i = 31; i >= 0; i--) {
-			phyreg = phy_read(dev, i, PHY_DETECT_REG);
+			phyreg = phyread(dev, i, PHY_DETECT_REG);
 	
 			if ((phyreg != 0xFFFF) &&
 			((phyreg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
@@ -212,9 +212,9 @@ static void setup_phy(struct eth_device *dev)
 	}
 
 	/* get PHY id */
-	phyreg = phy_read(dev, priv->phyaddr, 2);
+	phyreg = phyread(dev, priv->phyaddr, 2);
 	i = phyreg << 16;
-	phyreg = phy_read(dev, priv->phyaddr, 2);
+	phyreg = phyread(dev, priv->phyaddr, 2);
 	i |= phyreg;
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
@@ -226,7 +226,7 @@ static void setup_phy(struct eth_device *dev)
 		emmc_reg = in_be32(dev->iobase + XAE_EMMC_OFFSET);
 		emmc_reg &= ~XAE_EMMC_LINKSPEED_MASK;
 
-		phyreg = phy_read(dev, priv->phyaddr, 17);
+		phyreg = phyread(dev, priv->phyaddr, 17);
 
 		if ((phyreg & 0x8000) == 0x8000) {
 			emmc_reg |= XAE_EMMC_LINKSPD_1000;
