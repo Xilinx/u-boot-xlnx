@@ -567,8 +567,8 @@ static int xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
 	return 0;
 }
 
-
-static void xps_ll_temac_halt(struct eth_device *dev)
+/* halt device */
+static void ll_temac_halt(struct eth_device *dev)
 {
 #ifdef ETH_HALTING
 	/* Disable Receiver */
@@ -586,12 +586,6 @@ static void xps_ll_temac_halt(struct eth_device *dev)
 	/* reset fifos */
 #endif
 #endif
-}
-
-/* halt device */
-static void ll_temac_halt(struct eth_device *dev)
-{
-	xps_ll_temac_halt(dev);
 }
 
 static int ll_temac_init(struct eth_device *dev, bd_t *bis)
@@ -614,7 +608,7 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 #endif
 
 	if (xps_ll_temac_phy_ctrl(dev) == 0) {
-		xps_ll_temac_halt(dev);
+		ll_temac_halt(dev);
 		return -1;
 	}
 
