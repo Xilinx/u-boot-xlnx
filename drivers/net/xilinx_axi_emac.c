@@ -389,7 +389,7 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 	setup_phy(dev);
 	dev->state = 1;
 	debug("axi emac init complete\n");
-	return 1;
+	return 0;
 }
 
 static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
@@ -430,7 +430,7 @@ static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
 		;
 
 	debug("axi emac send complete\n");
-	return 1;
+	return 0;
 }
 
 static int IsRxReady(struct eth_device *dev)
@@ -530,5 +530,5 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 
 	eth_register(dev);
 
-	return 0;
+	return 1;
 }
