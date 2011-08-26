@@ -113,6 +113,7 @@ struct axidma_reg {
 struct axidma_priv {
 	struct axidma_reg *dmatx;
 	struct axidma_reg *dmarx;
+	int phyaddr;
 };
 
 /* BD descriptors */
@@ -181,24 +182,26 @@ static u16 phy_read(struct eth_device *dev, u32 phyaddress, u32 registernum)
 static void setup_phy(struct eth_device *dev)
 {
 	int i;
+	struct axidma_priv *priv = dev->priv;
 	unsigned retries = 100;
 	u16 phyreg;
 	u16 phyreg2;
-	int phyaddr = -1;
 	u32 emmc_reg;
 
 	debug("detecting phy address\n");
 
-	/* detect the PHY address */
-	for (phyaddr = 31; phyaddr >= 0; phyaddr--) {
-		phyreg = phy_read(dev, phyaddr, PHY_DETECT_REG);
-
-		if ((phyreg != 0xFFFF) &&
-		   ((phyreg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
-			/* Found a valid PHY address */
-
-			debug("Found valid phy address, %d\n", phyreg);
-			break;
+	if (priv->phyaddr == -1) {
+		/* detect the PHY address */
+		for (i = 31; i >= 0; i--) {
+			phyreg = phy_read(dev, i, PHY_DETECT_REG);
+	
+			if ((phyreg != 0xFFFF) &&
+			((phyreg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
+				/* Found a valid PHY address */
+				priv->phyaddr = i;
+				debug("Found valid phy address, %d\n", phyreg);
+				break;
+			}
 		}
 	}
 
@@ -211,8 +214,8 @@ static void setup_phy(struct eth_device *dev)
 	}
 
 	/* get PHY id */
-	phyreg = phy_read(dev, phyaddr, 2);
-	phyreg2 = phy_read(dev, phyaddr, 2);
+	phyreg = phy_read(dev, priv->phyaddr, 2);
+	phyreg2 = phy_read(dev, priv->phyaddr, 2);
 	i = (phyreg << 16) | phyreg2;
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
@@ -224,7 +227,7 @@ static void setup_phy(struct eth_device *dev)
 		emmc_reg = in_be32(dev->iobase + XAE_EMMC_OFFSET);
 		emmc_reg &= ~XAE_EMMC_LINKSPEED_MASK;
 
-		phyreg = phy_read(dev, phyaddr, 17);
+		phyreg = phy_read(dev, priv->phyaddr, 17);
 
 		if ((phyreg & 0x8000) == 0x8000) {
 			emmc_reg |= XAE_EMMC_LINKSPD_1000;
@@ -528,6 +531,12 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 	dev->halt = axiemac_halt;
 	dev->send = axiemac_send;
 	dev->recv = axiemac_recv;
+
+#ifdef CONFIG_PHY_ADDR
+	priv->phyaddr = CONFIG_PHY_ADDR;
+#else
+	priv->phyaddr = -1;
+#endif
 
 	eth_register(dev);
 
