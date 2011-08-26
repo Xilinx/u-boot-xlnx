@@ -645,11 +645,13 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 
 	dev = calloc(1, sizeof(*dev));
 	if (dev == NULL)
-		hang();
+		return -1;
 
 	dev->priv = calloc(1, sizeof(struct ll_priv));
-	if (dev->priv == NULL)
-		hang();
+	if (dev->priv == NULL) {
+		free(dev);
+		return -1;
+	}
 
 	priv = dev->priv;
 
