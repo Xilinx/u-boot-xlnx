@@ -356,8 +356,10 @@ int xilinx_emaclite_initialize (bd_t *bis, int base_addr, int txpp, int rxpp)
 		return -1;
 
 	emaclite = calloc(1, sizeof(struct xemaclite));
-	if (emaclite == NULL)
+	if (emaclite == NULL) {
+		free(dev);
 		return -1;
+	}
 
 	dev->priv = emaclite;
 
