@@ -188,8 +188,15 @@ static void setup_phy(struct eth_device *dev)
 	u16 phyreg2;
 	u32 emmc_reg;
 
-	debug("detecting phy address\n");
 
+	debug("waiting for the phy to be up\n");
+
+	/* wait for link up and autonegotiation completed */
+	while (retries-- &&
+		((phy_read(dev, priv->phyaddr, PHY_DETECT_REG) & 0x24) != 0x24))
+			;
+
+	debug("detecting phy address\n");
 	if (priv->phyaddr == -1) {
 		/* detect the PHY address */
 		for (i = 31; i >= 0; i--) {
@@ -203,14 +210,6 @@ static void setup_phy(struct eth_device *dev)
 				break;
 			}
 		}
-	}
-
-	debug("waiting for the phy to be up\n");
-
-	/* wait for link up and autonegotiation completed */
-	while (retries-- > 0) {
-		if ((phyreg & 0x24) == 0x24)
-			break;
 	}
 
 	/* get PHY id */
