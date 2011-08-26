@@ -27,6 +27,8 @@
 #include <net.h>
 #include <malloc.h>
 #include <asm/io.h>
+#include <phy.h>
+#include <miiphy.h>
 
 /* Axi Ethernet registers offset */
 #define XAE_IS_OFFSET		0x0000000C /* Interrupt status */
@@ -36,6 +38,7 @@
 #define XAE_EMMC_OFFSET		0x00000410 /* EMAC mode configuration */
 #define XAE_MDIO_MC_OFFSET	0x00000500 /* MII Management Config */
 #define XAE_MDIO_MCR_OFFSET	0x00000504 /* MII Management Control */
+#define XAE_MDIO_MWD_OFFSET	0x00000508 /* MII Management Write Data */
 #define XAE_MDIO_MRD_OFFSET	0x0000050C /* MII Management Read Data */
 
 /* Link setup */
@@ -114,6 +117,10 @@ struct axidma_priv {
 	struct axidma_reg *dmatx;
 	struct axidma_reg *dmarx;
 	int phyaddr;
+
+	struct phy_device *phydev;
+	struct mii_dev *bus;
+	/* phy_interface_t interface; */
 };
 
 /* BD descriptors */
@@ -160,7 +167,7 @@ static u16 phyread(struct eth_device *dev, u32 phyaddress, u32 registernum)
 						& XAE_MDIO_MCR_READY_MASK))
 		;
 
-	mdioctrlreg =   ((phyaddress << XAE_MDIO_MCR_PHYAD_SHIFT) &
+	mdioctrlreg = ((phyaddress << XAE_MDIO_MCR_PHYAD_SHIFT) &
 			XAE_MDIO_MCR_PHYAD_MASK) |
 			((registernum << XAE_MDIO_MCR_REGAD_SHIFT)
 			& XAE_MDIO_MCR_REGAD_MASK) |
@@ -178,9 +185,108 @@ static u16 phyread(struct eth_device *dev, u32 phyaddress, u32 registernum)
 	return (u16) in_be32(dev->iobase + XAE_MDIO_MRD_OFFSET);
 }
 
+static void phywrite(struct eth_device *dev, u32 phyaddress, u32 registernum,
+								u32 data)
+{
+	u32 mdioctrlreg = 0;
+
+	/* Wait till MDIO interface is ready to accept a new transaction. */
+	while (!(in_be32(dev->iobase + XAE_MDIO_MCR_OFFSET)
+						& XAE_MDIO_MCR_READY_MASK))
+		;
+
+	mdioctrlreg = ((phyaddress << XAE_MDIO_MCR_PHYAD_SHIFT) &
+			XAE_MDIO_MCR_PHYAD_MASK) |
+			((registernum << XAE_MDIO_MCR_REGAD_SHIFT)
+			& XAE_MDIO_MCR_REGAD_MASK) |
+			XAE_MDIO_MCR_INITIATE_MASK |
+			XAE_MDIO_MCR_OP_WRITE_MASK;
+
+	/* Write data */
+	out_be32(dev->iobase + XAE_MDIO_MWD_OFFSET, data);
+
+	out_be32(dev->iobase + XAE_MDIO_MCR_OFFSET, mdioctrlreg);
+
+	/* Wait till MDIO transaction is completed. */
+	while (!(in_be32(dev->iobase + XAE_MDIO_MCR_OFFSET)
+						& XAE_MDIO_MCR_READY_MASK))
+		;
+}
+
+
 /* setting axi emac and phy to proper setting */
 static int setup_phy(struct eth_device *dev)
 {
+#ifdef CONFIG_PHYLIB
+	int i;
+	unsigned int speed;
+	u16 phyreg;
+	u32 emmc_reg;
+	struct axidma_priv *priv = dev->priv;
+	struct phy_device *phydev;
+
+	u32 supported = SUPPORTED_10baseT_Half |
+			SUPPORTED_10baseT_Full |
+			SUPPORTED_100baseT_Half |
+			SUPPORTED_100baseT_Full |
+			SUPPORTED_1000baseT_Half |
+			SUPPORTED_1000baseT_Full;
+
+	if (priv->phyaddr == -1) {
+		/* detect the PHY address */
+		for (i = 31; i >= 0; i--) {
+			phyreg = phyread(dev, i, PHY_DETECT_REG);
+
+			if ((phyreg != 0xFFFF) &&
+			((phyreg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
+				/* Found a valid PHY address */
+				priv->phyaddr = i;
+				debug("Found valid phy address, %d\n", phyreg);
+				break;
+			}
+		}
+	}
+
+	/* interface - look at tsec */
+	phydev = phy_connect(priv->bus, priv->phyaddr, dev, 0);
+
+	phydev->supported &= supported;
+	phydev->advertising = phydev->supported;
+	priv->phydev = phydev;
+	phy_config(phydev);
+	phy_startup(phydev);
+
+	switch (phydev->speed) {
+	case 1000:
+		speed = XAE_EMMC_LINKSPD_1000;
+		break;
+	case 100:
+		speed = XAE_EMMC_LINKSPD_100;
+		break;
+	case 10:
+		speed = XAE_EMMC_LINKSPD_10;
+		break;
+	default:
+		return 0;
+	}
+
+	/* Setup the emac for the phy speed */
+	emmc_reg = in_be32(dev->iobase + XAE_EMMC_OFFSET);
+	emmc_reg &= ~XAE_EMMC_LINKSPEED_MASK;
+	emmc_reg |= speed;
+
+	/* Write new speed setting out to Axi Ethernet */
+	out_be32(dev->iobase + XAE_EMMC_OFFSET, emmc_reg);
+
+	/*
+	* Setting the operating speed of the MAC needs a delay. There
+	* doesn't seem to be register to poll, so please consider this
+	* during your application design.
+	*/
+	udelay(1);
+
+	return 1;
+#else
 	int i;
 	struct axidma_priv *priv = dev->priv;
 	unsigned retries = 100;
@@ -251,6 +357,7 @@ static int setup_phy(struct eth_device *dev)
 		return 1;
 	}
 	return 0;
+#endif
 }
 
 /* STOP DMA transfers */
@@ -510,6 +617,30 @@ static int axiemac_recv(struct eth_device *dev)
 	return length;
 }
 
+static int axiemac_miiphy_read(const char *devname, uchar addr,
+							uchar reg, ushort *val)
+{
+	struct eth_device *dev = eth_get_dev();
+	*val = phyread(dev, addr, reg);
+	debug("%s 0x%x, 0x%x, 0x%x\n", __func__, addr, reg, *val);
+	return 0;
+}
+
+static int axiemac_miiphy_write(const char *devname, uchar addr,
+							uchar reg, ushort val)
+{
+	struct eth_device *dev = eth_get_dev();
+	debug("%s 0x%x, 0x%x, 0x%x\n", __func__, addr, reg, val);
+	phywrite(dev, addr, reg, val);
+	return 0;
+}
+
+static int axiemac_bus_reset(struct mii_dev *bus)
+{
+	debug("Just bus reset\n");
+	return 0;
+}
+
 int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 {
 	struct eth_device *dev;
@@ -545,5 +676,10 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 
 	eth_register(dev);
 
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII) || defined(CONFIG_PHYLIB)
+	miiphy_register(dev->name, axiemac_miiphy_read, axiemac_miiphy_write);
+	priv->bus = miiphy_get_dev_by_name(dev->name);
+	priv->bus->reset = axiemac_bus_reset;
+#endif
 	return 1;
 }
