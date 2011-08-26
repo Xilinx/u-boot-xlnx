@@ -211,7 +211,6 @@ ll_fifo_s *ll_fifo = (ll_fifo_s *) (XILINX_LLTEMAC_FIFO_BASEADDR);
 static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(32)));
 #endif
 static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
-static unsigned char rx_buffer2[ETHER_MTU] __attribute((aligned(32)));
 
 struct ll_priv {
 	unsigned int sdma;
