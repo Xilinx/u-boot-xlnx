@@ -400,7 +400,7 @@ static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
 		len = ENET_MAX_MTU;
 
 	/* Flush packet to main memory to be trasfered by DMA */
-	flush_cache(ptr, len);
+	flush_cache((u32)ptr, len);
 
 	/* Setup Tx BD */
 	memset((void *) &tx_bd, 0, sizeof(axidma_bd));
@@ -521,8 +521,9 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 	sprintf(dev->name, "axiemac.%x", base_addr);
 
 	dev->iobase = base_addr;
-	priv->dmatx = dma_addr;
-	priv->dmarx = (u32)priv->dmatx + 0x30; /* rx channel offset */
+	priv->dmatx = (struct axidma_reg *)dma_addr;
+	/* rx channel offset */
+	priv->dmarx = (struct axidma_reg *)(dma_addr + 0x30);
 	dev->init = axiemac_init;
 	dev->halt = axiemac_halt;
 	dev->send = axiemac_send;
