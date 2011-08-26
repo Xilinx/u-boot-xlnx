@@ -23,70 +23,15 @@
 #include <asm/processor.h>
 #include <asm/io.h>
 
+#undef ETH_HALTING
+
+#define ETHER_MTU		1520
+
 #define XTE_EMMC_LINKSPEED_MASK	0xC0000000 /* Link speed */
 /* XTE_EMCFG_LINKSPD_MASK */
 #define XTE_EMMC_LINKSPD_10	0x00000000 /* for 10 Mbit */
 #define XTE_EMMC_LINKSPD_100	0x40000000 /* for 100 Mbit */
 #define XTE_EMMC_LINKSPD_1000	0x80000000 /* forr 1000 Mbit */
-
-/* Backwards compatibility to older xparameters.h files */
-#ifndef XILINX_LLTEMAC_SDMA_USE_DCR
-#define XILINX_LLTEMAC_SDMA_USE_DCR 0
-#endif
-
-#ifdef XILINX_LLTEMAC_FIFO_BASEADDR
-# define FIFO_MODE	1
-#elif XILINX_LLTEMAC_SDMA_CTRL_BASEADDR
-# define SDMA_MODE	1
-# if XILINX_LLTEMAC_SDMA_USE_DCR==1
-
-static void mtdcr_local(u32 reg, u32 val) {
-	mtdcr(0x00, reg);
-	mtdcr(0x01, val);
-}
-
-static u32 mfdcr_local(u32 reg) {
-	u32 val;
-	mtdcr(0x00, reg);
-	val = mfdcr(0x01);
-	return val;
-}
-
-#  define sdma_out_be32(addr, offset, val)	mtdcr_local((u32) (addr + offset),(val))
-#  define sdma_in_be32(addr, offset)		mfdcr_local((u32) (addr + offset))
-
-# else
-#  define sdma_out_be32(addr, offset, val)	out_be32((addr + offset * 4),(val))
-#  define sdma_in_be32(addr, offset)		in_be32((addr + offset * 4))
-# endif
-#else
-# error Xilinx LL Temac: Unsupported mode - Please setup SDMA or FIFO mode
-#endif
-
-#undef ETH_HALTING
-
-#ifdef SDMA_MODE
-/* XPS_LL_TEMAC SDMA registers definition */
-//# define TX_NXTDESC_PTR	0x00
-//# define TX_CURBUF_ADDR	0x01
-//# define TX_CURBUF_LENGTH	0x02
-# define TX_CURDESC_PTR		0x03
-# define TX_TAILDESC_PTR	0x04
-# define TX_CHNL_CTRL		0x05
-# define TX_IRQ_REG		0x06
-# define TX_CHNL_STS		0x07
-
-# define RX_NXTDESC_PTR		0x08
-//# define RX_CURBUF_ADDR		0x09
-//# define RX_CURBUF_LENGTH	0x0a
-# define RX_CURDESC_PTR		0x0b
-# define RX_TAILDESC_PTR	0x0c
-# define RX_CHNL_CTRL		0x0d
-# define RX_IRQ_REG		0x0e
-# define RX_CHNL_STS		0x0f
-
-# define DMA_CONTROL_REG	0x10
-#endif
 
 /* XPS_LL_TEMAC direct registers definition */
 // #define TEMAC_RAF0		0x00
@@ -133,9 +78,63 @@ static u32 mfdcr_local(u32 reg) {
 // #define MDIO_CLOCK_DIV_MASK	0x3F
 #define MDIO_CLOCK_DIV_100MHz	0x28
 
-#define ETHER_MTU		1520
+
+/* Backwards compatibility to older xparameters.h files */
+#ifndef XILINX_LLTEMAC_SDMA_USE_DCR
+#define XILINX_LLTEMAC_SDMA_USE_DCR 0
+#endif
+
+#ifdef XILINX_LLTEMAC_FIFO_BASEADDR
+# define FIFO_MODE	1
+#elif XILINX_LLTEMAC_SDMA_CTRL_BASEADDR
+# define SDMA_MODE	1
+# if XILINX_LLTEMAC_SDMA_USE_DCR==1
+
+static void mtdcr_local(u32 reg, u32 val) {
+	mtdcr(0x00, reg);
+	mtdcr(0x01, val);
+}
+
+static u32 mfdcr_local(u32 reg) {
+	u32 val;
+	mtdcr(0x00, reg);
+	val = mfdcr(0x01);
+	return val;
+}
+
+#  define sdma_out_be32(addr, offset, val)	mtdcr_local((u32) (addr + offset),(val))
+#  define sdma_in_be32(addr, offset)		mfdcr_local((u32) (addr + offset))
+
+# else
+#  define sdma_out_be32(addr, offset, val)	out_be32((addr + offset * 4),(val))
+#  define sdma_in_be32(addr, offset)		in_be32((addr + offset * 4))
+# endif
+#else
+# error Xilinx LL Temac: Unsupported mode - Please setup SDMA or FIFO mode
+#endif
 
 #ifdef SDMA_MODE
+/* XPS_LL_TEMAC SDMA registers definition */
+//# define TX_NXTDESC_PTR	0x00
+//# define TX_CURBUF_ADDR	0x01
+//# define TX_CURBUF_LENGTH	0x02
+# define TX_CURDESC_PTR		0x03
+# define TX_TAILDESC_PTR	0x04
+# define TX_CHNL_CTRL		0x05
+# define TX_IRQ_REG		0x06
+# define TX_CHNL_STS		0x07
+
+# define RX_NXTDESC_PTR		0x08
+//# define RX_CURBUF_ADDR		0x09
+//# define RX_CURBUF_LENGTH	0x0a
+# define RX_CURDESC_PTR		0x0b
+# define RX_TAILDESC_PTR	0x0c
+# define RX_CHNL_CTRL		0x0d
+# define RX_IRQ_REG		0x0e
+# define RX_CHNL_STS		0x0f
+
+# define DMA_CONTROL_REG	0x10
+
 /* CDMAC descriptor status bit definitions */
 // # define BDSTAT_ERROR_MASK		0x80
 // # define BDSTAT_INT_ON_END_MASK		0x40
