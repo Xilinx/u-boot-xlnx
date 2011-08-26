@@ -216,6 +216,7 @@ struct ll_priv {
 	unsigned int sdma;
 	unsigned int use_dcr;
 	int phyaddr;
+	unsigned int initialized;
 };
 
 #ifdef DEBUG
@@ -595,11 +596,11 @@ static void ll_temac_halt(struct eth_device *dev)
 
 static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 {
-	static int first = 1;
+	struct ll_priv *priv = dev->priv;
 #if DEBUG
 	int i;
 #endif
-	if (!first)
+	if (priv->initialized)
 		return 0;
 
 	xps_ll_temac_init(dev, bis);
@@ -617,7 +618,7 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 		return -1;
 	}
 
-	first = 0;
+	priv->initialized = 1;
 	return 0;
 }
 
