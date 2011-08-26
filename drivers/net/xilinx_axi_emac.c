@@ -517,7 +517,7 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 		return -1;
 	}
 
-	sprintf(dev->name, "Xilinx_AxiEmac");
+	sprintf(dev->name, "axiemac.%x", base_addr);
 
 	dev->iobase = base_addr;
 	dma = dev->priv;
