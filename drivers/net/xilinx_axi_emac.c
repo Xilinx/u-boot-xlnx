@@ -185,7 +185,6 @@ static void setup_phy(struct eth_device *dev)
 	struct axidma_priv *priv = dev->priv;
 	unsigned retries = 100;
 	u16 phyreg;
-	u16 phyreg2;
 	u32 emmc_reg;
 
 
@@ -214,8 +213,9 @@ static void setup_phy(struct eth_device *dev)
 
 	/* get PHY id */
 	phyreg = phy_read(dev, priv->phyaddr, 2);
-	phyreg2 = phy_read(dev, priv->phyaddr, 2);
-	i = (phyreg << 16) | phyreg2;
+	i = phyreg << 16;
+	phyreg = phy_read(dev, priv->phyaddr, 2);
+	i |= phyreg;
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
 	/* Marwell 88e1111 id - ml50x, 0x1410141 id - sp605 */
