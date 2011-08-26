@@ -252,12 +252,12 @@ static void setup_phy(struct eth_device *dev)
 /* STOP DMA transfers */
 static void axiemac_halt(struct eth_device *dev)
 {
-	struct axidma_priv *dma = dev->priv;
+	struct axidma_priv *priv = dev->priv;
 
 	if (dev->state) {
 		/* Stop the hardware */
-		dma->dmatx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
-		dma->dmarx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
+		priv->dmatx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
+		priv->dmarx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
 		dev->state = 0;
 	}
 	debug("axiemac halted\n");
@@ -319,18 +319,18 @@ static void setup_mac(struct eth_device *dev)
 /* Reset DMA engine */
 static void axi_dma_init(struct eth_device *dev)
 {
-	struct axidma_priv *dma = dev->priv;
+	struct axidma_priv *priv = dev->priv;
 
 	/* Reset the engine so the hardware starts from a known state */
-	dma->dmatx->control = XAXIDMA_CR_RESET_MASK;
-	dma->dmarx->control = XAXIDMA_CR_RESET_MASK;
+	priv->dmatx->control = XAXIDMA_CR_RESET_MASK;
+	priv->dmarx->control = XAXIDMA_CR_RESET_MASK;
 
 	/* At the initialization time, hardware should finish reset quickly */
 	u32 timeout = 500;
 	while (timeout--) {
 		/* Check transmit/receive channel */
 		/* Reset is done when the reset bit is low */
-		if (!(dma->dmatx->control | dma->dmarx->control)
+		if (!(priv->dmatx->control | priv->dmarx->control)
 						& XAXIDMA_CR_RESET_MASK)
 			break;
 		timeout -= 1;
@@ -342,7 +342,7 @@ static void axi_dma_init(struct eth_device *dev)
 
 static int axiemac_init(struct eth_device *dev, bd_t * bis)
 {
-	struct axidma_priv *dma = dev->priv;
+	struct axidma_priv *priv = dev->priv;
 	debug("axi emac init started\n");
 
 	/*
@@ -358,12 +358,12 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 	setup_mac(dev);
 
 	/* Start the hardware */
-	dma->dmarx->control |= XAXIDMA_CR_RUNSTOP_MASK;
+	priv->dmarx->control |= XAXIDMA_CR_RUNSTOP_MASK;
 	/* Start DMA RX channel. Now it's ready to receive data.*/
-	dma->dmarx->current = (u32)&rx_bd;
+	priv->dmarx->current = (u32)&rx_bd;
 
 	/* Disable all RX interrupts before RxBD space setup */
-	dma->dmarx->control &= ~(XAXIDMA_IRQ_ALL_MASK & XAXIDMA_IRQ_ALL_MASK);
+	priv->dmarx->control &= ~(XAXIDMA_IRQ_ALL_MASK & XAXIDMA_IRQ_ALL_MASK);
 
 	/* Setup the BD. */
 	memset((void *) &rx_bd, 0, sizeof(axidma_bd));
@@ -378,7 +378,7 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 	flush_cache((u32)&RxFrame, sizeof(RxFrame));
 
 	/* Rx BD is ready - start */
-	dma->dmarx->tail = (u32)&rx_bd;
+	priv->dmarx->tail = (u32)&rx_bd;
 
 	/* enable TX */
 	out_be32(dev->iobase + XAE_TC_OFFSET, XAE_TC_TX_MASK);
@@ -394,7 +394,7 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 
 static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
 {
-	struct axidma_priv *dma = dev->priv;
+	struct axidma_priv *priv = dev->priv;
 
 	if (len > ENET_MAX_MTU)
 		len = ENET_MAX_MTU;
@@ -414,18 +414,18 @@ static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
 	/* Flush the last BD so DMA core could see the updates */
 	flush_cache((u32)&tx_bd, sizeof(axidma_bd));
 
-	if (dma->dmatx->status & XAXIDMA_HALTED_MASK) {
-		dma->dmatx->current = (u32)&tx_bd;
+	if (priv->dmatx->status & XAXIDMA_HALTED_MASK) {
+		priv->dmatx->current = (u32)&tx_bd;
 		/* Start the hardware */
-		dma->dmatx->control |= XAXIDMA_CR_RUNSTOP_MASK;
+		priv->dmatx->control |= XAXIDMA_CR_RUNSTOP_MASK;
 	}
 
 	/* start transfer */
-	dma->dmatx->tail = (u32)&tx_bd;
+	priv->dmatx->tail = (u32)&tx_bd;
 
 	/* Wait for transmission to complete */
 	debug("axi emac, waiting for tx to be done\n");
-	while (!dma->dmatx->status &
+	while (!priv->dmatx->status &
 				(XAXIDMA_IRQ_DELAY_MASK | XAXIDMA_IRQ_IOC_MASK))
 		;
 
@@ -436,13 +436,13 @@ static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
 static int IsRxReady(struct eth_device *dev)
 {
 	u32 status;
-	struct axidma_priv *dma = dev->priv;
+	struct axidma_priv *priv = dev->priv;
 
 	/* Read pending interrupts */
-	status = dma->dmarx->status;
+	status = priv->dmarx->status;
 
 	/* Acknowledge pending interrupts */
-	dma->dmarx->status &= XAXIDMA_IRQ_ALL_MASK;
+	priv->dmarx->status &= XAXIDMA_IRQ_ALL_MASK;
 
 	/*
 	 * If Reception done interrupt is asserted, call RX call back function
@@ -457,7 +457,7 @@ static int IsRxReady(struct eth_device *dev)
 static int axiemac_recv(struct eth_device *dev)
 {
 	u32 length;
-	struct axidma_priv *dma = dev->priv;
+	struct axidma_priv *priv = dev->priv;
 
 	/* wait for an incoming packet */
 	if (!IsRxReady(dev))
@@ -466,7 +466,7 @@ static int axiemac_recv(struct eth_device *dev)
 	debug("axi emac, rx data ready\n");
 
 	/* Disable IRQ for a moment till packet is handled */
-	dma->dmarx->control &= ~(XAXIDMA_IRQ_ALL_MASK & XAXIDMA_IRQ_ALL_MASK);
+	priv->dmarx->control &= ~(XAXIDMA_IRQ_ALL_MASK & XAXIDMA_IRQ_ALL_MASK);
 
 	length = rx_bd.app4 & 0x0000FFFF;
 #ifdef DEBUG
@@ -495,7 +495,7 @@ static int axiemac_recv(struct eth_device *dev)
 	flush_cache((u32)&RxFrame, sizeof(RxFrame));
 
 	/* Rx BD is ready - start again */
-	dma->dmarx->tail = (u32)&rx_bd;
+	priv->dmarx->tail = (u32)&rx_bd;
 
 	debug("axi emac rx complete, framelength = %d\n", length);
 
@@ -505,7 +505,7 @@ static int axiemac_recv(struct eth_device *dev)
 int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 {
 	struct eth_device *dev;
-	struct axidma_priv *dma;
+	struct axidma_priv *priv;
 
 	dev = calloc(1, sizeof(struct eth_device));
 	if (dev == NULL)
@@ -516,13 +516,13 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 		free(dev);
 		return -1;
 	}
+	priv = dev->priv;
 
 	sprintf(dev->name, "axiemac.%x", base_addr);
 
 	dev->iobase = base_addr;
-	dma = dev->priv;
-	dma->dmatx = dma_addr;
-	dma->dmarx = (u32)dma->dmatx + 0x30; /* rx channel offset */
+	priv->dmatx = dma_addr;
+	priv->dmarx = (u32)priv->dmatx + 0x30; /* rx channel offset */
 	dev->init = axiemac_init;
 	dev->halt = axiemac_halt;
 	dev->send = axiemac_send;
