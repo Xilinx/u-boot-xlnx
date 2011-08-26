@@ -507,11 +507,16 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 	struct eth_device *dev;
 	struct axidma_priv *dma;
 
-	dev = malloc(sizeof(*dev));
+	dev = calloc(1, sizeof(struct eth_device));
 	if (dev == NULL)
-		hang();
+		return -1;
 
-	memset(dev, 0, sizeof(*dev));
+	dev->priv = calloc(1, sizeof(struct axidma_priv));
+	if (dev->priv == NULL) {
+		free(dev);
+		return -1;
+	}
+
 	sprintf(dev->name, "Xilinx_AxiEmac");
 
 	dev->iobase = base_addr;
