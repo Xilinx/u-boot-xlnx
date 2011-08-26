@@ -215,6 +215,7 @@ static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
 struct ll_priv {
 	unsigned int sdma;
 	unsigned int use_dcr;
+	int phyaddr;
 };
 
 #ifdef DEBUG
@@ -278,7 +279,6 @@ static void read_phy_reg (struct eth_device *dev, int phy_addr)
 }
 #endif
 
-static int phy_addr = -1;
 static int link;
 
 /* setting ll_temac and phy to proper setting */
@@ -286,6 +286,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 {
 	int i;
 	unsigned int result;
+	struct ll_priv *priv = dev->priv;
 	unsigned retries = 10;
 	unsigned int phyreg = 0;
 
@@ -297,29 +298,29 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	puts("Waiting for link ... ");
 	retries = 10;
 	while (retries-- &&
-		((xps_ll_temac_hostif_get(dev, 0, phy_addr, 1) & 0x24) != 0x24))
+		((xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 1) & 0x24) != 0x24))
 			;
 
 	/* try out if have ever found the right phy? */
-	if (phy_addr == -1) {
+	if (priv->phyaddr == -1) {
 		for (i = 31; i >= 0; i--) {
 			result = xps_ll_temac_hostif_get(dev, 0, i, 1);
 			if ((result & 0x0ffff) != 0x0ffff) {
 				debug("phy %x result %x\n", i, result);
-				phy_addr = i;
+				priv->phyaddr = i;
 				break;
 			}
 		}
 	}
 
 	/* get PHY id */
-	i = (xps_ll_temac_hostif_get(dev, 0, phy_addr, 2) << 16) |
-		xps_ll_temac_hostif_get(dev, 0, phy_addr, 3);
+	i = (xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 2) << 16) |
+		xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 3);
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
 #ifdef DEBUG
-	xps_ll_temac_hostif_set(dev, 0, phy_addr, 0, 0x8000); /* phy reset */
-	read_phy_reg(dev, phy_addr);
+	xps_ll_temac_hostif_set(dev, 0, priv->phyaddr, 0, 0x8000); /* phy reset */
+	read_phy_reg(dev, priv->phyaddr);
 #endif
 	phyreg = xps_ll_temac_indirect_get(dev, 0, EMMC) & (~XTE_EMMC_LINKSPEED_MASK);
 	/* FIXME this part will be replaced by PHY lib */
@@ -331,7 +332,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 		return 1;
 	}
 
-	result = xps_ll_temac_hostif_get(dev, 0, phy_addr, 5);
+	result = xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 5);
 	if((result & 0x8000) == 0x8000) {
 		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_1000));
 		printf("1000BASE-T/FD\n");
@@ -676,6 +677,12 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 #ifdef SDMA_MODE
 	priv->sdma = XILINX_LLTEMAC_SDMA_CTRL_BASEADDR;
 	priv->use_dcr = XILINX_LLTEMAC_SDMA_USE_DCR;
+#endif
+
+#ifdef CONFIG_PHY_ADDR
+	priv->phyaddr = CONFIG_PHY_ADDR;
+#else
+	priv->phyaddr = -1;
 #endif
 
 	dev->init = ll_temac_init;
