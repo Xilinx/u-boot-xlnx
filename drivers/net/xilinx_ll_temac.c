@@ -23,6 +23,12 @@
 #include <asm/processor.h>
 #include <asm/io.h>
 
+#define XTE_EMMC_LINKSPEED_MASK	0xC0000000 /* Link speed */
+/* XTE_EMCFG_LINKSPD_MASK */
+#define XTE_EMMC_LINKSPD_10	0x00000000 /* for 10 Mbit */
+#define XTE_EMMC_LINKSPD_100	0x40000000 /* for 100 Mbit */
+#define XTE_EMMC_LINKSPD_1000	0x80000000 /* forr 1000 Mbit */
+
 /* Backwards compatibility to older xparameters.h files */
 #ifndef XILINX_LLTEMAC_SDMA_USE_DCR
 #define XILINX_LLTEMAC_SDMA_USE_DCR 0
@@ -164,11 +170,6 @@ static u32 mfdcr_local(u32 reg) {
                                                                register */
 // #define XLLDMA_DMACR_EN_ARB_HOLD_MASK          0x00000002 /**< Enable arbitration hold */
 // #define XLLDMA_DMACR_SW_RESET_MASK             0x00000001 /**< Assert Software reset for both channels */
-
-#define XTE_EMMC_LINKSPEED_MASK   0xC0000000  /* Link speed */
-#define XTE_EMMC_LINKSPD_10       0x00000000  /* XTE_EMCFG_LINKSPD_MASK for 10 Mbit */
-#define XTE_EMMC_LINKSPD_100      0x40000000  /* XTE_EMCFG_LINKSPD_MASK for 100 Mbit */
-#define XTE_EMMC_LINKSPD_1000     0x80000000  /* XTE_EMCFG_LINKSPD_MASK for 1000 Mbit */
 
 /* SDMA Buffer Descriptor */
 
