@@ -179,7 +179,7 @@ static u16 phyread(struct eth_device *dev, u32 phyaddress, u32 registernum)
 }
 
 /* setting axi emac and phy to proper setting */
-static void setup_phy(struct eth_device *dev)
+static int setup_phy(struct eth_device *dev)
 {
 	int i;
 	struct axidma_priv *priv = dev->priv;
@@ -248,7 +248,9 @@ static void setup_phy(struct eth_device *dev)
 		 * during your application design.
 		 */
 		udelay(1);
+		return 1;
 	}
+	return 0;
 }
 
 /* STOP DMA transfers */
@@ -388,7 +390,11 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 	out_be32(dev->iobase + XAE_RCW1_OFFSET, XAE_RCW1_RX_MASK);
 
 	/* PHY setup */
-	setup_phy(dev);
+	if (!setup_phy(dev)) {
+		axiemac_halt(dev);
+		return -1;
+	}
+
 	dev->state = 1;
 	debug("axi emac init complete\n");
 	return 0;
