@@ -432,7 +432,7 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 		flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
 	} while (!(((volatile int)tx_bd.stat) & BDSTAT_COMPLETED_MASK));
 
-	return length;
+	return 0;
 }
 
 static int xps_ll_temac_recv_sdma(struct eth_device *dev)
@@ -497,12 +497,13 @@ static int xps_ll_temac_send_fifo(unsigned char *buffer, int length)
 
 	ll_fifo->tlf = length;
 
-	return length;
+	return 0;
 }
 
 static int xps_ll_temac_recv_fifo(void)
 {
-	u32 len, len2, i, val;
+	u32 len = 0;
+	u32 len2, i, val;
 	u32 *buf = (u32 *)&rx_buffer;
 
 	if (ll_fifo->isr & 0x04000000) {
@@ -520,7 +521,7 @@ static int xps_ll_temac_recv_fifo(void)
 		/* debugll(1); */
 		NetReceive ((uchar *)&rx_buffer, len);
 	}
-	return 0;
+	return len;
 }
 #endif
 
@@ -617,7 +618,7 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 	}
 
 	first = 0;
-	return 1;
+	return 0;
 }
 
 
@@ -678,5 +679,5 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 
 	eth_register(dev);
 
-	return 0;
+	return 1;
 }
