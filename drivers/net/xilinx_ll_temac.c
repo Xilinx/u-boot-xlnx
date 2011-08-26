@@ -279,8 +279,6 @@ static void read_phy_reg (struct eth_device *dev, int phy_addr)
 }
 #endif
 
-static int link;
-
 /* setting ll_temac and phy to proper setting */
 static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 {
@@ -289,10 +287,6 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	struct ll_priv *priv = dev->priv;
 	unsigned retries = 10;
 	unsigned int phyreg = 0;
-
-	 /* link is setup */
-	if (link == 1)
-		return 1;
 
 	/* wait for link up */
 	puts("Waiting for link ... ");
@@ -328,7 +322,6 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	if (i == 0x7c0a3) {
 		/* 100BASE-T/FD */
 		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_100));
-		link = 1;
 		return 1;
 	}
 
@@ -336,14 +329,11 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	if((result & 0x8000) == 0x8000) {
 		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_1000));
 		printf("1000BASE-T/FD\n");
-		link = 1;
 	} else if((result & 0x4000) == 0x4000) {
 		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_100));
 		printf("100BASE-T/FD\n");
-		link = 1;
 	} else {
 		printf("Unsupported mode\n");
-		link = 0;
 		return 0;
 	}
 
@@ -421,9 +411,6 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 				unsigned char *buffer, int length)
 {
 	struct ll_priv *priv = dev->priv;
-
-	if (xps_ll_temac_phy_ctrl(dev) == 0)
-		return 0;
 
 	if (xps_ll_temac_dma_error(dev)) {
 		xps_ll_temac_reset_dma(dev);
@@ -602,7 +589,6 @@ static void xps_ll_temac_halt(struct eth_device *dev)
 /* halt device */
 static void ll_temac_halt(struct eth_device *dev)
 {
-	link = 0;
 	xps_ll_temac_halt(dev);
 }
 
