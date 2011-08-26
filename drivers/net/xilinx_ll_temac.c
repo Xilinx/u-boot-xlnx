@@ -607,7 +607,7 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 		read_phy_reg(dev, i);
 #endif
 
-	if (xps_ll_temac_phy_ctrl(dev) == 0) {
+	if (!xps_ll_temac_phy_ctrl(dev)) {
 		ll_temac_halt(dev);
 		return -1;
 	}
