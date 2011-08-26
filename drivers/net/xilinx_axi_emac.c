@@ -150,23 +150,23 @@ static axidma_bd rx_bd;
  */
 #define PHY_DETECT_MASK 0x1808
 
-static u16 phy_read(struct eth_device *dev, u32 PhyAddress, u32 RegisterNum)
+static u16 phy_read(struct eth_device *dev, u32 phyaddress, u32 registernum)
 {
-	u32 MdioCtrlReg = 0;
+	u32 mdioctrlreg = 0;
 
 	/* Wait till MDIO interface is ready to accept a new transaction. */
 	while (!(in_be32(dev->iobase + XAE_MDIO_MCR_OFFSET)
 						& XAE_MDIO_MCR_READY_MASK))
 		;
 
-	MdioCtrlReg =   ((PhyAddress << XAE_MDIO_MCR_PHYAD_SHIFT) &
+	mdioctrlreg =   ((phyaddress << XAE_MDIO_MCR_PHYAD_SHIFT) &
 			XAE_MDIO_MCR_PHYAD_MASK) |
-			((RegisterNum << XAE_MDIO_MCR_REGAD_SHIFT)
+			((registernum << XAE_MDIO_MCR_REGAD_SHIFT)
 			& XAE_MDIO_MCR_REGAD_MASK) |
 			XAE_MDIO_MCR_INITIATE_MASK |
 			XAE_MDIO_MCR_OP_READ_MASK;
 
-	out_be32(dev->iobase + XAE_MDIO_MCR_OFFSET, MdioCtrlReg);
+	out_be32(dev->iobase + XAE_MDIO_MCR_OFFSET, mdioctrlreg);
 
 	/* Wait till MDIO transaction is completed. */
 	while (!(in_be32(dev->iobase + XAE_MDIO_MCR_OFFSET)
@@ -182,22 +182,22 @@ static void setup_phy(struct eth_device *dev)
 {
 	int i;
 	unsigned retries = 100;
-	u16 PhyReg;
-	u16 PhyReg2;
-	int PhyAddr = -1;
+	u16 phyreg;
+	u16 phyreg2;
+	int phyaddr = -1;
 	u32 emmc_reg;
 
 	debug("detecting phy address\n");
 
 	/* detect the PHY address */
-	for (PhyAddr = 31; PhyAddr >= 0; PhyAddr--) {
-		PhyReg = phy_read(dev, PhyAddr, PHY_DETECT_REG);
+	for (phyaddr = 31; phyaddr >= 0; phyaddr--) {
+		phyreg = phy_read(dev, phyaddr, PHY_DETECT_REG);
 
-		if ((PhyReg != 0xFFFF) &&
-		   ((PhyReg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
+		if ((phyreg != 0xFFFF) &&
+		   ((phyreg & PHY_DETECT_MASK) == PHY_DETECT_MASK)) {
 			/* Found a valid PHY address */
 
-			debug("Found valid phy address, %d\n", PhyReg);
+			debug("Found valid phy address, %d\n", phyreg);
 			break;
 		}
 	}
@@ -206,14 +206,14 @@ static void setup_phy(struct eth_device *dev)
 
 	/* wait for link up and autonegotiation completed */
 	while (retries-- > 0) {
-		if ((PhyReg & 0x24) == 0x24)
+		if ((phyreg & 0x24) == 0x24)
 			break;
 	}
 
 	/* get PHY id */
-	PhyReg = phy_read(dev, PhyAddr, 2);
-	PhyReg2 = phy_read(dev, PhyAddr, 2);
-	i = (PhyReg << 16) | PhyReg2;
+	phyreg = phy_read(dev, phyaddr, 2);
+	phyreg2 = phy_read(dev, phyaddr, 2);
+	i = (phyreg << 16) | phyreg2;
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
 	/* Marwell 88e1111 id - ml50x, 0x1410141 id - sp605 */
@@ -224,12 +224,12 @@ static void setup_phy(struct eth_device *dev)
 		emmc_reg = in_be32(dev->iobase + XAE_EMMC_OFFSET);
 		emmc_reg &= ~XAE_EMMC_LINKSPEED_MASK;
 
-		PhyReg = phy_read(dev, PhyAddr, 17);
+		phyreg = phy_read(dev, phyaddr, 17);
 
-		if ((PhyReg & 0x8000) == 0x8000) {
+		if ((phyreg & 0x8000) == 0x8000) {
 			emmc_reg |= XAE_EMMC_LINKSPD_1000;
 			printf("1000BASE-T\n");
-		} else if ((PhyReg & 0x4000) == 0x4000) {
+		} else if ((phyreg & 0x4000) == 0x4000) {
 			printf("100BASE-T\n");
 			emmc_reg |= XAE_EMMC_LINKSPD_100;
 		} else {
