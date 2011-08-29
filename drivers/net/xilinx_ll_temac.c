@@ -655,7 +655,7 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 
 	priv = dev->priv;
 
-	sprintf(dev->name, "lltemac.%x", base_addr);
+	sprintf(dev->name, "Xlltem.%x", base_addr);
 
 	dev->iobase = base_addr;
 #ifdef SDMA_MODE
