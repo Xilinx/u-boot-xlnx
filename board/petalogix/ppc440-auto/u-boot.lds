@@ -24,52 +24,28 @@
 OUTPUT_ARCH(powerpc)
 ENTRY(_start_440)
 
+
+PHDRS
+{
+  text PT_LOAD;
+  bss PT_LOAD;
+}
+
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
   . = + SIZEOF_HEADERS;
-  .interp : { *(.interp) }
-  .hash          : { *(.hash)		}
-  .dynsym        : { *(.dynsym)		}
-  .dynstr        : { *(.dynstr)		}
-  .rel.text      : { *(.rel.text)		}
-  .rela.text     : { *(.rela.text)	}
-  .rel.data      : { *(.rel.data)		}
-  .rela.data     : { *(.rela.data)	}
-  .rel.rodata    : { *(.rel.rodata)	}
-  .rela.rodata   : { *(.rela.rodata)	}
-  .rel.got       : { *(.rel.got)		}
-  .rela.got      : { *(.rela.got)		}
-  .rel.ctors     : { *(.rel.ctors)	}
-  .rela.ctors    : { *(.rela.ctors)	}
-  .rel.dtors     : { *(.rel.dtors)	}
-  .rela.dtors    : { *(.rela.dtors)	}
-  .rel.bss       : { *(.rel.bss)		}
-  .rela.bss      : { *(.rela.bss)		}
-  .rel.plt       : { *(.rel.plt)		}
-  .rela.plt      : { *(.rela.plt)		}
-  .init          : { *(.init)	}
-  .plt : { *(.plt) }
   .text      :
   {
-    /* WARNING - the following is hand-optimized to fit within	*/
-    /* the sector layout of our flash chips!	XXX FIXME XXX	*/
-
-
-    *(.text)
-    *(.fixup)
-    *(.got1)
-  }
+    *(.text*)
+  } :text
   _etext = .;
   PROVIDE (etext = .);
   .rodata    :
   {
-    *(.eh_frame)
     *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
-  }
-  .fini      : { *(.fini)    } =0
-  .ctors     : { *(.ctors)   }
-  .dtors     : { *(.dtors)   }
+  } :text
+
 
   /* Read-write section, merged into data segment: */
   . = (. + 0x00FF) & 0xFFFFFF00;
@@ -77,23 +53,20 @@ SECTIONS
   PROVIDE (erotext = .);
   .reloc   :
   {
-    *(.got)
     _GOT2_TABLE_ = .;
-    *(.got2)
+    KEEP(*(.got2))
+    KEEP(*(.got))
+    PROVIDE(_GLOBAL_OFFSET_TABLE_ = . + 4);
     _FIXUP_TABLE_ = .;
-    *(.fixup)
+    KEEP(*(.fixup))
   }
-  __got2_entries = (_FIXUP_TABLE_ - _GOT2_TABLE_) >>2;
-  __fixup_entries = (. - _FIXUP_TABLE_)>>2;
+  __got2_entries = ((_GLOBAL_OFFSET_TABLE_ - _GOT2_TABLE_) >> 2) - 1;
+  __fixup_entries = (. - _FIXUP_TABLE_) >> 2;
 
   .data    :
   {
-    *(.data)
-    *(.data1)
-    *(.sdata)
-    *(.sdata2)
-    *(.dynamic)
-    CONSTRUCTORS
+    *(.data*)
+    *(.sdata*)
   }
   _edata  =  .;
   PROVIDE (edata = .);
@@ -119,15 +92,13 @@ SECTIONS
   __bss_start = .;
   .bss (NOLOAD)       :
   {
-   *(.sbss) *(.scommon)
-   *(.dynbss)
-   *(.bss)
+   *(.bss*)
+   *(.sbss*)
    *(COMMON)
-   . = ALIGN(4);
-  }
+  } :bss
+  . = ALIGN(4);
   __bss_end__ = .;
   ppcenv_assert = ASSERT(. < 0xFFFFB000, ".bss section too big, overlaps .ppcenv section. Please update your confguration: CONFIG_SYS_MONITOR_BASE, CONFIG_SYS_MONITOR_LEN and TEXT_BASE may need to be modified.");
 
-  _end = . ;
   PROVIDE (end = .);
 }
