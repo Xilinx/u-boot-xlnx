@@ -215,7 +215,7 @@ static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
 
 struct ll_priv {
 	unsigned int ctrl;
-	unsigned int use_dcr;
+	unsigned int mode;
 	int phyaddr;
 	unsigned int initialized;
 };
@@ -673,7 +673,7 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 	dev->iobase = base_addr;
 #ifdef SDMA_MODE
 	priv->ctrl = XILINX_LLTEMAC_SDMA_CTRL_BASEADDR;
-	priv->use_dcr = XILINX_LLTEMAC_SDMA_USE_DCR;
+	priv->mode = XILINX_LLTEMAC_SDMA_USE_DCR;
 #endif
 
 #ifdef CONFIG_PHY_ADDR
