@@ -219,17 +219,28 @@ struct ll_priv {
 	unsigned int initialized;
 };
 
+static inline void temac_out_be32(u32 addr, u32 offset, u32 val)
+{
+	out_be32((u32 *)(addr + offset), val);
+}
+
+static inline u32 temac_in_be32(u32 addr, u32 offset)
+{
+	return in_be32((u32 *)(addr + offset));
+}
+
 #ifdef DEBUG
 /* undirect hostif write to ll_temac */
 static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 			int phy_addr, int reg_addr, int phy_data)
 {
-	out_be32(dev->iobase + TEMAC_LSW0, phy_data);
-	out_be32(dev->iobase + TEMAC_CTL0, CNTLREG_WRITE_ENABLE_MASK | MIIMWD);
-	out_be32(dev->iobase + TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
-	out_be32(dev->iobase + TEMAC_CTL0,
+	temac_out_be32(dev->iobase, TEMAC_LSW0, phy_data);
+	temac_out_be32(dev->iobase, TEMAC_CTL0,
+					CNTLREG_WRITE_ENABLE_MASK | MIIMWD);
+	temac_out_be32(dev->iobase, TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
+	temac_out_be32(dev->iobase, TEMAC_CTL0,
 			CNTLREG_WRITE_ENABLE_MASK | MIIMAI | (emac << 10));
-	while (!(in_be32(dev->iobase + TEMAC_RDY0) & XTE_RSE_MIIM_WR_MASK))
+	while (!(temac_in_be32(dev->iobase, TEMAC_RDY0) & XTE_RSE_MIIM_WR_MASK))
 		;
 }
 #endif
@@ -238,21 +249,21 @@ static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 static unsigned int xps_ll_temac_hostif_get(struct eth_device *dev,
 			int emac, int phy_addr, int reg_addr)
 {
-	out_be32(dev->iobase + TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
-	out_be32(dev->iobase + TEMAC_CTL0, MIIMAI | (emac << 10));
-	while (!(in_be32(dev->iobase + TEMAC_RDY0) & XTE_RSE_MIIM_RR_MASK))
+	temac_out_be32(dev->iobase, TEMAC_LSW0, (phy_addr << 5) | (reg_addr));
+	temac_out_be32(dev->iobase, TEMAC_CTL0, MIIMAI | (emac << 10));
+	while (!(temac_in_be32(dev->iobase, TEMAC_RDY0) & XTE_RSE_MIIM_RR_MASK))
 		;
-	return in_be32(dev->iobase + TEMAC_LSW0);
+	return temac_in_be32(dev->iobase, TEMAC_LSW0);
 }
 
 /* undirect write to ll_temac */
 static void xps_ll_temac_indirect_set(struct eth_device *dev,
 				int emac, int reg_offset, int reg_data)
 {
-	out_be32(dev->iobase + TEMAC_LSW0, reg_data);
-	out_be32(dev->iobase + TEMAC_CTL0,
+	temac_out_be32(dev->iobase, TEMAC_LSW0, reg_data);
+	temac_out_be32(dev->iobase, TEMAC_CTL0,
 			CNTLREG_WRITE_ENABLE_MASK | (emac << 10) | reg_offset);
-	while (!(in_be32(dev->iobase + TEMAC_RDY0) & XTE_RSE_CFG_WR_MASK))
+	while (!(temac_in_be32(dev->iobase, TEMAC_RDY0) & XTE_RSE_CFG_WR_MASK))
 		;
 }
 
@@ -260,10 +271,10 @@ static void xps_ll_temac_indirect_set(struct eth_device *dev,
 static int xps_ll_temac_indirect_get(struct eth_device *dev,
 			int emac, int reg_offset)
 {
-	out_be32(dev->iobase + TEMAC_CTL0, (emac << 10) | reg_offset);
-	while (!(in_be32(dev->iobase + TEMAC_RDY0) & XTE_RSE_CFG_RR_MASK))
+	temac_out_be32(dev->iobase, TEMAC_CTL0, (emac << 10) | reg_offset);
+	while (!(temac_in_be32(dev->iobase, TEMAC_RDY0) & XTE_RSE_CFG_RR_MASK))
 		;
-	return in_be32(dev->iobase + TEMAC_LSW0);
+	return temac_in_be32(dev->iobase, TEMAC_LSW0);
 }
 
 #ifdef DEBUG
