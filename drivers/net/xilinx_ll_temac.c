@@ -106,8 +106,9 @@ static u32 mfdcr_local(u32 reg) {
 #  define sdma_in_be32(addr, offset)		mfdcr_local((u32) (addr + offset))
 
 # else
-#  define sdma_out_be32(addr, offset, val)	out_be32((addr + offset * 4),(val))
-#  define sdma_in_be32(addr, offset)		in_be32((addr + offset * 4))
+#  define sdma_out_be32(addr, offset, val) \
+				out_be32((u32 *)(addr + offset * 4), (val))
+#  define sdma_in_be32(addr, offset)	in_be32((u32 *)(addr + offset * 4))
 # endif
 #else
 # error Xilinx LL Temac: Unsupported mode - Please setup SDMA or FIFO mode
