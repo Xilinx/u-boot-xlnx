@@ -25,8 +25,6 @@
 
 #undef ETH_HALTING
 
-#define ETHER_MTU		1520
-
 #define XTE_EMMC_LINKSPEED_MASK	0xC0000000 /* Link speed */
 /* XTE_EMCFG_LINKSPD_MASK */
 #define XTE_EMMC_LINKSPD_10	0x00000000 /* for 10 Mbit */
@@ -170,8 +168,8 @@ struct ll_fifo_s {
 	int llr; /* Read LocalLink reset 0x28 */
 };
 
-static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(DMAALIGN)));
-static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(DMAALIGN)));
+static unsigned char tx_buffer[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN)));
+static unsigned char rx_buffer[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN)));
 
 struct ll_priv {
 	unsigned int ctrl;
@@ -398,9 +396,9 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	rx_bd.phys_buf_p = &rx_buffer[0];
 
 	rx_bd.next_p = &rx_bd;
-	rx_bd.buf_len = ETHER_MTU;
+	rx_bd.buf_len = PKTSIZE_ALIGN;
 	flush_cache((u32)&rx_bd, sizeof(tx_bd));
-	flush_cache ((u32)rx_bd.phys_buf_p, ETHER_MTU);
+	flush_cache((u32)rx_bd.phys_buf_p, PKTSIZE_ALIGN);
 
 	sdma_out_be32(priv, RX_CURDESC_PTR, (u32)&rx_bd);
 	sdma_out_be32(priv, RX_TAILDESC_PTR, (u32)&rx_bd);
@@ -468,7 +466,7 @@ static int ll_temac_recv_sdma(struct eth_device *dev)
 	/* flip the buffer and re-enable the DMA.  */
 	flush_cache ((u32)rx_bd.phys_buf_p, length);
 
-	rx_bd.buf_len = ETHER_MTU;
+	rx_bd.buf_len = PKTSIZE_ALIGN;
 	rx_bd.stat = 0;
 	rx_bd.app5 = 0;
 
