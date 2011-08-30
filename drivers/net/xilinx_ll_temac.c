@@ -656,7 +656,7 @@ static int ll_temac_recv(struct eth_device *dev)
 #endif
 }
 
-int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
+int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr)
 {
 	struct eth_device *dev;
 	struct ll_priv *priv;
@@ -673,7 +673,7 @@ int xilinx_ll_temac_initialize(bd_t *bis, int base_addr)
 
 	priv = dev->priv;
 
-	sprintf(dev->name, "Xlltem.%x", base_addr);
+	sprintf(dev->name, "Xlltem.%lx", base_addr);
 
 	dev->iobase = base_addr;
 #ifdef SDMA_MODE
