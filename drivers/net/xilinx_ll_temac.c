@@ -134,6 +134,9 @@
 // #define XLLDMA_DMACR_EN_ARB_HOLD_MASK          0x00000002 /**< Enable arbitration hold */
 // #define XLLDMA_DMACR_SW_RESET_MASK             0x00000001 /**< Assert Software reset for both channels */
 
+#define SDMA_BIT	1
+#define DCR_BIT		2
+
 #define DMAALIGN	32
 
 /* SDMA Buffer Descriptor */
@@ -197,7 +200,7 @@ static u32 mfdcr_local(u32 reg)
 
 static void sdma_out_be32(struct ll_priv *priv, u32 offset, u32 val)
 {
-	if (priv->mode & 0x2)
+	if (priv->mode & DCR_BIT)
 		mtdcr_local(priv->ctrl + offset, val);
 	else
 		out_be32((u32 *)(priv->ctrl + offset * 4), val);
@@ -205,7 +208,7 @@ static void sdma_out_be32(struct ll_priv *priv, u32 offset, u32 val)
 
 static u32 sdma_in_be32(struct ll_priv *priv, u32 offset)
 {
-	if (priv->mode & 0x2)
+	if (priv->mode & DCR_BIT)
 		return mfdcr_local(priv->ctrl + offset);
 
 	return in_be32((u32 *)(priv->ctrl + offset * 4));
@@ -552,7 +555,7 @@ static int xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
 
-	if (priv->mode & 0x1) {
+	if (priv->mode & SDMA_BIT) {
 		xps_ll_temac_reset_dma(dev);
 		xps_ll_temac_bd_init(dev);
 	} else {
@@ -584,7 +587,7 @@ static void ll_temac_halt(struct eth_device *dev)
 	/* Disable Transmitter */
 	xps_ll_temac_indirect_set(dev, 0, TC, 0x00000000);
 
-	if (priv->mode & 0x1) {
+	if (priv->mode & SDMA_BIT) {
 		sdma_out_be32(priv->ctrl, DMA_CONTROL_REG, 0x00000001);
 		while (sdma_in_be32(priv->ctrl, DMA_CONTROL_REG) & 1)
 			;
@@ -621,7 +624,7 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 	return 0;
 }
 
-/* mode bits: 0bit - fifo(0)/sdma(1), 1bit - no dcr(0)/dcr(1)
+/* mode bits: 0bit - fifo(0)/sdma(1):SDMA_BIT, 1bit - no dcr(0)/dcr(1):DCR_BIT
  * ctrl - control address for file/sdma */
 int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
 							int mode, int ctrl)
@@ -657,7 +660,7 @@ int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
 	dev->halt = ll_temac_halt;
 	dev->write_hwaddr = ll_temac_addr_setup;
 
-	if (priv->mode & 0x1) {
+	if (priv->mode & SDMA_BIT) {
 		dev->send = ll_temac_send_sdma;
 		dev->recv = ll_temac_recv_sdma;
 	} else {
