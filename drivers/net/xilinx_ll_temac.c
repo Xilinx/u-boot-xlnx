@@ -543,7 +543,7 @@ static int xps_ll_temac_recv_fifo(struct eth_device *dev)
 #endif
 
 /* setup mac addr */
-static int xps_ll_temac_addr_setup(struct eth_device *dev)
+static int ll_temac_addr_setup(struct eth_device *dev)
 {
 	int val;
 
@@ -575,7 +575,6 @@ static int xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
 	xps_ll_temac_indirect_set(dev, 0, MC,
 				MDIO_ENABLE_MASK | MDIO_CLOCK_DIV_100MHz);
 
-	xps_ll_temac_addr_setup(dev);
 	/* Promiscuous mode disable */
 	xps_ll_temac_indirect_set(dev, 0, AFM, 0x00000000);
 	/* Enable Receiver */
@@ -693,6 +692,7 @@ int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr)
 	dev->halt = ll_temac_halt;
 	dev->send = ll_temac_send;
 	dev->recv = ll_temac_recv;
+	dev->write_hwaddr = ll_temac_addr_setup;
 
 	eth_register(dev);
 
