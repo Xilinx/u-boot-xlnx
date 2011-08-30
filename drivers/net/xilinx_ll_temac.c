@@ -528,8 +528,9 @@ static int ll_temac_recv_fifo(struct eth_device *dev)
 			val = ll_fifo->rdfd;
 			*buf++ = val ;
 		}
-
-		/* debugll(dev, 1); */
+#ifdef DEBUG
+		debugll(dev, 1);
+#endif
 		NetReceive ((uchar *)&rx_buffer, len);
 	}
 	return len;
