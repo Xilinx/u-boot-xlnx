@@ -639,7 +639,7 @@ static int axiemac_bus_reset(struct mii_dev *bus)
 	return 0;
 }
 
-int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
+int xilinx_axiemac_initialize(bd_t *bis, unsigned long base_addr, int dma_addr)
 {
 	struct eth_device *dev;
 	struct axidma_priv *priv;
@@ -655,7 +655,7 @@ int xilinx_axiemac_initialize(bd_t *bis, int base_addr, int dma_addr)
 	}
 	priv = dev->priv;
 
-	sprintf(dev->name, "axiemac.%x", base_addr);
+	sprintf(dev->name, "aximac.%lx", base_addr);
 
 	dev->iobase = base_addr;
 	priv->dmatx = (struct axidma_reg *)dma_addr;
