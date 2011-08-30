@@ -97,11 +97,9 @@
 #define XAXIDMA_BD_CTRL_TXSOF_MASK	0x08000000 /* First tx packet */
 #define XAXIDMA_BD_CTRL_TXEOF_MASK	0x04000000 /* Last tx packet */
 
-
-#define ENET_MAX_MTU PKTSIZE_ALIGN
 #define DMAALIGN	128
 
-static u8 RxFrame[ENET_MAX_MTU] __attribute((aligned(DMAALIGN))) ;
+static u8 RxFrame[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN))) ;
 
 /* reflect dma offsets */
 struct axidma_reg {
@@ -511,8 +509,8 @@ static int axiemac_send(struct eth_device *dev, volatile void *ptr, int len)
 {
 	struct axidma_priv *priv = dev->priv;
 
-	if (len > ENET_MAX_MTU)
-		len = ENET_MAX_MTU;
+	if (len > PKTSIZE_ALIGN)
+		len = PKTSIZE_ALIGN;
 
 	/* Flush packet to main memory to be trasfered by DMA */
 	flush_cache((u32)ptr, len);
