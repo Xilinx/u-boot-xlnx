@@ -134,8 +134,9 @@
 // #define XLLDMA_DMACR_EN_ARB_HOLD_MASK          0x00000002 /**< Enable arbitration hold */
 // #define XLLDMA_DMACR_SW_RESET_MASK             0x00000001 /**< Assert Software reset for both channels */
 
-/* SDMA Buffer Descriptor */
+#define DMAALIGN	32
 
+/* SDMA Buffer Descriptor */
 struct cdmac_bd_t {
 	struct cdmac_bd_t *next_p;
 	unsigned char *phys_buf_p;
@@ -149,8 +150,8 @@ struct cdmac_bd_t {
 	unsigned long app5;
 };
 
-static struct cdmac_bd_t tx_bd __attribute((aligned(32)));
-static struct cdmac_bd_t rx_bd __attribute((aligned(32)));
+static struct cdmac_bd_t tx_bd __attribute((aligned(DMAALIGN)));
+static struct cdmac_bd_t rx_bd __attribute((aligned(DMAALIGN)));
 
 struct ll_fifo_s {
 	int isr; /* Interrupt Status Register 0x0 */
@@ -166,8 +167,8 @@ struct ll_fifo_s {
 	int llr; /* Read LocalLink reset 0x28 */
 };
 
-static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(32)));
-static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
+static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(DMAALIGN)));
+static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(DMAALIGN)));
 
 struct ll_priv {
 	unsigned int ctrl;
