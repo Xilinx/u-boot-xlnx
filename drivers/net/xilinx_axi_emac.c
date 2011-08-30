@@ -363,12 +363,10 @@ static void axiemac_halt(struct eth_device *dev)
 {
 	struct axidma_priv *priv = dev->priv;
 
-	if (dev->state) {
-		/* Stop the hardware */
-		priv->dmatx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
-		priv->dmarx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
-		dev->state = 0;
-	}
+	/* Stop the hardware */
+	priv->dmatx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
+	priv->dmarx->control &= ~XAXIDMA_CR_RUNSTOP_MASK;
+
 	debug("axiemac halted\n");
 }
 
@@ -500,7 +498,6 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 		return -1;
 	}
 
-	dev->state = 1;
 	debug("axi emac init complete\n");
 	return 0;
 }
