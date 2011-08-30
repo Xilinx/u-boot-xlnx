@@ -136,7 +136,7 @@
 
 /* SDMA Buffer Descriptor */
 
-typedef struct cdmac_bd_t {
+struct cdmac_bd_t {
 	struct cdmac_bd_t *next_p;
 	unsigned char *phys_buf_p;
 	unsigned long buf_len;
@@ -147,10 +147,10 @@ typedef struct cdmac_bd_t {
 	unsigned long app3;
 	unsigned long app4;
 	unsigned long app5;
-} cdmac_bd __attribute((aligned(32))) ;
+};
 
-static cdmac_bd	tx_bd;
-static cdmac_bd	rx_bd;
+static struct cdmac_bd_t tx_bd __attribute((aligned(32)));
+static struct cdmac_bd_t rx_bd __attribute((aligned(32)));
 
 struct ll_fifo_s {
 	int isr; /* Interrupt Status Register 0x0 */
@@ -388,14 +388,14 @@ static void xps_ll_temac_reset_dma(struct eth_device *dev)
 static void xps_ll_temac_bd_init(struct eth_device *dev)
 {
 	struct ll_priv *priv = dev->priv;
-	memset((void *)&tx_bd, 0, sizeof(cdmac_bd));
-	memset((void *)&rx_bd, 0, sizeof(cdmac_bd));
+	memset((void *)&tx_bd, 0, sizeof(tx_bd));
+	memset((void *)&rx_bd, 0, sizeof(rx_bd));
 
 	rx_bd.phys_buf_p = &rx_buffer[0];
 
 	rx_bd.next_p = &rx_bd;
 	rx_bd.buf_len = ETHER_MTU;
-	flush_cache((u32)&rx_bd, sizeof(cdmac_bd));
+	flush_cache((u32)&rx_bd, sizeof(tx_bd));
 	flush_cache ((u32)rx_bd.phys_buf_p, ETHER_MTU);
 
 	sdma_out_be32(priv, RX_CURDESC_PTR, (u32)&rx_bd);
@@ -405,7 +405,7 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	tx_bd.phys_buf_p = &tx_buffer[0];
 	tx_bd.next_p = &tx_bd;
 
-	flush_cache((u32)&tx_bd, sizeof(cdmac_bd));
+	flush_cache((u32)&tx_bd, sizeof(tx_bd));
 	sdma_out_be32(priv, TX_CURDESC_PTR, (u32)&tx_bd);
 }
 
@@ -425,13 +425,13 @@ static int ll_temac_send_sdma(struct eth_device *dev,
 	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK |
 			BDSTAT_STOP_ON_END_MASK;
 	tx_bd.buf_len = length;
-	flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
+	flush_cache((u32)&tx_bd, sizeof(tx_bd));
 
 	sdma_out_be32(priv, TX_CURDESC_PTR, (u32)&tx_bd);
 	sdma_out_be32(priv, TX_TAILDESC_PTR, (u32)&tx_bd); /* DMA start */
 
 	do {
-		flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
+		flush_cache((u32)&tx_bd, sizeof(tx_bd));
 	} while (!(((volatile int)tx_bd.stat) & BDSTAT_COMPLETED_MASK));
 
 	return 0;
@@ -447,7 +447,7 @@ static int ll_temac_recv_sdma(struct eth_device *dev)
 		xps_ll_temac_bd_init(dev);
 	}
 
-	flush_cache ((u32)&rx_bd, sizeof(cdmac_bd));
+	flush_cache((u32)&rx_bd, sizeof(rx_bd));
 
 	if (!(rx_bd.stat & BDSTAT_COMPLETED_MASK))
 		return 0;
@@ -468,7 +468,7 @@ static int ll_temac_recv_sdma(struct eth_device *dev)
 	rx_bd.stat = 0;
 	rx_bd.app5 = 0;
 
-	flush_cache ((u32)&rx_bd, sizeof(cdmac_bd));
+	flush_cache((u32)&rx_bd, sizeof(rx_bd));
 	sdma_out_be32(priv, RX_TAILDESC_PTR, (u32)&rx_bd);
 
 	return length;
