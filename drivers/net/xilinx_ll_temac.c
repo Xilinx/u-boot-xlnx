@@ -655,7 +655,10 @@ static int ll_temac_recv(struct eth_device *dev)
 #endif
 }
 
-int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr)
+/* mode bits: 0bit - fifo(0)/sdma(1), 1bit - no dcr(0)/dcr(1)
+ * ctrl - control address for file/sdma */
+int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
+							int mode, int ctrl)
 {
 	struct eth_device *dev;
 	struct ll_priv *priv;
@@ -675,12 +678,8 @@ int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr)
 	sprintf(dev->name, "Xlltem.%lx", base_addr);
 
 	dev->iobase = base_addr;
-#ifdef SDMA_MODE
-	priv->ctrl = XILINX_LLTEMAC_SDMA_CTRL_BASEADDR;
-	priv->mode = XILINX_LLTEMAC_SDMA_USE_DCR;
-#else
-	priv->ctrl = XILINX_LLTEMAC_FIFO_BASEADDR;
-#endif
+	priv->ctrl = ctrl;
+	priv->mode = mode;
 
 #ifdef CONFIG_PHY_ADDR
 	priv->phyaddr = CONFIG_PHY_ADDR;
