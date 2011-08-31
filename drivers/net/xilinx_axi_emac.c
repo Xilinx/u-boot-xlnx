@@ -99,7 +99,7 @@
 
 #define DMAALIGN	128
 
-static u8 RxFrame[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN))) ;
+static u8 rxframe[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN))) ;
 
 /* reflect dma offsets */
 struct axidma_reg {
@@ -475,14 +475,14 @@ static int axiemac_init(struct eth_device *dev, bd_t * bis)
 	/* Setup the BD. */
 	memset((void *) &rx_bd, 0, sizeof(axidma_bd));
 	rx_bd.next = (u32)&rx_bd;
-	rx_bd.phys = (u32)&RxFrame;
-	rx_bd.cntrl = sizeof(RxFrame);
+	rx_bd.phys = (u32)&rxframe;
+	rx_bd.cntrl = sizeof(rxframe);
 	/* Flush the last BD so DMA core could see the updates */
 	flush_cache((u32)&rx_bd, sizeof(axidma_bd));
 
-	/* it is necessary to flush RxFrame because if you don't do it
+	/* it is necessary to flush rxframe because if you don't do it
 	 * then cache can contain uninitialized data */
-	flush_cache((u32)&RxFrame, sizeof(RxFrame));
+	flush_cache((u32)&rxframe, sizeof(rxframe));
 
 	/* Rx BD is ready - start */
 	priv->dmarx->tail = (u32)&rx_bd;
@@ -580,29 +580,29 @@ static int axiemac_recv(struct eth_device *dev)
 
 	length = rx_bd.app4 & 0x0000FFFF;
 #ifdef DEBUG
-	print_buffer(&RxFrame, &RxFrame[0], 1, length, 16);
+	print_buffer(&rxframe, &rxframe[0], 1, length, 16);
 #endif
 	/* pass the received frame up for processing */
 	if (length)
-		NetReceive(RxFrame, length);
+		NetReceive(rxframe, length);
 
 #ifdef DEBUG
 	/* It is useful to clear buffer to be sure that it is consistent */
-	memset(RxFrame, 0, sizeof(RxFrame));
+	memset(rxframe, 0, sizeof(rxframe));
 #endif
 	/* Setup RxBD */
 	/* Clear the whole buffer and setup it again - all flags are cleared */
 	memset((void *) &rx_bd, 0, sizeof(axidma_bd));
 	rx_bd.next = (u32)&rx_bd;
-	rx_bd.phys = (u32)&RxFrame;
-	rx_bd.cntrl = sizeof(RxFrame);
+	rx_bd.phys = (u32)&rxframe;
+	rx_bd.cntrl = sizeof(rxframe);
 
 	/* write bd to HW */
 	flush_cache((u32)&rx_bd, sizeof(axidma_bd));
 
-	/* it is necessary to flush RxFrame because if you don't do it
+	/* it is necessary to flush rxframe because if you don't do it
 	 * then cache will contain previous packet */
-	flush_cache((u32)&RxFrame, sizeof(RxFrame));
+	flush_cache((u32)&rxframe, sizeof(rxframe));
 
 	/* Rx BD is ready - start again */
 	priv->dmarx->tail = (u32)&rx_bd;
