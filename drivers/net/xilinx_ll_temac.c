@@ -181,11 +181,14 @@ struct ll_priv {
 	/* phy_interface_t interface; */
 };
 
+#define XILINX_INDIRECT_DCR_ADDRESS_REG	0
+#define XILINX_INDIRECT_DCR_ACCESS_REG	1
+
 static void mtdcr_local(u32 reg, u32 val)
 {
 #if defined(CONFIG_XILINX_440)
-	mtdcr(0x00, reg);
-	mtdcr(0x01, val);
+	mtdcr(XILINX_INDIRECT_DCR_ADDRESS_REG, reg);
+	mtdcr(XILINX_INDIRECT_DCR_ACCESS_REG, val);
 #endif
 }
 
@@ -193,8 +196,8 @@ static u32 mfdcr_local(u32 reg)
 {
 	u32 val = 0;
 #if defined(CONFIG_XILINX_440)
-	mtdcr(0x00, reg);
-	val = mfdcr(0x01);
+	mtdcr(XILINX_INDIRECT_DCR_ADDRESS_REG, reg);
+	val = mfdcr(XILINX_INDIRECT_DCR_ACCESS_REG);
 #endif
 	return val;
 }
