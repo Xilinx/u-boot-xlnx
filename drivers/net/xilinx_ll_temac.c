@@ -78,15 +78,6 @@
 // #define MDIO_CLOCK_DIV_MASK	0x3F
 #define MDIO_CLOCK_DIV_100MHz	0x28
 
-#ifdef XILINX_LLTEMAC_FIFO_BASEADDR
-# define FIFO_MODE	1
-#elif XILINX_LLTEMAC_SDMA_CTRL_BASEADDR
-# define SDMA_MODE	1
-#else
-# error Xilinx LL Temac: Unsupported mode - Please setup SDMA or FIFO mode
-#endif
-
-#ifdef SDMA_MODE
 /* XPS_LL_TEMAC SDMA registers definition */
 //# define TX_NXTDESC_PTR	0x00
 //# define TX_CURBUF_ADDR	0x01
@@ -160,7 +151,6 @@ typedef struct cdmac_bd_t {
 
 static cdmac_bd	tx_bd;
 static cdmac_bd	rx_bd;
-#endif
 
 struct ll_fifo_s {
 	int isr; /* Interrupt Status Register 0x0 */
@@ -176,9 +166,7 @@ struct ll_fifo_s {
 	int llr; /* Read LocalLink reset 0x28 */
 };
 
-#ifdef SDMA_MODE
 static unsigned char tx_buffer[ETHER_MTU] __attribute((aligned(32)));
-#endif
 static unsigned char rx_buffer[ETHER_MTU] __attribute((aligned(32)));
 
 struct ll_priv {
@@ -355,7 +343,6 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	return 1;
 }
 
-#ifdef SDMA_MODE
 static inline int xps_ll_temac_dma_error(struct eth_device *dev)
 {
 	int err;
@@ -422,8 +409,8 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	sdma_out_be32(priv, TX_CURDESC_PTR, (u32)&tx_bd);
 }
 
-static int xps_ll_temac_send_sdma(struct eth_device *dev,
-				unsigned char *buffer, int length)
+static int ll_temac_send_sdma(struct eth_device *dev,
+				volatile void *buffer, int length)
 {
 	struct ll_priv *priv = dev->priv;
 
@@ -432,7 +419,7 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 		xps_ll_temac_bd_init(dev);
 	}
 
-	memcpy (tx_buffer, buffer, length);
+	memcpy(tx_buffer, (void *)buffer, length);
 	flush_cache ((u32)tx_buffer, length);
 
 	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK |
@@ -450,7 +437,7 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 	return 0;
 }
 
-static int xps_ll_temac_recv_sdma(struct eth_device *dev)
+static int ll_temac_recv_sdma(struct eth_device *dev)
 {
 	int length;
 	struct ll_priv *priv = dev->priv;
@@ -486,9 +473,7 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 
 	return length;
 }
-#endif
 
-#ifdef FIFO_MODE
 #ifdef DEBUG
 static void debugll(struct eth_device *dev, int count)
 {
@@ -500,8 +485,8 @@ static void debugll(struct eth_device *dev, int count)
 }
 #endif
 
-static int xps_ll_temac_send_fifo(struct eth_device *dev,
-					unsigned char *buffer, int length)
+static int ll_temac_send_fifo(struct eth_device *dev,
+					volatile void *buffer, int length)
 {
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
@@ -520,7 +505,7 @@ static int xps_ll_temac_send_fifo(struct eth_device *dev,
 	return 0;
 }
 
-static int xps_ll_temac_recv_fifo(struct eth_device *dev)
+static int ll_temac_recv_fifo(struct eth_device *dev)
 {
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
@@ -545,7 +530,6 @@ static int xps_ll_temac_recv_fifo(struct eth_device *dev)
 	}
 	return len;
 }
-#endif
 
 /* setup mac addr */
 static int ll_temac_addr_setup(struct eth_device *dev)
@@ -566,17 +550,17 @@ static int xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
 {
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
-#ifdef SDMA_MODE
-	xps_ll_temac_reset_dma(dev);
-	xps_ll_temac_bd_init(dev);
-#endif
-#ifdef FIFO_MODE
-	ll_fifo->tdfr = 0x000000a5; /* set fifo length */
-	ll_fifo->rdfr = 0x000000a5;
 
-	/* ll_fifo->isr = 0x0; */
-	/* ll_fifo->ier = 0x0; */
-#endif
+	if (priv->mode & 0x1) {
+		xps_ll_temac_reset_dma(dev);
+		xps_ll_temac_bd_init(dev);
+	} else {
+		ll_fifo->tdfr = 0x000000a5; /* set fifo length */
+		ll_fifo->rdfr = 0x000000a5;
+		/* ll_fifo->isr = 0x0; */
+		/* ll_fifo->ier = 0x0; */
+	}
+
 	xps_ll_temac_indirect_set(dev, 0, MC,
 				MDIO_ENABLE_MASK | MDIO_CLOCK_DIV_100MHz);
 
@@ -593,20 +577,18 @@ static int xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
 static void ll_temac_halt(struct eth_device *dev)
 {
 #ifdef ETH_HALTING
+	struct ll_priv *priv = dev->priv;
 	/* Disable Receiver */
 	xps_ll_temac_indirect_set(dev, 0, RCW1, 0x00000000);
 	/* Disable Transmitter */
 	xps_ll_temac_indirect_set(dev, 0, TC, 0x00000000);
 
-#ifdef SDMA_MODE
-	struct ll_priv *priv = dev->priv;
-	sdma_out_be32(priv, DMA_CONTROL_REG, 0x00000001);
-	while (sdma_in_be32(priv, DMA_CONTROL_REG) & 1)
-		;
-#endif
-#ifdef FIFO_MODE
+	if (priv->mode & 0x1) {
+		sdma_out_be32(priv->ctrl, DMA_CONTROL_REG, 0x00000001);
+		while (sdma_in_be32(priv->ctrl, DMA_CONTROL_REG) & 1)
+			;
+	}
 	/* reset fifos */
-#endif
 #endif
 }
 
@@ -636,28 +618,6 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 
 	priv->initialized = 1;
 	return 0;
-}
-
-
-static int ll_temac_send(struct eth_device *dev, volatile void *packet,
-		int length)
-{
-#ifdef SDMA_MODE
-	return xps_ll_temac_send_sdma(dev, (unsigned char *)packet, length);
-#endif
-#ifdef FIFO_MODE
-	return xps_ll_temac_send_fifo(dev, (unsigned char *)packet, length);
-#endif
-}
-
-static int ll_temac_recv(struct eth_device *dev)
-{
-#ifdef SDMA_MODE
-	return xps_ll_temac_recv_sdma(dev);
-#endif
-#ifdef FIFO_MODE
-	return xps_ll_temac_recv_fifo(dev);
-#endif
 }
 
 /* mode bits: 0bit - fifo(0)/sdma(1), 1bit - no dcr(0)/dcr(1)
@@ -694,9 +654,15 @@ int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
 
 	dev->init = ll_temac_init;
 	dev->halt = ll_temac_halt;
-	dev->send = ll_temac_send;
-	dev->recv = ll_temac_recv;
 	dev->write_hwaddr = ll_temac_addr_setup;
+
+	if (priv->mode & 0x1) {
+		dev->send = ll_temac_send_sdma;
+		dev->recv = ll_temac_recv_sdma;
+	} else {
+		dev->send = ll_temac_send_fifo;
+		dev->recv = ll_temac_recv_fifo;
+	}
 
 	eth_register(dev);
 
