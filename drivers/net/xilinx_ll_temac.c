@@ -20,6 +20,8 @@
 #include <malloc.h>
 #include <asm/processor.h>
 #include <asm/io.h>
+#include <phy.h>
+#include <miiphy.h>
 
 #undef ETH_HALTING
 
@@ -173,6 +175,10 @@ struct ll_priv {
 	unsigned int ctrl;
 	unsigned int mode;
 	int phyaddr;
+
+	struct phy_device *phydev;
+	struct mii_dev *bus;
+	/* phy_interface_t interface; */
 };
 
 static void mtdcr_local(u32 reg, u32 val)
@@ -219,7 +225,7 @@ static inline u32 temac_in_be32(u32 addr, u32 offset)
 	return in_be32((u32 *)(addr + offset));
 }
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 /* undirect hostif write to ll_temac */
 static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 			int phy_addr, int reg_addr, int phy_data)
@@ -284,6 +290,60 @@ static void read_phy_reg(struct eth_device *dev, int phy_addr)
 /* setting ll_temac and phy to proper setting */
 static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 {
+#ifdef CONFIG_PHYLIB
+	int i;
+	unsigned int temp, speed;
+	struct ll_priv *priv = dev->priv;
+	struct phy_device *phydev;
+
+	u32 supported = SUPPORTED_10baseT_Half |
+			SUPPORTED_10baseT_Full |
+			SUPPORTED_100baseT_Half |
+			SUPPORTED_100baseT_Full |
+			SUPPORTED_1000baseT_Half |
+			SUPPORTED_1000baseT_Full;
+
+	if (priv->phyaddr == -1) {
+		for (i = 31; i >= 0; i--) {
+			temp = xps_ll_temac_hostif_get(dev, 0, i, 1);
+			if ((temp & 0x0ffff) != 0x0ffff) {
+				debug("phy %x result %x\n", i, temp);
+				priv->phyaddr = i;
+				break;
+			}
+		}
+	}
+
+	/* interface - look at tsec */
+	phydev = phy_connect(priv->bus, priv->phyaddr, dev, 0);
+
+	phydev->supported &= supported;
+	phydev->advertising = phydev->supported;
+	priv->phydev = phydev;
+	phy_config(phydev);
+	phy_startup(phydev);
+
+	switch (phydev->speed) {
+	case 1000:
+		speed = XTE_EMMC_LINKSPD_1000;
+		break;
+	case 100:
+		speed = XTE_EMMC_LINKSPD_100;
+		break;
+	case 10:
+		speed = XTE_EMMC_LINKSPD_10;
+		break;
+	default:
+		return 0;
+	}
+	temp = xps_ll_temac_indirect_get(dev, 0, EMMC) &
+						(~XTE_EMMC_LINKSPEED_MASK);
+	temp |= speed;
+	xps_ll_temac_indirect_set(dev, 0, EMMC, temp);
+
+	return 1;
+
+#else
 	int i;
 	unsigned int result;
 	struct ll_priv *priv = dev->priv;
@@ -345,6 +405,7 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	}
 
 	return 1;
+#endif
 }
 
 static inline int xps_ll_temac_dma_error(struct eth_device *dev)
@@ -620,6 +681,34 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 	return 0;
 }
 
+static int ll_temac_miiphy_read(const char *devname, uchar addr,
+							uchar reg, ushort *val)
+{
+	struct eth_device *dev = eth_get_dev();
+
+	*val = xps_ll_temac_hostif_get(dev, 0, addr, reg); /* emac = 0 */
+
+	debug("%s 0x%x, 0x%x, 0x%x\n", __func__, addr, reg, *val);
+	return 0;
+}
+
+static int ll_temac_miiphy_write(const char *devname, uchar addr,
+							uchar reg, ushort val)
+{
+	struct eth_device *dev = eth_get_dev();
+	debug("%s 0x%x, 0x%x, 0x%x\n", __func__, addr, reg, val);
+
+	xps_ll_temac_hostif_set(dev, 0, addr, reg, val);
+
+	return 0;
+}
+
+static int ll_temac_bus_reset(struct mii_dev *bus)
+{
+	debug("Just bus reset\n");
+	return 0;
+}
+
 /* mode bits: 0bit - fifo(0)/sdma(1):SDMA_BIT, 1bit - no dcr(0)/dcr(1):DCR_BIT
  * ctrl - control address for file/sdma */
 int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
@@ -666,5 +755,10 @@ int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
 
 	eth_register(dev);
 
+#if defined(CONFIG_MII) || defined(CONFIG_CMD_MII) || defined(CONFIG_PHYLIB)
+	miiphy_register(dev->name, ll_temac_miiphy_read, ll_temac_miiphy_write);
+	priv->bus = miiphy_get_dev_by_name(dev->name);
+	priv->bus->reset = ll_temac_bus_reset;
+#endif
 	return 1;
 }
