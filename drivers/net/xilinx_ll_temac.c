@@ -78,38 +78,10 @@
 // #define MDIO_CLOCK_DIV_MASK	0x3F
 #define MDIO_CLOCK_DIV_100MHz	0x28
 
-
-/* Backwards compatibility to older xparameters.h files */
-#ifndef XILINX_LLTEMAC_SDMA_USE_DCR
-#define XILINX_LLTEMAC_SDMA_USE_DCR 0
-#endif
-
 #ifdef XILINX_LLTEMAC_FIFO_BASEADDR
 # define FIFO_MODE	1
 #elif XILINX_LLTEMAC_SDMA_CTRL_BASEADDR
 # define SDMA_MODE	1
-# if XILINX_LLTEMAC_SDMA_USE_DCR==1
-
-static void mtdcr_local(u32 reg, u32 val) {
-	mtdcr(0x00, reg);
-	mtdcr(0x01, val);
-}
-
-static u32 mfdcr_local(u32 reg) {
-	u32 val;
-	mtdcr(0x00, reg);
-	val = mfdcr(0x01);
-	return val;
-}
-
-#  define sdma_out_be32(addr, offset, val)	mtdcr_local((u32) (addr + offset),(val))
-#  define sdma_in_be32(addr, offset)		mfdcr_local((u32) (addr + offset))
-
-# else
-#  define sdma_out_be32(addr, offset, val) \
-				out_be32((u32 *)(addr + offset * 4), (val))
-#  define sdma_in_be32(addr, offset)	in_be32((u32 *)(addr + offset * 4))
-# endif
 #else
 # error Xilinx LL Temac: Unsupported mode - Please setup SDMA or FIFO mode
 #endif
@@ -215,6 +187,40 @@ struct ll_priv {
 	int phyaddr;
 	unsigned int initialized;
 };
+
+static void mtdcr_local(u32 reg, u32 val)
+{
+#if defined(CONFIG_XILINX_440)
+	mtdcr(0x00, reg);
+	mtdcr(0x01, val);
+#endif
+}
+
+static u32 mfdcr_local(u32 reg)
+{
+	u32 val = 0;
+#if defined(CONFIG_XILINX_440)
+	mtdcr(0x00, reg);
+	val = mfdcr(0x01);
+#endif
+	return val;
+}
+
+static void sdma_out_be32(struct ll_priv *priv, u32 offset, u32 val)
+{
+	if (priv->mode & 0x2)
+		mtdcr_local(priv->ctrl + offset, val);
+	else
+		out_be32((u32 *)(priv->ctrl + offset * 4), val);
+}
+
+static u32 sdma_in_be32(struct ll_priv *priv, u32 offset)
+{
+	if (priv->mode & 0x2)
+		return mfdcr_local(priv->ctrl + offset);
+
+	return in_be32((u32 *)(priv->ctrl + offset * 4));
+}
 
 static inline void temac_out_be32(u32 addr, u32 offset, u32 val)
 {
@@ -356,8 +362,8 @@ static inline int xps_ll_temac_dma_error(struct eth_device *dev)
 	struct ll_priv *priv = dev->priv;
 
 	/* Check for TX and RX channel errrors.  */
-	err = sdma_in_be32(priv->ctrl, TX_CHNL_STS) & CHNL_STS_ERROR_MASK;
-	err |= sdma_in_be32(priv->ctrl, RX_CHNL_STS) & CHNL_STS_ERROR_MASK;
+	err = sdma_in_be32(priv, TX_CHNL_STS) & CHNL_STS_ERROR_MASK;
+	err |= sdma_in_be32(priv, RX_CHNL_STS) & CHNL_STS_ERROR_MASK;
 	return err;
 }
 
@@ -367,25 +373,25 @@ static void xps_ll_temac_reset_dma(struct eth_device *dev)
 	struct ll_priv *priv = dev->priv;
 
 	/* Soft reset the DMA.  */
-	sdma_out_be32(priv->ctrl, DMA_CONTROL_REG, 0x00000001);
-	while(sdma_in_be32(priv->ctrl, DMA_CONTROL_REG) & 1)
+	sdma_out_be32(priv, DMA_CONTROL_REG, 0x00000001);
+	while (sdma_in_be32(priv, DMA_CONTROL_REG) & 1)
 		;
 
 	/* Now clear the interrupts.  */
-	r = sdma_in_be32(priv->ctrl, TX_CHNL_CTRL);
+	r = sdma_in_be32(priv, TX_CHNL_CTRL);
 	r &= ~XLLDMA_CR_IRQ_ALL_EN_MASK;
-	sdma_out_be32(priv->ctrl,  TX_CHNL_CTRL, r);
+	sdma_out_be32(priv, TX_CHNL_CTRL, r);
 
-	r = sdma_in_be32(priv->ctrl, RX_CHNL_CTRL);
+	r = sdma_in_be32(priv, RX_CHNL_CTRL);
 	r &= ~XLLDMA_CR_IRQ_ALL_EN_MASK;
-	sdma_out_be32(priv->ctrl, RX_CHNL_CTRL, r);
+	sdma_out_be32(priv, RX_CHNL_CTRL, r);
 
 	/* Now ACK pending IRQs.  */
-	sdma_out_be32(priv->ctrl, TX_IRQ_REG, XLLDMA_IRQ_ALL_MASK);
-	sdma_out_be32(priv->ctrl, RX_IRQ_REG, XLLDMA_IRQ_ALL_MASK);
+	sdma_out_be32(priv, TX_IRQ_REG, XLLDMA_IRQ_ALL_MASK);
+	sdma_out_be32(priv, RX_IRQ_REG, XLLDMA_IRQ_ALL_MASK);
 
 	/* Set tail-ptr mode, disable errors for both channels.  */
-	sdma_out_be32(priv->ctrl, DMA_CONTROL_REG,
+	sdma_out_be32(priv, DMA_CONTROL_REG,
 			XLLDMA_DMACR_TAIL_PTR_EN_MASK |
 			XLLDMA_DMACR_RX_OVERFLOW_ERR_DIS_MASK |
 			XLLDMA_DMACR_TX_OVERFLOW_ERR_DIS_MASK);
@@ -405,16 +411,15 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	flush_cache((u32)&rx_bd, sizeof(cdmac_bd));
 	flush_cache ((u32)rx_bd.phys_buf_p, ETHER_MTU);
 
-	sdma_out_be32(priv->ctrl, RX_CURDESC_PTR, (u32)&rx_bd);
-	sdma_out_be32(priv->ctrl, RX_TAILDESC_PTR, (u32)&rx_bd);
-	/* setup first fd */
-	sdma_out_be32(priv->ctrl, RX_NXTDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32(priv, RX_CURDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32(priv, RX_TAILDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32(priv, RX_NXTDESC_PTR, (u32)&rx_bd); /* setup first fd */
 
 	tx_bd.phys_buf_p = &tx_buffer[0];
 	tx_bd.next_p = &tx_bd;
 
 	flush_cache((u32)&tx_bd, sizeof(cdmac_bd));
-	sdma_out_be32(priv->ctrl, TX_CURDESC_PTR, (u32)&tx_bd);
+	sdma_out_be32(priv, TX_CURDESC_PTR, (u32)&tx_bd);
 }
 
 static int xps_ll_temac_send_sdma(struct eth_device *dev,
@@ -435,8 +440,8 @@ static int xps_ll_temac_send_sdma(struct eth_device *dev,
 	tx_bd.buf_len = length;
 	flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
 
-	sdma_out_be32(priv->ctrl, TX_CURDESC_PTR, (u32)&tx_bd);
-	sdma_out_be32(priv->ctrl, TX_TAILDESC_PTR, (u32)&tx_bd); /* DMA start */
+	sdma_out_be32(priv, TX_CURDESC_PTR, (u32)&tx_bd);
+	sdma_out_be32(priv, TX_TAILDESC_PTR, (u32)&tx_bd); /* DMA start */
 
 	do {
 		flush_cache ((u32)&tx_bd, sizeof(cdmac_bd));
@@ -477,7 +482,7 @@ static int xps_ll_temac_recv_sdma(struct eth_device *dev)
 	rx_bd.app5 = 0;
 
 	flush_cache ((u32)&rx_bd, sizeof(cdmac_bd));
-	sdma_out_be32(priv->ctrl, RX_TAILDESC_PTR, (u32)&rx_bd);
+	sdma_out_be32(priv, RX_TAILDESC_PTR, (u32)&rx_bd);
 
 	return length;
 }
@@ -595,8 +600,8 @@ static void ll_temac_halt(struct eth_device *dev)
 
 #ifdef SDMA_MODE
 	struct ll_priv *priv = dev->priv;
-	sdma_out_be32(priv->ctrl, DMA_CONTROL_REG, 0x00000001);
-	while (sdma_in_be32(priv->ctrl, DMA_CONTROL_REG) & 1)
+	sdma_out_be32(priv, DMA_CONTROL_REG, 0x00000001);
+	while (sdma_in_be32(priv, DMA_CONTROL_REG) & 1)
 		;
 #endif
 #ifdef FIFO_MODE
