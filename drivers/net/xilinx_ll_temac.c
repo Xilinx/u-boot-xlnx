@@ -155,25 +155,25 @@ static struct cdmac_bd_t tx_bd __attribute((aligned(DMAALIGN)));
 static struct cdmac_bd_t rx_bd __attribute((aligned(DMAALIGN)));
 
 struct ll_fifo_s {
-	int isr; /* Interrupt Status Register 0x0 */
-	int ier; /* Interrupt Enable Register 0x4 */
-	int tdfr; /* Transmit data FIFO reset 0x8 */
-	int tdfv; /* Transmit data FIFO Vacancy 0xC */
-	int tdfd; /* Transmit data FIFO 32bit wide data write port 0x10 */
-	int tlf; /* Write Transmit Length FIFO 0x14 */
-	int rdfr; /* Read Receive data FIFO reset 0x18 */
-	int rdfo; /* Receive data FIFO Occupancy 0x1C */
-	int rdfd; /* Read Receive data FIFO 32bit wide data read port 0x20 */
-	int rlf; /* Read Receive Length FIFO 0x24 */
-	int llr; /* Read LocalLink reset 0x28 */
+	u32 isr; /* Interrupt Status Register 0x0 */
+	u32 ier; /* Interrupt Enable Register 0x4 */
+	u32 tdfr; /* Transmit data FIFO reset 0x8 */
+	u32 tdfv; /* Transmit data FIFO Vacancy 0xC */
+	u32 tdfd; /* Transmit data FIFO 32bit wide data write port 0x10 */
+	u32 tlf; /* Write Transmit Length FIFO 0x14 */
+	u32 rdfr; /* Read Receive data FIFO reset 0x18 */
+	u32 rdfo; /* Receive data FIFO Occupancy 0x1C */
+	u32 rdfd; /* Read Receive data FIFO 32bit wide data read port 0x20 */
+	u32 rlf; /* Read Receive Length FIFO 0x24 */
+	u32 llr; /* Read LocalLink reset 0x28 */
 };
 
-static unsigned char tx_buffer[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN)));
-static unsigned char rx_buffer[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN)));
+static u8 tx_buffer[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN)));
+static u8 rx_buffer[PKTSIZE_ALIGN] __attribute((aligned(DMAALIGN)));
 
 struct ll_priv {
-	unsigned int ctrl;
-	unsigned int mode;
+	u32 ctrl;
+	u32 mode;
 	int phyaddr;
 
 	struct phy_device *phydev;
