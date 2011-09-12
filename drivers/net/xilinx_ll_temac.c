@@ -269,7 +269,7 @@ static int xps_ll_temac_indirect_get(struct eth_device *dev,
 
 #ifdef DEBUG
 /* read from phy */
-static void read_phy_reg (struct eth_device *dev, int phy_addr)
+static void read_phy_reg(struct eth_device *dev, int phy_addr)
 {
 	int j, result;
 	debug("phy%d ", phy_addr);
@@ -315,24 +315,29 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
 #ifdef DEBUG
-	xps_ll_temac_hostif_set(dev, 0, priv->phyaddr, 0, 0x8000); /* phy reset */
+	/* phy reset */
+	xps_ll_temac_hostif_set(dev, 0, priv->phyaddr, 0, 0x8000);
 	read_phy_reg(dev, priv->phyaddr);
 #endif
-	phyreg = xps_ll_temac_indirect_get(dev, 0, EMMC) & (~XTE_EMMC_LINKSPEED_MASK);
+	phyreg = xps_ll_temac_indirect_get(dev, 0, EMMC) &
+						(~XTE_EMMC_LINKSPEED_MASK);
 	/* FIXME this part will be replaced by PHY lib */
 	/* s3e boards */
 	if (i == 0x7c0a3) {
 		/* 100BASE-T/FD */
-		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_100));
+		xps_ll_temac_indirect_set(dev, 0, EMMC,
+					(phyreg | XTE_EMMC_LINKSPD_100));
 		return 1;
 	}
 
 	result = xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 5);
 	if((result & 0x8000) == 0x8000) {
-		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_1000));
+		xps_ll_temac_indirect_set(dev, 0, EMMC,
+					(phyreg | XTE_EMMC_LINKSPD_1000));
 		printf("1000BASE-T/FD\n");
 	} else if((result & 0x4000) == 0x4000) {
-		xps_ll_temac_indirect_set(dev, 0, EMMC, (phyreg | XTE_EMMC_LINKSPD_100));
+		xps_ll_temac_indirect_set(dev, 0, EMMC,
+					(phyreg | XTE_EMMC_LINKSPD_100));
 		printf("100BASE-T/FD\n");
 	} else {
 		printf("Unsupported mode\n");
@@ -419,7 +424,7 @@ static int ll_temac_send_sdma(struct eth_device *dev,
 	}
 
 	memcpy(tx_buffer, (void *)buffer, length);
-	flush_cache ((u32)tx_buffer, length);
+	flush_cache((u32)tx_buffer, length);
 
 	tx_bd.stat = BDSTAT_SOP_MASK | BDSTAT_EOP_MASK |
 			BDSTAT_STOP_ON_END_MASK;
@@ -456,12 +461,11 @@ static int ll_temac_recv_sdma(struct eth_device *dev)
 	   path to run in parallel with sw processing
 	   packets.  */
 	length = rx_bd.app5 & 0x3FFF;
-	if(length > 0) {
+	if (length > 0)
 		NetReceive(rx_bd.phys_buf_p, length);
-	}
 
 	/* flip the buffer and re-enable the DMA.  */
-	flush_cache ((u32)rx_bd.phys_buf_p, length);
+	flush_cache((u32)rx_bd.phys_buf_p, length);
 
 	rx_bd.buf_len = PKTSIZE_ALIGN;
 	rx_bd.stat = 0;
@@ -526,7 +530,7 @@ static int ll_temac_recv_fifo(struct eth_device *dev)
 #ifdef DEBUG
 		debugll(dev, 1);
 #endif
-		NetReceive ((uchar *)&rx_buffer, len);
+		NetReceive((uchar *)&rx_buffer, len);
 	}
 	return len;
 }
