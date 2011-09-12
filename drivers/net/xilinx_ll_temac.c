@@ -173,7 +173,6 @@ struct ll_priv {
 	unsigned int ctrl;
 	unsigned int mode;
 	int phyaddr;
-	unsigned int initialized;
 };
 
 static void mtdcr_local(u32 reg, u32 val)
@@ -599,9 +598,6 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 #if DEBUG
 	int i;
 #endif
-	if (priv->initialized)
-		return 0;
-
 	xps_ll_temac_init(dev, bis);
 
 	printf("%s: Xilinx XPS LocalLink Tri-Mode Ether MAC #%d at 0x%08X.\n",
@@ -617,7 +613,6 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 		return -1;
 	}
 
-	priv->initialized = 1;
 	return 0;
 }
 
