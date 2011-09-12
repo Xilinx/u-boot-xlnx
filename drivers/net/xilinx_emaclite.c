@@ -82,7 +82,7 @@ static inline u32 elite_in32(u32 addr, u32 offset)
 	return in_be32((u32 *)(addr + offset));
 }
 
-static void xemaclite_alignedread (u32 *srcptr, void *destptr, u32 bytecount)
+static void xemaclite_alignedread(u32 *srcptr, void *destptr, u32 bytecount)
 {
 	u32 i;
 	u32 alignbuffer;
@@ -102,14 +102,13 @@ static void xemaclite_alignedread (u32 *srcptr, void *destptr, u32 bytecount)
 	to8ptr = (u8 *) to32ptr;
 
 	alignbuffer = *from32ptr++;
-	from8ptr = (u8 *) & alignbuffer;
+	from8ptr = (u8 *) &alignbuffer;
 
-	for (i = 0; i < bytecount; i++) {
+	for (i = 0; i < bytecount; i++)
 		*to8ptr++ = *from8ptr++;
-	}
 }
 
-static void xemaclite_alignedwrite (void *srcptr, u32 destptr, u32 bytecount)
+static void xemaclite_alignedwrite(void *srcptr, u32 destptr, u32 bytecount)
 {
 	u32 i;
 	u32 alignbuffer;
@@ -126,25 +125,24 @@ static void xemaclite_alignedwrite (void *srcptr, u32 destptr, u32 bytecount)
 	}
 
 	alignbuffer = 0;
-	to8ptr = (u8 *) & alignbuffer;
+	to8ptr = (u8 *) &alignbuffer;
 	from8ptr = (u8 *) from32ptr;
 
-	for (i = 0; i < bytecount; i++) {
+	for (i = 0; i < bytecount; i++)
 		*to8ptr++ = *from8ptr++;
-	}
 
 	*to32ptr++ = alignbuffer;
 }
 
 static void emaclite_halt(struct eth_device *dev)
 {
-	debug ("eth_halt\n");
+	debug("eth_halt\n");
 }
 
 static int emaclite_init(struct eth_device *dev, bd_t *bis)
 {
 	struct xemaclite *emaclite = dev->priv;
-	debug ("EmacLite Initialization Started\n");
+	debug("EmacLite Initialization Started\n");
 
 /*
  * TX - TX_PING & TX_PONG initialization
@@ -152,8 +150,7 @@ static int emaclite_init(struct eth_device *dev, bd_t *bis)
 	/* Restart PING TX */
 	elite_out32(dev->iobase, XEL_TSR_OFFSET, 0);
 	/* Copy MAC address */
-	xemaclite_alignedwrite (dev->enetaddr,
-		dev->iobase, ENET_ADDR_LENGTH);
+	xemaclite_alignedwrite(dev->enetaddr, dev->iobase, ENET_ADDR_LENGTH);
 	/* Set the length */
 	elite_out32(dev->iobase, XEL_TPLR_OFFSET, ENET_ADDR_LENGTH);
 	/* Update the MAC address in the EMAC Lite */
@@ -166,7 +163,7 @@ static int emaclite_init(struct eth_device *dev, bd_t *bis)
 	if (emaclite->txpp) {
 		/* The same operation with PONG TX */
 		elite_out32(dev->iobase, XEL_TSR_OFFSET + XEL_BUFFER_OFFSET, 0);
-		xemaclite_alignedwrite (dev->enetaddr, dev->iobase +
+		xemaclite_alignedwrite(dev->enetaddr, dev->iobase +
 			XEL_BUFFER_OFFSET, ENET_ADDR_LENGTH);
 		elite_out32(dev->iobase, XEL_TPLR_OFFSET, ENET_ADDR_LENGTH);
 		elite_out32(dev->iobase, XEL_TSR_OFFSET + XEL_BUFFER_OFFSET,
@@ -186,11 +183,11 @@ static int emaclite_init(struct eth_device *dev, bd_t *bis)
 		elite_out32(dev->iobase, XEL_RSR_OFFSET + XEL_BUFFER_OFFSET,
 			XEL_RSR_RECV_IE_MASK);
 
-	debug ("EmacLite Initialization complete\n");
+	debug("EmacLite Initialization complete\n");
 	return 0;
 }
 
-static int xemaclite_txbufferavailable (struct eth_device *dev)
+static int xemaclite_txbufferavailable(struct eth_device *dev)
 {
 	u32 reg;
 	u32 txpingbusy;
@@ -210,10 +207,10 @@ static int xemaclite_txbufferavailable (struct eth_device *dev)
 	txpongbusy = ((reg & XEL_TSR_XMIT_BUSY_MASK) ==
 			XEL_TSR_XMIT_BUSY_MASK);
 
-	return (!(txpingbusy && txpongbusy));
+	return !(txpingbusy && txpongbusy);
 }
 
-static int emaclite_send (struct eth_device *dev, volatile void *ptr, int len)
+static int emaclite_send(struct eth_device *dev, volatile void *ptr, int len)
 {
 	u32 reg;
 	u32 baseaddress;
@@ -225,12 +222,12 @@ static int emaclite_send (struct eth_device *dev, volatile void *ptr, int len)
 		len = ENET_MAX_MTU;
 
 	while (!xemaclite_txbufferavailable(dev) && maxtry) {
-		udelay (10);
+		udelay(10);
 		maxtry--;
 	}
 
 	if (!maxtry) {
-		printf ("Error: Timeout waiting for ethernet TX buffer\n");
+		printf("Error: Timeout waiting for ethernet TX buffer\n");
 		/* Restart PING TX */
 		elite_out32(dev->iobase, XEL_TSR_OFFSET, 0);
 		if (emaclite->txpp) {
@@ -252,16 +249,16 @@ static int emaclite_send (struct eth_device *dev, volatile void *ptr, int len)
 		if (emaclite->txpp)
 			emaclite->nexttxbuffertouse ^= XEL_BUFFER_OFFSET;
 
-		debug ("Send packet from 0x%x\n", baseaddress);
+		debug("Send packet from 0x%x\n", baseaddress);
 		/* Write the frame to the buffer */
-		xemaclite_alignedwrite ((void *) ptr, baseaddress, len);
+		xemaclite_alignedwrite((void *) ptr, baseaddress, len);
 		elite_out32(baseaddress, XEL_TPLR_OFFSET, (len &
 			(XEL_TPLR_LENGTH_MASK_HI | XEL_TPLR_LENGTH_MASK_LO)));
 		reg = elite_in32(baseaddress, XEL_TSR_OFFSET);
 		reg |= XEL_TSR_XMIT_BUSY_MASK;
-		if ((reg & XEL_TSR_XMIT_IE_MASK) != 0) {
+		if ((reg & XEL_TSR_XMIT_IE_MASK) != 0)
 			reg |= XEL_TSR_XMIT_ACTIVE_MASK;
-		}
+
 		elite_out32(baseaddress, XEL_TSR_OFFSET, reg);
 		return 0;
 	}
@@ -274,23 +271,23 @@ static int emaclite_send (struct eth_device *dev, volatile void *ptr, int len)
 		if (((reg & XEL_TSR_XMIT_BUSY_MASK) == 0)
 			&& ((elite_in32(baseaddress, XEL_TSR_OFFSET)
 				& XEL_TSR_XMIT_ACTIVE_MASK) == 0)) {
-			debug ("Send packet from 0x%x\n", baseaddress);
+			debug("Send packet from 0x%x\n", baseaddress);
 			/* Write the frame to the buffer */
-			xemaclite_alignedwrite ((void *) ptr, baseaddress, len);
+			xemaclite_alignedwrite((void *) ptr, baseaddress, len);
 			elite_out32(baseaddress, XEL_TPLR_OFFSET, (len &
 				(XEL_TPLR_LENGTH_MASK_HI |
 					XEL_TPLR_LENGTH_MASK_LO)));
 			reg = elite_in32(baseaddress, XEL_TSR_OFFSET);
 			reg |= XEL_TSR_XMIT_BUSY_MASK;
-			if ((reg & XEL_TSR_XMIT_IE_MASK) != 0) {
+			if ((reg & XEL_TSR_XMIT_IE_MASK) != 0)
 				reg |= XEL_TSR_XMIT_ACTIVE_MASK;
-			}
+
 			elite_out32(baseaddress, XEL_TSR_OFFSET, reg);
 			return 0;
 		}
 	}
 
-	puts ("Error while sending frame\n");
+	puts("Error while sending frame\n");
 	return -1;
 }
 
@@ -303,14 +300,14 @@ static int emaclite_recv(struct eth_device *dev)
 
 	baseaddress = dev->iobase + emaclite->nextrxbuffertouse;
 	reg = elite_in32(baseaddress, XEL_RSR_OFFSET);
-	debug ("Testing data at address 0x%x\n", baseaddress);
+	debug("Testing data at address 0x%x\n", baseaddress);
 	if ((reg & XEL_RSR_RECV_DONE_MASK) == XEL_RSR_RECV_DONE_MASK) {
 		if (emaclite->rxpp)
 			emaclite->nextrxbuffertouse ^= XEL_BUFFER_OFFSET;
 	} else {
 
 		if (!emaclite->rxpp) {
-			debug ("No data was available - address 0x%x\n",
+			debug("No data was available - address 0x%x\n",
 								baseaddress);
 			return 0;
 		} else {
@@ -318,7 +315,7 @@ static int emaclite_recv(struct eth_device *dev)
 			reg = elite_in32(baseaddress, XEL_RSR_OFFSET);
 			if ((reg & XEL_RSR_RECV_DONE_MASK) !=
 						XEL_RSR_RECV_DONE_MASK) {
-				debug ("No data was available - address 0x%x\n",
+				debug("No data was available - address 0x%x\n",
 						baseaddress);
 				return 0;
 			}
@@ -326,25 +323,25 @@ static int emaclite_recv(struct eth_device *dev)
 	}
 	/* Get the length of the frame that arrived */
 	switch (((ntohl(elite_in32(baseaddress, XEL_RXBUFF_OFFSET + 0xC))) &
-			0xFFFF0000 ) >> 16) {
+			0xFFFF0000) >> 16) {
 		case 0x806:
 			length = 42 + 20; /* FIXME size of ARP */
-			debug ("ARP Packet\n");
+			debug("ARP Packet\n");
 			break;
 		case 0x800:
 			length = 14 + 14 +
 			(((ntohl(elite_in32(baseaddress, XEL_RXBUFF_OFFSET +
 						0x10))) & 0xFFFF0000) >> 16);
 			/* FIXME size of IP packet */
-			debug ("IP Packet\n");
+			debug("IP Packet\n");
 			break;
 		default:
-			debug ("Other Packet\n");
+			debug("Other Packet\n");
 			length = ENET_MAX_MTU;
 			break;
 	}
 
-	xemaclite_alignedread ((u32 *) (baseaddress + XEL_RXBUFF_OFFSET),
+	xemaclite_alignedread((u32 *) (baseaddress + XEL_RXBUFF_OFFSET),
 			etherrxbuff, length);
 
 	/* Acknowledge the frame */
@@ -352,8 +349,8 @@ static int emaclite_recv(struct eth_device *dev)
 	reg &= ~XEL_RSR_RECV_DONE_MASK;
 	elite_out32(baseaddress, XEL_RSR_OFFSET, reg);
 
-	debug ("Packet receive from 0x%x, length %dB\n", baseaddress, length);
-	NetReceive ((uchar *) etherrxbuff, length);
+	debug("Packet receive from 0x%x, length %dB\n", baseaddress, length);
+	NetReceive((uchar *) etherrxbuff, length);
 	return length;
 
 }
