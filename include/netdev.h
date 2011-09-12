@@ -93,7 +93,7 @@ int uli526x_initialize(bd_t *bis);
 int xilinx_emaclite_initialize(bd_t *bis, unsigned long base_addr,
 							int txpp, int rxpp);
 int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
-							int mode, int ctrl);
+							int mode, unsigned long ctrl);
 int xilinx_axiemac_initialize(bd_t *bis, unsigned long base_addr, int dma_addr);
 int sh_eth_initialize(bd_t *bis);
 int dm9000_initialize(bd_t *bis);

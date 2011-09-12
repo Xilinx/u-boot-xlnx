@@ -712,7 +712,7 @@ static int ll_temac_bus_reset(struct mii_dev *bus)
 /* mode bits: 0bit - fifo(0)/sdma(1):SDMA_BIT, 1bit - no dcr(0)/dcr(1):DCR_BIT
  * ctrl - control address for file/sdma */
 int xilinx_ll_temac_initialize(bd_t *bis, unsigned long base_addr,
-							int mode, int ctrl)
+						int mode, unsigned long ctrl)
 {
 	struct eth_device *dev;
 	struct ll_priv *priv;
