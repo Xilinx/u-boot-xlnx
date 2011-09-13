@@ -519,9 +519,12 @@ static void debugll(struct eth_device *dev, int count)
 {
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
+
 	printf("%d fifo isr 0x%08x, fifo_ier 0x%08x, fifo_rdfr 0x%08x, "
-		"fifo_rdfo 0x%08x fifo_rlr 0x%08x\n", count, ll_fifo->isr,
-		ll_fifo->ier, ll_fifo->rdfr, ll_fifo->rdfo, ll_fifo->rlf);
+		"fifo_rdfo 0x%08x fifo_rlr 0x%08x\n", count,
+		in_be32(&ll_fifo->isr), in_be32(&ll_fifo->ier),
+		in_be32(&ll_fifo->rdfr), in_be32(&ll_fifo->rdfo),
+		in_be32(&ll_fifo->rlf));
 }
 #endif
 
@@ -531,17 +534,12 @@ static int ll_temac_send_fifo(struct eth_device *dev,
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
 	u32 *buf = (u32 *)buffer;
-	u32 len, i, val;
+	u32 i;
 
-	len = (length / 4) + 1;
+	for (i = 0; i < length; i += 4)
+		out_be32(&ll_fifo->tdfd, *buf++);
 
-	for (i = 0; i < len; i++) {
-		val = *buf++;
-		ll_fifo->tdfd = val;
-	}
-
-	ll_fifo->tlf = length;
-
+	out_be32(&ll_fifo->tlf, length);
 	return 0;
 }
 
@@ -549,21 +547,17 @@ static int ll_temac_recv_fifo(struct eth_device *dev)
 {
 	struct ll_priv *priv = dev->priv;
 	struct ll_fifo_s *ll_fifo = (void *)priv->ctrl;
-	u32 len = 0;
-	u32 len2, i, val;
+	u32 i, len = 0;
 	u32 *buf = (u32 *)&rx_buffer;
 
-	if (ll_fifo->isr & 0x04000000) {
-		ll_fifo->isr = 0xffffffff; /* reset isr */
+	if (in_be32(&ll_fifo->isr) & LL_FIFO_ISR_RC_COMPLETE) {
+		out_be32(&ll_fifo->isr, 0xffffffff); /* reset isr */
 
-		/* while (ll_fifo->isr); */
-		len = ll_fifo->rlf & 0x7FF;
-		len2 = (len / 4) + 1;
+		len = in_be32(&ll_fifo->rlf) & 0x7FF;
 
-		for (i = 0; i < len2; i++) {
-			val = ll_fifo->rdfd;
-			*buf++ = val ;
-		}
+		for (i = 0; i < len; i += 4)
+			*buf++ = in_be32(&ll_fifo->rdfd);
+
 #ifdef DEBUG
 		debugll(dev, 1);
 #endif
