@@ -310,8 +310,9 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	default:
 		return 0;
 	}
-	temp = xps_ll_temac_indirect_get(dev, 0, EMMC) &
-						(~XTE_EMMC_LINKSPEED_MASK);
+
+	temp = xps_ll_temac_indirect_get(dev, 0, EMMC);
+	temp &= ~XTE_EMMC_LINKSPEED_MASK;
 	temp |= speed;
 	xps_ll_temac_indirect_set(dev, 0, EMMC, temp);
 
