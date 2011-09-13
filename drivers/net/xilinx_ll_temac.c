@@ -31,106 +31,64 @@
 #define XTE_EMMC_LINKSPD_100	0x40000000 /* for 100 Mbit */
 #define XTE_EMMC_LINKSPD_1000	0x80000000 /* forr 1000 Mbit */
 
-/* XPS_LL_TEMAC direct registers definition */
-// #define TEMAC_RAF0		0x00
-// #define TEMAC_TPF0		0x04
-// #define TEMAC_IFGP0		0x08
-// #define TEMAC_IS0		0x0c
-// #define TEMAC_IP0		0x10
-// #define TEMAC_IE0		0x14
-
-// #define TEMAC_MSW0		0x20
-#define TEMAC_LSW0		0x24
-#define TEMAC_CTL0		0x28
-#define TEMAC_RDY0		0x2c
-
 #define XTE_RSE_MIIM_RR_MASK	0x0002
 #define XTE_RSE_MIIM_WR_MASK	0x0004
 #define XTE_RSE_CFG_RR_MASK	0x0020
 #define XTE_RSE_CFG_WR_MASK	0x0040
 
 /* XPS_LL_TEMAC indirect registers offset definition */
-
-// #define RCW0	0x200
 #define RCW1	0x240
 #define TC	0x280
-// #define FCC	0x2c0
 #define EMMC	0x300
-// #define PHYC	0x320
 #define MC	0x340
 #define UAW0	0x380
 #define UAW1	0x384
-// #define MAW0	0x388
-// #define MAW1	0x38c
 #define AFM	0x390
-// #define TIS	0x3a0
-// #define TIE	0x3a4
 #define MIIMWD	0x3b0
 #define MIIMAI	0x3b4
 
 #define CNTLREG_WRITE_ENABLE_MASK	0x8000
-// #define CNTLREG_EMAC1SEL_MASK		0x0400
-// #define CNTLREG_ADDRESSCODE_MASK	0x03ff
 
 #define MDIO_ENABLE_MASK	0x40
-// #define MDIO_CLOCK_DIV_MASK	0x3F
 #define MDIO_CLOCK_DIV_100MHz	0x28
 
 /* XPS_LL_TEMAC SDMA registers definition */
-//# define TX_NXTDESC_PTR	0x00
-//# define TX_CURBUF_ADDR	0x01
-//# define TX_CURBUF_LENGTH	0x02
-# define TX_CURDESC_PTR		0x03
-# define TX_TAILDESC_PTR	0x04
-# define TX_CHNL_CTRL		0x05
-# define TX_IRQ_REG		0x06
-# define TX_CHNL_STS		0x07
+#define TX_CURDESC_PTR		0x03
+#define TX_TAILDESC_PTR		0x04
+#define TX_CHNL_CTRL		0x05
+#define TX_IRQ_REG		0x06
+#define TX_CHNL_STS		0x07
+#define RX_NXTDESC_PTR		0x08
+#define RX_CURDESC_PTR		0x0b
+#define RX_TAILDESC_PTR		0x0c
+#define RX_CHNL_CTRL		0x0d
+#define RX_IRQ_REG		0x0e
+#define RX_CHNL_STS		0x0f
+#define DMA_CONTROL_REG		0x10
 
-# define RX_NXTDESC_PTR		0x08
-//# define RX_CURBUF_ADDR		0x09
-//# define RX_CURBUF_LENGTH	0x0a
-# define RX_CURDESC_PTR		0x0b
-# define RX_TAILDESC_PTR	0x0c
-# define RX_CHNL_CTRL		0x0d
-# define RX_IRQ_REG		0x0e
-# define RX_CHNL_STS		0x0f
-
-# define DMA_CONTROL_REG	0x10
+/* DMA control bit */
+#define DMA_CONTROL_RESET	0x1
 
 /* CDMAC descriptor status bit definitions */
-// # define BDSTAT_ERROR_MASK		0x80
-// # define BDSTAT_INT_ON_END_MASK		0x40
 # define BDSTAT_STOP_ON_END_MASK	0x20
 # define BDSTAT_COMPLETED_MASK		0x10
 # define BDSTAT_SOP_MASK		0x08
 # define BDSTAT_EOP_MASK		0x04
-// # define BDSTAT_CHANBUSY_MASK		0x02
-// # define BDSTAT_CHANRESET_MASK		0x01
 
 # define CHNL_STS_ERROR_MASK		0x80
 
-#define XLLDMA_CR_IRQ_ALL_EN_MASK       0x00000087 /**< All interrupt enable
-                                                        bits */
+/* All interrupt enable bits */
+#define XLLDMA_CR_IRQ_ALL_EN_MASK	0x00000087
+/* All interrupt bits */
+#define XLLDMA_IRQ_ALL_MASK		0x0000001F
+/* Disable error when 2 or 4 bit coalesce counter overflows */
+#define XLLDMA_DMACR_RX_OVERFLOW_ERR_DIS_MASK	0x00000010
+/* Disable error when 2 or 4 bit coalesce counter overflows */
+#define XLLDMA_DMACR_TX_OVERFLOW_ERR_DIS_MASK	0x00000008
+/* Enable use of tail pointer register */
+#define XLLDMA_DMACR_TAIL_PTR_EN_MASK	0x00000004
 
-// #define XLLDMA_IRQ_ALL_ERR_MASK          0x0000001C /**< All error interrupt */
-#define XLLDMA_IRQ_ALL_MASK              0x0000001F /**< All interrupt bits */
-
-// #define XLLDMA_DMACR_TX_PAUSE_MASK             0x20000000 /**< Pause TX channel */
-// #define XLLDMA_DMACR_RX_PAUSE_MASK             0x10000000 /**< Pause RX channel */
-// #define XLLDMA_DMACR_PLB_ERR_DIS_MASK          0x00000020 /**< Disable PLB error detection */
-#define XLLDMA_DMACR_RX_OVERFLOW_ERR_DIS_MASK  0x00000010 /**< Disable error
-                                                               when 2 or 4 bit
-                                                               coalesce counter
-                                                               overflows */
-#define XLLDMA_DMACR_TX_OVERFLOW_ERR_DIS_MASK  0x00000008 /**< Disable error
-                                                               when 2 or 4 bit
-                                                               coalesce counter
-                                                               overflows */
-#define XLLDMA_DMACR_TAIL_PTR_EN_MASK          0x00000004 /**< Enable use of
-                                                               tail pointer
-                                                               register */
-// #define XLLDMA_DMACR_EN_ARB_HOLD_MASK          0x00000002 /**< Enable arbitration hold */
-// #define XLLDMA_DMACR_SW_RESET_MASK             0x00000001 /**< Assert Software reset for both channels */
+#define LL_FIFO_ISR_RC_COMPLETE	0x04000000
 
 #define SDMA_BIT	1
 #define DCR_BIT		2
