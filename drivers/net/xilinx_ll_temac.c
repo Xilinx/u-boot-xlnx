@@ -329,7 +329,8 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	puts("Waiting for link ... ");
 	retries = 10;
 	while (retries-- &&
-		((xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 1) & 0x24) != 0x24))
+		((xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 1)
+							& 0x24) != 0x24))
 			;
 
 	/* try out if have ever found the right phy? */
@@ -366,11 +367,11 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	}
 
 	result = xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 5);
-	if((result & 0x8000) == 0x8000) {
+	if ((result & 0x8000) == 0x8000) {
 		xps_ll_temac_indirect_set(dev, 0, EMMC,
 					(phyreg | XTE_EMMC_LINKSPD_1000));
 		printf("1000BASE-T/FD\n");
-	} else if((result & 0x4000) == 0x4000) {
+	} else if ((result & 0x4000) == 0x4000) {
 		xps_ll_temac_indirect_set(dev, 0, EMMC,
 					(phyreg | XTE_EMMC_LINKSPD_100));
 		printf("100BASE-T/FD\n");
