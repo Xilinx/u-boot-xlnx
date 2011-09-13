@@ -144,7 +144,6 @@ struct ll_priv {
 
 	struct phy_device *phydev;
 	struct mii_dev *bus;
-	/* phy_interface_t interface; */
 };
 
 #define XILINX_INDIRECT_DCR_ADDRESS_REG	0
@@ -252,6 +251,7 @@ static int xps_ll_temac_indirect_get(struct eth_device *dev,
 static void read_phy_reg(struct eth_device *dev, int phy_addr)
 {
 	int j, result;
+
 	debug("phy%d ", phy_addr);
 	for (j = 0; j < 32; j++) {
 		result = xps_ll_temac_hostif_get(dev, 0, phy_addr, j);
@@ -399,8 +399,8 @@ static void xps_ll_temac_reset_dma(struct eth_device *dev)
 	struct ll_priv *priv = dev->priv;
 
 	/* Soft reset the DMA.  */
-	sdma_out_be32(priv, DMA_CONTROL_REG, 0x00000001);
-	while (sdma_in_be32(priv, DMA_CONTROL_REG) & 1)
+	sdma_out_be32(priv, DMA_CONTROL_REG, DMA_CONTROL_RESET);
+	while (sdma_in_be32(priv, DMA_CONTROL_REG) & DMA_CONTROL_RESET)
 		;
 
 	/* Now clear the interrupts.  */
@@ -427,11 +427,11 @@ static void xps_ll_temac_reset_dma(struct eth_device *dev)
 static void xps_ll_temac_bd_init(struct eth_device *dev)
 {
 	struct ll_priv *priv = dev->priv;
-	memset((void *)&tx_bd, 0, sizeof(tx_bd));
-	memset((void *)&rx_bd, 0, sizeof(rx_bd));
 
-	rx_bd.phys_buf_p = &rx_buffer[0];
+	memset(&tx_bd, 0, sizeof(tx_bd));
+	memset(&rx_bd, 0, sizeof(rx_bd));
 
+	rx_bd.phys_buf_p = rx_buffer;
 	rx_bd.next_p = &rx_bd;
 	rx_bd.buf_len = PKTSIZE_ALIGN;
 	flush_cache((u32)&rx_bd, sizeof(tx_bd));
@@ -441,7 +441,7 @@ static void xps_ll_temac_bd_init(struct eth_device *dev)
 	sdma_out_be32(priv, RX_TAILDESC_PTR, (u32)&rx_bd);
 	sdma_out_be32(priv, RX_NXTDESC_PTR, (u32)&rx_bd); /* setup first fd */
 
-	tx_bd.phys_buf_p = &tx_buffer[0];
+	tx_bd.phys_buf_p = tx_buffer;
 	tx_bd.next_p = &tx_bd;
 
 	flush_cache((u32)&tx_bd, sizeof(tx_bd));
@@ -471,7 +471,7 @@ static int ll_temac_send_sdma(struct eth_device *dev,
 
 	do {
 		flush_cache((u32)&tx_bd, sizeof(tx_bd));
-	} while (!(((volatile int)tx_bd.stat) & BDSTAT_COMPLETED_MASK));
+	} while (!(tx_bd.stat & BDSTAT_COMPLETED_MASK));
 
 	return 0;
 }
@@ -491,11 +491,13 @@ static int ll_temac_recv_sdma(struct eth_device *dev)
 	if (!(rx_bd.stat & BDSTAT_COMPLETED_MASK))
 		return 0;
 
-	/* Read out the packet info and start the DMA
-	   onto the second buffer to enable the ethernet rx
-	   path to run in parallel with sw processing
-	   packets.  */
-	length = rx_bd.app5 & 0x3FFF;
+	/*
+	 * Read out the packet info and start the DMA
+	 * onto the second buffer to enable the ethernet rx
+	 * path to run in parallel with sw processing
+	 * packets.
+	 */
+	length = rx_bd.app5 & 0x3FFF; /* max length mask */
 	if (length > 0)
 		NetReceive(rx_bd.phys_buf_p, length);
 
@@ -594,20 +596,20 @@ static int xps_ll_temac_init(struct eth_device *dev, bd_t *bis)
 		xps_ll_temac_reset_dma(dev);
 		xps_ll_temac_bd_init(dev);
 	} else {
-		ll_fifo->tdfr = 0x000000a5; /* set fifo length */
-		ll_fifo->rdfr = 0x000000a5;
-		/* ll_fifo->isr = 0x0; */
-		/* ll_fifo->ier = 0x0; */
+		out_be32(&ll_fifo->tdfr, 0x000000a5); /* Fifo reset key */
+		out_be32(&ll_fifo->rdfr, 0x000000a5); /* Fifo reset key */
+		out_be32(&ll_fifo->isr, 0xFFFFFFFF); /* Reset status register */
+		out_be32(&ll_fifo->ier, 0); /* Disable all IRQs */
 	}
 
 	xps_ll_temac_indirect_set(dev, 0, MC,
 				MDIO_ENABLE_MASK | MDIO_CLOCK_DIV_100MHz);
 
 	/* Promiscuous mode disable */
-	xps_ll_temac_indirect_set(dev, 0, AFM, 0x00000000);
-	/* Enable Receiver */
+	xps_ll_temac_indirect_set(dev, 0, AFM, 0);
+	/* Enable Receiver - RX bit */
 	xps_ll_temac_indirect_set(dev, 0, RCW1, 0x10000000);
-	/* Enable Transmitter */
+	/* Enable Transmitter - TX bit */
 	xps_ll_temac_indirect_set(dev, 0, TC, 0x10000000);
 	return 0;
 }
@@ -617,23 +619,23 @@ static void ll_temac_halt(struct eth_device *dev)
 {
 #ifdef ETH_HALTING
 	struct ll_priv *priv = dev->priv;
+
 	/* Disable Receiver */
-	xps_ll_temac_indirect_set(dev, 0, RCW1, 0x00000000);
+	xps_ll_temac_indirect_set(dev, 0, RCW1, 0);
 	/* Disable Transmitter */
-	xps_ll_temac_indirect_set(dev, 0, TC, 0x00000000);
+	xps_ll_temac_indirect_set(dev, 0, TC, 0);
 
 	if (priv->mode & SDMA_BIT) {
-		sdma_out_be32(priv->ctrl, DMA_CONTROL_REG, 0x00000001);
-		while (sdma_in_be32(priv->ctrl, DMA_CONTROL_REG) & 1)
+		sdma_out_be32(priv->ctrl, DMA_CONTROL_REG, DMA_CONTROL_RESET);
+		while (sdma_in_be32(priv->ctrl, DMA_CONTROL_REG)
+							& DMA_CONTROL_RESET)
 			;
 	}
-	/* reset fifos */
 #endif
 }
 
 static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 {
-	struct ll_priv *priv = dev->priv;
 #if DEBUG
 	int i;
 #endif
@@ -670,6 +672,7 @@ static int ll_temac_miiphy_write(const char *devname, uchar addr,
 							uchar reg, ushort val)
 {
 	struct eth_device *dev = eth_get_dev();
+
 	debug("%s 0x%x, 0x%x, 0x%x\n", __func__, addr, reg, val);
 
 	xps_ll_temac_hostif_set(dev, 0, addr, reg, val);
