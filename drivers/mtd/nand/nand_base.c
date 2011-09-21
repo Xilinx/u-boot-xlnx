@@ -1956,9 +1956,9 @@ static int nand_write(struct mtd_info *mtd, loff_t to, size_t len,
 	int ret;
 
 	/* Do not allow reads past end of device */
-	if ((to + len) > mtd->size) 
+	if ((to + len) > mtd->size)
 		return -EINVAL;
-	if (!len) 
+	if (!len)
 		return 0;
 
 	nand_get_device(chip, mtd, FL_WRITING);
@@ -2865,7 +2865,7 @@ int nand_scan_tail(struct mtd_info *mtd)
 	int i;
 	struct nand_chip *chip = mtd->priv;
 
-	if (!(chip->options & NAND_OWN_BUFFERS)) 
+	if (!(chip->options & NAND_OWN_BUFFERS))
 		chip->buffers = kmalloc(sizeof(*chip->buffers), GFP_KERNEL);
 	if (!chip->buffers)
 		return -ENOMEM;
