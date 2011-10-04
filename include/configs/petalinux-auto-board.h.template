@@ -457,7 +457,7 @@
 	"update_jffs2=setenv img JFFS2; setenv psize ${jffs2size}; setenv installcmd install_jffs2; run load_jffs2 test_img; setenv img; setenv psize; setenv installcmd\0" \
 	"update_dtb=setenv img DTB; setenv psize ${dtbsize}; setenv installcmd install_dtb; run load_dtb test_img; setenv img\0" \
 	"test_crc=if imi ${clobstart}; then run test_img; else echo $img Bad CRC - $img is NOT UPDATED; fi\0" \
-	"test_img=setenv var if test 0x${filesize} -lt ${psize}\\; then run ${installcmd}\\; else run fault\\; fi; run var; setenv var\0" \
+	"test_img=setenv var if test 0x${filesize} -gt ${psize}\\; then run fault\\; else run ${installcmd}\\; fi; run var; setenv var\0" \
 	"netboot=tftp ${netstart} image.ub && bootm\0" \
 	"dtbnetboot=tftp ${netstart} image.ub; tftp ${dtbnetstart} system.dtb; bootm ${netstart} - ${dtbnetstart}\0" \
 	"get_dtb=run cp_dtb2ram; fdt addr ${clobstart}\0"
