@@ -336,17 +336,17 @@
 	#define CONFIG_CMD_FLASH
 	#define CONFIG_CMD_IMLS
 	#define CONFIG_CMD_JFFS2
-
-	#if !defined(RAMENV)
-		#define CONFIG_CMD_SAVEENV
-		#define CONFIG_CMD_SAVES
-	#endif
 #else
 	#undef CONFIG_CMD_IMLS
 	#undef CONFIG_CMD_FLASH
 	#undef CONFIG_CMD_JFFS2
 	#undef CONFIG_CMD_SAVEENV
 	#undef CONFIG_CMD_SAVES
+#endif
+
+#if !defined(RAMENV)
+	#define CONFIG_CMD_SAVEENV
+	#define CONFIG_CMD_SAVES
 #endif
 
 #if defined(CONFIG_CMD_JFFS2)
