@@ -413,7 +413,11 @@
 #define	NETCONSOLE_ARG
 #endif
 
-#define	CONFIG_PREBOOT		"echo U-BOOT for ${hostname};setenv preboot;echo;@dhcp@"
+#ifndef CONFIG_SYS_ENET
+# define	CONFIG_PREBOOT		"echo U-BOOT for ${hostname};setenv preboot;echo;"
+#else
+# define	CONFIG_PREBOOT		"echo U-BOOT for ${hostname};setenv preboot;echo;@dhcp@"
+#endif
 
 #if defined(FLASH) || defined(CONFIG_SPI_FLASH)
 #define CONFIG_EXTRA_ENV_SETTINGS_COMMON \
