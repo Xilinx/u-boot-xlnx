@@ -318,6 +318,7 @@
 #endif
 */
 
+#undef CONFIG_CMD_NFS
 #ifndef CONFIG_SYS_ENET
 	#undef CONFIG_CMD_NET
 	#undef CONFIG_NET_MULTI
