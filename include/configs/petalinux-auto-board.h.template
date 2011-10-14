@@ -22,18 +22,25 @@
  * MA 02111-1307 USA
  */
 
-/* use serial multi for all serial devices */
-#define CONFIG_SERIAL_MULTI
 
 /* The following table includes the supported baudrates */
 #define CONFIG_SYS_BAUDRATE_TABLE  \
 	{300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400}
 
-/* Always compile drivers for uartlite and uart16550 */
-#define	CONFIG_XILINX_UARTLITE
-#define CONFIG_SYS_NS16550	1
-#define CONFIG_SYS_NS16550_SERIAL
-#define CONFIG_SYS_NS16550_REG_SIZE	-4
+#if defined(XPSS_UART0_BASEADDR) || defined (XPSS_UART1_BASEADDR)
+	/* FIXME: serial multi driver is missing for zynq */
+	#define	CONFIG_PSS_SERIAL
+	#define CONFIG_BAUDRATE	9600
+#else
+	/* use serial multi for all serial devices */
+	#define CONFIG_SERIAL_MULTI
+
+	/* Always compile drivers for uartlite and uart16550 */
+	#define	CONFIG_XILINX_UARTLITE
+	#define CONFIG_SYS_NS16550	1
+	#define CONFIG_SYS_NS16550_SERIAL
+	#define CONFIG_SYS_NS16550_REG_SIZE	-4
+#endif
 
 #if XILINX_UART16550_BASEADDR
 # define CONFIG_SYS_NS16550_COM1	(XILINX_UART16550_BASEADDR + 0x1000)
@@ -51,12 +58,19 @@
 # define CONFIG_SYS_NS16550_CLK 1
 #endif
 
+/* FIXME add Zynq console*/
 #if !defined(XILINX_UART16550)
-# define CONSOLE_ARG	"console=console=ttyUL0,115200\0"
+	#if !defined(XILINX_XPSS_UART)
+		# define CONSOLE_ARG	"console=console=ttyUL0,115200\0"
+		# define SERIAL_MULTI	"serial=setenv stdout serial;setenv stdin serial\0" \
+					"stdin=ttyUL0\0" \
+					"stdout=ttyUL0\0"
+	#else
+		/* FIXME: Check with Michal about the SERIAL_MULTI */
+		#define SERIAL_MULTI	"serial=setenv stdout serial;setenv stdin serial\0"
+		#define CONSOLE_ARG	"console=console=ttyPS0,115200\0"
+	#endif
 
-# define SERIAL_MULTI	"serial=setenv stdout serial;setenv stdin serial\0" \
-			"stdin=ttyUL0\0" \
-			"stdout=ttyUL0\0"
 #else
 # define SERIAL_MULTI	"serial=setenv stdout serial;setenv stdin serial\0"
 # define CONSOLE_ARG	"console=console=ttyS0,115200\0"
@@ -106,10 +120,12 @@
 #if defined(XILINX_UARTLITE_BAUDRATE)
 # define CONFIG_BAUDRATE	XILINX_UARTLITE_BAUDRATE
 #else
-# define CONFIG_BAUDRATE	115200
+	#if !defined(CONFIG_BAUDRATE)
+		#define CONFIG_BAUDRATE	115200
+	#endif
 #endif
 
-#if !defined(XILINX_UARTLITE_BASEADDR) && !defined(XILINX_UART16550_BASEADDR)
+#if !defined(XILINX_UARTLITE_BASEADDR) && !defined(XILINX_UART16550_BASEADDR) && !defined(XPSS_UART0_BASEADDR) && !defined(XPSS_UART1_BASEADDR)
 # error Undefined uart
 #endif
 
@@ -124,14 +140,22 @@
 #ifdef XILINX_EMAC_BASEADDR
 	#define CONFIG_XILINX_EMAC	1
 	#define CONFIG_SYS_ENET
-#elif defined(XILINX_EMACLITE_BASEADDR)
+#endif
+#if defined(XILINX_EMACLITE_BASEADDR)
 	#define CONFIG_XILINX_EMACLITE	1
 	#define CONFIG_SYS_ENET
-#elif defined(XILINX_LLTEMAC_BASEADDR)
+#endif
+#if defined(XILINX_LLTEMAC_BASEADDR)
 	#define CONFIG_XILINX_LL_TEMAC	1
 	#define CONFIG_SYS_ENET
-#elif defined(XILINX_AXIEMAC_BASEADDR)
+#endif
+#if defined(XILINX_AXIEMAC_BASEADDR)
 	#define CONFIG_XILINX_AXIEMAC   1
+	#define CONFIG_SYS_ENET
+#endif
+#if defined(XPSS_GEM0_BASEADDR) || defined (XPSS_GEM1_BASEADDR)
+	/* FIXME: double check zynq ethernet?*/
+	#define CONFIG_XILINX_GEM	1
 	#define CONFIG_SYS_ENET
 #endif
 
@@ -162,7 +186,17 @@
 #elif XILINX_CLOCK_FREQ
 	#define	CONFIG_XILINX_CLOCK_FREQ	XILINX_CLOCK_FREQ
 #else
-	#error BAD CLOCK FREQ
+	#if defined(XPSS_TTC0_BASEADDR) || defined (XPSS_TTC1_BASEADDR)
+		/* setting for Zynq */
+		/* FIXME: this based on the xpele.h file but we need to check again */
+		#define TIMER_INPUT_CLOCK               5000000
+		#define CONFIG_TIMER_PRESCALE           255
+		#define TIMER_TICK_HZ                   (TIMER_INPUT_CLOCK / CONFIG_TIMER_PRESCALE)
+		/* duplication */
+		//#define CONFIG_SYS_HZ                   1000
+	#else
+		#error BAD CLOCK FREQ
+	#endif
 #endif
 /* FSL */
 /* #define	CONFIG_SYS_FSL_2 */
@@ -224,14 +258,23 @@
 	#define	CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
 	#define	CONFIG_SYS_MAX_FLASH_SECT	512	/* max number of sectors on one chip */
 	#define	CONFIG_SYS_FLASH_USE_BUFFER_WRITE	1	/* use buffered writes (20x faster) */
-	#define	CONFIG_SYS_FLASH_PROTECTION		/* hardware flash protection */
 
 	/* Assume env is in flash, this may be undone lower down */
 	#define	CONFIG_ENV_IS_IN_FLASH	1
 	#define	CONFIG_ENV_SECT_SIZE	0x20000	/* 128K(one sector) for env */
-	#define	CONFIG_ENV_ADDR		@bestart@
-	#define	CONFIG_ENV_SIZE		@besize@
 
+	#if defined (CONFIG_PELE)
+		#define CONFIG_SYS_FLASH_PROTECTION	0	/* use hardware protection */
+		/* optional flash operation parameter from zynq */
+		#define CONFIG_SYS_FLASH_ERASE_TOUT	1000
+		#define CONFIG_SYS_FLASH_WRITE_TOUT	5000
+		#define CONFIG_FLASH_SHOW_PROGRESS	10
+	#else
+		#define	CONFIG_SYS_FLASH_PROTECTION
+	#endif
+
+		#define	CONFIG_ENV_ADDR		@bestart@
+		#define	CONFIG_ENV_SIZE		@besize@
 #elif defined(XILINX_SPI_FLASH_BASEADDR) /* SPI Flash */
 	#define CONFIG_XILINX_SPI_BASEADDR	XILINX_SPI_FLASH_BASEADDR
 	#define CONFIG_XILINX_SPI	1
@@ -303,7 +346,10 @@
 #include <config_cmd_default.h>
 
 #define CONFIG_CMD_ASKENV
+/* FIXME: hack for zynq */
+#ifndef CONFIG_PELE
 #define CONFIG_CMD_IRQ
+#endif
 #ifdef CONFIG_MICROBLAZE
 #define CONFIG_CMD_MFSL
 #endif
