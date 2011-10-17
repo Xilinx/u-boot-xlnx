@@ -319,6 +319,7 @@
 */
 
 #undef CONFIG_CMD_NFS
+#undef CONFIG_CMD_JFFS2
 #ifndef CONFIG_SYS_ENET
 	#undef CONFIG_CMD_NET
 	#undef CONFIG_NET_MULTI
@@ -336,11 +337,9 @@
 #if defined(FLASH)
 	#define CONFIG_CMD_FLASH
 	#define CONFIG_CMD_IMLS
-	#define CONFIG_CMD_JFFS2
 #else
 	#undef CONFIG_CMD_IMLS
 	#undef CONFIG_CMD_FLASH
-	#undef CONFIG_CMD_JFFS2
 	#undef CONFIG_CMD_SAVEENV
 	#undef CONFIG_CMD_SAVES
 #endif
