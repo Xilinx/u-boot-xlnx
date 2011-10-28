@@ -391,6 +391,7 @@
 #define	CONFIG_IPADDR		@ipaddr@
 #define	CONFIG_SERVERIP		@serverip@
 #define	CONFIG_ETHADDR		@ethaddr@
+#define CONFIG_BOOTP_SERVERIP
 
 /* architecture dependent code */
 #define	CONFIG_SYS_USR_EXCEP	/* user exception */
