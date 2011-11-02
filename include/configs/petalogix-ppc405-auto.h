@@ -35,7 +35,7 @@
 /* PPC-specific memory layout */
 #define CONFIG_SYS_MONITOR_BASE TEXT_BASE
 #define CONFIG_SYS_MONITOR_LEN          (192 * 1024)
-#define CONFIG_SYS_MALLOC_LEN           (CONFIG_ENV_SIZE + 128 * 1024)
+#define CONFIG_SYS_MALLOC_LEN           (128 * 1024)
 
 /*Stack*/
 #define CONFIG_SYS_INIT_RAM_ADDR        0x800000/* Initial RAM address    */
