@@ -633,9 +633,13 @@ static void ll_temac_halt(struct eth_device *dev)
 
 static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 {
+	static int first = 1;
 #if DEBUG
 	int i;
 #endif
+	if(!first)
+		return 0;
+	first = 0;
 
 	xps_ll_temac_init(dev, bis);
 
