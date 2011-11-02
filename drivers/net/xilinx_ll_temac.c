@@ -196,7 +196,6 @@ static void xps_ll_temac_check_status(struct temac_reg *regs, int mask)
 		printf("%s: Timeout\n", __func__);
 }
 
-#if defined(DEBUG) || defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 /* undirect hostif write to ll_temac */
 static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 			int phy_addr, int reg_addr, int phy_data)
@@ -209,7 +208,6 @@ static void xps_ll_temac_hostif_set(struct eth_device *dev, int emac,
 	out_be32(&regs->ctl, CNTLREG_WRITE_ENABLE_MASK | MIIMAI | (emac << 10));
 	xps_ll_temac_check_status(regs, XTE_RSE_MIIM_WR_MASK);
 }
-#endif
 
 /* undirect hostif read from ll_temac */
 static unsigned int xps_ll_temac_hostif_get(struct eth_device *dev,
@@ -325,14 +323,6 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 	unsigned retries = 10;
 	unsigned int phyreg = 0;
 
-	/* wait for link up */
-	puts("Waiting for link ... ");
-	retries = 10;
-	while (retries-- &&
-		((xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 1)
-							& 0x24) != 0x24))
-			;
-
 	/* try out if have ever found the right phy? */
 	if (priv->phyaddr == -1) {
 		for (i = 31; i >= 0; i--) {
@@ -345,18 +335,27 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 		}
 	}
 
+#ifdef DEBUG
+	read_phy_reg(dev, priv->phyaddr);
+#endif
+
+	/* wait for link up */
+	puts("Waiting for link ... ");
+	retries = 10000;
+	while (retries-- &&
+		((xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 1)
+							& 0x04) != 0x04)) {
+			udelay(100);
+	}
+
+	phyreg = xps_ll_temac_indirect_get(dev, 0, EMMC) &
+						(~XTE_EMMC_LINKSPEED_MASK);
+
 	/* get PHY id */
 	i = (xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 2) << 16) |
 		xps_ll_temac_hostif_get(dev, 0, priv->phyaddr, 3);
 	debug("LL_TEMAC: Phy ID 0x%x\n", i);
 
-#ifdef DEBUG
-	/* phy reset */
-	xps_ll_temac_hostif_set(dev, 0, priv->phyaddr, 0, 0x8000);
-	read_phy_reg(dev, priv->phyaddr);
-#endif
-	phyreg = xps_ll_temac_indirect_get(dev, 0, EMMC) &
-						(~XTE_EMMC_LINKSPEED_MASK);
 	/* FIXME this part will be replaced by PHY lib */
 	/* s3e boards */
 	if (i == 0x7c0a3) {
@@ -376,8 +375,14 @@ static int xps_ll_temac_phy_ctrl(struct eth_device *dev)
 					(phyreg | XTE_EMMC_LINKSPD_100));
 		printf("100BASE-T/FD\n");
 	} else {
-		printf("Unsupported mode\n");
-		return 0;
+		/* unsupported mode or auto-negotiation failed,
+		   reset the phy, set fixed speed 100M
+		*/
+		xps_ll_temac_hostif_set(dev, 0, priv->phyaddr, 0, 0x8000);
+		xps_ll_temac_hostif_set(dev, 0, priv->phyaddr, 0, 0x2000);
+		xps_ll_temac_indirect_set(dev, 0, EMMC,
+					(phyreg | XTE_EMMC_LINKSPD_100));
+		puts("Failed auto-negotiation, fix speed to 100BASE-T/FD\n");
 	}
 
 	return 1;
