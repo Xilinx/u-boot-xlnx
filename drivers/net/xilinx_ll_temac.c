@@ -637,9 +637,8 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 #if DEBUG
 	int i;
 #endif
-	if(!first)
+	if (!first)
 		return 0;
-	first = 0;
 
 	xps_ll_temac_init(dev, bis);
 
@@ -656,6 +655,7 @@ static int ll_temac_init(struct eth_device *dev, bd_t *bis)
 		return -1;
 	}
 
+	first = 0;
 	return 1;
 }
 
