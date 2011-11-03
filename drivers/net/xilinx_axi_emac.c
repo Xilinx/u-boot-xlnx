@@ -318,12 +318,12 @@ static int setup_phy(struct eth_device *dev)
 	/* get PHY id */
 	phyreg = phyread(dev, priv->phyaddr, 2);
 	i = phyreg << 16;
-	phyreg = phyread(dev, priv->phyaddr, 2);
+	phyreg = phyread(dev, priv->phyaddr, 3);
 	i |= phyreg;
-	debug("LL_TEMAC: Phy ID 0x%x\n", i);
+	debug("axiemac: Phy ID 0x%x\n", i);
 
-	/* Marwell 88e1111 id - ml50x, 0x1410141 id - sp605 */
-	if ((i == 0x1410cc2) || (i == 0x1410141)) {
+	/* Marwell 88e1111 id - ml50x/sp605 */
+	if (i == 0x1410cc2) {
 		debug("Marvell PHY recognized\n");
 
 		/* Setup the emac for the phy speed */
