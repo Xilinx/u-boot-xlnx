@@ -30,7 +30,6 @@
 #if defined(XPSS_UART0_BASEADDR) || defined (XPSS_UART1_BASEADDR)
 	/* FIXME: serial multi driver is missing for zynq */
 	#define	CONFIG_PSS_SERIAL
-	#define CONFIG_BAUDRATE	9600
 #else
 	/* use serial multi for all serial devices */
 	#define CONFIG_SERIAL_MULTI
