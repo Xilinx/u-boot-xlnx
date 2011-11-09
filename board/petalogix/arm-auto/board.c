@@ -178,9 +178,13 @@ int board_eth_init(bd_t *bis)
 # ifdef XPSS_GEM0_BASEADDR
 	ret |= xilinx_gem_initialize (bis, XPSS_GEM0_BASEADDR);
 # endif
-# ifdef XPSS_GEM0_BASEADDR
-	ret |= xilinx_gem_initialize (bis, XPSS_GEM1_BASEADDR);
-# endif
+/*
+ * FIXME: enable the second GEM when we have working kernel for
+ * second ethernet
+ */
+//# ifdef XPSS_GEM1_BASEADDR
+	//ret |= xilinx_gem_initialize (bis, XPSS_GEM1_BASEADDR);
+//# endif
 #endif
 
 	return ret;
