@@ -57,6 +57,8 @@
 # define CONFIG_SYS_NS16550_CLK 1
 #endif
 
+#define CONFIG_SYS_CONSOLE_IS_IN_ENV 1
+
 /* FIXME add Zynq console*/
 #if !defined(XILINX_UART16550)
 	#if !defined(XILINX_XPSS_UART)
@@ -447,7 +449,6 @@
 /* netconsole */
 #ifdef CONFIG_SYS_ENET
 #define	CONFIG_NETCONSOLE 1
-#define	CONFIG_SYS_CONSOLE_IS_IN_ENV 1
 
 #define	NETCONSOLE_ARG	"nc=setenv stdout nc;setenv stdin nc;\0" \
 			"ncip=@serverip@\0"
