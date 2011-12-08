@@ -61,12 +61,13 @@
 
 #if defined(CONFIG_UART0)
 # define UART_BASE XPSS_UART0_BASEADDR
+# define XDFUART_MASTER XPAR_XUARTPSS_0_CLOCK_HZ
 #elif defined(CONFIG_UART1)
 # define UART_BASE XPSS_UART1_BASEADDR
+# define XDFUART_MASTER XPAR_XUARTPSS_1_CLOCK_HZ
 #else
 # error "Need to configure a UART (0 or 1)"
 #endif
-
 
 #define CONFIG_TTC0	1
 
