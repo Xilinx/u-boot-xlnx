@@ -29,7 +29,7 @@
 /* IPADDR, SERVERIP */
 /* Need I2C for RTC? */
 
-#define CONFIG_IDENT_STRING	"\nXilinx Pele Emulaton Platform"
+#define CONFIG_IDENT_STRING	"\nXilinx Pele Emulation Platform"
 #define CONFIG_PANIC_HANG	1 /* For development/debugging */
 
 #undef CONFIG_SKIP_RELOCATE_UBOOT	

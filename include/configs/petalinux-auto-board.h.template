@@ -190,7 +190,7 @@
 	#if defined(XPSS_TTC0_BASEADDR) || defined (XPSS_TTC1_BASEADDR)
 		/* setting for Zynq */
 		/* FIXME: this based on the xpele.h file but we need to check again */
-		#define TIMER_INPUT_CLOCK               5000000
+		#define TIMER_INPUT_CLOCK               XPAR_CPU_CORTEXA9_CORE_CLOCK_FREQ_HZ / 2
 		#define CONFIG_TIMER_PRESCALE           255
 		#define TIMER_TICK_HZ                   (TIMER_INPUT_CLOCK / CONFIG_TIMER_PRESCALE)
 		/* duplication */
