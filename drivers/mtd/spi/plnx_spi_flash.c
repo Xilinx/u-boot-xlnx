@@ -315,6 +315,7 @@ struct spi_flash *spi_flash_probe_plnx(struct spi_slave *spi, u8 *idcode)
 	stm->flash.write = plnx_write;
 	stm->flash.erase = plnx_erase;
 	stm->flash.read = plnx_read_fast;
+	stm->flash.sector_size = page_size * params->pages_per_sector;
 	stm->flash.size = page_size * params->pages_per_sector
 				* params->nr_sectors;
 
