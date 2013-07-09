@@ -377,6 +377,21 @@ int Xgmac_init(struct eth_device *dev, bd_t * bis)
 	Out32(0xF8000138, ((0 << 4) | (1 << 0)));
 
 	/* Set divisors for appropriate frequency in GEM0_CLK_CTRL */
+	//#ifdef CONFIG_EP107
+	//	if (link_speed == 1000)		/* 125MHz */
+	//		Out32(0xF8000140, ((1 << 20) | (48 << 8) | (1 << 4) | (1 << 0)));
+	//	else if (link_speed == 100)	/* 25 MHz */
+	//		Out32(0xF8000140, ((1 << 20) | (48 << 8) | (0 << 4) | (1 << 0)));
+	//	else				/* 2.5 MHz */
+	//		Out32(0xF8000140, ((1 << 20) | (48 << 8) | (3 << 4) | (1 << 0)));
+	//#else
+	//	if (link_speed == 1000)		/* 125MHz */
+	//		Out32(0xF8000140, ((1 << 20) | (8 << 8) | (0 << 4) | (1 << 0)));
+	//	else if (link_speed == 100)	/* 25 MHz */
+	//		Out32(0xF8000140, ((1 << 20) | (40 << 8) | (0 << 4) | (1 << 0)));
+	//	else				/* 2.5 MHz */
+	//		Out32(0xF8000140, ((10 << 20) | (40 << 8) | (0 << 4) | (1 << 0)));
+	//#endif
 #ifdef CONFIG_EP107
 	if (link_speed == 1000)		/* 125MHz */
 		Out32(0xF8000140, ((1 << 20) | (48 << 8) | (1 << 4) | (1 << 0)));
@@ -386,7 +401,7 @@ int Xgmac_init(struct eth_device *dev, bd_t * bis)
 		Out32(0xF8000140, ((1 << 20) | (48 << 8) | (3 << 4) | (1 << 0)));
 #else
 	if (link_speed == 1000)		/* 125MHz */
-		Out32(0xF8000140, ((1 << 20) | (8 << 8) | (0 << 4) | (1 << 0)));
+		Out32(0xF8000140, 0x00100C31);
 	else if (link_speed == 100)	/* 25 MHz */
 		Out32(0xF8000140, ((1 << 20) | (40 << 8) | (0 << 4) | (1 << 0)));
 	else				/* 2.5 MHz */
