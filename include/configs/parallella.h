@@ -43,13 +43,17 @@
 #define CONFIG_ZYNQ_I2C /* Support for Zynq I2C */
 #define CONFIG_HARD_I2C /* I2C with hardware support */
 #define CONFIG_ZYNQ_I2C_CTLR_0 /* Enable I2C_0 */
-#define CONFIG_SYS_I2C_SPEED 100000 /* I2C speed and slave address */
+#define CONFIG_SYS_I2C_SPEED 400000 /* I2C speed and slave address */
 #define CONFIG_CMD_I2C
+#define CONFIG_SYS_I2C_ADDR 0x68
 
 #include <configs/zynq_common.h>
 
 #undef  SD_BASEADDR
 #define SD_BASEADDR    0xE0101000
+
+#undef  CONFIG_ENV_OFFSET
+#define CONFIG_ENV_OFFSET		0x4E0000
 
 #undef  CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS	\

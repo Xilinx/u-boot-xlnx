@@ -55,8 +55,60 @@ u32 XIo_In32(u32 InAddress)
 Xilinx_desc fpga = XILINX_XC7Z020_DESC(0);
 #endif
 
+extern int i2c_write(unsigned char chip, unsigned int addr, int alen, unsigned char *buffer, int len);
+
+static inline void i2c_reg_write(unsigned char addr, int alen, unsigned char reg, unsigned char val)
+{
+	int rc;
+
+	rc=i2c_write(addr, reg, alen, &val, 1);
+
+}
+
 int board_init(void)
 {
+  //A.O: Note! Current voltages only good for Gen0, need to modify code
+  //to incorporate Gen1 power changes.
+
+  //R.T. ISL9305H I2C programming
+  // 1. DCD1 set to 1.0V
+  // i2cset 0 0x68 0x00 0x07
+
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x0, 0x07);
+
+  //2. DCD2 set to 1.8V
+  //i2cset 0 0x68 0x01 0x27
+	
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x1, 0x27);
+
+  //3. LD01 set to 2.5V
+  // i2cset 0 0x68 0x02 0x20
+
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x2 ,0x20);
+
+  // 4. LD02 set to 1.8V
+  // i2cset 0 0x68 0x03 0x12
+
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x3, 0x12);
+
+  // 5. Enable the change by writing to SYS_PARAMETER
+  // i2cset 0 0x68 0x05 0x6f
+
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x5, 0x6f);
+
+  udelay (50000);
+
+  //	To turn on LED/un-reset Ethernet PHY:
+  //	----------------------------------------------------
+  //	Turn GPIO[7] to output
+  //	Enable GPIO[7]
+  //	Set mask/data to make GPIO[7] HIGH
+
+  XIo_Out32(0xe000a204, 0x80);
+  XIo_Out32(0xe000a208, 0x80);
+  XIo_Out32(0xe000a000, 0xff7f0080);
+  
+
 	/* temporary hack to clear pending irqs before Linux as it
 	   will hang Linux */
 
