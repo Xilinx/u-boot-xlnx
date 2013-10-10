@@ -71,25 +71,25 @@ int board_init(void)
   //to incorporate Gen1 power changes.
 
   //R.T. ISL9305H I2C programming
-  // 1. DCD1 set to 1.0V
+  // 1. DCD1 set to 1.0V (Epiphany)
   // i2cset 0 0x68 0x00 0x07
 
   i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x0, 0x07);
 
-  //2. DCD2 set to 1.8V
+  //2. DCD2 set to 1.35V (DDR3L)
   //i2cset 0 0x68 0x01 0x27
 	
-  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x1, 0x27);
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x1, 0x15);
 
-  //3. LD01 set to 2.5V
+  //3. LD01 set to 3.3V (PEC_POWER)
   // i2cset 0 0x68 0x02 0x20
 
-  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x2 ,0x20);
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x2 ,0x30);
 
-  // 4. LD02 set to 1.8V
+  // 4. LD02 set to 2.5V (HDMI_GPIO)
   // i2cset 0 0x68 0x03 0x12
 
-  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x3, 0x12);
+  i2c_reg_write(CONFIG_SYS_I2C_ADDR, 1, 0x3, 0x20);
 
   // 5. Enable the change by writing to SYS_PARAMETER
   // i2cset 0 0x68 0x05 0x6f
@@ -103,11 +103,15 @@ int board_init(void)
   //	Turn GPIO[7] to output
   //	Enable GPIO[7]
   //	Set mask/data to make GPIO[7] HIGH
-
-  XIo_Out32(0xe000a204, 0x80);
-  XIo_Out32(0xe000a208, 0x80);
-  XIo_Out32(0xe000a000, 0xff7f0080);
   
+  //A.O.-->No longer needed, power issue fixed, remove code later
+
+  //A.0-->cut
+  //XIo_Out32(0xe000a204, 0x80);
+  //XIo_Out32(0xe000a208, 0x80);
+  //XIo_Out32(0xe000a000, 0xff7f0080);
+  
+  //A.0-->end cut
 
 	/* temporary hack to clear pending irqs before Linux as it
 	   will hang Linux */
