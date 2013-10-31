@@ -123,8 +123,8 @@ void __udelay(unsigned long usec)
 	if (usec == 0)
 		return;
 
-	countticks = (u32) (((unsigned long long) TIMER_TICK_HZ * usec) /
-								1000000);
+	countticks = (u32) (lldiv(((unsigned long long) TIMER_TICK_HZ * usec),
+								1000000));
 
 	/* decrementing timer */
 	timeend = readl(&timer_base->counter) - countticks;
