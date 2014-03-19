@@ -31,10 +31,63 @@
 #include <part.h>
 #include <asm/io.h>
 
+#define SECTOR_SIZE 512
+
 /*
- * The ace_readw and writew functions read/write 16bit words, but the
- * offset value is the BYTE offset as most used in the Xilinx
- * datasheet for the SystemACE chip. The CONFIG_SYS_SYSTEMACE_BASE is defined
+ * Definitions of the SystemACE registers
+ */
+
+#define ACE_BUS_MODE_REG        0x00
+#define ACE_BUS_MODE_8          0x00000000
+#define ACE_BUS_MODE_16         0x00000101
+
+#define ACE_STATUS_REG          0x04
+#define ACE_STATUS_CFGLOCK      0x00000001
+#define ACE_STATUS_MPULOCK      0x00000002
+#define ACE_STATUS_CFGERROR     0x00000004
+#define ACE_STATUS_CFCERROR     0x00000008
+#define ACE_STATUS_CFDETECT     0x00000010
+#define ACE_STATUS_DATABUFRDY   0x00000020
+#define ACE_STATUS_DATABUFMODE  0x00000040
+#define ACE_STATUS_CFGDONE      0x00000080
+#define ACE_STATUS_RDYFORCFCMD  0x00000100
+#define ACE_STATUS_CFGMODEPIN   0x00000200
+#define ACE_STATUS_CFGADDR_MASK 0x0000e000
+
+#define ACE_ERROR_REG           0x08
+
+#define ACE_CFGLBA_REG          0x0c
+
+#define ACE_MPULA_REG           0x10
+
+#define ACE_SECCNTCMD_REG       0x14
+#define ACE_SECCNTCMD_RESET     0x0100
+#define ACE_SECCNTCMD_READ      0x0300
+
+#define ACE_CTRL_REG            0x18
+#define ACE_CTRL_FORCELOCKREQ   0x00000001
+#define ACE_CTRL_LOCKREQ        0x00000002
+#define ACE_CTRL_FORCECFGADDR   0x00000004
+#define ACE_CTRL_FORCECFGMODE   0x00000008
+#define ACE_CTRL_CFGMODE        0x00000010
+#define ACE_CTRL_CFGSTART       0x00000020
+#define ACE_CTRL_CFGSEL         0x00000040
+#define ACE_CTRL_CFGRESET       0x00000080
+#define ACE_CTRL_DATABUFRDYIRQ  0x00000100
+#define ACE_CTRL_ERRORIRQ       0x00000200
+#define ACE_CTRL_CFGDONEIRQ     0x00000400
+#define ACE_CTRL_RESETIRQ       0x00000800
+#define ACE_CTRL_CFGPROG        0x00001000
+#define ACE_CTRL_CFGADDR_MASK   0x0000e000
+
+#define ACE_DATA_BUF_REG        0x40
+
+/*
+ * The ace_read<width> and write<width> functions read/write 16/32bit words,
+ * but the  * offset value is the BYTE offset as most used in the Xilinx
+ * datasheet for the SystemACE chip. Since the SystemACE always operates in
+ * little-endian mode, we do not need to distinguish between the endianess.
+ * The CONFIG_SYS_SYSTEMACE_BASE is defined
  * to be the base address for the chip, usually in the local
  * peripheral bus.
  */
@@ -42,31 +95,70 @@
 static u32 base = CONFIG_SYS_SYSTEMACE_BASE;
 static u32 width = CONFIG_SYS_SYSTEMACE_WIDTH;
 
-static void ace_writew(u16 val, unsigned off)
+static void ace_write16(u16 val, unsigned off)
 {
 	if (width == 8) {
-#if !defined(__BIG_ENDIAN)
-		writeb(val >> 8, base + off);
-		writeb(val, base + off + 1);
-#else
 		writeb(val, base + off);
 		writeb(val >> 8, base + off + 1);
-#endif
-	} else
+	} else {
 		out16(base + off, val);
+	}
 }
 
-static u16 ace_readw(unsigned off)
+static void ace_write32(u32 val, unsigned off)
 {
 	if (width == 8) {
-#if !defined(__BIG_ENDIAN)
-		return (readb(base + off) << 8) | readb(base + off + 1);
-#else
-		return readb(base + off) | (readb(base + off + 1) << 8);
-#endif
+		writeb(val, base + off);
+		writeb(val >> 8, base + off + 1);
+		writeb(val >> 16, base + off + 2);
+		writeb(val >> 24, base + off + 3);
+	} else {
+		out16(base + off, val);
+		out16(base + off + 2, val >> 16);
 	}
+}
 
-	return in16(base + off);
+static u16 ace_read16(unsigned off)
+{
+	if (width == 8) {
+		return readb(base + off) | (readb(base + off + 1) << 8);
+	} else {
+		return in16(base + off);
+	}
+}
+
+static u32 ace_read32(unsigned off)
+{
+	if (width == 8) {
+		return readb(base + off) | (readb(base + off + 1) << 8)
+		        | (readb(base + off + 2) << 16) | (readb(base + off + 3) << 24);
+	} else {
+		return in16(base + off) | (in16(base + off + 2) << 16);
+	}
+}
+
+static void ace_or16(u16 val, unsigned off)
+{
+	val = ace_read16(off) | val;
+	ace_write16(val, off);
+}
+
+static void ace_or32(u32 val, unsigned off)
+{
+	val = ace_read32(off) | val;
+	ace_write32(val, off);
+}
+
+static void ace_and16(u16 val, unsigned off)
+{
+	val = ace_read16(off) & val;
+	ace_write16(val, off);
+}
+
+static void ace_and32(u32 val, unsigned off)
+{
+	val = ace_read32(off) & val;
+	ace_write32(val, off);
 }
 
 static unsigned long systemace_read(int dev, unsigned long start,
@@ -78,14 +170,12 @@ static int get_cf_lock(void)
 {
 	int retry = 10;
 
+	ace_write32(ACE_CTRL_FORCECFGMODE, ACE_CTRL_REG);
 	/* CONTROLREG = LOCKREG */
-	unsigned val = ace_readw(0x18);
-	val |= 0x0002;
-	ace_writew((val & 0xffff), 0x18);
+	ace_or32(ACE_CTRL_LOCKREQ, ACE_CTRL_REG);
 
 	/* Wait for MPULOCK in STATUSREG[15:0] */
-	while (!(ace_readw(0x04) & 0x0002)) {
-
+	while (!(ace_read32(ACE_STATUS_REG) & ACE_STATUS_MPULOCK)) {
 		if (retry < 0)
 			return -1;
 
@@ -98,9 +188,7 @@ static int get_cf_lock(void)
 
 static void release_cf_lock(void)
 {
-	unsigned val = ace_readw(0x18);
-	val &= ~(0x0002);
-	ace_writew((val & 0xffff), 0x18);
+	ace_and32(~ACE_CTRL_LOCKREQ, ACE_CTRL_REG);
 }
 
 #ifdef CONFIG_PARTITIONS
@@ -121,7 +209,11 @@ block_dev_desc_t *systemace_get_dev(int dev)
 		/*
 		 * Ensure the correct bus mode (8/16 bits) gets enabled
 		 */
-		ace_writew(width == 8 ? 0 : 0x0001, 0);
+		if (width == 8) {
+			ace_write32(ACE_BUS_MODE_8, ACE_BUS_MODE_REG);
+		} else {
+			ace_write32(ACE_BUS_MODE_16, ACE_BUS_MODE_REG);
+		}
 
 		init_part(&systemace_dev);
 
@@ -145,10 +237,10 @@ static unsigned long systemace_read(int dev, unsigned long start,
 	unsigned val;
 
 	if (get_cf_lock() < 0) {
-		unsigned status = ace_readw(0x04);
+		unsigned status = ace_read32(ACE_STATUS_REG);
 
 		/* If CFDETECT is false, card is missing. */
-		if (!(status & 0x0010)) {
+		if (!(status & ACE_STATUS_CFDETECT)) {
 			printf("** CompactFlash card not present. **\n");
 			return 0;
 		}
@@ -157,23 +249,24 @@ static unsigned long systemace_read(int dev, unsigned long start,
 		       status);
 		return 0;
 	}
+
 #ifdef DEBUG_SYSTEMACE
 	printf("... systemace read %lu sectors at %lu\n", blkcnt, start);
 #endif
 
 	retry = 2000;
 	for (;;) {
-		val = ace_readw(0x04);
+		val = ace_read32(ACE_STATUS_REG);
 
 		/* If CFDETECT is false, card is missing. */
-		if (!(val & 0x0010)) {
+		if (!(val & ACE_STATUS_CFDETECT)) {
 			printf("**** ACE CompactFlash not found.\n");
 			release_cf_lock();
 			return 0;
 		}
 
 		/* If RDYFORCMD, then we are ready to go. */
-		if (val & 0x0100)
+		if (val & ACE_STATUS_RDYFORCFCMD)
 			break;
 
 		if (retry < 0) {
@@ -193,6 +286,7 @@ static unsigned long systemace_read(int dev, unsigned long start,
 	blk_countdown = blkcnt;
 	while (blk_countdown > 0) {
 		unsigned trans = blk_countdown;
+		unsigned bytes = 0;
 
 		if (trans > 256)
 			trans = 256;
@@ -200,16 +294,16 @@ static unsigned long systemace_read(int dev, unsigned long start,
 #ifdef DEBUG_SYSTEMACE
 		printf("... transfer %lu sector in a chunk\n", trans);
 #endif
+
 		/* Write LBA block address */
-		ace_writew((start >> 0) & 0xffff, 0x10);
-		ace_writew((start >> 16) & 0x0fff, 0x12);
+		ace_write32(start & 0x0fffffff, ACE_MPULA_REG);
 
 		/* NOTE: in the Write Sector count below, a count of 0
 		   causes a transfer of 256, so &0xff gives the right
 		   value for whatever transfer count we want. */
 
 		/* Write sector count | ReadMemCardData. */
-		ace_writew((trans & 0xff) | 0x0300, 0x14);
+		ace_write16((trans & 0xff) | ACE_SECCNTCMD_READ, ACE_SECCNTCMD_REG);
 
 /*
  * For FPGA configuration via SystemACE is reset unacceptable
@@ -217,34 +311,23 @@ static unsigned long systemace_read(int dev, unsigned long start,
  */
 #ifndef SYSTEMACE_CONFIG_FPGA
 		/* Reset the configruation controller */
-		val = ace_readw(0x18);
-		val |= 0x0080;
-		ace_writew(val, 0x18);
+		ace_or32(ACE_CTRL_CFGRESET, ACE_CTRL_REG);
 #endif
 
-		retry = trans * 16;
-		while (retry > 0) {
-			int idx;
-
+		for (bytes = 0; bytes < trans * SECTOR_SIZE; bytes += 2) {
 			/* Wait for buffer to become ready. */
-			while (!(ace_readw(0x04) & 0x0020)) {
+			while (!(ace_read32(ACE_STATUS_REG) & ACE_STATUS_DATABUFRDY)) {
 				udelay(100);
 			}
 
-			/* Read 16 words of 2bytes from the sector buffer. */
-			for (idx = 0; idx < 16; idx += 1) {
-				unsigned short val = ace_readw(0x40);
-				*dp++ = val & 0xff;
-				*dp++ = (val >> 8) & 0xff;
-			}
+			unsigned short val = ace_read16(ACE_DATA_BUF_REG);
 
-			retry -= 1;
+			*dp++ = val & 0xff;
+			*dp++ = (val >> 8) & 0xff;
 		}
 
 		/* Clear the configruation controller reset */
-		val = ace_readw(0x18);
-		val &= ~0x0080;
-		ace_writew(val, 0x18);
+		ace_and32(~ACE_CTRL_CFGRESET, ACE_CTRL_REG);
 
 		/* Count the blocks we transfer this time. */
 		start += trans;
