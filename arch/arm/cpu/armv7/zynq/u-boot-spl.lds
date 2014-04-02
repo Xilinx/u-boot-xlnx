@@ -29,6 +29,9 @@ SECTIONS
 	. = ALIGN(4);
 	.data : {
 		*(.data*)
+#if defined(CONFIG_SPL_U_BOOT_APPEND)
+		. = ALIGN(4);
+#endif
 	}
 
 	. = ALIGN(4);

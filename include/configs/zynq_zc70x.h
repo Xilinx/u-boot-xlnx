@@ -26,6 +26,8 @@
 #define CONFIG_ZYNQ_BOOT_FREEBSD
 #define CONFIG_DEFAULT_DEVICE_TREE	zynq-zc702
 
+#define CONFIG_SPL_U_BOOT_APPEND
+
 #include <configs/zynq-common.h>
 
 #endif /* __CONFIG_ZYNQ_ZC70X_H */

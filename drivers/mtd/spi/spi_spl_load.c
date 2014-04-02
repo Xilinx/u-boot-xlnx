@@ -13,6 +13,11 @@
 #include <spi_flash.h>
 #include <spl.h>
 
+__weak u32 spl_spi_u_boot_offs(struct spi_flash *flash)
+{
+    return CONFIG_SYS_SPI_U_BOOT_OFFS;
+}
+
 /*
  * The main entry for SPI booting. It's necessary that SDRAM is already
  * configured and available since this code loads the main U-Boot image
@@ -22,6 +27,7 @@ void spl_spi_load_image(void)
 {
 	struct spi_flash *flash;
 	struct image_header *header;
+	u32 offs;
 
 	/*
 	 * Load U-Boot image from SPI flash into RAM
@@ -38,9 +44,8 @@ void spl_spi_load_image(void)
 	header = (struct image_header *)(CONFIG_SYS_TEXT_BASE);
 
 	/* Load u-boot, mkimage header is 64 bytes. */
-	spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS, 0x40,
-		       (void *)header);
+	offs = spl_spi_u_boot_offs(flash);
+	spi_flash_read(flash, offs, 0x40, (void *)header);
 	spl_parse_image_header(header);
-	spi_flash_read(flash, CONFIG_SYS_SPI_U_BOOT_OFFS,
-		       spl_image.size, (void *)spl_image.load_addr);
+	spi_flash_read(flash, offs, spl_image.size, (void *)spl_image.load_addr);
 }
