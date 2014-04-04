@@ -365,6 +365,9 @@ endif
 ifneq ($(CONFIG_ZYNQ),)
 ifeq ($(CONFIG_SPL),y)
 ALL-y += $(obj)boot.bin
+ifeq ($(CONFIG_SPL_U_BOOT_APPEND),y)
+ALL-y += $(obj)u-boot-spl-unified.bin
+endif
 endif
 endif
 
@@ -514,6 +517,9 @@ $(obj)u-boot-img.bin: $(obj)spl/u-boot-spl.bin $(obj)u-boot.img
 
 $(obj)boot.bin: $(obj)spl/u-boot-spl.bin
 	tools/zynq-boot-bin.py -o $(obj)boot.bin -u $(obj)spl/u-boot-spl.bin
+
+$(obj)u-boot-spl-unified.bin: $(obj)boot.bin $(obj)u-boot.img
+	cat $(obj)boot.bin $(obj)u-boot.img > $@
 
 # PPC4xx needs the SPL at the end of the image, since the reset vector
 # is located at 0xfffffffc. So we can't use the "u-boot-img.bin" target

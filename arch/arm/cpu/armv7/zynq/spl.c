@@ -5,6 +5,7 @@
  */
 #include <common.h>
 #include <spl.h>
+#include <spi_flash.h>
 
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
@@ -84,5 +85,22 @@ int spl_start_uboot(void)
 {
 	/* boot linux */
 	return 0;
+}
+#endif
+
+#ifdef CONFIG_SPL_U_BOOT_APPEND
+u32 spl_spi_u_boot_offs(struct spi_flash *flash)
+{
+    u32 mbaddr;
+    u32 imglen;
+    u32 soff;
+
+    mbaddr = (devcfg_base->multiboot_addr & ZYNQ_MB_MASK) * ZYNQ_MB_OFFS;
+
+    /* Read BootROM fields and calculate u-boot offset */
+    spi_flash_read(flash, mbaddr + 0x40, sizeof(u32), (void*)&imglen);
+    spi_flash_read(flash, mbaddr + 0x30, sizeof(u32), (void*)&soff);
+
+    return mbaddr + imglen + soff;
 }
 #endif

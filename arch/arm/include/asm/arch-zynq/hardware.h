@@ -37,6 +37,10 @@
 #define ZYNQ_BM_SD		0x05
 #define ZYNQ_BM_JTAG		0x0
 
+/* Multiboot defines */
+#define ZYNQ_MB_MASK    0x1FFF
+#define ZYNQ_MB_OFFS    0x8000
+
 /* Reflect slcr offsets */
 struct slcr_regs {
 	u32 scl; /* 0x0 */
@@ -112,7 +116,8 @@ struct devcfg_regs {
 	u32 dma_src_len; /* 0x20 */
 	u32 dma_dst_len; /* 0x24 */
 	u32 rom_shadow; /* 0x28 */
-	u32 reserved1[2];
+	u32 multiboot_addr; /* 0x2c */
+	u32 reserved1;
 	u32 unlock; /* 0x34 */
 	u32 reserved2[18];
 	u32 mctrl; /* 0x80 */
