@@ -34,6 +34,21 @@
 
 /*#define CONFIG_DEFAULT_DEVICE_TREE	zynq-zed*/
 
+/*
+#include <video_fb.h>
+#define CONFIG_CFB_CONSOLE
+#define VIDEO_VISIBLE_COLS 	1920
+#define VIDEO_VISIBLE_ROWS	1080
+#define VIDEO_PIXEL_SIZE	4
+#define VIDEO_DATA_FORMAT	GDF_32BIT_X888RGB
+#define VIDEO_FB_ADRS		0x5000000
+*/
+
+#define CONFIG_ENV_OFFSET	0x6D00000
+
+
+
+
 #include <configs/zynq-common.h>
 
 
