@@ -224,37 +224,18 @@ static void zynq_qspi_init_hw(int is_dual, unsigned int cs)
  */
 static void zynq_qspi_copy_read_data(struct zynq_qspi *zqspi, u32 data, u8 size)
 {
-	u8 byte3;
+	if (size > 4) {
+		printf("%s: Illegal size value (%d)\n", __func__, size);
+		return;
+	}
 
 	debug("%s: data 0x%04x rxbuf addr: 0x%08x size %d\n", __func__ ,
 	      data, (unsigned)(zqspi->rxbuf), size);
 
 	if (zqspi->rxbuf) {
-		switch (size) {
-		case 1:
-			*((u8 *)zqspi->rxbuf) = data;
-			zqspi->rxbuf += 1;
-			break;
-		case 2:
-			*((u16 *)zqspi->rxbuf) = data;
-			zqspi->rxbuf += 2;
-			break;
-		case 3:
-			*((u16 *)zqspi->rxbuf) = data;
-			zqspi->rxbuf += 2;
-			byte3 = (u8)(data >> 16);
-			*((u8 *)zqspi->rxbuf) = byte3;
-			zqspi->rxbuf += 1;
-			break;
-		case 4:
-			/* Can not assume word aligned buffer */
-			memcpy(zqspi->rxbuf, &data, size);
-			zqspi->rxbuf += 4;
-			break;
-		default:
-			/* This will never execute */
-			break;
-		}
+		/* Can not assume word aligned buffer */
+		memcpy(zqspi->rxbuf, &data, size);
+		zqspi->rxbuf = (u8 *)zqspi->rxbuf + size;
 	}
 	zqspi->bytes_to_receive -= size;
 	if (zqspi->bytes_to_receive < 0)
@@ -270,34 +251,19 @@ static void zynq_qspi_copy_read_data(struct zynq_qspi *zqspi, u32 data, u8 size)
 static void zynq_qspi_copy_write_data(struct zynq_qspi *zqspi,
 		u32 *data, u8 size)
 {
+	if (size > 4) {
+		printf("%s: Illegal size value (%d)\n", __func__, size);
+		return;
+	}
+
 	if (zqspi->txbuf) {
-		switch (size) {
-		case 1:
-			*data = *((u8 *)zqspi->txbuf);
-			zqspi->txbuf += 1;
-			*data |= 0xFFFFFF00;
-			break;
-		case 2:
-			*data = *((u16 *)zqspi->txbuf);
-			zqspi->txbuf += 2;
-			*data |= 0xFFFF0000;
-			break;
-		case 3:
-			*data = *((u16 *)zqspi->txbuf);
-			zqspi->txbuf += 2;
-			*data |= (*((u8 *)zqspi->txbuf) << 16);
-			zqspi->txbuf += 1;
-			*data |= 0xFF000000;
-			break;
-		case 4:
-			/* Can not assume word aligned buffer */
-			memcpy(data, zqspi->txbuf, size);
-			zqspi->txbuf += 4;
-			break;
-		default:
-			/* This will never execute */
-			break;
-		}
+		/* Can not assume word aligned buffer */
+		memcpy(data, zqspi->txbuf, size);
+		zqspi->txbuf = (u8 *)zqspi->txbuf + size;
+		*data |= (size == 1 ? 0xFFFFFF00 :
+			  size == 2 ? 0xFFFF0000 :
+			  size == 3 ? 0xFF000000 :
+			  0);
 	} else {
 		*data = 0;
 	}
