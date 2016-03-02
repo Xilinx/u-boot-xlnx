@@ -1192,6 +1192,8 @@ static int zynq_nand_init(struct nand_chip *nand_chip, int devnum)
 		nand_chip->ecc.read_oob = zynq_nand_read_oob;
 		nand_chip->ecc.write_oob = zynq_nand_write_oob;
 
+		nand_chip->options |= NAND_NO_SUBPAGE_WRITE;
+
 		switch (mtd->writesize) {
 		case 512:
 			ecc_page_size = 0x1;
