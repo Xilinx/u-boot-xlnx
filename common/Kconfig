@@ -502,8 +502,15 @@ config CMD_SETGETDCR
 	  getidcr - Get a register value via indirect DCR addressing
 	  setidcr - Set a register value via indirect DCR addressing
 
+config CMD_ZYNQ_AES
+	bool "Zynq AES"
+	help
+	  Decrypts the encrypted image present in source address
+	  and places the decrypted image at destination address
+
 config CMD_ZYNQ_RSA
 	bool "Zynq RSA"
+	depends on CMD_ZYNQ_AES
 	help
 	  Verifies the authenticated and encrypted zynq images.
 
