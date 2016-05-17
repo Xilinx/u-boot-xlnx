@@ -1,0 +1,121 @@
+/*
+ * snickerdoodle board DTS
+ *
+ * Copyright (c) 2016 krtkl inc.
+ *
+ * SPDX-License-Identifier:     GPL-2.0+
+ */
+
+
+/dts-v1/;
+/include/ "zynq-7000.dtsi"
+/ {
+        model = "snickerdoodle";
+        compatible = "xlnx,zynq-snickerdoodle", "xlnx,zynq-7000";
+
+	cpus {
+		cpu@0 {
+			operating-points = <0xA2C2B 0xF4240 0x51616 0xF4240>; /* <666666 1000000 333333 1000000> */
+		};
+	};
+
+	chosen {
+                bootargs = "console=ttyPS0,115200n8 root=/dev/mmcblk0p2 rw rootwait earlyprintk";
+                linux,stdout-path = &uart0;
+                stdout-path = &uart0;
+        };
+
+	aliases {
+		serial0 = &uart0;
+		spi0 = &qspi;
+		mmc0 = &sdhci0;
+		mmc1 = &sdhci1;
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x20000000>;
+	};
+
+	wlan_en_reg: fixedregulator@1 {
+                compatible = "regulator-fixed";
+                regulator-name = "wlan-en-regulator";
+                regulator-min-microvolt = <0x325aa0>;		/* Specified as 3.3V for driver, actually 1.8V */
+                regulator-max-microvolt = <0x325aa0>;
+                gpio = <&gpio0 0x9 0x4>;			/* WLAN_EN GPIO 9 on B5 */
+                startup-delay-us = <0x11170>;
+                enable-active-high;
+                linux,phandle = <0x6>;
+                phandle = <0x6>;
+        };
+
+};
+
+&intc {
+	num_cpus = <2>;
+	num_interrupts = <96>;
+};
+
+&clkc {
+	fclk-enable = <0x1>;
+	ps-clk-frequency = <33333333>;
+};
+
+&gpio0 {
+        interrupt-controller;
+        #interrupt-cells = <0x2>;
+        emio-gpio-width = <0x40>;
+        gpio-mask-high = <0x0>;
+        gpio-mask-low = <0x5600>;
+        xlnx,emio-gpio-width = <0x40>;
+        xlnx,mio-gpio-mask = <0x5600>;
+        linux,phandle = <0x4>;
+        phandle = <0x4>;
+};
+
+&uart0 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+	interrupt-parent = <&intc>;
+	xlnx,has-modem = <0x0>;
+	current-speed = <0x1c200>;				/* 115200 */
+	device_type = "serial";
+	port-number = <0x0>;
+};
+
+&sdhci0 {
+	u-boot,dm-pre-reloc;
+        status = "okay";
+};
+
+&sdhci1 {
+	u-boot,dm-pre-reloc;
+        status = "okay";
+        vmmc-supply = <&wlan_en_reg>;
+	bus-width = <0x4>;
+        cap-power-off-card;
+	keep-power-in-suspend;
+
+	#address-cells = <0x1>;
+	#size-cells = <0x0>;
+        wlcore: wlcore@0 {
+                compatible = "wlcore", "ti,wl1831", "ti,wl1837";
+		reg = <2>;
+                interrupt-parent = <&gpio0>;
+		interrupts = <0x0 0x4>;
+        };
+};
+
+&spi1 {
+        u-boot,dm-pre-reloc;
+        status = "okay";
+};
+
+&qspi {
+        u-boot,dm-pre-reloc;
+        status = "okay";
+};
+
+&devcfg {
+	syscon = <&slcr>;
+};

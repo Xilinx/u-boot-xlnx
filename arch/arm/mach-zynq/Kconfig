@@ -12,6 +12,12 @@ choice
 	prompt "Xilinx Zynq board select"
 	default TARGET_ZYNQ_ZC702
 
+config TARGET_ZYNQ_SNICKERDOODLE
+	bool "Zynq snickerdoodle"
+
+config TARGET_ZYNQ_SNICKERDOODLE_BLACK
+	bool "Zynq snickerdoodle black"
+
 config TARGET_ZYNQ_ZED
 	bool "Zynq ZedBoard"
 
@@ -57,6 +63,8 @@ config SYS_SOC
 	default "zynq"
 
 config SYS_CONFIG_NAME
+	default "zynq_snickerdoodle" if TARGET_ZYNQ_SNICKERDOODLE
+	default "zynq_snickerdoodle_black" if TARGET_ZYNQ_SNICKERDOODLE_BLACK
 	default "zynq_zed" if TARGET_ZYNQ_ZED
 	default "zynq_microzed" if TARGET_ZYNQ_MICROZED
 	default "zynq_picozed" if TARGET_ZYNQ_PICOZED
