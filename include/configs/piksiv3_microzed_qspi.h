@@ -14,6 +14,11 @@
 
 #define CONFIG_SYS_NO_FLASH
 
+/* Image table */
+#define CONFIG_IMAGE_TABLE_BOOT
+#define CONFIG_IMAGE_SET_OFFSETS \
+    {0x40000, 0x50000, 0x60000, 0x70000}
+
 /* CPU clock */
 #ifndef CONFIG_CPU_FREQ_HZ
 #define CONFIG_CPU_FREQ_HZ	800000000
@@ -45,8 +50,19 @@
 #define CONFIG_ENV_IS_NOWHERE
 #define CONFIG_ENV_SIZE			(128 << 10)
 
+/* Default environment */
+#define CONFIG_EXTRA_ENV_SETTINGS	\
+  "preboot=run img_tbl_boot\0" \
+	"img_tbl_boot=" \
+		"sf probe 0 0 0 && " \
+		"sf read ${img_tbl_kernel_load_address} " \
+		        "${img_tbl_kernel_flash_offset} " \
+		        "${img_tbl_kernel_size} && " \
+		"bootm ${img_tbl_kernel_load_address}\0"
+
 #define CONFIG_BOOTCOMMAND		""
 
+#define CONFIG_PREBOOT
 #define CONFIG_BOOTDELAY		0 /* -1 to Disable autoboot */
 #define CONFIG_SYS_LOAD_ADDR	0 /* default? */
 
@@ -116,6 +132,9 @@
 #define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SYS_SPI_U_BOOT_OFFS  0x100000
+
+/* use image table in qspi */
+#define CONFIG_SPL_BOARD_LOAD_IMAGE
 
 /* SP location before relocation, must use scratch RAM */
 #define CONFIG_SPL_TEXT_BASE	0x0

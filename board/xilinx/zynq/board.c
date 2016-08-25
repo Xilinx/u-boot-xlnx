@@ -9,8 +9,17 @@
 #include <fpga.h>
 #include <mmc.h>
 #include <zynqpl.h>
+#include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
+#include <spi.h>
+#include <spi_flash.h>
+#ifdef CONFIG_SPL_BUILD
+#include <spl.h>
+#endif
+#include <image_table.h>
+
+#define REG_REBOOT_STATUS 0xF8000258U
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -26,6 +35,72 @@ static xilinx_desc fpga030 = XILINX_XC7Z030_DESC(0x30);
 static xilinx_desc fpga035 = XILINX_XC7Z035_DESC(0x35);
 static xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
 static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
+#endif
+
+#ifdef CONFIG_IMAGE_TABLE_BOOT
+static int image_descriptor_get(struct spi_flash *flash, uint32_t image_type,
+                                image_descriptor_t *image_descriptor)
+{
+  int err = 0;
+
+  /* Image table index is stored in the lower two bits
+   * of REBOOT_STATUS by the loader
+   */
+  uint32_t image_table_index = readl(REG_REBOOT_STATUS) & 0x3;
+  const uint32_t image_set_offsets[] = CONFIG_IMAGE_SET_OFFSETS;
+  uint32_t image_set_offset = image_set_offsets[image_table_index];
+
+  /* Load image set from QSPI flash into RAM */
+  image_set_t image_set;
+  err = spi_flash_read(flash, image_set_offset, sizeof(image_set_t),
+                       (void *)&image_set);
+  if (err) {
+    puts("Failed to read image set\n");
+    return err;
+  }
+
+  err = image_set_verify(&image_set);
+  if (err) {
+    puts("Image set verification failed\n");
+    return err;
+  }
+
+  const image_descriptor_t *d;
+  err = image_set_find_descriptor(&image_set, image_type, &d);
+  if (err) {
+    puts("Failed to find image descriptor\n");
+    return err;
+  }
+
+  *image_descriptor = *d;
+  return 0;
+}
+
+static int image_table_env_setup(void)
+{
+  int err;
+
+  struct spi_flash *flash;
+  flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
+                          CONFIG_SF_DEFAULT_CS,
+                          CONFIG_SF_DEFAULT_SPEED,
+                          CONFIG_SF_DEFAULT_MODE);
+  if (!flash) {
+    puts("SPI probe failed\n");
+    return -ENODEV;
+  }
+
+  image_descriptor_t image_descriptor;
+  err = image_descriptor_get(flash, IMAGE_TYPE_LINUX, &image_descriptor);
+  if (err) {
+    return err;
+  }
+
+  setenv_hex("img_tbl_kernel_load_address", image_descriptor.load_address);
+  setenv_hex("img_tbl_kernel_flash_offset", image_descriptor.data_offset);
+  setenv_hex("img_tbl_kernel_size",         image_descriptor.data_length);
+  return 0;
+}
 #endif
 
 int board_init(void)
@@ -99,8 +174,75 @@ int board_late_init(void)
 		break;
 	}
 
+#ifdef CONFIG_IMAGE_TABLE_BOOT
+	image_table_env_setup();
+#endif
+
 	return 0;
 }
+
+#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_SPL_BOARD_LOAD_IMAGE
+#ifdef CONFIG_IMAGE_TABLE_BOOT
+
+void board_boot_order(u32 *spl_boot_list)
+{
+  spl_boot_list[0] = BOOT_DEVICE_BOARD;
+}
+
+void spl_board_announce_boot_device(void)
+{
+  puts("image table");
+}
+
+int spl_board_load_image(void)
+{
+  int err;
+
+  struct spi_flash *flash;
+  flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
+                          CONFIG_SF_DEFAULT_CS,
+                          CONFIG_SF_DEFAULT_SPEED,
+                          CONFIG_SF_DEFAULT_MODE);
+  if (!flash) {
+    puts("SPI probe failed\n");
+    return -ENODEV;
+  }
+
+  image_descriptor_t image_descriptor;
+  err = image_descriptor_get(flash, IMAGE_TYPE_UBOOT, &image_descriptor);
+  if (err) {
+    return err;
+  }
+
+  u32 uboot_offset = image_descriptor.data_offset;
+
+  /*
+   * Load U-Boot image from SPI flash into RAM
+   */
+  struct image_header header;
+
+  /* Load U-Boot, mkimage header is 64 bytes. */
+  err = spi_flash_read(flash, uboot_offset, 0x40, (void *)&header);
+  if (err) {
+    puts("Failed to read U-Boot image header\n");
+    return err;
+  }
+
+  spl_parse_image_header(&header);
+  err = spi_flash_read(flash, uboot_offset,
+                       spl_image.size, (void *)spl_image.load_addr);
+  if (err) {
+    puts("Failed to read U-Boot image\n");
+    return err;
+  }
+
+  return err;
+}
+
+#endif
+#endif
+#endif
 
 #ifdef CONFIG_DISPLAY_BOARDINFO
 int checkboard(void)
