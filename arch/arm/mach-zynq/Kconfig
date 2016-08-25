@@ -46,6 +46,12 @@ config TARGET_ZYNQ_CC108
 	bool "Zynq CC108 Board"
 	select ZYNQ_CUSTOM_INIT
 
+config TARGET_PIKSIV3_MICROZED_FULL
+	bool "Piksiv3 MicroZed Full"
+
+config TARGET_PIKSIV3_MICROZED_QSPI
+	bool "Piksiv3 MicroZed QSPI"
+
 endchoice
 
 config SYS_BOARD
@@ -67,5 +73,7 @@ config SYS_CONFIG_NAME
 	default "zynq_cse" if TARGET_ZYNQ_CSE
 	default "zynq_afx" if TARGET_ZYNQ_AFX
 	default "zynq_cc108" if TARGET_ZYNQ_CC108
+	default "piksiv3_microzed_full" if TARGET_PIKSIV3_MICROZED_FULL
+	default "piksiv3_microzed_qspi" if TARGET_PIKSIV3_MICROZED_QSPI
 
 endif
