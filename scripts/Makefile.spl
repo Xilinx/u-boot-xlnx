@@ -127,12 +127,12 @@ MKIMAGEFLAGS_boot.bin += -n $(shell $(obj)/../tools/atmel_pmecc_params)
 boot.bin: $(obj)/../tools/atmel_pmecc_params
 endif
 
-boot.bin: $(obj)/u-boot-spl.bin
+boot.bin: $(obj)/$(SPL_BIN).bin
 	$(call if_changed,mkimage)
 else
 MKIMAGEFLAGS_boot.bin = -T zynqimage
 
-spl/boot.bin: $(obj)/u-boot-spl-dtb.bin
+$(obj)/boot.bin: $(obj)/$(SPL_BIN)-dtb.bin
 	$(call if_changed,mkimage)
 endif
 

@@ -48,9 +48,11 @@ config TARGET_ZYNQ_CC108
 
 config TARGET_PIKSIV3_MICROZED_FULL
 	bool "Piksiv3 MicroZed Full"
+	select SUPPORT_TPL
 
 config TARGET_PIKSIV3_MICROZED_QSPI
 	bool "Piksiv3 MicroZed QSPI"
+	select SUPPORT_TPL
 
 endchoice
 
