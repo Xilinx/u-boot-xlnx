@@ -20,6 +20,7 @@
 #include <image_table.h>
 
 #define REG_REBOOT_STATUS 0xF8000258U
+#define QSPI_LINEAR_START 0xFC000000U
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -73,12 +74,12 @@ static int image_descriptor_get(struct spi_flash *flash, uint32_t image_type,
   }
 
   *image_descriptor = *d;
-  return 0;
+  return err;
 }
 
 static int image_table_env_setup(void)
 {
-  int err;
+  int err = 0;
 
   struct spi_flash *flash;
   flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
@@ -99,7 +100,7 @@ static int image_table_env_setup(void)
   setenv_hex("img_tbl_kernel_load_address", image_descriptor.load_address);
   setenv_hex("img_tbl_kernel_flash_offset", image_descriptor.data_offset);
   setenv_hex("img_tbl_kernel_size",         image_descriptor.data_length);
-  return 0;
+  return err;
 }
 #endif
 
@@ -197,8 +198,78 @@ void spl_board_announce_boot_device(void)
 
 int spl_board_load_image(void)
 {
-  int err;
+  int err = 0;
 
+#ifdef CONFIG_TPL_BUILD
+  /* TPL */
+  const image_set_t *image_set;
+  uint32_t reboot_status = readl(REG_REBOOT_STATUS) & ~0x3;
+
+  /* TODO: read failsafe and alt status from IO */
+  bool failsafe = false;
+  bool alt = false;
+
+  if (failsafe) {
+    /* Load failsafe image
+     * alt = 0 : failsafe A
+     * alt = 1 : failsafe B
+     */
+    uint32_t offset = alt ? CONFIG_IMAGE_SET_OFFSET_FAILSAFE_B :
+                            CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A;
+    image_set = (const image_set_t *)(QSPI_LINEAR_START + offset);
+    reboot_status |= alt ? 0x1 : 0x0;
+
+    err = image_set_verify(image_set);
+    if (err) {
+      return err;
+    }
+  } else {
+    /* Load standard image based on sequence number
+     * alt = 0 : most recent
+     * alt = 1 : second most recent
+     */
+    const image_set_t *image_set_a =
+        (const image_set_t *)(QSPI_LINEAR_START +
+                              CONFIG_IMAGE_SET_OFFSET_STANDARD_A);
+    bool image_set_a_valid = (image_set_verify(image_set_a) == 0);
+
+    const image_set_t *image_set_b =
+        (const image_set_t *)(QSPI_LINEAR_START +
+                              CONFIG_IMAGE_SET_OFFSET_STANDARD_B);
+    bool image_set_b_valid = (image_set_verify(image_set_b) == 0);
+
+    if (image_set_a_valid && image_set_b_valid) {
+      int32_t seq_num_diff = image_set_a->seq_num - image_set_b->seq_num;
+      image_set = ((seq_num_diff >= 0) != alt) ? image_set_a : image_set_b;
+    } else if (image_set_a_valid) {
+      image_set = image_set_a;
+    } else if (image_set_b_valid) {
+      image_set = image_set_b;
+    } else {
+      /* No valid image set */
+      return -1;
+    }
+
+    reboot_status |= (image_set == image_set_a) ? 0x2 : 0x3;
+  }
+
+  const image_descriptor_t *d;
+  err = image_set_find_descriptor(image_set, IMAGE_TYPE_UBOOT_SPL, &d);
+  if (err) {
+    return err;
+  }
+
+  /* Copy image to RAM */
+  memcpy((void *)d->load_address,
+         (const void *)(QSPI_LINEAR_START + d->data_offset),
+         d->data_length);
+
+  /* Write image table index to lower two bits of REBOOT_STATUS */
+  writel(reboot_status, REG_REBOOT_STATUS);
+  return err;
+
+#else
+  /* SPL */
   struct spi_flash *flash;
   flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
                           CONFIG_SF_DEFAULT_CS,
@@ -236,6 +307,7 @@ int spl_board_load_image(void)
     puts("Failed to read U-Boot image\n");
     return err;
   }
+#endif
 
   return err;
 }

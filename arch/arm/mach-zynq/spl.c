@@ -16,6 +16,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void board_init_f(ulong dummy)
 {
+#ifndef CONFIG_TPL_BUILD
 	ps7_init();
 
 	arch_cpu_init();
@@ -24,6 +25,7 @@ void board_init_f(ulong dummy)
 	 * debug_uart_init();
 	 * printch('x');
 	 */
+#endif
 }
 
 #ifdef CONFIG_SPL_BOARD_INIT
