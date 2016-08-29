@@ -129,12 +129,20 @@ endif
 
 boot.bin: $(obj)/$(SPL_BIN).bin
 	$(call if_changed,mkimage)
-else
+endif
+
+ifdef CONFIG_ARCH_ZYNQ
+MKIMAGEFLAGS_$(SPL_BIN)-dtb.img = -A $(ARCH) -T firmware -C none -O u-boot \
+  -a $(CONFIG_SPL_TEXT_BASE) -e $(CONFIG_SPL_TEXT_BASE) \
+  -n "U-Boot $(UBOOTRELEASE) for $(BOARD) board"
 MKIMAGEFLAGS_boot.bin = -T zynqimage
+endif
 
 $(obj)/boot.bin: $(obj)/$(SPL_BIN)-dtb.bin
 	$(call if_changed,mkimage)
-endif
+
+$(obj)/$(SPL_BIN)-dtb.img: $(obj)/$(SPL_BIN)-dtb.bin
+	$(call if_changed,mkimage)
 
 ALL-y	+= $(obj)/$(SPL_BIN).bin $(obj)/$(SPL_BIN).cfg
 
@@ -160,6 +168,7 @@ endif
 
 ifdef CONFIG_ARCH_ZYNQ
 ALL-y	+= $(obj)/boot.bin
+ALL-y	+= $(obj)/$(SPL_BIN)-dtb.img
 endif
 
 all:	$(ALL-y)
