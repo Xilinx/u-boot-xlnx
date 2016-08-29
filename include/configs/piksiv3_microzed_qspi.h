@@ -83,7 +83,8 @@
 					                   sizeof(CONFIG_SYS_PROMPT) + 16)
 
 /* Physical Memory map */
-#define CONFIG_SYS_TEXT_BASE		0x4000000
+#define CONFIG_SYS_TEXT_BASE    0x4000000
+#define CONFIG_SYS_UBOOT_START  CONFIG_SYS_TEXT_BASE
 
 #define CONFIG_NR_DRAM_BANKS		1
 #define CONFIG_SYS_SDRAM_BASE		0
@@ -119,14 +120,20 @@
 #endif
 
 /* SPL part */
-#define CONFIG_CMD_SPL
 #define CONFIG_SPL_FRAMEWORK
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
 #define CONFIG_SPL_BOARD_INIT
 
-#define CONFIG_SPL_LDSCRIPT	"arch/arm/mach-zynq/u-boot-spl.lds"
+/* TPL optimizations */
+#ifdef CONFIG_TPL_BUILD
+#undef CONFIG_SPL_SERIAL_SUPPORT
+#undef CONFIG_SPL_BOARD_INIT
+#undef CONFIG_SPL_DM
+#undef CONFIG_SPL_OF_CONTROL
+#undef CONFIG_SPL_OF_EMBED
+#endif
 
 /* Disable dcache for SPL just for sure */
 #ifdef CONFIG_SPL_BUILD
@@ -134,39 +141,53 @@
 #undef CONFIG_FPGA
 #endif
 
-/* qspi mode is working fine */
+#ifdef CONFIG_TPL_BUILD
+
+/* TPL is loaded to low OCM and relocated to high OCM */
+/* 40kB code + bss, 8kB heap, 16kB stack in high OCM */
+
+#define CONFIG_SPL_LDSCRIPT "arch/arm/mach-zynq/u-boot-spl-reloc.lds"
+
+#define CONFIG_SPL_TEXT_BASE              0x00000000
+#define CONFIG_SPL_RELOC_ADDR             0xffff0000
+#define CONFIG_SPL_MAX_SIZE               0x0000a000
+
+#define CONFIG_SYS_SPL_MALLOC_START       0xffffa000
+#define CONFIG_SYS_SPL_MALLOC_SIZE        0x00002000
+
+#define CONFIG_SPL_STACK                  0xfffffe00
+
+/* Use image table */
+#define CONFIG_SPL_BOARD_LOAD_IMAGE
+
+#else
+
+/* SPL is loaded to low OCM, no relocation */
+/* 192kB code in low OCM */
+/* 8kB heap, 8kB bss, 48kB stack in high OCM */
+
+#define CONFIG_SPL_LDSCRIPT "arch/arm/mach-zynq/u-boot-spl.lds"
+
+#define CONFIG_SPL_TEXT_BASE              0x00000000
+#define CONFIG_SPL_MAX_SIZE               0x00030000
+
+#define CONFIG_SYS_SPL_MALLOC_START       0xffff0000
+#define CONFIG_SYS_SPL_MALLOC_SIZE        0x00002000
+
+#define CONFIG_SPL_BSS_START_ADDR         0xffff2000
+#define CONFIG_SPL_BSS_MAX_SIZE           0x00002000
+
+#define CONFIG_SPL_STACK                  0xfffffe00
+
+/* QSPI support */
 #define CONFIG_SPL_SPI_SUPPORT
 #define CONFIG_SPL_SPI_LOAD
 #define CONFIG_SPL_SPI_FLASH_SUPPORT
 #define CONFIG_SYS_SPI_U_BOOT_OFFS  0x100000
 
-/* use image table in qspi */
+/* Use image table */
 #define CONFIG_SPL_BOARD_LOAD_IMAGE
 
-/* SP location before relocation, must use scratch RAM */
-#define CONFIG_SPL_TEXT_BASE	0x0
-
-/* 3 * 64kB blocks of OCM - one is on the top because of bootrom */
-#define CONFIG_SPL_MAX_SIZE	0x30000
-
-/* The highest 64k OCM address */
-#define OCM_HIGH_ADDR	0xffff0000
-
-/* On the top of OCM space */
-#define CONFIG_SYS_SPL_MALLOC_START	OCM_HIGH_ADDR
-#define CONFIG_SYS_SPL_MALLOC_SIZE	0x2000
-
-/*
- * SPL stack position - and stack goes down
- * 0xfffffe00 is used for putting wfi loop.
- * Set it up as limit for now.
- */
-#define CONFIG_SPL_STACK	0xfffffe00
-
-/* BSS setup */
-#define CONFIG_SPL_BSS_START_ADDR	0x3000000
-#define CONFIG_SPL_BSS_MAX_SIZE		0x100000
-
-#define CONFIG_SYS_UBOOT_START	CONFIG_SYS_TEXT_BASE
+#endif
 
 #endif /* __CONFIG_PIKSIV3_MICROZED_QSPI_H */

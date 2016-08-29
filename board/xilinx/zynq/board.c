@@ -39,6 +39,7 @@ static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
 #endif
 
 #ifdef CONFIG_IMAGE_TABLE_BOOT
+#ifndef CONFIG_TPL_BUILD
 static int image_descriptor_get(struct spi_flash *flash, uint32_t image_type,
                                 image_descriptor_t *image_descriptor)
 {
@@ -102,6 +103,7 @@ static int image_table_env_setup(void)
   setenv_hex("img_tbl_kernel_size",         image_descriptor.data_length);
   return err;
 }
+#endif
 #endif
 
 int board_init(void)
@@ -176,7 +178,9 @@ int board_late_init(void)
 	}
 
 #ifdef CONFIG_IMAGE_TABLE_BOOT
+#ifndef CONFIG_TPL_BUILD
 	image_table_env_setup();
+#endif
 #endif
 
 	return 0;
