@@ -16,13 +16,13 @@ else
 obj-y	+= vectors.o crt0.o
 endif
 
-ifndef CONFIG_SPL_BUILD
 ifdef CONFIG_ARM64
 obj-y	+= relocate_64.o
 else
 obj-y	+= relocate.o
 endif
 
+ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_CPU_V7M) += cmd_boot.o
 obj-$(CONFIG_OF_LIBFDT) += bootm-fdt.o
 obj-$(CONFIG_CMD_BOOTM) += bootm.o

@@ -100,6 +100,14 @@ endif
 endif
 
 ifneq ($(CONFIG_SPL_BUILD),y)
+# Always enable reloc for U-Boot
+RELOC := y
+# Only enable reloc for SPL if requested
+else ifdef CONFIG_SPL_RELOC_ADDR
+RELOC := y
+endif
+
+ifneq ($(RELOC),)
 # Check that only R_ARM_RELATIVE relocations are generated.
 ALL-y += checkarmreloc
 # The movt / movw can hardcode 16 bit parts of the addresses in the
