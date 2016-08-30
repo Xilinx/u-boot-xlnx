@@ -160,6 +160,14 @@ hostprogs-$(CONFIG_ARMADA_XP) += kwboot
 hostprogs-y += proftool
 hostprogs-$(CONFIG_STATIC_RELA) += relocate-rela
 
+hostprogs-$(CONFIG_ARCH_ZYNQ) += image_table_util
+image_table_util-objs :=	image_table_util.o \
+				imagetool.o \
+				default_image.o \
+				common/image.o \
+				common/image_table.o \
+				lib/crc32.o
+
 hostprogs-y += fdtgrep
 fdtgrep-objs += $(LIBFDT_OBJS) fdtgrep.o
 

@@ -13,10 +13,14 @@
 #ifndef __IMAGE_TABLE_H__
 #define __IMAGE_TABLE_H__
 
+#include "compiler.h"
+
 #define IMAGE_SET_SIGNATURE 0x9db77c10
 #define IMAGE_SET_DESCRIPTORS_COUNT 16
+#define IMAGE_SET_RESERVED_BYTE 0xff
 
-#define IMAGE_TYPE_INVALID    0x00000000
+#define IMAGE_TYPE_INVALID    0xffffffff
+#define IMAGE_TYPE_UNKNOWN    0x00000000
 #define IMAGE_TYPE_LOADER     0x00000001
 #define IMAGE_TYPE_UBOOT_SPL  0x00000002
 #define IMAGE_TYPE_UBOOT      0x00000003
@@ -47,6 +51,23 @@ typedef struct {
   uint32_t _crc;
 } image_set_t;
 
+typedef struct {
+  uint32_t type;
+  uint32_t version;
+  uint32_t timestamp;
+  uint32_t load_address;
+  uint32_t entry_address;
+  uint32_t data_offset;
+  uint32_t data_size;
+  uint32_t data_crc;
+} image_descriptor_params_t;
+
+typedef struct {
+  uint32_t version;
+  uint32_t timestamp;
+  uint32_t seq_num;
+} image_set_params_t;
+
 #define IMAGE_TABLE_GET_U32_FN(type, param) \
   static inline uint32_t \
   image_##type##_##param##_get(const image_##type##_t *t) \
@@ -69,5 +90,14 @@ IMAGE_TABLE_GET_U32_FN(descriptor, data_crc);
 int image_set_verify(const image_set_t *s);
 int image_set_descriptor_find(const image_set_t *s, uint32_t image_type,
                               const image_descriptor_t **d);
+
+void image_set_init(image_set_t *s, const image_set_params_t *p);
+int image_set_descriptor_add(image_set_t *s,
+                             const image_descriptor_params_t *p);
+void image_set_finalize(image_set_t *s);
+
+void image_descriptor_data_crc_init(uint32_t *crc);
+void image_descriptor_data_crc_continue(uint32_t *crc, const uint8_t *data,
+                                        uint32_t data_length);
 
 #endif /* __IMAGE_TABLE_H__ */
