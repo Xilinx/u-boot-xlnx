@@ -156,6 +156,8 @@ int board_init(void)
 
 int board_late_init(void)
 {
+  int err = 0;
+
 	switch ((zynq_slcr_get_boot_mode()) & ZYNQ_BM_MASK) {
 	case ZYNQ_BM_QSPI:
 		setenv("modeboot", "qspiboot");
@@ -179,11 +181,14 @@ int board_late_init(void)
 
 #ifdef CONFIG_IMAGE_TABLE_BOOT
 #ifndef CONFIG_TPL_BUILD
-	image_table_env_setup();
+	err = image_table_env_setup();
+  if (err) {
+    return err;
+  }
 #endif
 #endif
 
-	return 0;
+	return err;
 }
 
 #ifdef CONFIG_SPL_BUILD
