@@ -98,9 +98,12 @@ static int image_table_env_setup(void)
     return err;
   }
 
-  setenv_hex("img_tbl_kernel_load_address", image_descriptor.load_address);
-  setenv_hex("img_tbl_kernel_flash_offset", image_descriptor.data_offset);
-  setenv_hex("img_tbl_kernel_size",         image_descriptor.data_size);
+  setenv_hex("img_tbl_kernel_load_address",
+             image_descriptor_load_address_get(&image_descriptor));
+  setenv_hex("img_tbl_kernel_flash_offset",
+             image_descriptor_data_offset_get(&image_descriptor));
+  setenv_hex("img_tbl_kernel_size",
+             image_descriptor_data_size_get(&image_descriptor));
   return err;
 }
 #endif
@@ -249,7 +252,8 @@ int spl_board_load_image(void)
     bool image_set_b_valid = (image_set_verify(image_set_b) == 0);
 
     if (image_set_a_valid && image_set_b_valid) {
-      int32_t seq_num_diff = image_set_a->seq_num - image_set_b->seq_num;
+      int32_t seq_num_diff = image_set_seq_num_get(image_set_a) -
+                             image_set_seq_num_get(image_set_b);
       image_set = ((seq_num_diff >= 0) != alt) ? image_set_a : image_set_b;
     } else if (image_set_a_valid) {
       image_set = image_set_a;
@@ -272,7 +276,8 @@ int spl_board_load_image(void)
   }
 
   const uint8_t *flash_image =
-      (const uint8_t *)(QSPI_LINEAR_START + image_descriptor->data_offset);
+      (const uint8_t *)(QSPI_LINEAR_START +
+                        image_descriptor_data_offset_get(image_descriptor));
 
   /* Read header */
   struct image_header header;
@@ -285,9 +290,10 @@ int spl_board_load_image(void)
   spl_parse_image_header(&header);
 
   /* Copy image to RAM at load address, skipping over header */
-  memcpy((void *)image_descriptor->load_address,
+  memcpy((void *)image_descriptor_load_address_get(image_descriptor),
          (const void *)&flash_image[sizeof(struct image_header)],
-         image_descriptor->data_size - sizeof(struct image_header));
+         image_descriptor_data_size_get(image_descriptor) -
+         sizeof(struct image_header));
 
   /* Write image table index to lower two bits of REBOOT_STATUS */
   uint32_t reboot_status = readl(REG_REBOOT_STATUS);
@@ -315,7 +321,7 @@ int spl_board_load_image(void)
     return err;
   }
 
-  u32 flash_offset = image_descriptor.data_offset;
+  u32 flash_offset = image_descriptor_data_offset_get(&image_descriptor);
 
   /* Read header */
   struct image_header header;
@@ -333,8 +339,10 @@ int spl_board_load_image(void)
 
   /* Copy image to RAM at load address, skipping over header */
   err = spi_flash_read(flash, flash_offset + sizeof(struct image_header),
-                       image_descriptor.data_size - sizeof(struct image_header),
-                       (void *)image_descriptor.load_address);
+                       image_descriptor_data_size_get(&image_descriptor) -
+                       sizeof(struct image_header),
+                       (void *)
+                       image_descriptor_load_address_get(&image_descriptor));
   if (err) {
     puts("Failed to read U-Boot image\n");
     return err;

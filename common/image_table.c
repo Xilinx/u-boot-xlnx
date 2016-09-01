@@ -15,13 +15,13 @@
 
 int image_set_verify(const image_set_t *s)
 {
-  if (s->signature != IMAGE_SET_SIGNATURE) {
+  if (s->_signature != cpu_to_le32(IMAGE_SET_SIGNATURE)) {
     return -1;
   }
 
   uint32_t crc = crc32(0, (const unsigned char *)s,
-                       sizeof(*s) - sizeof(s->crc));
-  if (crc != s->crc) {
+                       sizeof(*s) - sizeof(s->_crc));
+  if (s->_crc != cpu_to_le32(crc)) {
     return -1;
   }
 
@@ -35,7 +35,7 @@ int image_set_descriptor_find(const image_set_t *s, uint32_t image_type,
 
   for (i=0; i<IMAGE_SET_DESCRIPTORS_COUNT; i++) {
     const image_descriptor_t *dd = &s->descriptors[i];
-    if (dd->type == image_type) {
+    if (dd->_type == cpu_to_le32(image_type)) {
       *d = dd;
       return 0;
     }
