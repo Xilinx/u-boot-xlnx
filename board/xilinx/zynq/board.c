@@ -111,6 +111,10 @@ static int image_table_env_setup(void)
 
 int board_init(void)
 {
+#if defined(CONFIG_TPL_BUILD) && defined(CONFIG_TPL_BOOTSTRAP_INIT)
+  CONFIG_TPL_BOOTSTRAP_INIT;
+#endif
+
 #if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
 	unsigned char eepromsel = CONFIG_SYS_I2C_MUX_EEPROM_SEL;
 #endif
@@ -215,9 +219,8 @@ int spl_board_load_image(void)
 #ifdef CONFIG_TPL_BUILD
   /* TPL */
 
-  /* TODO: read failsafe and alt status from IO */
-  bool failsafe = false;
-  bool alt = false;
+  bool failsafe = CONFIG_TPL_BOOTSTRAP_FAILSAFE;
+  bool alt = CONFIG_TPL_BOOTSTRAP_ALTERNATE;
 
   /* Select an image set to boot */
   const image_set_t *image_set;

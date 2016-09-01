@@ -160,6 +160,17 @@
 /* Use image table */
 #define CONFIG_SPL_BOARD_LOAD_IMAGE
 
+/* Bootstrap pin configuration - nothing to do */
+#define CONFIG_TPL_BOOTSTRAP_INIT
+
+/* MIO 51 = SW1, default low */
+#define CONFIG_TPL_BOOTSTRAP_FAILSAFE \
+  ((readl(0xE000A064) & (1<<19)) ? true : false)
+
+/* MIO 47 = LED, default low */
+#define CONFIG_TPL_BOOTSTRAP_ALTERNATE \
+  ((readl(0xE000A064) & (1<<15)) ? true : false)
+
 #else
 
 /* SPL is loaded to low OCM, no relocation */
