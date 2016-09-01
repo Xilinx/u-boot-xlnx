@@ -28,7 +28,7 @@ int image_set_verify(const image_set_t *s)
   return 0;
 }
 
-int image_set_find_descriptor(const image_set_t *s, uint32_t image_type,
+int image_set_descriptor_find(const image_set_t *s, uint32_t image_type,
                               const image_descriptor_t **d)
 {
   int i;

@@ -28,7 +28,7 @@ typedef struct {
   uint32_t timestamp;
   uint32_t load_address;
   uint32_t data_offset;
-  uint32_t data_length;
+  uint32_t data_size;
   uint32_t data_crc;
   uint32_t reserved0[25];
 } image_descriptor_t;
@@ -45,7 +45,7 @@ typedef struct {
 } image_set_t;
 
 int image_set_verify(const image_set_t *s);
-int image_set_find_descriptor(const image_set_t *s, uint32_t image_type,
+int image_set_descriptor_find(const image_set_t *s, uint32_t image_type,
                               const image_descriptor_t **d);
 
 #endif /* __IMAGE_TABLE_H__ */

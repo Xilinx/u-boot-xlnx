@@ -68,7 +68,7 @@ static int image_descriptor_get(struct spi_flash *flash, uint32_t image_type,
   }
 
   const image_descriptor_t *d;
-  err = image_set_find_descriptor(&image_set, image_type, &d);
+  err = image_set_descriptor_find(&image_set, image_type, &d);
   if (err) {
     puts("Failed to find image descriptor\n");
     return err;
@@ -100,7 +100,7 @@ static int image_table_env_setup(void)
 
   setenv_hex("img_tbl_kernel_load_address", image_descriptor.load_address);
   setenv_hex("img_tbl_kernel_flash_offset", image_descriptor.data_offset);
-  setenv_hex("img_tbl_kernel_size",         image_descriptor.data_length);
+  setenv_hex("img_tbl_kernel_size",         image_descriptor.data_size);
   return err;
 }
 #endif
@@ -206,13 +206,14 @@ int spl_board_load_image(void)
 
 #ifdef CONFIG_TPL_BUILD
   /* TPL */
-  const image_set_t *image_set;
-  uint32_t reboot_status = readl(REG_REBOOT_STATUS) & ~0x3;
 
   /* TODO: read failsafe and alt status from IO */
   bool failsafe = false;
   bool alt = false;
 
+  /* Select an image set to boot */
+  const image_set_t *image_set;
+  uint32_t image_table_index;
   if (failsafe) {
     /* Load failsafe image
      * alt = 0 : failsafe A
@@ -221,7 +222,7 @@ int spl_board_load_image(void)
     uint32_t offset = alt ? CONFIG_IMAGE_SET_OFFSET_FAILSAFE_B :
                             CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A;
     image_set = (const image_set_t *)(QSPI_LINEAR_START + offset);
-    reboot_status |= alt ? 0x1 : 0x0;
+    image_table_index = alt ? 0x1 : 0x0;
 
     err = image_set_verify(image_set);
     if (err) {
@@ -254,23 +255,41 @@ int spl_board_load_image(void)
       return -1;
     }
 
-    reboot_status |= (image_set == image_set_a) ? 0x2 : 0x3;
+    image_table_index = (image_set == image_set_a) ? 0x2 : 0x3;
   }
 
-  const image_descriptor_t *d;
-  err = image_set_find_descriptor(image_set, IMAGE_TYPE_UBOOT_SPL, &d);
+  /* Find descriptor for the SPL image from the specified image set */
+  const image_descriptor_t *image_descriptor;
+  err = image_set_descriptor_find(image_set, IMAGE_TYPE_UBOOT_SPL,
+                                  &image_descriptor);
   if (err) {
     return err;
   }
 
-  /* Copy image to RAM */
-  memcpy((void *)d->load_address,
-         (const void *)(QSPI_LINEAR_START + d->data_offset),
-         d->data_length);
+  const uint8_t *flash_image =
+      (const uint8_t *)(QSPI_LINEAR_START + image_descriptor->data_offset);
+
+  /* Read header */
+  struct image_header header;
+  memcpy((void *)&header,
+         (const void *)flash_image,
+         sizeof(struct image_header));
+
+  /* Parse header */
+  spl_image.flags |= SPL_COPY_PAYLOAD_ONLY;
+  spl_parse_image_header(&header);
+
+  /* Copy image to RAM at load address, skipping over header */
+  memcpy((void *)image_descriptor->load_address,
+         (const void *)&flash_image[sizeof(struct image_header)],
+         image_descriptor->data_size - sizeof(struct image_header));
 
   /* Write image table index to lower two bits of REBOOT_STATUS */
+  uint32_t reboot_status = readl(REG_REBOOT_STATUS);
+  reboot_status = (reboot_status & ~0x3) | (image_table_index & 0x3);
+  zynq_slcr_unlock();
   writel(reboot_status, REG_REBOOT_STATUS);
-  return err;
+  zynq_slcr_lock();
 
 #else
   /* SPL */
@@ -284,29 +303,33 @@ int spl_board_load_image(void)
     return -ENODEV;
   }
 
+  /* Find descriptor for the U-Boot image from the specified image set */
   image_descriptor_t image_descriptor;
   err = image_descriptor_get(flash, IMAGE_TYPE_UBOOT, &image_descriptor);
   if (err) {
     return err;
   }
 
-  u32 uboot_offset = image_descriptor.data_offset;
+  u32 flash_offset = image_descriptor.data_offset;
 
-  /*
-   * Load U-Boot image from SPI flash into RAM
-   */
+  /* Read header */
   struct image_header header;
-
-  /* Load U-Boot, mkimage header is 64 bytes. */
-  err = spi_flash_read(flash, uboot_offset, 0x40, (void *)&header);
+  err = spi_flash_read(flash, flash_offset,
+                       sizeof(struct image_header),
+                       (void *)&header);
   if (err) {
     puts("Failed to read U-Boot image header\n");
     return err;
   }
 
+  /* Parse header */
+  spl_image.flags |= SPL_COPY_PAYLOAD_ONLY;
   spl_parse_image_header(&header);
-  err = spi_flash_read(flash, uboot_offset,
-                       spl_image.size, (void *)spl_image.load_addr);
+
+  /* Copy image to RAM at load address, skipping over header */
+  err = spi_flash_read(flash, flash_offset + sizeof(struct image_header),
+                       image_descriptor.data_size - sizeof(struct image_header),
+                       (void *)image_descriptor.load_address);
   if (err) {
     puts("Failed to read U-Boot image\n");
     return err;
