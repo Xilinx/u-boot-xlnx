@@ -14,6 +14,9 @@
 
 #define CONFIG_SYS_NO_FLASH
 
+/* ATAG support */
+#define CONFIG_CMDLINE_TAG
+
 /* Image table */
 #define CONFIG_IMAGE_TABLE_BOOT
 #define CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A 0x00040000U
