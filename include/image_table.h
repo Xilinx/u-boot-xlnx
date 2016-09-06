@@ -68,24 +68,30 @@ typedef struct {
   uint32_t seq_num;
 } image_set_params_t;
 
-#define IMAGE_TABLE_GET_U32_FN(type, param) \
+#define IMAGE_TABLE_GET_SET_U32_FN(type, param) \
   static inline uint32_t \
   image_##type##_##param##_get(const image_##type##_t *t) \
   { \
     return le32_to_cpu(t->_##param); \
+  } \
+  \
+  static inline void \
+  image_##type##_##param##_set(image_##type##_t *t, uint32_t value) \
+  { \
+    t->_##param = cpu_to_le32(value); \
   }
 
-IMAGE_TABLE_GET_U32_FN(set, version);
-IMAGE_TABLE_GET_U32_FN(set, timestamp);
-IMAGE_TABLE_GET_U32_FN(set, seq_num);
-IMAGE_TABLE_GET_U32_FN(descriptor, type);
-IMAGE_TABLE_GET_U32_FN(descriptor, version);
-IMAGE_TABLE_GET_U32_FN(descriptor, timestamp);
-IMAGE_TABLE_GET_U32_FN(descriptor, load_address);
-IMAGE_TABLE_GET_U32_FN(descriptor, entry_address);
-IMAGE_TABLE_GET_U32_FN(descriptor, data_offset);
-IMAGE_TABLE_GET_U32_FN(descriptor, data_size);
-IMAGE_TABLE_GET_U32_FN(descriptor, data_crc);
+IMAGE_TABLE_GET_SET_U32_FN(set, version);
+IMAGE_TABLE_GET_SET_U32_FN(set, timestamp);
+IMAGE_TABLE_GET_SET_U32_FN(set, seq_num);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, type);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, version);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, timestamp);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, load_address);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, entry_address);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, data_offset);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, data_size);
+IMAGE_TABLE_GET_SET_U32_FN(descriptor, data_crc);
 
 int image_set_verify(const image_set_t *s);
 int image_set_descriptor_find(const image_set_t *s, uint32_t image_type,
