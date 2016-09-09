@@ -212,6 +212,44 @@ void spl_board_announce_boot_device(void)
   puts("image table");
 }
 
+#ifdef CONFIG_TPL_BUILD
+int tpl_image_set_check(const image_set_t *image_set)
+{
+  int err = 0;
+
+  /* Verify image set header */
+  err = image_set_verify(image_set);
+  if (err) {
+    return err;
+  }
+
+  /* Find SPL image descriptor */
+  const image_descriptor_t *image_descriptor;
+  err = image_set_descriptor_find(image_set, IMAGE_TYPE_UBOOT_SPL,
+                                  &image_descriptor);
+  if (err) {
+    return err;
+  }
+
+  /* Verify SPL image CRC */
+  const uint8_t *image_data =
+      (const uint8_t *)(QSPI_LINEAR_START +
+                        image_descriptor_data_offset_get(image_descriptor));
+  uint32_t image_data_size = image_descriptor_data_size_get(image_descriptor);
+
+  u32 computed_data_crc;
+  image_descriptor_data_crc_init(&computed_data_crc);
+  image_descriptor_data_crc_continue(&computed_data_crc, image_data,
+                                     image_data_size);
+
+  if (computed_data_crc != image_descriptor_data_crc_get(image_descriptor)) {
+    return -1;
+  }
+
+  return 0;
+}
+#endif
+
 int spl_board_load_image(void)
 {
   int err = 0;
@@ -235,10 +273,10 @@ int spl_board_load_image(void)
     image_set = (const image_set_t *)(QSPI_LINEAR_START + offset);
     image_table_index = alt ? 0x1 : 0x0;
 
-    err = image_set_verify(image_set);
-    if (err) {
-      return err;
+    if (tpl_image_set_check(image_set) != 0) {
+      return -1;
     }
+
   } else {
     /* Load standard image based on sequence number
      * alt = 0 : most recent
@@ -247,12 +285,12 @@ int spl_board_load_image(void)
     const image_set_t *image_set_a =
         (const image_set_t *)(QSPI_LINEAR_START +
                               CONFIG_IMAGE_SET_OFFSET_STANDARD_A);
-    bool image_set_a_valid = (image_set_verify(image_set_a) == 0);
+    bool image_set_a_valid = (tpl_image_set_check(image_set_a) == 0);
 
     const image_set_t *image_set_b =
         (const image_set_t *)(QSPI_LINEAR_START +
                               CONFIG_IMAGE_SET_OFFSET_STANDARD_B);
-    bool image_set_b_valid = (image_set_verify(image_set_b) == 0);
+    bool image_set_b_valid = (tpl_image_set_check(image_set_b) == 0);
 
     if (image_set_a_valid && image_set_b_valid) {
       int32_t seq_num_diff = image_set_seq_num_get(image_set_a) -
@@ -270,7 +308,7 @@ int spl_board_load_image(void)
     image_table_index = (image_set == image_set_a) ? 0x2 : 0x3;
   }
 
-  /* Find descriptor for the SPL image from the specified image set */
+  /* Find SPL image descriptor */
   const image_descriptor_t *image_descriptor;
   err = image_set_descriptor_find(image_set, IMAGE_TYPE_UBOOT_SPL,
                                   &image_descriptor);
@@ -278,14 +316,14 @@ int spl_board_load_image(void)
     return err;
   }
 
-  const uint8_t *flash_image =
+  const uint8_t *image_data =
       (const uint8_t *)(QSPI_LINEAR_START +
                         image_descriptor_data_offset_get(image_descriptor));
 
   /* Read header */
   struct image_header header;
   memcpy((void *)&header,
-         (const void *)flash_image,
+         (const void *)image_data,
          sizeof(struct image_header));
 
   /* Parse header */
@@ -294,7 +332,7 @@ int spl_board_load_image(void)
 
   /* Copy image to RAM at load address, skipping over header */
   memcpy((void *)image_descriptor_load_address_get(image_descriptor),
-         (const void *)&flash_image[sizeof(struct image_header)],
+         (const void *)&image_data[sizeof(struct image_header)],
          image_descriptor_data_size_get(image_descriptor) -
          sizeof(struct image_header));
 
@@ -321,10 +359,15 @@ int spl_board_load_image(void)
   image_descriptor_t image_descriptor;
   err = image_descriptor_get(flash, IMAGE_TYPE_UBOOT, &image_descriptor);
   if (err) {
+    puts("Could not find U-Boot image\n");
     return err;
   }
 
   u32 flash_offset = image_descriptor_data_offset_get(&image_descriptor);
+
+  /* Init CRC */
+  u32 computed_data_crc;
+  image_descriptor_data_crc_init(&computed_data_crc);
 
   /* Read header */
   struct image_header header;
@@ -336,19 +379,33 @@ int spl_board_load_image(void)
     return err;
   }
 
+  /* Update CRC over header */
+  image_descriptor_data_crc_continue(&computed_data_crc, (const u8 *)&header,
+                                     sizeof(header));
+
   /* Parse header */
   spl_image.flags |= SPL_COPY_PAYLOAD_ONLY;
   spl_parse_image_header(&header);
 
   /* Copy image to RAM at load address, skipping over header */
+  u32 load_address = image_descriptor_load_address_get(&image_descriptor);
+  u32 load_size = image_descriptor_data_size_get(&image_descriptor) -
+                      sizeof(struct image_header);
   err = spi_flash_read(flash, flash_offset + sizeof(struct image_header),
-                       image_descriptor_data_size_get(&image_descriptor) -
-                       sizeof(struct image_header),
-                       (void *)
-                       image_descriptor_load_address_get(&image_descriptor));
+                       load_size, (void *)load_address);
   if (err) {
     puts("Failed to read U-Boot image\n");
     return err;
+  }
+
+  /* Update CRC over data */
+  image_descriptor_data_crc_continue(&computed_data_crc,
+                                     (const u8 *)load_address, load_size);
+
+  /* Check CRC */
+  if (computed_data_crc != image_descriptor_data_crc_get(&image_descriptor)) {
+    puts("U-Boot image CRC failure\n");
+    return -1;
   }
 #endif
 
