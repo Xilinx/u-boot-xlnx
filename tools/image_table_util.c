@@ -511,14 +511,23 @@ static int do_verify(void)
       if (image_descriptor_type_get(d) != IMAGE_TYPE_INVALID) {
         printf("Verifying component image %u: ", i);
 
-        const uint8_t *data = &ptr[image_descriptor_data_offset_get(d)];
+        uint32_t data_offset = image_descriptor_data_offset_get(d);
         uint32_t data_size = image_descriptor_data_size_get(d);
 
-        uint32_t data_crc;
-        image_descriptor_data_crc_init(&data_crc);
-        image_descriptor_data_crc_continue(&data_crc, data, data_size);
+        /* make sure there is room for the image data */
+        if ((data_offset >= filesize) ||
+            (data_size > filesize - data_offset)) {
+          printf("FAILED\n");
+          return -1;
+        }
 
-        if (image_descriptor_data_crc_get(d) != data_crc) {
+        /* verify data CRC */
+        const uint8_t *data = &ptr[data_offset];
+        uint32_t computed_data_crc;
+        image_descriptor_data_crc_init(&computed_data_crc);
+        image_descriptor_data_crc_continue(&computed_data_crc, data, data_size);
+
+        if (image_descriptor_data_crc_get(d) != computed_data_crc) {
           printf("FAILED\n");
           return -1;
         }
