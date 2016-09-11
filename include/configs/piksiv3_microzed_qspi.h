@@ -17,6 +17,9 @@
 /* ATAG support */
 #define CONFIG_CMDLINE_TAG
 
+/* CRC verfication support */
+#define CONFIG_HASH_VERIFY
+
 /* Image table */
 #define CONFIG_IMAGE_TABLE_BOOT
 #define CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A 0x000C0000U
@@ -63,12 +66,15 @@
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS	\
   "preboot=run img_tbl_boot\0" \
-	"img_tbl_boot=" \
-		"sf probe 0 0 0 && " \
-		"sf read ${img_tbl_kernel_load_address} " \
-		        "${img_tbl_kernel_flash_offset} " \
-		        "${img_tbl_kernel_size} && " \
-		"bootm ${img_tbl_kernel_load_address}\0"
+  "img_tbl_boot=" \
+    "sf probe 0 0 0 && " \
+    "sf read ${img_tbl_kernel_load_address} " \
+            "${img_tbl_kernel_flash_offset} " \
+            "${img_tbl_kernel_size} && " \
+    "crc32 -v ${img_tbl_kernel_load_address} " \
+             "${img_tbl_kernel_size} " \
+             "${img_tbl_kernel_crc} && " \
+    "bootm ${img_tbl_kernel_load_address}\0"
 
 #define CONFIG_BOOTCOMMAND		""
 

@@ -104,6 +104,13 @@ static int image_table_env_setup(void)
              image_descriptor_data_offset_get(&image_descriptor));
   setenv_hex("img_tbl_kernel_size",
              image_descriptor_data_size_get(&image_descriptor));
+
+  /* crc32 verify command requires CRC to be exactly 8 hex digits */
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%08x",
+           image_descriptor_data_crc_get(&image_descriptor));
+  setenv("img_tbl_kernel_crc", buf);
+
   return err;
 }
 #endif
