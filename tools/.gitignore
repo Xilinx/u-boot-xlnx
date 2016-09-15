@@ -19,6 +19,7 @@
 /relocate-rela
 /ubsha1
 /xway-swap-bytes
+/image_table_util
 /easylogo/easylogo
 /gdb/gdbcont
 /gdb/gdbsend

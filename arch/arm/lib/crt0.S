@@ -126,7 +126,33 @@ here:
 /* Set up final (full) environment */
 
 	bl	c_runtime_cpu_setup	/* we still call old routine here */
+
+#elif defined(CONFIG_SPL_RELOC_ADDR)
+  /* set lr to here label + CONFIG_SPL_RELOC_ADDR - CONFIG_SPL_TEXT_BASE */
+  adr lr, here
+  ldr r0, =((CONFIG_SPL_RELOC_ADDR)-(CONFIG_SPL_TEXT_BASE))
+  add lr, lr, r0
+#if defined(CONFIG_CPU_V7M)
+  orr lr, #1        /* As required by Thumb-only */
 #endif
+  /* relocate code and return to relocated here label */
+  ldr r0, =(CONFIG_SPL_RELOC_ADDR)
+  b relocate_code
+here:
+
+/* Relocate vectors */
+#ifdef CONFIG_HAS_VBAR
+  /*
+   * If the ARM processor has the security extensions,
+   * use VBAR to relocate the exception vectors.
+   */
+  ldr r0, =(CONFIG_SPL_RELOC_ADDR)
+  mcr     p15, 0, r0, c12, c0, 0  /* Set VBAR */
+#else
+#error /* Unsupported vector relocation method */
+#endif
+#endif
+
 #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_FRAMEWORK)
 # ifdef CONFIG_SPL_BUILD
 	/* Use a DRAM stack for the rest of SPL, if requested */
