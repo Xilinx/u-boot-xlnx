@@ -55,6 +55,7 @@ void image_set_init(image_set_t *s, const image_set_params_t *p)
   s->_version =     cpu_to_le32(p->version);
   s->_timestamp =   cpu_to_le32(p->timestamp);
   s->_seq_num =     cpu_to_le32(p->seq_num);
+  s->_hardware =    cpu_to_le32(p->hardware);
   memcpy(s->_name, p->name, sizeof(s->_name));
 }
 
