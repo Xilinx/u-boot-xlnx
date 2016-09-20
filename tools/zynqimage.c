@@ -83,7 +83,7 @@ struct zynq_header {
 	uint32_t checksum; /* 0x48 */
 	uint32_t __reserved3[21]; /* 0x4c */
 	struct zynq_reginit register_init[HEADER_REGINITS]; /* 0xa0 */
-	uint32_t __reserved4[8]; /* 0x8a0 */
+	uint8_t user_name[32]; /* 0x8a0 */
 };
 
 static struct zynq_header zynqimage_header;
@@ -171,6 +171,10 @@ static void zynqimage_print_header(const void *ptr)
 	printf("Image Load   : 0x%08x\n", le32_to_cpu(zynqhdr->image_load));
 	printf("User Field   : 0x%08x\n", le32_to_cpu(zynqhdr->user_field));
 	printf("Checksum     : 0x%08x\n", le32_to_cpu(zynqhdr->checksum));
+	uint8_t user_name[33];
+	memcpy(user_name, zynqhdr->user_name, 32);
+	user_name[sizeof(user_name)-1] = 0;
+	printf("User Name    : %s\n", user_name);
 
 	for (i = 0; i < HEADER_INTERRUPT_VECTORS; i++) {
 		if (zynqhdr->interrupt_vectors[i] == HEADER_INTERRUPT_DEFAULT)
@@ -236,6 +240,9 @@ static void zynqimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 	zynqhdr->image_load = 0x0;
 	if (params->eflag)
 		zynqhdr->image_load = cpu_to_le32((uint32_t)params->ep);
+	if (params->imagename)
+		strncpy((char *)zynqhdr->user_name, params->imagename,
+						 sizeof(zynqhdr->user_name));
 
 	zynqhdr->checksum = zynqimage_checksum(zynqhdr);
 }
