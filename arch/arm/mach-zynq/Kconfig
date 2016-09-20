@@ -108,4 +108,11 @@ config SYS_CONFIG_NAME
 	default "piksiv3_prod_failsafe" if TARGET_PIKSIV3_PROD_FAILSAFE
 	default "piksiv3_prod_dev" if TARGET_PIKSIV3_PROD_DEV
 
+config BOOT_INIT_FILE
+	string "boot.bin init register filename"
+	default ""
+	help
+	  Add register writes to boot.bin format (max 256 pairs).
+	  Expect a table of register-value pairs, e.g. "0x12345678 0x4321"
+
 endif
