@@ -45,7 +45,9 @@ static struct {
   .image_set_params = {
     .version = 0,
     .timestamp = 0,
-    .seq_num = 0
+    .seq_num = 0,
+    .hardware = 0,
+    .name = {0}
   },
   .verify_filename = NULL,
   .print = false,
@@ -63,8 +65,20 @@ static const struct {
   { IMAGE_TYPE_LINUX,       "linux"     },
 };
 
+static const struct {
+  uint32_t hardware;
+  const char *name;
+} image_hardware_strings[] = {
+  { IMAGE_HARDWARE_UNKNOWN,     "unknown"   },
+  { IMAGE_HARDWARE_MICROZED,    "microzed"  },
+  { IMAGE_HARDWARE_EVT1,        "evt1"      },
+  { IMAGE_HARDWARE_EVT2,        "evt2"      },
+};
+
 static void usage(void)
 {
+  uint32_t i;
+
   printf("Usage: %s\n", cmd);
 
   puts("\nOutput - specify image set output parameters");
@@ -78,6 +92,14 @@ static void usage(void)
   puts("\t\ttimestamp");
   puts("\t-s, --seq-num <seq-num>");
   puts("\t\tsequence number");
+  puts("\t-h, --hardware <hardware>");
+  printf("\t\tstring: ");
+  for (i=0; i<ARRAY_SIZE(image_hardware_strings); i++) {
+    printf("%s ", image_hardware_strings[i].name);
+  }
+  printf("\n");
+  puts("\t-n, --name <name>");
+  puts("\t\tname");
 
   puts("\nImages - specify image parameters. Multiple images may be added");
   puts("in groups, each starting with --image");
@@ -85,7 +107,6 @@ static void usage(void)
   puts("\t\timage source file");
   puts("\t--image-type <type>");
   printf("\t\tstring: ");
-  uint32_t i;
   for (i=0; i<ARRAY_SIZE(image_type_strings); i++) {
     printf("%s ", image_type_strings[i].name);
   }
@@ -100,7 +121,7 @@ static void usage(void)
   puts("\t\tfile to verify");
   puts("\t-p, --print");
   puts("\t\tprint information when finished");
-  puts("\t---print-images");
+  puts("\t--print-images");
   puts("\t\tprint input image information");
 }
 
@@ -123,6 +144,8 @@ static int parse_options(int argc, char *argv[])
     {"version",         required_argument, 0, 'v'},
     {"timestamp",       required_argument, 0, 't'},
     {"seq-num",         required_argument, 0, 's'},
+    {"hardware",        required_argument, 0, 'h'},
+    {"name",            required_argument, 0, 'n'},
     {"image",           required_argument, 0, OPT_ID_IMAGE},
     {"image-type",      required_argument, 0, OPT_ID_IMAGE_TYPE},
     {"image-version",   required_argument, 0, OPT_ID_IMAGE_VERSION},
@@ -135,7 +158,7 @@ static int parse_options(int argc, char *argv[])
 
   int c;
   int opt_index;
-  while ((c = getopt_long(argc, argv, "o:av:t:s:p",
+  while ((c = getopt_long(argc, argv, "o:av:t:s:h:n:p",
                           long_opts, &opt_index)) != -1) {
     switch (c) {
       case 'o': {
@@ -160,6 +183,31 @@ static int parse_options(int argc, char *argv[])
 
       case 's': {
         args.image_set_params.seq_num = strtol(optarg, NULL, 0);
+      }
+      break;
+
+      case 'h': {
+        bool found = false;
+        uint32_t i;
+        for (i=0; i<ARRAY_SIZE(image_hardware_strings); i++) {
+          if (strcasecmp(optarg, image_hardware_strings[i].name) == 0) {
+            args.image_set_params.hardware =
+                image_hardware_strings[i].hardware;
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          fprintf(stderr, "invalid image hardware: \"%s\"\n", optarg);
+          return -1;
+        }
+      }
+      break;
+
+      case 'n': {
+        strncpy((char *)args.image_set_params.name, optarg,
+                sizeof(args.image_set_params.name));
       }
       break;
 
@@ -257,17 +305,26 @@ static int parse_options(int argc, char *argv[])
 
 static void image_set_print(const image_set_t *s)
 {
+  uint8_t name[33];
+
+  image_set_name_get(s, name);
+  name[sizeof(name)-1] = 0;
   printf("Image set header:\n");
+  printf("Name:         %s\n",   name);
   printf("Version:      %08x\n", image_set_version_get(s));
   printf("Timestamp:    %08x\n", image_set_timestamp_get(s));
+  printf("Hardware:     %08x\n", image_set_hardware_get(s));
   printf("Seq Num:      %08x\n", image_set_seq_num_get(s));
 
   uint32_t i;
   for (i=0; i<IMAGE_SET_DESCRIPTORS_COUNT; i++) {
     const image_descriptor_t *d = &s->descriptors[i];
     if (image_descriptor_type_get(d) != IMAGE_TYPE_INVALID) {
+      image_descriptor_name_get(d, name);
+      name[sizeof(name)-1] = 0;
       printf("Image descriptor %u:\n", i);
       printf("Type:         %08x\n", image_descriptor_type_get(d));
+      printf("Name:         %s\n",   name);
       printf("Version:      %08x\n", image_descriptor_version_get(d));
       printf("Timestamp:    %08x\n", image_descriptor_timestamp_get(d));
       printf("Load Addr:    %08x\n", image_descriptor_load_address_get(d));
@@ -360,6 +417,8 @@ static int image_file_append(image_set_t *image_set,
     .data_size =        filesize,
     .data_crc =         data_crc
   };
+  strncpy((char *)image_descriptor_params.name, image_get_name(header),
+          sizeof(image_descriptor_params.name));
   if (image_set_descriptor_add(image_set, &image_descriptor_params) != 0) {
     fprintf(stderr, "%s: Error adding descriptor for %s\n",
             cmd, file_params->filename);

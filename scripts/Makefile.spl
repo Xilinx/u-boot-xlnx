@@ -135,7 +135,8 @@ ifdef CONFIG_ARCH_ZYNQ
 MKIMAGEFLAGS_$(SPL_BIN)-dtb.img = -A $(ARCH) -T firmware -C none -O u-boot \
   -a $(CONFIG_SPL_TEXT_BASE) -e $(CONFIG_SPL_TEXT_BASE) \
   -n "U-Boot $(UBOOTRELEASE) for $(BOARD) board"
-MKIMAGEFLAGS_boot.bin = -T zynqimage
+MKIMAGEFLAGS_boot.bin = -T zynqimage \
+  -n "U-Boot $(UBOOTRELEASE) for $(BOARD) board"
 endif
 
 $(obj)/boot.bin: $(obj)/$(SPL_BIN)-dtb.bin

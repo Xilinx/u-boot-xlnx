@@ -73,7 +73,7 @@ struct zynq_header {
 	uint32_t width_detection; /* 0x20 */
 	uint32_t image_identifier; /* 0x24 */
 	uint32_t encryption; /* 0x28 */
-	uint32_t user_field; /* 0x2c */
+	uint32_t user_time; /* 0x2c */
 	uint32_t image_offset; /* 0x30 */
 	uint32_t image_size; /* 0x34 */
 	uint32_t __reserved1; /* 0x38 */
@@ -83,7 +83,7 @@ struct zynq_header {
 	uint32_t checksum; /* 0x48 */
 	uint32_t __reserved3[21]; /* 0x4c */
 	struct zynq_reginit register_init[HEADER_REGINITS]; /* 0xa0 */
-	uint32_t __reserved4[8]; /* 0x8a0 */
+	uint8_t user_name[32]; /* 0x8a0 */
 };
 
 static struct zynq_header zynqimage_header;
@@ -98,7 +98,7 @@ static uint32_t zynqimage_checksum(struct zynq_header *ptr)
 	checksum += le32_to_cpu(ptr->width_detection);
 	checksum += le32_to_cpu(ptr->image_identifier);
 	checksum += le32_to_cpu(ptr->encryption);
-	checksum += le32_to_cpu(ptr->user_field);
+	checksum += le32_to_cpu(ptr->user_time);
 	checksum += le32_to_cpu(ptr->image_offset);
 	checksum += le32_to_cpu(ptr->image_size);
 	checksum += le32_to_cpu(ptr->__reserved1);
@@ -169,8 +169,12 @@ static void zynqimage_print_header(const void *ptr)
 	       (unsigned long)le32_to_cpu(zynqhdr->image_size),
 	       (unsigned long)le32_to_cpu(zynqhdr->image_stored_size));
 	printf("Image Load   : 0x%08x\n", le32_to_cpu(zynqhdr->image_load));
-	printf("User Field   : 0x%08x\n", le32_to_cpu(zynqhdr->user_field));
+	printf("User Time    : 0x%08x\n", le32_to_cpu(zynqhdr->user_time));
 	printf("Checksum     : 0x%08x\n", le32_to_cpu(zynqhdr->checksum));
+	uint8_t user_name[33];
+	memcpy(user_name, zynqhdr->user_name, 32);
+	user_name[sizeof(user_name)-1] = 0;
+	printf("User Name    : %s\n", user_name);
 
 	for (i = 0; i < HEADER_INTERRUPT_VECTORS; i++) {
 		if (zynqhdr->interrupt_vectors[i] == HEADER_INTERRUPT_DEFAULT)
@@ -228,6 +232,22 @@ static void zynqimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 	struct zynq_header *zynqhdr = (struct zynq_header *)ptr;
 	zynqimage_default_header(zynqhdr);
 
+	char *source_date_epoch;
+	time_t time;
+	source_date_epoch = getenv("SOURCE_DATE_EPOCH");
+	if (source_date_epoch != NULL) {
+		time = (time_t) strtol(source_date_epoch, NULL, 10);
+
+		if (gmtime(&time) == NULL) {
+			fprintf(stderr, "%s: SOURCE_DATE_EPOCH is not valid\n",
+				__func__);
+			time = 0;
+		}
+	} else {
+		time = sbuf->st_mtime;
+	}
+	zynqhdr->user_time = cpu_to_le32(time);
+
 	/* place image directly after header */
 	zynqhdr->image_offset =
 		cpu_to_le32((uint32_t)sizeof(struct zynq_header));
@@ -236,6 +256,9 @@ static void zynqimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 	zynqhdr->image_load = 0x0;
 	if (params->eflag)
 		zynqhdr->image_load = cpu_to_le32((uint32_t)params->ep);
+	if (params->imagename)
+		strncpy((char *)zynqhdr->user_name, params->imagename,
+						 sizeof(zynqhdr->user_name));
 
 	zynqhdr->checksum = zynqimage_checksum(zynqhdr);
 }

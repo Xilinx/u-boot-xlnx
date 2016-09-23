@@ -55,6 +55,8 @@ void image_set_init(image_set_t *s, const image_set_params_t *p)
   s->_version =     cpu_to_le32(p->version);
   s->_timestamp =   cpu_to_le32(p->timestamp);
   s->_seq_num =     cpu_to_le32(p->seq_num);
+  s->_hardware =    cpu_to_le32(p->hardware);
+  memcpy(s->_name, p->name, sizeof(s->_name));
 }
 
 int image_set_descriptor_add(image_set_t *s,
@@ -74,6 +76,7 @@ int image_set_descriptor_add(image_set_t *s,
       d->_data_offset =     cpu_to_le32(p->data_offset);
       d->_data_size =       cpu_to_le32(p->data_size);
       d->_data_crc =        cpu_to_le32(p->data_crc);
+      memcpy(d->_name, p->name, sizeof(d->_name));
 
       return 0;
     }
