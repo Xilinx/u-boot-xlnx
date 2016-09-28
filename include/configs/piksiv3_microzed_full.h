@@ -1,25 +1,22 @@
 /*
- * (C) Copyright 2013 Xilinx, Inc.
+ * Copyright (C) 2016 Swift Navigation Inc.
+ * Contact: Jacob McNamee <jacob@swiftnav.com>
  *
- * Configuration for Micro Zynq Evaluation and Development Board - MicroZedBoard
- * See zynq-common.h for Zynq common configs
+ * This source is subject to the license found in the file 'LICENSE' which must
+ * be be distributed together with this source. All other rights reserved.
  *
- * SPDX-License-Identifier:	GPL-2.0+
+ * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+ * EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
  */
 
 #ifndef __CONFIG_PIKSIV3_MICROZED_FULL_H
 #define __CONFIG_PIKSIV3_MICROZED_FULL_H
 
-#define CONFIG_SYS_SDRAM_SIZE		(1024 * 1024 * 1024)
+#define PIKSI_REV "microzed"
 
-#define CONFIG_SYS_NO_FLASH
+#define CONFIG_SYS_SDRAM_SIZE (1024 * 1024 * 1024)
 
-#define CONFIG_ZYNQ_SDHCI0
-#define CONFIG_ZYNQ_USB
-
-/* ATAG support */
-#define CONFIG_CMDLINE_TAG
-
-#include <configs/zynq-common.h>
+#include <configs/piksiv3_full.h>
 
 #endif /* __CONFIG_PIKSIV3_MICROZED_FULL_H */

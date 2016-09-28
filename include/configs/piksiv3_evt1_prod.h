@@ -10,13 +10,26 @@
  * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef __CONFIG_PIKSIV3_MICROZED_DEV_H
-#define __CONFIG_PIKSIV3_MICROZED_DEV_H
+#ifndef __CONFIG_PIKSIV3_EVT1_PROD_H
+#define __CONFIG_PIKSIV3_EVT1_PROD_H
 
-#define PIKSI_REV "microzed"
+#define PIKSI_REV "evt1"
 
-#define CONFIG_SYS_SDRAM_SIZE (1024 * 1024 * 1024)
+#define CONFIG_SYS_SDRAM_SIZE (512 * 1024 * 1024)
 
-#include <configs/piksiv3_dev.h>
+#ifdef CONFIG_TPL_BUILD
 
-#endif /* __CONFIG_PIKSIV3_MICROZED_DEV_H */
+/* Bootstrap pin configuration - nothing to do */
+#define CONFIG_TPL_BOOTSTRAP_INIT
+
+/* not implemented */
+#define CONFIG_TPL_BOOTSTRAP_FAILSAFE false
+
+/* not implemented */
+#define CONFIG_TPL_BOOTSTRAP_ALTERNATE false
+
+#endif
+
+#include <configs/piksiv3_prod.h>
+
+#endif /* __CONFIG_PIKSIV3_EVT1_PROD_H */
