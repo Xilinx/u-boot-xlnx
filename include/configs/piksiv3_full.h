@@ -10,13 +10,20 @@
  * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef __CONFIG_PIKSIV3_MICROZED_DEV_H
-#define __CONFIG_PIKSIV3_MICROZED_DEV_H
+#ifndef __CONFIG_PIKSIV3_FULL_H
+#define __CONFIG_PIKSIV3_FULL_H
 
-#define PIKSI_REV "microzed"
+#define CONFIG_SYS_NO_FLASH
 
-#define CONFIG_SYS_SDRAM_SIZE (1024 * 1024 * 1024)
+#define CONFIG_ZYNQ_SDHCI0
+#define CONFIG_ZYNQ_USB
 
-#include <configs/piksiv3_dev.h>
+/* ATAG support */
+#define CONFIG_CMDLINE_TAG
 
-#endif /* __CONFIG_PIKSIV3_MICROZED_DEV_H */
+/* CRC verfication support */
+#define CONFIG_HASH_VERIFY
+
+#include <configs/zynq-common.h>
+
+#endif /* __CONFIG_PIKSIV3_FULL_H */
