@@ -18,9 +18,11 @@
 #include <spl.h>
 #endif
 #include <image_table.h>
+#include <factory_data.h>
 
 #define REG_REBOOT_STATUS 0xF8000258U
 #define QSPI_LINEAR_START 0xFC000000U
+#define FACTORY_DATA_SIZE_MAX 2048
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -436,6 +438,63 @@ int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
 			CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET,
 			ethaddr, 6))
 		printf("I2C EEPROM MAC address read failed\n");
+#endif
+
+#if defined(CONFIG_FACTORY_DATA) && \
+    defined(CONFIG_ZYNQ_GEM_FACTORY_ADDR)
+
+  int err = 0;
+
+  struct spi_flash *flash;
+  flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
+                          CONFIG_SF_DEFAULT_CS,
+                          CONFIG_SF_DEFAULT_SPEED,
+                          CONFIG_SF_DEFAULT_MODE);
+  if (!flash) {
+    puts("SPI probe failed\n");
+    return -ENODEV;
+  }
+
+  uint8_t factory_data_buff[FACTORY_DATA_SIZE_MAX];
+  factory_data_t *factory_data = (factory_data_t *)factory_data_buff;
+
+  /* Load factory data from QSPI flash into RAM */
+  err = spi_flash_read(flash, CONFIG_FACTORY_DATA_OFFSET,
+                       sizeof(factory_data_buff), (void *)factory_data_buff);
+  if (err) {
+    puts("Failed to read factory data\n");
+    return err;
+  }
+
+  /* Verify header */
+  if (factory_data_header_verify(factory_data) != 0) {
+    puts("Error verifying factory data header\n");
+    return -1;
+  }
+
+  uint32_t factory_data_body_size = factory_data_body_size_get(factory_data);
+  uint32_t factory_data_size = sizeof(factory_data_t) +
+                               factory_data_body_size;
+
+  /* Check header + body length */
+  if (factory_data_size > sizeof(factory_data_buff)) {
+    puts("Factory data is too large\n");
+    return -1;
+  }
+
+  /* Verify body */
+  if (factory_data_body_verify(factory_data) != 0) {
+    puts("Error verifying factory data body\n");
+    return -1;
+  }
+
+  /* Read params */
+  if (factory_data_mac_address_get(factory_data, ethaddr) != 0) {
+    puts("Error reading MAC address from factory data\n");
+    return -1;
+  }
+
+  return err;
 #endif
 
 	return 0;

@@ -24,6 +24,11 @@
 /* CRC verfication support */
 #define CONFIG_HASH_VERIFY
 
+ /* Factory data */
+#define CONFIG_FACTORY_DATA
+#define CONFIG_FACTORY_DATA_OFFSET 0x00040000U
+#define CONFIG_ZYNQ_GEM_FACTORY_ADDR
+
 #include <configs/zynq-common.h>
 
 #endif /* __CONFIG_PIKSIV3_FULL_H */

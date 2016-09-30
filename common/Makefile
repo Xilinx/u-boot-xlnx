@@ -305,5 +305,6 @@ obj-y += xyzModem.o
 obj-y += cmd_disk.o
 
 obj-y += image_table.o
+obj-y += factory_data.o
 
 CFLAGS_env_embedded.o := -Wa,--no-warn -DENV_CRC=$(shell tools/envcrc 2>/dev/null)
