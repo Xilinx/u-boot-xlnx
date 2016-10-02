@@ -40,6 +40,84 @@ static xilinx_desc fpga045 = XILINX_XC7Z045_DESC(0x45);
 static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
 #endif
 
+#ifdef CONFIG_FACTORY_DATA
+#ifndef CONFIG_TPL_BUILD
+static struct {
+  uint32_t hardware;
+  uint32_t serial_number;
+  uint8_t mac_address[6];
+} factory_params;
+
+static int factory_params_read(void)
+{
+  int err = 0;
+
+  struct spi_flash *flash;
+  flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
+                          CONFIG_SF_DEFAULT_CS,
+                          CONFIG_SF_DEFAULT_SPEED,
+                          CONFIG_SF_DEFAULT_MODE);
+  if (!flash) {
+    puts("SPI probe failed\n");
+    return -ENODEV;
+  }
+
+  uint8_t factory_data_buff[FACTORY_DATA_SIZE_MAX];
+  factory_data_t *factory_data = (factory_data_t *)factory_data_buff;
+
+  /* Load factory data from QSPI flash into RAM */
+  err = spi_flash_read(flash, CONFIG_FACTORY_DATA_OFFSET,
+                       sizeof(factory_data_buff), (void *)factory_data_buff);
+  if (err) {
+    puts("Failed to read factory data\n");
+    return err;
+  }
+
+  /* Verify header */
+  if (factory_data_header_verify(factory_data) != 0) {
+    puts("Error verifying factory data header\n");
+    return -1;
+  }
+
+  uint32_t factory_data_body_size = factory_data_body_size_get(factory_data);
+  uint32_t factory_data_size = sizeof(factory_data_t) +
+                               factory_data_body_size;
+
+  /* Check header + body length */
+  if (factory_data_size > sizeof(factory_data_buff)) {
+    puts("Factory data is too large\n");
+    return -1;
+  }
+
+  /* Verify body */
+  if (factory_data_body_verify(factory_data) != 0) {
+    puts("Error verifying factory data body\n");
+    return -1;
+  }
+
+  /* Read params */
+  if (factory_data_hardware_get(factory_data, &factory_params.hardware) != 0) {
+    puts("Error reading hardware parameter from factory data\n");
+    return -1;
+  }
+
+  if (factory_data_serial_number_get(factory_data,
+                                     &factory_params.serial_number) != 0) {
+    puts("Error reading serial number from factory data\n");
+    return -1;
+  }
+
+  if (factory_data_mac_address_get(factory_data,
+                                   factory_params.mac_address) != 0) {
+    puts("Error reading MAC address from factory data\n");
+    return -1;
+  }
+
+  return err;
+}
+#endif
+#endif
+
 #ifdef CONFIG_IMAGE_TABLE_BOOT
 #ifndef CONFIG_TPL_BUILD
 static int image_descriptor_get(struct spi_flash *flash, u32 image_type,
@@ -201,6 +279,20 @@ int board_late_init(void)
   if (err) {
     return err;
   }
+#endif
+#endif
+
+#ifdef CONFIG_FACTORY_DATA
+#ifndef CONFIG_TPL_BUILD
+  err = factory_params_read();
+  if (err) {
+    return err;
+  }
+
+  /* Set serial number environment variable */
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%d", factory_params.serial_number);
+  setenv("serial_number", buf);
 #endif
 #endif
 
@@ -441,60 +533,12 @@ int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
 #endif
 
 #if defined(CONFIG_FACTORY_DATA) && \
-    defined(CONFIG_ZYNQ_GEM_FACTORY_ADDR)
-
-  int err = 0;
-
-  struct spi_flash *flash;
-  flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS,
-                          CONFIG_SF_DEFAULT_CS,
-                          CONFIG_SF_DEFAULT_SPEED,
-                          CONFIG_SF_DEFAULT_MODE);
-  if (!flash) {
-    puts("SPI probe failed\n");
-    return -ENODEV;
-  }
-
-  uint8_t factory_data_buff[FACTORY_DATA_SIZE_MAX];
-  factory_data_t *factory_data = (factory_data_t *)factory_data_buff;
-
-  /* Load factory data from QSPI flash into RAM */
-  err = spi_flash_read(flash, CONFIG_FACTORY_DATA_OFFSET,
-                       sizeof(factory_data_buff), (void *)factory_data_buff);
-  if (err) {
-    puts("Failed to read factory data\n");
-    return err;
-  }
-
-  /* Verify header */
-  if (factory_data_header_verify(factory_data) != 0) {
-    puts("Error verifying factory data header\n");
-    return -1;
-  }
-
-  uint32_t factory_data_body_size = factory_data_body_size_get(factory_data);
-  uint32_t factory_data_size = sizeof(factory_data_t) +
-                               factory_data_body_size;
-
-  /* Check header + body length */
-  if (factory_data_size > sizeof(factory_data_buff)) {
-    puts("Factory data is too large\n");
-    return -1;
-  }
-
-  /* Verify body */
-  if (factory_data_body_verify(factory_data) != 0) {
-    puts("Error verifying factory data body\n");
-    return -1;
-  }
-
-  /* Read params */
-  if (factory_data_mac_address_get(factory_data, ethaddr) != 0) {
-    puts("Error reading MAC address from factory data\n");
-    return -1;
-  }
-
-  return err;
+    defined(CONFIG_ZYNQ_GEM_FACTORY_ADDR) && \
+    !defined(CONFIG_TPL_BUILD)
+    int i;
+    for (i=0; i<6; i++) {
+      ethaddr[i] = factory_params.mac_address[6-1-i];
+    }
 #endif
 
 	return 0;

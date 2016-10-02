@@ -64,7 +64,6 @@
 # define CONFIG_PHY_MARVELL
 # define CONFIG_PHY_XILINX
 # define CONFIG_SYS_ENET
-# define CONFIG_BOOTP_SERVERIP
 # define CONFIG_BOOTP_BOOTPATH
 # define CONFIG_BOOTP_GATEWAY
 # define CONFIG_BOOTP_HOSTNAME
@@ -143,9 +142,9 @@
 
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS \
-  "ethaddr=00:0a:35:00:01:22\0" \
   "kernel_image=uImage.piksiv3_" PIKSI_REV "\0" \
   "kernel_load_address=0x08008000\0" \
+  "autoload=no\0" \
   "bootenv=uEnv.txt\0" \
   "loadbootenv_addr=0x2000000\0" \
   "loadbootenv=load mmc 0 ${loadbootenv_addr} ${bootenv}\0" \
@@ -168,10 +167,15 @@
       "echo Copying Linux from SD to RAM... && " \
       "load mmc 0 ${kernel_load_address} ${kernel_image} && " \
       "bootm ${kernel_load_address}; " \
-    "fi;\0"
+    "fi;\0" \
+    "netboot=" \
+      "dhcp && " \
+      "tftpboot ${kernel_load_address} PK${serial_number}/${kernel_image} && " \
+      "bootm ${kernel_load_address};\0"
+
 
 /* Default environment */
-#define CONFIG_BOOTCOMMAND    "run sdboot"
+#define CONFIG_BOOTCOMMAND    "run sdboot; run netboot"
 
 #define CONFIG_BOOTDELAY    1 /* -1 to Disable autoboot */
 #define CONFIG_SYS_LOAD_ADDR    0 /* default? */
