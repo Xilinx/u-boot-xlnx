@@ -27,6 +27,7 @@
  /* Factory data */
 #define CONFIG_FACTORY_DATA
 #define CONFIG_FACTORY_DATA_OFFSET 0x00040000U
+#define CONFIG_FACTORY_DATA_FALLBACK
 #define CONFIG_ZYNQ_GEM_FACTORY_ADDR
 
 #include <configs/zynq-common.h>

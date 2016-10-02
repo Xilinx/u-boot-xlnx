@@ -286,7 +286,13 @@ int board_late_init(void)
 #ifndef CONFIG_TPL_BUILD
   err = factory_params_read();
   if (err) {
+#ifdef CONFIG_FACTORY_DATA_FALLBACK
+    puts("*** Warning - using default factory parameters\n");
+    memset(&factory_params, 0, sizeof(factory_params));
+    err = 0;
+#else
     return err;
+#endif
   }
 
   /* Set serial number environment variable */
