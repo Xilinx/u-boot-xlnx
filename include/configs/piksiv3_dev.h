@@ -167,11 +167,13 @@
       "fi; " \
       "echo Copying Linux from SD to RAM... && " \
       "load mmc 0 ${kernel_load_address} ${kernel_image} && " \
+      "env set bootargs ${bootargs} dev_boot=sd && " \
       "bootm ${kernel_load_address}; " \
     "fi;\0" \
     "netboot=" \
       "dhcp && " \
       "tftpboot ${kernel_load_address} PK${serial_number}/${kernel_image} && " \
+      "env set bootargs ${bootargs} dev_boot=net && " \
       "env set bootargs ${bootargs} ip=" \
         "${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off && " \
       "bootm ${kernel_load_address};\0"
