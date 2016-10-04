@@ -172,8 +172,9 @@
     "netboot=" \
       "dhcp && " \
       "tftpboot ${kernel_load_address} PK${serial_number}/${kernel_image} && " \
+      "env set bootargs ${bootargs} ip=" \
+        "${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off && " \
       "bootm ${kernel_load_address};\0"
-
 
 /* Default environment */
 #define CONFIG_BOOTCOMMAND    "run sdboot; run netboot"
