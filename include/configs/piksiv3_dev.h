@@ -141,10 +141,19 @@
 #define CONFIG_ENV_OFFSET     0xE0000
 #define CONFIG_ENV_OVERWRITE
 
+#ifdef CONFIG_DEV_FPGA_LOAD
+#define DEV_FPGA_LOAD_CMDS "run fpgaload; "
+#else
+#define DEV_FPGA_LOAD_CMDS
+#endif
+
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS \
   "kernel_image=uImage.piksiv3_" PIKSI_REV "\0" \
   "kernel_load_address=0x08008000\0" \
+  "fpga_flash_offset=0x00400000\0" \
+  "fpga_load_address=0x02000000\0" \
+  "fpga_size=0x003dbb69\0" \
   "autoload=no\0" \
   "bootenv=uEnv.txt\0" \
   "loadbootenv_addr=0x2000000\0" \
@@ -176,10 +185,15 @@
       "env set bootargs ${bootargs} dev_boot=net && " \
       "env set bootargs ${bootargs} ip=" \
         "${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off && " \
-      "bootm ${kernel_load_address};\0"
+      "bootm ${kernel_load_address};\0" \
+    "fpgaload=" \
+      "sf probe && " \
+      "sf read ${fpga_load_address} ${fpga_flash_offset} ${fpga_size} && " \
+      "fpga loadb 0 ${fpga_load_address} ${fpga_size} && " \
+      "sleep 1;\0"
 
 /* Default environment */
-#define CONFIG_BOOTCOMMAND    "run sdboot; run netboot"
+#define CONFIG_BOOTCOMMAND DEV_FPGA_LOAD_CMDS "run sdboot; run netboot"
 
 #define CONFIG_BOOTDELAY    1 /* -1 to Disable autoboot */
 #define CONFIG_SYS_LOAD_ADDR    0 /* default? */
@@ -215,6 +229,15 @@
 #define CONFIG_SYS_INIT_SP_ADDR   (CONFIG_SYS_INIT_RAM_ADDR + \
           CONFIG_SYS_INIT_RAM_SIZE - \
           GENERATED_GBL_DATA_SIZE)
+
+/* Enable the PL to be downloaded */
+#define CONFIG_FPGA
+#define CONFIG_FPGA_XILINX
+#define CONFIG_FPGA_ZYNQPL
+#define CONFIG_CMD_FPGA_LOADMK
+#define CONFIG_CMD_FPGA_LOADP
+#define CONFIG_CMD_FPGA_LOADBP
+#define CONFIG_CMD_FPGA_LOADFS
 
 /* Open Firmware flat tree */
 #define CONFIG_OF_LIBFDT
