@@ -17,6 +17,8 @@
 
 #define CONFIG_SYS_SDRAM_SIZE (512 * 1024 * 1024)
 
+#define CONFIG_DEV_FPGA_LOAD
+
 #include <configs/piksiv3_dev.h>
 
 #endif /* __CONFIG_PIKSIV3_EVT2_DEV_H */

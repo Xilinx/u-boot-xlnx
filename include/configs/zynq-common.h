@@ -199,7 +199,7 @@
 #endif
 
 /* Total Size of Environment Sector */
-#define CONFIG_ENV_SIZE			(128 << 10)
+#define CONFIG_ENV_SIZE			(256 << 10)
 
 /* Allow to overwrite serial and ethaddr */
 #define CONFIG_ENV_OVERWRITE
@@ -221,7 +221,7 @@
 
 # define CONFIG_ENV_SECT_SIZE		CONFIG_ENV_SIZE
 # ifndef CONFIG_ENV_OFFSET
-#  define CONFIG_ENV_OFFSET		0xE0000
+#  define CONFIG_ENV_OFFSET		0xC0000
 # endif
 #endif
 
