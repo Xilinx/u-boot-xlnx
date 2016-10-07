@@ -162,6 +162,11 @@
     "echo Importing environment from SD ...; " \
     "env import -t ${loadbootenv_addr} $filesize\0" \
   "sd_uEnvtxt_existence_test=test -e mmc 0 /uEnv.txt\0" \
+  "net_disable_gigabit=" \
+    "mdio write 9 0; " \
+    "mdio write 0 0; " \
+    "mdio write 0 1000; " \
+    "sleep 1;\0" \
   "sdboot=" \
     "if mmcinfo; then " \
       "if env run sd_uEnvtxt_existence_test; then " \
@@ -180,6 +185,7 @@
       "bootm ${kernel_load_address}; " \
     "fi;\0" \
     "netboot=" \
+      "run net_disable_gigabit && " \
       "dhcp && " \
       "tftpboot ${kernel_load_address} PK${serial_number}/${kernel_image} && " \
       "env set bootargs ${bootargs} dev_boot=net && " \
