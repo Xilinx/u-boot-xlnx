@@ -196,7 +196,8 @@
       "sf probe && " \
       "sf read ${fpga_load_address} ${fpga_flash_offset} ${fpga_size} && " \
       "fpga loadb 0 ${fpga_load_address} ${fpga_size} && " \
-      "sleep 1;\0"
+      "sleep 1 && " \
+      "mmcinfo;\0"
 
 /* Default environment */
 #define CONFIG_BOOTCOMMAND DEV_FPGA_LOAD_CMDS "run sdboot; run netboot"
