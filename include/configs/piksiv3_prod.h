@@ -73,7 +73,7 @@
 #define CONFIG_EXTRA_ENV_SETTINGS	\
   "preboot=run img_tbl_boot\0" \
   "img_tbl_boot=" \
-    "sf probe 0 0 0 && " \
+    "sf probe && " \
     "sf read ${img_tbl_kernel_load_address} " \
             "${img_tbl_kernel_flash_offset} " \
             "${img_tbl_kernel_size} && " \
