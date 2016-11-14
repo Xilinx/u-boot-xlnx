@@ -53,6 +53,7 @@ static const struct {
   { IMAGE_HARDWARE_MICROZED,    "microzed"  },
   { IMAGE_HARDWARE_EVT1,        "evt1"      },
   { IMAGE_HARDWARE_EVT2,        "evt2"      },
+  { IMAGE_HARDWARE_DVT,         "dvt"       },
 };
 
 static void usage(void)
