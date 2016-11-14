@@ -52,11 +52,13 @@ int factory_data_populate(factory_data_t *f, const factory_data_params_t *p)
   memset((void *)f, FACTORY_DATA_RESERVED_BYTE, sizeof(*f) + sizeof(*b));
 
   /* populate body */
-  b->_hardware =            cpu_to_le32(p->hardware);
-  b->_serial_number =       cpu_to_le32(p->serial_number);
-  b->_timestamp =           cpu_to_le32(p->timestamp);
-  memcpy(b->_nap_key,       p->nap_key,       sizeof(b->_nap_key));
-  memcpy(b->_mac_address,   p->mac_address,   sizeof(b->_mac_address));
+  b->_hardware =                cpu_to_le32(p->hardware);
+  memcpy(b->_mfg_serial_number, p->mfg_serial_number, sizeof(b->_mfg_serial_number));
+  memcpy(b->_uuid,              p->uuid,              sizeof(b->_uuid));
+  b->_timestamp =               cpu_to_le32(p->timestamp);
+  memcpy(b->_nap_key,           p->nap_key,           sizeof(b->_nap_key));
+  memcpy(b->_mac_address,       p->mac_address,       sizeof(b->_mac_address));
+  b->_factory_stage =           cpu_to_le32(p->factory_stage);
 
   /* compute body crc */
   uint32_t body_crc = crc32(0, (const unsigned char *)b, sizeof(*b));

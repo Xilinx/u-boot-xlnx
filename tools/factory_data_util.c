@@ -36,10 +36,12 @@ static struct {
   .print = false,
   .factory_data_params = {
     .hardware = 0,
-    .serial_number = 0,
+    .mfg_serial_number = {0},
+    .uuid = {0},
     .timestamp = 0,
     .nap_key = {0},
-    .mac_address = {0}
+    .mac_address = {0},
+    .factory_stage = 0,
   }
 };
 
@@ -152,14 +154,16 @@ static int parse_options(int argc, char *argv[])
   };
 
   const struct option long_opts[] = {
-    {"out",             required_argument, 0, 'o'},
-    {"hardware",        required_argument, 0, 'h'},
-    {"serial-number",   required_argument, 0, 's'},
-    {"timestamp",       required_argument, 0, 't'},
-    {"nap-key",         required_argument, 0, 'k'},
-    {"mac-address",     required_argument, 0, 'm'},
-    {"verify",          required_argument, 0, OPT_ID_VERIFY},
-    {"print",           no_argument,       0, 'p'},
+    {"out",               required_argument, 0, 'o'},
+    {"hardware",          required_argument, 0, 'h'},
+    {"mfg-serial-number", required_argument, 0, 's'},
+    {"uuid",              required_argument, 0, 'u'},
+    {"timestamp",         required_argument, 0, 't'},
+    {"nap-key",           required_argument, 0, 'k'},
+    {"mac-address",       required_argument, 0, 'm'},
+    {"factory-stage",     required_argument, 0, 'f'},
+    {"verify",            required_argument, 0, OPT_ID_VERIFY},
+    {"print",             no_argument,       0, 'p'},
     {0, 0, 0, 0}
   };
 
@@ -193,7 +197,17 @@ static int parse_options(int argc, char *argv[])
       break;
 
       case 's': {
-        args.factory_data_params.serial_number = strtol(optarg, NULL, 0);
+        strncpy((char *)args.factory_data_params.mfg_serial_number, optarg,
+            sizeof(args.factory_data_params.mfg_serial_number));
+      }
+      break;
+
+      case 'u': {
+         if (parse_hex_string(optarg, args.factory_data_params.uuid,
+                             sizeof(args.factory_data_params.uuid)) != 0) {
+          fprintf(stderr, "invalid uuid: \"%s\"\n", optarg);
+          return -1;
+        }
       }
       break;
 
@@ -218,6 +232,11 @@ static int parse_options(int argc, char *argv[])
           fprintf(stderr, "invalid mac address: \"%s\"\n", optarg);
           return -1;
         }
+      }
+      break;
+
+      case 'f': {
+        args.factory_data_params.factory_stage = strtol(optarg, NULL, 0);
       }
       break;
 
@@ -254,9 +273,19 @@ static void factory_data_print(const factory_data_t *f)
     printf("Hardware:       %08x\n", hardware);
   }
 
-  uint32_t serial_number;
-  if (factory_data_serial_number_get(f, &serial_number) == 0) {
-    printf("Serial Number:  %08x\n", serial_number);
+  uint8_t mfg_id[sizeof(args.factory_data_params.mfg_serial_number)];
+  if (factory_data_mfg_serial_number_get(f, mfg_id) == 0) {
+    char mfg_id_string[sizeof(mfg_id) + 1];
+    memcpy(mfg_id_string, mfg_id, sizeof(mfg_id));
+    mfg_id_string[sizeof(mfg_id)] = 0;
+    printf("Mfg ID:         %s\n", mfg_id_string);
+  }
+
+  uint8_t uuid[sizeof(args.factory_data_params.uuid)];
+  if (factory_data_uuid_get(f, uuid) == 0) {
+    char uuid_string[2 * sizeof(uuid) + 1];
+    print_hex_string(uuid_string, uuid, sizeof(uuid));
+    printf("UUID:           %s\n", uuid_string);
   }
 
   uint32_t timestamp;
@@ -276,6 +305,11 @@ static void factory_data_print(const factory_data_t *f)
     char mac_address_string[2 * sizeof(mac_address) + 1];
     print_hex_string(mac_address_string, mac_address, sizeof(mac_address));
     printf("MAC Address:    %s\n", mac_address_string);
+  }
+
+  uint32_t factory_stage;
+  if (factory_data_timestamp_get(f, &factory_stage) == 0) {
+    printf("Factory Stage:  %08x\n", factory_stage);
   }
 }
 
