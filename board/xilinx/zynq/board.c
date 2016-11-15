@@ -44,7 +44,7 @@ static xilinx_desc fpga100 = XILINX_XC7Z100_DESC(0x100);
 #ifndef CONFIG_TPL_BUILD
 static struct {
   uint32_t hardware;
-  char uuid[17];
+  uint8_t uuid[16];
   uint8_t mac_address[6];
 } factory_params;
 
@@ -102,8 +102,8 @@ static int factory_params_read(void)
   }
 
   if (factory_data_uuid_get(factory_data,
-                                     &factory_params.uuid) != 0) {
-    puts("Error reading manufacturer serial number from factory data\n");
+                                     factory_params.uuid) != 0) {
+    puts("Error reading uuid from factory data\n");
     return -1;
   }
 
@@ -295,7 +295,7 @@ int board_late_init(void)
 #endif
   }
 
-  /* Set serial number environment variable */
+  /* Set uuid environment variable */
   char buf[17];
   snprintf(buf, sizeof(buf), "%s", factory_params.uuid);
   setenv("uuid", buf);

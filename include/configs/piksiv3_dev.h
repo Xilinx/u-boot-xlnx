@@ -187,7 +187,7 @@
     "netboot=" \
       "run net_disable_gigabit && " \
       "dhcp && " \
-      "tftpboot ${kernel_load_address} PK${serial_number}/${kernel_image} && " \
+      "tftpboot ${kernel_load_address} PK${uuid}/${kernel_image} && " \
       "env set bootargs ${bootargs} dev_boot=net && " \
       "env set bootargs ${bootargs} ip=" \
         "${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off && " \

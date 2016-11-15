@@ -24,17 +24,25 @@
 #define FACTORY_DATA_SIGNATURE 0xcb1e6082
 #define FACTORY_DATA_RESERVED_BYTE 0xff
 
+#define FACTORY_STAGE_UNKNOWN        0xffffffff
+#define FACTORY_STAGE_INITIAL        0x00000000
+#define FACTORY_STAGE_POST_BURN_IN   0x00000001
+#define FACTORY_STAGE_HOST_BOARD     0x00000002
+#define FACTORY_STAGE_RETURN         0x00000003
+#define FACTORY_STAGE_DEV            0x00000004
+
 /* Warning: factory data structures use unspecified endianness.
  * Do not access fields directly. Use API functions only. */
 typedef struct {
   uint32_t _hardware;
-  uint8_t _mfg_serial_number[17];
+  uint8_t _mfg_id[17];
+  uint8_t  _reserved0[3];
   uint8_t _uuid[16];
   uint32_t _timestamp;
   uint8_t  _nap_key[16];
   uint8_t  _mac_address[6];
+  uint8_t  _reserved1[2];
   uint32_t _factory_stage;
-  uint8_t  _reserved0[2];
 } factory_data_body_t;
 
 typedef struct {
@@ -48,7 +56,7 @@ typedef struct {
 
 typedef struct {
   uint32_t hardware;
-  uint8_t mfg_serial_number[17];
+  uint8_t mfg_id[17];
   uint8_t uuid[16];
   uint32_t timestamp;
   uint8_t nap_key[16];
@@ -87,7 +95,7 @@ static inline uint32_t factory_data_body_size_get(const factory_data_t *f) {
   }
 
 FACTORY_DATA_GET_U32_FN(hardware);
-FACTORY_DATA_GET_ARRAY_FN(mfg_serial_number);
+FACTORY_DATA_GET_ARRAY_FN(mfg_id);
 FACTORY_DATA_GET_ARRAY_FN(uuid);
 FACTORY_DATA_GET_U32_FN(timestamp);
 FACTORY_DATA_GET_ARRAY_FN(nap_key);

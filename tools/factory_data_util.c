@@ -36,7 +36,7 @@ static struct {
   .print = false,
   .factory_data_params = {
     .hardware = 0,
-    .mfg_serial_number = {0},
+    .mfg_id = {0},
     .uuid = {0},
     .timestamp = 0,
     .nap_key = {0},
@@ -53,7 +53,19 @@ static const struct {
   { IMAGE_HARDWARE_MICROZED,    "microzed"  },
   { IMAGE_HARDWARE_EVT1,        "evt1"      },
   { IMAGE_HARDWARE_EVT2,        "evt2"      },
-  { IMAGE_HARDWARE_DVT,         "dvt"       },
+  { IMAGE_HARDWARE_DVT1,        "dvt1"      },
+};
+
+static const struct {
+  uint32_t stage;
+  const char *name;
+} factory_stage_strings[] = {
+  { FACTORY_STAGE_UNKNOWN,        "unknown"        },
+  { FACTORY_STAGE_INITIAL,        "initial"        },
+  { FACTORY_STAGE_POST_BURN_IN,   "post_burn_in"   },
+  { FACTORY_STAGE_HOST_BOARD,     "host_board"     },
+  { FACTORY_STAGE_RETURN,         "return"         },
+  { FACTORY_STAGE_DEV,            "dev"            },
 };
 
 static void usage(void)
@@ -71,14 +83,21 @@ static void usage(void)
     printf("%s ", image_hardware_strings[i].name);
   }
   printf("\n");
-  puts("\t-s, --serial-number <serial-number>");
-  puts("\t\tserial number");
+  puts("\t-i, --mfg-id <manufacturer-id>");
+  puts("\t\t17 character manufacturer id");
+  puts("\t-u, --uuid <uuid>");
+  puts("\t\tuuid, 16B hex string (no dashes)");
   puts("\t-t, --timestamp <timestamp>");
   puts("\t\ttimestamp");
   puts("\t-k, --nap-key <nap-key>");
   puts("\t\tnap key, 16B hex string");
   puts("\t-m, --mac-address <mac-address>");
   puts("\t\tmac address, 6B hex string");
+  puts("\t-f, --factory-stage <factory-stage>");
+  printf("\t\tstring: ");
+  for (i=0; i<ARRAY_SIZE(factory_stage_strings); i++) {
+    printf("%s ", factory_stage_strings[i].name);
+  }
 
   puts("\nMisc options");
   puts("\t--verify <file>");
@@ -157,7 +176,7 @@ static int parse_options(int argc, char *argv[])
   const struct option long_opts[] = {
     {"out",               required_argument, 0, 'o'},
     {"hardware",          required_argument, 0, 'h'},
-    {"mfg-serial-number", required_argument, 0, 's'},
+    {"mfg-id",            required_argument, 0, 'i'},
     {"uuid",              required_argument, 0, 'u'},
     {"timestamp",         required_argument, 0, 't'},
     {"nap-key",           required_argument, 0, 'k'},
@@ -170,7 +189,7 @@ static int parse_options(int argc, char *argv[])
 
   int c;
   int opt_index;
-  while ((c = getopt_long(argc, argv, "o:h:s:t:k:m:p",
+  while ((c = getopt_long(argc, argv, "o:h:i:u:t:k:m:f:p",
                           long_opts, &opt_index)) != -1) {
     switch (c) {
       case 'o': {
@@ -197,9 +216,13 @@ static int parse_options(int argc, char *argv[])
       }
       break;
 
-      case 's': {
-        strncpy((char *)args.factory_data_params.mfg_serial_number, optarg,
-            sizeof(args.factory_data_params.mfg_serial_number));
+      case 'i': {
+        if (strlen(optarg) != sizeof(args.factory_data_params.mfg_id)) {
+          fprintf(stderr, "invalid manufacturer id: \"%s\"\n", optarg);
+          return -1;
+        }
+        memcpy(args.factory_data_params.mfg_id, optarg,
+            sizeof(args.factory_data_params.mfg_id));
       }
       break;
 
@@ -237,7 +260,21 @@ static int parse_options(int argc, char *argv[])
       break;
 
       case 'f': {
-        args.factory_data_params.factory_stage = strtol(optarg, NULL, 0);
+        bool found = false;
+        uint32_t i;
+        for (i=0; i<ARRAY_SIZE(factory_stage_strings); i++) {
+          if (strcasecmp(optarg, factory_stage_strings[i].name) == 0) {
+            args.factory_data_params.factory_stage =
+                factory_stage_strings[i].stage;
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          fprintf(stderr, "invalid factory stage: \"%s\"\n", optarg);
+          return -1;
+        }
       }
       break;
 
@@ -274,8 +311,8 @@ static void factory_data_print(const factory_data_t *f)
     printf("Hardware:       %08x\n", hardware);
   }
 
-  uint8_t mfg_id[sizeof(args.factory_data_params.mfg_serial_number)];
-  if (factory_data_mfg_serial_number_get(f, mfg_id) == 0) {
+  uint8_t mfg_id[sizeof(args.factory_data_params.mfg_id)];
+  if (factory_data_mfg_id_get(f, mfg_id) == 0) {
     char mfg_id_string[sizeof(mfg_id) + 1];
     memcpy(mfg_id_string, mfg_id, sizeof(mfg_id));
     mfg_id_string[sizeof(mfg_id)] = 0;
