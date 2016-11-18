@@ -285,6 +285,8 @@
 #define CONFIG_CMD_BOOTZ
 #undef CONFIG_BOOTM_NETBSD
 
+#define CONFIG_CMD_IMAGE_SET
+
 #define CONFIG_SYS_HZ     1000
 
 /* For development/debugging */

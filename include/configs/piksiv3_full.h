@@ -30,6 +30,8 @@
 #define CONFIG_FACTORY_DATA_FALLBACK
 #define CONFIG_ZYNQ_GEM_FACTORY_ADDR
 
+#define CONFIG_CMD_IMAGE_SET
+
 #include <configs/zynq-common.h>
 
 #endif /* __CONFIG_PIKSIV3_FULL_H */

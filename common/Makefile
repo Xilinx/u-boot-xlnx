@@ -117,6 +117,7 @@ obj-$(CONFIG_CMD_I2C) += cmd_i2c.o
 obj-$(CONFIG_CMD_IOTRACE) += cmd_iotrace.o
 obj-$(CONFIG_CMD_HASH) += cmd_hash.o
 obj-$(CONFIG_CMD_IDE) += cmd_ide.o
+obj-$(CONFIG_CMD_IMAGE_SET) += cmd_image_set.o
 obj-$(CONFIG_CMD_IMMAP) += cmd_immap.o
 obj-$(CONFIG_CMD_INI) += cmd_ini.o
 obj-$(CONFIG_CMD_IRQ) += cmd_irq.o
