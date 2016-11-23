@@ -19,14 +19,10 @@
 
 #ifdef CONFIG_TPL_BUILD
 
-/* Bootstrap pin configuration - nothing to do */
-#define CONFIG_TPL_BOOTSTRAP_INIT
-
-/* not implemented */
-#define CONFIG_TPL_BOOTSTRAP_FAILSAFE false
-
-/* not implemented */
-#define CONFIG_TPL_BOOTSTRAP_ALTERNATE false
+#define CONFIG_TPL_BOOTSTRAP_RX0_MIO 10
+#define CONFIG_TPL_BOOTSTRAP_TX0_MIO 11
+#define CONFIG_TPL_BOOTSTRAP_RX1_MIO 13
+#define CONFIG_TPL_BOOTSTRAP_TX1_MIO 12
 
 #endif
 

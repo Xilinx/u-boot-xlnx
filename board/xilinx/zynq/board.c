@@ -24,6 +24,10 @@
 #define QSPI_LINEAR_START 0xFC000000U
 #define FACTORY_DATA_SIZE_MAX 2048
 
+#define MIO_CFG_INPUT_PU  0x1601
+#define MIO_CFG_DEFAULT   0x1601
+#define MIO_CFG_OUTPUT    0x0600
+
 DECLARE_GLOBAL_DATA_PTR;
 
 #if (defined(CONFIG_FPGA) && !defined(CONFIG_SPL_BUILD)) || \
@@ -198,10 +202,6 @@ static int image_table_env_setup(void)
 
 int board_init(void)
 {
-#if defined(CONFIG_TPL_BUILD) && defined(CONFIG_TPL_BOOTSTRAP_INIT)
-  CONFIG_TPL_BOOTSTRAP_INIT;
-#endif
-
 #if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
 	unsigned char eepromsel = CONFIG_SYS_I2C_MUX_EEPROM_SEL;
 #endif
@@ -361,9 +361,54 @@ int spl_board_load_image(void)
 
 #ifdef CONFIG_TPL_BUILD
   /* TPL */
+  zynq_slcr_unlock();
 
-  bool failsafe = CONFIG_TPL_BOOTSTRAP_FAILSAFE;
-  bool alt = CONFIG_TPL_BOOTSTRAP_ALTERNATE;
+  /* Configure RX0, RX1, and TX0 pins as input pullup */
+  writel(MIO_CFG_INPUT_PU, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_RX0_MIO]);
+  writel(MIO_CFG_INPUT_PU, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_RX1_MIO]);
+  writel(MIO_CFG_INPUT_PU, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_TX0_MIO]);
+
+  /* Configure TX1 as output */
+  writel(MIO_CFG_OUTPUT, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_TX1_MIO]);
+  zynq_gpio_cfg_output(CONFIG_TPL_BOOTSTRAP_TX1_MIO);
+
+  int drive_count = 4;
+  int drive_state = 1;
+  bool drive_match = true;
+  do {
+    /* Drive TX1 */
+    zynq_gpio_output_write(CONFIG_TPL_BOOTSTRAP_TX1_MIO, drive_state);
+
+    /* Small delay */
+    udelay(10);
+
+    /* Read TX0 */
+    if (zynq_gpio_input_read(CONFIG_TPL_BOOTSTRAP_TX0_MIO) != drive_state) {
+      drive_match = false;
+      break;
+    }
+
+    drive_state = (drive_state == 0) ? 1 : 0;
+  } while (--drive_count > 0);
+
+  /* Determine boot mode */
+  bool failsafe = false;
+  bool alt = false;
+  if (drive_match) {
+    failsafe = (zynq_gpio_input_read(CONFIG_TPL_BOOTSTRAP_RX0_MIO) == 0);
+    alt =      (zynq_gpio_input_read(CONFIG_TPL_BOOTSTRAP_RX1_MIO) == 0);
+  }
+
+  /* Restore default state */
+  zynq_gpio_output_write(CONFIG_TPL_BOOTSTRAP_TX1_MIO, 1);
+  udelay(10);
+  zynq_gpio_cfg_input(CONFIG_TPL_BOOTSTRAP_TX1_MIO);
+  writel(MIO_CFG_DEFAULT, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_RX0_MIO]);
+  writel(MIO_CFG_DEFAULT, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_RX1_MIO]);
+  writel(MIO_CFG_DEFAULT, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_TX0_MIO]);
+  writel(MIO_CFG_DEFAULT, &slcr_base->mio_pin[CONFIG_TPL_BOOTSTRAP_TX1_MIO]);
+
+  zynq_slcr_lock();
 
   /* Select an image set to boot */
   const image_set_t *image_set;
