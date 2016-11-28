@@ -102,7 +102,7 @@ static int factory_params_read(void)
   }
 
   if (factory_data_uuid_get(factory_data,
-                                     factory_params.uuid) != 0) {
+                            factory_params.uuid) != 0) {
     puts("Error reading uuid from factory data\n");
     return -1;
   }

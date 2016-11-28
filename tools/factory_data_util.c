@@ -227,7 +227,7 @@ static int parse_options(int argc, char *argv[])
       break;
 
       case 'u': {
-         if (parse_hex_string(optarg, args.factory_data_params.uuid,
+        if (parse_hex_string(optarg, args.factory_data_params.uuid,
                              sizeof(args.factory_data_params.uuid)) != 0) {
           fprintf(stderr, "invalid uuid: \"%s\"\n", optarg);
           return -1;
