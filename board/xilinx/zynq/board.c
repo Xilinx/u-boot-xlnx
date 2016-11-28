@@ -48,6 +48,14 @@ static struct {
   uint8_t mac_address[6];
 } factory_params;
 
+static void print_hex_string(char *str, const uint8_t *data, uint32_t data_size)
+{
+  uint32_t i;
+  for (i = 0; i < data_size; i++) {
+    str += sprintf(str, "%02x", data[data_size - 1 - i]);
+  }
+}
+
 static int factory_params_read(void)
 {
   int err = 0;
@@ -296,8 +304,8 @@ int board_late_init(void)
   }
 
   /* Set uuid environment variable */
-  char buf[17];
-  snprintf(buf, sizeof(buf), "%s", factory_params.uuid);
+  char buf[sizeof(factory_params.uuid) * 2 + 1];
+  print_hex_string(buf, factory_params.uuid, sizeof(factory_params.uuid));
   setenv("uuid", buf);
 #endif
 #endif
