@@ -21,7 +21,7 @@
  * - Data: variable size, fields may be appended but never removed
  */
 
-#define FACTORY_DATA_SIGNATURE 0xcb1e6082
+#define FACTORY_DATA_SIGNATURE 0x8e54ae38
 #define FACTORY_DATA_RESERVED_BYTE 0xff
 
 #define FACTORY_STAGE_UNKNOWN        0xffffffff
