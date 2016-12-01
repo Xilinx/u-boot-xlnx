@@ -21,6 +21,11 @@ extern unsigned int zynq_get_silicon_version(void);
 
 int zynq_board_read_rom_ethaddr(unsigned char *ethaddr);
 
+void zynq_gpio_cfg_input(unsigned gpio);
+void zynq_gpio_cfg_output(unsigned gpio);
+int zynq_gpio_input_read(unsigned gpio);
+void zynq_gpio_output_write(unsigned gpio, unsigned value);
+
 /* Driver extern functions */
 extern void ps7_init(void);
 

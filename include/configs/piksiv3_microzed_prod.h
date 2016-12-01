@@ -19,16 +19,11 @@
 
 #ifdef CONFIG_TPL_BUILD
 
-/* Bootstrap pin configuration - nothing to do */
-#define CONFIG_TPL_BOOTSTRAP_INIT
-
-/* MIO 51 = SW1, default low */
-#define CONFIG_TPL_BOOTSTRAP_FAILSAFE \
-  ((readl(0xE000A064) & (1<<19)) ? true : false)
-
-/* MIO 47 = LED, default low */
-#define CONFIG_TPL_BOOTSTRAP_ALTERNATE \
-  ((readl(0xE000A064) & (1<<15)) ? true : false)
+/* Write to MIO 8 = unused, read from LED */
+#define CONFIG_TPL_BOOTSTRAP_RX0_MIO 47
+#define CONFIG_TPL_BOOTSTRAP_TX0_MIO 47
+#define CONFIG_TPL_BOOTSTRAP_RX1_MIO 47
+#define CONFIG_TPL_BOOTSTRAP_TX1_MIO  8
 
 #endif
 

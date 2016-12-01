@@ -21,6 +21,7 @@
 #define ZYNQ_EFUSE_BASEADDR		0xF800D000
 #define ZYNQ_USB_BASEADDR0		0xE0002000
 #define ZYNQ_USB_BASEADDR1		0xE0003000
+#define ZYNQ_GPIO_BASEADDR		0xE000A000
 
 /* Bootmode setting values */
 #define ZYNQ_BM_MASK		0x7
@@ -138,5 +139,31 @@ struct efuse_reg {
 };
 
 #define efuse_base ((struct efuse_reg *)ZYNQ_EFUSE_BASEADDR)
+
+struct gpio_regs {
+  struct {
+    u32 lsw;
+    u32 msw;
+  } mask_data[4];
+  u32 reserved0[8];
+  u32 data[4];
+  u32 reserved1[4];
+  u32 data_ro[4];
+  u32 reserved2[101];
+  struct {
+    u32 dirm;
+    u32 oen;
+    u32 int_mask;
+    u32 int_en;
+    u32 int_dis;
+    u32 int_stat;
+    u32 int_type;
+    u32 int_polarity;
+    u32 int_any;
+    u32 reserved3[7];
+  } cfg[4];
+};
+
+#define gpio_base ((struct gpio_regs *)ZYNQ_GPIO_BASEADDR)
 
 #endif /* _ASM_ARCH_HARDWARE_H */
