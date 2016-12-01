@@ -19,6 +19,8 @@
 
 #define CONFIG_DEV_FPGA_LOAD
 
+#define CONFIG_HW_WDT_DIS_MIO 0
+
 #include <configs/piksiv3_dev.h>
 
 #endif /* __CONFIG_PIKSIV3_EVT2_DEV_H */

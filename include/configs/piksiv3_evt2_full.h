@@ -17,6 +17,8 @@
 
 #define CONFIG_SYS_SDRAM_SIZE (512 * 1024 * 1024)
 
+#define CONFIG_HW_WDT_DIS_MIO 0
+
 #include <configs/piksiv3_full.h>
 
 #endif /* __CONFIG_PIKSIV3_EVT2_FULL_H */
