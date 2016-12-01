@@ -61,6 +61,10 @@
 #define CONFIG_ARM_DCC
 #define CONFIG_ZYNQ_SERIAL
 
+/* Ethernet */
+#define CONFIG_MII
+#define CONFIG_PHY_MARVELL
+
 /* QSPI */
 #define CONFIG_SF_DEFAULT_SPEED	30000000
 #define CONFIG_CMD_SF
