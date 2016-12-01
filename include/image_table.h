@@ -31,6 +31,7 @@
 #define IMAGE_HARDWARE_MICROZED   0x00000001
 #define IMAGE_HARDWARE_EVT1       0x00000011
 #define IMAGE_HARDWARE_EVT2       0x00000012
+#define IMAGE_HARDWARE_DVT1       0x00000013
 
 /* Warning: image_set_t and image_descriptor_t use unspecified endianness.
  * Do not access fields directly. Use API functions only. */

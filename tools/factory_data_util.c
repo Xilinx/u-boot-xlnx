@@ -36,10 +36,12 @@ static struct {
   .print = false,
   .factory_data_params = {
     .hardware = 0,
-    .serial_number = 0,
+    .mfg_id = {0},
+    .uuid = {0},
     .timestamp = 0,
     .nap_key = {0},
-    .mac_address = {0}
+    .mac_address = {0},
+    .factory_stage = 0,
   }
 };
 
@@ -51,6 +53,19 @@ static const struct {
   { IMAGE_HARDWARE_MICROZED,    "microzed"  },
   { IMAGE_HARDWARE_EVT1,        "evt1"      },
   { IMAGE_HARDWARE_EVT2,        "evt2"      },
+  { IMAGE_HARDWARE_DVT1,        "dvt1"      },
+};
+
+static const struct {
+  uint32_t stage;
+  const char *name;
+} factory_stage_strings[] = {
+  { FACTORY_STAGE_UNKNOWN,        "unknown"        },
+  { FACTORY_STAGE_INITIAL,        "initial"        },
+  { FACTORY_STAGE_POST_BURN_IN,   "post_burn_in"   },
+  { FACTORY_STAGE_HOST_BOARD,     "host_board"     },
+  { FACTORY_STAGE_RETURN,         "return"         },
+  { FACTORY_STAGE_DEV,            "dev"            },
 };
 
 static void usage(void)
@@ -68,14 +83,21 @@ static void usage(void)
     printf("%s ", image_hardware_strings[i].name);
   }
   printf("\n");
-  puts("\t-s, --serial-number <serial-number>");
-  puts("\t\tserial number");
+  puts("\t-i, --mfg-id <manufacturer-id>");
+  puts("\t\t17 character manufacturer id");
+  puts("\t-u, --uuid <uuid>");
+  puts("\t\tuuid, 16B hex string (no dashes)");
   puts("\t-t, --timestamp <timestamp>");
   puts("\t\ttimestamp");
   puts("\t-k, --nap-key <nap-key>");
   puts("\t\tnap key, 16B hex string");
   puts("\t-m, --mac-address <mac-address>");
   puts("\t\tmac address, 6B hex string");
+  puts("\t-f, --factory-stage <factory-stage>");
+  printf("\t\tstring: ");
+  for (i=0; i<ARRAY_SIZE(factory_stage_strings); i++) {
+    printf("%s ", factory_stage_strings[i].name);
+  }
 
   puts("\nMisc options");
   puts("\t--verify <file>");
@@ -152,20 +174,22 @@ static int parse_options(int argc, char *argv[])
   };
 
   const struct option long_opts[] = {
-    {"out",             required_argument, 0, 'o'},
-    {"hardware",        required_argument, 0, 'h'},
-    {"serial-number",   required_argument, 0, 's'},
-    {"timestamp",       required_argument, 0, 't'},
-    {"nap-key",         required_argument, 0, 'k'},
-    {"mac-address",     required_argument, 0, 'm'},
-    {"verify",          required_argument, 0, OPT_ID_VERIFY},
-    {"print",           no_argument,       0, 'p'},
+    {"out",               required_argument, 0, 'o'},
+    {"hardware",          required_argument, 0, 'h'},
+    {"mfg-id",            required_argument, 0, 'i'},
+    {"uuid",              required_argument, 0, 'u'},
+    {"timestamp",         required_argument, 0, 't'},
+    {"nap-key",           required_argument, 0, 'k'},
+    {"mac-address",       required_argument, 0, 'm'},
+    {"factory-stage",     required_argument, 0, 'f'},
+    {"verify",            required_argument, 0, OPT_ID_VERIFY},
+    {"print",             no_argument,       0, 'p'},
     {0, 0, 0, 0}
   };
 
   int c;
   int opt_index;
-  while ((c = getopt_long(argc, argv, "o:h:s:t:k:m:p",
+  while ((c = getopt_long(argc, argv, "o:h:i:u:t:k:m:f:p",
                           long_opts, &opt_index)) != -1) {
     switch (c) {
       case 'o': {
@@ -192,8 +216,22 @@ static int parse_options(int argc, char *argv[])
       }
       break;
 
-      case 's': {
-        args.factory_data_params.serial_number = strtol(optarg, NULL, 0);
+      case 'i': {
+        if (strlen(optarg) != sizeof(args.factory_data_params.mfg_id)) {
+          fprintf(stderr, "invalid manufacturer id: \"%s\"\n", optarg);
+          return -1;
+        }
+        memcpy(args.factory_data_params.mfg_id, optarg,
+            sizeof(args.factory_data_params.mfg_id));
+      }
+      break;
+
+      case 'u': {
+        if (parse_hex_string(optarg, args.factory_data_params.uuid,
+                             sizeof(args.factory_data_params.uuid)) != 0) {
+          fprintf(stderr, "invalid uuid: \"%s\"\n", optarg);
+          return -1;
+        }
       }
       break;
 
@@ -216,6 +254,25 @@ static int parse_options(int argc, char *argv[])
                              sizeof(args.factory_data_params.mac_address))
                                  != 0) {
           fprintf(stderr, "invalid mac address: \"%s\"\n", optarg);
+          return -1;
+        }
+      }
+      break;
+
+      case 'f': {
+        bool found = false;
+        uint32_t i;
+        for (i=0; i<ARRAY_SIZE(factory_stage_strings); i++) {
+          if (strcasecmp(optarg, factory_stage_strings[i].name) == 0) {
+            args.factory_data_params.factory_stage =
+                factory_stage_strings[i].stage;
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          fprintf(stderr, "invalid factory stage: \"%s\"\n", optarg);
           return -1;
         }
       }
@@ -254,9 +311,19 @@ static void factory_data_print(const factory_data_t *f)
     printf("Hardware:       %08x\n", hardware);
   }
 
-  uint32_t serial_number;
-  if (factory_data_serial_number_get(f, &serial_number) == 0) {
-    printf("Serial Number:  %08x\n", serial_number);
+  uint8_t mfg_id[sizeof(args.factory_data_params.mfg_id)];
+  if (factory_data_mfg_id_get(f, mfg_id) == 0) {
+    char mfg_id_string[sizeof(mfg_id) + 1];
+    memcpy(mfg_id_string, mfg_id, sizeof(mfg_id));
+    mfg_id_string[sizeof(mfg_id)] = 0;
+    printf("Mfg ID:         %s\n", mfg_id_string);
+  }
+
+  uint8_t uuid[sizeof(args.factory_data_params.uuid)];
+  if (factory_data_uuid_get(f, uuid) == 0) {
+    char uuid_string[2 * sizeof(uuid) + 1];
+    print_hex_string(uuid_string, uuid, sizeof(uuid));
+    printf("UUID:           %s\n", uuid_string);
   }
 
   uint32_t timestamp;
@@ -276,6 +343,11 @@ static void factory_data_print(const factory_data_t *f)
     char mac_address_string[2 * sizeof(mac_address) + 1];
     print_hex_string(mac_address_string, mac_address, sizeof(mac_address));
     printf("MAC Address:    %s\n", mac_address_string);
+  }
+
+  uint32_t factory_stage;
+  if (factory_data_timestamp_get(f, &factory_stage) == 0) {
+    printf("Factory Stage:  %08x\n", factory_stage);
   }
 }
 
