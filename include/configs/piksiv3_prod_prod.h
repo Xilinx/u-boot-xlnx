@@ -10,10 +10,10 @@
  * WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef __CONFIG_PIKSIV3_EVT2_PROD_H
-#define __CONFIG_PIKSIV3_EVT2_PROD_H
+#ifndef __CONFIG_PIKSIV3_PROD_PROD_H
+#define __CONFIG_PIKSIV3_PROD_PROD_H
 
-#define PIKSI_REV "evt2"
+#define PIKSI_REV "prod"
 
 #define CONFIG_SYS_SDRAM_SIZE (512 * 1024 * 1024)
 
@@ -30,4 +30,4 @@
 
 #include <configs/piksiv3_prod.h>
 
-#endif /* __CONFIG_PIKSIV3_EVT2_PROD_H */
+#endif /* __CONFIG_PIKSIV3_PROD_PROD_H */
