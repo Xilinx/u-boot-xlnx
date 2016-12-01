@@ -26,12 +26,12 @@
 #define IMAGE_TYPE_UBOOT      0x00000003
 #define IMAGE_TYPE_LINUX      0x00000004
 
-#define IMAGE_HARDWARE_INVALID    0xffffffff
-#define IMAGE_HARDWARE_UNKNOWN    0x00000000
-#define IMAGE_HARDWARE_MICROZED   0x00000001
-#define IMAGE_HARDWARE_EVT1       0x00000011
-#define IMAGE_HARDWARE_EVT2       0x00000012
-#define IMAGE_HARDWARE_DVT1       0x00000013
+#define IMAGE_HARDWARE_INVALID      0xffffffff
+#define IMAGE_HARDWARE_UNKNOWN      0x00000000
+#define IMAGE_HARDWARE_V3_MICROZED  0x00000001
+#define IMAGE_HARDWARE_V3_EVT1      0x00000011
+#define IMAGE_HARDWARE_V3_EVT2      0x00000012
+#define IMAGE_HARDWARE_V3_PROD      0x00000013
 
 /* Warning: image_set_t and image_descriptor_t use unspecified endianness.
  * Do not access fields directly. Use API functions only. */
