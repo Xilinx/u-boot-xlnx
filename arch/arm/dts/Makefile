@@ -65,8 +65,7 @@ dtb-$(CONFIG_ARCH_ZYNQ) += zynq-zc702.dtb \
 	zynq-zed.dtb \
 	zynq-zybo.dtb \
 	zynq-microzed.dtb \
-	piksiv3_evt1.dtb \
-	piksiv3_evt2.dtb \
+	piksiv3_prod.dtb \
 	zynq-cc108.dtb \
 	zynq-afx-nand.dtb \
 	zynq-afx-nor.dtb \

@@ -69,10 +69,11 @@ static const struct {
   uint32_t hardware;
   const char *name;
 } image_hardware_strings[] = {
-  { IMAGE_HARDWARE_UNKNOWN,     "unknown"   },
-  { IMAGE_HARDWARE_MICROZED,    "microzed"  },
-  { IMAGE_HARDWARE_EVT1,        "evt1"      },
-  { IMAGE_HARDWARE_EVT2,        "evt2"      },
+  { IMAGE_HARDWARE_UNKNOWN,       "unknown"       },
+  { IMAGE_HARDWARE_V3_MICROZED,   "v3_microzed"   },
+  { IMAGE_HARDWARE_V3_EVT1,       "v3_evt1"       },
+  { IMAGE_HARDWARE_V3_EVT2,       "v3_evt2"       },
+  { IMAGE_HARDWARE_V3_PROD,       "v3_prod"       },
 };
 
 static void usage(void)

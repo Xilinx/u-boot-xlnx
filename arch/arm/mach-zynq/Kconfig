@@ -58,28 +58,16 @@ config TARGET_PIKSIV3_MICROZED_DEV
 	bool "Piksiv3 MicroZed Dev"
 	select SUPPORT_TPL
 
-config TARGET_PIKSIV3_EVT1_FULL
-	bool "Piksiv3 EVT1 Full"
+config TARGET_PIKSIV3_PROD_FULL
+	bool "Piksiv3 Prod Full"
 	select SUPPORT_TPL
 
-config TARGET_PIKSIV3_EVT1_PROD
-	bool "Piksiv3 EVT1 Prod"
+config TARGET_PIKSIV3_PROD_PROD
+	bool "Piksiv3 Prod Prod"
 	select SUPPORT_TPL
 
-config TARGET_PIKSIV3_EVT1_DEV
-	bool "Piksiv3 EVT1 Dev"
-	select SUPPORT_TPL
-
-config TARGET_PIKSIV3_EVT2_FULL
-	bool "Piksiv3 EVT2 Full"
-	select SUPPORT_TPL
-
-config TARGET_PIKSIV3_EVT2_PROD
-	bool "Piksiv3 EVT2 Prod"
-	select SUPPORT_TPL
-
-config TARGET_PIKSIV3_EVT2_DEV
-	bool "Piksiv3 EVT2 Dev"
+config TARGET_PIKSIV3_PROD_DEV
+	bool "Piksiv3 Prod Dev"
 	select SUPPORT_TPL
 
 endchoice
@@ -106,11 +94,8 @@ config SYS_CONFIG_NAME
 	default "piksiv3_microzed_full" if TARGET_PIKSIV3_MICROZED_FULL
 	default "piksiv3_microzed_prod" if TARGET_PIKSIV3_MICROZED_PROD
 	default "piksiv3_microzed_dev" if TARGET_PIKSIV3_MICROZED_DEV
-	default "piksiv3_evt1_full" if TARGET_PIKSIV3_EVT1_FULL
-	default "piksiv3_evt1_prod" if TARGET_PIKSIV3_EVT1_PROD
-	default "piksiv3_evt1_dev" if TARGET_PIKSIV3_EVT1_DEV
-	default "piksiv3_evt2_full" if TARGET_PIKSIV3_EVT2_FULL
-	default "piksiv3_evt2_prod" if TARGET_PIKSIV3_EVT2_PROD
-	default "piksiv3_evt2_dev" if TARGET_PIKSIV3_EVT2_DEV
+	default "piksiv3_prod_full" if TARGET_PIKSIV3_PROD_FULL
+	default "piksiv3_prod_prod" if TARGET_PIKSIV3_PROD_PROD
+	default "piksiv3_prod_dev" if TARGET_PIKSIV3_PROD_DEV
 
 endif

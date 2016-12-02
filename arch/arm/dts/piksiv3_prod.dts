@@ -1,5 +1,5 @@
 /*
- * Piksiv3 EVT2 board DTS
+ * Piksiv3 PROD board DTS
  *
  * Copyright (C) 2013 - 2016 Xilinx, Inc.
  *
@@ -9,8 +9,8 @@
 #include "zynq-7000.dtsi"
 
 / {
-	model = "Piksiv3 EVT2 Board";
-	compatible = "xlnx,zynq-piksiv3-evt2", "xlnx,zynq-7000";
+	model = "Piksiv3 PROD Board";
+	compatible = "xlnx,zynq-piksiv3-prod", "xlnx,zynq-7000";
 
 	aliases {
 		serial0 = &uart1;
