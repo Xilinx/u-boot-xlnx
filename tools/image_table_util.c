@@ -63,6 +63,7 @@ static const struct {
   { IMAGE_TYPE_UBOOT_SPL,   "uboot-spl" },
   { IMAGE_TYPE_UBOOT,       "uboot"     },
   { IMAGE_TYPE_LINUX,       "linux"     },
+  { IMAGE_TYPE_FPGA,        "fpga"      },
 };
 
 static const struct {

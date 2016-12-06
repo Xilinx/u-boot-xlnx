@@ -32,6 +32,7 @@
 
  /* Image table */
 #define CONFIG_IMAGE_TABLE_BOOT
+#define CONFIG_IMAGE_TABLE_BOOT_FPGA
 #define CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A 0x000C0000U
 #define CONFIG_IMAGE_SET_OFFSET_FAILSAFE_B 0x000D0000U
 #define CONFIG_IMAGE_SET_OFFSET_STANDARD_A 0x000E0000U
@@ -153,19 +154,11 @@
 #define CONFIG_ENV_OFFSET     0xC0000
 #define CONFIG_ENV_OVERWRITE
 
-#ifdef CONFIG_DEV_FPGA_LOAD
-#define DEV_FPGA_LOAD_CMDS "run fpgaload; "
-#else
-#define DEV_FPGA_LOAD_CMDS
-#endif
-
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS \
   "kernel_image=uImage.piksiv3_" PIKSI_REV "\0" \
   "kernel_load_address=0x08008000\0" \
-  "fpga_flash_offset=0x00400000\0" \
   "fpga_load_address=0x02000000\0" \
-  "fpga_size=0x003dbb69\0" \
   "autoload=no\0" \
   "bootenv=uEnv.txt\0" \
   "loadbootenv_addr=0x2000000\0" \
@@ -206,13 +199,15 @@
       "bootm ${kernel_load_address};\0" \
     "fpgaload=" \
       "sf probe && " \
-      "sf read ${fpga_load_address} ${fpga_flash_offset} ${fpga_size} && " \
-      "fpga loadb 0 ${fpga_load_address} ${fpga_size} && " \
+      "sf read ${fpga_load_address} " \
+               "${img_tbl_fpga_flash_offset} " \
+               "${img_tbl_fpga_size} && " \
+      "fpga loadb 0 ${fpga_load_address} ${img_tbl_fpga_size} && " \
       "sleep 1 && " \
       "mmcinfo;\0"
 
 /* Default environment */
-#define CONFIG_BOOTCOMMAND DEV_FPGA_LOAD_CMDS "run sdboot; run netboot"
+#define CONFIG_BOOTCOMMAND "run fpgaload; run sdboot; run netboot"
 #define CONFIG_BOOTARGS "console=ttyPS1,115200"
 
 #define CONFIG_BOOTDELAY    1 /* -1 to Disable autoboot */

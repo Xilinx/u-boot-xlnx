@@ -207,6 +207,24 @@ static int image_table_env_setup(void)
   }
   #endif
 
+  #ifdef CONFIG_IMAGE_TABLE_BOOT_FPGA
+  {
+    image_descriptor_t image_descriptor;
+    err = image_descriptor_get(flash, IMAGE_TYPE_FPGA, &image_descriptor);
+    if (err) {
+      return err;
+    }
+
+    /* Skip over image header */
+    setenv_hex("img_tbl_fpga_flash_offset",
+               image_descriptor_data_offset_get(&image_descriptor) +
+               image_get_header_size());
+    setenv_hex("img_tbl_fpga_size",
+               image_descriptor_data_size_get(&image_descriptor) -
+               image_get_header_size());
+  }
+  #endif
+
   return err;
 }
 #endif
