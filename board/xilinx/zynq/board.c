@@ -208,6 +208,16 @@ static int image_table_env_setup(void)
 #endif
 #endif
 
+#ifdef CONFIG_BOARD_EARLY_INIT_F
+int board_early_init_f(void)
+{
+#ifdef CONFIG_DISABLE_CONSOLE
+  gd->flags |= GD_FLG_DISABLE_CONSOLE;
+#endif
+  return 0;
+}
+#endif
+
 int board_init(void)
 {
 #if defined(CONFIG_ENV_IS_IN_EEPROM) && !defined(CONFIG_SPL_BUILD)
