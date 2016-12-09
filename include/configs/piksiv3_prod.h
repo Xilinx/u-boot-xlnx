@@ -93,6 +93,8 @@
 #define CONFIG_SYS_LOAD_ADDR	0 /* default? */
 
 /* Miscellaneous configurable options */
+#define CONFIG_DISABLE_CONSOLE
+#define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_BOARD_LATE_INIT
 #define CONFIG_DISPLAY_BOARDINFO
 #define CONFIG_CLOCKS
@@ -143,7 +145,6 @@
 #define CONFIG_SPL_LIBCOMMON_SUPPORT
 #define CONFIG_SPL_LIBGENERIC_SUPPORT
 #define CONFIG_SPL_SERIAL_SUPPORT
-#define CONFIG_SPL_BOARD_INIT
 
 /* TPL optimizations */
 #ifdef CONFIG_TPL_BUILD

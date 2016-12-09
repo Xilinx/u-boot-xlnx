@@ -201,6 +201,7 @@
 
 /* Default environment */
 #define CONFIG_BOOTCOMMAND DEV_FPGA_LOAD_CMDS "run sdboot; run netboot"
+#define CONFIG_BOOTARGS "console=ttyPS1,115200"
 
 #define CONFIG_BOOTDELAY    1 /* -1 to Disable autoboot */
 #define CONFIG_SYS_LOAD_ADDR    0 /* default? */
