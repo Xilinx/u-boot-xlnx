@@ -17,8 +17,6 @@
 
 #define CONFIG_SYS_SDRAM_SIZE (512 * 1024 * 1024)
 
-#define CONFIG_DEV_FPGA_LOAD
-
 #define CONFIG_HW_WDT_DIS_MIO 0
 
 #include <configs/piksiv3_dev.h>

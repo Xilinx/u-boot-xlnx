@@ -184,24 +184,46 @@ static int image_table_env_setup(void)
     return -ENODEV;
   }
 
-  image_descriptor_t image_descriptor;
-  err = image_descriptor_get(flash, IMAGE_TYPE_LINUX, &image_descriptor);
-  if (err) {
-    return err;
+  #ifdef CONFIG_IMAGE_TABLE_BOOT_LINUX
+  {
+    image_descriptor_t image_descriptor;
+    err = image_descriptor_get(flash, IMAGE_TYPE_LINUX, &image_descriptor);
+    if (err) {
+      return err;
+    }
+
+    setenv_hex("img_tbl_kernel_load_address",
+               image_descriptor_load_address_get(&image_descriptor));
+    setenv_hex("img_tbl_kernel_flash_offset",
+               image_descriptor_data_offset_get(&image_descriptor));
+    setenv_hex("img_tbl_kernel_size",
+               image_descriptor_data_size_get(&image_descriptor));
+
+    /* crc32 verify command requires CRC to be exactly 8 hex digits */
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%08x",
+             image_descriptor_data_crc_get(&image_descriptor));
+    setenv("img_tbl_kernel_crc", buf);
   }
+  #endif
 
-  setenv_hex("img_tbl_kernel_load_address",
-             image_descriptor_load_address_get(&image_descriptor));
-  setenv_hex("img_tbl_kernel_flash_offset",
-             image_descriptor_data_offset_get(&image_descriptor));
-  setenv_hex("img_tbl_kernel_size",
-             image_descriptor_data_size_get(&image_descriptor));
+  #ifdef CONFIG_IMAGE_TABLE_BOOT_FPGA
+  {
+    image_descriptor_t image_descriptor;
+    err = image_descriptor_get(flash, IMAGE_TYPE_FPGA, &image_descriptor);
+    if (err) {
+      return err;
+    }
 
-  /* crc32 verify command requires CRC to be exactly 8 hex digits */
-  char buf[16];
-  snprintf(buf, sizeof(buf), "%08x",
-           image_descriptor_data_crc_get(&image_descriptor));
-  setenv("img_tbl_kernel_crc", buf);
+    /* Skip over image header */
+    setenv_hex("img_tbl_fpga_flash_offset",
+               image_descriptor_data_offset_get(&image_descriptor) +
+               image_get_header_size());
+    setenv_hex("img_tbl_fpga_size",
+               image_descriptor_data_size_get(&image_descriptor) -
+               image_get_header_size());
+  }
+  #endif
 
   return err;
 }
