@@ -15,9 +15,11 @@ hw-platform-$(CONFIG_TARGET_ZYNQ_ZC706)		:= ZC706_hw_platform
 hw-platform-$(CONFIG_TARGET_ZYNQ_ZYBO)		:= zybo_hw_platform
 hw-platform-$(CONFIG_TARGET_PIKSIV3_MICROZED_FULL)	:= MicroZed_hw_platform
 hw-platform-$(CONFIG_TARGET_PIKSIV3_MICROZED_PROD)	:= MicroZed_hw_platform
+hw-platform-$(CONFIG_TARGET_PIKSIV3_MICROZED_FAILSAFE)	:= MicroZed_hw_platform
 hw-platform-$(CONFIG_TARGET_PIKSIV3_MICROZED_DEV)	:= MicroZed_hw_platform
 hw-platform-$(CONFIG_TARGET_PIKSIV3_PROD_FULL)	:= piksiv3_prod_hw_platform
 hw-platform-$(CONFIG_TARGET_PIKSIV3_PROD_PROD)	:= piksiv3_prod_hw_platform
+hw-platform-$(CONFIG_TARGET_PIKSIV3_PROD_FAILSAFE)	:= piksiv3_prod_hw_platform
 hw-platform-$(CONFIG_TARGET_PIKSIV3_PROD_DEV)	:= piksiv3_prod_hw_platform
 # If you want to use customized ps7_init_gpl.c/h,
 # enable CONFIG_ZYNQ_CUSTOM_INIT and put them into custom_hw_platform/.

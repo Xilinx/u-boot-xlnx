@@ -54,6 +54,10 @@ config TARGET_PIKSIV3_MICROZED_PROD
 	bool "Piksiv3 MicroZed Prod"
 	select SUPPORT_TPL
 
+config TARGET_PIKSIV3_MICROZED_FAILSAFE
+	bool "Piksiv3 MicroZed Failsafe"
+	select SUPPORT_TPL
+
 config TARGET_PIKSIV3_MICROZED_DEV
 	bool "Piksiv3 MicroZed Dev"
 	select SUPPORT_TPL
@@ -64,6 +68,10 @@ config TARGET_PIKSIV3_PROD_FULL
 
 config TARGET_PIKSIV3_PROD_PROD
 	bool "Piksiv3 Prod Prod"
+	select SUPPORT_TPL
+
+config TARGET_PIKSIV3_PROD_FAILSAFE
+	bool "Piksiv3 Prod Failsafe"
 	select SUPPORT_TPL
 
 config TARGET_PIKSIV3_PROD_DEV
@@ -93,9 +101,11 @@ config SYS_CONFIG_NAME
 	default "zynq_cc108" if TARGET_ZYNQ_CC108
 	default "piksiv3_microzed_full" if TARGET_PIKSIV3_MICROZED_FULL
 	default "piksiv3_microzed_prod" if TARGET_PIKSIV3_MICROZED_PROD
+	default "piksiv3_microzed_failsafe" if TARGET_PIKSIV3_MICROZED_FAILSAFE
 	default "piksiv3_microzed_dev" if TARGET_PIKSIV3_MICROZED_DEV
 	default "piksiv3_prod_full" if TARGET_PIKSIV3_PROD_FULL
 	default "piksiv3_prod_prod" if TARGET_PIKSIV3_PROD_PROD
+	default "piksiv3_prod_failsafe" if TARGET_PIKSIV3_PROD_FAILSAFE
 	default "piksiv3_prod_dev" if TARGET_PIKSIV3_PROD_DEV
 
 endif
