@@ -1,6 +1,7 @@
 CONFIG_ARM=y
 CONFIG_ARCH_ZYNQ=y
 CONFIG_TARGET_PIKSIV3_PROD_FULL=y
+CONFIG_BOOT_INIT_FILE="board/xilinx/zynq/piksiv3_prod_hw_platform/reg_init.txt"
 CONFIG_DEFAULT_DEVICE_TREE="piksiv3_prod"
 CONFIG_SPL=y
 CONFIG_TPL=y
