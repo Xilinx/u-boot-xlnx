@@ -22,6 +22,7 @@
 
 #define REG_REBOOT_STATUS 0xF8000258U
 #define QSPI_LINEAR_START 0xFC000000U
+#define QSPI_LINEAR_SIZE  0x01000000U
 #define FACTORY_DATA_SIZE_MAX 2048
 
 #define MIO_CFG_INPUT_PU  0x1601
@@ -257,6 +258,12 @@ static int tpl_image_set_check(u32 image_set_offset, image_set_t *image_set)
   u32 image_data_offset = image_descriptor_data_offset_get(image_descriptor);
   u32 image_data_size = image_descriptor_data_size_get(image_descriptor);
   const u8 *image_data = (const u8 *)(QSPI_LINEAR_START + image_data_offset);
+
+  /* Verify offset and size */
+  if ((image_data_offset >= QSPI_LINEAR_SIZE) ||
+      (image_data_size > (QSPI_LINEAR_SIZE - image_data_offset))) {
+    return -1;
+  }
 
   /* Verify SPL image data CRC */
   u32 computed_data_crc;
