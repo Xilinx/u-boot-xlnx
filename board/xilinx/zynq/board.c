@@ -230,6 +230,47 @@ static int image_table_env_setup(void)
 #endif
 #endif
 
+#ifdef CONFIG_TPL_BUILD
+static int tpl_image_set_check(u32 image_set_offset, image_set_t *image_set)
+{
+  int err = 0;
+
+  /* Copy image set header to RAM */
+  memcpy((void *)image_set,
+         (const void *)(QSPI_LINEAR_START + image_set_offset),
+         sizeof(image_set_t));
+
+  /* Verify image set header */
+  err = image_set_verify(image_set);
+  if (err) {
+    return err;
+  }
+
+  /* Find SPL image descriptor */
+  const image_descriptor_t *image_descriptor;
+  err = image_set_descriptor_find(image_set, IMAGE_TYPE_UBOOT_SPL,
+                                  &image_descriptor);
+  if (err) {
+    return err;
+  }
+
+  u32 image_data_offset = image_descriptor_data_offset_get(image_descriptor);
+  u32 image_data_size = image_descriptor_data_size_get(image_descriptor);
+  const u8 *image_data = (const u8 *)(QSPI_LINEAR_START + image_data_offset);
+
+  /* Verify SPL image data CRC */
+  u32 computed_data_crc;
+  image_descriptor_data_crc_init(&computed_data_crc);
+  image_descriptor_data_crc_continue(&computed_data_crc, image_data,
+                                     image_data_size);
+  if (computed_data_crc != image_descriptor_data_crc_get(image_descriptor)) {
+    return -1;
+  }
+
+  return err;
+}
+#endif
+
 #ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
@@ -370,42 +411,6 @@ void spl_board_announce_boot_device(void)
   puts("image table");
 }
 
-#ifdef CONFIG_TPL_BUILD
-int tpl_image_set_check(const image_set_t *image_set)
-{
-  int err = 0;
-
-  /* Verify image set header */
-  err = image_set_verify(image_set);
-  if (err) {
-    return err;
-  }
-
-  /* Find SPL image descriptor */
-  const image_descriptor_t *image_descriptor;
-  err = image_set_descriptor_find(image_set, IMAGE_TYPE_UBOOT_SPL,
-                                  &image_descriptor);
-  if (err) {
-    return err;
-  }
-
-  u32 image_data_offset = image_descriptor_data_offset_get(image_descriptor);
-  u32 image_data_size = image_descriptor_data_size_get(image_descriptor);
-  const u8 *image_data = (const u8 *)(QSPI_LINEAR_START + image_data_offset);
-
-  /* Verify SPL image data CRC */
-  u32 computed_data_crc;
-  image_descriptor_data_crc_init(&computed_data_crc);
-  image_descriptor_data_crc_continue(&computed_data_crc, image_data,
-                                     image_data_size);
-  if (computed_data_crc != image_descriptor_data_crc_get(image_descriptor)) {
-    return -1;
-  }
-
-  return 0;
-}
-#endif
-
 int spl_board_load_image(void)
 {
   int err = 0;
@@ -462,56 +467,63 @@ int spl_board_load_image(void)
   zynq_slcr_lock();
 
   /* Select an image set to boot */
-  const image_set_t *image_set;
-  u32 image_table_index;
+  u32 image_set_offset;
   if (failsafe) {
     /* Load failsafe image
      * alt = 0 : failsafe A
      * alt = 1 : failsafe B
      */
-    u32 offset = alt ? CONFIG_IMAGE_SET_OFFSET_FAILSAFE_B :
-                       CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A;
-    image_set = (const image_set_t *)(QSPI_LINEAR_START + offset);
-    image_table_index = alt ? 0x1 : 0x0;
-
-    if (tpl_image_set_check(image_set) != 0) {
-      return -1;
-    }
-
+    image_set_offset = alt ? CONFIG_IMAGE_SET_OFFSET_FAILSAFE_B :
+                             CONFIG_IMAGE_SET_OFFSET_FAILSAFE_A;
   } else {
     /* Load standard image based on sequence number
      * alt = 0 : most recent
      * alt = 1 : second most recent
      */
-    const image_set_t *image_set_a =
-        (const image_set_t *)(QSPI_LINEAR_START +
-                              CONFIG_IMAGE_SET_OFFSET_STANDARD_A);
-    bool image_set_a_valid = (tpl_image_set_check(image_set_a) == 0);
+    image_set_t image_set_working;
 
-    const image_set_t *image_set_b =
-        (const image_set_t *)(QSPI_LINEAR_START +
-                              CONFIG_IMAGE_SET_OFFSET_STANDARD_B);
-    bool image_set_b_valid = (tpl_image_set_check(image_set_b) == 0);
+    bool image_set_a_valid =
+        (tpl_image_set_check(CONFIG_IMAGE_SET_OFFSET_STANDARD_A,
+                             &image_set_working) == 0);
+    u32 image_set_a_seq_num = image_set_seq_num_get(&image_set_working);
+
+    bool image_set_b_valid =
+        (tpl_image_set_check(CONFIG_IMAGE_SET_OFFSET_STANDARD_B,
+                             &image_set_working) == 0);
+    u32 image_set_b_seq_num = image_set_seq_num_get(&image_set_working);
 
     if (image_set_a_valid && image_set_b_valid) {
-      s32 seq_num_diff = image_set_seq_num_get(image_set_a) -
-                         image_set_seq_num_get(image_set_b);
-      image_set = ((seq_num_diff >= 0) != alt) ? image_set_a : image_set_b;
+      s32 seq_num_diff = image_set_a_seq_num - image_set_b_seq_num;
+      image_set_offset = ((seq_num_diff >= 0) != alt) ?
+                             CONFIG_IMAGE_SET_OFFSET_STANDARD_A :
+                             CONFIG_IMAGE_SET_OFFSET_STANDARD_B;
     } else if (image_set_a_valid) {
-      image_set = image_set_a;
+      image_set_offset = CONFIG_IMAGE_SET_OFFSET_STANDARD_A;
     } else if (image_set_b_valid) {
-      image_set = image_set_b;
+      image_set_offset = CONFIG_IMAGE_SET_OFFSET_STANDARD_B;
     } else {
       /* No valid image set */
       return -1;
     }
+  }
 
-    image_table_index = (image_set == image_set_a) ? 0x2 : 0x3;
+  /* Load and verify selected image set */
+  image_set_t image_set;
+
+  /* Copy image set header to RAM */
+  memcpy((void *)&image_set,
+         (const void *)(QSPI_LINEAR_START + image_set_offset),
+         sizeof(image_set_t));
+
+  /* Verify image set header */
+  err = image_set_verify(&image_set);
+  if (err) {
+    return err;
   }
 
   /* Find SPL image descriptor */
   const image_descriptor_t *image_descriptor;
-  err = image_set_descriptor_find(image_set, IMAGE_TYPE_UBOOT_SPL,
+  err = image_set_descriptor_find(&image_set, IMAGE_TYPE_UBOOT_SPL,
                                   &image_descriptor);
   if (err) {
     return err;
@@ -519,22 +531,59 @@ int spl_board_load_image(void)
 
   u32 image_data_offset = image_descriptor_data_offset_get(image_descriptor);
   u32 image_data_size = image_descriptor_data_size_get(image_descriptor);
-  const u8 *image_data = (const u8 *)(QSPI_LINEAR_START + image_data_offset);
+  const u8 *image_data_flash =
+      (const u8 *)(QSPI_LINEAR_START + image_data_offset);
 
-  /* Read header */
+  u32 computed_data_crc;
+  image_descriptor_data_crc_init(&computed_data_crc);
+
+  /* Copy header to RAM */
   struct image_header header;
   memcpy((void *)&header,
-         (const void *)image_data,
+         (const void *)image_data_flash,
          sizeof(struct image_header));
 
-  /* Parse header */
+  /* Update CRC over header */
+  image_descriptor_data_crc_continue(&computed_data_crc,
+                                     (const u8 *)&header,
+                                     sizeof(struct image_header));
+
+  /* Copy data to RAM at load address, skipping over header */
+  u32 load_address = image_descriptor_load_address_get(image_descriptor);
+  memcpy((void *)load_address,
+         (const void *)&image_data_flash[sizeof(struct image_header)],
+         image_data_size - sizeof(struct image_header));
+
+  /* Update CRC over data */
+  image_descriptor_data_crc_continue(&computed_data_crc,
+                                     (const u8 *)load_address,
+                                     image_data_size -
+                                     sizeof(struct image_header));
+
+  /* Verify data CRC */
+  if (computed_data_crc != image_descriptor_data_crc_get(image_descriptor)) {
+    return -1;
+  }
+
+    /* Parse header */
   spl_image.flags |= SPL_COPY_PAYLOAD_ONLY;
   spl_parse_image_header(&header);
 
-  /* Copy image to RAM at load address, skipping over header */
-  memcpy((void *)image_descriptor_load_address_get(image_descriptor),
-         (const void *)&image_data[sizeof(struct image_header)],
-         image_data_size - sizeof(struct image_header));
+  /* Determine image table index */
+  u32 image_table_index = 0;
+  bool image_table_index_found = false;
+  const u32 image_set_offsets[] = CONFIG_IMAGE_SET_OFFSETS;
+  int i;
+  for (i=0; i<sizeof(image_set_offsets) / sizeof(image_set_offsets[0]); i++) {
+    if (image_set_offsets[i] == image_set_offset) {
+      image_table_index = i;
+      image_table_index_found = true;
+      break;
+    }
+  }
+  if (!image_table_index_found) {
+    return -1;
+  }
 
   /* Write image table index to lower two bits of REBOOT_STATUS */
   u32 reboot_status = readl(REG_REBOOT_STATUS);
