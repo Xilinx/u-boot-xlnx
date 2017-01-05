@@ -18,6 +18,8 @@
 #include <asm/arch/clk.h>
 #include "../mtd/spi/sf_internal.h"
 
+DECLARE_GLOBAL_DATA_PTR;
+
 /* QSPI Transmit Data Register */
 #define ZYNQ_QSPI_TXD_00_00_OFFSET	0x1C /* Transmit 4-byte inst, WO */
 #define ZYNQ_QSPI_TXD_00_01_OFFSET	0x80 /* Transmit 1-byte inst, WO */
@@ -149,12 +151,19 @@ struct zynq_qspi_priv {
 static int zynq_qspi_ofdata_to_platdata(struct udevice *bus)
 {
 	struct zynq_qspi_platdata *plat = bus->platdata;
+	const void *blob = gd->fdt_blob;
+	int node = bus->of_offset;
 
-	debug("%s\n", __func__);
-	plat->regs = (struct zynq_qspi_regs *)ZYNQ_QSPI_BASEADDR;
+	plat->regs = (struct zynq_qspi_regs *)fdtdec_get_addr(blob,
+							      node, "reg");
 
-	plat->frequency = 166666666;
+	/* FIXME: Use 166MHz as a suitable default */
+	plat->frequency = fdtdec_get_int(blob, node, "spi-max-frequency",
+					166666666);
 	plat->speed_hz = plat->frequency / 2;
+
+	debug("%s: regs=%p max-frequency=%d\n", __func__,
+	      plat->regs, plat->frequency);
 
 	return 0;
 }
