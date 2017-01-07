@@ -93,7 +93,7 @@ extern unsigned long  * ps7_peripherals_init_data;
 #define APU_FREQ  666666687
 #define DDR_FREQ  533333374
 #define DCI_FREQ  10158730
-#define QSPI_FREQ  200000000
+#define QSPI_FREQ  142857132
 #define SMC_FREQ  10000000
 #define ENET0_FREQ  125000000
 #define ENET1_FREQ  10000000
@@ -134,4 +134,5 @@ int get_number_of_cycles_for_delay(unsigned int delay);
 #ifdef __cplusplus
 }
 #endif
+
 

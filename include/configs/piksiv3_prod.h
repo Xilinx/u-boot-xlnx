@@ -67,7 +67,7 @@
 #define CONFIG_PHY_MARVELL
 
 /* QSPI */
-#define CONFIG_SF_DEFAULT_SPEED	30000000
+#define CONFIG_SF_DEFAULT_SPEED 40000000
 #define CONFIG_CMD_SF
 
 /* Environment */

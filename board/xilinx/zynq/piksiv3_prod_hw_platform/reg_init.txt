@@ -1,0 +1,1 @@
+0xF800014C 0x00000621 /* LQSPI_CLK_CTRL, output clk = 33.3MHz * 26 / 6 / 4 = 36MHz */
