@@ -25,6 +25,15 @@
 #define QSPI_LINEAR_SIZE  0x01000000U
 #define FACTORY_DATA_SIZE_MAX 2048
 
+#define REG_SWDT_MODE     0xF8005000U
+#define REG_SWDT_CONTROL  0xF8005004U
+#define REG_SWDT_RESTART  0xF8005008U
+
+#define SWDT_MODE_VAL     ((0xABC << 12) | (0x4 << 4) | 0x3)
+#define SWDT_CONTROL_VAL  ((0x248 << 14) | ((CONFIG_SWDT_CRV) << 2) | \
+                           ((CONFIG_SWDT_CLKSEL) << 0))
+#define SWDT_RESTART_VAL  (0x1999)
+
 #define MIO_CFG_INPUT_PU  0x1601
 #define MIO_CFG_DEFAULT   0x1601
 #define MIO_CFG_OUTPUT    0x0600
@@ -360,6 +369,15 @@ int board_late_init(void)
 		setenv("modeboot", "");
 		break;
 	}
+
+#ifdef CONFIG_SWDT
+#ifndef CONFIG_SPL_BUILD
+  /* Configure SWDT */
+  writel(SWDT_CONTROL_VAL, REG_SWDT_CONTROL);
+  writel(SWDT_MODE_VAL, REG_SWDT_MODE);
+  writel(SWDT_RESTART_VAL, REG_SWDT_RESTART);
+#endif
+#endif
 
 #ifdef CONFIG_HW_WDT_DIS_MIO
 #ifndef CONFIG_SPL_BUILD
