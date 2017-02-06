@@ -415,38 +415,14 @@ static int zynq_qspi_set_mode(struct udevice *bus, uint mode)
  */
 static void zynq_qspi_copy_read_data(struct zynq_qspi_priv *priv, u32 data, u8 size)
 {
-	u8 byte3;
-
 	debug("%s: data 0x%04x rxbuf addr: 0x%08x size %d\n", __func__ ,
 	      data, (unsigned)(priv->rxbuf), size);
 
 	if (priv->rxbuf) {
-		switch (size) {
-		case 1:
-			*((u8 *)priv->rxbuf) = data;
-			priv->rxbuf += 1;
-			break;
-		case 2:
-			*((u16 *)priv->rxbuf) = data;
-			priv->rxbuf += 2;
-			break;
-		case 3:
-			*((u16 *)priv->rxbuf) = data;
-			priv->rxbuf += 2;
-			byte3 = (u8)(data >> 16);
-			*((u8 *)priv->rxbuf) = byte3;
-			priv->rxbuf += 1;
-			break;
-		case 4:
-			/* Can not assume word aligned buffer */
-			memcpy(priv->rxbuf, &data, size);
-			priv->rxbuf += 4;
-			break;
-		default:
-			/* This will never execute */
-			break;
-		}
+		memcpy(priv->rxbuf, &data, size);
+		priv->rxbuf += size;
 	}
+
 	priv->bytes_to_receive -= size;
 	if (priv->bytes_to_receive < 0)
 		priv->bytes_to_receive = 0;
@@ -462,33 +438,9 @@ static void zynq_qspi_copy_write_data(struct  zynq_qspi_priv *priv,
 		u32 *data, u8 size)
 {
 	if (priv->txbuf) {
-		switch (size) {
-		case 1:
-			*data = *((u8 *)priv->txbuf);
-			priv->txbuf += 1;
-			*data |= 0xFFFFFF00;
-			break;
-		case 2:
-			*data = *((u16 *)priv->txbuf);
-			priv->txbuf += 2;
-			*data |= 0xFFFF0000;
-			break;
-		case 3:
-			*data = *((u16 *)priv->txbuf);
-			priv->txbuf += 2;
-			*data |= (*((u8 *)priv->txbuf) << 16);
-			priv->txbuf += 1;
-			*data |= 0xFF000000;
-			break;
-		case 4:
-			/* Can not assume word aligned buffer */
-			memcpy(data, priv->txbuf, size);
-			priv->txbuf += 4;
-			break;
-		default:
-			/* This will never execute */
-			break;
-		}
+		*data = 0xFFFFFFFF;
+		memcpy(data, priv->txbuf, size);
+		priv->txbuf += size;
 	} else {
 		*data = 0;
 	}
