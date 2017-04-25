@@ -323,11 +323,10 @@
 /* for booting directly linux */
 #define CONFIG_SPL_OS_BOOT
 
-/* SP location before relocation, must use scratch RAM */
-#define CONFIG_SPL_TEXT_BASE  0x0
-
-/* 3 * 64kB blocks of OCM - one is on the top because of bootrom */
-#define CONFIG_SPL_MAX_SIZE 0x30000
+/* SPL code */
+/* Workaround for TPL icache issue: Do not place code in lower 40kB */
+#define CONFIG_SPL_TEXT_BASE      0x0000a000
+#define CONFIG_SPL_MAX_SIZE       0x00026000
 
 /* The highest 64k OCM address */
 #define OCM_HIGH_ADDR 0xffff0000

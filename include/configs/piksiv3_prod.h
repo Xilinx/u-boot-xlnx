@@ -186,11 +186,12 @@
 /* SPL is loaded to low OCM, no relocation */
 /* 192kB code in low OCM */
 /* 8kB heap, 8kB bss, 48kB stack in high OCM */
+/* Workaround for TPL icache issue: Do not place code in lower 40kB */
 
 #define CONFIG_SPL_LDSCRIPT "arch/arm/mach-zynq/u-boot-spl.lds"
 
-#define CONFIG_SPL_TEXT_BASE              0x00000000
-#define CONFIG_SPL_MAX_SIZE               0x00030000
+#define CONFIG_SPL_TEXT_BASE              0x0000a000
+#define CONFIG_SPL_MAX_SIZE               0x00026000
 
 #define CONFIG_SYS_SPL_MALLOC_START       0xffff0000
 #define CONFIG_SYS_SPL_MALLOC_SIZE        0x00002000
