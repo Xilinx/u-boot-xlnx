@@ -99,8 +99,8 @@ static void usage(void)
   for (i=0; i<ARRAY_SIZE(factory_stage_strings); i++) {
     printf("%s ", factory_stage_strings[i].name);
   }
-  puts("\t-r, --hw-rev <hw-rev>");
-  puts("\t\tdeximal hardware revision in the form ((major_rev << 16) | minor_rev)");
+  puts("\t-r, --hardware-revision <hardware-revision>");
+  puts("\t\thardware revision in the form ((major_rev << 16) | minor_rev)");
 
   puts("\nMisc options");
   puts("\t--verify <file>");
@@ -185,7 +185,7 @@ static int parse_options(int argc, char *argv[])
     {"nap-key",           required_argument, 0, 'k'},
     {"mac-address",       required_argument, 0, 'm'},
     {"factory-stage",     required_argument, 0, 'f'},
-    {"hw-rev",            required_argument, 0, 'r'},
+    {"hardware-revision", required_argument, 0, 'r'},
     {"verify",            required_argument, 0, OPT_ID_VERIFY},
     {"print",             no_argument,       0, 'p'},
     {0, 0, 0, 0}
