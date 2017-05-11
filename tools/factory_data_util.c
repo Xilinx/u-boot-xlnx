@@ -42,6 +42,7 @@ static struct {
     .nap_key = {0},
     .mac_address = {0},
     .factory_stage = 0,
+    .hardware_revision = 0,
   }
 };
 
@@ -98,6 +99,8 @@ static void usage(void)
   for (i=0; i<ARRAY_SIZE(factory_stage_strings); i++) {
     printf("%s ", factory_stage_strings[i].name);
   }
+  puts("\t-r, --hardware-revision <hardware-revision>");
+  puts("\t\thardware revision in the form ((major_rev << 16) | minor_rev)");
 
   puts("\nMisc options");
   puts("\t--verify <file>");
@@ -182,6 +185,7 @@ static int parse_options(int argc, char *argv[])
     {"nap-key",           required_argument, 0, 'k'},
     {"mac-address",       required_argument, 0, 'm'},
     {"factory-stage",     required_argument, 0, 'f'},
+    {"hardware-revision", required_argument, 0, 'r'},
     {"verify",            required_argument, 0, OPT_ID_VERIFY},
     {"print",             no_argument,       0, 'p'},
     {0, 0, 0, 0}
@@ -189,7 +193,7 @@ static int parse_options(int argc, char *argv[])
 
   int c;
   int opt_index;
-  while ((c = getopt_long(argc, argv, "o:h:i:u:t:k:m:f:p",
+  while ((c = getopt_long(argc, argv, "o:h:i:u:t:k:m:f:r:p",
                           long_opts, &opt_index)) != -1) {
     switch (c) {
       case 'o': {
@@ -271,6 +275,11 @@ static int parse_options(int argc, char *argv[])
           }
         }
 
+        case 'r': {
+          args.factory_data_params.hardware_revision = strtol(optarg, NULL, 0);
+        }
+        break;
+
         if (!found) {
           fprintf(stderr, "invalid factory stage: \"%s\"\n", optarg);
           return -1;
@@ -348,6 +357,13 @@ static void factory_data_print(const factory_data_t *f)
   uint32_t factory_stage;
   if (factory_data_timestamp_get(f, &factory_stage) == 0) {
     printf("Factory Stage:  %08x\n", factory_stage);
+  }
+
+  uint32_t hardware_revision;
+  if (factory_data_hardware_revision_get(f, &hardware_revision) == 0) {
+    uint16_t major = hardware_revision >> 16;
+    uint16_t minor = hardware_revision;
+    printf("Hardware Rev:   %u.%u\n", major, minor);
   }
 }
 

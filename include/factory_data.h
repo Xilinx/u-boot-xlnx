@@ -43,6 +43,7 @@ typedef struct {
   uint8_t  _mac_address[6];
   uint8_t  _reserved1[2];
   uint32_t _factory_stage;
+  uint32_t _hardware_revision;
 } factory_data_body_t;
 
 typedef struct {
@@ -62,6 +63,7 @@ typedef struct {
   uint8_t nap_key[16];
   uint8_t mac_address[6];
   uint32_t factory_stage;
+  uint32_t hardware_revision;
 } factory_data_params_t;
 
 static inline uint32_t factory_data_body_size_get(const factory_data_t *f) {
@@ -101,6 +103,7 @@ FACTORY_DATA_GET_U32_FN(timestamp);
 FACTORY_DATA_GET_ARRAY_FN(nap_key);
 FACTORY_DATA_GET_ARRAY_FN(mac_address);
 FACTORY_DATA_GET_U32_FN(factory_stage);
+FACTORY_DATA_GET_U32_FN(hardware_revision);
 
 int factory_data_header_verify(const factory_data_t *f);
 int factory_data_body_verify(const factory_data_t *f);
