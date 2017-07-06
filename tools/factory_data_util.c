@@ -43,6 +43,7 @@ static struct {
     .mac_address = {0},
     .factory_stage = 0,
     .hardware_revision = 0,
+    .imu_cal = {0},
   }
 };
 

@@ -60,6 +60,7 @@ int factory_data_populate(factory_data_t *f, const factory_data_params_t *p)
   memcpy(b->_mac_address,   p->mac_address,   sizeof(b->_mac_address));
   b->_factory_stage =       cpu_to_le32(p->factory_stage);
   b->_hardware_revision =   cpu_to_le32(p->hardware_revision);
+  memcpy(b->_imu_cal,       p->imu_cal,       sizeof(b->_imu_cal));
 
   /* compute body crc */
   uint32_t body_crc = crc32(0, (const unsigned char *)b, sizeof(*b));
