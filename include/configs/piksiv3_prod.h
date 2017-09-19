@@ -65,6 +65,7 @@
 /* Ethernet */
 #define CONFIG_MII
 #define CONFIG_PHY_MARVELL
+#define CONFIG_CMD_MII
 
 /* QSPI */
 #define CONFIG_SF_DEFAULT_SPEED 40000000
@@ -76,7 +77,16 @@
 
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS	\
-  "preboot=run img_tbl_boot\0" \
+  "net_disable_gigabit=" \
+    "mdio write 22 2; " \
+    "mdio write 21 3036; " \
+    "mdio write 22 0; " \
+    "mdio write 0 0xa000; " \
+    "mdio write 22 2; " \
+    "mdio write 16 444a; " \
+    "mdio write 22 0; " \
+    "mdio write 0 0xa000\0" \
+  "preboot=run net_disable_gigabit && run img_tbl_boot\0" \
   "img_tbl_boot=" \
     "sf probe && " \
     "sf read ${img_tbl_kernel_load_address} " \
