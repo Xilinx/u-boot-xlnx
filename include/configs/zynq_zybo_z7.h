@@ -21,7 +21,7 @@
 #define CONFIG_I2C_EDID
 
 /* Define ZYBO Z7 PS Clock Frequency to 33.3333MHz */
-#define CONFIG_ZYNQ_PS_CLK_FREQ	33333300UL
+#define CONFIG_ZYNQ_PS_CLK_FREQ	33333333UL
 
 #include <configs/zynq-common.h>
 

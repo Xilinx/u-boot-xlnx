@@ -38,7 +38,7 @@
 };
 
 &clkc {
-	ps-clk-frequency = <33333300>;
+	ps-clk-frequency = <33333333>;
 };
 
 &gem0 {
