@@ -348,6 +348,12 @@
 #define CONFIG_CMD_FPGA_LOADBP
 #define CONFIG_CMD_FPGA_LOADFS
 
+/* ATAGS support */
+#if defined(CONFIG_ATAGS)
+#warning "ATAGS support enabled"
+#define CONFIG_SETUP_MEMORY_TAGS 1
+#endif
+
 /* FIT support */
 #define CONFIG_IMAGE_FORMAT_LEGACY /* enable also legacy image format */
 
