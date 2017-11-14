@@ -253,7 +253,9 @@ config CMD_XIMG
 	  Extract a part of a multi-image.
 
 config CMD_POWEROFF
-	bool
+	bool "poweroff"
+	help
+	  Poweroff/Shutdown the system
 
 endmenu
 
@@ -645,6 +647,13 @@ config CMD_MISC
 	help
 	  Delay execution for some time
 
+config MP
+	bool "support for multiprocessor"
+	help
+	  This provides an option to brinup
+	  different processors in multiprocessor
+	  cases.
+
 config CMD_TIMER
 	bool "timer"
 	help
@@ -682,11 +691,6 @@ config CMD_ZYNQ_RSA
 	select RSA
 	help
 	  Verifies the authenticated and encrypted zynq images.
-
-config CMD_RSA
-	bool "RSA command to authenticate"
-	help
-	  Verifies the Authenticated images.
 
 config CMD_QFW
 	bool "qfw"

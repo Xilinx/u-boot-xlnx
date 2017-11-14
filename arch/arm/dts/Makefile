@@ -100,6 +100,15 @@ dtb-$(CONFIG_ARCH_ZYNQ) += zynq-zc702.dtb \
 	zynq-zybo.dtb \
 	zynq-microzed.dtb \
 	zynq-cc108.dtb \
+	zynq-cse-nand.dtb \
+	zynq-cse-nor.dtb \
+	zynq-cse-qspi-parallel.dtb \
+	zynq-cse-qspi-single.dtb \
+	zynq-cse-qspi-stacked.dtb \
+	zynq-cse-qspi-x1-single.dtb \
+	zynq-cse-qspi-x1-stacked.dtb \
+	zynq-cse-qspi-x2-single.dtb \
+	zynq-cse-qspi-x2-stacked.dtb \
 	zynq-picozed.dtb \
 	zynq-topic-miami.dtb \
 	zynq-topic-miamiplus.dtb \
@@ -109,18 +118,30 @@ dtb-$(CONFIG_ARCH_ZYNQ) += zynq-zc702.dtb \
 	zynq-zc770-xm013.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-ep108.dtb			\
+	zynqmp-zcu100-revC.dtb			\
 	zynqmp-zcu100-revB.dtb			\
 	zynqmp-zcu100-revA.dtb			\
-	zynqmp-zcu102.dtb			\
+	zynqmp-zcu102-revA.dtb			\
 	zynqmp-zcu102-revB.dtb			\
 	zynqmp-zcu102-rev1.0.dtb		\
-	zynqmp-zcu106.dtb			\
+	zynqmp-zcu104-revA.dtb			\
+	zynqmp-zcu106-revA.dtb			\
+	zynqmp-zc1232-revA.dtb			\
+	zynqmp-zc1254-revA.dtb			\
+	zynqmp-zc1275-revA.dtb			\
 	zynqmp-zc1751-xm015-dc1.dtb		\
 	zynqmp-zc1751-xm016-dc2.dtb		\
 	zynqmp-zc1751-xm017-dc3.dtb		\
 	zynqmp-zc1751-xm018-dc4.dtb		\
 	zynqmp-zc1751-xm019-dc5.dtb		\
-	zynqmp-mini-qspi.dtb			\
+	zynqmp-mini.dtb				\
+	zynqmp-mini-qspi-parallel.dtb		\
+	zynqmp-mini-qspi-single.dtb		\
+	zynqmp-mini-qspi-stacked.dtb		\
+	zynqmp-mini-qspi-x1-single.dtb		\
+	zynqmp-mini-qspi-x1-stacked.dtb		\
+	zynqmp-mini-qspi-x2-single.dtb		\
+	zynqmp-mini-qspi-x2-stacked.dtb		\
 	zynqmp-mini-nand.dtb			\
 	zynqmp-mini-emmc.dtb
 dtb-$(CONFIG_AM33XX) += am335x-boneblack.dtb am335x-bone.dtb \

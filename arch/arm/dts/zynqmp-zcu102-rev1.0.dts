@@ -8,35 +8,30 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include "zynqmp-zcu102.dts"
+#include "zynqmp-zcu102-revB.dts"
 
 / {
 	model = "ZynqMP ZCU102 Rev1.0";
+	compatible = "xlnx,zynqmp-zcu102-rev1.0", "xlnx,zynqmp-zcu102", "xlnx,zynqmp";
 };
 
-&gem3 {
-	phy-handle = <&phyc>;
-	phyc: phy@c {
-		reg = <0xc>;
-		ti,rx-internal-delay = <0x8>;
-		ti,tx-internal-delay = <0xa>;
-		ti,fifo-depth = <0x1>;
+&eeprom  {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	board_sn: board_sn@0 {
+		reg = <0x0 0x14>;
 	};
-	/* Cleanup from RevA */
-	/delete-node/ phy@21;
-};
 
-/* Different qspi 512Mbit version */
+	eth_mac: eth_mac@20 {
+		reg = <0x20 0x6>;
+	};
 
-/* Fix collision with u61 */
-&i2c0 {
-	i2cswitch@75 {
-		i2c@2 {
-			max15303@1b { /* u8 */
-				compatible = "max15303";
-				reg = <0x1b>;
-			};
-			/delete-node/ max15303@20;
-		};
+	board_name: board_name@d0 {
+		reg = <0xd0 0x6>;
+	};
+
+	board_revision: board_revision@e0 {
+		reg = <0xe0 0x3>;
 	};
 };

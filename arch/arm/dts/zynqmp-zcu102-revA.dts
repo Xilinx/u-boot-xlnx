@@ -1,7 +1,7 @@
 /*
- * dts file for Xilinx ZynqMP ZCU106
+ * dts file for Xilinx ZynqMP ZCU102 RevA
  *
- * (C) Copyright 2016, Xilinx, Inc.
+ * (C) Copyright 2015, Xilinx, Inc.
  *
  * Michal Simek <michal.simek@xilinx.com>
  *
@@ -17,8 +17,8 @@
 #include <dt-bindings/phy/phy.h>
 
 / {
-	model = "ZynqMP ZCU106 RevA";
-	compatible = "xlnx,zynqmp-zcu106", "xlnx,zynqmp";
+	model = "ZynqMP ZCU102 RevA";
+	compatible = "xlnx,zynqmp-zcu102-revA", "xlnx,zynqmp-zcu102", "xlnx,zynqmp";
 
 	aliases {
 		ethernet0 = &gem3;
@@ -62,7 +62,7 @@
 		compatible = "gpio-leds";
 		heartbeat_led {
 			label = "heartbeat";
-			gpios = <&gpio 23 0>;
+			gpios = <&gpio 23 GPIO_ACTIVE_HIGH>;
 			linux,default-trigger = "heartbeat";
 		};
 	};
@@ -126,8 +126,8 @@
 	phy-mode = "rgmii-id";
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_gem3_default>;
-	phy0: phy@c {
-		reg = <0xc>;
+	phy0: phy@21 {
+		reg = <21>;
 		ti,rx-internal-delay = <0x8>;
 		ti,tx-internal-delay = <0xa>;
 		ti,fifo-depth = <0x1>;
@@ -163,19 +163,45 @@
 		 */
 		compatible = "ti,tca6416";
 		reg = <0x20>;
-		gpio-controller; /* interrupt not connected */
+		gpio-controller;
 		#gpio-cells = <2>;
 		/*
 		 * IRQ not connected
 		 * Lines:
-		 * 0 - SFP_SI5328_INT_ALM
-		 * 1 - HDMI_SI5328_INT_ALM
+		 * 0 - PS_GTR_LAN_SEL0
+		 * 1 - PS_GTR_LAN_SEL1
+		 * 2 - PS_GTR_LAN_SEL2
+		 * 3 - PS_GTR_LAN_SEL3
+		 * 4 - PCI_CLK_DIR_SEL
 		 * 5 - IIC_MUX_RESET_B
 		 * 6 - GEM3_EXP_RESET_B
-		 * 10 - FMC_HPC0_PRSNT_M2C_B
-		 * 11 - FMC_HPC1_PRSNT_M2C_B
-		 * 2-4, 7, 12-17 - not connected
+		 * 7, 10 - 17 - not connected
 		 */
+
+		gtr_sel0 {
+			gpio-hog;
+			gpios = <0 0>;
+			output-low; /* PCIE = 0, DP = 1 */
+			line-name = "sel0";
+		};
+		gtr_sel1 {
+			gpio-hog;
+			gpios = <1 0>;
+			output-high; /* PCIE = 0, DP = 1 */
+			line-name = "sel1";
+		};
+		gtr_sel2 {
+			gpio-hog;
+			gpios = <2 0>;
+			output-high; /* PCIE = 0, USB0 = 1 */
+			line-name = "sel2";
+		};
+		gtr_sel3 {
+			gpio-hog;
+			gpios = <3 0>;
+			output-high; /* PCIE = 0, SATA = 1 */
+			line-name = "sel3";
+		};
 	};
 
 	tca6416_u61: gpio@21 { /* FIXME enable it by i2c mw 21 6 0 */
@@ -356,20 +382,24 @@
 				compatible = "max15303";
 				reg = <0x1a>;
 			};
-			max15303@1b { /* u8 */
-				compatible = "max15303";
-				reg = <0x1b>;
-			};
 			max15303@1d { /* u18 */
 				compatible = "max15303";
 				reg = <0x1d>;
 			};
+			max15303@20 { /* u8 */
+				compatible = "max15303";
+				status = "disabled"; /* unreachable */
+				reg = <0x20>;
+			};
 
-			max20751@72 { /* u95 */
+/*			drivers/hwmon/pmbus/Kconfig:86:   be called max20751.
+drivers/hwmon/pmbus/Makefile:11:obj-$(CONFIG_SENSORS_MAX20751)  += max20751.o
+*/
+			max20751@72 { /* u95 FIXME - not detected */
 				compatible = "max20751";
 				reg = <0x72>;
 			};
-			max20751@73 { /* u96 */
+			max20751@73 { /* u96 FIXME - not detected */
 				compatible = "max20751";
 				reg = <0x73>;
 			};
@@ -409,7 +439,7 @@
 			 * 512B - 768B address 0x56
 			 * 768B - 1024B address 0x57
 			 */
-			eeprom@54 { /* u23 */
+			eeprom: eeprom@54 { /* u23 */
 				compatible = "at,24c08";
 				reg = <0x54>;
 			};
@@ -457,18 +487,14 @@
 			si5328: clock-generator4@69 {/* SI5328 - u20 */
 				compatible = "silabs,si5328";
 				reg = <0x69>;
+				/*
+				 * Chip has interrupt present connected to PL
+				 * interrupt-parent = <&>;
+				 * interrupts = <>;
+				 */
 			};
 		};
-		i2c@5 { /* i2c mw 74 0 11 */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <4>; /* FAN controller */
-			temp@4c {/* lm96163 - u128 */
-				compatible = "national,lm96163";
-				reg = <0x4c>; /* FIXME */
-			};
-		};
-		/* 6 - 7 unconnected */
+		/* 5 - 7 unconnected */
 	};
 
 	i2cswitch@75 {
@@ -546,128 +572,6 @@
 			/* SEP 0 */
 		};
 	};
-};
-
-&qspi {
-	status = "okay";
-	is-dual = <1>;
-	flash@0 {
-		compatible = "m25p80"; /* 32MB */
-		#address-cells = <1>;
-		#size-cells = <1>;
-		reg = <0x0>;
-		spi-tx-bus-width = <1>;
-		spi-rx-bus-width = <4>; /* FIXME also DUAL configuration possible */
-		spi-max-frequency = <108000000>; /* Based on DC1 spec */
-		partition@qspi-fsbl-uboot { /* for testing purpose */
-			label = "qspi-fsbl-uboot";
-			reg = <0x0 0x100000>;
-		};
-		partition@qspi-linux { /* for testing purpose */
-			label = "qspi-linux";
-			reg = <0x100000 0x500000>;
-		};
-		partition@qspi-device-tree { /* for testing purpose */
-			label = "qspi-device-tree";
-			reg = <0x600000 0x20000>;
-		};
-		partition@qspi-rootfs { /* for testing purpose */
-			label = "qspi-rootfs";
-			reg = <0x620000 0x5E0000>;
-		};
-	};
-};
-
-&rtc {
-	status = "okay";
-};
-
-&sata {
-	status = "okay";
-	/* SATA OOB timing settings */
-	ceva,p0-cominit-params = /bits/ 8 <0x18 0x40 0x18 0x28>;
-	ceva,p0-comwake-params = /bits/ 8 <0x06 0x14 0x08 0x0E>;
-	ceva,p0-burst-params = /bits/ 8 <0x13 0x08 0x4A 0x06>;
-	ceva,p0-retry-params = /bits/ 16 <0x96A4 0x3FFC>;
-	ceva,p1-cominit-params = /bits/ 8 <0x18 0x40 0x18 0x28>;
-	ceva,p1-comwake-params = /bits/ 8 <0x06 0x14 0x08 0x0E>;
-	ceva,p1-burst-params = /bits/ 8 <0x13 0x08 0x4A 0x06>;
-	ceva,p1-retry-params = /bits/ 16 <0x96A4 0x3FFC>;
-	phy-names = "sata-phy";
-	phys = <&lane3 PHY_TYPE_SATA 1 1 125000000>;
-};
-
-/* SD1 with level shifter */
-&sdhci1 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdhci1_default>;
-	xlnx,mio_bank = <1>;
-};
-
-&serdes {
-	status = "okay";
-};
-
-&uart0 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart0_default>;
-};
-
-&uart1 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_uart1_default>;
-};
-
-/* ULPI SMSC USB3320 */
-&usb0 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_usb0_default>;
-};
-
-&dwc3_0 {
-	status = "okay";
-	dr_mode = "host";
-	snps,usb3_lpm_capable;
-	phy-names = "usb3-phy";
-	phys = <&lane2 PHY_TYPE_USB3 0 2 26000000>;
-};
-
-&xilinx_drm {
-	status = "okay";
-};
-
-&xlnx_dp {
-	status = "okay";
-	phy-names = "dp-phy0", "dp-phy1";
-	phys = <&lane1 PHY_TYPE_DP 0 3 27000000>, <&lane0 PHY_TYPE_DP 1 3 27000000>;
-};
-
-&xlnx_dp_sub {
-	status = "okay";
-};
-
-&xlnx_dp_snd_pcm0 {
-	status = "okay";
-};
-
-&xlnx_dp_snd_pcm1 {
-	status = "okay";
-};
-
-&xlnx_dp_snd_card {
-	status = "okay";
-};
-
-&xlnx_dp_snd_codec0 {
-	status = "okay";
-};
-
-&xlnx_dpdma {
-	status = "okay";
 };
 
 &pinctrl0 {
@@ -899,12 +803,12 @@
 	};
 
 	pinctrl_gpio_default: gpio-default {
-		mux {
+		mux-sw {
 			function = "gpio0";
 			groups = "gpio0_22_grp", "gpio0_23_grp";
 		};
 
-		conf {
+		conf-sw {
 			groups = "gpio0_22_grp", "gpio0_23_grp";
 			slew-rate = <SLEW_RATE_SLOW>;
 			io-standard = <IO_STANDARD_LVCMOS18>;
@@ -922,13 +826,158 @@
 		};
 
 		conf-pull-up {
-			pins = "MIO22";
+			pins = "MIO22", "MIO23";
 			bias-pull-up;
 		};
 
 		conf-pull-none {
-			pins = "MIO13", "MIO23", "MIO38";
+			pins = "MIO13", "MIO38";
 			bias-disable;
 		};
 	};
+};
+
+&pcie {
+	status = "okay";
+};
+
+&qspi {
+	status = "okay";
+	is-dual = <1>;
+	flash@0 {
+		compatible = "m25p80"; /* 32MB */
+		#address-cells = <1>;
+		#size-cells = <1>;
+		reg = <0x0>;
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <4>; /* FIXME also DUAL configuration possible */
+		spi-max-frequency = <108000000>; /* Based on DC1 spec */
+		partition@qspi-fsbl-uboot { /* for testing purpose */
+			label = "qspi-fsbl-uboot";
+			reg = <0x0 0x100000>;
+		};
+		partition@qspi-linux { /* for testing purpose */
+			label = "qspi-linux";
+			reg = <0x100000 0x500000>;
+		};
+		partition@qspi-device-tree { /* for testing purpose */
+			label = "qspi-device-tree";
+			reg = <0x600000 0x20000>;
+		};
+		partition@qspi-rootfs { /* for testing purpose */
+			label = "qspi-rootfs";
+			reg = <0x620000 0x5E0000>;
+		};
+	};
+};
+
+&rtc {
+	status = "okay";
+};
+
+&sata {
+	status = "okay";
+	/* SATA OOB timing settings */
+	ceva,p0-cominit-params = /bits/ 8 <0x18 0x40 0x18 0x28>;
+	ceva,p0-comwake-params = /bits/ 8 <0x06 0x14 0x08 0x0E>;
+	ceva,p0-burst-params = /bits/ 8 <0x13 0x08 0x4A 0x06>;
+	ceva,p0-retry-params = /bits/ 16 <0x96A4 0x3FFC>;
+	ceva,p1-cominit-params = /bits/ 8 <0x18 0x40 0x18 0x28>;
+	ceva,p1-comwake-params = /bits/ 8 <0x06 0x14 0x08 0x0E>;
+	ceva,p1-burst-params = /bits/ 8 <0x13 0x08 0x4A 0x06>;
+	ceva,p1-retry-params = /bits/ 16 <0x96A4 0x3FFC>;
+	phy-names = "sata-phy";
+	phys = <&lane3 PHY_TYPE_SATA 1 1 125000000>;
+};
+
+/* SD1 with level shifter */
+&sdhci1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sdhci1_default>;
+	no-1-8-v;
+	xlnx,mio_bank = <1>;
+};
+
+&serdes {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart0_default>;
+};
+
+&uart1 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1_default>;
+};
+
+/* ULPI SMSC USB3320 */
+&usb0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_usb0_default>;
+};
+
+&dwc3_0 {
+	status = "okay";
+	dr_mode = "host";
+	snps,usb3_lpm_capable;
+	phy-names = "usb3-phy";
+	phys = <&lane2 PHY_TYPE_USB3 0 2 26000000>;
+	maximum-speed = "super-speed";
+};
+
+&watchdog0 {
+	status = "okay";
+};
+
+&xilinx_ams {
+	status = "okay";
+};
+
+&ams_ps {
+	status = "okay";
+};
+
+&ams_pl {
+	status = "okay";
+};
+
+&xilinx_drm {
+	status = "okay";
+};
+
+&xlnx_dp {
+	status = "okay";
+	phy-names = "dp-phy0";
+	phys = <&lane1 PHY_TYPE_DP 0 3 27000000>;
+	xlnx,max-lanes = <1>;
+};
+
+&xlnx_dp_sub {
+	status = "okay";
+};
+
+&xlnx_dp_snd_pcm0 {
+	status = "okay";
+};
+
+&xlnx_dp_snd_pcm1 {
+	status = "okay";
+};
+
+&xlnx_dp_snd_card {
+	status = "okay";
+};
+
+&xlnx_dp_snd_codec0 {
+	status = "okay";
+};
+
+&xlnx_dpdma {
+	status = "okay";
 };

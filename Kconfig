@@ -92,6 +92,13 @@ config SYS_MALLOC_F_LEN
 	  particular needs this to operate, so that it can allocate the
 	  initial serial device and any others that are needed.
 
+config SYS_MALLOC_LEN
+	hex "Define memory for Dynamic allocation"
+	depends on ARCH_ZYNQ
+	help
+	  This defines memory to be allocated for Dynamic allocation
+	  TODO: Use for other architectures
+
 menuconfig EXPERT
 	bool "Configure standard U-Boot features (expert users)"
 	default y
@@ -248,7 +255,8 @@ config SYS_EXTRA_OPTIONS
 
 config SYS_TEXT_BASE
 	depends on SPARC || ARC || X86 || ARCH_UNIPHIER || ARCH_ZYNQMP || \
-		(M68K && !TARGET_ASTRO_MCF5373L) || MICROBLAZE || MIPS
+		ARCH_ZYNQ || (M68K && !TARGET_ASTRO_MCF5373L) || \
+		MICROBLAZE || MIPS
 	depends on !EFI_APP
 	hex "Text Base"
 	help

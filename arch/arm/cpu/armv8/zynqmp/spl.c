@@ -17,7 +17,7 @@
 
 void board_init_f(ulong dummy)
 {
-	psu_init();
+	board_early_init_f();
 	board_early_init_r();
 
 #ifdef CONFIG_DEBUG_UART
@@ -83,10 +83,15 @@ u32 spl_boot_device(void)
 	case JTAG_MODE:
 		return BOOT_DEVICE_RAM;
 #ifdef CONFIG_SPL_MMC_SUPPORT
-	case SD1_LSHFT_MODE:
-	case EMMC_MODE:
-	case SD_MODE:
 	case SD_MODE1:
+	case SD1_LSHFT_MODE: /* not working on silicon v1 */
+/* if both controllers enabled, then these two are the second controller */
+#if defined(CONFIG_ZYNQ_SDHCI0) && defined(CONFIG_ZYNQ_SDHCI1)
+		return BOOT_DEVICE_MMC2;
+/* else, fall through, the one SDHCI controller that is enabled is number 1 */
+#endif
+	case SD_MODE:
+	case EMMC_MODE:
 		return BOOT_DEVICE_MMC1;
 #endif
 #ifdef CONFIG_SPL_DFU_SUPPORT
@@ -112,10 +117,11 @@ u32 spl_boot_device(void)
 
 u32 spl_boot_mode(const u32 boot_device)
 {
-	switch (spl_boot_device()) {
+	switch (boot_device) {
 	case BOOT_DEVICE_RAM:
 		return 0;
 	case BOOT_DEVICE_MMC1:
+	case BOOT_DEVICE_MMC2:
 		return MMCSD_MODE_FS;
 	default:
 		puts("spl: error: unsupported device\n");

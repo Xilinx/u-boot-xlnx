@@ -639,6 +639,8 @@ int spi_flash_cmd_read_ops(struct spi_flash *flash, u32 offset,
 
 	cmdsz = SPI_FLASH_CMD_LEN + flash->dummy_byte;
 
+	spi->dummy_bytes = flash->dummy_byte;
+
 	if (flash->spi->bytemode == SPI_4BYTE_MODE)
 		cmdsz += 1;
 
@@ -712,6 +714,8 @@ int spi_flash_cmd_read_ops(struct spi_flash *flash, u32 offset,
 		}
 	}
 #endif
+
+	spi->dummy_bytes = 0;
 
 	free(cmd);
 	return ret;
@@ -1343,7 +1347,7 @@ int spi_flash_scan(struct spi_flash *flash)
 	 * and make sure the chip (> 16MiB) in default 3-byte address mode,
 	 * in case of warm bootup, the chip was set to 4-byte mode in kernel.
 	 */
-	if (((flash->size >> flash->shift) < SPI_FLASH_16MB_BOUN) &&
+	if (((flash->size >> flash->shift) <= SPI_FLASH_16MB_BOUN) &&
 	    (flash->spi->bytemode == SPI_4BYTE_MODE))
 		/*
 		 * Clear the 4-byte support if the flash size is

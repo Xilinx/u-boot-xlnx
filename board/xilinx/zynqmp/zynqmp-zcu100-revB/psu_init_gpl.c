@@ -19,7 +19,7 @@
 ******************************************************************************/
 
 #include <xil_io.h>
-/* #include <sleep.h> */
+#include <sleep.h>
 #include "psu_init_gpl.h"
 
 int mask_pollOnValue(u32 add , u32 mask, u32 value );
@@ -12905,7 +12905,7 @@ unsigned long psu_mio_init_data() {
 			| 0x00000000U << IOU_SLCR_MIO_PIN_34_L2_SEL_SHIFT
 			| 0x00000000U << IOU_SLCR_MIO_PIN_34_L3_SEL_SHIFT
 			|  0 ) & RegMask); */
-		PSU_Mask_Write (IOU_SLCR_MIO_PIN_34_OFFSET ,0x000000FEU ,0x00000000U);
+		PSU_Mask_Write (IOU_SLCR_MIO_PIN_34_OFFSET ,0x000000FFU ,0x00000008U);
 	/*############################################################################################################################ */
 
 		/*Register : MIO_PIN_35 @ 0XFF18008C</p>

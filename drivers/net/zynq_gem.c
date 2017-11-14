@@ -465,9 +465,11 @@ static int zynq_gem_init(struct udevice *dev)
 		zynq_slcr_gem_clk_setup((ulong)priv->iobase !=
 					ZYNQ_GEM_BASEADDR0, clk_rate);
 #else
+	{
 		ret = clk_set_rate(&priv->clk, clk_rate);
 		if (IS_ERR_VALUE(ret))
 			return -1;
+	}
 #endif
 
 	setbits_le32(&regs->nwctrl, ZYNQ_GEM_NWCTRL_RXEN_MASK |
@@ -591,14 +593,12 @@ __weak int zynq_board_read_rom_ethaddr(unsigned char *ethaddr)
 
 static int zynq_gem_read_rom_mac(struct udevice *dev)
 {
-	int retval;
 	struct eth_pdata *pdata = dev_get_platdata(dev);
 
-	retval = zynq_board_read_rom_ethaddr(pdata->enetaddr);
-	if (retval == -ENOSYS)
-		retval = 0;
+	if (!pdata)
+		return -ENOSYS;
 
-	return retval;
+	return zynq_board_read_rom_ethaddr(pdata->enetaddr);
 }
 
 static int zynq_gem_miiphy_read(struct mii_dev *bus, int addr,
