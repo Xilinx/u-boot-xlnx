@@ -146,6 +146,15 @@ endmenu		# General setup
 
 menu "Boot images"
 
+config ATAGS
+  bool "Support ATAGs"
+  help
+    This option allows support for machine-specific parameters to
+    be handed off to the kernel based on the contents of an arch-
+    specific register. This has been superseded by the Flattened
+    Device Tree but some older implementations still make use of
+    it, specifically, the Green Hills Integrity operating system.
+
 config FIT
 	bool "Support Flattened Image Tree"
 	help
