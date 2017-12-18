@@ -33,6 +33,28 @@ static int ehci_zynq_ofdata_to_platdata(struct udevice *dev)
 	return 0;
 }
 
+static int ehci_zynq_init(struct usb_ehci *ehci)
+{
+	setbits_le32(&ehci->usbmode, CM_HOST);
+	udelay(1000);
+	in_le32(&ehci->usbmode);
+
+	return 0;
+}
+
+static int ehci_zynq_init_after_reset(struct ehci_ctrl *ctrl)
+{
+	struct zynq_ehci_priv *priv = container_of(ctrl, struct zynq_ehci_priv, ehcictrl);
+
+	ehci_zynq_init(priv->ehci);
+
+	return 0;
+}
+
+static const struct ehci_ops ehci_zynq_ops={
+	.init_after_reset = ehci_zynq_init_after_reset,
+};
+
 static int ehci_zynq_probe(struct udevice *dev)
 {
 	struct usb_platdata *plat = dev_get_platdata(dev);
@@ -70,7 +92,9 @@ static int ehci_zynq_probe(struct udevice *dev)
 	ulpi_write(&ulpi_vp, &ulpi->otg_ctrl_set,
 		   ULPI_OTG_DRVVBUS | ULPI_OTG_DRVVBUS_EXT);
 
-	return ehci_register(dev, hccr, hcor, NULL, 0, plat->init_type);
+	ehci_zynq_init(priv->ehci);
+
+	return ehci_register(dev, hccr, hcor, &ehci_zynq_ops, 0, plat->init_type);
 }
 
 static const struct udevice_id ehci_zynq_ids[] = {
