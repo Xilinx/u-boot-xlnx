@@ -14,7 +14,7 @@
  * changes to support FDT are minimized.
  */
 
-#include <libfdt.h>
+#include "libfdt.h"
 #include <pci.h>
 
 /*
