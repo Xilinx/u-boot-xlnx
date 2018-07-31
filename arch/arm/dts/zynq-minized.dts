@@ -1,0 +1,101 @@
+/*
+ * Avnet Minized board DTS
+ *
+ * Copyright (C) 2015 Xilinx, Inc.
+ *
+ * SPDX-License-Identifier:	GPL-2.0+
+ */
+/dts-v1/;
+#include "zynq-7000.dtsi"
+
+/ {
+	model = "Zynq Minized Board";
+	compatible = "xlnx,zynq-Minized", "xlnx,zynq-7000";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	cpus {
+		cpu@0 {
+			operating-points = <666666 1000000 333333 1000000>;
+		};
+	};
+
+	aliases {
+		serial0 = &uart1;
+		spi0 = &qspi;
+		mmc0 = &sdhci1;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0 0x20000000>;
+	};
+
+};
+
+&gpio0 {
+	emio-gpio-width = <4>;
+	gpio-mask-high = <0x0>;
+	gpio-mask-low = <0x5600>;
+};
+
+&intc {
+	num_cpus = <2>;
+	num_interrupts = <96>;
+};
+
+&uart1 {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+};
+
+&sdhci0 {
+	status = "disabled";
+};
+
+&sdhci1 {
+	status = "okay";
+	broken-adma2;
+	xlnx,has-cd = <0x1>;
+	xlnx,has-power = <0x0>;
+	xlnx,has-wp = <0x1>;
+};
+
+&usb0 {
+	dr_mode = "host";
+	phy_type = "ulpi";
+	status = "okay";
+	usb-reset = <&gpio0 7 0>; /* USB_RST_N-MIO7 */
+};
+
+&qspi {
+	u-boot,dm-pre-reloc;
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	flash0: flash@0 {
+		compatible = "micron,n25q128";
+		reg = <0x0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		spi-max-frequency = <50000000>;
+		partition@0x00000000 {
+			label = "boot";
+			reg = <0x00000000 0x00620000>;
+		};
+		partition@0x00620000 {
+			label = "bootenv";
+			reg = <0x00620000 0x00020000>;
+		};
+		partition@0x00640000 {
+			label = "kernel";
+			reg = <0x00640000 0x00960000>;
+		};
+		partition@0x00fa0000 {
+			label = "spare";
+			reg = <0x00fa0000 0x00060000>;
+		};
+	};
+};

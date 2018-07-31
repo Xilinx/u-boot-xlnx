@@ -140,6 +140,7 @@ dtb-$(CONFIG_ARCH_ZYNQ) += \
 	zynq-cse-qspi-x2-stacked.dtb \
 	zynq-microzed.dtb \
 	zynq-picozed.dtb \
+	zynq-minized.dtb \
 	zynq-syzygy-hub.dtb \
 	zynq-topic-miami.dtb \
 	zynq-topic-miamilite.dtb \
