@@ -353,6 +353,8 @@ static int cadence_spi_of_to_plat(struct udevice *bus)
 	if (plat->ahbsize >= SZ_8M)
 		plat->use_dac_mode = true;
 
+	plat->is_dma = dev_read_bool(bus, "cdns,is-dma");
+
 	/* All other paramters are embedded in the child node */
 	subnode = dev_read_first_subnode(bus);
 	if (!ofnode_valid(subnode)) {
