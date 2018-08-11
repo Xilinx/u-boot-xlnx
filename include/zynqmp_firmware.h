@@ -385,6 +385,12 @@ enum pm_ioctl_id {
 	IOCTL_AIE_ISR_CLEAR = 24,
 };
 
+enum ospi_mux_select_type {
+	PM_OSPI_MUX_SEL_DMA,
+	PM_OSPI_MUX_SEL_LINEAR,
+	PM_OSPI_MUX_GET_MODE,
+};
+
 #define PM_SIP_SVC      0xc2000000
 
 #define ZYNQMP_PM_VERSION_MAJOR         1
@@ -399,6 +405,11 @@ enum pm_ioctl_id {
 #define ZYNQMP_PM_VERSION_INVALID       ~0
 
 #define PMUFW_V1_0      ((1 << ZYNQMP_PM_VERSION_MAJOR_SHIFT) | 0)
+
+#define PMIO_NODE_ID_BASE		0x1410801B
+#define DEV_OSPI			0x1822402a
+#define PM_CAPABILITY_ACCESS		0x1
+#define PM_MAX_QOS			100
 
 /*
  * Return payload size
@@ -432,6 +443,12 @@ int xilinx_pm_request(u32 api_id, u32 arg0, u32 arg1, u32 arg2,
 #define PM_CONFIG_IPI_PSU_CORTEXA53_0_MASK	0x00000001
 #define PM_CONFIG_IPI_PSU_CORTEXR5_0_MASK	0x00000100
 #define PM_CONFIG_IPI_PSU_CORTEXR5_1_MASK	0x00000200
+
+enum zynqmp_pm_request_ack {
+	ZYNQMP_PM_REQUEST_ACK_NO = 1,
+	ZYNQMP_PM_REQUEST_ACK_BLOCKING = 2,
+	ZYNQMP_PM_REQUEST_ACK_NON_BLOCKING = 3,
+};
 
 /* Node capabilities */
 #define ZYNQMP_PM_CAPABILITY_ACCESS	0x1U
