@@ -1191,14 +1191,17 @@ static int spansion_quad_enable(struct spi_flash *flash)
 	}
 #endif
 
-	if ((qeb_status & STATUS_QEB_WINSPAN)
+	if ((qeb_status & STATUS_QEB_WINSPAN) &&
+	    !(qeb_status & STATUS_LC_WINSPAN)
 #ifdef CONFIG_SPI_GENERIC
 	    && (qeb_status_up & STATUS_QEB_WINSPAN)
 #endif
 	) {
 		debug("SF: winspan: QEB is already set\n");
 	} else {
-		ret = write_cr(flash, STATUS_QEB_WINSPAN);
+	  ret = write_cr(flash,
+			 (qeb_status & ~STATUS_LC_WINSPAN) |
+			 STATUS_QEB_WINSPAN);
 		if (ret < 0)
 			return ret;
 	}
@@ -1262,6 +1265,17 @@ static int set_quad_mode(struct spi_flash *flash,
 		       JEDEC_MFR(info));
 		return -1;
 	}
+}
+
+static int set_block_protection(struct spi_flash *flash, int bp)
+{
+  u8 sr_cr[2];
+
+  read_cr(flash, &sr_cr[1]);
+  read_sr(flash, &sr_cr[0]);
+  sr_cr[0] = ((sr_cr[0] & ~0x1c) | (0x1c & (bp << 2)));
+  return spi_flash_write_common(flash, &(u8){CMD_WRITE_STATUS},
+				1, &sr_cr, 2);
 }
 
 int spi_flash_cmd_4B_addr_switch(struct spi_flash *flash,
@@ -1484,6 +1498,10 @@ int spi_flash_scan(struct spi_flash *flash)
 		flash->erase_size = flash->sector_size;
 	}
 
+#if defined(CONFIG_SPI_FLASH_SPANSION)
+	set_block_protection(flash, 0); /* Force BP0-2 to zero */
+#endif
+	
 	/* Now erase size becomes valid sector size */
 	flash->sector_size = flash->erase_size;
 

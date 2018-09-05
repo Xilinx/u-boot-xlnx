@@ -80,6 +80,7 @@ enum spi_nor_option_flags {
 /* Common status */
 #define STATUS_WIP			BIT(0)
 #define STATUS_QEB_WINSPAN		BIT(1)
+#define STATUS_LC_WINSPAN               (3 << 6)
 #define STATUS_QEB_MXIC			BIT(6)
 #define STATUS_PEC			BIT(7)
 #define SR_BP0				BIT(2)  /* Block protect 0 */
