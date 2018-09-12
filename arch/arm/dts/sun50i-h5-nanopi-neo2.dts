@@ -84,3 +84,15 @@
 	pinctrl-0 = <&uart0_pins_a>;
 	status = "okay";
 };
+
+&emac {
+        pinctrl-names = "default";
+        pinctrl-0 = <&emac_rgmii_pins>;
+        status = "okay";
+        phy = <&phy1>;
+        phy-mode = "rgmii";
+        phy1: ethernet-phy@1 {
+                reg = <0>;
+        };
+};
+
