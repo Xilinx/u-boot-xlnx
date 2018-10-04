@@ -473,6 +473,8 @@ static int zynq_gem_init(struct udevice *dev)
 		dev_err(dev, "failed to enable tx clock\n");
 		return ret;
 	}
+#else
+	debug("requested clk_rate %ld\n", clk_rate);
 #endif
 
 	setbits_le32(&regs->nwctrl, ZYNQ_GEM_NWCTRL_RXEN_MASK |
