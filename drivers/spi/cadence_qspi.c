@@ -184,6 +184,11 @@ static int cadence_spi_child_pre_probe(struct udevice *bus)
 	return 0;
 }
 
+__weak int cadence_spi_versal_flash_reset(struct udevice *dev)
+{
+	return 0;
+}
+
 static int cadence_spi_probe(struct udevice *bus)
 {
 	struct cadence_spi_plat *plat = dev_get_plat(bus);
@@ -223,7 +228,8 @@ static int cadence_spi_probe(struct udevice *bus)
 
 	plat->wr_delay = 50 * DIV_ROUND_UP(NSEC_PER_SEC, plat->ref_clk_hz);
 
-	return 0;
+	/* Reset ospi flash device */
+	return cadence_spi_versal_flash_reset(bus);
 }
 
 static int cadence_spi_remove(struct udevice *dev)
