@@ -60,10 +60,12 @@
 #define	CQSPI_REG_CONFIG_ENABLE			BIT(0)
 #define	CQSPI_REG_CONFIG_CLK_POL		BIT(1)
 #define	CQSPI_REG_CONFIG_CLK_PHA		BIT(2)
+#define	CQSPI_REG_CONFIG_PHY_ENABLE_MASK	BIT(3)
 #define	CQSPI_REG_CONFIG_DIRECT			BIT(7)
 #define	CQSPI_REG_CONFIG_DECODE			BIT(9)
 #define	CQSPI_REG_CONFIG_ENBL_DMA		BIT(15)
 #define	CQSPI_REG_CONFIG_XIP_IMM		BIT(18)
+#define	CQSPI_REG_CONFIG_DTR_PROT_EN_MASK	BIT(24)
 #define	CQSPI_REG_CONFIG_CHIPSELECT_LSB		10
 #define	CQSPI_REG_CONFIG_BAUD_LSB		19
 #define CQSPI_REG_CONFIG_DTR_PROTO		BIT(24)
@@ -101,6 +103,7 @@
 
 #define	CQSPI_REG_RD_DATA_CAPTURE		0x10
 #define	CQSPI_REG_RD_DATA_CAPTURE_BYPASS	BIT(0)
+#define	CQSPI_REG_READCAPTURE_DQS_ENABLE	BIT(8)
 #define	CQSPI_REG_RD_DATA_CAPTURE_DELAY_LSB	1
 #define	CQSPI_REG_RD_DATA_CAPTURE_DELAY_MASK	0xF
 
@@ -177,6 +180,9 @@
 #define CQSPI_REG_OP_EXT_READ_LSB		24
 #define CQSPI_REG_OP_EXT_WRITE_LSB		16
 #define CQSPI_REG_OP_EXT_STIG_LSB		0
+
+#define	CQSPI_REG_PHY_CONFIG			0xB4
+#define	CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK	0x40000000
 
 #define CQSPI_REG_IS_IDLE(base)					\
 	((readl(base + CQSPI_REG_CONFIG) >>		\
@@ -491,6 +497,19 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_plat *plat)
 	/* Configure the remap address register, no remap */
 	writel(0, plat->regbase + CQSPI_REG_REMAP);
 
+	/* Clear instruction read config register */
+	writel(0, plat->regbase + CQSPI_REG_RD_INSTR);
+
+	/* Reset the Delay lines */
+	writel(CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK,
+	       plat->regbase + CQSPI_REG_PHY_CONFIG);
+
+	reg = readl(plat->regbase + CQSPI_REG_RD_DATA_CAPTURE);
+	reg &= ~CQSPI_REG_READCAPTURE_DQS_ENABLE;
+	reg &= ~(CQSPI_REG_RD_DATA_CAPTURE_DELAY_MASK
+		 << CQSPI_REG_RD_DATA_CAPTURE_DELAY_LSB);
+	writel(reg, plat->regbase + CQSPI_REG_RD_DATA_CAPTURE);
+
 	/* Indirect mode configurations */
 	writel(plat->fifo_depth / 2, plat->regbase + CQSPI_REG_SRAMPARTITION);
 
@@ -498,6 +517,8 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_plat *plat)
 	writel(0, plat->regbase + CQSPI_REG_IRQMASK);
 
 	reg = readl(plat->regbase + CQSPI_REG_CONFIG);
+	reg &= ~CQSPI_REG_CONFIG_DTR_PROT_EN_MASK;
+	reg &= ~CQSPI_REG_CONFIG_PHY_ENABLE_MASK;
 	reg &= ~CQSPI_REG_CONFIG_DIRECT;
 	reg &= ~(CQSPI_REG_CONFIG_CHIPSELECT_MASK
 			<< CQSPI_REG_CONFIG_CHIPSELECT_LSB);
