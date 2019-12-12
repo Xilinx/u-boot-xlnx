@@ -2740,6 +2740,14 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		}
 	}
 
+	if (nor->isparallel) {
+		nor->mtd.erasesize <<= nor->shift;
+		params->page_size <<= nor->shift;
+	}
+
+	if (nor->isparallel || nor->isstacked)
+		params->size <<= nor->shift;
+
 	spi_nor_post_sfdp_fixups(nor, params);
 
 	return 0;
@@ -3752,6 +3760,10 @@ int spi_nor_scan(struct spi_nor *nor)
 	spi_nor_soft_reset(nor);
 #endif /* CONFIG_SPI_FLASH_SOFT_RESET_ON_BOOT */
 
+	nor->isparallel = (spi->option == SF_DUAL_PARALLEL_FLASH) ? 1 : 0;
+	nor->isstacked = (spi->option == SF_DUAL_STACKED_FLASH) ? 1 : 0;
+	nor->shift = nor->isparallel;
+
 	info = spi_nor_read_id(nor);
 	if (IS_ERR_OR_NULL(info))
 		return -ENOENT;
@@ -3775,7 +3787,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	mtd->type = MTD_NORFLASH;
 	mtd->writesize = 1;
 	mtd->flags = MTD_CAP_NORFLASH;
-	mtd->size = params.size;
+	mtd->size = params.size << nor->isstacked;
 	mtd->_erase = spi_nor_erase;
 	mtd->_read = spi_nor_read;
 	mtd->_write = spi_nor_write;
@@ -3855,6 +3867,7 @@ int spi_nor_scan(struct spi_nor *nor)
 #else
 	/* Configure the BAR - discover bank cmds and read current bank */
 	nor->addr_width = 3;
+	set_4byte(nor, info, 0);
 	ret = read_bar(nor, info);
 	if (ret < 0)
 		return ret;
