@@ -443,6 +443,7 @@ static int zynqmp_qspi_child_pre_probe(struct udevice *bus)
 	struct zynqmp_qspi_priv *priv = dev_get_priv(bus->parent);
 
 	slave->option = priv->is_dual;
+	slave->bytemode = SPI_4BYTE_MODE;
 	priv->max_hz = slave->max_hz;
 
 	return 0;
