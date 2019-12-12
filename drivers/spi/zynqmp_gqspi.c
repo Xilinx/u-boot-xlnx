@@ -188,6 +188,8 @@ struct zynqmp_qspi_priv {
 	unsigned int u_page;
 	unsigned int bus;
 	unsigned int stripe;
+	unsigned int flags;
+	u32 max_hz;
 };
 
 static int zynqmp_qspi_of_to_plat(struct udevice *bus)
@@ -429,6 +431,17 @@ static int zynqmp_qspi_set_speed(struct udevice *bus, uint speed)
 
 		debug("regs=%p, speed=%d\n", priv->regs, plat->speed_hz);
 	}
+
+	return 0;
+}
+
+static int zynqmp_qspi_child_pre_probe(struct udevice *bus)
+{
+	struct spi_slave *slave = dev_get_parent_priv(bus);
+	struct zynqmp_qspi_priv *priv = dev_get_priv(bus->parent);
+
+	slave->option = priv->is_dual;
+	priv->max_hz = slave->max_hz;
 
 	return 0;
 }
@@ -898,4 +911,5 @@ U_BOOT_DRIVER(zynqmp_qspi) = {
 	.plat_auto	= sizeof(struct zynqmp_qspi_plat),
 	.priv_auto	= sizeof(struct zynqmp_qspi_priv),
 	.probe  = zynqmp_qspi_probe,
+	.child_pre_probe = zynqmp_qspi_child_pre_probe,
 };
