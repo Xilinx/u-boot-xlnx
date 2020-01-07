@@ -338,6 +338,13 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-mini-emmc1.dtb			\
 	zynqmp-mini-nand.dtb			\
 	zynqmp-mini-qspi.dtb			\
+	zynqmp-mini-qspi-parallel.dtb		\
+	zynqmp-mini-qspi-single.dtb		\
+	zynqmp-mini-qspi-stacked.dtb		\
+	zynqmp-mini-qspi-x1-single.dtb		\
+	zynqmp-mini-qspi-x1-stacked.dtb		\
+	zynqmp-mini-qspi-x2-single.dtb		\
+	zynqmp-mini-qspi-x2-stacked.dtb		\
 	zynqmp-sm-k26-revA.dtb			\
 	zynqmp-smk-k26-revA.dtb			\
 	zynqmp-sck-kv-g-revA.dtbo		\
