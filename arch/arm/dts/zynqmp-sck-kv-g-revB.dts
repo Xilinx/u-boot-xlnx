@@ -36,11 +36,7 @@
 		label = "ina260-u14";
 		reg = <0x40>;
 	};
-	usbhub: usb5744@2d { /* u43 */
-		compatible = "microchip,usb5744";
-		reg = <0x2d>;
-		reset-gpios = <&gpio 44 GPIO_ACTIVE_HIGH>;
-	};
+	/* u43 - 0x2d - USB hub */
 	/* u27 - 0xe0 - STDP4320 DP/HDMI splitter */
 };
 
@@ -96,7 +92,7 @@
 };
 
 &zynqmp_dpsub {
-	status = "disabled";
+	status = "okay";
 	phy-names = "dp-phy0", "dp-phy1";
 	phys = <&psgtr 1 PHY_TYPE_DP 0 0>, <&psgtr 0 PHY_TYPE_DP 1 0>;
 };
@@ -111,6 +107,14 @@
 	pinctrl-0 = <&pinctrl_usb0_default>;
 	phy-names = "usb3-phy";
 	phys = <&psgtr 2 PHY_TYPE_USB3 0 1>;
+	assigned-clock-rates = <250000000>, <20000000>;
+
+	usb5744: usb-hub@2d { /* u43 */
+		status = "okay";
+		compatible = "microchip,usb5744";
+		i2c-bus = <&i2c1>;
+		reset-gpios = <&gpio 44 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &dwc3_0 {
@@ -135,6 +139,7 @@
 	clk-phase-sd-hs = <126>, <60>;
 	clk-phase-uhs-sdr25 = <120>, <60>;
 	clk-phase-uhs-ddr50 = <126>, <48>;
+	assigned-clock-rates = <187498123>;
 };
 
 &gem3 { /* required by spec */
