@@ -378,6 +378,8 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-sc-vpk180-revA.dtbo		\
 	zynqmp-sc-vpk180-revB.dtbo		\
 	zynqmp-sc-vn-p-b2197-00-revA.dtbo	\
+	zynqmp-sm-k24-revA.dtb			\
+	zynqmp-smk-k24-revA.dtb			\
 	zynqmp-sm-k26-revA.dtb			\
 	zynqmp-smk-k26-revA.dtb			\
 	zynqmp-sck-kr-g-revA.dtbo		\
@@ -427,6 +429,42 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-mini-qspi-x1-stacked.dtb \
 	versal-mini-qspi-x2-single.dtb \
 	versal-mini-qspi-x2-stacked.dtb \
+	versal-v350-revA.dtb \
+	versal-vck190-revA.dtb \
+	versal-vck190-revA-x-ebm-01-revA.dtb \
+	versal-vck190-revA-x-ebm-02-revA.dtb \
+	versal-vck190-revA-x-ebm-03-revA.dtb \
+	versal-vck190-rev1.1.dtb \
+	versal-vck190-rev1.1-x-ebm-01-revA.dtb \
+	versal-vck190-rev1.1-x-ebm-02-revA.dtb \
+	versal-vck190-rev1.1-x-ebm-03-revA.dtb \
+	versal-vck5000-revA.dtb \
+	versal-vc-p-a2197-00-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-01-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-01-revA-ospi.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-02-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-03-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-04-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-04-revA-ospi.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-05-revA.dtb \
+	versal-vek280-revA.dtb \
+	versal-vek280-revB.dtb \
+	versal-vhk158-revA.dtb \
+	versal-vmk180-revA.dtb \
+	versal-vmk180-revA-x-ebm-01-revA.dtb \
+	versal-vmk180-revA-x-ebm-02-revA.dtb \
+	versal-vmk180-revA-x-ebm-03-revA.dtb \
+	versal-vmk180-rev1.1.dtb \
+	versal-vmk180-rev1.1-x-ebm-01-revA.dtb \
+	versal-vmk180-rev1.1-x-ebm-02-revA.dtb \
+	versal-vmk180-rev1.1-x-ebm-03-revA.dtb \
+	versal-vpk120-revA.dtb \
+	versal-vpk120-revB.dtb \
+	versal-vpk180-revA.dtb \
+	versal-vp-x-a2785-00-revA.dtb \
+	versal-x-ebm-01-revA.dtbo \
+	versal-x-ebm-02-revA.dtbo \
+	versal-x-ebm-03-revA.dtbo \
 	xilinx-versal-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	versal-net-mini.dtb \
