@@ -1,0 +1,412 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Alveo Versal V80 rev1.0
+ *
+ * Copyright (C) 2023 - 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ * Sandeep Gundlupet Raju <sandeep.gundlupet-raju@amd.com>
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include "versal.dtsi"
+#include "versal-clk.dtsi"
+
+/ {
+	compatible = "xlnx,versal-v80-rev1.0", "xlnx,versal";
+	model = "AMD Alveo Versal V80 board rev1.0";
+
+	aliases {
+		serial0 = &serial0;
+		serial1 = &serial1;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		mmc0 = &sdhci0;
+		spi0 = &ospi;
+		rtc0 = &rtc;
+	};
+
+	memory: memory@0 {
+		device_type = "memory"; /* 32GB total on the board */
+		reg = <0 0 0 0x80000000>, <0x8 0x0 0x0 0x80000000>; /* 2GB + 2GB */
+	};
+
+	chosen {
+		bootargs = "earlycon";
+		stdout-path = "serial0:115200";
+	};
+};
+
+&ospi { /* PMC_MIO0-10 MT35XU02G */
+	status = "okay";
+	compatible = "xlnx,versal-ospi-1.0", "cdns,qspi-nor";
+	bus-num = <2>;
+	num-cs = <1>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	ospi_flash: flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		cdns,read-delay = <0>;
+		cdns,tshsl-ns = <0>;
+		cdns,tsd2d-ns = <0>;
+		cdns,tchsh-ns = <1>;
+		cdns,tslch-ns = <1>;
+		spi-tx-bus-width = <8>;
+		spi-rx-bus-width = <8>;
+		spi-max-frequency = <20000000>;
+		no-wp;
+		reset-gpios = <&gpio1 12 GPIO_ACTIVE_LOW>;
+		partition@0 {
+			label = "spi0-flash0";
+			reg = <0 0x8000000>;
+		};
+	};
+};
+
+&sdhci0 { /* PMC_MIO13-23, 64GB eMMC */
+	status = "okay";
+	non-removable;
+	disable-wp;
+	no-sd;
+	no-sdio;
+	cap-mmc-hw-reset;
+	bus-width = <8>;
+	xlnx,mio-bank = <0>;
+};
+
+&serial0 { /* PS_MIO8/9 */
+	status = "okay";
+};
+
+&serial1 { /* PS_MIO20/21 */
+	status = "okay";
+};
+
+&sysmon0 {
+        status = "okay";
+};
+
+&spi0 { /* PS_MIO12-17, PS_MIO15 */
+	/*one CS*/
+	status = "okay";
+
+	flash@0 { /* MX25L3233 */
+		compatible = "jedec,spi-nor";
+		spi-max-frequency = <133000000>;
+		reg = <0>;
+	};
+};
+
+/* XPIO - m24c64 0x50 - ipmi fru */
+
+&i2c0 { /* PS_MIO2/3 i2c MAIN */
+	status = "okay";
+	
+	/*
+	 * sit95141a - 0x9 - u115
+	 * rc19013a - 0x6c - u99
+	 * temp sensor - DNP - 0x48 - u27
+	 */
+
+	regulator_u50: regulator@60 { /* u50 */
+		compatible = "isil,isl68224";
+		reg = <0x60>;
+	};
+
+	regulator_uXX: regulator@61 { /* uXX - missing number */
+		compatible = "isil,isl68224";
+		reg = <0x61>;
+	};
+
+	/* Also eeprom at 0x52 */
+	sensor_u30: temp-sensor@1a { /* u30 */
+		compatible = "onnn,cat34ts02", "jedec,jc-42.4-temp";
+		reg = <0x1a>;
+	};
+
+	gpio_u43: gpio@20 { /* u43 */
+		compatible = "ti,tca6416";
+		reg = <0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <5 GPIO_ACTIVE_LOW>;
+		/* reset-gpio = <4 GPIO_ACTIVE_LOW>; */ /* shared reset line */
+		gpio-line-names = "TCRITn", "EN_VCC_FUSE", /* 0, 1 */
+				"FRU_EEPRM_WP", "PCIE_SMB_LT_EN", /* 2, 3 */
+				"IOEXP_POR_B", "CG_CONFI_GPIO0", /* 4, 5 */
+				"EN_DIMM", "DMB_PRSNT_B", /* 6, 7 */
+				"12V_AUX1_SENSE0_N", "12V_AUX1_SENSE1_N", /* 8, 9 */
+				"12V_AUX2_SENSE0_N", "12V_AUX2_SENSE1_N", /* 10, 11 */
+				"PG_3V3_QSFP", "DIMM_PWRGD", /* 12, 13 */
+				"BRD_PWRGD", "HBM_PWRGD"; /* 14, 15 */
+	};
+
+	ina_u48: power-sensor@40 { /* u48 */
+		compatible = "ti,ina3221";
+		reg = <0x40>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		input@0 {
+			reg = <0>;
+			label = "VR_12V";
+			shunt-resistor-micro-ohms = <2000>;
+		};
+		input@1 {
+			reg = <1>;
+			label = "VR_3V3";
+			shunt-resistor-micro-ohms = <2000>;
+		};
+		input@2 {
+			reg = <2>;
+			label = "VR_3V3_QSFP";
+			shunt-resistor-micro-ohms = <2000>;
+		};
+	};
+
+	ina_u49: power-sensor@41 { /* u49 */
+		compatible = "ti,ina3221";
+		reg = <0x41>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		input@0 {
+			reg = <0>;
+			label = "VR_1V2_VCCO_DIMM";
+			shunt-resistor-micro-ohms = <2000>;
+		};
+		input@1 {
+			reg = <1>;
+			label = "VR_12V_AUX1";
+			shunt-resistor-micro-ohms = <2000>;
+		};
+		input@2 {
+			reg = <2>;
+			label = "VR_12V_AUX2";
+			shunt-resistor-micro-ohms = <2000>;
+		};
+	};
+};
+
+&i2c1 { /* PS_MIO0/1 */
+	status = "okay";
+	qsfp_power: gpio@21 { /* u16 */
+		compatible = "ti,tca6408";
+		reg = <0x21>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <14 GPIO_ACTIVE_LOW>;
+		/* reset-gpio = <13 GPIO_ACTIVE_LOW>; */ /* shared reset line */
+		gpio-line-names = "EN_3V3_QSFP1", "EN_3V3_QSFP2", /* 0, 1 */
+				"EN_3V3_QSFP3", "EN_3V3_QSFP4", /* 2, 3 */
+				"PG_3V3_QSFP1", "PG_3V3_QSFP2", /* 4, 5 */
+				"PG_3V3_QSFP3", "PG_3V3_QSFP4"; /* 6, 7 */
+	};
+
+	i2c_qsfp1: i2c-mux@70 { /* u14 */
+		compatible = "nxp,pca9545";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#interrupt-cells = <2>;
+		reg = <0x70>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <14 GPIO_ACTIVE_LOW>;
+		/* reset-gpio = <13 GPIO_ACTIVE_LOW>; */ /* shared reset line */
+		interrupt-controller;
+		i2c@0 { /* SB */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+			qsfp1: gpio@20 { /* u12 */
+				compatible = "ti,tca6408";
+				reg = <0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-parent = <&i2c_qsfp1>;
+				interrupts = <2 GPIO_ACTIVE_LOW>;
+				gpio-line-names = "QSFP1_MODSELL", "QSFP1_RESETL", /* 0, 1 */
+						"QSFP1_LPMODE", "QSFP1_MODPRSL", /* 2, 3 */
+						"QSFP1_INTR_B", "", /* 4, 5 */
+						"", ""; /* 6, 7 */
+			};
+		};
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* j5 - qsfp4 - 0x50 */
+		};
+	 	i2c@2 { /* SB */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			qsfp2: gpio@20 { /* u13 */
+				compatible = "ti,tca6408";
+				reg = <0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-parent = <&i2c_qsfp1>;
+				interrupts = <2 GPIO_ACTIVE_LOW>;
+				gpio-line-names = "QSFP2_MODSELL", "QSFP2_RESETL", /* 0, 1 */
+						"QSFP2_LPMODE", "QSFP2_MODPRSL", /* 2, 3 */
+						"QSFP2_INTR_B", "", /* 4, 5 */
+						"", ""; /* 6, 7 */
+			};
+		};
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+			/* j7 - qsfp4 - 0x50 */
+		};
+	};
+ 
+	i2c_qsfp3: i2c-mux@71 { /* u100 */
+		compatible = "nxp,pca9545";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#interrupt-cells = <2>;
+		reg = <0x70>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <14 GPIO_ACTIVE_LOW>;
+		/* reset-gpio = <13 GPIO_ACTIVE_LOW>; */ /* shared reset line */
+		interrupt-controller;
+		i2c@0 { /* SB */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+			qsfp3: gpio@20 { /* u11 */
+				compatible = "ti,tca6408";
+				reg = <0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-parent = <&i2c_qsfp3>;
+				interrupts = <2 GPIO_ACTIVE_LOW>;
+				gpio-line-names = "QSFP3_MODSELL", "QSFP3_RESETL", /* 0, 1 */
+						"QSFP3_LPMODE", "QSFP3_MODPRSL", /* 2, 3 */
+						"QSFP3_INTR_B", "", /* 4, 5 */
+						"", ""; /* 6, 7 */
+			};
+		};
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* j3 - qsfp4 - 0x50 */
+		};
+	 	i2c@2 { /* SB */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			qsfp4: gpio@20 { /* u10 */
+				compatible = "ti,tca6408";
+				reg = <0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				interrupt-parent = <&i2c_qsfp3>;
+				interrupts = <2 GPIO_ACTIVE_LOW>;
+				gpio-line-names = "QSFP4_MODSELL", "QSFP4_RESETL", /* 0, 1 */
+						"QSFP4_LPMODE", "QSFP4_MODPRSL", /* 2, 3 */
+						"QSFP4_INTR_B", "", /* 4, 5 */
+						"", ""; /* 6, 7 */
+			};
+		};
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+			/* j1 - qsfp4 - 0x50 */
+		};
+	};
+
+	pcie: i2c-mux@72 { /* u109 */
+		compatible = "nxp,pca9545";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#interrupt-cells = <2>;
+		reg = <0x72>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <14 GPIO_ACTIVE_LOW>;
+		/* reset-gpio = <13 GPIO_ACTIVE_LOW>; */ /* shared reset line */
+		interrupt-controller;
+		/*
+		 * port 0 i2c_pcie_exp1
+		 * port 1 i2c_pcie_exp2
+		 * port 2 i2c_pcie_exp3
+		 * port 3 i2c_spd_dimm + CH0_DDR4_0_1_EVENT_B
+		 */
+	};
+};
+
+&rtc {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+	gpio-line-names = "I2C_QSFP_SCL", "I2C_QSFP_SDA", "I2C_MAIN_SCL", "I2C_MAIN_SDA", "I2C_MAIN_RST_B", /* 0 - 4 */
+			  "I2C_MAIN_INTR_B", "QSFP4_IOEXP_RST", "QSFP3_IOEXP_RST", "LPD_UART0_RXD", "LPD_UART0_TXD", /* 5 - 9 */
+			  "", "", "SPI0_SCLK", "I2C_QSFP_RST_B", "I2C_QSFP_INTR_B", /* 10 - 14 */
+			  "SPI0_CS_B", "SPI0_MISO", "SPI0_MOSI", "QSFP1_IOEXP_RST", "QSFP2_IOEXP_RST", /* 15 - 19 */
+			  "LPD_UART1_TXD", "LPD_UART1_RXD", "BOARD_STATUS_LED_R", "BOARD_STATUS_LED_G", "BOARD_STATUS_LED_B", /* 20 - 24 */
+			  "", /* 25 */
+			  "", "", "", "", /* 26 - 29 */
+			  "", "", "", "", "", /* 30 - 34 */
+			  "", "", "", "", "", /* 35 - 39 */
+			  "", "", "", "", "", /* 40 - 44 */
+			  "", "", "", "", "", /* 45 - 49 */
+			  "", "", "", "", "", /* 50 - 54 */
+			  "", "", ""; /* 55 - 57 */
+};
+
+&gpio1 {
+	status = "okay";
+	/* PMC_MIO11 is BOARD_ID: 0-V80, 1-V80P */
+	gpio-line-names = "", "", "", "", "", /* 0 - 4 */
+			  "", "", "", "", "", /* 5 - 9 */
+			  "", "BOARD_ID", "OSPI_RESET_B", "", "", /* 10 - 14 */
+			  "", "", "", "", "", /* 15 - 19 */
+			  "", "", "", "", "PCIE_RST1_B", /* 20 - 24 */
+			  "PCIE_RST2_B", "QSFP4_ACT_LED", "QSFP4_LNK_GR_LED", "QSFP4_LNK_YL_LED", "EN_3V3_MCIO", /* 25 - 29 */
+			  "QSFP3_ACT_LED", "QSFP3_LNK_GR_LED", "QSFP3_LNK_YL_LED", "PG_3V3_MCIO", "QSFP1_ACT_LED", /* 30 - 34 */
+			  "QSFP1_LNK_GR_LED", "QSFP1_LNK_YL_LED", "", "QSFP2_ACT_LED", "QSFP2_LNK_GR_LED", /* 35 - 39 */
+			  "QSFP2_LNK_YL_LED", "PG_12V_AUX2", "PCIE_EXP1_PERSTB", "PCIE_EXP2_PERSTB", "PCIE_EXP3_PERSTB", /* 40 - 44 */
+			  "MCIO_P2_FLEXIO0_BUF", "PMC_UART1_TXD", "PMC_UART1_RXD", "PCIE_EXP1_CPRSNTB", "PCIE_EXP2_CPRSNTB", /* 45 - 49 */
+			  "PCIE_EXP3_CPRSNTB", "USB_PRES", /* 50 - 51 */
+			  "", "", "", /* 52 - 54 */
+			  "", "", "", "", "", /* 55 - 59 */
+			  "", "", "", "", "", /* 60 - 64 */
+			  "", "", "", "", "", /* 65 - 69 */
+			  "", "", "", "", "", /* 70 - 74 */
+			  "", "", "", "", "", /* 75 - 79 */
+			  "", "", "", "", "", /* 80 - 84 */
+			  "", "", "", "", "", /* 85 - 89 */
+			  "", "", "", "", "", /* 90 - 94 */
+			  "", "", "", "", "", /* 95 - 99 */
+			  "", "", "", "", "", /* 100 - 104 */
+			  "", "", "", "", "", /* 105 - 109 */
+			  "", "", "", "", "", /* 110 - 114 */
+			  ""; /* 115 */
+};
+
+&ttc0 {
+	status = "okay";
+};
+
+&ttc1 {
+	status = "okay";
+};
+
+&ttc2 {
+	status = "okay";
+};
+
+&ttc3 {
+	status = "okay";
+};
+
+/* cpm5 reset PMC_MIO24/25 */

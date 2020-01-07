@@ -1,0 +1,398 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Rhino revA
+ *
+ * (C) Copyright 2024, Advanced Micro Devices, Inc
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include "versal.dtsi"
+#include "versal-clk.dtsi"
+
+/ {
+	compatible = "amd,versal-rhino-revA", "xlnx,versal";
+	model = "AMD Versal Rhino revA";
+
+	memory: memory@0 {
+		device_type = "memory";
+		reg = <0 0 0 0x80000000>, <0x500 0x80000000 0x1 0x80000000>, <0x580 0 0x4 0>; /* 24GB */
+	};
+
+	chosen {
+		bootargs = "console=ttyAMA0 earlycon=pl011,mmio32,0xFF000000,115200n8";
+		stdout-path = "serial0:115200";
+	};
+
+	aliases {
+		serial0 = &serial0;
+		serial1 = &serial1;
+		ethernet0 = &gem0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		spi0 = &ospi;
+		usb0 = &usb0;
+	};
+
+	pwm-fan {
+		compatible = "pwm-fan";
+		status = "okay";
+		pwms = <&ttc0 2 40000 0>;
+	};
+};
+
+&ttc0 {
+	status = "okay";
+	#pwm-cells = <3>;
+};
+
+&ospi { /* PMC MIO0-10, 12, U43 MT35XU01G */
+	status = "okay";
+	bus-num = <2>;
+	num-cs = <1>;
+	#stream-id-cells = <1>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	flash@0 {
+		compatible = "mt35xu01g", "micron,m25p80", "jedec,spi-nor";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		cdns,read-delay = <0>;
+		cdns,tshsl-ns = <0>;
+		cdns,tsd2d-ns = <0>;
+		cdns,tchsh-ns = <1>;
+		cdns,tslch-ns = <1>;
+		spi-tx-bus-width = <8>;
+		spi-rx-bus-width = <8>;
+		spi-max-frequency = <20000000>;
+		no-wp;
+		reset-gpios = <&gpio1 12 GPIO_ACTIVE_LOW>;
+		partition@0 {
+			label = "spi0-flash0";
+			reg = <0 0x8000000>;
+		};
+	};
+};
+
+/* lpd i2c1 */
+&i2c1 { /* PMC_MIO 32-33 */
+	status = "okay";
+
+	hub: usb-hub@2d {
+		compatible = "microchip,usb5744";
+		reg = <0x2d>;
+	};
+
+	max7321_u263: gpio@61 { /* u263 */
+		compatible = "maxim,max7321";
+		reg = <0x61>;
+		gpio-controller; /* interrupt connected to APU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "PCI_SWITCH_RESET_N", "PCI_SWITCH_FATAL_ERROR_N", "PCIE_SWITCH_I2C_SMBUS_CFG", "SD_CTRLR_RESET_B", /* 0 - 3 */
+				"VE_NSW_RST_B", "ADSP_HWRST_B", "USB_HUB_RESET", "LPMIO_RGMII_PHYRST_B"; /* 4 - 7 */
+	};
+
+	max7321_u468: gpio@62 { /* u468 */
+		compatible = "maxim,max7321";
+		reg = <0x62>;
+		gpio-controller; /* interrupt connected to APU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "5SPHY_VE10G2_SPEED0", "5SPHY_VE10G2_SPEED1", "5SPHY_VE10G3_SPEED0", "5SPHY_VE10G3_SPEED1", /* 0 - 3 */
+				  "5SPHY_P12NSW_SPEED0", "5SPHY_P12NSW_SPEED1", "5SPHY_P13NSW_SPEED0", "5SPHY_P13NSW_SPEED1"; /* 4 - 7 */
+	};
+
+	max7321_u259: gpio@6e { /* u259 */
+		compatible = "maxim,max7321";
+		reg = <0x6e>;
+		gpio-controller; /* interrupt connected to APU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "FMCP1_FMC_PRSNT_M2C", "FMCP1_FMCP_PRSNT_M2C", "CANFD0_nSTB", "CANFD1_nSTB", /* 0 - 3 */
+				  "A2B_VE0_GPIO7", "A2B_VE1_GPIO7", "NSW_INTR_B", "NSW_RSTOUT_B"; /* 4 - 7 */
+	};
+
+	max7321_u260: gpio@6d { /* u260 */
+		compatible = "maxim,max7321";
+		reg = <0x6d>;
+		gpio-controller; /* interrupt connected to APU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "M.2_2230_CLK_REQ", "M.2_2230_PCI_WAKE", "M.2_2230_PCIE_RST", "M.2_2230_BT_DISABLE", /* 0 - 3 */
+				  "M.2_2230_WIFI_DISABLE", "WLAN_WIFI_RST", "M.2_I2C_ALERT", "VE_M.2_2230_UART_WAKE"; /* 4 - 7 */
+	};
+
+	max7321_u470: gpio@65 { /* u470 */
+		compatible = "maxim,max7321";
+		reg = <0x65>;
+		gpio-controller; /* interrupt connected to APU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "M.2_2280_CLK_REQ", "M.2_2280_PCI_WAKE", "M.2_2280_PCIE_RST", "OCULINK_CR_PRSNT", /* 0 - 3 */
+				  "OCULINK_PCIE_RST", "OCULINK_WAKE", "OCULINK_BT_TYPE", "OCULINK_VSP_1"; /* 4 - 7 */
+	};
+
+	i2c-mux@74 { /* u257 */
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x74>;
+		/* reset-gpios = <&gpio SYSCTLR_IIC_MUX0_RESET_B GPIO_ACTIVE_HIGH>; */
+		i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+			/* 0x5b TMDS1204RNOR u76 */
+			/* 0x6c 8t49n241 u94 */
+
+			eeprom_u95: eeprom@50 { /* u95 */
+				compatible = "atmel,24c128S";
+				reg = <0x50>;
+			};
+		};
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* FMC */
+		};
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			/* DISP_CON3_TOUCH */
+		};
+		/* NC 3-8 */
+	};
+
+	/* 0x38 - PEX 8724 U27C */
+};
+
+/* pmc i2c */
+&i2c2 { /* PMC_MIO 50-51 */
+	status = "okay";
+	
+	i2c-arbitrator@75 { /* u261 */
+		compatible = "nxp,pca9541";
+		reg = <0x75>;
+
+		i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* 0x42 ina237a u459 */
+
+			i2c-mux@74 { /* u262 */
+				compatible = "nxp,pca9548";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x74>;
+				i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+					/* apu_pmbus */
+					/* u206 mpq2286 */
+					/* u448 mpq2286 0x4 */
+					/* u488 mpq2286 0x5 */
+					/* u406 mpq29125 0x11 */
+				};
+				i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					/* apu_seq_mon */
+					/* u393 mpq79700 0x3d */
+					/* u394 mpq79500 0x34 */
+				};
+				i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+					/* ver_pmbus */
+					/* u426 mpq72963 0x9 */
+					/* u447 mpq2283 0x3 */
+					/* u442 mpq2286 0x8 */
+				};
+				i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+					/* ver_seq_mon */
+					/* u395 mpq79700 0x3c */
+					/* u396 mpq79500 0x35 */
+				};
+				i2c@4 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <4>;
+					/* apu_sid */
+					/* u2 - ryzen */
+				};
+				/* NC 5 - 7 */
+			};
+		};
+	};
+
+	max7321_u490: gpio@6c { /* u490 */
+		compatible = "maxim,max7321";
+		reg = <0x6c>;
+		gpio-controller; /* interrupt connected to I2C_RPU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "APU_PCIE_WAKE", "APU_PROCHOT_L", "APU_MCU_ALERT_L", "APU_SYS_RST_L", /* 0 - 3 */
+				  "APU_KBRST_L", "APU_PWR_GD", "VER_SEQ_MCU_ALERT_L", "APU_SEQ_MCU_ALERT_L"; /* 4 - 7 */
+	};
+
+
+	max7321_u469: gpio@6d { /* u469 */
+		compatible = "maxim,max7321";
+		reg = <0x6d>;
+		gpio-controller; /* interrupt connected to I2C_RPU_INT shared line */
+		#gpio-cells = <2>;
+		gpio-line-names = "MCU_VER_SLP_L", "APU_BUF_SLP_S5_L", "APU_BUF_SLP_S3_L", "VE_FTDI_RESET_N", /* 0 - 3 */
+				  "NSW_SUBSYSTEM_PGD", "AUDIO_SUBSYSTEM_PGD", "", ""; /* 4 - 7 */
+	};
+	
+	/* 0x9 - renesas,rc21008b u132 */
+	/* 0x10 - renesas,rc21008b u131 */
+
+	i2c-arbitrator@7a { /* u288 */
+		compatible = "nxp,pca9541";
+		reg = <0x7a>;
+
+		i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			i2c-mux@77 { /* u81 */
+				compatible = "nxp,pca9544";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x77>;
+				/* NC 0 */
+				i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					/* disp_con3 */
+				};
+				i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+					/* disp_con1 */
+				};
+				i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+					/* disp_con2 */
+				};
+			};
+		};
+	};
+
+	i2c-arbitrator@70 { /* u162 */
+		compatible = "nxp,pca9541";
+		reg = <0x70>;
+
+		i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			eeprom@50 { /* u163 */
+				compatible = "atmel,24c64";
+				reg = <0x50>;
+			};
+		};
+	};
+};
+
+&can0 { /* PMC MIO46-47 */
+	status = "okay";
+};
+
+&can1 { /* PS MIO16-17 */
+	status = "okay";
+};
+
+&gem0 { /* LPD_MIO0-11/24/25 */
+	status = "okay";
+	phy-handle = <&phy1>;
+	phy-mode = "rgmii-id";
+	mdio: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy1: ethernet-phy@9 { /* u198 */
+			#phy-cells = <1>;
+			compatible = "ethernet-phy-id2000.a231";
+			reg = <9>;
+			ti,rx-internal-delay = <0xb>;
+			ti,tx-internal-delay = <0xa>;
+			ti,fifo-depth = <1>;
+			ti,dp83867-rxctrl-strap-quirk;
+			reset-assert-us = <100>;
+			reset-deassert-us = <280>;
+			reset-gpios = <&max7321_u263 7 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&usb0 { /* PMC_MIO13_500 - PMC_MIO25 USB 2.0 */
+	status = "okay";
+};
+
+&dwc3_0 { /* USB 2.0 host */
+	status = "okay";
+	dr_mode = "host";
+	maximum-speed = "high-speed";
+	snps,dis_u2_susphy_quirk;
+	snps,dis_u3_susphy_quirk;
+	snps,usb3_lpm_capable;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* 2.0 hub on port 1 */
+	hub_2_0: hub@1 {
+		compatible = "usb424,2744";
+		reg = <1>;
+		i2c-bus = <&hub>; 
+		reset-gpios = <&max7321_u263 6 GPIO_ACTIVE_LOW>;
+	};
+	/* Also 2244 for sd card */
+};
+
+/* PCIE */
+&cpm5_pcie {
+	status = "okay";
+	ranges = <0x2000000 0x00 0xe8000000 0x00 0xe8000000 0x00 0x8000000 0x43000000 0xa0 0x00 0xa0 0x00 0x00 0x80000000>;
+	reg = <0x07 0x00 0x00 0x10000000 0x00 0xfcdd0000 0x00 0x1000 0x00 0xfcea0000 0x00 0x1000000>;
+};
+
+&serial0 { /* PMC_MIO42/43 */
+	status = "okay";
+};
+
+&serial1 { /* PS_MIO12/13 */
+	status = "okay";
+};
+
+&spi1 { /* PS_MIO18-23 */
+	status = "okay";
+};
+
+&ttc2 { /* PMC_MIO 45 */
+	status = "okay";
+};
+
+&sysmon0 { /* i2c at PMC_MIO 35-37 - means external */
+	status = "disabled";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};

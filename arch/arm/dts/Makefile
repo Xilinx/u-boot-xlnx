@@ -386,6 +386,8 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-smk-k24-revA-sck-kr-g-revB.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-binman-som.dtb
 
 dtb-$(CONFIG_ARCH_VERSAL) += \
+	versal-emb-plus-rhino-revA.dtb \
+	versal-emb-plus-ve2302-revA.dtb \
 	versal-mini.dtb \
 	versal-mini-emmc0.dtb \
 	versal-mini-emmc1.dtb \
@@ -398,10 +400,56 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-mini-qspi-x1-stacked.dtb \
 	versal-mini-qspi-x2-single.dtb \
 	versal-mini-qspi-x2-stacked.dtb \
+	versal-v350-revA.dtb \
+	versal-v80-rev1.0.dtb \
+	versal-vck190-revA.dtb \
+	versal-vck190-revA-x-ebm-01-revA.dtb \
+	versal-vck190-revA-x-ebm-02-revA.dtb \
+	versal-vck190-revA-x-ebm-03-revA.dtb \
+	versal-vck190-rev1.1.dtb \
+	versal-vck190-rev1.1-x-ebm-01-revA.dtb \
+	versal-vck190-rev1.1-x-ebm-02-revA.dtb \
+	versal-vck190-rev1.1-x-ebm-03-revA.dtb \
+	versal-vck5000-revA.dtb \
+	versal-vc-p-a2197-00-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-01-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-01-revA-ospi.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-02-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-03-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-04-revA.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-04-revA-ospi.dtb \
+	versal-vc-p-a2197-00-revA-x-prc-05-revA.dtb \
+	versal-vm-p-m1369-00-revA.dtb \
+	versal-vm-p-m1369-00-revA-x-prc-01-revA.dtb \
+	versal-vek280-revA.dtb \
+	versal-vek280-revB.dtb \
+	versal-vhk158-revA.dtb \
+	versal-vmk180-revA.dtb \
+	versal-vmk180-revA-x-ebm-01-revA.dtb \
+	versal-vmk180-revA-x-ebm-02-revA.dtb \
+	versal-vmk180-revA-x-ebm-03-revA.dtb \
+	versal-vmk180-rev1.1.dtb \
+	versal-vmk180-rev1.1-x-ebm-01-revA.dtb \
+	versal-vmk180-rev1.1-x-ebm-02-revA.dtb \
+	versal-vmk180-rev1.1-x-ebm-03-revA.dtb \
+	versal-vpk120-revA.dtb \
+	versal-vpk120-revB.dtb \
+	versal-vpk180-revA.dtb \
+	versal-vp-x-a2785-00-revA.dtb \
+	versal-x-ebm-01-revA.dtbo \
+	versal-x-ebm-02-revA.dtbo \
+	versal-x-ebm-03-revA.dtbo \
 	xilinx-versal-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL2) += \
 	amd-versal2-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
+	versal-net-vn-p-b2197-00-revA.dtb \
+	versal-net-vn-x-b2197-01-revA.dtb \
+	x-prc-07-revA.dtbo \
+	x-prc-07-i3c-revA.dtbo \
+	x-prc-08-revA.dtbo \
+	x-prc-09-revA.dtbo \
+	x-prc-09-i3c-revA.dtbo \
 	versal-net-mini.dtb \
 	versal-net-mini-emmc.dtb \
 	versal-net-mini-ospi-single.dtb \

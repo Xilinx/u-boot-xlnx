@@ -32,6 +32,7 @@
 #define PM_DEV_TTC_1				(0x18224025U)
 #define PM_DEV_TTC_2				(0x18224026U)
 #define PM_DEV_TTC_3				(0x18224027U)
+#define PM_DEV_SWDT_LPD				(0x18224028U)
 #define PM_DEV_SWDT_FPD				(0x18224029U)
 #define PM_DEV_OSPI				(0x1822402aU)
 #define PM_DEV_QSPI				(0x1822402bU)
@@ -48,7 +49,6 @@
 #define PM_DEV_ADMA_5				(0x1822403aU)
 #define PM_DEV_ADMA_6				(0x1822403bU)
 #define PM_DEV_ADMA_7				(0x1822403cU)
-#define PM_DEV_AMS_ROOT				(0x18224055U)
 #define PM_DEV_AI				(0x18224072U)
 
 #endif
