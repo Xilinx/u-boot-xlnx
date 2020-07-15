@@ -1,0 +1,155 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for KV260 revA Carrier Card
+ *
+ * (C) Copyright 2020, Xilinx, Inc.
+ *
+ * Michal Simek <michal.simek@xilinx.com>
+ */
+
+ #include <dt-bindings/phy/phy.h>
+
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "xlnx,zynqmp-sk-kv260-revA", "xlnx,zynqmp-sk-kv260", "xlnx,zynqmp";
+
+	fragment1{
+		target = <&i2c1>; /* I2C_SCK C23/C24 - MIO from SOM */
+
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			eeprom_cc: eeprom@51 { /* u15 - 0x51 and 0x59 - required by spec */
+				compatible = "atmel,24c64";
+				reg = <0x51>;
+			};
+
+			u14: ina260@40 { /* u14 */
+				compatible = "ti,ina260";
+				#io-channel-cells = <1>;
+				label = "ina260-u14";
+				reg = <0x40>;
+			};
+			/* u27 - 0xe0 - STDP4320 DP/HDMI splitter */
+		};
+	};
+
+/* DP/USB 3.0 and SATA */
+	fragment2 {
+		target = <&serdes>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment3 {
+		target = <&sata>;
+		__overlay__ {
+			status = "okay";
+			/* SATA OOB timing settings */
+			ceva,p0-cominit-params = /bits/ 8 <0x18 0x40 0x18 0x28>;
+			ceva,p0-comwake-params = /bits/ 8 <0x06 0x14 0x08 0x0E>;
+			ceva,p0-burst-params = /bits/ 8 <0x13 0x08 0x4A 0x06>;
+			ceva,p0-retry-params = /bits/ 16 <0x96A4 0x3FFC>;
+			ceva,p1-cominit-params = /bits/ 8 <0x18 0x40 0x18 0x28>;
+			ceva,p1-comwake-params = /bits/ 8 <0x06 0x14 0x08 0x0E>;
+			ceva,p1-burst-params = /bits/ 8 <0x13 0x08 0x4A 0x06>;
+			ceva,p1-retry-params = /bits/ 16 <0x96A4 0x3FFC>;
+			phy-names = "sata-phy";
+			phys = <&lane3 PHY_TYPE_SATA 1 2 125000000>;
+		};
+	};
+
+	fragment4 {
+		target = <&zynqmp_dpsub>;
+		__overlay__ {
+			status = "okay";
+			phy-names = "dp-phy0", "dp-phy1";
+			phys = <&lane1 PHY_TYPE_DP 0 0 27000000>, <&lane0 PHY_TYPE_DP 1 0 27000000>;
+		};
+	};
+
+	fragment5 {
+		target = <&zynqmp_dp_snd_pcm0>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment6 {
+		target = <&zynqmp_dp_snd_pcm1>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment7 {
+		target = <&zynqmp_dp_snd_card0>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment8 {
+		target = <&zynqmp_dp_snd_codec0>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment9 {
+		target = <&xlnx_dpdma>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment10 {
+		target = <&usb0>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment11 {
+		target = <&dwc3_0>;
+		__overlay__ {
+			status = "okay";
+			dr_mode = "host";
+			snps,usb3_lpm_capable;
+			phy-names = "usb3-phy";
+			phys = <&lane2 PHY_TYPE_USB3 0 1 26000000>;
+			maximum-speed = "super-speed";
+		};
+	};
+
+	fragment12 {
+		target = <&sdhci1>; /* on CC with tuned parameters */
+		__overlay__ {
+			status = "okay";
+			disable-wp;
+			xlnx,mio-bank = <0>;
+		};
+	};
+
+	fragment13 {
+		target = <&gem3>; /* required by spec */
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+			phy-handle = <&phy0>;
+			phy-mode = "rgmii-id";
+			phy0: ethernet-phy@5 {
+				#phy-cells = <1>;
+				reg = <5>;
+				ti,rx-internal-delay = <0x8>;
+				ti,tx-internal-delay = <0xa>;
+				ti,fifo-depth = <0x1>;
+				ti,dp83867-rxctrl-strap-quirk;
+			};
+		};
+	};
+};
