@@ -79,9 +79,8 @@
 
 &qspi { /* MIO 0-5 - U143 */
 	status = "okay";
-	is-dual = <1>;
 	flash@0 { /* MT25QU512A */
-		compatible = "m25p80", "jedec,spi-nor"; /* 64MB */
+		compatible = "mt25qu512a", "jedec,spi-nor"; /* 64MB */
 		#address-cells = <1>;
 		#size-cells = <1>;
 		reg = <0>;
