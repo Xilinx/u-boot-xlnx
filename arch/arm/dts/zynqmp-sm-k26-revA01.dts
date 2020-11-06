@@ -35,7 +35,6 @@
 		usb0 = &usb0;
 		usb1 = &usb1;
 		nvmem0 = &eeprom;
-		nvmem1 = &eeprom_cc;
 	};
 
 	chosen {
@@ -123,11 +122,6 @@
 		compatible = "atmel,24c64";
 		reg = <0x50>;
 		/* WP pin EE_WP_EN connected to slg7x644092@68 */
-	};
-
-	eeprom_cc: eeprom@51 { /* required by spec */
-		compatible = "atmel,24c64";
-		reg = <0x51>;
 	};
 
 	/* da9062@60 - u170 - also at address 0x62 */
