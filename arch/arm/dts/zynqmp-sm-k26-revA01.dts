@@ -131,8 +131,33 @@
 	};
 
 	/* da9062@60 - u170 - also at address 0x62 */
-	/* da9131@66 - u167 */
-	/* da9130@64 - u166 */
+	/* da9131@33 - u167 */
+	da9131: pmic@33 {
+		compatible = "dlg,da9131";
+		reg = <0x33>;
+		regulators {
+			da9131_buck1: buck1 {
+				regulator-name = "BUCK1";
+				regulator-boot-on;
+			};
+			da9131_buck2: buck2 {
+				regulator-name = "BUCK2";
+				regulator-boot-on;
+			};
+		};
+	};
+
+	/* da9130@32 - u166 */
+	da9130: pmic@32 {
+		compatible = "dlg,da9130";
+		reg = <0x32>;
+		regulators {
+			da9130_buck1: buck1 {
+				regulator-name = "BUCK1";
+				regulator-boot-on;
+			};
+		};
+	};
 	/* slg7x644091@70 - u168 */
 	/* slg7x644092@68 - u169 */
 	/* Also connected via JA1C as C23/C24 */
