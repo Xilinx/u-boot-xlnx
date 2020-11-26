@@ -8,6 +8,7 @@
  */
 
  #include <dt-bindings/phy/phy.h>
+ #include <dt-bindings/pinctrl/pinctrl-zynqmp.h>
 
 /dts-v1/;
 /plugin/;
@@ -142,6 +143,9 @@
 			status = "okay";
 			phy-handle = <&phy0>;
 			phy-mode = "rgmii-id";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_gem3_default>;
+
 			phy0: ethernet-phy@5 {
 				#phy-cells = <1>;
 				reg = <5>;
@@ -149,6 +153,56 @@
 				ti,tx-internal-delay = <0xa>;
 				ti,fifo-depth = <0x1>;
 				ti,dp83867-rxctrl-strap-quirk;
+			};
+		};
+	};
+
+	fragment14 {
+		target = <&pinctrl0>; /* required by spec */
+		__overlay__ {
+			status = "okay";
+			pinctrl_gem3_default: gem3-default {
+				mux {
+					function = "ethernet3";
+					groups = "ethernet3_0_grp";
+				};
+
+				conf {
+					groups = "ethernet3_0_grp";
+					slew-rate = <SLEW_RATE_SLOW>;
+					io-standard = <IO_STANDARD_LVCMOS18>;
+				};
+
+				conf-rx {
+					pins = "MIO70", "MIO72", "MIO74";
+					bias-high-impedance;
+					low-power-disable;
+				};
+
+				conf-bootstrap {
+					pins = "MIO71", "MIO73", "MIO75";
+					bias-disable;
+					low-power-disable;
+				};
+
+				conf-tx {
+					pins = "MIO64", "MIO65", "MIO66",
+					       "MIO67", "MIO68", "MIO69";
+					bias-disable;
+					low-power-enable;
+				};
+
+				mux-mdio {
+					function = "mdio3";
+					groups = "mdio3_0_grp";
+				};
+
+				conf-mdio {
+					groups = "mdio3_0_grp";
+					slew-rate = <SLEW_RATE_SLOW>;
+					io-standard = <IO_STANDARD_LVCMOS18>;
+					bias-disable;
+				};
 			};
 		};
 	};
