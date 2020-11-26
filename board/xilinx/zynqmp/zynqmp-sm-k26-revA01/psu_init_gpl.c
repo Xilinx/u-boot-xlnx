@@ -489,7 +489,7 @@ static unsigned long psu_mio_init_data(void)
 	psu_mask_write(0xFF180174, 0x03FFFFFFU, 0x03FFFFFFU);
 	psu_mask_write(0xFF180178, 0x03FFFFFFU, 0x00000000U);
 	psu_mask_write(0xFF18017C, 0x03FFFFFFU, 0x03FFFFFFU);
-	psu_mask_write(0xFF180180, 0x03FFFFFFU, 0x03FFFFFFU);
+	psu_mask_write(0xFF180180, 0x03FFFFFFU, 0x0357FFFFU);
 	psu_mask_write(0xFF180184, 0x03FFFFFFU, 0x00000000U);
 	psu_mask_write(0xFF180200, 0x0000000FU, 0x00000000U);
 
