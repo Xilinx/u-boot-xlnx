@@ -24,11 +24,6 @@
 		__overlay__ {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			eeprom_cc: eeprom@51 { /* u15 - 0x51 and 0x59 - required by spec */
-				compatible = "atmel,24c64";
-				reg = <0x51>;
-			};
-
 			u14: ina260@40 { /* u14 */
 				compatible = "ti,ina260";
 				#io-channel-cells = <1>;
