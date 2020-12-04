@@ -19,16 +19,3 @@
 	sdhci-caps = <0 0>;
 	max-frequency = <19000000>;
 };
-
-&i2c1 {
-	eeprom_cc: eeprom@51 { /* u15 - 0x51 and 0x59 - required by spec */
-		compatible = "atmel,24c64";
-		reg = <0x51>;
-	};
-};
-
-/ {
-	aliases {
-		nvmem1 = &eeprom_cc;
-	};
-};
