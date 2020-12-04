@@ -134,7 +134,7 @@
 			 */
 			no-1-8-v;
 			disable-wp;
-			xlnx,mio-bank = <0>;
+			xlnx,mio-bank = <1>;
 		};
 	};
 
