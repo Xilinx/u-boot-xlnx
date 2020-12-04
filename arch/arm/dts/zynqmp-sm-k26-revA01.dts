@@ -73,7 +73,7 @@
 	};
 };
 
-&uart1 { /* MIO37/MIO38 */
+&uart1 { /* MIO36/MIO37 */
 	status = "okay";
 };
 
