@@ -13,10 +13,12 @@
 #include <log.h>
 #include <malloc.h>
 #include <spi.h>
+#include <spi_flash.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/bitops.h>
 #include <spi-mem.h>
+#include "../mtd/spi/sf_internal.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -85,6 +87,7 @@ struct zynq_qspi_plat {
 	struct zynq_qspi_regs *regs;
 	u32 frequency;          /* input frequency */
 	u32 speed_hz;
+	u32 is_dual;
 };
 
 /* zynq qspi priv */
@@ -101,6 +104,9 @@ struct zynq_qspi_priv {
 	int bytes_to_transfer;
 	int bytes_to_receive;
 	unsigned int is_inst;
+	unsigned int is_dual;
+	unsigned int is_dio;
+	unsigned int u_page;
 	unsigned cs_change:1;
 };
 
@@ -109,9 +115,22 @@ static int zynq_qspi_of_to_plat(struct udevice *bus)
 	struct zynq_qspi_plat *plat = dev_get_plat(bus);
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
+	int is_dual;
 
 	plat->regs = (struct zynq_qspi_regs *)fdtdec_get_addr(blob,
 							      node, "reg");
+
+	is_dual = fdtdec_get_int(blob, node, "is-dual", -1);
+	if (is_dual < 0)
+		plat->is_dual = SF_SINGLE_FLASH;
+	else if (is_dual == 1)
+		plat->is_dual = SF_DUAL_PARALLEL_FLASH;
+	else
+		if (fdtdec_get_int(blob, node,
+				   "is-stacked", -1) < 0)
+			plat->is_dual = SF_SINGLE_FLASH;
+		else
+			plat->is_dual = SF_DUAL_STACKED_FLASH;
 
 	return 0;
 }
@@ -180,6 +199,8 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 	struct spi_slave *slave = dev_get_parent_priv(bus);
 	struct zynq_qspi_priv *priv = dev_get_priv(bus->parent);
 
+	slave->option = priv->is_dual;
+	slave->dio = priv->is_dio;
 	priv->max_hz = slave->max_hz;
 
 	return 0;
@@ -195,6 +216,13 @@ static int zynq_qspi_probe(struct udevice *bus)
 
 	priv->regs = plat->regs;
 	priv->fifo_depth = ZYNQ_QSPI_FIFO_DEPTH;
+	priv->is_dual = plat->is_dual;
+
+	if (priv->is_dual == -1) {
+		debug("%s: No QSPI device detected based on MIO settings\n",
+		      __func__);
+		return -1;
+	}
 
 	ret = clk_get_by_name(bus, "ref_clk", &clk);
 	if (ret < 0) {
@@ -609,6 +637,11 @@ static int zynq_qspi_xfer(struct udevice *dev, unsigned int bitlen,
 	else
 		priv->cs_change = 0;
 
+	if (flags & SPI_XFER_U_PAGE)
+		priv->u_page = 1;
+	else
+		priv->u_page = 0;
+
 	zynq_qspi_transfer(priv);
 
 	return 0;
@@ -710,6 +743,9 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	if (dummy_bytes)
 		memset(op_buf + pos, 0xff, dummy_bytes);
 
+	if (slave->flags & SPI_XFER_U_PAGE)
+		flag |= SPI_XFER_U_PAGE;
+
 	/* 1st transfer: opcode + address + dummy cycles */
 	/* Make sure to set END bit if no tx or rx data messages follow */
 	if (!tx_buf && !rx_buf)
@@ -728,6 +764,7 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 			return ret;
 	}
 
+	slave->flags &= ~SPI_XFER_MASK;
 	spi_release_bus(slave);
 
 	return 0;
