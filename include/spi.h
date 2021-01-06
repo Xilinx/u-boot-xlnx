@@ -169,6 +169,7 @@ struct spi_slave {
 
 	u8 option;
 	u8 dio;
+	u8 dummy_bytes;
 };
 
 /**
