@@ -4,6 +4,11 @@
  *
  * (C) Copyright 2020, Xilinx, Inc.
  *
+ * SD level shifter:
+ * "A" – A01 board un-modified (NXP)
+ * "Y" – A01 board modified with legacy interposer (Nexperia)
+ * "Z" – A01 board modified with Diode interposer
+ *
  * Michal Simek <michal.simek@xilinx.com>
  */
 
@@ -16,7 +21,10 @@
 /plugin/;
 
 /{
-	compatible = "xlnx,zynqmp-sk-kv260-revA", "xlnx,zynqmp-sk-kv260", "xlnx,zynqmp";
+	compatible = "xlnx,zynqmp-sk-kv260-revA",
+		     "xlnx,zynqmp-sk-kv260-revY",
+		     "xlnx,zynqmp-sk-kv260-revZ",
+		     "xlnx,zynqmp-sk-kv260", "xlnx,zynqmp";
 
 	fragment1{
 		target = <&i2c1>; /* I2C_SCK C23/C24 - MIO from SOM */
