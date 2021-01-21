@@ -109,7 +109,7 @@
 	tpm@0 { /* slm9670 - U144 */
 		compatible = "infineon,slb9670", "tcg,tpm_tis-spi";
 		reg = <0>;
-		spi-max-frequency = <43000000>;
+		spi-max-frequency = <18500000>;
 	};
 };
 
