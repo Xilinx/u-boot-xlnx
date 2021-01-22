@@ -77,44 +77,9 @@
 	fragment4 {
 		target = <&zynqmp_dpsub>;
 		__overlay__ {
-			status = "okay";
+			status = "disabled";
 			phy-names = "dp-phy0", "dp-phy1";
 			phys = <&lane1 PHY_TYPE_DP 0 0 27000000>, <&lane0 PHY_TYPE_DP 1 0 27000000>;
-		};
-	};
-
-	fragment5 {
-		target = <&zynqmp_dp_snd_pcm0>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment6 {
-		target = <&zynqmp_dp_snd_pcm1>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment7 {
-		target = <&zynqmp_dp_snd_card0>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment8 {
-		target = <&zynqmp_dp_snd_codec0>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment9 {
-		target = <&xlnx_dpdma>;
-		__overlay__ {
-			status = "okay";
 		};
 	};
 
