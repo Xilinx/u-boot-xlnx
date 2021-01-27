@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * dts file for Xilinx ZynqMP K26 revA
+ * dts file for Xilinx ZynqMP K26 revB
  *
  * (C) Copyright 2020, Xilinx, Inc.
  *
@@ -16,14 +16,14 @@
 #include <dt-bindings/phy/phy.h>
 
 / {
-	model = "ZynqMP K26 RevA";
-	compatible = "xlnx,zynqmp-sm-k26-revA", "xlnx,zynqmp-sm-k26", "xlnx,zynqmp";
+	model = "ZynqMP K26 RevB";
+	compatible = "xlnx,zynqmp-sm-k26-revB", "xlnx,zynqmp-sm-k26-revA",
+		     "xlnx,zynqmp-sm-k26", "xlnx,zynqmp";
 
 	aliases {
 		gpio0 = &gpio;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
-		mmc0 = &sdhci0;
 		mmc1 = &sdhci1;
 		rtc0 = &rtc;
 		serial0 = &uart0;
@@ -166,14 +166,6 @@
 	};
 };
 
-&sdhci0 { /* MIO13-23 - 16GB emmc MTFC16GAPALBH-IT - U133A*/
-	status = "okay";
-	non-removable;
-	disable-wp;
-	bus-width = <8>;
-	xlnx,mio-bank = <0>;
-};
-
 &spi1 { /* MIO6, 9-11 */
 	status = "okay";
 	label = "TPM";
@@ -202,7 +194,9 @@
 		reg = <0x51>;
 	};
 
-	/* da9062@60 - u170 - also at address 0x62 */
+	/* ND da9062@31 - u170 - also at address 0x31 */
+	/* missing 0 40 58 59 5c 5d 72 76 7E */
+
 	/* da9131@33 - u167 */
 	da9131: pmic@33 {
 		compatible = "dlg,da9131";
@@ -230,6 +224,7 @@
 			};
 		};
 	};
+
 	/* slg7x644091@70 - u168 */
 	/* slg7x644092@68 - u169 */
 	/* Also connected via JA1C as C23/C24 */
