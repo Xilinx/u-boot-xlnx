@@ -37,6 +37,11 @@
 				label = "ina260-u14";
 				reg = <0x40>;
 			};
+			usbhub: usb5744@2d { /* u43 */
+				compatible = "microchip,usb5744";
+				reg = <0x2d>;
+				reset-gpios = <&gpio 44 GPIO_ACTIVE_HIGH>;
+			};
 			/* u27 - 0xe0 - STDP4320 DP/HDMI splitter */
 		};
 	};
