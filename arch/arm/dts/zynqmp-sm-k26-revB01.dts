@@ -203,11 +203,11 @@
 		reg = <0x33>;
 		regulators {
 			da9131_buck1: buck1 {
-				regulator-name = "BUCK1";
+				regulator-name = "da9131_buck1";
 				regulator-boot-on;
 			};
 			da9131_buck2: buck2 {
-				regulator-name = "BUCK2";
+				regulator-name = "da9131_buck2";
 				regulator-boot-on;
 			};
 		};
@@ -219,7 +219,7 @@
 		reg = <0x32>;
 		regulators {
 			da9130_buck1: buck1 {
-				regulator-name = "BUCK1";
+				regulator-name = "da9130_buck1";
 				regulator-boot-on;
 			};
 		};
