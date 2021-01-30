@@ -63,6 +63,13 @@
 		};
 	};
 
+	fragment9 {
+		target = <&xlnx_dpdma>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
 	fragment10 {
 		target = <&usb0>;
 		__overlay__ {

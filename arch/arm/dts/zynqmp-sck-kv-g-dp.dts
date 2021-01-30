@@ -51,11 +51,4 @@
 			status = "okay";
 		};
 	};
-
-	fragment9 {
-		target = <&xlnx_dpdma>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
 };
