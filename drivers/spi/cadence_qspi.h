@@ -29,8 +29,9 @@
 
 #define CQSPI_STIG_DATA_LEN_MAX                 8
 
-#define CQSPI_DUMMY_CLKS_PER_BYTE               8
+#define CQSPI_DUMMY_CLKS_PER_BYTE		8
 #define CQSPI_DUMMY_BYTES_MAX                   4
+#define CQSPI_DUMMY_CLKS_MAX			31
 
 /****************************************************************************
  * Controller's configuration and status register (offset from QSPI_BASE)
@@ -47,6 +48,8 @@
 #define CQSPI_REG_CONFIG_DTR_PROT_EN_MASK       BIT(24)
 #define CQSPI_REG_CONFIG_CHIPSELECT_LSB         10
 #define CQSPI_REG_CONFIG_BAUD_LSB               19
+#define CQSPI_REG_CONFIG_DTR_PROTO		BIT(24)
+#define CQSPI_REG_CONFIG_DUAL_OPCODE		BIT(30)
 #define CQSPI_REG_CONFIG_IDLE_LSB               31
 #define CQSPI_REG_CONFIG_CHIPSELECT_MASK        0xF
 #define CQSPI_REG_CONFIG_BAUD_MASK              0xF
@@ -65,6 +68,7 @@
 
 #define CQSPI_REG_WR_INSTR                      0x08
 #define CQSPI_REG_WR_INSTR_OPCODE_LSB           0
+#define CQSPI_REG_WR_INSTR_TYPE_ADDR_LSB	12
 #define CQSPI_REG_WR_INSTR_TYPE_DATA_LSB	16
 
 #define CQSPI_REG_DELAY                         0x0C
@@ -102,6 +106,9 @@
 #define CQSPI_REG_SDRAMLEVEL_WR_LSB             16
 #define CQSPI_REG_SDRAMLEVEL_RD_MASK            0xFFFF
 #define CQSPI_REG_SDRAMLEVEL_WR_MASK            0xFFFF
+
+#define CQSPI_REG_WR_COMPLETION_CTRL		0x38
+#define CQSPI_REG_WR_DISABLE_AUTO_POLL		BIT(14)
 
 #define CQSPI_REG_IRQSTATUS                     0x40
 #define CQSPI_REG_IRQMASK                       0x44
@@ -148,6 +155,11 @@
 #define CQSPI_REG_CMDREADDATAUPPER              0xA4
 #define CQSPI_REG_CMDWRITEDATALOWER             0xA8
 #define CQSPI_REG_CMDWRITEDATAUPPER             0xAC
+
+#define CQSPI_REG_OP_EXT_LOWER			0xE0
+#define CQSPI_REG_OP_EXT_READ_LSB		24
+#define CQSPI_REG_OP_EXT_WRITE_LSB		16
+#define CQSPI_REG_OP_EXT_STIG_LSB		0
 
 #define CQSPI_REG_PHY_CONFIG                    0xB4
 #define CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK     0x40000000
@@ -271,5 +283,6 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_plat *plat,
 			      unsigned int n_rx, u8 *rxbuf);
 int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_plat *plat);
 int cadence_spi_versal_flash_reset(struct udevice *dev);
+void cadence_qspi_apb_enable_linear_mode(bool enable);
 
 #endif /* __CADENCE_QSPI_H__ */
