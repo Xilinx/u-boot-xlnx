@@ -698,19 +698,9 @@ cadence_qspi_apb_indirect_read_execute(struct cadence_spi_plat *plat,
 
 	writel(n_rx, plat->regbase + CQSPI_REG_INDIRECTRDBYTES);
 
-	if (plat->is_dma)
-		cadence_qspi_apb_dma_read(plat, n_rx, rxbuf);
-
 	/* Start the indirect read transfer */
 	writel(CQSPI_REG_INDIRECTRD_START,
 	       plat->regbase + CQSPI_REG_INDIRECTRD);
-
-	if (plat->is_dma) {
-		ret = cadence_qspi_apb_wait_for_dma_cmplt(plat);
-		if (ret)
-			return ret;
-		goto rd_done;
-	}
 
 	while (remaining > 0) {
 		ret = cadence_qspi_wait_for_data(plat);
@@ -740,7 +730,6 @@ cadence_qspi_apb_indirect_read_execute(struct cadence_spi_plat *plat,
 		}
 	}
 
-rd_done:
 	/* Check indirect done status */
 	ret = wait_for_bit_le32(plat->regbase + CQSPI_REG_INDIRECTRD,
 				CQSPI_REG_INDIRECTRD_DONE, 1, 10, 0);
