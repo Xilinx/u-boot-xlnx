@@ -16,8 +16,9 @@
 #include <dt-bindings/phy/phy.h>
 
 / {
-	model = "ZynqMP K26 RevB";
-	compatible = "xlnx,zynqmp-sm-k26-revB", "xlnx,zynqmp-sm-k26-revA",
+	model = "ZynqMP K26 Rev1.0/B";
+	compatible = "xlnx,zynqmp-sm-k26-rev1.0",
+		     "xlnx,zynqmp-sm-k26-revB", "xlnx,zynqmp-sm-k26-revA",
 		     "xlnx,zynqmp-sm-k26", "xlnx,zynqmp";
 
 	aliases {
