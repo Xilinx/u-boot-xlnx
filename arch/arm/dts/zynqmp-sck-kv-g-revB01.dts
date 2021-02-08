@@ -16,7 +16,8 @@
 /plugin/;
 
 /{
-	compatible = "xlnx,zynqmp-sk-kv260-revB", "xlnx,zynqmp-sk-kv260-revA",
+	compatible = "xlnx,zynqmp-sk-kv260-rev1.0",
+		     "xlnx,zynqmp-sk-kv260-revB", "xlnx,zynqmp-sk-kv260-revA",
 		     "xlnx,zynqmp-sk-kv260", "xlnx,zynqmp";
 
 	fragment1{
