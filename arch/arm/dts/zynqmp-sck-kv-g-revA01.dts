@@ -26,7 +26,7 @@
 		     "xlnx,zynqmp-sk-kv260-revZ",
 		     "xlnx,zynqmp-sk-kv260", "xlnx,zynqmp";
 
-	fragment1{
+	fragment1 {
 		target = <&i2c1>; /* I2C_SCK C23/C24 - MIO from SOM */
 
 		__overlay__ {
@@ -45,6 +45,16 @@
 				reg = <0x40>;
 			};
 			/* u27 - 0xe0 - STDP4320 DP/HDMI splitter */
+		};
+	};
+
+	fragment1a {
+		target = <&amba>;
+		__overlay__ {
+			ina260-u14 {
+				compatible = "iio-hwmon";
+				io-channels = <&u14 0>, <&u14 1>, <&u14 2>;
+			};
 		};
 	};
 
