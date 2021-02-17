@@ -125,7 +125,7 @@
 		};
 		partition@200000 {
 			label = "Image A (FSBL, PMU, ATF, U-Boot)";
-			reg = <0x200000 0xD00000>; /* 3MB */
+			reg = <0x200000 0xD00000>; /* 13MB */
 		};
 		partition@f00000 {
 			label = "ImgSel Image A Catch";
@@ -133,7 +133,7 @@
 		};
 		partition@f80000 {
 			label = "Image B (FSBL, PMU, ATF, U-Boot)";
-			reg = <0xF80000 0xD00000>; /* 3MB */
+			reg = <0xF80000 0xD00000>; /* 13MB */
 		};
 		partition@1c80000 {
 			label = "ImgSel Image B Catch";
