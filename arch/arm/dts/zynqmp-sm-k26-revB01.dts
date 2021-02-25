@@ -105,6 +105,8 @@
 		partition@0 {
 			label = "Image Selector";
 			reg = <0x0 0x80000>; /* 512KB */
+			read-only;
+			lock;
 		};
 		partition@80000 {
 			label = "Image Selector Golden";
@@ -131,6 +133,8 @@
 		partition@f00000 {
 			label = "ImgSel Image A Catch";
 			reg = <0xF00000 0x80000>; /* 512KB */
+			read-only;
+			lock;
 		};
 		partition@f80000 {
 			label = "Image B (FSBL, PMU, ATF, U-Boot)";
@@ -139,6 +143,8 @@
 		partition@1c80000 {
 			label = "ImgSel Image B Catch";
 			reg = <0x1C80000 0x80000>; /* 512KB */
+			read-only;
+			lock;
 		};
 		partition@1d00000 {
 			label = "Open_2";
@@ -147,6 +153,8 @@
 		partition@1e00000 {
 			label = "Recovery Image";
 			reg = <0x1E00000 0x200000>; /* 2MB */
+			read-only;
+			lock;
 		};
 		partition@2000000 {
 			label = "Recovery Image Backup";
@@ -165,6 +173,8 @@
 		partition@2240000 {
 			label = "SHA256";
 			reg = <0x2240000 0x10000>; /* 256B but 64KB sector */
+			read-only;
+			lock;
 		};
 		partition@2250000 {
 			label = "User";
