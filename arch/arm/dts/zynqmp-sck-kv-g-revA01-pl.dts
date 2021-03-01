@@ -19,11 +19,11 @@
 		__overlay__ {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			i2c-mux@75 { /* u18 */
+			i2c-mux@74 { /* u18 */
 				compatible = "nxp,pca9546";
 				#address-cells = <1>;
 				#size-cells = <0>;
-				reg = <0x75>;
+				reg = <0x74>;
 				i2c@0 { /* ISP - IAS0 connector - J7 */
 					#address-cells = <1>;
 					#size-cells = <0>;
