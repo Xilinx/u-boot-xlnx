@@ -17,6 +17,12 @@
 #define CQSPI_DECODER_MAX_CS		16
 #define CQSPI_READ_CAPTURE_MAX_DELAY	16
 
+#define CQSPI_SINGLE_FLASH			0
+#define CQSPI_DUAL_STACKED_FLASH		1
+
+#define CQSPI_CS0				0
+#define CQSPI_CS1				1
+
 #define CQSPI_REG_POLL_US                       1 /* 1us */
 #define CQSPI_REG_RETRY                         10000
 #define CQSPI_POLL_IDLE_RETRY                   3
@@ -219,6 +225,7 @@ struct cadence_spi_plat {
 	u32		tchsh_ns;
 	u32		tslch_ns;
 	bool		is_dma;
+	int		is_dual;
 
 	/* Transaction protocol parameters. */
 	u8		inst_width;
@@ -234,7 +241,9 @@ struct cadence_spi_priv {
 	u8		cmd_buf[32];
 	size_t		data_len;
 
+	int		is_dual;
 	int		qspi_is_init;
+	unsigned int    cs;
 	unsigned int	qspi_calibrated_hz;
 	unsigned int	qspi_calibrated_cs;
 	unsigned int	previous_hz;
@@ -278,9 +287,9 @@ void cadence_qspi_apb_delay(void *reg_base,
 void cadence_qspi_apb_enter_xip(void *reg_base, char xip_dummy);
 void cadence_qspi_apb_readdata_capture(void *reg_base,
 	unsigned int bypass, unsigned int delay);
-int cadence_qspi_apb_exec_flash_cmd(void *reg_base, unsigned int reg);
 int cadence_qspi_apb_dma_read(struct cadence_spi_plat *plat,
 			      unsigned int n_rx, u8 *rxbuf);
+int cadence_qspi_apb_exec_flash_cmd(void *reg_base, unsigned int reg);
 int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_plat *plat);
 int cadence_spi_versal_flash_reset(struct udevice *dev);
 void cadence_qspi_apb_enable_linear_mode(bool enable);
