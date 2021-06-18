@@ -566,7 +566,11 @@ static int read_cr(struct spi_nor *nor)
 #endif
 
 /*
- * Write status register 1 byte
+ * Write status register 1 byte. If the flash is parallel (and
+ * striped) then the write_reg function will notice that this is
+ * a WRSR and MIRROR (instead of STRIPE) the data to the register.
+ * So we don't have to worry about that here.
+ *
  * Returns negative if error occurred.
  */
 static int write_sr(struct spi_nor *nor, u8 val)
@@ -946,6 +950,9 @@ static int read_bar(struct spi_nor *nor, const struct flash_info *info)
 		nor->bank_write_cmd = SPINOR_OP_WREAR;
 	}
 
+	if (nor->isparallel)
+		nor->spi->flags |= SPI_XFER_LOWER;
+
 	ret = nor->read_reg(nor, nor->bank_read_cmd,
 			    &curr_bank, 1);
 	if (ret) {
@@ -1034,10 +1041,8 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		}
 
 		offset = addr;
-		if (nor->isparallel) {
+		if (nor->isparallel)
 			offset /= 2;
-			nor->spi->flags |= SPI_XFER_STRIPE;
-		}
 
 		if (nor->isstacked) {
 			if (offset >= (mtd->size / 2)) {
@@ -1549,10 +1554,8 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 			}
 		}
 
-		if (nor->isparallel) {
+		if (nor->isparallel)
 			offset /= 2;
-			nor->spi->flags = SPI_XFER_STRIPE;
-		}
 
 		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
@@ -1933,10 +1936,8 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 		}
 
 		offset = (to + i);
-		if (nor->isparallel) {
+		if (nor->isparallel)
 			offset /= 2;
-			nor->spi->flags |= SPI_XFER_STRIPE;
-		}
 
 		if (nor->isstacked) {
 			if (offset >= (mtd->size / 2)) {
@@ -4026,6 +4027,9 @@ static int spi_nor_init(struct spi_nor *nor)
 {
 	u8 sr2;
 	int err;
+
+	if (nor->isparallel)
+		nor->spi->flags |= SPI_XFER_STRIPE;
 
 	err = spi_nor_octal_dtr_enable(nor);
 	if (err) {
