@@ -2053,6 +2053,10 @@ static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
 	nor->read_dummy = 8;
 
 	while (len) {
+		/* Both chips are identical, so should be the SFDP data */
+		if (nor->isparallel)
+			nor->spi->flags |= SPI_XFER_LOWER;
+
 		ret = nor->read(nor, addr, len, (u8 *)buf);
 		if (!ret || ret > len) {
 			ret = -EIO;
@@ -2834,6 +2838,14 @@ static int spi_nor_init_params(struct spi_nor *nor,
 			memcpy(params, &sfdp_params, sizeof(*params));
 		}
 	}
+
+	if (nor->isparallel) {
+		nor->mtd.erasesize <<= nor->shift;
+		params->page_size <<= nor->shift;
+	}
+
+	if (nor->isparallel || nor->isstacked)
+		params->size <<= nor->shift;
 
 	spi_nor_post_sfdp_fixups(nor, params);
 
