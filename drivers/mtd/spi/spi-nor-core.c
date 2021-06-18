@@ -545,7 +545,11 @@ static int read_cr(struct spi_nor *nor)
 #endif
 
 /*
- * Write status register 1 byte
+ * Write status register 1 byte. If the flash is parallel (and
+ * striped) then the write_reg function will notice that this is
+ * a WRSR and MIRROR (instead of STRIPE) the data to the register.
+ * So we don't have to worry about that here.
+ *
  * Returns negative if error occurred.
  */
 static int write_sr(struct spi_nor *nor, u8 val)
@@ -920,6 +924,9 @@ static int read_bar(struct spi_nor *nor, const struct flash_info *info)
 		nor->bank_write_cmd = SPINOR_OP_WREAR;
 	}
 
+	if (nor->isparallel)
+		nor->spi->flags |= SPI_XFER_LOWER;
+
 	ret = nor->read_reg(nor, nor->bank_read_cmd,
 			    &curr_bank, 1);
 	if (ret) {
@@ -927,6 +934,14 @@ static int read_bar(struct spi_nor *nor, const struct flash_info *info)
 		return ret;
 	}
 	nor->bank_curr = curr_bank;
+
+	// Make sure both chips use the same BAR
+	if (nor->isparallel) {
+		write_enable(nor);
+		ret = nor->write_reg(nor, nor->bank_write_cmd, &curr_bank, 1);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
@@ -986,6 +1001,15 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	instr->state = MTD_ERASING;
 	addr_known = true;
+
+	if (nor->flash_is_locked) {
+		write_disable(nor);
+		if (nor->flash_is_locked(nor, addr, len) > 0) {
+			printf("offset 0x%x is protected and cannot be erased\n",
+			       addr);
+			return -EINVAL;
+		}
+	}
 
 	while (len) {
 		WATCHDOG_RESET();
@@ -2069,9 +2093,6 @@ static int spansion_read_cr_quad_enable(struct spi_nor *nor)
 	u8 sr_cr[2];
 	int ret;
 
-	if (nor->isparallel)
-		nor->spi->flags |= SPI_XFER_STRIPE;
-
 	/* Check current Quad Enable bit value. */
 	ret = read_cr(nor);
 	if (ret < 0) {
@@ -2223,10 +2244,11 @@ static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
 	nor->addr_width = 3;
 	nor->read_dummy = 8;
 
-	if (nor->isparallel)
-		nor->spi->flags |= SPI_XFER_STRIPE;
-
 	while (len) {
+		/* Both chips are identical, so should be the SFDP data */
+		if (nor->isparallel)
+			nor->spi->flags |= SPI_XFER_LOWER;
+
 		ret = nor->read(nor, addr, len, (u8 *)buf);
 		if (!ret || ret > len) {
 			ret = -EIO;
@@ -3793,6 +3815,9 @@ static int spi_nor_octal_dtr_enable(struct spi_nor *nor)
 static int spi_nor_init(struct spi_nor *nor)
 {
 	int err;
+
+	if (nor->isparallel)
+		nor->spi->flags |= SPI_XFER_STRIPE;
 
 	err = spi_nor_octal_dtr_enable(nor);
 	if (err) {

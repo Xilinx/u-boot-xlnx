@@ -765,6 +765,33 @@ static int zynqmp_qspi_release_bus(struct udevice *dev)
 	return 0;
 }
 
+static bool zynqmp_qspi_update_stripe(const struct spi_mem_op *op)
+{
+	/*
+	 * This is a list of opcodes for which we must not use striped access
+	 * even in dual parallel mode, but instead broadcast the same data to
+	 * both chips. This is primarily erase commands and writing some
+	 * registers.
+	 */
+	switch (op->cmd.opcode) {
+	case SPINOR_OP_BE_4K:
+	case SPINOR_OP_BE_32K:
+	case SPINOR_OP_CHIP_ERASE:
+	case SPINOR_OP_SE:
+	case SPINOR_OP_BE_32K_4B:
+	case SPINOR_OP_SE_4B:
+	case SPINOR_OP_BE_4K_4B:
+	case SPINOR_OP_WRSR:
+	case SPINOR_OP_WREAR:
+	case SPINOR_OP_BRWR:
+		return false;
+	case SPINOR_OP_WRSR2:
+		return op->addr.nbytes != 0;
+	default:
+		return true;
+	}
+}
+
 static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 			       const struct spi_mem_op *op)
 {
@@ -787,7 +814,7 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 	if (priv->is_dual == SF_DUAL_PARALLEL_FLASH) {
 		if (slave->flags & SPI_XFER_MASK)
 			priv->bus = (slave->flags & SPI_XFER_MASK) >> 8;
-		if (slave->flags & SPI_XFER_STRIPE)
+		if (slave->flags & SPI_XFER_STRIPE && zynqmp_qspi_update_stripe(op))
 			priv->stripe = 1;
 	}
 
