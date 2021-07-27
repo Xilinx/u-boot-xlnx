@@ -436,10 +436,9 @@ static int zynqmp_qspi_set_speed(struct udevice *bus, uint speed)
 static int zynqmp_qspi_child_pre_probe(struct udevice *bus)
 {
 	struct spi_slave *slave = dev_get_parent_priv(bus);
+	struct zynqmp_qspi_priv *priv = dev_get_priv(bus->parent);
 
-#ifdef CONFIG_SPI_FLASH_SPLIT_READ
-	slave->multi_die = 1;
-#endif
+	slave->option = priv->is_dual;
 	slave->bytemode = SPI_4BYTE_MODE;
 
 	return 0;
