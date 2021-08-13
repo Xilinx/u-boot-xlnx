@@ -357,6 +357,14 @@ static ssize_t spi_nor_read_data(struct spi_nor *nor, loff_t from, size_t len,
 
 	/* convert the dummy cycles to the number of bytes */
 	op.dummy.nbytes = (nor->read_dummy * op.dummy.buswidth) / 8;
+
+	/*
+	 * For 1_x_x, where x is not 1, Above calculation is not suitable
+	 * for dummy buswidths > 1.
+	 */
+	if (op.dummy.buswidth > 1)
+		op.dummy.nbytes = nor->read_dummy / 8;
+
 	if (spi_nor_protocol_is_dtr(nor->read_proto))
 		op.dummy.nbytes *= 2;
 
@@ -2133,6 +2141,34 @@ static int spansion_no_read_cr_quad_enable(struct spi_nor *nor)
 #endif /* CONFIG_SPI_FLASH_SFDP_SUPPORT */
 #endif /* CONFIG_SPI_FLASH_SPANSION */
 
+static int micron_octal_ddr_enable(struct spi_nor *nor)
+{
+	struct spi_slave *spi = nor->spi;
+	int ret;
+	u8 buf = SPINOR_MT_OCT_DTR;
+
+	struct spi_mem_op op =
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_MT_WR_ANY_REG, 1),
+			   SPI_MEM_OP_ADDR(4, 0, 1),
+			   SPI_MEM_OP_NO_DUMMY,
+			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+
+	ret = set_4byte(nor, nor->info, 1);
+	if (ret)
+		return ret;
+
+	ret = write_enable(nor);
+	if (ret)
+		return ret;
+
+	spi->flags |= SPI_XFER_SET_DDR;
+	ret = spi_mem_exec_op(nor->spi, &op);
+	if (ret < 0)
+		dev_dbg(nor->dev, "error %d writing\n", ret);
+
+	return ret;
+}
+
 static void
 spi_nor_set_read_settings(struct spi_nor_read_command *read,
 			  u8 num_mode_clocks,
@@ -3305,6 +3341,10 @@ static int spi_nor_default_setup(struct spi_nor *nor,
 	else
 		nor->quad_enable = NULL;
 
+	if ((info->flags & SPI_NOR_OCTAL_DTR_READ) &&
+	    (info->flags & SPI_NOR_OCTAL_WRITE))
+		nor->octal_dtr_enable = micron_octal_ddr_enable;
+
 	return 0;
 }
 
@@ -3796,6 +3836,14 @@ static int spi_nor_init(struct spi_nor *nor)
 		if (nor->flags & SNOR_F_BROKEN_RESET)
 			debug("enabling reset hack; may not recover from unexpected reboots\n");
 		set_4byte(nor, nor->info, 1);
+	}
+
+	if (nor->octal_dtr_enable) {
+		err = nor->octal_dtr_enable(nor);
+		if (err) {
+			dev_dbg(nor->dev, "octal DDR mode not supported\n");
+			return err;
+		}
 	}
 
 	return 0;
