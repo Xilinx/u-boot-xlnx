@@ -4372,7 +4372,8 @@ if (JEDEC_MFR(info) == SNOR_MFR_ST) {
 		nor->addr_width = 3;
 	}
 
-	if (nor->addr_width == 3 && mtd->size > SZ_16M) {
+	if (nor->addr_width == 3 && (mtd->size >>
+	   (nor->isparallel || nor->isstacked)) > SZ_16M) {
 #ifndef CONFIG_SPI_FLASH_BAR
 		/* enable 4-byte addressing if the device exceeds 16MiB */
 		nor->addr_width = 4;
