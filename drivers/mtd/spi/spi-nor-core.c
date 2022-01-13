@@ -406,8 +406,9 @@ static ssize_t spi_nor_write_data(struct spi_nor *nor, loff_t to, size_t len,
 }
 
 /*
- * Read the status register, returning its value in the location
- * Return the status register value.
+ * Return the status register value. If the chip is parallel, then the
+ * read will be striped, so we should read 2 bytes to get the sr
+ * register value from both of the parallel chips.
  * Returns negative if error occurred.
  */
 static int read_sr(struct spi_nor *nor)
@@ -440,14 +441,16 @@ static int read_sr(struct spi_nor *nor)
 		op.data.nbytes = 2;
 
 	if (nor->isparallel) {
-		ret = nor->read_reg(nor, SPINOR_OP_RDSR, &val[0], 2);
+		op.data.nbytes = 2;
+		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
 			pr_debug("error %d reading SR\n", (int)ret);
 			return ret;
 		}
 		val[0] |= val[1];
 	} else {
-		ret = nor->read_reg(nor, SPINOR_OP_RDSR, &val[0], 1);
+		op.data.nbytes = 1;
+		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
 			pr_debug("error %d reading SR\n", (int)ret);
 			return ret;
@@ -458,8 +461,9 @@ static int read_sr(struct spi_nor *nor)
 }
 
 /*
- * Read the flag status register, returning its value in the location
- * Return the status register value.
+ * Return the flag status register value. If the chip is parallel, then
+ * the read will be striped, so we should read 2 bytes to get the fsr
+ * register value from both of the parallel chips.
  * Returns negative if error occurred.
  */
 static int read_fsr(struct spi_nor *nor)
@@ -492,14 +496,16 @@ static int read_fsr(struct spi_nor *nor)
 		op.data.nbytes = 2;
 
 	if (nor->isparallel) {
-		ret = nor->read_reg(nor, SPINOR_OP_RDFSR, &val[0], 2);
+		op.data.nbytes = 2;
+		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
 			pr_debug("error %d reading SR\n", (int)ret);
 			return ret;
 		}
 		val[0] &= val[1];
 	} else {
-		ret = nor->read_reg(nor, SPINOR_OP_RDFSR, &val[0], 1);
+		op.data.nbytes = 1;
+		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
 			pr_debug("error %d reading FSR\n", ret);
 			return ret;
