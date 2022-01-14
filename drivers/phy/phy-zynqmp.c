@@ -12,24 +12,21 @@
 #include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
+#include <generic-phy.h>
 #include <log.h>
+#include <power-domain.h>
+#include <regmap.h>
+#include <syscon.h>
+#include <asm/io.h>
+#include <asm/arch/sys_proto.h>
+#include <asm/arch/hardware.h>
 #include <dm/device.h>
 #include <dm/device_compat.h>
 #include <dm/lists.h>
 #include <dt-bindings/phy/phy.h>
-#include <generic-phy.h>
-#include <asm/io.h>
-#include <asm/arch/sys_proto.h>
-#include <power-domain.h>
-#include <regmap.h>
-#include <syscon.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/err.h>
-
-#include <dt-bindings/phy/phy.h>
-
-#include <asm/arch/hardware.h>
 
 /*
  * Lane Registers
@@ -153,20 +150,22 @@
 #define CONTROLLERS_PER_LANE		5
 
 /* Protocol Type parameters */
-#define XPSGTR_TYPE_USB0		0  /* USB controller 0 */
-#define XPSGTR_TYPE_USB1		1  /* USB controller 1 */
-#define XPSGTR_TYPE_SATA_0		2  /* SATA controller lane 0 */
-#define XPSGTR_TYPE_SATA_1		3  /* SATA controller lane 1 */
-#define XPSGTR_TYPE_PCIE_0		4  /* PCIe controller lane 0 */
-#define XPSGTR_TYPE_PCIE_1		5  /* PCIe controller lane 1 */
-#define XPSGTR_TYPE_PCIE_2		6  /* PCIe controller lane 2 */
-#define XPSGTR_TYPE_PCIE_3		7  /* PCIe controller lane 3 */
-#define XPSGTR_TYPE_DP_0		8  /* Display Port controller lane 0 */
-#define XPSGTR_TYPE_DP_1		9  /* Display Port controller lane 1 */
-#define XPSGTR_TYPE_SGMII0		10 /* Ethernet SGMII controller 0 */
-#define XPSGTR_TYPE_SGMII1		11 /* Ethernet SGMII controller 1 */
-#define XPSGTR_TYPE_SGMII2		12 /* Ethernet SGMII controller 2 */
-#define XPSGTR_TYPE_SGMII3		13 /* Ethernet SGMII controller 3 */
+enum {
+	XPSGTR_TYPE_USB0 = 0, /* USB controller 0 */
+	XPSGTR_TYPE_USB1 = 1, /* USB controller 1 */
+	XPSGTR_TYPE_SATA_0 = 2, /* SATA controller lane 0 */
+	XPSGTR_TYPE_SATA_1 = 3, /* SATA controller lane 1 */
+	XPSGTR_TYPE_PCIE_0 = 4, /* PCIe controller lane 0 */
+	XPSGTR_TYPE_PCIE_1 = 5, /* PCIe controller lane 1 */
+	XPSGTR_TYPE_PCIE_2 = 6, /* PCIe controller lane 2 */
+	XPSGTR_TYPE_PCIE_3 = 7, /* PCIe controller lane 3 */
+	XPSGTR_TYPE_DP_0 = 8, /* Display Port controller lane 0 */
+	XPSGTR_TYPE_DP_1 = 9, /* Display Port controller lane 1 */
+	XPSGTR_TYPE_SGMII0 = 10, /* Ethernet SGMII controller 0 */
+	XPSGTR_TYPE_SGMII1 = 11, /* Ethernet SGMII controller 1 */
+	XPSGTR_TYPE_SGMII2 = 12, /* Ethernet SGMII controller 2 */
+	XPSGTR_TYPE_SGMII3 = 13, /* Ethernet SGMII controller 3 */
+};
 
 /* Timeout values */
 #define TIMEOUT_US			1000
@@ -226,9 +225,7 @@ struct xpsgtr_dev {
 	struct clk clk[NUM_LANES];
 };
 
-/*
- * Configuration Data
- */
+/* Configuration Data */
 /* lookup table to hold all settings needed for a ref clock frequency */
 static const struct xpsgtr_ssc ssc_lookup[] = {
 	{  19200000, 0x05,  608, 264020 },
@@ -246,22 +243,19 @@ static const struct xpsgtr_ssc ssc_lookup[] = {
 	{ 150000000, 0x11,  792, 187091 }
 };
 
-/*
- * I/O Accessors
- */
-
-static inline u32 xpsgtr_read(struct xpsgtr_dev *gtr_dev, u32 reg)
+/* I/O Accessors */
+static u32 xpsgtr_read(struct xpsgtr_dev *gtr_dev, u32 reg)
 {
 	return readl(gtr_dev->serdes + reg);
 }
 
-static inline void xpsgtr_write(struct xpsgtr_dev *gtr_dev, u32 reg, u32 value)
+static void xpsgtr_write(struct xpsgtr_dev *gtr_dev, u32 reg, u32 value)
 {
 	writel(value, gtr_dev->serdes + reg);
 }
 
-static inline void xpsgtr_clr_set(struct xpsgtr_dev *gtr_dev, u32 reg,
-				  u32 clr, u32 set)
+static void xpsgtr_clr_set(struct xpsgtr_dev *gtr_dev, u32 reg,
+			   u32 clr, u32 set)
 {
 	u32 value = xpsgtr_read(gtr_dev, reg);
 
@@ -270,7 +264,7 @@ static inline void xpsgtr_clr_set(struct xpsgtr_dev *gtr_dev, u32 reg,
 	xpsgtr_write(gtr_dev, reg, value);
 }
 
-static inline u32 xpsgtr_read_phy(struct xpsgtr_phy *gtr_phy, u32 reg)
+static u32 xpsgtr_read_phy(struct xpsgtr_phy *gtr_phy, u32 reg)
 {
 	void __iomem *addr = gtr_phy->dev->serdes
 			   + gtr_phy->lane * PHY_REG_OFFSET + reg;
@@ -278,8 +272,8 @@ static inline u32 xpsgtr_read_phy(struct xpsgtr_phy *gtr_phy, u32 reg)
 	return readl(addr);
 }
 
-static inline void xpsgtr_write_phy(struct xpsgtr_phy *gtr_phy,
-				    u32 reg, u32 value)
+static void xpsgtr_write_phy(struct xpsgtr_phy *gtr_phy,
+			     u32 reg, u32 value)
 {
 	void __iomem *addr = gtr_phy->dev->serdes
 			   + gtr_phy->lane * PHY_REG_OFFSET + reg;
@@ -287,8 +281,8 @@ static inline void xpsgtr_write_phy(struct xpsgtr_phy *gtr_phy,
 	writel(value, addr);
 }
 
-static inline void xpsgtr_clr_set_phy(struct xpsgtr_phy *gtr_phy,
-				      u32 reg, u32 clr, u32 set)
+static void xpsgtr_clr_set_phy(struct xpsgtr_phy *gtr_phy,
+			       u32 reg, u32 clr, u32 set)
 {
 	void __iomem *addr = gtr_phy->dev->serdes
 			   + gtr_phy->lane * PHY_REG_OFFSET + reg;
@@ -624,7 +618,7 @@ static int xpsgtr_of_xlate(struct phy *x,
 	phy_lane = args->args[0];
 	if (phy_lane >= NUM_LANES) {
 		dev_err(dev, "Invalid lane number %u\n", phy_lane);
-		return -ENODEV;
+		return -EINVAL;
 	}
 
 	gtr_phy = &gtr_dev->phys[phy_lane];
@@ -632,7 +626,7 @@ static int xpsgtr_of_xlate(struct phy *x,
 	phy_instance = args->args[2];
 
 	ret = xpsgtr_set_lane_type(gtr_phy, phy_type, phy_instance);
-	if (ret < 0) {
+	if (ret) {
 		dev_err(dev, "Invalid PHY type and/or instance\n");
 		return ret;
 	}
@@ -728,11 +722,11 @@ static int xpsgtr_probe(struct udevice *dev)
 
 	gtr_dev->serdes = dev_remap_addr_name(dev, "serdes");
 	if (!gtr_dev->serdes)
-		return -ENODEV;
+		return -EINVAL;
 
 	gtr_dev->siou = dev_remap_addr_name(dev, "siou");
 	if (!gtr_dev->siou)
-		return -ENODEV;
+		return -EINVAL;
 
 	gtr_dev->dev = dev;
 
