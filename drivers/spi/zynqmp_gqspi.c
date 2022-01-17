@@ -120,10 +120,6 @@
 #define GQSPI_REG_OFFSET		0x100
 #define GQSPI_DMA_REG_OFFSET		0x800
 
-#define GQSPI_SELECT_MODE_SPI           0x1
-#define GQSPI_SELECT_MODE_DUALSPI       0x2
-#define GQSPI_SELECT_MODE_QUADSPI       0x4
-
 /* QSPI register offsets */
 struct zynqmp_qspi_regs {
 	u32 confr;	/* 0x00 */
@@ -220,10 +216,8 @@ static int zynqmp_qspi_of_to_plat(struct udevice *bus)
 		else
 			plat->is_dual = SF_DUAL_STACKED_FLASH;
 
-	plat->io_mode = fdtdec_get_bool(gd->fdt_blob, dev_of_offset(bus),
-					"has-io-mode");
-
 	plat->io_mode = dev_read_bool(bus, "has-io-mode");
+
 	return 0;
 }
 
@@ -243,7 +237,7 @@ static void zynqmp_qspi_init_hw(struct zynqmp_qspi_priv *priv)
 	config_reg = readl(&regs->confr);
 	config_reg &= ~(GQSPI_CONFIG_MODE_EN_MASK);
 	config_reg |= GQSPI_GFIFO_WP_HOLD | GQSPI_DFLT_BAUD_RATE_DIV;
-		config_reg |= GQSPI_GFIFO_STRT_MODE_MASK;
+	config_reg |= GQSPI_GFIFO_STRT_MODE_MASK;
 	if (!priv->io_mode)
 		config_reg |= GQSPI_CONFIG_DMA_MODE;
 
@@ -897,7 +891,7 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 			priv->bus = (slave->flags & SPI_XFER_MASK) >> 8;
 		if (slave->flags & SPI_XFER_STRIPE && zynqmp_qspi_update_stripe(op))
 			priv->stripe = 1;
-	};
+	}
 
 	zynqmp_qspi_chipselect(priv, 1);
 
