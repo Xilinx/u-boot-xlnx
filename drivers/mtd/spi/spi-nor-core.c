@@ -468,8 +468,9 @@ static int read_sr(struct spi_nor *nor)
 }
 
 /*
- * Read the flag status register, returning its value in the location
- * Return the status register value.
+ * Return the flag status register value. If the chip is parallel, then
+ * the read will be striped, so we should read 2 bytes to get the fsr
+ * register value from both of the parallel chips.
  * Returns negative if error occurred.
  */
 static int read_fsr(struct spi_nor *nor)
@@ -1533,7 +1534,9 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 
 		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
-			write_bar(nor, offset);
+			ret = write_bar(nor, offset);
+			if (ret < 0)
+				return log_ret(ret);
 #endif
 		}
 
@@ -1541,10 +1544,6 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 			read_len = len;
 		else
 			read_len = rem_bank_len;
-
-		ret = spi_nor_wait_till_ready(nor);
-		if (ret)
-			goto read_err;
 
 		ret = nor->read(nor, offset, read_len, buf);
 		if (ret == 0) {
@@ -1711,15 +1710,13 @@ static int sst26_lock_ctl(struct spi_nor *nor, loff_t ofs, uint64_t len, enum lo
 	if (ctl == SST26_CTL_CHECK)
 		return 0;
 
-	write_enable(nor);
-
 	ret = nor->write_reg(nor, SPINOR_OP_WRITE_BPR, bpr_buff, bpr_size);
 	if (ret < 0) {
 		dev_err(nor->dev, "fail to write block-protection register\n");
 		return ret;
 	}
 
-	return spi_nor_wait_till_ready(nor);
+	return 0;
 }
 
 static int sst26_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
@@ -1921,17 +1918,14 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 
 		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
-			write_bar(nor, offset);
+			ret = write_bar(nor, offset);
+			if (ret < 0)
+				return ret;
 #endif
 		}
 
 		page_remain = min_t(size_t, nor->page_size - page_offset,
 				    len - i);
-
-		ret = spi_nor_wait_till_ready(nor);
-		if (ret)
-			goto write_err;
-
 		write_enable(nor);
 		ret = nor->write(nor, offset, page_remain, buf + i);
 		if (ret < 0)
