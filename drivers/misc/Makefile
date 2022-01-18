@@ -90,3 +90,4 @@ obj-$(CONFIG_ESM_K3) += k3_esm.o
 obj-$(CONFIG_ESM_PMIC) += esm_pmic.o
 obj-$(CONFIG_SL28CPLD) += sl28cpld.o
 obj-$(CONFIG_USB5744) += usb5744.o
+obj-$(CONFIG_USB2244) += usb2244.o
