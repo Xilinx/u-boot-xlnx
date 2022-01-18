@@ -356,6 +356,29 @@ static int dwc3_glue_bind(struct udevice *parent)
 	int ret;
 
 	ofnode_for_each_subnode(node, dev_ofnode(parent)) {
+		struct udevice *dev;
+		char *driver = NULL;
+		const char *name = ofnode_get_name(node);
+
+		if (!ofnode_device_is_compatible(node, "snps,dwc3")) {
+			if (ofnode_device_is_compatible(node,
+							"microchip,usb5744"))
+				driver = "usb5744";
+			else if (ofnode_device_is_compatible
+				 (node, "microchip,usb2244"))
+				driver = "usb2244";
+
+			ret = device_bind_driver_to_node(parent, driver, name,
+							 node, &dev);
+			if (ret) {
+				printf("Failed to bind: %s, err: %d\n",
+				       driver, ret);
+				return ret;
+			}
+		}
+	}
+
+	ofnode_for_each_subnode(node, dev_ofnode(parent)) {
 		const char *name = ofnode_get_name(node);
 		enum usb_dr_mode dr_mode;
 		struct udevice *dev;
@@ -365,25 +388,28 @@ static int dwc3_glue_bind(struct udevice *parent)
 
 		dr_mode = usb_get_dr_mode(node);
 
-		switch (dr_mode) {
-		case USB_DR_MODE_PERIPHERAL:
-		case USB_DR_MODE_OTG:
+		if (ofnode_device_is_compatible(node, "snps,dwc3")) {
+			switch (dr_mode) {
+			case USB_DR_MODE_PERIPHERAL:
+			case USB_DR_MODE_OTG:
 #if CONFIG_IS_ENABLED(DM_USB_GADGET)
-			debug("%s: dr_mode: OTG or Peripheral\n", __func__);
-			driver = "dwc3-generic-peripheral";
+				debug("%s: dr_mode: OTG or Peripheral\n",
+				      __func__);
+				driver = "dwc3-generic-peripheral";
 #endif
 			break;
 #if defined(CONFIG_SPL_USB_HOST) || !defined(CONFIG_SPL_BUILD)
-		case USB_DR_MODE_HOST:
-			debug("%s: dr_mode: HOST\n", __func__);
-			driver = "dwc3-generic-host";
+			case USB_DR_MODE_HOST:
+				debug("%s: dr_mode: HOST\n", __func__);
+				driver = "dwc3-generic-host";
 			break;
 #endif
-		default:
-			debug("%s: unsupported dr_mode\n", __func__);
-			return -ENODEV;
-		};
-
+			default:
+				debug("%s: unsupported dr_mode\n",
+				      __func__);
+				return -ENODEV;
+			};
+		}
 		if (!driver)
 			continue;
 
@@ -446,6 +472,7 @@ static int dwc3_glue_probe(struct udevice *dev)
 	struct dwc3_glue_ops *ops = (struct dwc3_glue_ops *)dev_get_driver_data(dev);
 	struct dwc3_glue_data *glue = dev_get_plat(dev);
 	struct udevice *child = NULL;
+	ofnode node;
 	int index = 0;
 	int ret;
 	struct phy phy;
@@ -474,6 +501,17 @@ static int dwc3_glue_probe(struct udevice *dev)
 		ret = generic_phy_power_on(&phy);
 		if (ret)
 			return ret;
+	}
+
+	ofnode_for_each_subnode(node, dev_ofnode(dev)) {
+		if (!ofnode_device_is_compatible(node, "snps,dwc3")) {
+			ret = uclass_get_device_by_ofnode(UCLASS_MISC, node, &child);
+			if (ret) {
+				printf("could not get device %s, err = %d\n",
+				       node.np->name, ret);
+				return ret;
+			}
+		}
 	}
 
 	ret = device_find_first_child(dev, &child);
