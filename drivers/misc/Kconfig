@@ -500,4 +500,11 @@ config ESM_PMIC
 	  Support ESM (Error Signal Monitor) on PMIC devices. ESM is used
 	  typically to reboot the board in error condition.
 
+config USB5744
+	bool "Microchip USB5744 usb hub"
+	depends on DM_USB && DM_I2C && DM_GPIO
+	help
+	   This enables support for Microchip USB5744 Hub. This driver reset
+	   the hub using gpio pin and configure hub via i2c.
+
 endmenu
