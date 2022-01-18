@@ -507,4 +507,12 @@ config USB5744
 	   This enables support for Microchip USB5744 Hub. This driver reset
 	   the hub using gpio pin and configure hub via i2c.
 
+config USB2244
+	bool "Microchip USB2244 Ultra Fast USB 2.0 SD driver"
+	depends on DM_USB && DM_GPIO
+	help
+	   This option enables support for Microchip USB2244 Ultra Fast USB 2.0
+	   SD controller. This driver will reset the usb2244 controller using a
+	   gpio pin.
+
 endmenu
