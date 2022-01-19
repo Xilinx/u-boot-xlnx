@@ -253,6 +253,28 @@
 			#size-cells = <0>;
 		};
 
+		gem0: ethernet@e000b000 {
+			compatible = "cdns,zynq-gem", "cdns,gem";
+			reg = <0xe000b000 0x1000>;
+			status = "disabled";
+			interrupts = <0 22 4>;
+			clocks = <&clkc 30>, <&clkc 30>, <&clkc 13>;
+			clock-names = "pclk", "hclk", "tx_clk";
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
+		gem1: ethernet@e000c000 {
+			compatible = "cdns,zynq-gem", "cdns,gem";
+			reg = <0xe000c000 0x1000>;
+			status = "disabled";
+			interrupts = <0 45 4>;
+			clocks = <&clkc 31>, <&clkc 31>, <&clkc 14>;
+			clock-names = "pclk", "hclk", "tx_clk";
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+
 		smcc: memory-controller@e000e000 {
 			compatible = "arm,pl353-smc-r2p1", "arm,primecell";
 			reg = <0xe000e000 0x0001000>;
@@ -281,28 +303,6 @@
 				#address-cells = <1>;
 				#size-cells = <1>;
 			};
-		};
-
-		gem0: ethernet@e000b000 {
-			compatible = "cdns,zynq-gem", "cdns,gem";
-			reg = <0xe000b000 0x1000>;
-			status = "disabled";
-			interrupts = <0 22 4>;
-			clocks = <&clkc 30>, <&clkc 30>, <&clkc 13>;
-			clock-names = "pclk", "hclk", "tx_clk";
-			#address-cells = <1>;
-			#size-cells = <0>;
-		};
-
-		gem1: ethernet@e000c000 {
-			compatible = "cdns,zynq-gem", "cdns,gem";
-			reg = <0xe000c000 0x1000>;
-			status = "disabled";
-			interrupts = <0 45 4>;
-			clocks = <&clkc 31>, <&clkc 31>, <&clkc 14>;
-			clock-names = "pclk", "hclk", "tx_clk";
-			#address-cells = <1>;
-			#size-cells = <0>;
 		};
 
 		sdhci0: mmc@e0100000 {
