@@ -94,6 +94,10 @@
 		method = "smc";
 	};
 
+	pmu {
+		compatible = "arm,armv8-pmuv3";
+	};
+
 	timer: timer {
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
