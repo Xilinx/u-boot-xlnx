@@ -357,7 +357,6 @@ static ssize_t spi_nor_read_data(struct spi_nor *nor, loff_t from, size_t len,
 
 	/* convert the dummy cycles to the number of bytes */
 	op.dummy.nbytes = (nor->read_dummy * op.dummy.buswidth) / 8;
-
 	/*
 	 * For 1_x_x, where x is not 1, Above calculation is not suitable
 	 * for dummy buswidths > 1.
@@ -1004,6 +1003,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	if (nor->flash_is_locked) {
 		write_disable(nor);
+
 		if (nor->flash_is_locked(nor, addr, len) > 0) {
 			printf("offset 0x%x is protected and cannot be erased\n",
 			       addr);
@@ -1045,7 +1045,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 			goto erase_err;
 
 		ret = spi_nor_erase_sector(nor, offset);
-		if (ret)
+		if (ret < 0)
 			goto erase_err;
 
 		addr += ret;
@@ -4180,6 +4180,7 @@ int spi_nor_remove(struct spi_nor *nor)
 	    nor->flags & SNOR_F_SOFT_RESET)
 		return spi_nor_soft_reset(nor);
 #endif
+
 	return 0;
 }
 
@@ -4309,11 +4310,11 @@ int spi_nor_scan(struct spi_nor *nor)
 #endif
 
 #if defined(CONFIG_SPI_FLASH_STMICRO)
-if (JEDEC_MFR(info) == SNOR_MFR_ST) {
-	nor->flash_lock = micron_flash_lock;
-	nor->flash_unlock = micron_flash_unlock;
-	nor->flash_is_locked = micron_is_locked;
-}
+	if (JEDEC_MFR(info) == SNOR_MFR_ST) {
+		nor->flash_lock = micron_flash_lock;
+		nor->flash_unlock = micron_flash_unlock;
+		nor->flash_is_locked = micron_is_locked;
+	}
 #endif
 
 #ifdef CONFIG_SPI_FLASH_SST

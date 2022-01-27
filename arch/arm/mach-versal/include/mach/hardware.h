@@ -60,7 +60,7 @@ struct rpu_regs {
 
 #define VERSAL_SLCR_BASEADDR	0xF1060000
 #define VERSAL_AXI_MUX_SEL	(VERSAL_SLCR_BASEADDR + 0x504)
-#define VERSAL_OSPI_LINEAR_MODE BIT(1)
+#define VERSAL_OSPI_LINEAR_MODE	BIT(1)
 
 struct crp_regs {
 	u32 reserved0[128];
