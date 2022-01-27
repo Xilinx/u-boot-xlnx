@@ -742,7 +742,7 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 			tx_buf = op->data.buf.out;
 	}
 
-	op_len = sizeof(op->cmd.opcode) + op->addr.nbytes + op->dummy.nbytes;
+	op_len = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
 
 	u8 op_buf[op_len];
 
