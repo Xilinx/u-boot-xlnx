@@ -947,7 +947,7 @@ int cadence_qspi_apb_write_execute(struct cadence_spi_plat *plat,
 	 * mode. So, we can not use direct mode when in DTR mode for writing
 	 * data.
 	 */
-	cadence_qspi_apb_enable_linear_mode(true); //Ashok: check
+	cadence_qspi_apb_enable_linear_mode(true);
 	if (!plat->dtr && plat->use_dac_mode && (to + len < plat->ahbsize)) {
 		memcpy_toio(plat->ahbbase + to, buf, len);
 		if (!cadence_qspi_wait_idle(plat->regbase))

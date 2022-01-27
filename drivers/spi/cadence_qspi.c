@@ -149,17 +149,9 @@ static int cadence_spi_set_speed(struct udevice *bus, uint hz)
 	 * If the device tree already provides a read delay value, use that
 	 * instead of calibrating.
 	 */
-	if (plat->read_delay >= 0) {
-		cadence_spi_write_speed(bus, hz);
-		cadence_qspi_apb_readdata_capture(priv->regbase, 1,
-						  plat->read_delay);
-	} else if (priv->previous_hz != hz ||
-		   priv->qspi_calibrated_hz != hz ||
-		   priv->qspi_calibrated_cs != spi_chip_select(bus)) { //Ashok: priv->cs
-		/*
-		 * Calibration required for different current SCLK speed,
-		 * requested SCLK speed or chip select
-		 */
+	if (priv->previous_hz != hz ||
+	    priv->qspi_calibrated_hz != hz ||
+	    priv->qspi_calibrated_cs != priv->cs) {
 		err = spi_calibration(bus, hz);
 		if (err)
 			return err;
