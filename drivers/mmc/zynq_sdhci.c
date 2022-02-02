@@ -15,6 +15,8 @@
 #include <dm/device_compat.h>
 #include <linux/err.h>
 #include <linux/libfdt.h>
+#include <asm/types.h>
+#include <linux/math64.h>
 #include <asm/cache.h>
 #include <malloc.h>
 #include <sdhci.h>
@@ -703,6 +705,71 @@ static const struct sdhci_ops arasan_ops = {
 };
 #endif
 
+#if defined(CONFIG_ARCH_ZYNQMP)
+static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
+					   struct udevice *dev)
+{
+	int ret;
+	u32 node_id = priv->deviceid ? NODE_SD_1 : NODE_SD_0;
+	u32 reset_id = priv->deviceid ? ZYNQMP_PM_RESET_SDIO1 : ZYNQMP_PM_RESET_SDIO0;
+	struct clk clk;
+	unsigned long clock, mhz;
+
+	ret = xilinx_pm_request(PM_REQUEST_NODE, node_id, PM_CAPABILITY_ACCESS,
+				PM_MAX_QOS, ZYNQMP_PM_REQUEST_ACK_NO, NULL);
+	if (ret) {
+		printf("Request node failed for %d\n", node_id);
+		return ret;
+	}
+
+	ret = xilinx_pm_request(PM_RESET_ASSERT, reset_id,
+				PM_RESET_ACTION_ASSERT, 0, 0, NULL);
+	if (ret) {
+		printf("Reset assert failed for %d\n", reset_id);
+		return ret;
+	}
+
+	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_FIXED, 0);
+	if (ret)
+		return ret;
+
+	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_EMMC_SEL,
+				      dev_read_bool(dev, "non-removable"));
+	if (ret)
+		return ret;
+
+	ret = clk_get_by_index(dev, 0, &clk);
+	if (ret < 0) {
+		dev_err(dev, "failed to get clock\n");
+		return ret;
+	}
+
+	clock = clk_get_rate(&clk);
+	if (IS_ERR_VALUE(clock)) {
+		dev_err(dev, "failed to get rate\n");
+		return clock;
+	}
+
+	mhz = DIV64_U64_ROUND_UP(clock, 1000000);
+
+	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_BASECLK, mhz);
+	if (ret)
+		return ret;
+
+	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_8BIT,
+				      (dev_read_u32_default(dev, "bus-width", 1) == 8));
+	if (ret)
+		return ret;
+
+	ret = xilinx_pm_request(PM_RESET_ASSERT, reset_id,
+				PM_RESET_ACTION_RELEASE, 0, 0, NULL);
+	if (ret)
+		printf("Reset release failed for %d\n", reset_id);
+
+	return 0;
+}
+#endif
+
 static int arasan_sdhci_probe(struct udevice *dev)
 {
 	struct arasan_sdhci_plat *plat = dev_get_plat(dev);
@@ -714,6 +781,18 @@ static int arasan_sdhci_probe(struct udevice *dev)
 	int ret;
 
 	host = priv->host;
+
+#if defined(CONFIG_ARCH_ZYNQMP)
+	if (device_is_compatible(dev, "xlnx,zynqmp-8.9a")) {
+		ret = zynqmp_pm_is_function_supported(PM_IOCTL,
+						      IOCTL_SET_SD_CONFIG);
+		if (!ret) {
+			ret = sdhci_zynqmp_set_dynamic_config(priv, dev);
+			if (ret)
+				return ret;
+		}
+	}
+#endif
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret < 0) {
