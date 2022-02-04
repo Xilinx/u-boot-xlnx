@@ -7,6 +7,7 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <i2c.h>
 #include <usb.h>
 #include <asm/gpio.h>
@@ -38,7 +39,7 @@ static int usb5744_probe(struct udevice *dev)
 		i2c_chip->flags &= ~DM_I2C_CHIP_WR_ADDRESS;
 		ret = dm_i2c_write(priv->i2c_dev, 0xAA, (uint8_t *)&buf, 2);
 		if (ret) {
-			printf("i2c_write failed, err: %d\n", ret);
+			dev_err(dev, "i2c_write failed, err: %d\n", ret);
 			return ret;
 		}
 	}
@@ -57,7 +58,7 @@ static int usb5744_plat(struct udevice *dev)
 	ret = gpio_request_by_name(dev, "reset-gpios", 0,
 				   &priv->reset_gpio, GPIOD_ACTIVE_LOW);
 	if (ret) {
-		printf("Gpio request failed, err: %d\n", ret);
+		dev_err(dev, "Gpio request failed, err: %d\n", ret);
 		return ret;
 	}
 
@@ -65,7 +66,7 @@ static int usb5744_plat(struct udevice *dev)
 		i2c_node = ofnode_get_by_phandle(phandle);
 		ret = device_get_global_by_ofnode(i2c_node, &i2c_bus);
 		if (ret) {
-			printf("Failed to get i2c node, err: %d\n", ret);
+			dev_err(dev, "Failed to get i2c node, err: %d\n", ret);
 			return ret;
 		}
 
