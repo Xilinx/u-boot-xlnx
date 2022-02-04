@@ -12,6 +12,7 @@
 #include <linux/delay.h>
 #include "mmc_private.h"
 #include <log.h>
+#include <reset.h>
 #include <dm/device_compat.h>
 #include <linux/err.h>
 #include <linux/libfdt.h>
@@ -63,6 +64,7 @@ struct arasan_sdhci_priv {
 	u8 deviceid;
 	u8 bank;
 	u8 no_1p8;
+	struct reset_ctl_bulk resets;
 };
 
 /* For Versal platforms zynqmp_mmio_write() won't be available */
@@ -711,7 +713,6 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 {
 	int ret;
 	u32 node_id = priv->deviceid ? NODE_SD_1 : NODE_SD_0;
-	u32 reset_id = priv->deviceid ? ZYNQMP_PM_RESET_SDIO1 : ZYNQMP_PM_RESET_SDIO0;
 	struct clk clk;
 	unsigned long clock, mhz;
 
@@ -722,10 +723,18 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 		return ret;
 	}
 
-	ret = xilinx_pm_request(PM_RESET_ASSERT, reset_id,
-				PM_RESET_ACTION_ASSERT, 0, 0, NULL);
+	ret = reset_get_bulk(dev, &priv->resets);
+	if (ret == -ENOTSUPP || ret == -ENOENT) {
+		dev_err(dev, "Reset not found\n");
+		return 0;
+	} else if (ret) {
+		dev_err(dev, "Reset failed\n");
+		return ret;
+	}
+
+	ret = reset_assert_bulk(&priv->resets);
 	if (ret) {
-		dev_err(dev, "Reset assert failed for %d\n", reset_id);
+		dev_err(dev, "Reset assert failed\n");
 		return ret;
 	}
 
@@ -761,10 +770,11 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 	if (ret)
 		return ret;
 
-	ret = xilinx_pm_request(PM_RESET_ASSERT, reset_id,
-				PM_RESET_ACTION_RELEASE, 0, 0, NULL);
-	if (ret)
-		dev_err(dev, "Reset release failed for %d\n", reset_id);
+	ret = reset_deassert_bulk(&priv->resets);
+	if (ret) {
+		dev_err(dev, "Reset release failed\n");
+		return ret;
+	}
 
 	return 0;
 }
