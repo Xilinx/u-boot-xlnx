@@ -245,7 +245,7 @@ static int arasan_sdhci_execute_tuning(struct mmc *mmc, u8 opcode)
 	char tuning_loop_counter = SDHCI_TUNING_LOOP_COUNT;
 	u8 node_id = priv->deviceid ? NODE_SD_1 : NODE_SD_0;
 
-	debug("%s\n", __func__);
+	dev_dbg(mmc->dev, "%s\n", __func__);
 
 	host = priv->host;
 
@@ -718,14 +718,14 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 	ret = xilinx_pm_request(PM_REQUEST_NODE, node_id, PM_CAPABILITY_ACCESS,
 				PM_MAX_QOS, ZYNQMP_PM_REQUEST_ACK_NO, NULL);
 	if (ret) {
-		printf("Request node failed for %d\n", node_id);
+		dev_err(dev, "Request node failed for %d\n", node_id);
 		return ret;
 	}
 
 	ret = xilinx_pm_request(PM_RESET_ASSERT, reset_id,
 				PM_RESET_ACTION_ASSERT, 0, 0, NULL);
 	if (ret) {
-		printf("Reset assert failed for %d\n", reset_id);
+		dev_err(dev, "Reset assert failed for %d\n", reset_id);
 		return ret;
 	}
 
@@ -764,7 +764,7 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 	ret = xilinx_pm_request(PM_RESET_ASSERT, reset_id,
 				PM_RESET_ACTION_RELEASE, 0, 0, NULL);
 	if (ret)
-		printf("Reset release failed for %d\n", reset_id);
+		dev_err(dev, "Reset release failed for %d\n", reset_id);
 
 	return 0;
 }
@@ -806,7 +806,7 @@ static int arasan_sdhci_probe(struct udevice *dev)
 		return clock;
 	}
 
-	debug("%s: CLK %ld\n", __func__, clock);
+	dev_dbg(dev, "%s: CLK %ld\n", __func__, clock);
 
 	ret = clk_enable(&clk);
 	if (ret) {
