@@ -31,6 +31,7 @@ obj-$(CONFIG_PHY_TI) += ti_phy_init.o
 obj-$(CONFIG_PHY_TI_DP83867) += dp83867.o
 obj-$(CONFIG_PHY_XILINX) += xilinx_phy.o
 obj-$(CONFIG_PHY_XILINX_GMII2RGMII) += xilinx_gmii2rgmii.o
+obj-$(CONFIG_PHY_ETHERNET_ID) += ethernet_id.o
 obj-$(CONFIG_PHY_VITESSE) += vitesse.o
 obj-$(CONFIG_PHY_MSCC) += mscc.o
 obj-$(CONFIG_PHY_FIXED) += fixed.o
