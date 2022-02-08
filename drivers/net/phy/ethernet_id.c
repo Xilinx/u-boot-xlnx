@@ -43,10 +43,20 @@ struct phy_device *phy_connect_phy_id(struct mii_dev *bus, struct udevice *dev,
 		assert = ofnode_read_u32_default(node, "reset-assert-us", 0);
 		deassert = ofnode_read_u32_default(node,
 						   "reset-deassert-us", 0);
-		dm_gpio_set_value(&gpio, 1);
+		ret = dm_gpio_set_value(&gpio, 1);
+		if (ret) {
+			dev_err(dev, "Failed assert gpio, err: %d\n", ret);
+			return NULL;
+		}
+
 		udelay(assert);
 
-		dm_gpio_set_value(&gpio, 0);
+		ret = dm_gpio_set_value(&gpio, 0);
+		if (ret) {
+			dev_err(dev, "Failed deassert gpio, err: %d\n", ret);
+			return NULL;
+		}
+
 		udelay(deassert);
 	}
 
