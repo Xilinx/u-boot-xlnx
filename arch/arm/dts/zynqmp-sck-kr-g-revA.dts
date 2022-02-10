@@ -145,7 +145,7 @@
 		reset-gpios = <&slg7xl45106 3 GPIO_ACTIVE_LOW>;
 	};
 
-	usb2244: usb { /* u38 */
+	usb2244: usb-sd { /* u38 */
 		compatible = "microchip,usb2244";
 		reset-gpios = <&slg7xl45106 2 GPIO_ACTIVE_LOW>;
 	};
