@@ -74,7 +74,7 @@
 			};
 			ir35221_45: pmic@45 { /* IR35221 - u291 */
 				compatible = "infineon,ir35221";
-				reg = <0x46>; /* i2c addr - 0x15 */
+				reg = <0x45>; /* i2c addr - 0x15 */
 			};
 			ir35221_46: pmic@46 { /* IR35221 - u152 */
 				compatible = "infineon,ir35221";
