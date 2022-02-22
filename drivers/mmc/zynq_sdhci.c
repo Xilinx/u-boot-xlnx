@@ -739,13 +739,17 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 	}
 
 	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_FIXED, 0);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "SD_CONFIG_FIXED failed\n");
 		return ret;
+	}
 
 	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_EMMC_SEL,
 				      dev_read_bool(dev, "non-removable"));
-	if (ret)
+	if (ret) {
+		dev_err(dev, "SD_CONFIG_EMMC_SEL failed\n");
 		return ret;
+	}
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret < 0) {
@@ -762,13 +766,17 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 	mhz = DIV64_U64_ROUND_UP(clock, 1000000);
 
 	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_BASECLK, mhz);
-	if (ret)
+	if (ret) {
+		dev_err(dev, "SD_CONFIG_BASECLK failed\n");
 		return ret;
+	}
 
 	ret = zynqmp_pm_set_sd_config(node_id, SD_CONFIG_8BIT,
 				      (dev_read_u32_default(dev, "bus-width", 1) == 8));
-	if (ret)
+	if (ret) {
+		dev_err(dev, "SD_CONFIG_8BIT failed\n");
 		return ret;
+	}
 
 	ret = reset_deassert_bulk(&priv->resets);
 	if (ret) {
