@@ -373,9 +373,6 @@ static void restore_jtag(void)
 }
 #endif
 
-#define PS_SYSMON_ANALOG_BUS_VAL	0x3210
-#define PS_SYSMON_ANALOG_BUS_REG	0xFFA50914
-
 int board_init(void)
 {
 #if defined(CONFIG_ZYNQMP_FIRMWARE)
@@ -402,9 +399,6 @@ int board_init(void)
 #endif
 
 	printf("EL Level:\tEL%d\n", current_el());
-
-	/* Bug in ROM sets wrong value in this register */
-	writel(PS_SYSMON_ANALOG_BUS_VAL, PS_SYSMON_ANALOG_BUS_REG);
 
 #if CONFIG_IS_ENABLED(FPGA) && defined(CONFIG_FPGA_ZYNQMPPL)
 	zynqmppl.name = zynqmp_get_silicon_idcode_name();
