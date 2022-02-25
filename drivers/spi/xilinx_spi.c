@@ -113,21 +113,6 @@ struct xilinx_spi_priv {
 	u8 startup;
 };
 
-static int xilinx_spi_child_pre_probe(struct udevice *bus)
-{
-	struct spi_slave *slave = dev_get_parent_priv(bus);
-	struct udevice *dev = dev_get_parent(bus);
-	int spimode;
-
-	spimode = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev), "xlnx,spi-mode",
-				 -1);
-
-	if (spimode == XILINX_SPI_QUAD_MODE)
-		slave->mode = SPI_RX_QUAD;
-
-	return 0;
-}
-
 static int xilinx_spi_probe(struct udevice *bus)
 {
 	struct xilinx_spi_priv *priv = dev_get_priv(bus);
@@ -339,7 +324,9 @@ static int xilinx_spi_mem_exec_op(struct spi_slave *spi,
 			goto done;
 	}
 	if (op->dummy.nbytes) {
-		dummy_len = op->dummy.nbytes * op->data.buswidth;
+		dummy_len = (op->dummy.nbytes * op->data.buswidth) /
+			     op->dummy.buswidth;
+
 		ret = start_transfer(spi, NULL, NULL, dummy_len);
 		if (ret)
 			goto done;
@@ -359,6 +346,47 @@ done:
 	spi_cs_deactivate(spi->dev);
 
 	return ret;
+}
+
+static int xilinx_qspi_check_buswidth(struct spi_slave *slave, u8 width)
+{
+	u32 mode = slave->mode;
+
+	switch (width) {
+	case 1:
+		return 0;
+	case 2:
+		if (mode & SPI_RX_DUAL)
+			return 0;
+		break;
+	case 4:
+		if (mode & SPI_RX_QUAD)
+			return 0;
+		break;
+	}
+
+	return -ENOTSUPP;
+}
+
+bool xilinx_qspi_mem_exec_op(struct spi_slave *slave,
+			     const struct spi_mem_op *op)
+{
+	if (xilinx_qspi_check_buswidth(slave, op->cmd.buswidth))
+		return false;
+
+	if (op->addr.nbytes &&
+	    xilinx_qspi_check_buswidth(slave, op->addr.buswidth))
+		return false;
+
+	if (op->dummy.nbytes &&
+	    xilinx_qspi_check_buswidth(slave, op->dummy.buswidth))
+		return false;
+
+	if (op->data.dir != SPI_MEM_NO_DATA &&
+	    xilinx_qspi_check_buswidth(slave, op->data.buswidth))
+		return false;
+
+	return true;
 }
 
 static int xilinx_spi_set_speed(struct udevice *bus, uint speed)
@@ -398,6 +426,7 @@ static int xilinx_spi_set_mode(struct udevice *bus, uint mode)
 
 static const struct spi_controller_mem_ops xilinx_spi_mem_ops = {
 	.exec_op = xilinx_spi_mem_exec_op,
+	.supports_op = xilinx_qspi_mem_exec_op,
 };
 
 static const struct dm_spi_ops xilinx_spi_ops = {
@@ -421,5 +450,4 @@ U_BOOT_DRIVER(xilinx_spi) = {
 	.ops	= &xilinx_spi_ops,
 	.priv_auto	= sizeof(struct xilinx_spi_priv),
 	.probe	= xilinx_spi_probe,
-	.child_pre_probe = xilinx_spi_child_pre_probe,
 };
