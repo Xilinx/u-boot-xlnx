@@ -12,5 +12,6 @@
 };
 
 &flash0 {
+	spi-tx-bus-width = <1>;
 	spi-rx-bus-width = <1>;
 };
