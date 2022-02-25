@@ -111,6 +111,7 @@ struct zynq_qspi_priv {
 	u8 mode;
 	u8 fifo_depth;
 	u32 freq;		/* required frequency */
+	u32 max_hz;
 	const void *tx_buf;
 	void *rx_buf;
 	unsigned len;
@@ -290,6 +291,7 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 	slave->option = priv->is_dual;
 	slave->dio = priv->is_dio;
 	slave->mode = plat->tx_rx_mode;
+	priv->max_hz = slave->max_hz;
 
 	return 0;
 }
@@ -784,15 +786,12 @@ static int zynq_qspi_set_speed(struct udevice *bus, uint speed)
 	uint32_t confr;
 	u8 baud_rate_val = 0;
 
-	if (speed > plat->frequency)
-		speed = plat->frequency;
+	if (!speed || speed > priv->max_hz)
+		speed = priv->max_hz;
 
 	/* Set the clock frequency */
 	confr = readl(&regs->cr);
-	if (speed == 0) {
-		/* Set baudrate x8, if the freq is 0 */
-		baud_rate_val = 0x2;
-	} else if (plat->speed_hz != speed) {
+	if (plat->speed_hz != speed) {
 		while ((baud_rate_val < ZYNQ_QSPI_CR_BAUD_MAX) &&
 		       ((plat->frequency /
 		       (2 << baud_rate_val)) > speed))
@@ -855,6 +854,7 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	struct udevice *bus = slave->dev->parent;
 	struct zynq_qspi_priv *priv = dev_get_priv(bus);
 	int op_len, pos = 0, ret, i;
+	u32 dummy_bytes = 0;
 	unsigned int flag = 0;
 	const u8 *tx_buf = NULL;
 	u8 *rx_buf = NULL;
@@ -867,6 +867,11 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	}
 
 	op_len = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
+	if (op->dummy.nbytes) {
+		op_len = op->cmd.nbytes + op->addr.nbytes +
+			 op->dummy.nbytes / op->dummy.buswidth;
+		dummy_bytes = op->dummy.nbytes / op->dummy.buswidth;
+	}
 
 	u8 op_buf[op_len];
 
@@ -880,10 +885,8 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 		pos += op->addr.nbytes;
 	}
 
-	if (op->dummy.nbytes) {
-		memset(op_buf + pos, 0xff, op->dummy.nbytes);
-		slave->dummy_bytes = op->dummy.nbytes;
-	}
+	if (dummy_bytes)
+		memset(op_buf + pos, 0xff, dummy_bytes);
 
 	if (slave->flags & SPI_XFER_U_PAGE)
 		flag |= SPI_XFER_U_PAGE;
@@ -915,8 +918,50 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	return 0;
 }
 
+static int zynq_qspi_check_buswidth(struct spi_slave *slave, u8 width)
+{
+	u32 mode = slave->mode;
+
+	switch (width) {
+	case 1:
+		return 0;
+	case 2:
+		if (mode & SPI_RX_DUAL)
+			return 0;
+		break;
+	case 4:
+		if (mode & SPI_RX_QUAD)
+			return 0;
+		break;
+	}
+
+	return -ENOTSUPP;
+}
+
+bool zynq_qspi_mem_exec_op(struct spi_slave *slave,
+			   const struct spi_mem_op *op)
+{
+	if (zynq_qspi_check_buswidth(slave, op->cmd.buswidth))
+		return false;
+
+	if (op->addr.nbytes &&
+	    zynq_qspi_check_buswidth(slave, op->addr.buswidth))
+		return false;
+
+	if (op->dummy.nbytes &&
+	    zynq_qspi_check_buswidth(slave, op->dummy.buswidth))
+		return false;
+
+	if (op->data.dir != SPI_MEM_NO_DATA &&
+	    zynq_qspi_check_buswidth(slave, op->data.buswidth))
+		return false;
+
+	return true;
+}
+
 static const struct spi_controller_mem_ops zynq_qspi_mem_ops = {
 	.exec_op = zynq_qspi_exec_op,
+	.supports_op = zynq_qspi_mem_exec_op,
 };
 
 static const struct dm_spi_ops zynq_qspi_ops = {
