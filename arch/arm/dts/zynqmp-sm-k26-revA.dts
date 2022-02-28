@@ -93,6 +93,11 @@
 	label = "modepin";
 };
 
+&ttc0 {
+	status = "okay";
+	#pwm-cells = <1>;
+};
+
 &uart1 { /* MIO36/MIO37 */
 	status = "okay";
 };
