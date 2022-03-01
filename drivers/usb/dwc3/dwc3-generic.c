@@ -83,7 +83,7 @@ static void dwc3_frame_length_adjustment(struct udevice *dev, struct dwc3 *dwc)
 static int dwc3_generic_probe(struct udevice *dev,
 			      struct dwc3_generic_priv *priv)
 {
-	int rc, ret;
+	int rc;
 	struct dwc3_generic_plat *plat = dev_get_plat(dev);
 	struct dwc3 *dwc3 = &priv->dwc3;
 	struct dwc3_glue_data *glue = dev_get_plat(dev->parent);
@@ -109,15 +109,22 @@ static int dwc3_generic_probe(struct udevice *dev,
 		return rc;
 
 	if (device_is_compatible(dev->parent, "xlnx,zynqmp-dwc3")) {
-		ret = gpio_request_by_name(dev->parent, "reset-gpios", 0,
-					   &priv->ulpi_reset, GPIOD_ACTIVE_LOW);
-		if (ret != -EBUSY && ret)
-			return ret;
+		rc = gpio_request_by_name(dev->parent, "reset-gpios", 0,
+					  &priv->ulpi_reset, GPIOD_ACTIVE_LOW);
+		if (rc != -EBUSY && rc)
+			return rc;
 
 		/* Toggle ulpi to reset the phy. */
-		dm_gpio_set_value(&priv->ulpi_reset, 1);
+		rc = dm_gpio_set_value(&priv->ulpi_reset, 1);
+		if (rc)
+			return rc;
+
 		mdelay(5);
-		dm_gpio_set_value(&priv->ulpi_reset, 0);
+
+		rc = dm_gpio_set_value(&priv->ulpi_reset, 0);
+		if (rc)
+			return rc;
+
 		mdelay(5);
 	}
 
