@@ -721,8 +721,8 @@ static int sdhci_zynqmp_set_dynamic_config(struct arasan_sdhci_priv *priv,
 	struct clk clk;
 	unsigned long clock, mhz;
 
-	ret = xilinx_pm_request(PM_REQUEST_NODE, node_id, PM_CAPABILITY_ACCESS,
-				PM_MAX_QOS, ZYNQMP_PM_REQUEST_ACK_NO, NULL);
+	ret = xilinx_pm_request(PM_REQUEST_NODE, node_id, ZYNQMP_PM_CAPABILITY_ACCESS,
+				ZYNQMP_PM_MAX_QOS, ZYNQMP_PM_REQUEST_ACK_NO, NULL);
 	if (ret) {
 		dev_err(dev, "Request node failed for %d\n", node_id);
 		return ret;
