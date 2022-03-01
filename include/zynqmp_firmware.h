@@ -430,9 +430,6 @@ enum pm_sd_config_type {
 #define PMUFW_V1_0      ((1 << ZYNQMP_PM_VERSION_MAJOR_SHIFT) | 0)
 
 #define PMIO_NODE_ID_BASE		0x1410801B
-#define DEV_OSPI			0x1822402a
-#define PM_CAPABILITY_ACCESS		0x1
-#define PM_MAX_QOS			100
 /* Firmware feature check version mask */
 #define FIRMWARE_VERSION_MASK		GENMASK(15, 0)
 /* PM API versions */

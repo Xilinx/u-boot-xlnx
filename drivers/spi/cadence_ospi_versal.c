@@ -16,6 +16,7 @@
 #include <zynqmp_firmware.h>
 #include <asm/arch/hardware.h>
 #include "cadence_qspi.h"
+#include <dt-bindings/power/xlnx-versal-power.h>
 
 #define CMD_4BYTE_READ  0x13
 #define CMD_4BYTE_FAST_READ  0x0C
@@ -25,12 +26,12 @@ void cadence_qspi_apb_enable_linear_mode(bool enable)
 	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE)) {
 		if (enable)
 			/* ahb read mode */
-			xilinx_pm_request(PM_IOCTL, DEV_OSPI,
+			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,
 					  IOCTL_OSPI_MUX_SELECT,
 					  PM_OSPI_MUX_SEL_LINEAR, 0, NULL);
 		else
 			/* DMA mode */
-			xilinx_pm_request(PM_IOCTL, DEV_OSPI,
+			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,
 					  IOCTL_OSPI_MUX_SELECT,
 					  PM_OSPI_MUX_SEL_DMA, 0, NULL);
 	} else {
