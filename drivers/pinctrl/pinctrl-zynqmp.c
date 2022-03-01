@@ -12,12 +12,12 @@
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
-#include <asm/io.h>
-#include <linux/compat.h>
-#include <dm/device_compat.h>
-#include <dm/pinctrl.h>
 #include <zynqmp_firmware.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/io.h>
+#include <dm/device_compat.h>
+#include <dm/pinctrl.h>
+#include <linux/compat.h>
 #include <dt-bindings/pinctrl/pinctrl-zynqmp.h>
 
 #define PINCTRL_GET_FUNC_GROUPS_RESP_LEN	12
@@ -29,6 +29,11 @@
 #define MAX_PIN_GROUPS				50
 #define MAX_GROUP_NAME_LEN			32
 #define MAX_FUNC_NAME_LEN			16
+
+#define DRIVE_STRENGTH_2MA	2
+#define DRIVE_STRENGTH_4MA	4
+#define DRIVE_STRENGTH_8MA	8
+#define DRIVE_STRENGTH_12MA	12
 
 /*
  * This driver works with very simple configuration that has the same name
