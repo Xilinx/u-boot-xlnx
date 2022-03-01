@@ -414,26 +414,22 @@ enum pm_sd_config_type {
 	SD_CONFIG_FIXED = 4,	/* To set fixed config registers */
 };
 
-#define PM_SIP_SVC      0xc2000000
+#define PM_SIP_SVC	0xc2000000
 
-#define ZYNQMP_PM_VERSION_MAJOR         1
-#define ZYNQMP_PM_VERSION_MINOR         0
-#define ZYNQMP_PM_VERSION_MAJOR_SHIFT   16
-#define ZYNQMP_PM_VERSION_MINOR_MASK    0xFFFF
+#define ZYNQMP_PM_VERSION_MAJOR		1
+#define ZYNQMP_PM_VERSION_MINOR		0
+#define ZYNQMP_PM_VERSION_MAJOR_SHIFT	16
+#define ZYNQMP_PM_VERSION_MINOR_MASK	0xFFFF
 
 #define ZYNQMP_PM_VERSION       \
 	((ZYNQMP_PM_VERSION_MAJOR << ZYNQMP_PM_VERSION_MAJOR_SHIFT) | \
 	 ZYNQMP_PM_VERSION_MINOR)
 
-#define ZYNQMP_PM_VERSION_INVALID       ~0
+#define ZYNQMP_PM_VERSION_INVALID	~0
 
-#define PMUFW_V1_0      ((1 << ZYNQMP_PM_VERSION_MAJOR_SHIFT) | 0)
+#define PMUFW_V1_0	((1 << ZYNQMP_PM_VERSION_MAJOR_SHIFT) | 0)
 
 #define PMIO_NODE_ID_BASE		0x1410801B
-/* Firmware feature check version mask */
-#define FIRMWARE_VERSION_MASK		GENMASK(15, 0)
-/* PM API versions */
-#define PM_API_VERSION_2		2
 
 /*
  * Return payload size
@@ -483,5 +479,9 @@ enum zynqmp_pm_request_ack {
 #define ZYNQMP_PM_CAPABILITY_UNUSABLE	0x8U
 
 #define ZYNQMP_PM_MAX_QOS		100U
+/* Firmware feature check version mask */
+#define FIRMWARE_VERSION_MASK		GENMASK(15, 0)
+/* PM API versions */
+#define PM_API_VERSION_2		2
 
 #endif /* _ZYNQMP_FIRMWARE_H_ */
