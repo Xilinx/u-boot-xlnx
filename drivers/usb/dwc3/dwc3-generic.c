@@ -191,6 +191,10 @@ static int dwc3_generic_of_to_plat(struct udevice *dev)
 		}
 	}
 
+	if (plat->dr_mode == USB_DR_MODE_PERIPHERAL &&
+	    plat->maximum_speed > USB_SPEED_HIGH)
+		plat->maximum_speed = USB_SPEED_HIGH;
+
 	return 0;
 }
 
