@@ -96,4 +96,3 @@ static const struct usb_device_id usb5744_id_table[] = {
 };
 
 U_BOOT_USB_DEVICE(usb5744, usb5744_id_table);
-

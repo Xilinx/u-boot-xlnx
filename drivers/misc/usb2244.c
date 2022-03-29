@@ -59,4 +59,3 @@ static const struct usb_device_id usb2244_id_table[] = {
 };
 
 U_BOOT_USB_DEVICE(usb2244, usb2244_id_table);
-
