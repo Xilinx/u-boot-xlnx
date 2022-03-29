@@ -29,9 +29,16 @@ static int usb5744_probe(struct udevice *dev)
 	int ret;
 	u32 buf = I2C_DATA;
 
-	dm_gpio_set_value(&priv->reset_gpio, 1);
+	ret = dm_gpio_set_value(&priv->reset_gpio, 1);
+	if (ret)
+		return ret;
+
 	mdelay(5);
-	dm_gpio_set_value(&priv->reset_gpio, 0);
+
+	ret = dm_gpio_set_value(&priv->reset_gpio, 0);
+	if (ret)
+		return ret;
+
 	mdelay(10);
 
 	i2c_chip = dev_get_parent_plat(priv->i2c_dev);
