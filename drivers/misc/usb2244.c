@@ -18,10 +18,18 @@ struct usb2244_priv {
 static int usb2244_probe(struct udevice *dev)
 {
 	struct usb2244_priv *priv = dev_get_priv(dev);
+	int ret;
 
-	dm_gpio_set_value(&priv->reset_gpio, 1);
+	ret = dm_gpio_set_value(&priv->reset_gpio, 1);
+	if (ret)
+		return ret;
+
 	mdelay(5);
-	dm_gpio_set_value(&priv->reset_gpio, 0);
+
+	ret = dm_gpio_set_value(&priv->reset_gpio, 0);
+	if (ret)
+		return ret;
+
 	mdelay(5);
 
 	return 0;
