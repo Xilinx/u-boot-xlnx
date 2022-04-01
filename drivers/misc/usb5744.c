@@ -56,7 +56,8 @@ static int usb5744_plat(struct udevice *dev)
 	int ret;
 
 	ret = gpio_request_by_name(dev, "reset-gpios", 0,
-				   &priv->reset_gpio, GPIOD_ACTIVE_LOW);
+				   &priv->reset_gpio,
+				   GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
 	if (ret) {
 		dev_err(dev, "Gpio request failed, err: %d\n", ret);
 		return ret;

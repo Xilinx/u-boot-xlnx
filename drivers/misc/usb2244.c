@@ -33,7 +33,7 @@ static int usb2244_plat(struct udevice *dev)
 	int ret;
 
 	ret = gpio_request_by_name(dev, "reset-gpios", 0, &priv->reset_gpio,
-				   GPIOD_ACTIVE_LOW);
+				   GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
 	if (ret) {
 		printf("%s, gpio request failed err: %d\n", __func__, ret);
 		return ret;
