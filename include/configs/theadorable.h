@@ -44,9 +44,6 @@
 #define CONFIG_SYS_SATA_MAX_DEVICE	1
 #define CONFIG_LBA48
 
-/* Enable LCD and reserve 512KB from top of memory*/
-#define CONFIG_SYS_MEM_TOP_HIDE		0x80000
-
 /* FPGA programming support */
 #define CONFIG_FPGA_STRATIX_V
 
