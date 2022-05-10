@@ -215,7 +215,6 @@ struct cadence_spi_plat {
 	fdt_addr_t	ahbsize;
 	bool		use_dac_mode;
 	int		read_delay;
-	u32		wr_delay;
 
 	/* Flash parameters */
 	u32		page_size;
@@ -226,17 +225,17 @@ struct cadence_spi_plat {
 	u32		tslch_ns;
 	bool		is_dma;
 	int		is_dual;
-
-	/* Transaction protocol parameters. */
-	u8		inst_width;
-	u8		addr_width;
-	u8		data_width;
-	bool		dtr;
 };
 
 struct cadence_spi_priv {
+	unsigned int	ref_clk_hz;
+	unsigned int	max_hz;
 	void		*regbase;
 	void		*ahbbase;
+	unsigned int	fifo_depth;
+	unsigned int	fifo_width;
+	unsigned int	trigger_address;
+	fdt_addr_t      ahbsize;
 	size_t		cmd_len;
 	u8		cmd_buf[32];
 	size_t		data_len;
@@ -247,32 +246,52 @@ struct cadence_spi_priv {
 	unsigned int	qspi_calibrated_hz;
 	unsigned int	qspi_calibrated_cs;
 	unsigned int	previous_hz;
+	u32		wr_delay;
 
 	struct reset_ctl_bulk resets;
+	u32		page_size;
+	u32		block_size;
+	u32		tshsl_ns;
+	u32		tsd2d_ns;
+	u32		tchsh_ns;
+	u32		tslch_ns;
+	u8              edge_mode;
+	u8              dll_mode;
+	bool		extra_dummy;
+	bool		ddr_init;
+	bool		is_decoded_cs;
+	bool		use_dac_mode;
+	bool		is_dma;
+
+	/* Transaction protocol parameters. */
+	u8		inst_width;
+	u8		addr_width;
+	u8		data_width;
+	bool		dtr;
 };
 
 /* Functions call declaration */
-void cadence_qspi_apb_controller_init(struct cadence_spi_plat *plat);
+void cadence_qspi_apb_controller_init(struct cadence_spi_priv *priv);
 void cadence_qspi_apb_controller_enable(void *reg_base_addr);
 void cadence_qspi_apb_controller_disable(void *reg_base_addr);
 void cadence_qspi_apb_dac_mode_enable(void *reg_base);
 
-int cadence_qspi_apb_command_read_setup(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_command_read_setup(struct cadence_spi_priv *priv,
 					const struct spi_mem_op *op);
-int cadence_qspi_apb_command_read(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 				  const struct spi_mem_op *op);
-int cadence_qspi_apb_command_write_setup(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_command_write_setup(struct cadence_spi_priv *priv,
 					 const struct spi_mem_op *op);
-int cadence_qspi_apb_command_write(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 				   const struct spi_mem_op *op);
 
-int cadence_qspi_apb_read_setup(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 				const struct spi_mem_op *op);
-int cadence_qspi_apb_read_execute(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_read_execute(struct cadence_spi_priv *priv,
 				  const struct spi_mem_op *op);
-int cadence_qspi_apb_write_setup(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_write_setup(struct cadence_spi_priv *priv,
 				 const struct spi_mem_op *op);
-int cadence_qspi_apb_write_execute(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_write_execute(struct cadence_spi_priv *priv,
 				   const struct spi_mem_op *op);
 
 void cadence_qspi_apb_chipselect(void *reg_base,
@@ -287,10 +306,10 @@ void cadence_qspi_apb_delay(void *reg_base,
 void cadence_qspi_apb_enter_xip(void *reg_base, char xip_dummy);
 void cadence_qspi_apb_readdata_capture(void *reg_base,
 	unsigned int bypass, unsigned int delay);
-int cadence_qspi_apb_dma_read(struct cadence_spi_plat *plat,
+int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 			      unsigned int n_rx, u8 *rxbuf);
 int cadence_qspi_apb_exec_flash_cmd(void *reg_base, unsigned int reg);
-int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_plat *plat);
+int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_priv *priv);
 int cadence_spi_versal_flash_reset(struct udevice *dev);
 void cadence_qspi_apb_enable_linear_mode(bool enable);
 
