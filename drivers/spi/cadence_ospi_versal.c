@@ -15,6 +15,7 @@
 #include <cpu_func.h>
 #include <zynqmp_firmware.h>
 #include <asm/arch/hardware.h>
+#include <soc.h>
 #include "cadence_qspi.h"
 #include <dt-bindings/power/xlnx-versal-power.h>
 
@@ -146,6 +147,30 @@ int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_priv *priv)
 	writel(readl(priv->regbase + CQSPI_DMA_DST_I_STS_REG),
 	       priv->regbase + CQSPI_DMA_DST_I_STS_REG);
 	return 0;
+}
+
+static const struct soc_attr matches[] = {
+	{ .family = "Versal", .revision = "v2" },
+	{ }
+};
+
+/*
+ * cadence_qspi_versal_set_dll_mode checks for silicon version
+ * and set the DLL mode.
+ * Returns 0 incase of success, -ENOTSUPP in case of failure.
+ */
+int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
+{
+	struct cadence_spi_priv *priv = dev_get_priv(dev);
+	const struct soc_attr *attr;
+
+	attr = soc_device_match(matches);
+	if (attr) {
+		priv->dll_mode = CQSPI_DLL_MODE_MASTER;
+		return 0;
+	}
+
+	return -ENOTSUPP;
 }
 
 #if defined(CONFIG_DM_GPIO)
