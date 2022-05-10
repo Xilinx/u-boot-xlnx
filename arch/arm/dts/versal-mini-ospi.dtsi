@@ -43,7 +43,7 @@
 			clocks = <&clk125 &clk125>;
 			bus-num = <2>;
 			num-cs = <1>;
-			cdns,fifo-depth = <508>;
+			cdns,fifo-depth = <256>;
 			cdns,fifo-width = <4>;
 			cdns,is-dma = <1>;
 			cdns,is-stig-pgm = <1>;
@@ -56,7 +56,7 @@
 				compatible = "n25q512a", "micron,m25p80",
 					     "jedec,spi-nor";
 				reg = <0x0>;
-				spi-tx-bus-width = <1>;
+				spi-tx-bus-width = <8>;
 				spi-rx-bus-width = <8>;
 				spi-max-frequency = <20000000>;
 			};
