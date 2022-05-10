@@ -526,6 +526,23 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 	/* 0 means 1 byte. */
 	reg |= (((rxlen - 1) & CQSPI_REG_CMDCTRL_RD_BYTES_MASK)
 		<< CQSPI_REG_CMDCTRL_RD_BYTES_LSB);
+
+	/* Convert to clock cycles. */
+	dummy_clk = op->dummy.nbytes * CQSPI_DUMMY_CLKS_PER_BYTE;
+
+	/*
+	 * In case of SR, CR reads in ddr mode, we need
+	 * to use dummy cycles.
+	 */
+	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && !dummy_clk)
+		dummy_clk = 8;
+	if (priv->extra_dummy)
+		dummy_clk++;
+
+	if (dummy_clk)
+		reg |= (dummy_clk & CQSPI_REG_CMDCTRL_DUMMY_MASK) <<
+			CQSPI_REG_CMDCTRL_DUMMY_LSB;
+
 	status = cadence_qspi_apb_exec_flash_cmd(reg_base, reg);
 	if (status != 0)
 		return status;
@@ -632,7 +649,6 @@ int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 				const struct spi_mem_op *op)
 {
-	unsigned int reg;
 	unsigned int rd_reg;
 	unsigned int dummy_clk;
 	unsigned int dummy_bytes = op->dummy.nbytes;
@@ -669,6 +685,9 @@ int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 
 		if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 			return -ENOTSUPP;
+
+		if (priv->extra_dummy)
+			dummy_clk++;
 
 		if (dummy_clk)
 			rd_reg |= (dummy_clk & CQSPI_REG_RD_INSTR_DUMMY_MASK)
@@ -849,11 +868,10 @@ int cadence_qspi_apb_write_setup(struct cadence_spi_priv *priv,
 		reg |= CQSPI_REG_WR_DISABLE_AUTO_POLL;
 		writel(reg, priv->regbase + CQSPI_REG_WR_COMPLETION_CTRL);
 	}
+	clrsetbits_le32(priv->regbase + CQSPI_REG_SIZE,
+			CQSPI_REG_SIZE_ADDRESS_MASK,
+			op->addr.nbytes - 1);
 
-	reg = readl(priv->regbase + CQSPI_REG_SIZE);
-	reg &= ~CQSPI_REG_SIZE_ADDRESS_MASK;
-	reg |= (op->addr.nbytes - 1);
-	writel(reg, priv->regbase + CQSPI_REG_SIZE);
 	return 0;
 }
 
@@ -868,6 +886,10 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 	unsigned int write_bytes;
 	int ret;
 
+	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && (n_tx % 2) != 0)
+		n_tx++;
+	remaining = n_tx;
+
 	/*
 	 * Use bounce buffer for non 32 bit aligned txbuf to avoid data
 	 * aborts
@@ -879,6 +901,8 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 		memcpy(bounce_buf, txbuf, n_tx);
 		bb_txbuf = bounce_buf;
 	}
+
+	clrbits_le32(priv->regbase + CQSPI_REG_CONFIG, CQSPI_REG_CONFIG_ENBL_DMA);
 
 	/* Configure the indirect read transfer bytes */
 	writel(n_tx, priv->regbase + CQSPI_REG_INDIRECTWRBYTES);

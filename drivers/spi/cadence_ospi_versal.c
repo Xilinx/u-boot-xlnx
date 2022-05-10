@@ -21,6 +21,7 @@
 
 #define CMD_4BYTE_READ  0x13
 #define CMD_4BYTE_FAST_READ  0x0C
+#define CMD_4BYTE_OCTAL_READ 0x7c
 
 void cadence_qspi_apb_enable_linear_mode(bool enable)
 {
@@ -49,7 +50,7 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 			      unsigned int n_rx, u8 *rxbuf)
 {
 	u32 reg, ret, rx_rem, bytes_to_dma, data;
-	u8 opcode, addr_bytes, dummy_cycles;
+	u8 opcode, addr_bytes, dummy_cycles, unaligned_byte;
 
 	rx_rem = n_rx % 4;
 	bytes_to_dma = n_rx - rx_rem;
@@ -103,10 +104,10 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 		addr_bytes = readl(priv->regbase + CQSPI_REG_SIZE) &
 				   CQSPI_REG_SIZE_ADDRESS_MASK;
 
-		opcode = CMD_4BYTE_FAST_READ;
-		dummy_cycles = 8;
-		writel((dummy_cycles << CQSPI_REG_RD_INSTR_DUMMY_LSB) | opcode,
-		       priv->regbase + CQSPI_REG_RD_INSTR);
+		opcode = (u8)readl(priv->regbase + CQSPI_REG_RD_INSTR);
+		if (opcode == CMD_4BYTE_OCTAL_READ &&
+		    priv->edge_mode != CQSPI_EDGE_MODE_DDR)
+			opcode = CMD_4BYTE_FAST_READ;
 
 		reg = opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
 		reg |= (0x1 << CQSPI_REG_CMDCTRL_RD_EN_LSB);
@@ -118,7 +119,12 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 				CQSPI_REG_RD_INSTR_DUMMY_MASK;
 		reg |= (dummy_cycles & CQSPI_REG_CMDCTRL_DUMMY_MASK) <<
 			CQSPI_REG_CMDCTRL_DUMMY_LSB;
-		reg |= (((rx_rem - 1) & CQSPI_REG_CMDCTRL_RD_BYTES_MASK) <<
+		if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && (rx_rem % 2) != 0)
+			unaligned_byte = 1;
+		else
+			unaligned_byte = 0;
+		reg |= (((rx_rem - 1 + unaligned_byte) &
+			CQSPI_REG_CMDCTRL_RD_BYTES_MASK) <<
 			CQSPI_REG_CMDCTRL_RD_BYTES_LSB);
 		ret = cadence_qspi_apb_exec_flash_cmd(priv->regbase, reg);
 		if (ret)
