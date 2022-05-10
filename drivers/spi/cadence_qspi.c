@@ -638,6 +638,21 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 	return err;
 }
 
+bool cadence_spi_mem_dtr_supports_op(struct spi_slave *slave,
+				     const struct spi_mem_op *op)
+{
+	/*
+	 * In DTR mode, except op->cmd all other parameters like address,
+	 * dummy and data could be 0.
+	 * So lets only check if the cmd buswidth and number of opcode bytes
+	 * are true for DTR to support.
+	 */
+	if (op->cmd.buswidth == 8 && op->cmd.nbytes % 2)
+		return false;
+
+	return true;
+}
+
 static bool cadence_spi_mem_supports_op(struct spi_slave *slave,
 					const struct spi_mem_op *op)
 {
@@ -653,7 +668,7 @@ static bool cadence_spi_mem_supports_op(struct spi_slave *slave,
 		return false;
 
 	if (all_true)
-		return spi_mem_dtr_supports_op(slave, op);
+		return cadence_spi_mem_dtr_supports_op(slave, op);
 	else
 		return spi_mem_default_supports_op(slave, op);
 }
