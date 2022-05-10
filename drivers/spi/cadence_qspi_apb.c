@@ -495,16 +495,27 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 	}
 
 	if (priv->dtr)
+		rxlen = ((rxlen % 2) != 0) ? (rxlen + 1) : rxlen;
+
+	if (priv->dtr)
 		opcode = op->cmd.opcode >> 8;
 	else
 		opcode = op->cmd.opcode;
 
 	reg = opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
 
+	clrbits_le32(reg_base + CQSPI_REG_CONFIG, CQSPI_REG_CONFIG_ENBL_DMA);
+
 	/* Set up dummy cycles. */
 	dummy_clk = cadence_qspi_calc_dummy(op, priv->dtr);
 	if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 		return -ENOTSUPP;
+
+	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && !dummy_clk)
+		dummy_clk = 8;
+
+	if (priv->extra_dummy)
+		dummy_clk++;
 
 	if (dummy_clk)
 		reg |= (dummy_clk & CQSPI_REG_CMDCTRL_DUMMY_MASK)
@@ -583,12 +594,15 @@ int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 		return -EINVAL;
 	}
 
+	reg = cadence_qspi_calc_rdreg(priv);
+	writel(reg, reg_base + CQSPI_REG_WR_INSTR);
+
 	if (priv->dtr)
 		opcode = op->cmd.opcode >> 8;
 	else
 		opcode = op->cmd.opcode;
 
-	reg |= opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
+	reg = opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
 
 	if (txlen) {
 		/* writing data = yes */
@@ -664,10 +678,10 @@ int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 	writel(rd_reg, priv->regbase + CQSPI_REG_RD_INSTR);
 
 	/* set device size */
-	reg = readl(priv->regbase + CQSPI_REG_SIZE);
-	reg &= ~CQSPI_REG_SIZE_ADDRESS_MASK;
-	reg |= (op->addr.nbytes - 1);
-	writel(reg, priv->regbase + CQSPI_REG_SIZE);
+	clrsetbits_le32(priv->regbase + CQSPI_REG_SIZE,
+			CQSPI_REG_SIZE_ADDRESS_MASK,
+			op->addr.nbytes - 1);
+
 	return 0;
 }
 
