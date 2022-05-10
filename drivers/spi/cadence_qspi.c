@@ -580,6 +580,34 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 	int err = 0;
 	u32 mode;
 
+	if (priv->ddr_init && (op->cmd.opcode & 0xff) == CQSPI_READ_ID) {
+		int ret;
+
+		/* Reset ospi controller */
+		setbits_le32((u32 *)OSPI_CTRL_RST, 1);
+		udelay(10);
+		clrbits_le32((u32 *)OSPI_CTRL_RST, 1);
+
+		ret = wait_for_bit_le32(base + CQSPI_REG_CONFIG,
+					1 << CQSPI_REG_CONFIG_IDLE_LSB,
+					1, CQSPI_TIMEOUT_MS, 0);
+		if (ret) {
+			printf("spi_wait_idle error : 0x%x\n", ret);
+			return ret;
+		}
+
+		cadence_qspi_apb_controller_init(priv);
+		priv->edge_mode = CQSPI_EDGE_MODE_SDR;
+		priv->extra_dummy = 0;
+		priv->previous_hz = 0;
+		priv->qspi_calibrated_hz = 0;
+		/* Setup default speed and calibrate */
+		ret = cadence_spi_set_speed(bus, 0);
+		if (ret)
+			return ret;
+		priv->ddr_init = 0;
+	}
+
 	if (spi->flags & SPI_XFER_U_PAGE)
 		priv->cs = CQSPI_CS1;
 	else

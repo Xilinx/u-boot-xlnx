@@ -59,6 +59,8 @@
 #define CQSPI_READID_LOOP_MAX			10
 #define TERA_MACRO				1000000000000l
 
+#define OSPI_CTRL_RST				0xF1260304
+
 /****************************************************************************
  * Controller's configuration and status register (offset from QSPI_BASE)
  ****************************************************************************/
