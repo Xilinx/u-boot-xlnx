@@ -3834,6 +3834,7 @@ static int spi_nor_octal_dtr_enable(struct spi_nor *nor)
 
 static int spi_nor_init(struct spi_nor *nor)
 {
+	u8 sr2;
 	int err;
 
 	if (nor->isparallel)
@@ -3857,6 +3858,18 @@ static int spi_nor_init(struct spi_nor *nor)
 		write_enable(nor);
 		write_sr(nor, 0);
 		spi_nor_wait_till_ready(nor);
+
+		if (JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND) {
+			sr2 = 0;
+			err = nor->write_reg(nor,
+					     SPINOR_OP_WIN_WRSR2, &sr2, 1);
+			if (err < 0) {
+				dev_dbg(nor->dev,
+					"error while writing SR-2 register\n");
+				return -EINVAL;
+			}
+			spi_nor_wait_till_ready(nor);
+		}
 	}
 
 	if (nor->quad_enable) {
