@@ -109,6 +109,10 @@ static void dwc3_frame_length_adjustment(struct dwc3 *dwc, u32 fladj)
 		return;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GFLADJ);
+
+	if (dwc->refclk_fladj)
+		reg &= ~GFLADJ_REFCLK_FLADJ;
+
 	reg &= ~DWC3_GFLADJ_30MHZ_MASK;
 	reg |= DWC3_GFLADJ_30MHZ_SDBND_SEL | fladj;
 	dwc3_writel(dwc->regs, DWC3_GFLADJ, reg);
@@ -1035,6 +1039,7 @@ void dwc3_of_parse(struct dwc3 *dwc)
 		| (dwc->is_utmi_l1_suspend << 4);
 
 	dev_read_u32(dev, "snps,quirk-frame-length-adjustment", &dwc->fladj);
+	dwc->refclk_fladj = dev_read_bool(dev, "snps,refclk_fladj");
 
 	/*
 	 * Handle property "snps,incr-burst-type-adjustment".
