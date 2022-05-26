@@ -406,11 +406,6 @@
 #define DWC3_DEPCMD_TYPE_BULK		2
 #define DWC3_DEPCMD_TYPE_INTR		3
 
-/* Global Frame Length Adjustment Register */
-#define GFLADJ_30MHZ_REG_SEL		BIT(7)
-#define GFLADJ_30MHZ_MASK		GENMASK(5, 0)
-#define GFLADJ_REFCLK_FLADJ		GENMASK(21, 8)
-
 /* Structures */
 
 struct dwc3_trb;
