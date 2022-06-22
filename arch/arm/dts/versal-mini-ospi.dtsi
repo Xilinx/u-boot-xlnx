@@ -48,7 +48,6 @@
 			cdns,is-dma = <1>;
 			cdns,is-stig-pgm = <1>;
 			cdns,trigger-address = <0xc0000000>;
-			#stream-id-cells = <1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 
