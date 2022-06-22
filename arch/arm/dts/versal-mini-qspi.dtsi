@@ -43,7 +43,6 @@
 			reg = <0x0 0xf1030000 0x0 0x1000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			#stream-id-cells = <1>;
 			clocks = <&clk150 &clk150>;
 
 			flash0: flash@0 {
