@@ -310,7 +310,7 @@
 &usb0 {
 	clocks = <&versal_clk USB0_BUS_REF>, <&versal_clk USB3_DUAL_REF>;
 	power-domains = <&versal_firmware PM_DEV_USB_0>;
-	resets = <&versal_reset PM_RST_USB_0>;
+	resets = <&versal_reset VERSAL_RST_USB_0>;
 };
 
 &watchdog {
