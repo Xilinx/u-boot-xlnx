@@ -369,8 +369,6 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_priv *priv)
 	reg &= ~CQSPI_REG_CONFIG_DIRECT;
 	reg &= ~(CQSPI_REG_CONFIG_CHIPSELECT_MASK
 			<< CQSPI_REG_CONFIG_CHIPSELECT_LSB);
-	if (priv->is_dma)
-		reg |= CQSPI_REG_CONFIG_ENBL_DMA;
 
 	writel(reg, priv->regbase + CQSPI_REG_CONFIG);
 
@@ -503,8 +501,6 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 		opcode = op->cmd.opcode;
 
 	reg = opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
-
-	clrbits_le32(reg_base + CQSPI_REG_CONFIG, CQSPI_REG_CONFIG_ENBL_DMA);
 
 	/* Set up dummy cycles. */
 	dummy_clk = cadence_qspi_calc_dummy(op, priv->dtr);
@@ -901,8 +897,6 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 		memcpy(bounce_buf, txbuf, n_tx);
 		bb_txbuf = bounce_buf;
 	}
-
-	clrbits_le32(priv->regbase + CQSPI_REG_CONFIG, CQSPI_REG_CONFIG_ENBL_DMA);
 
 	/* Configure the indirect read transfer bytes */
 	writel(n_tx, priv->regbase + CQSPI_REG_INDIRECTWRBYTES);
