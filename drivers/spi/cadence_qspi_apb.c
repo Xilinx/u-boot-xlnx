@@ -507,9 +507,6 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 	if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 		return -ENOTSUPP;
 
-	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && !dummy_clk)
-		dummy_clk = 8;
-
 	if (priv->extra_dummy)
 		dummy_clk++;
 
@@ -522,22 +519,6 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 	/* 0 means 1 byte. */
 	reg |= (((rxlen - 1) & CQSPI_REG_CMDCTRL_RD_BYTES_MASK)
 		<< CQSPI_REG_CMDCTRL_RD_BYTES_LSB);
-
-	/* Convert to clock cycles. */
-	dummy_clk = op->dummy.nbytes * CQSPI_DUMMY_CLKS_PER_BYTE;
-
-	/*
-	 * In case of SR, CR reads in ddr mode, we need
-	 * to use dummy cycles.
-	 */
-	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && !dummy_clk)
-		dummy_clk = 8;
-	if (priv->extra_dummy)
-		dummy_clk++;
-
-	if (dummy_clk)
-		reg |= (dummy_clk & CQSPI_REG_CMDCTRL_DUMMY_MASK) <<
-			CQSPI_REG_CMDCTRL_DUMMY_LSB;
 
 	status = cadence_qspi_apb_exec_flash_cmd(reg_base, reg);
 	if (status != 0)
