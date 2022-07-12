@@ -450,7 +450,6 @@ static int read_sr(struct spi_nor *nor)
 		}
 		val[0] |= val[1];
 	} else {
-		op.data.nbytes = 1;
 		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
 			pr_debug("error %d reading SR\n", (int)ret);
@@ -505,7 +504,6 @@ static int read_fsr(struct spi_nor *nor)
 		}
 		val[0] &= val[1];
 	} else {
-		op.data.nbytes = 1;
 		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
 			pr_debug("error %d reading FSR\n", ret);
