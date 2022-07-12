@@ -199,7 +199,7 @@ config RESET_SCMI
 	  protocol communication with a SCMI server.
 
 config RESET_ZYNQMP
-	bool "Reset Driver for Xilinx ZynqMP SoC's"
+	bool "Reset Driver for Xilinx ZynqMP & Versal SoC's"
 	depends on DM_RESET && ZYNQMP_FIRMWARE
 	help
 	  Support for reset controller on Xilinx ZynqMP SoC. Driver is only
