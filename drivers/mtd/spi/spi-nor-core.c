@@ -2951,7 +2951,8 @@ static int spi_nor_init_params(struct spi_nor *nor,
 					  SNOR_PROTO_1_1_8);
 	}
 
-	if (info->flags & SPI_NOR_OCTAL_DTR_READ) {
+	if (CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE) &&
+	    info->flags & SPI_NOR_OCTAL_DTR_READ) {
 		params->hwcaps.mask |= SNOR_HWCAPS_READ_8_8_8_DTR;
 		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_8_8_8_DTR],
 					  0, 20, SPINOR_OP_READ_FAST,
@@ -2967,8 +2968,10 @@ static int spi_nor_init_params(struct spi_nor *nor,
 	 * Since xSPI Page Program opcode is backward compatible with
 	 * Legacy SPI, use Legacy SPI opcode there as well.
 	 */
-	spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP_8_8_8_DTR],
-				SPINOR_OP_PP, SNOR_PROTO_8_8_8_DTR);
+	if (CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE)) {
+		spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP_8_8_8_DTR],
+					SPINOR_OP_PP, SNOR_PROTO_8_8_8_DTR);
+	}
 
 	if (info->flags & SPI_NOR_QUAD_READ) {
 		params->hwcaps.mask |= SNOR_HWCAPS_PP_1_1_4;
@@ -3801,6 +3804,9 @@ static void mt35xu512aba_default_init(struct spi_nor *nor)
 static void mt35xu512aba_post_sfdp_fixup(struct spi_nor *nor,
 					 struct spi_nor_flash_parameter *params)
 {
+	if (!CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE))
+		return;
+
 	/* Set the Fast Read settings. */
 	params->hwcaps.mask |= SNOR_HWCAPS_READ_8_8_8_DTR;
 	spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_8_8_8_DTR],
