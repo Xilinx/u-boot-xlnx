@@ -90,13 +90,14 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 		writel(CQSPI_REG_INDIRECTRD_DONE, priv->regbase +
 		       CQSPI_REG_INDIRECTRD);
 		rxbuf += bytes_to_dma;
-	}
 
-	if (rx_rem) {
+		/* Disable DMA on completion */
 		reg = readl(priv->regbase + CQSPI_REG_CONFIG);
 		reg &= ~CQSPI_REG_CONFIG_ENBL_DMA;
 		writel(reg, priv->regbase + CQSPI_REG_CONFIG);
+	}
 
+	if (rx_rem) {
 		reg = readl(priv->regbase + CQSPI_REG_INDIRECTRDSTARTADDR);
 		reg += bytes_to_dma;
 		writel(reg, priv->regbase + CQSPI_REG_CMDADDRESS);
