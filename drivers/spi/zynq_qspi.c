@@ -101,7 +101,6 @@ struct zynq_qspi_plat {
 	u32 frequency;          /* input frequency */
 	u32 speed_hz;
 	u32 is_dual;
-	u32 tx_rx_mode;
 };
 
 /* zynq qspi priv */
@@ -131,9 +130,6 @@ static int zynq_qspi_of_to_plat(struct udevice *bus)
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
 	int is_dual;
-	u32 mode = 0;
-	int offset;
-	u32 value;
 
 	plat->regs = (struct zynq_qspi_regs *)fdtdec_get_addr(blob,
 							      node, "reg");
@@ -149,40 +145,6 @@ static int zynq_qspi_of_to_plat(struct udevice *bus)
 			plat->is_dual = SF_SINGLE_FLASH;
 		else
 			plat->is_dual = SF_DUAL_STACKED_FLASH;
-
-	offset = fdt_first_subnode(blob, node);
-
-	value = fdtdec_get_uint(blob, offset, "spi-rx-bus-width", 1);
-	switch (value) {
-	case 1:
-		break;
-	case 2:
-		mode |= SPI_RX_DUAL;
-		break;
-	case 4:
-		mode |= SPI_RX_QUAD;
-		break;
-	default:
-		printf("Invalid spi-rx-bus-width %d\n", value);
-		break;
-	}
-
-	value = fdtdec_get_uint(blob, offset, "spi-tx-bus-width", 1);
-	switch (value) {
-	case 1:
-		break;
-	case 2:
-		mode |= SPI_TX_DUAL;
-		break;
-	case 4:
-		mode |= SPI_TX_QUAD;
-		break;
-	default:
-		printf("Invalid spi-tx-bus-width %d\n", value);
-		break;
-	}
-
-	plat->tx_rx_mode = mode;
 
 	return 0;
 }
@@ -286,11 +248,9 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 {
 	struct spi_slave *slave = dev_get_parent_priv(bus);
 	struct zynq_qspi_priv *priv = dev_get_priv(bus->parent);
-	struct zynq_qspi_plat *plat = dev_get_plat(bus->parent);
 
 	slave->option = priv->is_dual;
 	slave->dio = priv->is_dio;
-	slave->mode = plat->tx_rx_mode;
 	priv->max_hz = slave->max_hz;
 
 	return 0;
