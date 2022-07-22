@@ -324,13 +324,19 @@
 			clocks = <&versal_net_clk LPD_LSBUS>,
 				 <&versal_net_clk GEM0_REF>, <&versal_net_clk GEM0_REF_TX>,
 				 <&versal_net_clk GEM0_REF_RX>, <&versal_net_clk GEM_TSU_REF>;
-			phy1: ethernet-phy@1 {
-				reg = <1>;
-				max-speed = <100>;
-				ti,rx-internal-delay = <11>;
-				ti,tx-internal-delay = <10>;
-				ti,fifo-depth = <1>;
-				ti,dp83867-rxctrl-strap-quirk;
+			mdio0: mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				phy1: ethernet-phy@1 {
+					#phy-cells = <1>;
+					compatible = "ethernet-phy-id2000.a231";
+					reg = <1>;
+					max-speed = <100>;
+					ti,rx-internal-delay = <11>;
+					ti,tx-internal-delay = <10>;
+					ti,fifo-depth = <1>;
+					ti,dp83867-rxctrl-strap-quirk;
+				};
 			};
 		};
 
@@ -347,9 +353,15 @@
 			clocks = <&versal_net_clk LPD_LSBUS>,
 				 <&versal_net_clk GEM1_REF>, <&versal_net_clk GEM1_REF_TX>,
 				 <&versal_net_clk GEM1_REF_RX>, <&versal_net_clk GEM_TSU_REF>;
-			phy2: ethernet-phy@2 {
-				reg = <2>;
-				max-speed = <100>;
+			mdio1: mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				phy2: ethernet-phy@2 {
+					compatible = "ethernet-phy-id0007.0762"; /* Vitesse VSC8540 */
+					reg = <2>;
+					max-speed = <100>;
+				};
 			};
 		};
 
