@@ -386,11 +386,13 @@ static int zynqmp_firmware_bind(struct udevice *dev)
 		ret = device_bind_driver_to_node(dev, "zynqmp_power_domain",
 						 "zynqmp_power_domain",
 						 dev_ofnode(dev), &child);
-		if (ret)
-			printf("zynqmp power domain driver is not binded\n");
+		if (ret) {
+			printf("zynqmp power domain driver is not bound: %d\n", ret);
+			return ret;
+		}
 	}
 
-	return 0;
+	return dm_scan_fdt_dev(dev);
 }
 
 U_BOOT_DRIVER(zynqmp_firmware) = {
