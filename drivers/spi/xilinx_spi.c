@@ -24,8 +24,6 @@
 #include <wait_bit.h>
 #include <linux/bitops.h>
 
-DECLARE_GLOBAL_DATA_PTR;
-
 /*
  * [0]: http://www.xilinx.com/support/documentation
  *
@@ -82,8 +80,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define XILINX_SPI_IDLE_VAL	GENMASK(7, 0)
 
 #define XILINX_SPISR_TIMEOUT	10000 /* in milliseconds */
-
-#define XILINX_SPI_QUAD_MODE	2
 
 /* xilinx spi register set */
 struct xilinx_spi_regs {
@@ -365,7 +361,7 @@ static int xilinx_qspi_check_buswidth(struct spi_slave *slave, u8 width)
 		break;
 	}
 
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 bool xilinx_qspi_mem_exec_op(struct spi_slave *slave,
