@@ -1,0 +1,7 @@
+# Copyright (c) 2020 - 2022, Xilinx, Inc.
+#
+# SPDX-License-Identifier: GPL-2.0
+
+if ARCH_VERSAL_NET
+
+endif
