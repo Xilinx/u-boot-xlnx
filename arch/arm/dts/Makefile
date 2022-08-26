@@ -436,6 +436,10 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-x-ebm-01-revA.dtbo \
 	versal-x-ebm-02-revA.dtbo \
 	versal-x-ebm-03-revA.dtbo
+dtb-$(CONFIG_ARCH_VERSAL_NET) += \
+	versal-net-emu-rev1.9.dtb \
+	versal-net-ipp-rev1.9.dtb \
+	versal-net-ipp-rev1.9-ospi.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP_R5) += \
 	zynqmp-r5.dtb
 dtb-$(CONFIG_AM33XX) += \
