@@ -516,7 +516,7 @@
 			reg = <0 0xf1040000 0 0x10000>;
 			interrupts = <0 184 4>;
 			clock-names = "clk_xin", "clk_ahb";
-			xlnx,device_id = <1>;
+			xlnx,device_id = <0>;
 			no-1-8-v;
 			clocks = <&clk20>, <&clk20>;
 		};
