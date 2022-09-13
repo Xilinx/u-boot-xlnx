@@ -131,7 +131,16 @@
 			u-boot,dm-pre-reloc;
 			method = "smc";
 			#power-domain-cells = <0x01>;
+
+			zynqmp_power: zynqmp-power {
+				compatible = "xlnx,zynqmp-power";
+				interrupts = <0 57 4>;
+				mboxes = <&ipi_mailbox_pmu1 0>,
+					<&ipi_mailbox_pmu1 1>;
+				mbox-names = "tx", "rx";
+			};
 		};
+
 		psci {
 			compatible = "arm,psci-1.0";
 			method = "smc";
