@@ -781,7 +781,9 @@ int cadence_qspi_apb_read_execute(struct cadence_spi_priv *priv,
 	void *buf = op->data.buf.in;
 	size_t len = op->data.nbytes;
 
-	cadence_qspi_apb_enable_linear_mode(true);
+	if (CONFIG_IS_ENABLED(ARCH_VERSAL))
+		cadence_qspi_apb_enable_linear_mode(true);
+
 	if (priv->use_dac_mode && (from + len < priv->ahbsize)) {
 		if (len < 256 ||
 		    dma_memcpy(buf, priv->ahbbase + from, len) < 0) {
