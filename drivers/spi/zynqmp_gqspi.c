@@ -579,9 +579,9 @@ static int zynqmp_qspi_fill_tx_fifo(struct zynqmp_qspi_priv *priv, u32 size)
 
 static void zynqmp_qspi_genfifo_cmd(struct zynqmp_qspi_priv *priv)
 {
+	const struct spi_mem_op *op = priv->op;
 	u32 gen_fifo_cmd;
 	u8 i, dummy_cycles, addr;
-	const struct spi_mem_op *op = priv->op;
 
 	/* Send opcode */
 	gen_fifo_cmd = zynqmp_qspi_bus_select(priv);
