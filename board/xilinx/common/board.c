@@ -584,8 +584,8 @@ int embedded_dtb_select(void)
 			/* fdtdec_resetup(&rescan); */
 			return fdtdec_setup();
 		}
-	} 
-	
+	}
+
 	if (board_detection()) {
 		char *board_local_name;
 
