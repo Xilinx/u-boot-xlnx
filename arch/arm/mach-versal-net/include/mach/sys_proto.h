@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: GPL-2.0+ */
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright 2016 - 2021 Xilinx, Inc.
+ * Copyright (C) 2021 - 2022, Xilinx, Inc.
+ * Copyright (C) 2022, Advanced Micro Devices, Inc.
  */
 
 #include <linux/build_bug.h>

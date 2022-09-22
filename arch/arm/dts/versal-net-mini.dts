@@ -2,9 +2,10 @@
 /*
  * dts file for Xilinx Versal NET
  *
- * (C) Copyright 2021 - 2022, Xilinx, Inc.
+ * Copyright (C) 2021 - 2022, Xilinx, Inc.
+ * Copyright (C) 2022, Advanced Micro Devices, Inc.
  *
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 
 /dts-v1/;
