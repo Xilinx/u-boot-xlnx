@@ -600,7 +600,6 @@
 				snps,dis_u3_susphy_quirk;
 				snps,quirk-frame-length-adjustment = <0x20>;
 				clock-names = "ref";
-				snps,mask_phy_reset;
 				/* dma-coherent; */
 			};
 		};
