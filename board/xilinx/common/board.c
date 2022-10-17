@@ -20,6 +20,7 @@
 #include <i2c_eeprom.h>
 #include <net.h>
 #include <generated/dt.h>
+#include <slre.h>
 #include <soc.h>
 #include <linux/ctype.h>
 
@@ -423,6 +424,21 @@ static char *board_name = DEVICE_TREE;
 int __maybe_unused board_fit_config_name_match(const char *name)
 {
 	debug("%s: Check %s, default %s\n", __func__, name, board_name);
+
+#if !defined(CONFIG_SPL_BUILD)
+	if (CONFIG_IS_ENABLED(REGEX)) {
+		struct slre slre;
+		int ret;
+
+		ret = slre_compile(&slre, name);
+		if (ret) {
+			ret = slre_match(&slre, board_name, strlen(board_name),
+					 NULL);
+			debug("%s: name match ret = %d\n", __func__,  ret);
+			return !ret;
+		}
+	}
+#endif
 
 	if (!strcmp(name, board_name))
 		return 0;
