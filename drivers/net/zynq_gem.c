@@ -36,6 +36,11 @@
 #include <eth_phy.h>
 #include <zynqmp_firmware.h>
 
+#ifdef CONFIG_DM_GPIO
+#include <asm/gpio.h>
+#define RESET_DELAY_US	100
+#endif
+
 /* Bit/mask specification */
 #define ZYNQ_GEM_PHYMNTNC_OP_MASK	0x40020000 /* operation mask bits */
 #define ZYNQ_GEM_PHYMNTNC_OP_R_MASK	0x20000000 /* read operation */
@@ -220,6 +225,10 @@ struct zynq_gem_priv {
 	bool dma_64bit;
 	u32 clk_en_info;
 	struct reset_ctl_bulk resets;
+	
+#ifdef CONFIG_DM_GPIO
+	struct gpio_desc rst_gpio;
+#endif
 };
 
 static int phy_setup_op(struct zynq_gem_priv *priv, u32 phy_addr, u32 regnum,
@@ -893,6 +902,30 @@ static int zynq_gem_of_to_plat(struct udevice *dev)
 	struct zynq_gem_priv *priv = dev_get_priv(dev);
 	struct ofnode_phandle_args phandle_args;
 	const char *phy_mode;
+	
+#ifdef CONFIG_DM_GPIO
+	u32 reset_assert_us = 0;
+	u32 reset_deassert_us = 0;
+	int ret = gpio_request_by_name(dev, "reset-gpios", 0, &priv->rst_gpio, GPIOD_IS_OUT);
+	
+	/* property is optional */
+	if ((ret == 0) && dm_gpio_is_valid(&priv->rst_gpio)) {
+		reset_assert_us = dev_read_u32_default(dev, "reset-assert-us", RESET_DELAY_US);
+		reset_deassert_us = dev_read_u32_default(dev, "reset-deassert-us", RESET_DELAY_US);
+		
+		printf("ZYNQ GEM: %s: reset-gpios = %d\n", __func__, priv->rst_gpio.offset);
+		printf("ZYNQ GEM: %s: reset-assert-us = %u; reset-deassert-us = %u\n", __func__, reset_assert_us, reset_deassert_us);
+		
+		dm_gpio_set_value(&priv->rst_gpio, 1);
+		udelay(reset_assert_us);
+		dm_gpio_set_value(&priv->rst_gpio, 0);
+		udelay(reset_deassert_us);
+		
+		dm_gpio_free(dev, &priv->rst_gpio);
+	} else {
+		printf("ZYNQ GEM: %s: reset-gpios ret = %d\n", __func__, ret);
+	}
+#endif
 
 	pdata->iobase = (phys_addr_t)dev_read_addr(dev);
 	priv->iobase = (struct zynq_gem_regs *)pdata->iobase;
