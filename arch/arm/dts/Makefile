@@ -356,6 +356,7 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-sc-vhk158-revA.dtbo		\
 	zynqmp-sc-vpk120-revB.dtbo		\
 	zynqmp-sc-vpk180-revA.dtbo		\
+	zynqmp-sc-vpk180-revB.dtbo		\
 	zynqmp-sm-k26-revA.dtb			\
 	zynqmp-smk-k26-revA.dtb			\
 	zynqmp-sck-kr-g-revA.dtbo		\
