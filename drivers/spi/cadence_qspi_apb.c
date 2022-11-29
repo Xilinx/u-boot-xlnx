@@ -55,6 +55,11 @@ int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_priv *priv)
 	return 0;
 }
 
+__weak void cadence_qspi_apb_enable_linear_mode(bool enable)
+{
+	return;
+}
+
 void cadence_qspi_apb_controller_enable(void *reg_base)
 {
 	unsigned int reg;
@@ -781,9 +786,7 @@ int cadence_qspi_apb_read_execute(struct cadence_spi_priv *priv,
 	void *buf = op->data.buf.in;
 	size_t len = op->data.nbytes;
 
-	if (CONFIG_IS_ENABLED(ARCH_VERSAL))
-		cadence_qspi_apb_enable_linear_mode(true);
-
+	cadence_qspi_apb_enable_linear_mode(true);
 	if (priv->use_dac_mode && (from + len < priv->ahbsize)) {
 		if (len < 256 ||
 		    dma_memcpy(buf, priv->ahbbase + from, len) < 0) {
