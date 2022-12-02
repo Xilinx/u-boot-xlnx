@@ -15,7 +15,3 @@
 	is-dual = <0>;
 	is-stacked = <1>;
 };
-
-&flash0 {
-	spi-rx-bus-width = <4>;
-};

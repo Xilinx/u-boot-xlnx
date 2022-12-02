@@ -10,7 +10,3 @@
 / {
 	model = "ZynqMP MINI QSPI SINGLE";
 };
-
-&flash0 {
-	spi-rx-bus-width = <4>;
-};
