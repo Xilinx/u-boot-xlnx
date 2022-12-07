@@ -551,8 +551,8 @@
 			interrupts = <0 184 4>;
 			clock-names = "clk_xin", "clk_ahb";
 			no-1-8-v;
-			clocks = <&versal_net_clk SDIO1_REF>, <&versal_net_clk LPD_LSBUS>;
-			power-domains = <&versal_net_firmware PM_DEV_SDIO_1>;
+			clocks = <&versal_net_clk SDIO0_REF>, <&versal_net_clk LPD_LSBUS>;
+			power-domains = <&versal_net_firmware PM_DEV_SDIO_0>;
 		};
 
 		sdhci1: mmc@f1050000 {
@@ -562,8 +562,8 @@
 			interrupts = <0 186 4>;
 			clock-names = "clk_xin", "clk_ahb";
 			no-1-8-v;
-			clocks = <&versal_net_clk SDIO0_REF>, <&versal_net_clk LPD_LSBUS>;
-			power-domains = <&versal_net_firmware PM_DEV_SDIO_0>;
+			clocks = <&versal_net_clk SDIO1_REF>, <&versal_net_clk LPD_LSBUS>;
+			power-domains = <&versal_net_firmware PM_DEV_SDIO_1>;
 		};
 
 		serial0: serial@f1920000 {
