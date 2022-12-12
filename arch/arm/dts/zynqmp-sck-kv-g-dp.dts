@@ -23,32 +23,4 @@
 			status = "okay";
 		};
 	};
-
-	fragment5 {
-		target = <&zynqmp_dp_snd_pcm0>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment6 {
-		target = <&zynqmp_dp_snd_pcm1>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment7 {
-		target = <&zynqmp_dp_snd_card0>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	fragment8 {
-		target = <&zynqmp_dp_snd_codec0>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
 };
