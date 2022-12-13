@@ -453,7 +453,8 @@ dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	x-prc-09-revA.dtbo \
 	versal-net-mini.dtb \
 	versal-net-mini-emmc.dtb \
-	versal-net-mini-ospi-single.dtb
+	versal-net-mini-ospi-single.dtb \
+	versal-net-mini-qspi-single.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP_R5) += \
 	zynqmp-r5.dtb
 dtb-$(CONFIG_AM33XX) += \
