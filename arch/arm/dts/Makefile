@@ -476,6 +476,7 @@ dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	x-prc-09-revA.dtbo \
 	x-prc-09-i3c-revA.dtbo \
 	versal-net-mini.dtb \
+	versal-net-mini-emmc.dtb \
 	versal-net-mini-ospi-single.dtb \
 	xilinx-versal-net-virt.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP_R5) += \
