@@ -2,6 +2,7 @@
 /*
  * Configuration for Xilinx Versal NET
  * (C) Copyright 2016 - 2022 Xilinx, Inc.
+ * (C) Copyright 2022, Advanced Micro Devices, Inc.
  * Michal Simek <michal.simek@amd.com>
  *
  * Based on Configuration for Xilinx ZynqMP
@@ -20,6 +21,11 @@
 #define GICR_BASE	0xF9060000
 
 #define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
+
+/* Generic Timer Definitions - setup in EL3. Setup by TF-A for other cases */
+#if CONFIG_COUNTER_FREQUENCY
+# define COUNTER_FREQUENCY	CONFIG_COUNTER_FREQUENCY
+#endif
 
 /* Serial setup */
 #define CONFIG_CPU_ARMV8
