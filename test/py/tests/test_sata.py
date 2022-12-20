@@ -9,20 +9,18 @@ import random
 Note: This test doesn't rely on boardenv_* configuration value but they can
 change test behavior.
 
-# Setup env__i2c_device_test_skip to True if tests with i2c devices should be
-# skipped. For example: Missing QEMU model or broken i2c device
-env__i2c_device_test_skip = True
+# Setup env__zcu102_i2c_sata_device_test to True if tests with i2c devices should be
+# performed on Xilinx ZynqMP zcu102 board
+env__zcu102_i2c_sata_device_test = True
 
 """
 
-@pytest.mark.boardspec("xilinx_zynqmp_zcu102_rev1_0")
-@pytest.mark.boardspec("xilinx_zynqmp_zcu102_revA")
 @pytest.mark.buildconfigspec("cmd_i2c")
 @pytest.mark.buildconfigspec("cmd_scsi")
 def test_sata_probe_zcu102(u_boot_console):
-    test_skip = u_boot_console.config.env.get('env__i2c_device_test_skip', False)
-    if test_skip:
-        pytest.skip('i2c device test skipped')
+    test_skip = u_boot_console.config.env.get('env__zcu102_i2c_sata_device_test', False)
+    if not test_skip:
+        pytest.skip('zcu102 i2c/sata device test skipped')
 
     # This is using i2c mux wiring from config file
     u_boot_console.run_command("i2c dev 0")
@@ -33,8 +31,6 @@ def test_sata_probe_zcu102(u_boot_console):
     assert(expected_response in response)
 
 @pytest.mark.xfail
-@pytest.mark.boardspec("!xilinx_zynqmp_zcu102_rev1_0")
-@pytest.mark.boardspec("!xilinx_zynqmp_zcu102_revA")
 @pytest.mark.buildconfigspec("cmd_scsi")
 def test_sata_probe(u_boot_console):
     response = u_boot_console.run_command("scsi reset")
