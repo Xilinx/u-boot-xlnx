@@ -451,6 +451,7 @@ dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	versal-net-ipp-rev1.9-ospi.dtb \
 	versal-net-vn-p-b2197-00-revA.dtb \
 	x-prc-07-revA.dtbo \
+	x-prc-07-i3c-revA.dtbo \
 	x-prc-09-revA.dtbo \
 	x-prc-09-i3c-revA.dtbo \
 	versal-net-mini.dtb \
