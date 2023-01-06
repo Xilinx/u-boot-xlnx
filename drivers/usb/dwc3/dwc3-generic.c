@@ -93,21 +93,21 @@ static int dwc3_generic_probe(struct udevice *dev,
 	    device_is_compatible(dev->parent, "xlnx,zynqmp-dwc3")) {
 		rc = gpio_request_by_name(dev->parent, "reset-gpios", 0,
 					  &priv->ulpi_reset, GPIOD_ACTIVE_LOW);
-		if (rc)
-			return rc;
+		/* property is optional, don't return error! */
+		if (rc != -ENOENT) {
+			/* Toggle ulpi to reset the phy. */
+			rc = dm_gpio_set_value(&priv->ulpi_reset, 1);
+			if (rc)
+				return rc;
 
-		/* Toggle ulpi to reset the phy. */
-		rc = dm_gpio_set_value(&priv->ulpi_reset, 1);
-		if (rc)
-			return rc;
+			mdelay(5);
 
-		mdelay(5);
+			rc = dm_gpio_set_value(&priv->ulpi_reset, 0);
+			if (rc)
+				return rc;
 
-		rc = dm_gpio_set_value(&priv->ulpi_reset, 0);
-		if (rc)
-			return rc;
-
-		mdelay(5);
+			mdelay(5);
+		}
 	}
 
 	if (device_is_compatible(dev->parent, "rockchip,rk3399-dwc3"))
