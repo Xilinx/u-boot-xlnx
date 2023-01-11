@@ -570,7 +570,9 @@ static int priv_setup_ddrmode(struct udevice *bus)
 	setbits_le32(regbase + CQSPI_REG_CONFIG,
 		     CQSPI_REG_CONFIG_DTR_PROT_EN_MASK);
 
-	clrsetbits_le32(regbase + CQSPI_REG_RD_DATA_CAPTURE, ~0,
+	clrsetbits_le32(regbase + CQSPI_REG_RD_DATA_CAPTURE,
+			(CQSPI_REG_RD_DATA_CAPTURE_DELAY_MASK <<
+			 CQSPI_REG_RD_DATA_CAPTURE_DELAY_LSB),
 			CQSPI_REG_READCAPTURE_DQS_ENABLE);
 
 	/* Enable QSPI */
