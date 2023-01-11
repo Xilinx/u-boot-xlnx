@@ -460,8 +460,8 @@ static int cadence_spi_setdlldelay(struct udevice *bus)
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	void *regbase = priv->regbase;
 	u32 txtap;
-	int ret;
-	u8 extra_dummy, rxtap;
+	int ret, rxtap;
+	u8 extra_dummy;
 
 	ret = wait_for_bit_le32(regbase + CQSPI_REG_CONFIG,
 				1 << CQSPI_REG_CONFIG_IDLE_LSB,
