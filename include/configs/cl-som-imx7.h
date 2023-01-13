@@ -13,8 +13,6 @@
 #define CONFIG_MXC_UART_BASE            UART1_IPS_BASE_ADDR
 
 /* Network */
-#define CONFIG_FEC_XCV_TYPE             RGMII
-#define CONFIG_ETHPRIME                 "FEC"
 #define CONFIG_FEC_MXC_PHYADDR          0
 
 /* ENET1 */
@@ -28,14 +26,9 @@
 #define CONFIG_SYS_I2C_PCA953X_ADDR	0x20
 #define CONFIG_SYS_I2C_PCA953X_WIDTH	{ {0x20, 16} }
 
-#undef CONFIG_SYS_AUTOLOAD
 #undef CONFIG_EXTRA_ENV_SETTINGS
-#undef CONFIG_BOOTCOMMAND
-
-#define CONFIG_SYS_AUTOLOAD		"no"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"autoload=off\0" \
 	"script=boot.scr\0" \
 	"loadscript=load ${storagetype} ${storagedev} ${loadaddr} ${script};\0" \
 	"loadkernel=load ${storagetype} ${storagedev} ${loadaddr} ${kernel};\0" \
@@ -50,7 +43,7 @@
 	"fdtaddr=0x83000000\0" \
 	"mmcdev_def="__stringify(CONFIG_SYS_MMC_DEV)"\0" \
 	"usbdev_def="__stringify(CONFIG_SYS_USB_DEV)"\0" \
-	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"mmcpart=1\0" \
 	"usbpart=" __stringify(CONFIG_SYS_USB_IMG_LOAD_PART) "\0" \
 	"doboot=bootz ${loadaddr} - ${fdtaddr}\0" \
 	"mmc_config=mmc dev ${mmcdev}; mmc rescan\0" \
@@ -86,11 +79,6 @@
 	"emmcbootscript=setenv mmcdev 1; setenv mmcblk 2; run mmcbootscript\0" \
 	"emmcboot=setenv mmcdev 1; setenv mmcblk 2; run mmcboot\0" \
 
-#define CONFIG_BOOTCOMMAND \
-	"echo SD boot attempt ...; run sdbootscript; run sdboot; " \
-	"echo eMMC boot attempt ...; run emmcbootscript; run emmcboot; " \
-	"echo USB boot attempt ...; run usbbootscript; "
-
 /* Physical Memory Map */
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
@@ -98,28 +86,20 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /* SPI Flash support */
 
 /* FLASH and environment organization */
 
 /* MMC Config*/
 #ifdef CONFIG_FSL_USDHC
-#define CONFIG_SYS_FSL_ESDHC_ADDR       USDHC1_BASE_ADDR
+#define CFG_SYS_FSL_ESDHC_ADDR       USDHC1_BASE_ADDR
 
-#define CONFIG_SYS_FSL_USDHC_NUM	2
-#define CONFIG_MMCROOT			"/dev/mmcblk0p2" /* USDHC1 */
+#define CFG_SYS_FSL_USDHC_NUM	2
 #endif
 
 /* USB Configs */
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS   0
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 2
 
 /* SPL */
 #include "imx7_spl.h"

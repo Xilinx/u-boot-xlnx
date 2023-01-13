@@ -14,67 +14,36 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_PHYSMEM
-
-#define CONFIG_SYS_BOOTM_LEN		(16 << 20)
-
-/* SATA AHCI storage */
-#ifdef CONFIG_SCSI_AHCI
-#define CONFIG_LBA48
-#define CONFIG_SYS_64BIT_LBA
-
-#endif
 
 /* Generic TPM interfaced through LPC bus */
 #define CONFIG_TPM_TIS_BASE_ADDRESS        0xfed40000
-
-/*-----------------------------------------------------------------------
- * Real Time Clock Configuration
- */
-#define CONFIG_SYS_ISA_IO_BASE_ADDRESS	0
-#define CONFIG_SYS_ISA_IO      CONFIG_SYS_ISA_IO_BASE_ADDRESS
 
 /*-----------------------------------------------------------------------
  * Serial Configuration
  */
 #define CONFIG_SYS_NS16550_PORT_MAPPED
 
-#ifndef CONFIG_BOOTCOMMAND
-#define CONFIG_BOOTCOMMAND	\
-	"ext2load scsi 0:3 01000000 /boot/vmlinuz; zboot 01000000"
-#endif
-
 /*
  * Miscellaneous configurable options
  */
-#define CONFIG_SYS_CBSIZE			512
 
 /*-----------------------------------------------------------------------
  * CPU Features
  */
 
 #define CONFIG_SYS_STACK_SIZE			(32 * 1024)
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 
 /*-----------------------------------------------------------------------
  * Environment configuration
  */
 
 /*-----------------------------------------------------------------------
- * PCI configuration
- */
-#define CONFIG_PCI_CONFIG_HOST_BRIDGE
-
-/*-----------------------------------------------------------------------
  * USB configuration
  */
-
-#define CONFIG_BOOTP_BOOTFILESIZE
 
 /* Default environment */
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
 #define CONFIG_HOSTNAME		"x86"
-#define CONFIG_BOOTFILE		"bzImage"
 #define CONFIG_RAMDISK_ADDR	0x4000000
 #if defined(CONFIG_GENERATE_ACPI_TABLE) || defined(CONFIG_EFI_STUB)
 #define CONFIG_OTHBOOTARGS	"othbootargs=\0"
@@ -88,9 +57,14 @@
 #define DISTRO_BOOTENV
 #endif
 
+#ifndef SPLASH_SETTINGS
+#define SPLASH_SETTINGS
+#endif
+
 #define CONFIG_EXTRA_ENV_SETTINGS			\
 	DISTRO_BOOTENV					\
 	CONFIG_STD_DEVICES_SETTINGS			\
+	SPLASH_SETTINGS					\
 	"pciconfighost=1\0"				\
 	"netdev=eth0\0"					\
 	"consoledev=ttyS0\0"				\
@@ -99,23 +73,6 @@
 	"kernel_addr_r=0x1000000\0"			\
 	"ramdisk_addr_r=0x4000000\0"			\
 	"ramdiskfile=initramfs.gz\0"
-
-
-#define RAMBOOTCOMMAND				\
-	"setenv bootargs root=/dev/ram rw "		\
-	"ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
-	"console=$consoledev,$baudrate $othbootargs;"	\
-	"tftpboot $kernel_addr_r $bootfile;"		\
-	"tftpboot $ramdisk_addr_r $ramdiskfile;"	\
-	"zboot $kernel_addr_r 0 $ramdisk_addr_r $filesize"
-
-#define NFSBOOTCOMMAND				\
-	"setenv bootargs root=/dev/nfs rw "		\
-	"nfsroot=$serverip:$rootpath "			\
-	"ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
-	"console=$consoledev,$baudrate $othbootargs;"	\
-	"tftpboot $kernel_addr_r $bootfile;"		\
-	"zboot $kernel_addr_r"
 
 
 #endif	/* __CONFIG_H */

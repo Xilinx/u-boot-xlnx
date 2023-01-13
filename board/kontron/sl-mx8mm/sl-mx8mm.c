@@ -4,13 +4,36 @@
  */
 
 #include <asm/arch/imx-regs.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
+#include <asm/mach-imx/boot_mode.h>
+#include <efi.h>
+#include <efi_loader.h>
+#include <env_internal.h>
 #include <fdt_support.h>
 #include <linux/errno.h>
+#include <linux/kernel.h>
 #include <net.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+struct efi_fw_image fw_images[] = {
+	{
+		.image_type_id = KONTRON_SL_MX8MM_FIT_IMAGE_GUID,
+		.fw_name = u"KONTROL-SL-MX8MM-UBOOT",
+		.image_index = 1,
+	},
+};
+
+struct efi_capsule_update_info update_info = {
+	.dfu_string = "sf 0:0=flash-bin raw 0x400 0x1f0000",
+	.images = fw_images,
+};
+
+u8 num_image_type_guids = ARRAY_SIZE(fw_images);
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 int board_phys_sdram_size(phys_size_t *size)
 {
@@ -97,3 +120,45 @@ int board_init(void)
 {
 	return 0;
 }
+
+int board_late_init(void)
+{
+	if (!fdt_node_check_compatible(gd->fdt_blob, 0, "kontron,imx8mm-n802x-som") ||
+	    !fdt_node_check_compatible(gd->fdt_blob, 0, "kontron,imx8mm-osm-s")) {
+		env_set("som_type", "osm-s");
+		env_set("touch_rst_gpio", "111");
+	} else {
+		env_set("som_type", "sl");
+		env_set("touch_rst_gpio", "87");
+	}
+
+	return 0;
+}
+
+enum env_location env_get_location(enum env_operation op, int prio)
+{
+	enum boot_device boot_dev = get_boot_device();
+
+	if (prio)
+		return ENVL_UNKNOWN;
+
+	/*
+	 * Make sure that the environment is loaded from
+	 * the MMC if we are running from SD card or eMMC.
+	 */
+	if (CONFIG_IS_ENABLED(ENV_IS_IN_MMC) &&
+	    (boot_dev == SD1_BOOT || boot_dev == SD2_BOOT))
+		return ENVL_MMC;
+
+	if (CONFIG_IS_ENABLED(ENV_IS_IN_SPI_FLASH))
+		return ENVL_SPI_FLASH;
+
+	return ENVL_NOWHERE;
+}
+
+#if defined(CONFIG_ENV_IS_IN_MMC)
+int board_mmc_get_env_dev(int devno)
+{
+	return devno;
+}
+#endif

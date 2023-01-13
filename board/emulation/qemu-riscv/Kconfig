@@ -12,7 +12,7 @@ config SYS_CPU
 config SYS_CONFIG_NAME
 	default "qemu-riscv"
 
-config SYS_TEXT_BASE
+config TEXT_BASE
 	default 0x81200000 if SPL
 	default 0x80000000 if !RISCV_SMODE
 	default 0x80200000 if RISCV_SMODE && ARCH_RV64I
@@ -23,7 +23,7 @@ config SPL_TEXT_BASE
 
 config SPL_OPENSBI_LOAD_ADDR
 	hex
-	default 0x81000000
+	default 0x80100000
 
 config BOARD_SPECIFIC_OPTIONS # dummy
 	def_bool y
@@ -37,6 +37,7 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply SPL_RAM_DEVICE
 	imply CMD_PCI
 	imply CMD_POWEROFF
+	imply CMD_SBI
 	imply CMD_SCSI
 	imply CMD_PING
 	imply CMD_EXT2
@@ -56,6 +57,7 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply DM_SCSI
 	imply SYS_NS16550
 	imply SIFIVE_SERIAL
+	imply HTIF_CONSOLE if 64BIT
 	imply SYSRESET
 	imply SYSRESET_CMD_POWEROFF
 	imply SYSRESET_SYSCON
@@ -65,5 +67,6 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply VIRTIO_BLK
 	imply MTD_NOR_FLASH
 	imply CFI_FLASH
+	imply OF_HAS_PRIOR_STAGE
 
 endif

@@ -4,8 +4,8 @@
  */
 
 #include <common.h>
+#include <cpu_func.h>
 #include <dm.h>
-#include <debug_uart.h>
 #include <fdtdec.h>
 #include <hang.h>
 #include <image.h>
@@ -47,7 +47,8 @@
 #if defined(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR) && CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR != 0
 #error CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR must be set to 0
 #endif
-#if defined(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_DATA_PART_OFFSET) && CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_DATA_PART_OFFSET != 0
+#if defined(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_DATA_PART_OFFSET) && \
+    CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_DATA_PART_OFFSET != 0
 #error CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_DATA_PART_OFFSET must be set to 0
 #endif
 #endif
@@ -58,7 +59,8 @@
  * set to 1. Otherwise U-Boot SPL would not be able to load U-Boot proper.
  */
 #ifdef CONFIG_SPL_SATA
-#if !defined(CONFIG_SPL_SATA_RAW_U_BOOT_USE_SECTOR) || !defined(CONFIG_SPL_SATA_RAW_U_BOOT_SECTOR) || CONFIG_SPL_SATA_RAW_U_BOOT_SECTOR != 1
+#if !defined(CONFIG_SPL_SATA_RAW_U_BOOT_USE_SECTOR) || \
+    !defined(CONFIG_SPL_SATA_RAW_U_BOOT_SECTOR) || CONFIG_SPL_SATA_RAW_U_BOOT_SECTOR != 1
 #error CONFIG_SPL_SATA_RAW_U_BOOT_SECTOR must be set to 1
 #endif
 #endif
@@ -74,33 +76,61 @@
 
 /* Structure of the main header, version 1 (Armada 370/XP/375/38x/39x) */
 struct kwbimage_main_hdr_v1 {
-	uint8_t  blockid;               /* 0x0       */
-	uint8_t  flags;                 /* 0x1       */
-	uint16_t nandpagesize;          /* 0x2-0x3   */
-	uint32_t blocksize;             /* 0x4-0x7   */
-	uint8_t  version;               /* 0x8       */
-	uint8_t  headersz_msb;          /* 0x9       */
-	uint16_t headersz_lsb;          /* 0xA-0xB   */
-	uint32_t srcaddr;               /* 0xC-0xF   */
-	uint32_t destaddr;              /* 0x10-0x13 */
-	uint32_t execaddr;              /* 0x14-0x17 */
-	uint8_t  options;               /* 0x18      */
-	uint8_t  nandblocksize;         /* 0x19      */
-	uint8_t  nandbadblklocation;    /* 0x1A      */
-	uint8_t  reserved4;             /* 0x1B      */
-	uint16_t reserved5;             /* 0x1C-0x1D */
-	uint8_t  ext;                   /* 0x1E      */
-	uint8_t  checksum;              /* 0x1F      */
+	u8  blockid;               /* 0x0       */
+	u8  flags;                 /* 0x1       */
+	u16 nandpagesize;          /* 0x2-0x3   */
+	u32 blocksize;             /* 0x4-0x7   */
+	u8  version;               /* 0x8       */
+	u8  headersz_msb;          /* 0x9       */
+	u16 headersz_lsb;          /* 0xA-0xB   */
+	u32 srcaddr;               /* 0xC-0xF   */
+	u32 destaddr;              /* 0x10-0x13 */
+	u32 execaddr;              /* 0x14-0x17 */
+	u8  options;               /* 0x18      */
+	u8  nandblocksize;         /* 0x19      */
+	u8  nandbadblklocation;    /* 0x1A      */
+	u8  reserved4;             /* 0x1B      */
+	u16 reserved5;             /* 0x1C-0x1D */
+	u8  ext;                   /* 0x1E      */
+	u8  checksum;              /* 0x1F      */
 } __packed;
 
 #ifdef CONFIG_SPL_MMC
-u32 spl_mmc_boot_mode(const u32 boot_device)
+u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 {
 	return MMCSD_MODE_RAW;
 }
 #endif
 
+static u32 checksum32(void *start, u32 len)
+{
+	u32 csum = 0;
+	u32 *p = start;
+
+	while (len > 0) {
+		csum += *p++;
+		len -= sizeof(u32);
+	};
+
+	return csum;
+}
+
+int spl_check_board_image(struct spl_image_info *spl_image,
+			  const struct spl_boot_device *bootdev)
+{
+	u32 csum = *(u32 *)(spl_image->load_addr + spl_image->size - 4);
+
+	if (checksum32((void *)spl_image->load_addr,
+		       spl_image->size - 4) != csum) {
+		printf("ERROR: Invalid data checksum in kwbimage\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int spl_parse_board_header(struct spl_image_info *spl_image,
+			   const struct spl_boot_device *bootdev,
 			   const void *image_header, size_t size)
 {
 	const struct kwbimage_main_hdr_v1 *mhdr = image_header;
@@ -117,51 +147,74 @@ int spl_parse_board_header(struct spl_image_info *spl_image,
 	 * (including SPL content) which is not included in U-Boot image_header.
 	 */
 	if (mhdr->version != 1 ||
-	    ((mhdr->headersz_msb << 16) | mhdr->headersz_lsb) < sizeof(*mhdr) ||
-	    (
-#ifdef CONFIG_SPL_SPI_FLASH_SUPPORT
-	     mhdr->blockid != IBR_HDR_SPI_ID &&
-#endif
-#ifdef CONFIG_SPL_SATA
-	     mhdr->blockid != IBR_HDR_SATA_ID &&
-#endif
-#ifdef CONFIG_SPL_MMC
-	     mhdr->blockid != IBR_HDR_SDIO_ID &&
-#endif
-	     1
-	    )) {
-		printf("ERROR: Not valid SPI/NAND/SATA/SDIO kwbimage v1\n");
+	    ((mhdr->headersz_msb << 16) | mhdr->headersz_lsb) < sizeof(*mhdr)) {
+		printf("ERROR: Invalid kwbimage v1\n");
+		return -EINVAL;
+	}
+
+	if (IS_ENABLED(CONFIG_SPL_SPI_FLASH_SUPPORT) &&
+	    bootdev->boot_device == BOOT_DEVICE_SPI &&
+	    mhdr->blockid != IBR_HDR_SPI_ID) {
+		printf("ERROR: Wrong blockid (0x%x) in SPI kwbimage\n",
+		       mhdr->blockid);
+		return -EINVAL;
+	}
+
+	if (IS_ENABLED(CONFIG_SPL_SATA) &&
+	    bootdev->boot_device == BOOT_DEVICE_SATA &&
+	    mhdr->blockid != IBR_HDR_SATA_ID) {
+		printf("ERROR: Wrong blockid (0x%x) in SATA kwbimage\n",
+		       mhdr->blockid);
+		return -EINVAL;
+	}
+
+	if (IS_ENABLED(CONFIG_SPL_MMC) &&
+	    (bootdev->boot_device == BOOT_DEVICE_MMC1 ||
+	     bootdev->boot_device == BOOT_DEVICE_MMC2 ||
+	     bootdev->boot_device == BOOT_DEVICE_MMC2_2) &&
+	    mhdr->blockid != IBR_HDR_SDIO_ID) {
+		printf("ERROR: Wrong blockid (0x%x) in SDIO kwbimage\n",
+		       mhdr->blockid);
 		return -EINVAL;
 	}
 
 	spl_image->offset = mhdr->srcaddr;
 
-#ifdef CONFIG_SPL_SATA
 	/*
 	 * For SATA srcaddr is specified in number of sectors.
 	 * The main header is must be stored at sector number 1.
 	 * This expects that sector size is 512 bytes and recalculates
 	 * data offset to bytes relative to the main header.
 	 */
-	if (mhdr->blockid == IBR_HDR_SATA_ID) {
+	if (IS_ENABLED(CONFIG_SPL_SATA) && mhdr->blockid == IBR_HDR_SATA_ID) {
 		if (spl_image->offset < 1) {
-			printf("ERROR: Wrong SATA srcaddr in kwbimage\n");
+			printf("ERROR: Wrong srcaddr (0x%08x) in SATA kwbimage\n",
+			       spl_image->offset);
 			return -EINVAL;
 		}
 		spl_image->offset -= 1;
 		spl_image->offset *= 512;
 	}
-#endif
 
-#ifdef CONFIG_SPL_MMC
 	/*
 	 * For SDIO (eMMC) srcaddr is specified in number of sectors.
 	 * This expects that sector size is 512 bytes and recalculates
 	 * data offset to bytes.
 	 */
-	if (mhdr->blockid == IBR_HDR_SDIO_ID)
+	if (IS_ENABLED(CONFIG_SPL_MMC) && mhdr->blockid == IBR_HDR_SDIO_ID)
 		spl_image->offset *= 512;
-#endif
+
+	if (spl_image->offset % 4 != 0) {
+		printf("ERROR: Wrong srcaddr (0x%08x) in kwbimage\n",
+		       spl_image->offset);
+		return -EINVAL;
+	}
+
+	if (mhdr->blocksize <= 4 || mhdr->blocksize % 4 != 0) {
+		printf("ERROR: Wrong blocksize (0x%08x) in kwbimage\n",
+		       mhdr->blocksize);
+		return -EINVAL;
+	}
 
 	spl_image->size = mhdr->blocksize;
 	spl_image->entry_point = mhdr->execaddr;
@@ -218,6 +271,13 @@ u32 spl_boot_device(void)
 	}
 }
 
+void board_boot_order(u32 *spl_boot_list)
+{
+	spl_boot_list[0] = spl_boot_device();
+	if (spl_boot_list[0] != BOOT_DEVICE_BOOTROM)
+		spl_boot_list[1] = BOOT_DEVICE_BOOTROM;
+}
+
 #else
 
 u32 spl_boot_device(void)
@@ -230,7 +290,7 @@ u32 spl_boot_device(void)
 int board_return_to_bootrom(struct spl_image_info *spl_image,
 			    struct spl_boot_device *bootdev)
 {
-	u32 *regs = *(u32 **)CONFIG_SPL_BOOTROM_SAVE;
+	u32 *regs = *(u32 **)(CONFIG_SPL_STACK + 4);
 
 	printf("Returning to BootROM (return address 0x%08x)...\n", regs[13]);
 	return_to_bootrom();
@@ -238,6 +298,19 @@ int board_return_to_bootrom(struct spl_image_info *spl_image,
 	/* NOTREACHED - return_to_bootrom() does not return */
 	hang();
 }
+
+/*
+ * SPI0 CS0 Flash is mapped to address range 0xD4000000 - 0xD7FFFFFF by BootROM.
+ * Proper U-Boot removes this direct mapping. So it is available only in SPL.
+ */
+#if defined(CONFIG_SPL_ENV_IS_IN_SPI_FLASH) && \
+    CONFIG_ENV_SPI_BUS == 0 && CONFIG_ENV_SPI_CS == 0 && \
+    CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE <= 64*1024*1024
+void *env_sf_get_env_addr(void)
+{
+	return (void *)0xD4000000 + CONFIG_ENV_OFFSET;
+}
+#endif
 
 void board_init_f(ulong dummy)
 {
@@ -250,18 +323,6 @@ void board_init_f(ulong dummy)
 	 */
 	board_early_init_f();
 
-	/* Example code showing how to enable the debug UART on MVEBU */
-#ifdef EARLY_UART
-	/*
-	 * Debug UART can be used from here if required:
-	 *
-	 * debug_uart_init();
-	 * printch('a');
-	 * printhex8(0x1234);
-	 * printascii("string");
-	 */
-#endif
-
 	/*
 	 * Use special translation offset for SPL. This needs to be
 	 * configured *before* spl_init() is called as this function
@@ -273,13 +334,11 @@ void board_init_f(ulong dummy)
 
 	ret = spl_init();
 	if (ret) {
-		debug("spl_init() failed: %d\n", ret);
+		printf("spl_init() failed: %d\n", ret);
 		hang();
 	}
 
 	preloader_console_init();
-
-	timer_init();
 
 	/* Armada 375 does not support SerDes and DDR3 init yet */
 #if !defined(CONFIG_ARMADA_375)
@@ -289,8 +348,12 @@ void board_init_f(ulong dummy)
 	/* Setup DDR */
 	ret = ddr3_init();
 	if (ret) {
-		debug("ddr3_init() failed: %d\n", ret);
-		hang();
+		printf("ddr3_init() failed: %d\n", ret);
+		if (IS_ENABLED(CONFIG_DDR_RESET_ON_TRAINING_FAILURE) &&
+		    get_boot_device() != BOOT_DEVICE_UART)
+			reset_cpu();
+		else
+			hang();
 	}
 #endif
 

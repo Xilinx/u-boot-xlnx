@@ -103,7 +103,7 @@ running with -D will produce different results.
 
 You can easily use gdb on these tests, without needing --gdbserver::
 
-   $ gdb u-boot --args -T -c "ut dm gpio"
+   $ gdb --args u-boot -T -c "ut dm gpio"
    ...
    (gdb) break dm_test_gpio
    Breakpoint 1 at 0x1415bd: file test/dm/gpio.c, line 37.
@@ -118,6 +118,99 @@ You can easily use gdb on these tests, without needing --gdbserver::
 
 You can then single-step and look at variables as needed.
 
+
+Running tests multiple times
+----------------------------
+
+Some tests can have race conditions which are hard to detect on a single
+one. It is possible to run each individual test multiple times, before moving
+to the next test, with the '-r' flag.
+
+This is most useful when running a single test, since running all tests
+multiple times can take a while.
+
+For example::
+
+   => ut dm -r1000 dm_test_rtc_set_get
+   ...
+   Test: dm_test_rtc_set_get: rtc.c (flat tree)
+   Test: dm_test_rtc_set_get: rtc.c
+   test/dm/rtc.c:257, dm_test_rtc_reset(): old_base_time == base_time: Expected 0x62e7453c (1659323708), got 0x62e7453d (1659323709)
+   Test: dm_test_rtc_set_get: rtc.c (flat tree)
+   Test: dm_test_rtc_set_get: rtc.c
+   Test: dm_test_rtc_set_get: rtc.c (flat tree)
+   ...
+   Test dm_test_rtc_reset failed 3 times
+
+
+Isolating a test that breaks another
+------------------------------------
+
+When running unit tests, some may have side effects which cause a subsequent
+test to break. This can sometimes be seen when using 'ut dm' or similar.
+
+You can use the `-I` argument to the `ut` command to isolate this problem.
+First use `ut info` to see how many tests there are, then use a binary search to
+home in on the problem. Note that you might need to restart U-Boot after each
+iteration, so the `-c` argument to U-Boot is useful.
+
+For example, let's stay that dm_test_host() is failing::
+
+   => ut dm
+   ...
+   Test: dm_test_get_stats: core.c
+   Test: dm_test_get_stats: core.c (flat tree)
+   Test: dm_test_host: host.c
+   test/dm/host.c:71, dm_test_host(): 0 == ut_check_delta(mem_start): Expected 0x0 (0), got 0xffffcbb0 (-13392)
+   Test: dm_test_host: host.c (flat tree)
+   Test <NULL> failed 1 times
+   Test: dm_test_host_dup: host.c
+   Test: dm_test_host_dup: host.c (flat tree)
+   ...
+
+You can then tell U-Boot to run the failing test at different points in the
+sequence:
+
+   => ut info
+   Test suites: 21
+   Total tests: 645
+
+::
+
+   $ ./u-boot -T -c "ut dm -I300:dm_test_host"
+   ...
+   Test: dm_test_pinctrl_single: pinmux.c (flat tree)
+   Test: dm_test_host: host.c
+   test/dm/host.c:71, dm_test_host(): 0 == ut_check_delta(mem_start): Expected 0x0 (0), got 0xfffffdb0 (-592)
+   Test: dm_test_host: host.c (flat tree)
+   Test dm_test_host failed 1 times (position 300)
+   Failures: 4
+
+So it happened before position 300. Trying 150 shows it failing, so we try 75::
+
+   $ ./u-boot  -T  -c "ut dm -I75:dm_test_host"
+   ...
+   Test: dm_test_autoprobe: core.c
+   Test: dm_test_autoprobe: core.c (flat tree)
+   Test: dm_test_host: host.c
+   Test: dm_test_host: host.c (flat tree)
+   Failures: 0
+
+That succeeds, so we try 120, etc. until eventually we can figure out that the
+problem first happens at position 82.
+
+   $ ./u-boot  -T  -c "ut dm -I82:dm_test_host"
+   ...
+   Test: dm_test_blk_flags: blk.c
+   Test: dm_test_blk_flags: blk.c (flat tree)
+   Test: dm_test_host: host.c
+   test/dm/host.c:71, dm_test_host(): 0 == ut_check_delta(mem_start): Expected 0x0 (0), got 0xffffc960 (-13984)
+   Test: dm_test_host: host.c (flat tree)
+   Test dm_test_host failed 1 times (position 82)
+   Failures: 1
+
+From this we can deduce that `dm_test_blk_flags()` causes the problem with
+`dm_test_host()`.
 
 Running sandbox_spl tests directly
 ----------------------------------

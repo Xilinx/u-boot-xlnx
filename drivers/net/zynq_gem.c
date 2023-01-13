@@ -328,7 +328,7 @@ static int zynq_phy_init(struct udevice *dev)
 
 	priv->phydev = phy_connect(priv->bus, priv->phyaddr, dev,
 				   priv->interface);
-	if (!priv->phydev)
+	if (IS_ERR_OR_NULL(priv->phydev))
 		return -ENODEV;
 
 	if (priv->max_speed) {
@@ -821,7 +821,8 @@ static int zynq_gem_probe(struct udevice *dev)
 
 	if (priv->interface == PHY_INTERFACE_MODE_SGMII && phy.dev) {
 		if (IS_ENABLED(CONFIG_DM_ETH_PHY)) {
-			if (device_is_compatible(dev, "cdns,zynqmp-gem")) {
+			if (device_is_compatible(dev, "cdns,zynqmp-gem") ||
+			    device_is_compatible(dev, "xlnx,zynqmp-gem")) {
 				ret = gem_zynqmp_set_dynamic_config(dev);
 				if (ret) {
 					dev_err
@@ -876,7 +877,6 @@ static int zynq_gem_of_to_plat(struct udevice *dev)
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct zynq_gem_priv *priv = dev_get_priv(dev);
 	struct ofnode_phandle_args phandle_args;
-	const char *phy_mode;
 
 	pdata->iobase = (phys_addr_t)dev_read_addr(dev);
 	priv->iobase = (struct zynq_gem_regs *)pdata->iobase;
@@ -910,13 +910,9 @@ static int zynq_gem_of_to_plat(struct udevice *dev)
 		}
 	}
 
-	phy_mode = dev_read_prop(dev, "phy-mode", NULL);
-	if (phy_mode)
-		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	if (pdata->phy_interface == -1) {
-		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
+	pdata->phy_interface = dev_read_phy_mode(dev);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA)
 		return -EINVAL;
-	}
 	priv->interface = pdata->phy_interface;
 
 	priv->int_pcs = dev_read_bool(dev, "is-internal-pcspma");
@@ -927,8 +923,11 @@ static int zynq_gem_of_to_plat(struct udevice *dev)
 }
 
 static const struct udevice_id zynq_gem_ids[] = {
+	{ .compatible = "xlnx,versal-gem", .data = RXCLK_EN },
 	{ .compatible = "cdns,versal-gem", .data = RXCLK_EN },
+	{ .compatible = "xlnx,zynqmp-gem" },
 	{ .compatible = "cdns,zynqmp-gem" },
+	{ .compatible = "xlnx,zynq-gem" },
 	{ .compatible = "cdns,zynq-gem" },
 	{ .compatible = "cdns,gem" },
 	{ }

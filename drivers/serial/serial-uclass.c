@@ -66,7 +66,8 @@ static int serial_check_stdout(const void *blob, struct udevice **devp)
 	 */
 	if (node > 0 && !lists_bind_fdt(gd->dm_root, offset_to_ofnode(node),
 					devp, NULL, false)) {
-		if (!device_probe(*devp))
+		if (device_get_uclass_id(*devp) == UCLASS_SERIAL &&
+		    !device_probe(*devp))
 			return 0;
 	}
 
@@ -104,7 +105,8 @@ static void serial_find_console_or_panic(void)
 			}
 		}
 	}
-	if (!SPL_BUILD || !CONFIG_IS_ENABLED(OF_CONTROL) || !blob) {
+	if (!IS_ENABLED(CONFIG_SPL_BUILD) || !CONFIG_IS_ENABLED(OF_CONTROL) ||
+	    !blob) {
 		/*
 		 * Try to use CONFIG_CONS_INDEX if available (it is numbered
 		 * from 1!).
@@ -141,7 +143,7 @@ static void serial_find_console_or_panic(void)
 #else
 		if (!uclass_get_device_by_seq(UCLASS_SERIAL, INDEX, &dev) ||
 		    !uclass_get_device(UCLASS_SERIAL, INDEX, &dev) ||
-		    (!uclass_first_device(UCLASS_SERIAL, &dev) && dev)) {
+		    !uclass_first_device_err(UCLASS_SERIAL, &dev)) {
 			gd->cur_serial_dev = dev;
 			return;
 		}
@@ -196,11 +198,57 @@ static void _serial_putc(struct udevice *dev, char ch)
 	} while (err == -EAGAIN);
 }
 
+static int __serial_puts(struct udevice *dev, const char *str, size_t len)
+{
+	struct dm_serial_ops *ops = serial_get_ops(dev);
+
+	do {
+		ssize_t written = ops->puts(dev, str, len);
+
+		if (written < 0)
+			return written;
+		str += written;
+		len -= written;
+	} while (len);
+
+	return 0;
+}
+
 static void _serial_puts(struct udevice *dev, const char *str)
 {
-	while (*str)
-		_serial_putc(dev, *str++);
+	struct dm_serial_ops *ops = serial_get_ops(dev);
+
+	if (!CONFIG_IS_ENABLED(SERIAL_PUTS) || !ops->puts) {
+		while (*str)
+			_serial_putc(dev, *str++);
+		return;
+	}
+
+	do {
+		const char *newline = strchrnul(str, '\n');
+		size_t len = newline - str;
+
+		if (__serial_puts(dev, str, len))
+			return;
+
+		if (*newline && __serial_puts(dev, "\r\n", 2))
+			return;
+
+		str += len + !!*newline;
+	} while (*str);
 }
+
+#ifdef CONFIG_CONSOLE_FLUSH_SUPPORT
+static void _serial_flush(struct udevice *dev)
+{
+	struct dm_serial_ops *ops = serial_get_ops(dev);
+
+	if (!ops->pending)
+		return;
+	while (ops->pending(dev, false) > 0)
+		;
+}
+#endif
 
 static int __serial_getc(struct udevice *dev)
 {
@@ -210,7 +258,7 @@ static int __serial_getc(struct udevice *dev)
 	do {
 		err = ops->getc(dev);
 		if (err == -EAGAIN)
-			WATCHDOG_RESET();
+			schedule();
 	} while (err == -EAGAIN);
 
 	return err >= 0 ? err : 0;
@@ -278,6 +326,16 @@ void serial_puts(const char *str)
 	if (gd->cur_serial_dev)
 		_serial_puts(gd->cur_serial_dev, str);
 }
+
+#ifdef CONFIG_CONSOLE_FLUSH_SUPPORT
+void serial_flush(void)
+{
+	if (!gd->cur_serial_dev)
+		return;
+
+	_serial_flush(gd->cur_serial_dev);
+}
+#endif
 
 int serial_getc(void)
 {
@@ -356,12 +414,18 @@ static void serial_stub_putc(struct stdio_dev *sdev, const char ch)
 {
 	_serial_putc(sdev->priv, ch);
 }
-#endif
 
 static void serial_stub_puts(struct stdio_dev *sdev, const char *str)
 {
 	_serial_puts(sdev->priv, str);
 }
+
+#ifdef CONFIG_CONSOLE_FLUSH_SUPPORT
+static void serial_stub_flush(struct stdio_dev *sdev)
+{
+	_serial_flush(sdev->priv);
+}
+#endif
 
 static int serial_stub_getc(struct stdio_dev *sdev)
 {
@@ -372,6 +436,7 @@ static int serial_stub_tstc(struct stdio_dev *sdev)
 {
 	return _serial_tstc(sdev->priv);
 }
+#endif
 #endif
 
 /**
@@ -411,6 +476,7 @@ static int on_baudrate(const char *name, const char *value, enum env_op op,
 			printf("## Switch baudrate to %d bps and press ENTER ...\n",
 			       baudrate);
 			udelay(50000);
+			flush();
 		}
 
 		gd->baudrate = baudrate;
@@ -484,6 +550,7 @@ static int serial_post_probe(struct udevice *dev)
 	sdev.priv = dev;
 	sdev.putc = serial_stub_putc;
 	sdev.puts = serial_stub_puts;
+	STDIO_DEV_ASSIGN_FLUSH(&sdev, serial_stub_flush);
 	sdev.getc = serial_stub_getc;
 	sdev.tstc = serial_stub_tstc;
 

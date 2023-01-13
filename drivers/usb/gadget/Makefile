@@ -21,7 +21,6 @@ obj-$(CONFIG_USB_GADGET_DWC2_OTG) += dwc2_udc_otg.o
 obj-$(CONFIG_USB_GADGET_DWC2_OTG_PHY) += dwc2_udc_otg_phy.o
 obj-$(CONFIG_USB_GADGET_FOTG210) += fotg210.o
 obj-$(CONFIG_USB_GADGET_MAX3420) += max3420_udc.o
-obj-$(CONFIG_CI_UDC)	+= ci_udc.o
 ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_USB_GADGET_DOWNLOAD) += g_dnl.o
 obj-$(CONFIG_USB_FUNCTION_THOR) += f_thor.o
@@ -30,19 +29,15 @@ obj-$(CONFIG_USB_FUNCTION_MASS_STORAGE) += f_mass_storage.o
 obj-$(CONFIG_USB_FUNCTION_FASTBOOT) += f_fastboot.o
 obj-$(CONFIG_USB_FUNCTION_SDP) += f_sdp.o
 obj-$(CONFIG_USB_FUNCTION_ROCKUSB) += f_rockusb.o
+obj-$(CONFIG_USB_FUNCTION_ACM)	+= f_acm.o
 endif
 endif
-ifdef CONFIG_USB_ETHER
-obj-y += ether.o
+
+obj-$(CONFIG_CI_UDC) += ci_udc.o
+
+obj-$(CONFIG_USB_ETHER) += ether.o
 obj-$(CONFIG_USB_ETH_RNDIS) += rndis.o
-obj-$(CONFIG_CI_UDC)	+= ci_udc.o
-obj-$(CONFIG_CPU_PXA25X) += pxa25x_udc.o
-else
+
 # Devices not related to the new gadget layer depend on CONFIG_USB_DEVICE
-ifdef CONFIG_USB_DEVICE
-obj-y += core.o
-obj-y += ep0.o
-obj-$(CONFIG_DW_UDC) += designware_udc.o
-obj-$(CONFIG_CPU_PXA27X) += pxa27x_udc.o
-endif
-endif
+# This is really only N900 and USBTTY now.
+obj-$(CONFIG_USB_DEVICE) += core.o ep0.o

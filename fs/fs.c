@@ -7,6 +7,7 @@
 
 #include <command.h>
 #include <config.h>
+#include <display_options.h>
 #include <errno.h>
 #include <common.h>
 #include <env.h>
@@ -18,6 +19,7 @@
 #include <fat.h>
 #include <fs.h>
 #include <sandboxfs.h>
+#include <semihostingfs.h>
 #include <ubifs_uboot.h>
 #include <btrfs.h>
 #include <asm/global_data.h>
@@ -26,6 +28,7 @@
 #include <linux/math64.h>
 #include <efi_loader.h>
 #include <squashfs.h>
+#include <erofs.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -33,6 +36,11 @@ static struct blk_desc *fs_dev_desc;
 static int fs_dev_part;
 static struct disk_partition fs_partition;
 static int fs_type = FS_TYPE_ANY;
+
+void fs_set_type(int type)
+{
+	fs_type = type;
+}
 
 static inline int fs_probe_unsupported(struct blk_desc *fs_dev_desc,
 				      struct disk_partition *fs_partition)
@@ -175,7 +183,7 @@ struct fstype_info {
 };
 
 static struct fstype_info fstypes[] = {
-#ifdef CONFIG_FS_FAT
+#if CONFIG_IS_ENABLED(FS_FAT)
 	{
 		.fstype = FS_TYPE_FAT,
 		.name = "fat",
@@ -246,6 +254,26 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 	},
 #endif
+#ifdef CONFIG_SEMIHOSTING
+	{
+		.fstype = FS_TYPE_SEMIHOSTING,
+		.name = "semihosting",
+		.null_dev_desc_ok = true,
+		.probe = smh_fs_set_blk_dev,
+		.close = fs_close_unsupported,
+		.ls = fs_ls_unsupported,
+		.exists = fs_exists_unsupported,
+		.size = smh_fs_size,
+		.read = smh_fs_read,
+		.write = smh_fs_write,
+		.uuid = fs_uuid_unsupported,
+		.opendir = fs_opendir_unsupported,
+		.unlink = fs_unlink_unsupported,
+		.mkdir = fs_mkdir_unsupported,
+		.ln = fs_ln_unsupported,
+	},
+#endif
+#ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_CMD_UBIFS
 	{
 		.fstype = FS_TYPE_UBIFS,
@@ -265,6 +293,8 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 	},
 #endif
+#endif
+#ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_FS_BTRFS
 	{
 		.fstype = FS_TYPE_BTRFS,
@@ -284,7 +314,8 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 	},
 #endif
-#if IS_ENABLED(CONFIG_FS_SQUASHFS)
+#endif
+#if CONFIG_IS_ENABLED(FS_SQUASHFS)
 	{
 		.fstype = FS_TYPE_SQUASHFS,
 		.name = "squashfs",
@@ -298,6 +329,27 @@ static struct fstype_info fstypes[] = {
 		.close = sqfs_close,
 		.closedir = sqfs_closedir,
 		.exists = sqfs_exists,
+		.uuid = fs_uuid_unsupported,
+		.write = fs_write_unsupported,
+		.ln = fs_ln_unsupported,
+		.unlink = fs_unlink_unsupported,
+		.mkdir = fs_mkdir_unsupported,
+	},
+#endif
+#if IS_ENABLED(CONFIG_FS_EROFS)
+	{
+		.fstype = FS_TYPE_EROFS,
+		.name = "erofs",
+		.null_dev_desc_ok = false,
+		.probe = erofs_probe,
+		.opendir = erofs_opendir,
+		.readdir = erofs_readdir,
+		.ls = fs_ls_generic,
+		.read = erofs_read,
+		.size = erofs_size,
+		.close = erofs_close,
+		.closedir = erofs_closedir,
+		.exists = erofs_exists,
 		.uuid = fs_uuid_unsupported,
 		.write = fs_write_unsupported,
 		.ln = fs_ln_unsupported,

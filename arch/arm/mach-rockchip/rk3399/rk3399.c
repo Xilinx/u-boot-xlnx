@@ -15,6 +15,7 @@
 #include <asm/io.h>
 #include <asm/arch-rockchip/bootrom.h>
 #include <asm/arch-rockchip/clock.h>
+#include <asm/arch-rockchip/cru.h>
 #include <asm/arch-rockchip/gpio.h>
 #include <asm/arch-rockchip/grf_rk3399.h>
 #include <asm/arch-rockchip/hardware.h>
@@ -27,7 +28,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define GRF_BASE	0xff770000
 
 const char * const boot_devices[BROM_LAST_BOOTSOURCE + 1] = {
-	[BROM_BOOTSOURCE_EMMC] = "/sdhci@fe330000",
+	[BROM_BOOTSOURCE_EMMC] = "/mmc@fe330000",
 	[BROM_BOOTSOURCE_SPINOR] = "/spi@ff1d0000/flash@0",
 	[BROM_BOOTSOURCE_SD] = "/mmc@fe320000",
 };
@@ -118,10 +119,6 @@ void board_debug_uart_init(void)
 #define GPIO0_BASE	0xff720000
 #define PMUGRF_BASE	0xff320000
 	struct rk3399_grf_regs * const grf = (void *)GRF_BASE;
-#ifdef CONFIG_TARGET_CHROMEBOOK_BOB
-	struct rk3399_pmugrf_regs * const pmugrf = (void *)PMUGRF_BASE;
-	struct rockchip_gpio_regs * const gpio = (void *)GPIO0_BASE;
-#endif
 
 #if defined(CONFIG_DEBUG_UART_BASE) && (CONFIG_DEBUG_UART_BASE == 0xff180000)
 	/* Enable early UART0 on the RK3399 */
@@ -140,19 +137,26 @@ void board_debug_uart_init(void)
 		     GRF_GPIO3B7_SEL_MASK,
 		     GRF_UART3_SOUT << GRF_GPIO3B7_SEL_SHIFT);
 #else
-# ifdef CONFIG_TARGET_CHROMEBOOK_BOB
-	rk_setreg(&grf->io_vsel, 1 << 0);
+	struct rk3399_pmugrf_regs * const pmugrf = (void *)PMUGRF_BASE;
+	struct rockchip_gpio_regs * const gpio = (void *)GPIO0_BASE;
 
-	/*
-	 * Let's enable these power rails here, we are already running the SPI
-	 * Flash based code.
-	 */
-	spl_gpio_output(gpio, GPIO(BANK_B, 2), 1);  /* PP1500_EN */
-	spl_gpio_set_pull(&pmugrf->gpio0_p, GPIO(BANK_B, 2), GPIO_PULL_NORMAL);
+	if (IS_ENABLED(CONFIG_SPL_BUILD) &&
+	    (IS_ENABLED(CONFIG_TARGET_CHROMEBOOK_BOB) ||
+	     IS_ENABLED(CONFIG_TARGET_CHROMEBOOK_KEVIN))) {
+		rk_setreg(&grf->io_vsel, 1 << 0);
 
-	spl_gpio_output(gpio, GPIO(BANK_B, 4), 1);  /* PP3000_EN */
-	spl_gpio_set_pull(&pmugrf->gpio0_p, GPIO(BANK_B, 4), GPIO_PULL_NORMAL);
-#endif /* CONFIG_TARGET_CHROMEBOOK_BOB */
+		/*
+		 * Let's enable these power rails here, we are already running
+		 * the SPI-Flash-based code.
+		 */
+		spl_gpio_output(gpio, GPIO(BANK_B, 2), 1);  /* PP1500_EN */
+		spl_gpio_set_pull(&pmugrf->gpio0_p, GPIO(BANK_B, 2),
+				  GPIO_PULL_NORMAL);
+
+		spl_gpio_output(gpio, GPIO(BANK_B, 4), 1);  /* PP3000_EN */
+		spl_gpio_set_pull(&pmugrf->gpio0_p, GPIO(BANK_B, 4),
+				  GPIO_PULL_NORMAL);
+	}
 
 	/* Enable early UART2 channel C on the RK3399 */
 	rk_clrsetreg(&grf->gpio4c_iomux,
@@ -177,9 +181,9 @@ const char *spl_decode_boot_device(u32 boot_device)
 		u32 boot_device;
 		const char *ofpath;
 	} spl_boot_devices_tbl[] = {
-		{ BOOT_DEVICE_MMC1, "/mmc@fe320000" },
-		{ BOOT_DEVICE_MMC2, "/sdhci@fe330000" },
-		{ BOOT_DEVICE_SPI, "/spi@ff1d0000" },
+		{ BOOT_DEVICE_MMC2, "/mmc@fe320000" },
+		{ BOOT_DEVICE_MMC1, "/mmc@fe330000" },
+		{ BOOT_DEVICE_SPI, "/spi@ff1d0000/flash@0" },
 	};
 
 	for (i = 0; i < ARRAY_SIZE(spl_boot_devices_tbl); ++i)
@@ -218,11 +222,16 @@ void spl_perform_fixups(struct spl_image_info *spl_image)
 			   "u-boot,spl-boot-device", boot_ofpath);
 }
 
-#if defined(SPL_GPIO)
 static void rk3399_force_power_on_reset(void)
 {
 	ofnode node;
 	struct gpio_desc sysreset_gpio;
+
+	if (!IS_ENABLED(CONFIG_SPL_GPIO)) {
+		debug("%s: trying to force a power-on reset but no GPIO "
+		      "support in SPL!\n", __func__);
+		return;
+	}
 
 	debug("%s: trying to force a power-on reset\n", __func__);
 
@@ -240,7 +249,6 @@ static void rk3399_force_power_on_reset(void)
 
 	dm_gpio_set_value(&sysreset_gpio, 1);
 }
-#endif
 
 void __weak led_setup(void)
 {
@@ -250,35 +258,37 @@ void spl_board_init(void)
 {
 	led_setup();
 
-#if defined(SPL_GPIO)
-	struct rockchip_cru *cru = rockchip_get_cru();
+	if (IS_ENABLED(CONFIG_SPL_GPIO)) {
+		struct rockchip_cru *cru = rockchip_get_cru();
 
-	/*
-	 * The RK3399 resets only 'almost all logic' (see also in the TRM
-	 * "3.9.4 Global software reset"), when issuing a software reset.
-	 * This may cause issues during boot-up for some configurations of
-	 * the application software stack.
-	 *
-	 * To work around this, we test whether the last reset reason was
-	 * a power-on reset and (if not) issue an overtemp-reset to reset
-	 * the entire module.
-	 *
-	 * While this was previously fixed by modifying the various places
-	 * that could generate a software reset (e.g. U-Boot's sysreset
-	 * driver, the ATF or Linux), we now have it here to ensure that
-	 * we no longer have to track this through the various components.
-	 */
-	if (cru->glb_rst_st != 0)
-		rk3399_force_power_on_reset();
-#endif
+		/*
+		 * The RK3399 resets only 'almost all logic' (see also in the
+		 * TRM "3.9.4 Global software reset"), when issuing a software
+		 * reset. This may cause issues during boot-up for some
+		 * configurations of the application software stack.
+		 *
+		 * To work around this, we test whether the last reset reason
+		 * was a power-on reset and (if not) issue an overtemp-reset to
+		 * reset the entire module.
+		 *
+		 * While this was previously fixed by modifying the various
+		 * places that could generate a software reset (e.g. U-Boot's
+		 * sysreset driver, the ATF or Linux), we now have it here to
+		 * ensure that we no longer have to track this through the
+		 * various components.
+		 */
+		if (cru->glb_rst_st != 0)
+			rk3399_force_power_on_reset();
+	}
 
-#if defined(SPL_DM_REGULATOR)
-	/*
-	 * Turning the eMMC and SPI back on (if disabled via the Qseven
-	 * BIOS_ENABLE) signal is done through a always-on regulator).
-	 */
-	if (regulators_enable_boot_on(false))
-		debug("%s: Cannot enable boot on regulator\n", __func__);
-#endif
+	if (IS_ENABLED(CONFIG_SPL_DM_REGULATOR)) {
+		/*
+		 * Turning the eMMC and SPI back on (if disabled via the Qseven
+		 * BIOS_ENABLE) signal is done through a always-on regulator).
+		 */
+		if (regulators_enable_boot_on(false))
+			debug("%s: Cannot enable boot on regulator\n",
+			      __func__);
+	}
 }
 #endif

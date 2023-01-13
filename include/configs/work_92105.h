@@ -19,24 +19,11 @@
 #define CONFIG_SYS_SDRAM_BASE		EMC_DYCS0_BASE
 #define CONFIG_SYS_SDRAM_SIZE		SZ_128M
 
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + SZ_512K \
-					 - GENERATED_GBL_DATA_SIZE)
-
-/*
- * Ethernet Driver
- */
-
-#define CONFIG_LPC32XX_ETH
-#define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-/* FIXME: remove "Waiting for PHY auto negotiation to complete..." message */
-
 #define CONFIG_RTC_DS1374
 
 /*
  * U-Boot General Configurations
  */
-#define CONFIG_SYS_CBSIZE		1024
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
 /*
  * NAND chip timings for FIXME: which one?
@@ -55,8 +42,6 @@
  */
 
 /* driver configuration */
-#define CONFIG_SYS_NAND_SELF_INIT
-#define CONFIG_SYS_MAX_NAND_DEVICE 1
 #define CONFIG_SYS_MAX_NAND_CHIPS 1
 #define CONFIG_SYS_NAND_BASE MLC_NAND_BASE
 
@@ -64,17 +49,9 @@
  * GPIO
  */
 
-#define CONFIG_LPC32XX_GPIO
-
 /*
  * Environment
  */
-
-/*
- * Boot Linux
- */
-
-#define CONFIG_BOOTFILE			"uImage"
 
 /*
  * SPL
@@ -82,15 +59,12 @@
 
 /* SPL will be executed at offset 0 */
 /* SPL will use SRAM as stack */
-#define CONFIG_SPL_STACK     0x0000FFF8
 /* Use the framework and generic lib */
 /* SPL will use serial */
 /* SPL will load U-Boot from NAND offset 0x40000 */
-#define CONFIG_SPL_PAD_TO 0x20000
-/* U-Boot will be 0x40000 bytes, loaded and run at CONFIG_SYS_TEXT_BASE */
-#define CONFIG_SYS_MONITOR_LEN 0x40000 /* actually, MAX size */
-#define CONFIG_SYS_NAND_U_BOOT_START CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_NAND_U_BOOT_DST   CONFIG_SYS_TEXT_BASE
+/* U-Boot will be 0x40000 bytes, loaded and run at CONFIG_TEXT_BASE */
+#define CONFIG_SYS_NAND_U_BOOT_START CONFIG_TEXT_BASE
+#define CONFIG_SYS_NAND_U_BOOT_DST   CONFIG_TEXT_BASE
 
 /*
  * Include SoC specific configuration

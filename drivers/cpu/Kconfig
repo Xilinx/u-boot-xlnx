@@ -9,7 +9,7 @@ config CPU
 
 config CPU_MPC83XX
 	bool "Enable MPC83xx CPU driver"
-	depends on CPU
+	depends on CPU && MPC83xx
 	select CLK_MPC83XX
 	help
 	  Support CPU cores for SoCs of the MPC83xx series.
@@ -19,3 +19,12 @@ config CPU_RISCV
 	depends on CPU && RISCV
 	help
 	  Support CPU cores for RISC-V architecture.
+
+config CPU_MICROBLAZE
+	bool "Enable Microblaze CPU driver"
+	depends on CPU && MICROBLAZE
+	select EVENT
+	select DM_EVENT
+	select XILINX_MICROBLAZE0_PVR
+	help
+	  Support CPU cores for Microblaze architecture.

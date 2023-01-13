@@ -20,9 +20,13 @@ from patman import tout
 ELF_TOOLS = True
 try:
     from elftools.elf.elffile import ELFFile
+    from elftools.elf.elffile import ELFError
     from elftools.elf.sections import SymbolTableSection
 except:  # pragma: no cover
     ELF_TOOLS = False
+
+# BSYM in little endian, keep in sync with include/binman_sym.h
+BINMAN_SYM_MAGIC_VALUE = 0x4d595342
 
 # Information about an EFL symbol:
 # section (str): Name of the section containing this symbol
@@ -54,7 +58,7 @@ def GetSymbols(fname, patterns):
           key: Name of symbol
           value: Hex value of symbol
     """
-    stdout = tools.Run('objdump', '-t', fname)
+    stdout = tools.run('objdump', '-t', fname)
     lines = stdout.splitlines()
     if patterns:
         re_syms = re.compile('|'.join(patterns))
@@ -84,6 +88,57 @@ def GetSymbols(fname, patterns):
     # Sort dict by address
     return OrderedDict(sorted(syms.items(), key=lambda x: x[1].address))
 
+def _GetFileOffset(elf, addr):
+    """Get the file offset for an address
+
+    Args:
+        elf (ELFFile): ELF file to check
+        addr (int): Address to search for
+
+    Returns
+        int: Offset of that address in the ELF file, or None if not valid
+    """
+    for seg in elf.iter_segments():
+        seg_end = seg['p_vaddr'] + seg['p_filesz']
+        if seg.header['p_type'] == 'PT_LOAD':
+            if addr >= seg['p_vaddr'] and addr < seg_end:
+                return addr - seg['p_vaddr'] + seg['p_offset']
+
+def GetFileOffset(fname, addr):
+    """Get the file offset for an address
+
+    Args:
+        fname (str): Filename of ELF file to check
+        addr (int): Address to search for
+
+    Returns
+        int: Offset of that address in the ELF file, or None if not valid
+    """
+    if not ELF_TOOLS:
+        raise ValueError("Python: No module named 'elftools'")
+    with open(fname, 'rb') as fd:
+        elf = ELFFile(fd)
+        return _GetFileOffset(elf, addr)
+
+def GetSymbolFromAddress(fname, addr):
+    """Get the symbol at a particular address
+
+    Args:
+        fname (str): Filename of ELF file to check
+        addr (int): Address to search for
+
+    Returns:
+        str: Symbol name, or None if no symbol at that address
+    """
+    if not ELF_TOOLS:
+        raise ValueError("Python: No module named 'elftools'")
+    with open(fname, 'rb') as fd:
+        elf = ELFFile(fd)
+        syms = GetSymbols(fname, None)
+    for name, sym in syms.items():
+        if sym.address == addr:
+            return name
+
 def GetSymbolFileOffset(fname, patterns):
     """Get the symbols from an ELF file
 
@@ -96,15 +151,8 @@ def GetSymbolFileOffset(fname, patterns):
           key: Name of symbol
           value: Hex value of symbol
     """
-    def _GetFileOffset(elf, addr):
-        for seg in elf.iter_segments():
-            seg_end = seg['p_vaddr'] + seg['p_filesz']
-            if seg.header['p_type'] == 'PT_LOAD':
-                if addr >= seg['p_vaddr'] and addr < seg_end:
-                    return addr - seg['p_vaddr'] + seg['p_offset']
-
     if not ELF_TOOLS:
-        raise ValueError('Python elftools package is not available')
+        raise ValueError("Python: No module named 'elftools'")
 
     syms = {}
     with open(fname, 'rb') as fd:
@@ -140,7 +188,29 @@ def GetSymbolAddress(fname, sym_name):
         return None
     return sym.address
 
-def LookupAndWriteSymbols(elf_fname, entry, section):
+def GetPackString(sym, msg):
+    """Get the struct.pack/unpack string to use with a given symbol
+
+    Args:
+        sym (Symbol): Symbol to check. Only the size member is checked
+        @msg (str): String which indicates the entry being processed, used for
+            errors
+
+    Returns:
+        str: struct string to use, .e.g. '<I'
+
+    Raises:
+        ValueError: Symbol has an unexpected size
+    """
+    if sym.size == 4:
+        return '<I'
+    elif sym.size == 8:
+        return '<Q'
+    else:
+        raise ValueError('%s has size %d: only 4 and 8 are supported' %
+                         (msg, sym.size))
+
+def LookupAndWriteSymbols(elf_fname, entry, section, is_elf=False):
     """Replace all symbols in an entry with their correct values
 
     The entry contents is updated so that values for referenced symbols will be
@@ -154,41 +224,84 @@ def LookupAndWriteSymbols(elf_fname, entry, section):
         entry: Entry to process
         section: Section which can be used to lookup symbol values
     """
-    fname = tools.GetInputFilename(elf_fname)
+    fname = tools.get_input_filename(elf_fname)
     syms = GetSymbols(fname, ['image', 'binman'])
+    if is_elf:
+        if not ELF_TOOLS:
+            msg = ("Section '%s': entry '%s'" %
+                   (section.GetPath(), entry.GetPath()))
+            raise ValueError(f'{msg}: Cannot write symbols to an ELF file without Python elftools')
+        new_syms = {}
+        with open(fname, 'rb') as fd:
+            elf = ELFFile(fd)
+            for name, sym in syms.items():
+                offset = _GetFileOffset(elf, sym.address)
+                new_syms[name] = Symbol(sym.section, sym.address, sym.size,
+                                        sym.weak, offset)
+            syms = new_syms
+
     if not syms:
+        tout.debug('LookupAndWriteSymbols: no syms')
         return
     base = syms.get('__image_copy_start')
-    if not base:
+    if not base and not is_elf:
+        tout.debug('LookupAndWriteSymbols: no base')
         return
+    base_addr = 0 if is_elf else base.address
     for name, sym in syms.items():
         if name.startswith('_binman'):
             msg = ("Section '%s': Symbol '%s'\n   in entry '%s'" %
                    (section.GetPath(), name, entry.GetPath()))
-            offset = sym.address - base.address
-            if offset < 0 or offset + sym.size > entry.contents_size:
-                raise ValueError('%s has offset %x (size %x) but the contents '
-                                 'size is %x' % (entry.GetPath(), offset,
-                                                 sym.size, entry.contents_size))
-            if sym.size == 4:
-                pack_string = '<I'
-            elif sym.size == 8:
-                pack_string = '<Q'
+            if is_elf:
+                # For ELF files, use the file offset
+                offset = sym.offset
             else:
-                raise ValueError('%s has size %d: only 4 and 8 are supported' %
-                                 (msg, sym.size))
-
-            # Look up the symbol in our entry tables.
-            value = section.GetImage().LookupImageSymbol(name, sym.weak, msg,
-                                                         base.address)
+                # For blobs use the offset of the symbol, calculated by
+                # subtracting the base address which by definition is at the
+                # start
+                offset = sym.address - base.address
+                if offset < 0 or offset + sym.size > entry.contents_size:
+                    raise ValueError('%s has offset %x (size %x) but the contents '
+                                     'size is %x' % (entry.GetPath(), offset,
+                                                     sym.size,
+                                                     entry.contents_size))
+            pack_string = GetPackString(sym, msg)
+            if name == '_binman_sym_magic':
+                value = BINMAN_SYM_MAGIC_VALUE
+            else:
+                # Look up the symbol in our entry tables.
+                value = section.GetImage().LookupImageSymbol(name, sym.weak,
+                                                             msg, base_addr)
             if value is None:
                 value = -1
                 pack_string = pack_string.lower()
             value_bytes = struct.pack(pack_string, value)
-            tout.Debug('%s:\n   insert %s, offset %x, value %x, length %d' %
+            tout.debug('%s:\n   insert %s, offset %x, value %x, length %d' %
                        (msg, name, offset, value, len(value_bytes)))
             entry.data = (entry.data[:offset] + value_bytes +
                         entry.data[offset + sym.size:])
+
+def GetSymbolValue(sym, data, msg):
+    """Get the value of a symbol
+
+    This can only be used on symbols with an integer value.
+
+    Args:
+        sym (Symbol): Symbol to check
+        data (butes): Data for the ELF file - the symbol data appears at offset
+            sym.offset
+        @msg (str): String which indicates the entry being processed, used for
+            errors
+
+    Returns:
+        int: Value of the symbol
+
+    Raises:
+        ValueError: Symbol has an unexpected size
+    """
+    pack_string = GetPackString(sym, msg)
+    value = struct.unpack(pack_string, data[sym.offset:sym.offset + sym.size])
+    return value[0]
 
 def MakeElf(elf_fname, text, data):
     """Make an elf file with the given data in a single section
@@ -282,10 +395,10 @@ SECTIONS
     #   text section at the start
     # -m32: Build for 32-bit x86
     # -T...: Specifies the link script, which sets the start address
-    cc, args = tools.GetTargetCompileTool('cc')
+    cc, args = tools.get_target_compile_tool('cc')
     args += ['-static', '-nostdlib', '-Wl,--build-id=none', '-m32', '-T',
             lds_file, '-o', elf_fname, s_file]
-    stdout = command.Output(cc, *args)
+    stdout = command.output(cc, *args)
     shutil.rmtree(outdir)
 
 def DecodeElf(data, location):
@@ -350,7 +463,7 @@ def DecodeElf(data, location):
                    mem_end - data_start)
 
 def UpdateFile(infile, outfile, start_sym, end_sym, insert):
-    tout.Notice("Creating file '%s' with data length %#x (%d) between symbols '%s' and '%s'" %
+    tout.notice("Creating file '%s' with data length %#x (%d) between symbols '%s' and '%s'" %
                 (outfile, len(insert), len(insert), start_sym, end_sym))
     syms = GetSymbolFileOffset(infile, [start_sym, end_sym])
     if len(syms) != 2:
@@ -363,9 +476,45 @@ def UpdateFile(infile, outfile, start_sym, end_sym, insert):
         raise ValueError("Not enough space in '%s' for data length %#x (%d); size is %#x (%d)" %
                          (infile, len(insert), len(insert), size, size))
 
-    data = tools.ReadFile(infile)
+    data = tools.read_file(infile)
     newdata = data[:syms[start_sym].offset]
-    newdata += insert + tools.GetBytes(0, size - len(insert))
+    newdata += insert + tools.get_bytes(0, size - len(insert))
     newdata += data[syms[end_sym].offset:]
-    tools.WriteFile(outfile, newdata)
-    tout.Info('Written to offset %#x' % syms[start_sym].offset)
+    tools.write_file(outfile, newdata)
+    tout.info('Written to offset %#x' % syms[start_sym].offset)
+
+def read_loadable_segments(data):
+    """Read segments from an ELF file
+
+    Args:
+        data (bytes): Contents of file
+
+    Returns:
+        tuple:
+            list of segments, each:
+                int: Segment number (0 = first)
+                int: Start address of segment in memory
+                bytes: Contents of segment
+            int: entry address for image
+
+    Raises:
+        ValueError: elftools is not available
+    """
+    if not ELF_TOOLS:
+        raise ValueError("Python: No module named 'elftools'")
+    with io.BytesIO(data) as inf:
+        try:
+            elf = ELFFile(inf)
+        except ELFError as err:
+            raise ValueError(err)
+        entry = elf.header['e_entry']
+        segments = []
+        for i in range(elf.num_segments()):
+            segment = elf.get_segment(i)
+            if segment['p_type'] != 'PT_LOAD' or not segment['p_memsz']:
+                skipped = 1  # To make code-coverage see this line
+                continue
+            start = segment['p_offset']
+            rend = start + segment['p_filesz']
+            segments.append((i, segment['p_paddr'], data[start:rend]))
+    return segments, entry

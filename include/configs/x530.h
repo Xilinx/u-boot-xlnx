@@ -27,7 +27,6 @@
  */
 
 /* NAND */
-#define CONFIG_SYS_MAX_NAND_DEVICE 1
 
 #define BBT_CUSTOM_SCAN
 #define BBT_CUSTOM_SCAN_PAGE 0
@@ -47,11 +46,6 @@
 
 #define PHY_ANEG_TIMEOUT	8000	/* PHY needs a longer aneg time */
 
-/* PCIe support */
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_PCI_SCAN_SHOW
-#endif
-
 /* NAND */
 
 #include <asm/arch/config.h>
@@ -63,21 +57,5 @@
 
 #define CONFIG_UBI_PART			user
 #define CONFIG_UBIFS_VOLUME		user
-
-/* SPL */
-
-/* Defines for SPL */
-#define CONFIG_SPL_SIZE			(140 << 10)
-#define CONFIG_SPL_MAX_SIZE		(CONFIG_SPL_SIZE - 0x0030)
-
-#define CONFIG_SPL_BSS_START_ADDR	(0x40000000 + CONFIG_SPL_SIZE)
-#define CONFIG_SPL_BSS_MAX_SIZE		(16 << 10)
-
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MALLOC_SIMPLE
-#endif
-
-#define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
-#define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
 
 #endif /* _CONFIG_X530_H */

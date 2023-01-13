@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2019, 2021 NXP
  *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -49,6 +49,8 @@ void spl_board_init(void)
 	struct udevice *dev;
 	int ret;
 
+	arch_misc_init();
+
 	puts("Normal Boot\n");
 
 	ret = uclass_get_device_by_name(UCLASS_CLK,
@@ -64,7 +66,7 @@ int power_init_board(void)
 	struct udevice *dev;
 	int ret;
 
-	ret = pmic_get("pca9450@25", &dev);
+	ret = pmic_get("pmic@25", &dev);
 	if (ret == -ENODEV) {
 		puts("No pca9450@25\n");
 		return 0;
@@ -110,31 +112,6 @@ int board_fit_config_name_match(const char *name)
 }
 #endif
 
-#define UART_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_FSEL1)
-#define WDOG_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_ODE | PAD_CTL_PUE | PAD_CTL_PE)
-
-static iomux_v3_cfg_t const uart_pads[] = {
-	IMX8MN_PAD_UART2_RXD__UART2_DCE_RX | MUX_PAD_CTRL(UART_PAD_CTRL),
-	IMX8MN_PAD_UART2_TXD__UART2_DCE_TX | MUX_PAD_CTRL(UART_PAD_CTRL),
-};
-
-static iomux_v3_cfg_t const wdog_pads[] = {
-	IMX8MN_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
-};
-
-int board_early_init_f(void)
-{
-	struct wdog_regs *wdog = (struct wdog_regs *)WDOG1_BASE_ADDR;
-
-	imx_iomux_v3_setup_multiple_pads(wdog_pads, ARRAY_SIZE(wdog_pads));
-
-	set_wdog_reset(wdog);
-
-	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
-
-	return 0;
-}
-
 void board_init_f(ulong dummy)
 {
 	int ret;
@@ -143,11 +120,7 @@ void board_init_f(ulong dummy)
 
 	init_uart_clk(1);
 
-	board_early_init_f();
-
 	timer_init();
-
-	preloader_console_init();
 
 	/* Clear the BSS. */
 	memset(__bss_start, 0, __bss_end - __bss_start);
@@ -157,6 +130,8 @@ void board_init_f(ulong dummy)
 		debug("spl_init() failed: %d\n", ret);
 		hang();
 	}
+
+	preloader_console_init();
 
 	enable_tzc380();
 

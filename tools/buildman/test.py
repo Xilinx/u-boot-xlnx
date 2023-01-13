@@ -10,8 +10,10 @@ import time
 import unittest
 
 from buildman import board
+from buildman import boards
 from buildman import bsettings
 from buildman import builder
+from buildman import cfgutil
 from buildman import control
 from buildman import toolchain
 from patman import commit
@@ -36,7 +38,7 @@ migration = '''===================== WARNING ======================
 This board does not use CONFIG_DM. CONFIG_DM will be
 compulsory starting with the v2020.01 release.
 Failure to update may result in board removal.
-See doc/driver-model/migration.rst for more info.
+See doc/develop/driver-model/migration.rst for more info.
 ====================================================
 '''
 
@@ -93,7 +95,7 @@ commits = [
      [errors[4]]],
 ]
 
-boards = [
+BOARDS = [
     ['Active', 'arm', 'armv7', '', 'Tester', 'ARM Board 1', 'board0',  ''],
     ['Active', 'arm', 'armv7', '', 'Tester', 'ARM Board 2', 'board1', ''],
     ['Active', 'powerpc', 'powerpc', '', 'Tester', 'PowerPC board 1', 'board2', ''],
@@ -130,10 +132,10 @@ class TestBuild(unittest.TestCase):
             self.commits.append(comm)
 
         # Set up boards to build
-        self.boards = board.Boards()
-        for brd in boards:
-            self.boards.AddBoard(board.Board(*brd))
-        self.boards.SelectBoards([])
+        self.brds = boards.Boards()
+        for brd in BOARDS:
+            self.brds.add_board(board.Board(*brd))
+        self.brds.select_boards([])
 
         # Add some test settings
         bsettings.Setup(None)
@@ -147,7 +149,7 @@ class TestBuild(unittest.TestCase):
         self.toolchains.Add('gcc', test=False)
 
         # Avoid sending any output
-        terminal.SetPrintTestMode()
+        terminal.set_print_test_mode()
         self._col = terminal.Color()
 
         self.base_dir = tempfile.mkdtemp()
@@ -175,16 +177,16 @@ class TestBuild(unittest.TestCase):
         result.combined = result.stdout + result.stderr
         return result
 
-    def assertSummary(self, text, arch, plus, boards, outcome=OUTCOME_ERR):
+    def assertSummary(self, text, arch, plus, brds, outcome=OUTCOME_ERR):
         col = self._col
         expected_colour = (col.GREEN if outcome == OUTCOME_OK else
                            col.YELLOW if outcome == OUTCOME_WARN else col.RED)
         expect = '%10s: ' % arch
         # TODO(sjg@chromium.org): If plus is '', we shouldn't need this
-        expect += ' ' + col.Color(expected_colour, plus)
+        expect += ' ' + col.build(expected_colour, plus)
         expect += '  '
-        for board in boards:
-            expect += col.Color(expected_colour, ' %s' % board)
+        for brd in brds:
+            expect += col.build(expected_colour, ' %s' % brd)
         self.assertEqual(text, expect)
 
     def _SetupTest(self, echo_lines=False, threads=1, **kwdisplay_args):
@@ -202,13 +204,13 @@ class TestBuild(unittest.TestCase):
         build = builder.Builder(self.toolchains, self.base_dir, None, threads,
                                 2, checkout=False, show_unknown=False)
         build.do_make = self.Make
-        board_selected = self.boards.GetSelectedDict()
+        board_selected = self.brds.get_selected_dict()
 
         # Build the boards for the pre-defined commits and warnings/errors
         # associated with each. This calls our Make() to inject the fake output.
         build.BuildBoards(self.commits, board_selected, keep_outputs=False,
                           verbose=False)
-        lines = terminal.GetPrintTestLines()
+        lines = terminal.get_print_test_lines()
         count = 0
         for line in lines:
             if line.text.strip():
@@ -216,12 +218,12 @@ class TestBuild(unittest.TestCase):
 
         # We should get two starting messages, an update for every commit built
         # and a summary message
-        self.assertEqual(count, len(commits) * len(boards) + 3)
+        self.assertEqual(count, len(commits) * len(BOARDS) + 3)
         build.SetDisplayOptions(**kwdisplay_args);
         build.ShowSummary(self.commits, board_selected)
         if echo_lines:
-            terminal.EchoPrintTestLines()
-        return iter(terminal.GetPrintTestLines())
+            terminal.echo_print_test_lines()
+        return iter(terminal.get_print_test_lines())
 
     def _CheckOutput(self, lines, list_error_boards=False,
                      filter_dtb_warnings=False,
@@ -235,7 +237,7 @@ class TestBuild(unittest.TestCase):
             filter_dtb_warnings: Adjust the check for output produced with the
                --filter-dtb-warnings flag
         """
-        def add_line_prefix(prefix, boards, error_str, colour):
+        def add_line_prefix(prefix, brds, error_str, colour):
             """Add a prefix to each line of a string
 
             The training \n in error_str is removed before processing
@@ -252,13 +254,13 @@ class TestBuild(unittest.TestCase):
             lines = error_str.strip().splitlines()
             new_lines = []
             for line in lines:
-                if boards:
-                    expect = self._col.Color(colour, prefix + '(')
-                    expect += self._col.Color(self._col.MAGENTA, boards,
+                if brds:
+                    expect = self._col.build(colour, prefix + '(')
+                    expect += self._col.build(self._col.MAGENTA, brds,
                                               bright=False)
-                    expect += self._col.Color(colour, ') %s' % line)
+                    expect += self._col.build(colour, ') %s' % line)
                 else:
-                    expect = self._col.Color(colour, prefix + line)
+                    expect = self._col.build(colour, prefix + line)
                 new_lines.append(expect)
             return '\n'.join(new_lines)
 
@@ -316,12 +318,12 @@ class TestBuild(unittest.TestCase):
         self.assertEqual(next(lines).text, '04: %s' % commits[3][1])
         if filter_migration_warnings:
             expect = '%10s: ' % 'powerpc'
-            expect += ' ' + col.Color(col.GREEN, '')
+            expect += ' ' + col.build(col.GREEN, '')
             expect += '  '
-            expect += col.Color(col.GREEN, ' %s' % 'board2')
-            expect += ' ' + col.Color(col.YELLOW, 'w+')
+            expect += col.build(col.GREEN, ' %s' % 'board2')
+            expect += ' ' + col.build(col.YELLOW, 'w+')
             expect += '  '
-            expect += col.Color(col.YELLOW, ' %s' % 'board3')
+            expect += col.build(col.YELLOW, ' %s' % 'board3')
             self.assertEqual(next(lines).text, expect)
         else:
             self.assertSummary(next(lines).text, 'powerpc', 'w+',
@@ -467,18 +469,18 @@ class TestBuild(unittest.TestCase):
 
     def testBoardSingle(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['sandbox']),
+        self.assertEqual(self.brds.select_boards(['sandbox']),
                          ({'all': ['board4'], 'sandbox': ['board4']}, []))
 
     def testBoardArch(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['arm']),
+        self.assertEqual(self.brds.select_boards(['arm']),
                          ({'all': ['board0', 'board1'],
                           'arm': ['board0', 'board1']}, []))
 
     def testBoardArchSingle(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['arm sandbox']),
+        self.assertEqual(self.brds.select_boards(['arm sandbox']),
                          ({'sandbox': ['board4'],
                           'all': ['board0', 'board1', 'board4'],
                           'arm': ['board0', 'board1']}, []))
@@ -486,20 +488,20 @@ class TestBuild(unittest.TestCase):
 
     def testBoardArchSingleMultiWord(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['arm', 'sandbox']),
+        self.assertEqual(self.brds.select_boards(['arm', 'sandbox']),
                          ({'sandbox': ['board4'],
                           'all': ['board0', 'board1', 'board4'],
                           'arm': ['board0', 'board1']}, []))
 
     def testBoardSingleAnd(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['Tester & arm']),
+        self.assertEqual(self.brds.select_boards(['Tester & arm']),
                          ({'Tester&arm': ['board0', 'board1'],
                            'all': ['board0', 'board1']}, []))
 
     def testBoardTwoAnd(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['Tester', '&', 'arm',
+        self.assertEqual(self.brds.select_boards(['Tester', '&', 'arm',
                                                    'Tester' '&', 'powerpc',
                                                    'sandbox']),
                          ({'sandbox': ['board4'],
@@ -510,19 +512,19 @@ class TestBuild(unittest.TestCase):
 
     def testBoardAll(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards([]),
+        self.assertEqual(self.brds.select_boards([]),
                          ({'all': ['board0', 'board1', 'board2', 'board3',
                                   'board4']}, []))
 
     def testBoardRegularExpression(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['T.*r&^Po']),
+        self.assertEqual(self.brds.select_boards(['T.*r&^Po']),
                          ({'all': ['board2', 'board3'],
                           'T.*r&^Po': ['board2', 'board3']}, []))
 
     def testBoardDuplicate(self):
         """Test single board selection"""
-        self.assertEqual(self.boards.SelectBoards(['sandbox sandbox',
+        self.assertEqual(self.brds.select_boards(['sandbox sandbox',
                                                    'sandbox']),
                          ({'all': ['board4'], 'sandbox': ['board4']}, []))
     def CheckDirs(self, build, dirname):
@@ -606,7 +608,7 @@ class TestBuild(unittest.TestCase):
 
     def testPrepareOutputSpace(self):
         def _Touch(fname):
-            tools.WriteFile(os.path.join(base_dir, fname), b'')
+            tools.write_file(os.path.join(base_dir, fname), b'')
 
         base_dir = tempfile.mkdtemp()
 
@@ -623,6 +625,128 @@ class TestBuild(unittest.TestCase):
         result = set(build._GetOutputSpaceRemovals())
         expected = set([os.path.join(base_dir, f) for f in to_remove])
         self.assertEqual(expected, result)
+
+    def test_adjust_cfg_nop(self):
+        """check various adjustments of config that are nops"""
+        # enable an enabled CONFIG
+        self.assertEqual(
+            'CONFIG_FRED=y',
+            cfgutil.adjust_cfg_line('CONFIG_FRED=y', {'FRED':'FRED'})[0])
+
+        # disable a disabled CONFIG
+        self.assertEqual(
+            '# CONFIG_FRED is not set',
+            cfgutil.adjust_cfg_line(
+                '# CONFIG_FRED is not set', {'FRED':'~FRED'})[0])
+
+        # use the adjust_cfg_lines() function
+        self.assertEqual(
+            ['CONFIG_FRED=y'],
+            cfgutil.adjust_cfg_lines(['CONFIG_FRED=y'], {'FRED':'FRED'}))
+        self.assertEqual(
+            ['# CONFIG_FRED is not set'],
+            cfgutil.adjust_cfg_lines(['CONFIG_FRED=y'], {'FRED':'~FRED'}))
+
+        # handling an empty line
+        self.assertEqual('#', cfgutil.adjust_cfg_line('#', {'FRED':'~FRED'})[0])
+
+    def test_adjust_cfg(self):
+        """check various adjustments of config"""
+        # disable a CONFIG
+        self.assertEqual(
+            '# CONFIG_FRED is not set',
+            cfgutil.adjust_cfg_line('CONFIG_FRED=1' , {'FRED':'~FRED'})[0])
+
+        # enable a disabled CONFIG
+        self.assertEqual(
+            'CONFIG_FRED=y',
+            cfgutil.adjust_cfg_line(
+                '# CONFIG_FRED is not set', {'FRED':'FRED'})[0])
+
+        # enable a CONFIG that doesn't exist
+        self.assertEqual(
+            ['CONFIG_FRED=y'],
+            cfgutil.adjust_cfg_lines([], {'FRED':'FRED'}))
+
+        # disable a CONFIG that doesn't exist
+        self.assertEqual(
+            ['# CONFIG_FRED is not set'],
+            cfgutil.adjust_cfg_lines([], {'FRED':'~FRED'}))
+
+        # disable a value CONFIG
+        self.assertEqual(
+            '# CONFIG_FRED is not set',
+            cfgutil.adjust_cfg_line('CONFIG_FRED="fred"' , {'FRED':'~FRED'})[0])
+
+        # setting a value CONFIG
+        self.assertEqual(
+            'CONFIG_FRED="fred"',
+            cfgutil.adjust_cfg_line('# CONFIG_FRED is not set' ,
+                                    {'FRED':'FRED="fred"'})[0])
+
+        # changing a value CONFIG
+        self.assertEqual(
+            'CONFIG_FRED="fred"',
+            cfgutil.adjust_cfg_line('CONFIG_FRED="ernie"' ,
+                                    {'FRED':'FRED="fred"'})[0])
+
+        # setting a value for a CONFIG that doesn't exist
+        self.assertEqual(
+            ['CONFIG_FRED="fred"'],
+            cfgutil.adjust_cfg_lines([], {'FRED':'FRED="fred"'}))
+
+    def test_convert_adjust_cfg_list(self):
+        """Check conversion of the list of changes into a dict"""
+        self.assertEqual({}, cfgutil.convert_list_to_dict(None))
+
+        expect = {
+            'FRED':'FRED',
+            'MARY':'~MARY',
+            'JOHN':'JOHN=0x123',
+            'ALICE':'ALICE="alice"',
+            'AMY':'AMY',
+            'ABE':'~ABE',
+            'MARK':'MARK=0x456',
+            'ANNA':'ANNA="anna"',
+            }
+        actual = cfgutil.convert_list_to_dict(
+            ['FRED', '~MARY', 'JOHN=0x123', 'ALICE="alice"',
+             'CONFIG_AMY', '~CONFIG_ABE', 'CONFIG_MARK=0x456',
+             'CONFIG_ANNA="anna"'])
+        self.assertEqual(expect, actual)
+
+    def test_check_cfg_file(self):
+        """Test check_cfg_file detects conflicts as expected"""
+        # Check failure to disable CONFIG
+        result = cfgutil.check_cfg_lines(['CONFIG_FRED=1'], {'FRED':'~FRED'})
+        self.assertEqual([['~FRED', 'CONFIG_FRED=1']], result)
+
+        result = cfgutil.check_cfg_lines(
+            ['CONFIG_FRED=1', 'CONFIG_MARY="mary"'], {'FRED':'~FRED'})
+        self.assertEqual([['~FRED', 'CONFIG_FRED=1']], result)
+
+        result = cfgutil.check_cfg_lines(
+            ['CONFIG_FRED=1', 'CONFIG_MARY="mary"'], {'MARY':'~MARY'})
+        self.assertEqual([['~MARY', 'CONFIG_MARY="mary"']], result)
+
+        # Check failure to enable CONFIG
+        result = cfgutil.check_cfg_lines(
+            ['# CONFIG_FRED is not set'], {'FRED':'FRED'})
+        self.assertEqual([['FRED', '# CONFIG_FRED is not set']], result)
+
+        # Check failure to set CONFIG value
+        result = cfgutil.check_cfg_lines(
+            ['# CONFIG_FRED is not set', 'CONFIG_MARY="not"'],
+            {'MARY':'MARY="mary"', 'FRED':'FRED'})
+        self.assertEqual([
+            ['FRED', '# CONFIG_FRED is not set'],
+            ['MARY="mary"', 'CONFIG_MARY="not"']], result)
+
+        # Check failure to add CONFIG value
+        result = cfgutil.check_cfg_lines([], {'MARY':'MARY="mary"'})
+        self.assertEqual([
+            ['MARY="mary"', 'Missing expected line: CONFIG_MARY="mary"']], result)
+
 
 if __name__ == "__main__":
     unittest.main()

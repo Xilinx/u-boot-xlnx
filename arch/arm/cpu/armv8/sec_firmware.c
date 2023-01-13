@@ -13,6 +13,7 @@
 #include <asm/global_data.h>
 #include <asm/ptrace.h>
 #include <linux/kernel.h>
+#include <linux/arm-smccc.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/types.h>
@@ -35,9 +36,6 @@ phys_addr_t sec_firmware_addr;
 #ifndef SEC_FIRMWARE_FIT_IMAGE
 #define SEC_FIRMWARE_FIT_IMAGE		"firmware"
 #endif
-#ifndef SEC_FIRMWARE_FIT_CNF_NAME
-#define SEC_FIRMWARE_FIT_CNF_NAME	"config-1"
-#endif
 #ifndef SEC_FIRMWARE_TARGET_EL
 #define SEC_FIRMWARE_TARGET_EL		2
 #endif
@@ -45,46 +43,8 @@ phys_addr_t sec_firmware_addr;
 static int sec_firmware_get_data(const void *sec_firmware_img,
 				const void **data, size_t *size)
 {
-	int conf_node_off, fw_node_off;
-	char *conf_node_name = NULL;
-	char *desc;
-	int ret;
-
-	conf_node_name = SEC_FIRMWARE_FIT_CNF_NAME;
-
-	conf_node_off = fit_conf_get_node(sec_firmware_img, conf_node_name);
-	if (conf_node_off < 0) {
-		printf("SEC Firmware: %s: no such config\n", conf_node_name);
-		return -ENOENT;
-	}
-
-	fw_node_off = fit_conf_get_prop_node(sec_firmware_img, conf_node_off,
-			SEC_FIRMWARE_FIT_IMAGE);
-	if (fw_node_off < 0) {
-		printf("SEC Firmware: No '%s' in config\n",
-		       SEC_FIRMWARE_FIT_IMAGE);
-		return -ENOLINK;
-	}
-
-	/* Verify secure firmware image */
-	if (!(fit_image_verify(sec_firmware_img, fw_node_off))) {
-		printf("SEC Firmware: Bad firmware image (bad CRC)\n");
-		return -EINVAL;
-	}
-
-	if (fit_image_get_data(sec_firmware_img, fw_node_off, data, size)) {
-		printf("SEC Firmware: Can't get %s subimage data/size",
-		       SEC_FIRMWARE_FIT_IMAGE);
-		return -ENOENT;
-	}
-
-	ret = fit_get_desc(sec_firmware_img, fw_node_off, &desc);
-	if (ret)
-		printf("SEC Firmware: Can't get description\n");
-	else
-		printf("%s\n", desc);
-
-	return ret;
+	return fit_get_data_conf_prop(sec_firmware_img, SEC_FIRMWARE_FIT_IMAGE,
+				      data, size);
 }
 
 /*
@@ -123,18 +83,15 @@ static int sec_firmware_check_copy_loadable(const void *sec_firmware_img,
 {
 	phys_addr_t sec_firmware_loadable_addr = 0;
 	int conf_node_off, ld_node_off, images;
-	char *conf_node_name = NULL;
 	const void *data;
 	size_t size;
 	ulong load;
 	const char *name, *str, *type;
 	int len;
 
-	conf_node_name = SEC_FIRMWARE_FIT_CNF_NAME;
-
-	conf_node_off = fit_conf_get_node(sec_firmware_img, conf_node_name);
+	conf_node_off = fit_conf_get_node(sec_firmware_img, NULL);
 	if (conf_node_off < 0) {
-		printf("SEC Firmware: %s: no such config\n", conf_node_name);
+		puts("SEC Firmware: no config\n");
 		return -ENOENT;
 	}
 
@@ -374,29 +331,25 @@ bool sec_firmware_support_hwrng(void)
  */
 int sec_firmware_get_random(uint8_t *rand, int bytes)
 {
+	struct arm_smccc_res res;
 	unsigned long long num;
-	struct pt_regs regs;
 	int param1;
 
 	if (!bytes || bytes > 8) {
 		printf("Max Random bytes genration supported is 8\n");
 		return -1;
 	}
-#define SIP_RNG_64 0xC200FF11
-	regs.regs[0] = SIP_RNG_64;
-
 	if (bytes <= 4)
 		param1 = 0;
 	else
 		param1 = 1;
-	regs.regs[1] = param1;
 
-	smc_call(&regs);
-
-	if (regs.regs[0])
+#define SIP_RNG_64 0xC200FF11
+	arm_smccc_smc(SIP_RNG_64, param1, 0, 0, 0, 0, 0, 0, &res);
+	if (res.a0)
 		return -1;
 
-	num = regs.regs[1];
+	num = res.a1;
 	memcpy(rand, &num, bytes);
 
 	return 0;
@@ -473,8 +426,8 @@ int fdt_fixup_kaslr(void *fdt)
 		return 0;
 	}
 
-	ret = sec_firmware_get_random(rand, 8);
-	if (ret < 0) {
+	err = sec_firmware_get_random(rand, 8);
+	if (err < 0) {
 		printf("WARNING: No random number to set kaslr-seed\n");
 		return 0;
 	}

@@ -14,6 +14,6 @@
 #include <configs/xilinx_versal_net_mini.h>
 
 #undef CONFIG_SYS_INIT_SP_ADDR
-#define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_TEXT_BASE + 0x20000)
+#define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_TEXT_BASE + 0x20000)
 
 #endif /* __CONFIG_VERSAL_NET_MINI_QSPI_H */

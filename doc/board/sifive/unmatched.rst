@@ -20,8 +20,11 @@ The support for following drivers are already enabled:
 4. SiFive SPI Driver.
 5. MMC SPI Driver for MMC/SD support.
 
-Booting from uSD using U-Boot SPL
----------------------------------
+Booting from micro SD card using U-Boot SPL
+-------------------------------------------
+
+Booting from an SD card requires that the boot mode selection DIP switches
+MSEL[3:0] are set to 1011.
 
 Building
 --------
@@ -557,7 +560,7 @@ Write U-boot SPL and U-boot to their partitions.
 
 .. code-block:: none
 
-	dd if=u-boot-spl.bin of=/dev/mtdblock0 bs=4096 seek=5 conv=sync
+	dd if=spl/u-boot-spl.bin of=/dev/mtdblock0 bs=4096 seek=5 conv=sync
 	dd if=u-boot.itb  of=/dev/mtdblock0 bs=4096 seek=261 conv=sync
 
 Power off the board.

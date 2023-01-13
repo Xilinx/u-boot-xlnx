@@ -21,6 +21,14 @@ For configuration verification:
 - Corrupt the signature
 - Check that image verification no-longer works
 
+For pre-load header verification:
+- Create FIT image with a pre-load header
+- Check that signature verification succeeds
+- Corrupt the FIT image
+- Check that signature verification fails
+- Launch an FIT image without a pre-load header
+- Check that image verification fails
+
 Tests run with both SHA1 and SHA256 hashing.
 """
 
@@ -34,18 +42,27 @@ import vboot_evil
 
 # Only run the full suite on a few combinations, since it doesn't add any more
 # test coverage.
-TESTDATA = [
-    ['sha1-basic', 'sha1', '', None, False, True],
-    ['sha1-pad', 'sha1', '', '-E -p 0x10000', False, False],
-    ['sha1-pss', 'sha1', '-pss', None, False, False],
-    ['sha1-pss-pad', 'sha1', '-pss', '-E -p 0x10000', False, False],
-    ['sha256-basic', 'sha256', '', None, False, False],
-    ['sha256-pad', 'sha256', '', '-E -p 0x10000', False, False],
-    ['sha256-pss', 'sha256', '-pss', None, False, False],
-    ['sha256-pss-pad', 'sha256', '-pss', '-E -p 0x10000', False, False],
-    ['sha256-pss-required', 'sha256', '-pss', None, True, False],
-    ['sha256-pss-pad-required', 'sha256', '-pss', '-E -p 0x10000', True, True],
+TESTDATA_IN = [
+    ['sha1-basic', 'sha1', '', None, False, True, False, False],
+    ['sha1-pad', 'sha1', '', '-E -p 0x10000', False, False, False, False],
+    ['sha1-pss', 'sha1', '-pss', None, False, False, False, False],
+    ['sha1-pss-pad', 'sha1', '-pss', '-E -p 0x10000', False, False, False, False],
+    ['sha256-basic', 'sha256', '', None, False, False, False, False],
+    ['sha256-pad', 'sha256', '', '-E -p 0x10000', False, False, False, False],
+    ['sha256-pss', 'sha256', '-pss', None, False, False, False, False],
+    ['sha256-pss-pad', 'sha256', '-pss', '-E -p 0x10000', False, False, False, False],
+    ['sha256-pss-required', 'sha256', '-pss', None, True, False, False, False],
+    ['sha256-pss-pad-required', 'sha256', '-pss', '-E -p 0x10000', True, True, False, False],
+    ['sha384-basic', 'sha384', '', None, False, False, False, False],
+    ['sha384-pad', 'sha384', '', '-E -p 0x10000', False, False, False, False],
+    ['algo-arg', 'algo-arg', '', '-o sha256,rsa2048', False, False, True, False],
+    ['sha256-global-sign', 'sha256', '', '', False, False, False, True],
+    ['sha256-global-sign-pss', 'sha256', '-pss', '', False, False, False, True],
 ]
+
+# Mark all but the first test as slow, so they are not run with '-k not slow'
+TESTDATA = [TESTDATA_IN[0]]
+TESTDATA += [pytest.param(*v, marks=pytest.mark.slow) for v in TESTDATA_IN[1:]]
 
 @pytest.mark.boardspec('sandbox')
 @pytest.mark.buildconfigspec('fit_signature')
@@ -53,10 +70,10 @@ TESTDATA = [
 @pytest.mark.requiredtool('fdtget')
 @pytest.mark.requiredtool('fdtput')
 @pytest.mark.requiredtool('openssl')
-@pytest.mark.parametrize("name,sha_algo,padding,sign_options,required,full_test",
+@pytest.mark.parametrize("name,sha_algo,padding,sign_options,required,full_test,algo_arg,global_sign",
                          TESTDATA)
 def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
-               full_test):
+               full_test, algo_arg, global_sign):
     """Test verified boot signing with mkimage and verification with 'bootm'.
 
     This works using sandbox only as it needs to update the device tree used
@@ -77,6 +94,33 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
         dtb = dts.replace('.dts', '.dtb')
         util.run_and_log(cons, 'dtc %s %s%s -O dtb '
                          '-o %s%s' % (dtc_args, datadir, dts, tmpdir, dtb))
+
+    def dtc_options(dts, options):
+        """Run the device tree compiler to compile a .dts file
+
+        The output file will be the same as the input file but with a .dtb
+        extension.
+
+        Args:
+            dts: Device tree file to compile.
+            options: Options provided to the compiler.
+        """
+        dtb = dts.replace('.dts', '.dtb')
+        util.run_and_log(cons, 'dtc %s %s%s -O dtb '
+                         '-o %s%s %s' % (dtc_args, datadir, dts, tmpdir, dtb, options))
+
+    def run_binman(dtb):
+        """Run binman to build an image
+
+        Args:
+            dtb: Device tree file used as input file.
+        """
+        pythonpath = os.environ.get('PYTHONPATH', '')
+        os.environ['PYTHONPATH'] = pythonpath + ':' + '%s/../scripts/dtc/pylibfdt' % tmpdir
+        util.run_and_log(cons, [binman, 'build', '-d', "%s/%s" % (tmpdir,dtb),
+                                '-a', "pre-load-key-path=%s" % tmpdir, '-O',
+                                tmpdir, '-I', tmpdir])
+        os.environ['PYTHONPATH'] = pythonpath
 
     def run_bootm(sha_algo, test_type, expect_string, boots, fit=None):
         """Run a 'bootm' command U-Boot.
@@ -136,6 +180,23 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
         cons.log.action('%s: Sign images' % sha_algo)
         util.run_and_log(cons, args)
 
+    def sign_fit_dtb(sha_algo, options, dtb):
+        """Sign the FIT
+
+        Signs the FIT and writes the signature into it. It also writes the
+        public key into the dtb.
+
+        Args:
+            sha_algo: Either 'sha1' or 'sha256', to select the algorithm to
+                    use.
+            options: Options to provide to mkimage.
+        """
+        args = [mkimage, '-F', '-k', tmpdir, '-K', dtb, '-r', fit]
+        if options:
+            args += options.split(' ')
+        cons.log.action('%s: Sign images' % sha_algo)
+        util.run_and_log(cons, args)
+
     def sign_fit_norequire(sha_algo, options):
         """Sign the FIT
 
@@ -173,6 +234,20 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
             handle.write(struct.pack(">I", size))
         return struct.unpack(">I", total_size)[0]
 
+    def corrupt_file(fit, offset, value):
+        """Corrupt a file
+
+        To corrupt a file, a value is written at the specified offset
+
+        Args:
+            fit: The file to corrupt
+            offset: Offset to write
+            value: Value written
+        """
+        with open(fit, 'r+b') as handle:
+            handle.seek(offset)
+            handle.write(struct.pack(">I", value))
+
     def create_rsa_pair(name):
         """Generate a new RSA key paid and certificate
 
@@ -180,10 +255,16 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
             name: Name of of the key (e.g. 'dev')
         """
         public_exponent = 65537
+
+        if sha_algo == "sha384":
+            rsa_keygen_bits = 3072
+        else:
+            rsa_keygen_bits = 2048
+
         util.run_and_log(cons, 'openssl genpkey -algorithm RSA -out %s%s.key '
-                     '-pkeyopt rsa_keygen_bits:2048 '
+                     '-pkeyopt rsa_keygen_bits:%d '
                      '-pkeyopt rsa_keygen_pubexp:%d' %
-                     (tmpdir, name, public_exponent))
+                     (tmpdir, name, rsa_keygen_bits, public_exponent))
 
         # Create a certificate containing the public key
         util.run_and_log(cons, 'openssl req -batch -new -x509 -key %s%s.key '
@@ -211,7 +292,7 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
         # Build the FIT, but don't sign anything yet
         cons.log.action('%s: Test FIT with signed images' % sha_algo)
         make_fit('sign-images-%s%s.its' % (sha_algo, padding))
-        run_bootm(sha_algo, 'unsigned images', 'dev-', True)
+        run_bootm(sha_algo, 'unsigned images', ' - OK' if algo_arg else 'dev-', True)
 
         # Sign images with our dev keys
         sign_fit(sha_algo, sign_options)
@@ -222,7 +303,7 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
 
         cons.log.action('%s: Test FIT with signed configuration' % sha_algo)
         make_fit('sign-configs-%s%s.its' % (sha_algo, padding))
-        run_bootm(sha_algo, 'unsigned config', '%s+ OK' % sha_algo, True)
+        run_bootm(sha_algo, 'unsigned config', '%s+ OK' % ('sha256' if algo_arg else sha_algo), True)
 
         # Sign images with our dev keys
         sign_fit(sha_algo, sign_options)
@@ -365,6 +446,51 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
                          (dtb))
         run_bootm(sha_algo, 'multi required key', '', False)
 
+    def test_global_sign(sha_algo, padding, sign_options):
+        """Test global image signature with the given hash algorithm and padding.
+
+        Args:
+            sha_algo: Either 'sha1' or 'sha256', to select the algorithm to use
+            padding: Either '' or '-pss', to select the padding to use for the
+                    rsa signature algorithm.
+        """
+
+        dtb = '%ssandbox-u-boot-global%s.dtb' % (tmpdir, padding)
+        cons.config.dtb = dtb
+
+        # Compile our device tree files for kernel and U-Boot. These are
+        # regenerated here since mkimage will modify them (by adding a
+        # public key) below.
+        dtc('sandbox-kernel.dts')
+        dtc_options('sandbox-u-boot-global%s.dts' % padding, '-p 1024')
+
+        # Build the FIT with dev key (keys NOT required). This adds the
+        # signature into sandbox-u-boot.dtb, NOT marked 'required'.
+        make_fit('simple-images.its')
+        sign_fit_dtb(sha_algo, '', dtb)
+
+        # Build the dtb for binman that define the pre-load header
+        # with the global sigature.
+        dtc('sandbox-binman%s.dts' % padding)
+
+        # Run binman to create the final image with the not signed fit
+        # and the pre-load header that contains the global signature.
+        run_binman('sandbox-binman%s.dtb' % padding)
+
+        # Check that the signature is correctly verified by u-boot
+        run_bootm(sha_algo, 'global image signature',
+                  'signature check has succeed', True, "%ssandbox.img" % tmpdir)
+
+        # Corrupt the image (just one byte after the pre-load header)
+        corrupt_file("%ssandbox.img" % tmpdir, 4096, 255);
+
+        # Check that the signature verification fails
+        run_bootm(sha_algo, 'global image signature',
+                  'signature check has failed', False, "%ssandbox.img" % tmpdir)
+
+        # Check that the boot fails if the global signature is not provided
+        run_bootm(sha_algo, 'global image signature', 'signature is mandatory', False)
+
     cons = u_boot_console
     tmpdir = os.path.join(cons.config.result_dir, name) + '/'
     if not os.path.exists(tmpdir):
@@ -372,6 +498,7 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
     datadir = cons.config.source_dir + '/test/py/tests/vboot/'
     fit = '%stest.fit' % tmpdir
     mkimage = cons.config.build_dir + '/tools/mkimage'
+    binman = cons.config.source_dir + '/tools/binman/binman'
     fit_check_sign = cons.config.build_dir + '/tools/fit_check_sign'
     dtc_args = '-I dts -O dtb -i %s' % tmpdir
     dtb = '%ssandbox-u-boot.dtb' % tmpdir
@@ -394,7 +521,9 @@ def test_vboot(u_boot_console, name, sha_algo, padding, sign_options, required,
         # afterwards.
         old_dtb = cons.config.dtb
         cons.config.dtb = dtb
-        if required:
+        if global_sign:
+            test_global_sign(sha_algo, padding, sign_options)
+        elif required:
             test_required_key(sha_algo, padding, sign_options)
         else:
             test_with_algo(sha_algo, padding, sign_options)

@@ -43,6 +43,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define MV_PHY_ADR_REQUEST 0xee
 #define MVGBE_SMI_REG (((struct mvgbe_registers *)MVGBE0_BASE)->smi)
+#define MVGBE_PGADR_REG	22
 
 #if defined(CONFIG_PHYLIB) || defined(CONFIG_MII) || defined(CONFIG_CMD_MII)
 static int smi_wait_ready(struct mvgbe_device *dmvgbe)
@@ -745,6 +746,9 @@ static struct phy_device *__mvgbe_phy_init(struct eth_device *dev,
 	miiphy_write(dev->name, MV_PHY_ADR_REQUEST, MV_PHY_ADR_REQUEST,
 		     phyid);
 
+	/* Make sure the selected PHY page is 0 before connecting */
+	miiphy_write(dev->name, phyid, MVGBE_PGADR_REG, 0);
+
 	phydev = phy_connect(bus, phyid, dev, phy_interface);
 	if (!phydev) {
 		printf("phy_connect failed\n");
@@ -993,7 +997,6 @@ static int mvgbe_of_to_plat(struct udevice *dev)
 	struct mvgbe_device *dmvgbe = dev_get_priv(dev);
 	void *blob = (void *)gd->fdt_blob;
 	int node = dev_of_offset(dev);
-	const char *phy_mode;
 	int fl_node;
 	int pnode;
 	unsigned long addr;
@@ -1005,10 +1008,8 @@ static int mvgbe_of_to_plat(struct udevice *dev)
 					      "marvell,kirkwood-eth-port");
 
 	/* Get phy-mode / phy_interface from DT */
-	phy_mode = fdt_getprop(gd->fdt_blob, pnode, "phy-mode", NULL);
-	if (phy_mode)
-		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	else
+	pdata->phy_interface = dev_read_phy_mode(dev);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA)
 		pdata->phy_interface = PHY_INTERFACE_MODE_GMII;
 
 	dmvgbe->phy_interface = pdata->phy_interface;

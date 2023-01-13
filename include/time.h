@@ -24,7 +24,7 @@ uint64_t get_timer_us(uint64_t base);
  * delays of over an hour. For 64-bit machines it uses a 64-bit value.
  *
  *@base: Base time to consider
- *@return elapsed time since @base
+ *Return: elapsed time since @base
  */
 unsigned long get_timer_us_long(unsigned long base);
 
@@ -83,11 +83,30 @@ uint64_t usec_to_tick(unsigned long usec);
 	(time_after_eq(a,b) && \
 	 time_before(a,c))
 
+/* Same as above, but does so with platform independent 64bit types.
+ * These must be used when utilizing jiffies_64 (i.e. return value of
+ * get_jiffies_64() */
+#define time_after64(a,b)	\
+	(typecheck(__u64, a) &&	\
+	 typecheck(__u64, b) && \
+	 ((__s64)((b) - (a)) < 0))
+#define time_before64(a,b)	time_after64(b,a)
+
+#define time_after_eq64(a,b)	\
+	(typecheck(__u64, a) && \
+	 typecheck(__u64, b) && \
+	 ((__s64)((a) - (b)) >= 0))
+#define time_before_eq64(a,b)	time_after_eq64(b,a)
+
+#define time_in_range64(a, b, c) \
+	(time_after_eq64(a, b) && \
+	 time_before_eq64(a, c))
+
 /**
  * usec2ticks() - Convert microseconds to internal ticks
  *
  * @usec: Value of microseconds to convert
- * @return Corresponding internal ticks value, calculated using get_tbclk()
+ * Return: Corresponding internal ticks value, calculated using get_tbclk()
  */
 ulong usec2ticks(unsigned long usec);
 
@@ -95,7 +114,7 @@ ulong usec2ticks(unsigned long usec);
  * ticks2usec() - Convert internal ticks to microseconds
  *
  * @ticks: Value of ticks to convert
- * @return Corresponding microseconds value, calculated using get_tbclk()
+ * Return: Corresponding microseconds value, calculated using get_tbclk()
  */
 ulong ticks2usec(unsigned long ticks);
 
@@ -112,7 +131,7 @@ void wait_ticks(unsigned long ticks);
 /**
  * timer_get_us() - Get monotonic microsecond timer
  *
- * @return value of monotonic microsecond timer
+ * Return: value of monotonic microsecond timer
  */
 unsigned long timer_get_us(void);
 
@@ -122,7 +141,7 @@ unsigned long timer_get_us(void);
  * This is an internal value used by the timer on the system. Ticks increase
  * monotonically at the rate given by get_tbclk().
  *
- * @return current tick value
+ * Return: current tick value
  */
 uint64_t get_ticks(void);
 

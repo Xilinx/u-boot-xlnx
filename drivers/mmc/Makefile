@@ -5,7 +5,12 @@
 
 obj-y += mmc.o
 obj-$(CONFIG_$(SPL_)DM_MMC) += mmc-uclass.o
-obj-$(CONFIG_$(SPL_)MMC_WRITE) += mmc_write.o
+
+ifdef CONFIG_$(SPL_TPL_)DM_MMC
+obj-$(CONFIG_$(SPL_TPL_)BOOTSTD) += mmc_bootdev.o
+endif
+
+obj-$(CONFIG_$(SPL_TPL_)MMC_WRITE) += mmc_write.o
 obj-$(CONFIG_MMC_PWRSEQ) += mmc-pwrseq.o
 obj-$(CONFIG_MMC_SDHCI_ADMA_HELPERS) += sdhci-adma.o
 
@@ -39,8 +44,8 @@ obj-$(CONFIG_MMC_OMAP_HS)		+= omap_hsmmc.o
 obj-$(CONFIG_MMC_MXC)			+= mxcmmc.o
 obj-$(CONFIG_MMC_MXS)			+= mxsmmc.o
 obj-$(CONFIG_MMC_OCTEONTX)		+= octeontx_hsmmc.o
+obj-$(CONFIG_MMC_OWL)			+= owl_mmc.o
 obj-$(CONFIG_MMC_PCI)			+= pci_mmc.o
-obj-$(CONFIG_PXA_MMC_GENERIC) += pxa_mmc_gen.o
 obj-$(CONFIG_$(SPL_TPL_)SUPPORT_EMMC_RPMB) += rpmb.o
 obj-$(CONFIG_MMC_SANDBOX)		+= sandbox_mmc.o
 obj-$(CONFIG_SH_MMCIF) += sh_mmcif.o
@@ -61,6 +66,7 @@ obj-$(CONFIG_MMC_SDHCI_IPROC)		+= iproc_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_KONA)		+= kona_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_MSM)		+= msm_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_MV)		+= mv_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_NPCM)            += npcm_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_PIC32)		+= pic32_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_ROCKCHIP)	+= rockchip_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_S5P)		+= s5p_sdhci.o

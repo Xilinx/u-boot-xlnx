@@ -29,11 +29,11 @@ struct cmd_tbl;
  *	 argc is adjusted accordingly. This avoids confusion as to how
  *	 many arguments are available for the OS.
  * @images: Pointers to os/initrd/fdt
- * @return 1 on error. On success the OS boots so this function does
+ * Return: 1 on error. On success the OS boots so this function does
  * not return.
  */
 typedef int boot_os_fn(int flag, int argc, char *const argv[],
-			bootm_headers_t *images);
+			struct bootm_headers *images);
 
 extern boot_os_fn do_bootm_linux;
 extern boot_os_fn do_bootm_vxworks;
@@ -47,7 +47,7 @@ int bootm_host_load_images(const void *fit, int cfg_noffset);
 #endif
 
 int boot_selected_os(int argc, char *const argv[], int state,
-		     bootm_headers_t *images, boot_os_fn *boot_fn);
+		     struct bootm_headers *images, boot_os_fn *boot_fn);
 
 ulong bootm_disable_interrupts(void);
 
@@ -56,7 +56,7 @@ int bootm_find_images(int flag, int argc, char *const argv[], ulong start,
 		      ulong size);
 
 int do_bootm_states(struct cmd_tbl *cmdtp, int flag, int argc,
-		    char *const argv[], int states, bootm_headers_t *images,
+		    char *const argv[], int states, struct bootm_headers *images,
 		    int boot_progress);
 
 void arch_preboot_os(void);
@@ -106,7 +106,7 @@ void board_preboot_os(void);
  * @buf: buffer holding commandline string to adjust
  * @maxlen: Maximum length of buffer at @buf (including \0)
  * @flags: Flags to control what happens (see bootm_cmdline_t)
- * @return 0 if OK, -ENOMEM if out of memory, -ENOSPC if the commandline is too
+ * Return: 0 if OK, -ENOMEM if out of memory, -ENOSPC if the commandline is too
  *	long
  */
 int bootm_process_cmdline(char *buf, int maxlen, int flags);
@@ -120,7 +120,7 @@ int bootm_process_cmdline(char *buf, int maxlen, int flags);
  *  - performing substitutions in the command line ('bootargs_subst' envvar)
  *
  * @flags: Flags to control what happens (see bootm_cmdline_t)
- * @return 0 if OK, -ENOMEM if out of memory
+ * Return: 0 if OK, -ENOMEM if out of memory
  */
 int bootm_process_cmdline_env(int flags);
 

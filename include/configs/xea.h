@@ -14,35 +14,16 @@
 
 #include <linux/sizes.h>
 
-#define CONFIG_TIMESTAMP		/* Print image info with timestamp */
-
 /* SPL */
-#define CONFIG_SPL_STACK		0x20000
-
-#define CONFIG_SYS_SPL_ARGS_ADDR	0x44000000
 
 #define CONFIG_SYS_SPI_KERNEL_OFFS	SZ_1M
 #define CONFIG_SYS_SPI_ARGS_OFFS	SZ_512K
 #define CONFIG_SYS_SPI_ARGS_SIZE	SZ_32K
 
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR	(SZ_512K / 0x200)
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	(SZ_32K / 0x200)
-#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	(SZ_1M / 0x200)
-
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_SPI_FLASH_MTD
-#endif
-
 /* Memory configuration */
 #define PHYS_SDRAM_1			0x40000000	/* Base address */
 #define PHYS_SDRAM_1_SIZE		0x10000000	/* Max 256 MB RAM */
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
-
-/* Environment */
-
-/* Booting Linux */
-#define CONFIG_BOOTFILE		"uImage"
-#define CONFIG_BOOTCOMMAND	"run ${bootpri} ; run ${bootsec}"
 
 /* Extra Environment */
 #define CONFIG_HOSTNAME		"xea"

@@ -40,7 +40,7 @@ int dram_init(void)
 	return 0;
 }
 
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	phys_size_t size;
 	phys_addr_t reg;
@@ -51,7 +51,7 @@ ulong board_get_usable_ram_top(ulong total_size)
 
 	/* found enough not-reserved memory to relocated U-Boot */
 	lmb_init(&lmb);
-	lmb_add(&lmb, gd->ram_base, gd->ram_size);
+	lmb_add(&lmb, gd->ram_base, get_effective_memsize());
 	boot_fdt_add_mem_rsv_regions(&lmb, (void *)gd->fdt_blob);
 	/* add 8M for reserved memory for display, fdt, gd,... */
 	size = ALIGN(SZ_8M + CONFIG_SYS_MALLOC_LEN + total_size, MMU_SECTION_SIZE),

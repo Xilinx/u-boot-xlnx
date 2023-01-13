@@ -57,7 +57,7 @@ static u32 __secure cp15_read_cntp_ctl(void)
 	return val;
 }
 
-#define ONE_MS (COUNTER_FREQUENCY / 1000)
+#define ONE_MS (CONFIG_COUNTER_FREQUENCY / 1000)
 
 static void __secure __mdelay(u32 ms)
 {
@@ -153,7 +153,7 @@ static void __secure sunxi_cpu_set_power(int cpu, bool on)
 
 	sunxi_power_switch((void *)cpucfg + SUN8I_R40_PWR_CLAMP(cpu),
 			   (void *)cpucfg + SUN8I_R40_PWROFF,
-			   on, 0);
+			   on, cpu);
 }
 #else /* ! CONFIG_MACH_SUN7I && ! CONFIG_MACH_SUN8I_R40 */
 static void __secure sunxi_cpu_set_power(int cpu, bool on)

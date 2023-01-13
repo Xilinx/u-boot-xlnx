@@ -13,8 +13,6 @@
 
 #include <mtd/cfi_flash.h>
 
-extern flash_info_t  flash_info[]; /* info for FLASH chips */
-
 /*-----------------------------------------------------------------------
  * Functions
  */
@@ -91,7 +89,7 @@ addr2info(ulong addr)
 	flash_info_t *info;
 	int i;
 
-	for (i=0, info = &flash_info[0]; i<CONFIG_SYS_MAX_FLASH_BANKS; ++i, ++info) {
+	for (i = 0, info = &flash_info[0]; i < CFI_FLASH_BANKS; ++i, ++info) {
 		if (info->flash_id != FLASH_UNKNOWN &&
 		    addr >= info->start[0] &&
 		    /* WARNING - The '- 1' is needed if the flash

@@ -56,8 +56,6 @@
 #define CONFIG_SERVERIP			192.168.0.1
 #define CONFIG_NETMASK			255.0.0.0
 
-#define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
-
 /* Miscellaneous configurable options */
 
 /* Definitions for initial stack pointer and data area (in DPRAM) */
@@ -68,11 +66,7 @@
 #define	CONFIG_SYS_SDRAM_BASE		0x00000000
 
 /* FLASH organization */
-#define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
-#define CONFIG_SYS_MAX_FLASH_SECT	35
-#define CONFIG_SYS_FLASH_ERASE_TOUT	120000
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500
+#define CONFIG_SYS_FLASH_BASE		CONFIG_TEXT_BASE
 
 /*
  * For booting Linux, the board info and command line data
@@ -80,19 +74,14 @@
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define	CONFIG_SYS_BOOTMAPSZ		(8 << 20)
-#define	CONFIG_SYS_MONITOR_LEN		(320 << 10)
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 
 /* Environment Configuration */
 
 /* environment is in FLASH */
 
 /* Ethernet configuration part */
-#define CONFIG_SYS_DISCOVER_PHY		1
-#define CONFIG_MII_INIT			1
 
 /* NAND configuration part */
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		0x0C000000
 
 #endif /* __CONFIG_H */

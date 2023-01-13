@@ -14,10 +14,13 @@
 #include <fdtdec.h>
 #include <time.h>
 #include <asm/global_data.h>
+#include <asm-generic/gpio.h>
+#include <dm/device.h>
 #include <linux/libfdt.h>
 
 #include <mach/cvmx-helper-sfp.h>
 
+/* todo: this is deprecated and some of it can be removed at some time */
 enum cvmx_i2c_bus_type {
 	CVMX_I2C_BUS_OCTEON,
 	CVMX_I2C_MUX_PCA9540,
@@ -55,6 +58,8 @@ struct cvmx_fdt_i2c_bus_info {
 	u8 enable_bit;
 	/** True if mux, false if switch */
 	bool is_mux;
+
+	struct udevice *i2c_bus;
 };
 
 /**
@@ -85,22 +90,24 @@ struct cvmx_fdt_sfp_info {
 	bool is_qsfp;
 	/** True if EEPROM data is valid */
 	bool valid;
+
 	/** SFP tx_disable GPIO descriptor */
-	struct cvmx_fdt_gpio_info *tx_disable;
+	struct gpio_desc tx_disable;
 	/** SFP mod_abs/QSFP mod_prs GPIO descriptor */
-	struct cvmx_fdt_gpio_info *mod_abs;
+	struct gpio_desc mod_abs;
 	/** SFP tx_error GPIO descriptor */
-	struct cvmx_fdt_gpio_info *tx_error;
+	struct gpio_desc tx_error;
 	/** SFP rx_los GPIO discriptor */
-	struct cvmx_fdt_gpio_info *rx_los;
+	struct gpio_desc rx_los;
 	/** QSFP select GPIO descriptor */
-	struct cvmx_fdt_gpio_info *select;
+	struct gpio_desc select;
 	/** QSFP reset GPIO descriptor */
-	struct cvmx_fdt_gpio_info *reset;
+	struct gpio_desc reset;
 	/** QSFP interrupt GPIO descriptor */
-	struct cvmx_fdt_gpio_info *interrupt;
+	struct gpio_desc interrupt;
 	/** QSFP lp_mode GPIO descriptor */
-	struct cvmx_fdt_gpio_info *lp_mode;
+	struct gpio_desc lp_mode;
+
 	/** Last mod_abs value */
 	int last_mod_abs;
 	/** Last rx_los value */
@@ -141,10 +148,13 @@ struct cvmx_fdt_sfp_info {
  * @param[in,out] lenp		Number of phandles, input max number
  * @param[out]	nodes		Array of phandle nodes
  *
- * @return	-ve error code on error or 0 for success
+ * Return:	-ve error code on error or 0 for success
  */
 int cvmx_fdt_lookup_phandles(const void *fdt_addr, int node, const char *prop_name, int *lenp,
 			     int *nodes);
+
+int cvmx_ofnode_lookup_phandles(ofnode node, const char *prop_name,
+				int *lenp, ofnode *nodes);
 
 /**
  * Helper to return the address property
@@ -153,7 +163,7 @@ int cvmx_fdt_lookup_phandles(const void *fdt_addr, int node, const char *prop_na
  * @param node		node to read address from
  * @param prop_name	property name to read
  *
- * @return address of property or FDT_ADDR_T_NONE if not found
+ * Return: address of property or FDT_ADDR_T_NONE if not found
  */
 static inline fdt_addr_t cvmx_fdt_get_addr(const void *fdt_addr, int node, const char *prop_name)
 {
@@ -168,7 +178,7 @@ static inline fdt_addr_t cvmx_fdt_get_addr(const void *fdt_addr, int node, const
  * @param[in] prop_name	property name to read
  * @param default_val	default value to return if property doesn't exist
  *
- * @return	integer value of property or default_val if it doesn't exist.
+ * Return:	integer value of property or default_val if it doesn't exist.
  */
 static inline int cvmx_fdt_get_int(const void *fdt_addr, int node, const char *prop_name,
 				   int default_val)
@@ -195,7 +205,7 @@ static inline u64 cvmx_fdt_get_uint64(const void *fdt_addr, int node, const char
  * @param node		node to read phandle from
  * @param[in] prop_name	name of property to find
  *
- * @return	node offset if found, -ve error code on error
+ * Return:	node offset if found, -ve error code on error
  */
 static inline int cvmx_fdt_lookup_phandle(const void *fdt_addr, int node, const char *prop_name)
 {
@@ -214,7 +224,7 @@ static inline int cvmx_fdt_lookup_phandle(const void *fdt_addr, int node, const 
  *				NOTE: in_addr must be in the native ENDIAN
  *				format.
  *
- * @return	Translated address or FDT_ADDR_T_NONE if address cannot be
+ * Return:	Translated address or FDT_ADDR_T_NONE if address cannot be
  *		translated.
  */
 static inline u64 cvmx_fdt_translate_address(const void *fdt_addr, int node, const u32 *in_addr)
@@ -228,7 +238,7 @@ static inline u64 cvmx_fdt_translate_address(const void *fdt_addr, int node, con
  * @param[in] s1	First string to compare
  * @param[in] sw	Second string to compare
  *
- * @return	0 if no match
+ * Return:	0 if no match
  *		1 if only the part number matches and not the manufacturer
  *		2 if both the part number and manufacturer match
  */
@@ -241,7 +251,7 @@ int cvmx_fdt_compat_match(const char *s1, const char *s2);
  * @param	llen	string list total length
  * @param[in]	str	string to search for
  *
- * @return	1 if string list contains string, 0 if it does not.
+ * Return:	1 if string list contains string, 0 if it does not.
  */
 int cvmx_fdt_compat_list_contains(const char *slist, int llen, const char *str);
 
@@ -252,7 +262,7 @@ int cvmx_fdt_compat_list_contains(const char *slist, int llen, const char *str);
  * @param	node		node offset to check
  * @param[in]	compat		compatible string to check
  *
- * @return	0 if compatible, 1 if not compatible, error if negative
+ * Return:	0 if compatible, 1 if not compatible, error if negative
  */
 int cvmx_fdt_node_check_compatible(const void *fdt_addr, int node, const char *compat);
 
@@ -263,7 +273,7 @@ int cvmx_fdt_node_check_compatible(const void *fdt_addr, int node, const char *c
  * @param[in]	compat		compatible string
  * @param[in]	str		string to check
  *
- * @return	0 if not compatible, 1 if manufacturer compatible, 2 if
+ * Return:	0 if not compatible, 1 if manufacturer compatible, 2 if
  *		part is compatible, 3 if both part and manufacturer are
  *		compatible.
  */
@@ -276,7 +286,7 @@ int __cvmx_fdt_compat_match(const char *compat, const char *str);
  * @param	phandle		phandle to GPIO
  * @param[out]	size		Number of pins (optional, may be NULL)
  *
- * @return	Type of GPIO device or PIN_ERROR if error
+ * Return:	Type of GPIO device or PIN_ERROR if error
  */
 enum cvmx_gpio_type cvmx_fdt_get_gpio_type(const void *fdt_addr, int phandle, int *size);
 
@@ -289,7 +299,7 @@ enum cvmx_gpio_type cvmx_fdt_get_gpio_type(const void *fdt_addr, int phandle, in
  *				NULL for none.
  * @param[out]	addr		TWSI address number, can be NULL for none
  *
- * @return	0 for success, error otherwise
+ * Return:	0 for success, error otherwise
  */
 int cvmx_fdt_get_twsi_gpio_bus_addr(const void *fdt_addr, int phandle, int *bus, int *addr);
 
@@ -299,7 +309,7 @@ int cvmx_fdt_get_twsi_gpio_bus_addr(const void *fdt_addr, int phandle, int *bus,
  * @param[in]	fdt_addr	Address of FDT
  * @param	node		FDT node number
  *
- * @return	CPU node number or error if negative
+ * Return:	CPU node number or error if negative
  */
 int cvmx_fdt_get_cpu_node(const void *fdt_addr, int node);
 
@@ -308,7 +318,7 @@ int cvmx_fdt_get_cpu_node(const void *fdt_addr, int node);
  *
  * @param[in]	fdt_addr	Address of FDT
  *
- * @return	Size of flat device tree in bytes or -1 if error.
+ * Return:	Size of flat device tree in bytes or -1 if error.
  */
 int cvmx_fdt_get_fdt_size(const void *fdt_addr);
 
@@ -320,7 +330,7 @@ int cvmx_fdt_get_fdt_size(const void *fdt_addr);
  * @param[in]	strlist		Array of FDT device compatibility strings,
  *				must end with NULL or empty string.
  *
- * @return	0 if at least one item matches, 1 if no matches
+ * Return:	0 if at least one item matches, 1 if no matches
  */
 int cvmx_fdt_node_check_compatible_list(const void *fdt_addr, int node, const char *const *strlist);
 
@@ -332,7 +342,7 @@ int cvmx_fdt_node_check_compatible_list(const void *fdt_addr, int node, const ch
  * @param	strlist		Array of FDT device compatibility strings, must
  *				end with NULL or empty string.
  *
- * @return	next matching node or -1 if no more matches.
+ * Return:	next matching node or -1 if no more matches.
  */
 int cvmx_fdt_node_offset_by_compatible_list(const void *fdt_addr, int startoffset,
 					    const char *const *strlist);
@@ -341,24 +351,23 @@ int cvmx_fdt_node_offset_by_compatible_list(const void *fdt_addr, int startoffse
  * Given the parent offset of an i2c device build up a list describing the bus
  * which can contain i2c muxes and switches.
  *
- * @param[in]	fdt_addr	address of device tree
- * @param	of_offset	Offset of the parent node of a GPIO device in
+ * @param[in]	node		ofnode of the parent node of a GPIO device in
  *				the device tree.
  *
- * @return	pointer to list of i2c devices starting from the root which
+ * Return:	pointer to list of i2c devices starting from the root which
  *		can include i2c muxes and switches or NULL if error.  Note that
  *		all entries are allocated on the heap.
  *
  * @see cvmx_fdt_free_i2c_bus()
  */
-struct cvmx_fdt_i2c_bus_info *cvmx_fdt_get_i2c_bus(const void *fdt_addr, int of_offset);
+struct cvmx_fdt_i2c_bus_info *cvmx_ofnode_get_i2c_bus(ofnode node);
 
 /**
  * Return the Octeon bus number for a bus descriptor
  *
  * @param[in]	bus	bus descriptor
  *
- * @return	Octeon twsi bus number or -1 on error
+ * Return:	Octeon twsi bus number or -1 on error
  */
 int cvmx_fdt_i2c_get_root_bus(const struct cvmx_fdt_i2c_bus_info *bus);
 
@@ -367,7 +376,7 @@ int cvmx_fdt_i2c_get_root_bus(const struct cvmx_fdt_i2c_bus_info *bus);
  *
  * @param	bus	bus to free
  *
- * @return	0
+ * Return:	0
  */
 int cvmx_fdt_free_i2c_bus(struct cvmx_fdt_i2c_bus_info *bus);
 
@@ -377,7 +386,7 @@ int cvmx_fdt_free_i2c_bus(struct cvmx_fdt_i2c_bus_info *bus);
  * @param[in]	bus	i2c bus descriptor to enable or disable
  * @param	enable	set to true to enable, false to disable
  *
- * @return	0 for success or -1 for invalid bus
+ * Return:	0 for success or -1 for invalid bus
  *
  * This enables the entire bus including muxes and switches in the path.
  */
@@ -390,7 +399,7 @@ int cvmx_fdt_enable_i2c_bus(const struct cvmx_fdt_i2c_bus_info *bus, bool enable
  * @param	of_offset	node offset for property
  * @param	prop_name	name of property
  *
- * @return	pointer to GPIO handle or NULL if error
+ * Return:	pointer to GPIO handle or NULL if error
  */
 struct cvmx_fdt_gpio_info *cvmx_fdt_gpio_get_info_phandle(const void *fdt_addr, int of_offset,
 							  const char *prop_name);
@@ -401,7 +410,7 @@ struct cvmx_fdt_gpio_info *cvmx_fdt_gpio_get_info_phandle(const void *fdt_addr, 
  * @param	pin	GPIO pin descriptor
  * @param	value	value to set it to, 0 or 1
  *
- * @return	0 on success, -1 on error.
+ * Return:	0 on success, -1 on error.
  *
  * NOTE: If the CVMX_GPIO_ACTIVE_LOW flag is set then the output value will be
  * inverted.
@@ -413,7 +422,7 @@ int cvmx_fdt_gpio_set(struct cvmx_fdt_gpio_info *pin, int value);
  *
  * @param	pin	GPIO pin descriptor
  *
- * @return	0 if low, 1 if high, -1 on error.  Note that the input will be
+ * Return:	0 if low, 1 if high, -1 on error.  Note that the input will be
  *		inverted if the CVMX_GPIO_ACTIVE_LOW flag bit is set.
  */
 int cvmx_fdt_gpio_get(struct cvmx_fdt_gpio_info *pin);
@@ -424,7 +433,7 @@ int cvmx_fdt_gpio_get(struct cvmx_fdt_gpio_info *pin);
  * @param	sfp		Handle to SFP data structure
  * @param	ipd_port	Port to assign it to
  *
- * @return	0 for success, -1 on error
+ * Return:	0 for success, -1 on error
  */
 int cvmx_sfp_set_ipd_port(struct cvmx_fdt_sfp_info *sfp, int ipd_port);
 
@@ -433,7 +442,7 @@ int cvmx_sfp_set_ipd_port(struct cvmx_fdt_sfp_info *sfp, int ipd_port);
  *
  * @param[in]	sfp		Handle to SFP data structure
  *
- * @return	IPD port number for SFP slot
+ * Return:	IPD port number for SFP slot
  */
 static inline int cvmx_sfp_get_ipd_port(const struct cvmx_fdt_sfp_info *sfp)
 {
@@ -469,7 +478,7 @@ void cvmx_sfp_attach_phy(struct cvmx_fdt_sfp_info *sfp, struct cvmx_phy_info *ph
  *
  * @param[in]	sfp	SFP to get phy info from
  *
- * @return	phy descriptor or NULL if none.
+ * Return:	phy descriptor or NULL if none.
  */
 static inline struct cvmx_phy_info *cvmx_sfp_get_phy_info(const struct cvmx_fdt_sfp_info *sfp)
 {
@@ -482,7 +491,7 @@ static inline struct cvmx_phy_info *cvmx_sfp_get_phy_info(const struct cvmx_fdt_
  *
  * @param[in]	fdt_addr	Address of flat device tree
  *
- * @return	0 for success, error otherwise
+ * Return:	0 for success, error otherwise
  */
 int __cvmx_fdt_parse_vsc7224(const void *fdt_addr);
 
@@ -492,18 +501,9 @@ int __cvmx_fdt_parse_vsc7224(const void *fdt_addr);
  *
  * @param[in]   fdt_addr        Address of flat device tree
  *
- * @return      0 for success, error otherwise
+ * Return:      0 for success, error otherwise
  */
 int __cvmx_fdt_parse_avsp5410(const void *fdt_addr);
-
-/**
- * Parse SFP information from device tree
- *
- * @param[in]	fdt_addr	Address of flat device tree
- *
- * @return pointer to sfp info or NULL if error
- */
-struct cvmx_fdt_sfp_info *cvmx_helper_fdt_parse_sfp_info(const void *fdt_addr, int of_offset);
 
 /**
  * @INTERNAL
@@ -512,7 +512,7 @@ struct cvmx_fdt_sfp_info *cvmx_helper_fdt_parse_sfp_info(const void *fdt_addr, i
  * @param	of_offset	offset of slice or phy in device tree
  * @param	phy_info	phy_info data structure to fill in
  *
- * @return	0 for success, -1 on error
+ * Return:	0 for success, -1 on error
  */
 int cvmx_fdt_parse_cs4343(const void *fdt_addr, int of_offset, struct cvmx_phy_info *phy_info);
 
@@ -533,7 +533,7 @@ void cvmx_fdt_i2c_reg_write(int bus, int addr, u8 val);
  * @param bus	i2c bus number
  * @param addr	i2c device address (7 bits)
  *
- * @return 8-bit value or error if negative
+ * Return: 8-bit value or error if negative
  */
 int cvmx_fdt_i2c_reg_read(int bus, int addr);
 
@@ -545,7 +545,7 @@ int cvmx_fdt_i2c_reg_read(int bus, int addr);
  * @param reg	i2c 8-bit register address
  * @param val	8-bit value to write
  *
- * @return 0 for success, otherwise error
+ * Return: 0 for success, otherwise error
  */
 int cvmx_fdt_i2c_write8(int bus, int addr, int reg, u8 val);
 
@@ -556,7 +556,7 @@ int cvmx_fdt_i2c_write8(int bus, int addr, int reg, u8 val);
  * @param addr	i2c device address (7 bits)
  * @param reg	i2c 8-bit register address
  *
- * @return value or error if negative
+ * Return: value or error if negative
  */
 int cvmx_fdt_i2c_read8(int bus, int addr, int reg);
 

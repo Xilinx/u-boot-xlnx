@@ -16,7 +16,7 @@
 /* SPL options */
 #include "imx6_spl.h"
 
-#define CONFIG_SYS_FSL_USDHC_NUM	2
+#define CFG_SYS_FSL_USDHC_NUM	2
 
 /* Environment settings */
 
@@ -29,7 +29,7 @@
 
 /* MMC Configs */
 
-#define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
+#define CFG_SYS_FSL_ESDHC_ADDR	USDHC2_BASE_ADDR
 
 /* I2C configs */
 
@@ -43,20 +43,12 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /* NAND */
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		0x40000000
 
 /* USB Configs */
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS		0
-#define CONFIG_USB_MAX_CONTROLLER_COUNT	1
 
 #define ENV_MMC \
 	"mmcdev=" __stringify(MMC_ROOTFS_DEV) "\0" \
@@ -82,8 +74,6 @@
 	"addcon=setenv bootargs ${bootargs} console=${console},${baudrate}\0" \
 	"fit_addr=0x82000000\0" \
 	ENV_MMC
-
-#define CONFIG_BOOTCOMMAND		"run mmc_mmc_fit"
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \

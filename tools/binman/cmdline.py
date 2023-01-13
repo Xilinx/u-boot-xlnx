@@ -2,18 +2,68 @@
 # Copyright (c) 2016 Google, Inc
 # Written by Simon Glass <sjg@chromium.org>
 #
-# Command-line parser for binman
-#
 
+"""Command-line parser for binman"""
+
+import argparse
 from argparse import ArgumentParser
+from binman import state
+
+def make_extract_parser(subparsers):
+    """make_extract_parser: Make a subparser for the 'extract' command
+
+    Args:
+        subparsers (ArgumentParser): parser to add this one to
+    """
+    extract_parser = subparsers.add_parser('extract',
+                                           help='Extract files from an image')
+    extract_parser.add_argument('-F', '--format', type=str,
+        help='Select an alternative format for extracted data')
+    extract_parser.add_argument('-i', '--image', type=str, required=True,
+                                help='Image filename to extract')
+    extract_parser.add_argument('-f', '--filename', type=str,
+                                help='Output filename to write to')
+    extract_parser.add_argument('-O', '--outdir', type=str, default='',
+        help='Path to directory to use for output files')
+    extract_parser.add_argument('paths', type=str, nargs='*',
+                                help='Paths within file to extract (wildcard)')
+    extract_parser.add_argument('-U', '--uncompressed', action='store_true',
+        help='Output raw uncompressed data for compressed entries')
+
+
+#pylint: disable=R0903
+class BinmanVersion(argparse.Action):
+    """Handles the -V option to binman
+
+    This reads the version information from a file called 'version' in the same
+    directory as this file.
+
+    If not present it assumes this is running from the U-Boot tree and collects
+    the version from the Makefile.
+
+    The format of the version information is three VAR = VALUE lines, for
+    example:
+
+        VERSION = 2022
+        PATCHLEVEL = 01
+        EXTRAVERSION = -rc2
+    """
+    def __init__(self, nargs=0, **kwargs):
+        super().__init__(nargs=nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser._print_message(f'Binman {state.GetVersion()}\n')
+        parser.exit()
+
 
 def ParseArgs(argv):
     """Parse the binman command-line arguments
 
     Args:
-        argv: List of string arguments
+        argv (list of str): List of string arguments
+
     Returns:
-        Tuple (options, args) with the command-line options and arugments.
+        tuple: (options, args) with the command-line options and arugments.
             options provides access to the options (e.g. option.debug)
             args is a list of string arguments
     """
@@ -39,6 +89,7 @@ controlled by a description in the board device tree.'''
     parser.add_argument('-v', '--verbosity', default=1,
         type=int, help='Control verbosity: 0=silent, 1=warnings, 2=notices, '
         '3=info, 4=detail, 5=debug')
+    parser.add_argument('-V', '--version', nargs=0, action=BinmanVersion)
 
     subparsers = parser.add_subparsers(dest='cmd')
     subparsers.required = True
@@ -54,6 +105,8 @@ controlled by a description in the board device tree.'''
             help='Use fake device tree contents (for testing only)')
     build_parser.add_argument('--fake-ext-blobs', action='store_true',
             help='Create fake ext blobs with dummy content (for testing only)')
+    build_parser.add_argument('--force-missing-bintools', type=str,
+            help='Comma-separated list of bintools to consider missing (for testing)')
     build_parser.add_argument('-i', '--image', type=str, action='append',
             help='Image filename to build (if not specified, build all)')
     build_parser.add_argument('-I', '--indir', action='append',
@@ -61,7 +114,7 @@ controlled by a description in the board device tree.'''
     build_parser.add_argument('-m', '--map', action='store_true',
         default=False, help='Output a map file for each image')
     build_parser.add_argument('-M', '--allow-missing', action='store_true',
-        default=False, help='Allow external blobs to be missing')
+        default=False, help='Allow external blobs and bintools to be missing')
     build_parser.add_argument('-n', '--no-expanded', action='store_true',
             help="Don't use 'expanded' versions of entries where available; "
                  "normally 'u-boot' becomes 'u-boot-expanded', for example")
@@ -75,9 +128,15 @@ controlled by a description in the board device tree.'''
         default=False, help='Update the binman node with offset/size info')
     build_parser.add_argument('--update-fdt-in-elf', type=str,
         help='Update an ELF file with the output dtb: infile,outfile,begin_sym,end_sym')
+    build_parser.add_argument(
+        '-W', '--ignore-missing', action='store_true', default=False,
+        help='Return success even if there are missing blobs/bintools (requires -M)')
 
-    entry_parser = subparsers.add_parser('entry-docs',
-        help='Write out entry documentation (see entries.rst)')
+    subparsers.add_parser(
+        'bintool-docs', help='Write out bintool documentation (see bintool.rst)')
+
+    subparsers.add_parser(
+        'entry-docs', help='Write out entry documentation (see entries.rst)')
 
     list_parser = subparsers.add_parser('ls', help='List files in an image')
     list_parser.add_argument('-i', '--image', type=str, required=True,
@@ -85,18 +144,7 @@ controlled by a description in the board device tree.'''
     list_parser.add_argument('paths', type=str, nargs='*',
                              help='Paths within file to list (wildcard)')
 
-    extract_parser = subparsers.add_parser('extract',
-                                           help='Extract files from an image')
-    extract_parser.add_argument('-i', '--image', type=str, required=True,
-                                help='Image filename to extract')
-    extract_parser.add_argument('-f', '--filename', type=str,
-                                help='Output filename to write to')
-    extract_parser.add_argument('-O', '--outdir', type=str, default='',
-        help='Path to directory to use for output files')
-    extract_parser.add_argument('paths', type=str, nargs='*',
-                                help='Paths within file to extract (wildcard)')
-    extract_parser.add_argument('-U', '--uncompressed', action='store_true',
-        help='Output raw uncompressed data for compressed entries')
+    make_extract_parser(subparsers)
 
     replace_parser = subparsers.add_parser('replace',
                                            help='Replace entries in an image')
@@ -126,5 +174,12 @@ controlled by a description in the board device tree.'''
              'name at the end of the command line')
     test_parser.add_argument('tests', nargs='*',
                              help='Test names to run (omit for all)')
+
+    tool_parser = subparsers.add_parser('tool', help='Check bintools')
+    tool_parser.add_argument('-l', '--list', action='store_true',
+                             help='List all known bintools')
+    tool_parser.add_argument('-f', '--fetch', action='store_true',
+                             help='fetch a bintool from a known location (or: all/missing)')
+    tool_parser.add_argument('bintools', type=str, nargs='*')
 
     return parser.parse_args(argv)

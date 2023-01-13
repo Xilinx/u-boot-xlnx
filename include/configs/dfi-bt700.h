@@ -12,8 +12,6 @@
 
 #include <configs/x86-common.h>
 
-#define CONFIG_SYS_MONITOR_LEN		(1 << 20)
-
 #ifndef CONFIG_INTERNAL_UART
 /* Use BayTrail internal HS UART which is memory-mapped */
 #undef  CONFIG_SYS_NS16550_PORT_MAPPED
@@ -25,12 +23,6 @@
 
 #define VIDEO_IO_OFFSET				0
 #define CONFIG_X86EMU_RAW_IO
-
-#undef CONFIG_BOOTCOMMAND
-#define CONFIG_BOOTCOMMAND	\
-	"load scsi 0:1 03000000 /boot/vmlinuz-${kernel-ver}-generic;"	\
-	"load scsi 0:1 04000000 /boot/initrd.img-${kernel-ver}-generic;" \
-	"run boot"
 
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS				\

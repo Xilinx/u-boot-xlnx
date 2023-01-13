@@ -19,6 +19,12 @@ config DM_PCI_COMPAT
 	  measure when porting a board to use driver model for PCI. Once the
 	  board is fully supported, this option should be disabled.
 
+config SYS_PCI_64BIT
+	bool "Enable 64-bit PCI resources"
+	default y if PPC
+	help
+	  Enable 64-bit PCI resource access.
+
 config PCI_AARDVARK
 	bool "Enable Aardvark PCIe driver"
 	depends on DM_GPIO
@@ -42,6 +48,10 @@ config PCI_REGION_MULTI_ENTRY
 	  region type. This helps to add support for SoC's like OcteonTX/TX2
 	  where every peripheral is on the PCI bus.
 
+config PCI_CONFIG_HOST_BRIDGE
+	bool "Configure PCI host bridges"
+	default y if X86
+
 config PCI_MAP_SYSTEM_MEMORY
 	bool "Map local system memory from a virtual base address"
 	depends on MIPS
@@ -61,12 +71,23 @@ config PCI_SRIOV
 	  if available on a PCI Physical Function device and probe for
 	  applicable drivers.
 
+config PCI_ENHANCED_ALLOCATION
+	bool "Enable support for Enhanced Allocation of resources"
+	default y
+	help
+	  Enable support for Enhanced Allocation which can be used by supported
+	  devices in place of traditional BARS for allocation of resources.
+
 config PCI_ARID
         bool "Enable Alternate Routing-ID support for PCI"
         help
           Say Y here if you want to enable Alternate Routing-ID capability
           support on PCI devices. This helps to skip some devices in BDF
           scan that are not present.
+
+config PCI_SCAN_SHOW
+	bool "Show PCI devices during startup"
+	depends on PCIE_IMX
 
 config PCIE_ECAM_GENERIC
 	bool "Generic ECAM-based PCI host controller support"
@@ -83,6 +104,10 @@ config PCIE_ECAM_SYNQUACER
 	  SynQuacer SoC's ECAM-based PCIe host controllers.
 	  Note that this must be configured when boot because Linux driver
 	  expects the PCIe RC has been configured in the bootloader.
+
+config PCI_GT64120
+	bool "GT64120 PCI support"
+	depends on MIPS
 
 config PCI_PHYTIUM
 	bool "Phytium PCIe support"
@@ -108,8 +133,12 @@ config PCIE_DW_SIFIVE
 	  Say Y here if you want to enable PCIe controller support on
 	  FU740.
 
+config SYS_FSL_PCI_VER_3_X
+	bool
+
 config PCIE_FSL
 	bool "FSL PowerPC PCIe support"
+	select SYS_FSL_PCI_VER_3_X if ARCH_T2080 || ARCH_T4240
 	help
 	  Say Y here if you want to enable PCIe controller support on FSL
 	  PowerPC MPC85xx, MPC86xx, B series, P series and T series SoCs.
@@ -120,6 +149,10 @@ config PCI_MPC85XX
 	help
 	  Say Y here if you want to enable PCI controller support on FSL
 	  PowerPC MPC85xx SoC.
+
+config PCI_MSC01
+	bool "MSC01 PCI support"
+	depends on TARGET_MALTA
 
 config PCI_RCAR_GEN2
 	bool "Renesas RCar Gen2 PCIe driver"
@@ -145,6 +178,12 @@ config PCI_SANDBOX
 	  access. The available (emulated) devices are defined statically in
 	  the device tree but the normal PCI scan technique is used to find
 	  then.
+
+config SH7751_PCI
+	bool "SH7751 PCI controller support"
+	depends on SH
+	help
+	  SuperH PCI Bridge Configuration
 
 config PCI_TEGRA
 	bool "Tegra PCI support"
@@ -227,8 +266,7 @@ config FSL_PCIE_COMPAT
 	default "fsl,ls1046a-pcie" if ARCH_LS1046A
 	default "fsl,ls2080a-pcie" if ARCH_LS2080A
 	default "fsl,ls1088a-pcie" if ARCH_LS1088A
-	default "fsl,lx2160a-pcie" if ARCH_LX2160A
-	default "fsl,ls2088a-pcie" if ARCH_LX2162A
+	default "fsl,ls2088a-pcie" if ARCH_LX2160A || ARCH_LX2162A
 	default "fsl,ls1021a-pcie" if ARCH_LS1021A
 	help
 	  This compatible is used to find pci controller node in Kernel DT
@@ -237,11 +275,14 @@ config FSL_PCIE_COMPAT
 config FSL_PCIE_EP_COMPAT
 	string "PCIe EP compatible of Kernel DT"
 	depends on PCIE_LAYERSCAPE_RC || PCIE_LAYERSCAPE_GEN4
-	default "fsl,lx2160a-pcie-ep" if ARCH_LX2160A
 	default "fsl,ls-pcie-ep"
 	help
 	  This compatible is used to find pci controller ep node in Kernel DT
 	  to complete fixup.
+
+config PCIE_IMX
+	bool "i.MX PCIe support"
+	depends on ARCH_MX6
 
 config PCIE_INTEL_FPGA
 	bool "Intel FPGA PCIe support"
@@ -256,12 +297,14 @@ config PCIE_IPROC
 	  Say Y here if you want to enable Broadcom iProc PCIe controller,
 
 config PCI_MVEBU
-	bool "Enable Armada XP/38x PCIe driver"
-	depends on ARCH_MVEBU
+	bool "Enable Kirkwood / Armada 370/XP/375/38x PCIe driver"
+	depends on (ARCH_KIRKWOOD || ARCH_MVEBU)
 	select MISC
+	select DM_RESET
+	select DM_GPIO
 	help
 	  Say Y here if you want to enable PCIe controller support on
-	  Armada XP/38x SoCs.
+	  Kirkwood and Armada 370/XP/375/38x SoCs.
 
 config PCIE_DW_COMMON
 	bool

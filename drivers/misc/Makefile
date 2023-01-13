@@ -3,7 +3,8 @@
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
-obj-$(CONFIG_MISC) += misc-uclass.o
+obj-$(CONFIG_$(SPL_TPL_)MISC) += misc-uclass.o
+obj-$(CONFIG_$(SPL_TPL_)NVMEM) += nvmem.o
 
 obj-$(CONFIG_$(SPL_TPL_)CROS_EC) += cros_ec.o
 obj-$(CONFIG_$(SPL_TPL_)CROS_EC_SANDBOX) += cros_ec_sandbox.o
@@ -20,6 +21,7 @@ endif
 ifdef CONFIG_$(SPL_)DM_I2C
 ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_SANDBOX) += i2c_eeprom_emul.o
+obj-$(CONFIG_USB_HUB_USB251XB) += usb251xb.o
 endif
 endif
 ifdef CONFIG_SPL_OF_PLATDATA
@@ -37,7 +39,8 @@ obj-$(CONFIG_FSL_IFC) += fsl_ifc.o
 obj-$(CONFIG_FSL_IIM) += fsl_iim.o
 obj-$(CONFIG_FSL_MC9SDZ60) += mc9sdz60.o
 obj-$(CONFIG_FSL_SEC_MON) += fsl_sec_mon.o
-obj-$(CONFIG_FS_LOADER) += fs_loader.o
+obj-$(CONFIG_$(SPL_)FS_LOADER) += fs_loader.o
+obj-$(CONFIG_GATEWORKS_SC) += gsc.o
 obj-$(CONFIG_GDSYS_IOEP) += gdsys_ioep.o
 obj-$(CONFIG_GDSYS_RXAUI_CTRL) += gdsys_rxaui_ctrl.o
 obj-$(CONFIG_GDSYS_SOC) += gdsys_soc.o
@@ -46,12 +49,15 @@ obj-$(CONFIG_SANDBOX) += irq_sandbox.o irq_sandbox_test.o
 obj-$(CONFIG_$(SPL_)I2C_EEPROM) += i2c_eeprom.o
 obj-$(CONFIG_IHS_FPGA) += ihs_fpga.o
 obj-$(CONFIG_IMX8) += imx8/
-obj-$(CONFIG_IMX8ULP) += imx8ulp/
+obj-$(CONFIG_IMX_SENTINEL) += sentinel/
 obj-$(CONFIG_LED_STATUS) += status_led.o
 obj-$(CONFIG_LED_STATUS_GPIO) += gpio_led.o
 obj-$(CONFIG_MPC83XX_SERDES) += mpc83xx_serdes.o
+obj-$(CONFIG_$(SPL_TPL_)LS2_SFP) += ls2_sfp.o
 obj-$(CONFIG_$(SPL_)MXC_OCOTP) += mxc_ocotp.o
 obj-$(CONFIG_MXS_OCOTP) += mxs_ocotp.o
+obj-$(CONFIG_NPCM_OTP) += npcm_otp.o
+obj-$(CONFIG_NPCM_HOST) += npcm_host_intf.o
 obj-$(CONFIG_NUVOTON_NCT6102D) += nuvoton_nct6102d.o
 obj-$(CONFIG_P2SB) += p2sb-uclass.o
 obj-$(CONFIG_PCA9551_LED) += pca9551_led.o
@@ -82,5 +88,6 @@ obj-$(CONFIG_MICROCHIP_FLEXCOM) += microchip_flexcom.o
 obj-$(CONFIG_K3_AVS0) += k3_avs.o
 obj-$(CONFIG_ESM_K3) += k3_esm.o
 obj-$(CONFIG_ESM_PMIC) += esm_pmic.o
+obj-$(CONFIG_SL28CPLD) += sl28cpld.o
 obj-$(CONFIG_USB5744) += usb5744.o
 obj-$(CONFIG_USB2244) += usb2244.o

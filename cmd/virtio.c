@@ -17,13 +17,27 @@ static int do_virtio(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
 {
 	if (argc == 2 && !strcmp(argv[1], "scan")) {
-		/* make sure all virtio devices are enumerated */
-		virtio_init();
+		/*
+		 * make sure all virtio devices are enumerated.
+		 * Do the same as virtio_init(), but also call
+		 * device_probe() for children (i.e. virtio devices)
+		 */
+		struct udevice *bus, *child;
+
+		uclass_first_device(UCLASS_VIRTIO, &bus);
+		if (!bus)
+			return CMD_RET_FAILURE;
+
+		while (bus) {
+			device_foreach_child_probe(child, bus)
+				;
+			uclass_next_device(&bus);
+		}
 
 		return CMD_RET_SUCCESS;
 	}
 
-	return blk_common_cmd(argc, argv, IF_TYPE_VIRTIO, &virtio_curr_dev);
+	return blk_common_cmd(argc, argv, UCLASS_VIRTIO, &virtio_curr_dev);
 }
 
 U_BOOT_CMD(

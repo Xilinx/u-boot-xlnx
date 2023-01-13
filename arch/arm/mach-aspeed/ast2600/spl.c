@@ -7,6 +7,7 @@
 #include <dm.h>
 #include <spl.h>
 #include <init.h>
+#include <linux/err.h>
 #include <asm/io.h>
 #include <asm/arch/scu_ast2600.h>
 #include <asm/global_data.h>
@@ -21,21 +22,43 @@ void board_init_f(ulong dummy)
 	dram_init();
 }
 
+/*
+ * Try to detect the boot mode. Fallback to the default,
+ * memory mapped SPI XIP booting if detection failed.
+ */
 u32 spl_boot_device(void)
 {
+	int rc;
+	struct udevice *scu_dev;
+	struct ast2600_scu *scu;
+
+	rc = uclass_get_device_by_driver(UCLASS_CLK,
+					 DM_DRIVER_GET(aspeed_ast2600_scu), &scu_dev);
+	if (rc) {
+		debug("%s: failed to get SCU driver\n", __func__);
+		goto out;
+	}
+
+	scu = devfdt_get_addr_ptr(scu_dev);
+	if (IS_ERR_OR_NULL(scu)) {
+		debug("%s: failed to get SCU base\n", __func__);
+		goto out;
+	}
+
+	/* boot from UART has higher priority */
+	if (scu->hwstrap2 & SCU_HWSTRAP2_BOOT_UART)
+		return BOOT_DEVICE_UART;
+
+	if (scu->hwstrap1 & SCU_HWSTRAP1_BOOT_EMMC)
+		return BOOT_DEVICE_MMC1;
+
+out:
 	return BOOT_DEVICE_RAM;
 }
 
-struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
+struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
 {
-	/*
-	 * When boot from SPI, AST2600 already remap 0x00000000 ~ 0x0fffffff
-	 * to BMC SPI memory space 0x20000000 ~ 0x2fffffff. The next stage BL
-	 * has been located in SPI for XIP. In this case, the load buffer for
-	 * SPL image loading will be set to the remapped address of the next
-	 * BL instead of the DRAM space CONFIG_SYS_LOAD_ADDR
-	 */
-	return (struct image_header *)(CONFIG_SYS_TEXT_BASE);
+	return (struct legacy_img_hdr *)(CONFIG_SYS_LOAD_ADDR);
 }
 
 #ifdef CONFIG_SPL_OS_BOOT

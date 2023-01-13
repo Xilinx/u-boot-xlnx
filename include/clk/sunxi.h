@@ -18,6 +18,7 @@
 enum ccu_flags {
 	CCU_CLK_F_IS_VALID		= BIT(0),
 	CCU_RST_F_IS_VALID		= BIT(1),
+	CCU_CLK_F_DUMMY_GATE		= BIT(2),
 };
 
 /**
@@ -36,6 +37,10 @@ struct ccu_clk_gate {
 	.off = _off,				\
 	.bit = _bit,				\
 	.flags = CCU_CLK_F_IS_VALID,		\
+}
+
+#define GATE_DUMMY {				\
+	.flags = CCU_CLK_F_DUMMY_GATE,		\
 }
 
 /**
@@ -65,34 +70,21 @@ struct ccu_reset {
 struct ccu_desc {
 	const struct ccu_clk_gate *gates;
 	const struct ccu_reset *resets;
+	u8 num_gates;
+	u8 num_resets;
 };
 
 /**
- * struct ccu_priv - sunxi clock control unit
+ * struct ccu_plat - sunxi clock control unit platform data
  *
  * @base:	base address
  * @desc:	ccu descriptor
  */
-struct ccu_priv {
+struct ccu_plat {
 	void *base;
 	const struct ccu_desc *desc;
 };
 
-/**
- * sunxi_clk_probe - common sunxi clock probe
- * @dev:	clock device
- */
-int sunxi_clk_probe(struct udevice *dev);
-
 extern struct clk_ops sunxi_clk_ops;
-
-/**
- * sunxi_reset_bind() - reset binding
- *
- * @dev:       reset device
- * @count:     reset count
- * @return 0 success, or error value
- */
-int sunxi_reset_bind(struct udevice *dev, ulong count);
 
 #endif /* _CLK_SUNXI_H */

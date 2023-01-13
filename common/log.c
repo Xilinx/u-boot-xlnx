@@ -7,6 +7,7 @@
  */
 
 #include <common.h>
+#include <display_options.h>
 #include <log.h>
 #include <malloc.h>
 #include <asm/global_data.h>
@@ -28,6 +29,7 @@ static const char *const log_cat_name[] = {
 	"devres",
 	"acpi",
 	"boot",
+	"event",
 };
 
 _Static_assert(ARRAY_SIZE(log_cat_name) == LOGC_COUNT - LOGC_NONE,
@@ -147,7 +149,7 @@ bool log_has_file(const char *file_list, const char *file)
  *
  * @ldev: Log device to check
  * @rec: Log record to check
- * @return true if @rec is not blocked by the filters in @ldev, false if it is
+ * Return: true if @rec is not blocked by the filters in @ldev, false if it is
  */
 static bool log_passes_filters(struct log_device *ldev, struct log_rec *rec)
 {
@@ -390,7 +392,7 @@ int log_remove_filter(const char *drv_name, int filter_num)
  * log_find_device_by_drv() - Find a device by its driver
  *
  * @drv: Log driver
- * @return Device associated with that driver, or NULL if not found
+ * Return: Device associated with that driver, or NULL if not found
  */
 static struct log_device *log_find_device_by_drv(struct log_driver *drv)
 {

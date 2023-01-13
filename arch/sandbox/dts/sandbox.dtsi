@@ -7,13 +7,40 @@
 #define USB_CLASS_HUB			9
 
 / {
+	binman {
+	};
+
 	chosen {
 		stdout-path = "/serial";
+
+		fwupd {
+			compatible = "simple-bus";
+			firmware {
+				compatible = "fwupd,vbe-simple";
+				cur-version = "1.2.3";
+				bootloader-version = "2022.01";
+				storage = "mmc1";
+				area-start = <0x0>;
+				area-size = <0x1000000>;
+				skip-offset = <0x8000>;
+			};
+		};
+	};
+
+	alarm_wdt: alarm-wdt {
+		compatible = "sandbox,alarm-wdt";
+		timeout-sec = <5>;
+		u-boot,autostart;
 	};
 
 	audio: audio-codec {
 		compatible = "sandbox,audio-codec";
 		#sound-dai-cells = <1>;
+	};
+
+	bootstd {
+		compatible = "u-boot,boot-std";
+		filename-prefixes = "./";
 	};
 
 	buttons {
@@ -218,10 +245,15 @@
 
 	reset@1 {
 		compatible = "sandbox,reset";
+		u-boot,dm-pre-proper;
 	};
 
 	rng {
 		compatible = "sandbox,sandbox-rng";
+	};
+
+	scsi {
+		compatible = "sandbox,scsi";
 	};
 
 	sound {
@@ -246,7 +278,7 @@
 	};
 
 	spl-test {
-		u-boot,dm-pre-reloc;
+		u-boot,dm-spl;
 		compatible = "sandbox,spl-test";
 		boolval;
 		intval = <1>;
@@ -260,7 +292,7 @@
 	};
 
 	spl-test2 {
-		u-boot,dm-pre-reloc;
+		u-boot,dm-spl;
 		compatible = "sandbox,spl-test";
 		intval = <3>;
 		intarray = <5>;
@@ -272,14 +304,14 @@
 	};
 
 	spl-test3 {
-		u-boot,dm-pre-reloc;
+		u-boot,dm-spl;
 		compatible = "sandbox,spl-test";
 		stringarray = "one";
 		maybe-empty-int = <1>;
 	};
 
 	spl-test5 {
-		u-boot,dm-tpl;
+		u-boot,dm-vpl;
 		compatible = "sandbox,spl-test";
 		stringarray = "tpl";
 	};
@@ -326,6 +358,8 @@
 	/* Needs to be available prior to relocation */
 	uart0: serial {
 		u-boot,dm-spl;
+		u-boot,dm-tpl;
+		u-boot,dm-vpl;
 		compatible = "sandbox,serial";
 		sandbox,text-colour = "cyan";
 		pinctrl-names = "default";
@@ -415,6 +449,10 @@
 
 	sandbox_tee {
 		compatible = "sandbox,tee";
+	};
+
+	thermal {
+		compatible = "sandbox,thermal";
 	};
 };
 

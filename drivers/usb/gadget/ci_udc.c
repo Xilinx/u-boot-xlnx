@@ -94,11 +94,11 @@ static struct usb_request *
 ci_ep_alloc_request(struct usb_ep *ep, unsigned int gfp_flags);
 static void ci_ep_free_request(struct usb_ep *ep, struct usb_request *_req);
 
-static struct usb_gadget_ops ci_udc_ops = {
+static const struct usb_gadget_ops ci_udc_ops = {
 	.pullup = ci_pullup,
 };
 
-static struct usb_ep_ops ci_ep_ops = {
+static const struct usb_ep_ops ci_ep_ops = {
 	.enable         = ci_ep_enable,
 	.disable        = ci_ep_disable,
 	.queue          = ci_ep_queue,
@@ -402,6 +402,9 @@ align:
 
 flush:
 	hwaddr = (unsigned long)ci_req->hw_buf;
+	if (!hwaddr)
+		return 0;
+
 	aligned_used_len = roundup(req->length, ARCH_DMA_MINALIGN);
 	flush_dcache_range(hwaddr, hwaddr + aligned_used_len);
 
@@ -415,7 +418,7 @@ static void ci_debounce(struct ci_req *ci_req, int in)
 	unsigned long hwaddr = (unsigned long)ci_req->hw_buf;
 	uint32_t aligned_used_len;
 
-	if (in)
+	if (in || !hwaddr)
 		return;
 
 	aligned_used_len = roundup(req->actual, ARCH_DMA_MINALIGN);

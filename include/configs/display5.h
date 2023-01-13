@@ -10,13 +10,8 @@
 #include "mx6_common.h"
 
 /* Falcon Mode */
-#define CONFIG_SYS_SPL_ARGS_ADDR	0x18000000
 
 /* Falcon Mode - MMC support */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR	0x3F00
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS	\
-	(CONFIG_CMD_SPL_WRITE_SIZE / 512)
-#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR	0x100	/* 128KiB */
 
 /*
  * display5 SPI-NOR memory layout
@@ -34,12 +29,6 @@
  * 0x1F00000 - 0x2000000 : SPI.factory  (1MiB)
  */
 
-/* SPI Flash Configs */
-#if defined(CONFIG_SPL_BUILD)
-#undef CONFIG_DM_SPI
-#undef CONFIG_DM_SPI_FLASH
-#endif
-
 /* Below values are "dummy" - only to avoid build break */
 #define CONFIG_SYS_SPI_KERNEL_OFFS      0x150000
 #define CONFIG_SYS_SPI_ARGS_OFFS        0x140000
@@ -53,18 +42,8 @@
 #define CONFIG_I2C_MULTI_BUS
 
 /* MMC Configs */
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
-#define CONFIG_SYS_FSL_USDHC_NUM	2
-
-#ifndef CONFIG_BOOTCOMMAND
-#define CONFIG_BOOTCOMMAND "if run check_em_pad; then " \
-	     "run recovery;" \
-	"else if test ${BOOT_FROM} = FACTORY; then " \
-	     "run factory_nfs;" \
-	"else " \
-	     "run boot_mmc;" \
-	"fi;fi"
-#endif
+#define CFG_SYS_FSL_ESDHC_ADDR	0
+#define CFG_SYS_FSL_USDHC_NUM	2
 
 #define PARTS_DEFAULT \
 	/* Linux partitions */ \
@@ -200,7 +179,6 @@
 	"altbootcmd=run recovery\0" \
 	"bootdelay=1\0" \
 	"baudrate=115200\0" \
-	"bootcmd=" CONFIG_BOOTCOMMAND "\0" \
 	"ethact=FEC\0" \
 	"netdev=eth0\0" \
 	"boot_os=y\0" \
@@ -302,14 +280,6 @@
 	"\0" \
 
 /* Miscellaneous configurable options */
-#undef CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_CBSIZE		2048
-
-/* Print Buffer Size */
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + \
-					 sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		32
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
 
 #define CONFIG_STANDALONE_LOAD_ADDR	0x10001000
 
@@ -319,18 +289,6 @@
 
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-/* Watchdog */
-#if defined(CONFIG_SPL_BUILD)
-#undef CONFIG_WDT
-#undef CONFIG_WATCHDOG
-#define CONFIG_HW_WATCHDOG
-#endif
 
 /* ENV config */
 #ifdef CONFIG_ENV_IS_IN_SPI_FLASH

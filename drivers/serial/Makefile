@@ -43,15 +43,13 @@ obj-$(CONFIG_MCFUART) += serial_mcf.o
 obj-$(CONFIG_SYS_NS16550) += ns16550.o
 obj-$(CONFIG_S5P_SERIAL) += serial_s5p.o
 obj-$(CONFIG_MXC_UART) += serial_mxc.o
-obj-$(CONFIG_PXA_SERIAL) += serial_pxa.o
 obj-$(CONFIG_MESON_SERIAL) += serial_meson.o
 obj-$(CONFIG_INTEL_MID_SERIAL) += serial_intel_mid.o
-ifdef CONFIG_SPL_BUILD
 obj-$(CONFIG_ROCKCHIP_SERIAL) += serial_rockchip.o
-endif
 obj-$(CONFIG_XILINX_UARTLITE) += serial_xuartlite.o
 obj-$(CONFIG_SANDBOX_SERIAL) += sandbox.o
 obj-$(CONFIG_SCIF_CONSOLE) += serial_sh.o
+obj-$(CONFIG_SEMIHOSTING_SERIAL) += serial_semihosting.o
 obj-$(CONFIG_ZYNQ_SERIAL) += serial_zynq.o
 obj-$(CONFIG_FSL_LPUART) += serial_lpuart.o
 obj-$(CONFIG_FSL_LINFLEXUART) += serial_linflexuart.o
@@ -67,12 +65,14 @@ obj-$(CONFIG_MSM_GENI_SERIAL) += serial_msm_geni.o
 obj-$(CONFIG_MVEBU_A3700_UART) += serial_mvebu_a3700.o
 obj-$(CONFIG_MPC8XX_CONS) += serial_mpc8xx.o
 obj-$(CONFIG_NULLDEV_SERIAL) += serial_nulldev.o
+obj-$(CONFIG_NPCM_SERIAL) += serial_npcm.o
 obj-$(CONFIG_OCTEON_SERIAL_BOOTCMD) += serial_octeon_bootcmd.o
 obj-$(CONFIG_OCTEON_SERIAL_PCIE_CONSOLE) += serial_octeon_pcie_console.o
 obj-$(CONFIG_OWL_SERIAL) += serial_owl.o
 obj-$(CONFIG_OMAP_SERIAL) += serial_omap.o
 obj-$(CONFIG_MTK_SERIAL) += serial_mtk.o
 obj-$(CONFIG_MT7620_SERIAL) += serial_mt7620.o
+obj-$(CONFIG_HTIF_CONSOLE) += serial_htif.o
 obj-$(CONFIG_SIFIVE_SERIAL) += serial_sifive.o
 obj-$(CONFIG_XEN_SERIAL) += serial_xen.o
 

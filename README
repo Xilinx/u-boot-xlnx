@@ -134,7 +134,6 @@ Directory Hierarchy:
   /m68k			Files generic to m68k architecture
   /microblaze		Files generic to microblaze architecture
   /mips			Files generic to MIPS architecture
-  /nds32		Files generic to NDS32 architecture
   /nios2		Files generic to Altera NIOS2 architecture
   /powerpc		Files generic to PowerPC architecture
   /riscv		Files generic to RISC-V architecture
@@ -166,27 +165,6 @@ Directory Hierarchy:
 
 Software Configuration:
 =======================
-
-Configuration is usually done using C preprocessor defines; the
-rationale behind that is to avoid dead code whenever possible.
-
-There are two classes of configuration variables:
-
-* Configuration _OPTIONS_:
-  These are selectable by the user and have names beginning with
-  "CONFIG_".
-
-* Configuration _SETTINGS_:
-  These depend on the hardware etc. and should not be meddled with if
-  you don't know what you're doing; they have names beginning with
-  "CONFIG_SYS_".
-
-Previously, all configuration was done by hand, which involved creating
-symbolic links and editing configuration files manually. More recently,
-U-Boot has added the Kbuild infrastructure used by the Linux kernel,
-allowing you to use the "make menuconfig" command to configure your
-build.
-
 
 Selection of Processor Architecture and Board Type:
 ---------------------------------------------------
@@ -294,33 +272,6 @@ board_init_r():
 
 	SPL-specific notes:
 	- stack is optionally in SDRAM, if CONFIG_SPL_STACK_R is defined and
-		CONFIG_SPL_STACK_R_ADDR points into SDRAM
-	- preloader_console_init() can be called here - typically this is
-		done by selecting CONFIG_SPL_BOARD_INIT and then supplying a
-		spl_board_init() function containing this call
-	- loads U-Boot or (in falcon mode) Linux
-
-
-Configuration Options:
-----------------------
-
-Configuration depends on the combination of board and CPU type; all
-such information is kept in a configuration file
-"include/configs/<board_name>.h".
-
-Example: For a TQM823L module, all configuration settings are in
-"include/configs/TQM823L.h".
-
-
-Many of the options are named exactly as the corresponding Linux
-kernel configuration options. The intention is to make it easier to
-build a config tool - later.
-
-- ARM Platform Bus Type(CCI):
-		CoreLink Cache Coherent Interconnect (CCI) is ARM BUS which
-		provides full cache coherency between two clusters of multi-core
-		CPUs and I/O coherency for devices and I/O masters
-
 		CONFIG_SYS_FSL_HAS_CCI400
 
 		Defined For SoC that has cache coherent interconnect
@@ -343,22 +294,11 @@ The following options need to be configured:
 		the "64" category of the Power ISA). This is necessary for ePAPR
 		compliance, among other possible reasons.
 
-		CONFIG_SYS_FSL_TBCLK_DIV
-
-		Defines the core time base clock divider ratio compared to the
-		system clock.  On most PQ3 devices this is 8, on newer QorIQ
-		devices it can be 16 or 32.  The ratio varies from SoC to Soc.
-
-		CONFIG_SYS_FSL_PCIE_COMPAT
-
-		Defines the string to utilize when trying to match PCIe device
-		tree nodes for the given platform.
-
 		CONFIG_SYS_FSL_ERRATUM_A004510
 
 		Enables a workaround for erratum A004510.  If set,
 		then CONFIG_SYS_FSL_ERRATUM_A004510_SVR_REV and
-		CONFIG_SYS_FSL_CORENET_SNOOPVEC_COREONLY must be set.
+		CFG_SYS_FSL_CORENET_SNOOPVEC_COREONLY must be set.
 
 		CONFIG_SYS_FSL_ERRATUM_A004510_SVR_REV
 		CONFIG_SYS_FSL_ERRATUM_A004510_SVR_REV2 (optional)
@@ -374,102 +314,24 @@ The following options need to be configured:
 		See Freescale App Note 4493 for more information about
 		this erratum.
 
-		CONFIG_A003399_NOR_WORKAROUND
-		Enables a workaround for IFC erratum A003399. It is only
-		required during NOR boot.
-
-		CONFIG_A008044_WORKAROUND
-		Enables a workaround for T1040/T1042 erratum A008044. It is only
-		required during NAND boot and valid for Rev 1.0 SoC revision
-
-		CONFIG_SYS_FSL_CORENET_SNOOPVEC_COREONLY
+		CFG_SYS_FSL_CORENET_SNOOPVEC_COREONLY
 
 		This is the value to write into CCSR offset 0x18600
 		according to the A004510 workaround.
-
-		CONFIG_SYS_FSL_DSP_DDR_ADDR
-		This value denotes start offset of DDR memory which is
-		connected exclusively to the DSP cores.
-
-		CONFIG_SYS_FSL_DSP_M2_RAM_ADDR
-		This value denotes start offset of M2 memory
-		which is directly connected to the DSP core.
-
-		CONFIG_SYS_FSL_DSP_M3_RAM_ADDR
-		This value denotes start offset of M3 memory which is directly
-		connected to the DSP core.
-
-		CONFIG_SYS_FSL_DSP_CCSRBAR_DEFAULT
-		This value denotes start offset of DSP CCSR space.
 
 		CONFIG_SYS_FSL_SINGLE_SOURCE_CLK
 		Single Source Clock is clocking mode present in some of FSL SoC's.
 		In this mode, a single differential clock is used to supply
 		clocks to the sysclock, ddrclock and usbclock.
 
-		CONFIG_SYS_CPC_REINIT_F
-		This CONFIG is defined when the CPC is configured as SRAM at the
-		time of U-Boot entry and is required to be re-initialized.
-
-		CONFIG_DEEP_SLEEP
-		Indicates this SoC supports deep sleep feature. If deep sleep is
-		supported, core will start to execute uboot when wakes up.
-
 - Generic CPU options:
-		CONFIG_SYS_BIG_ENDIAN, CONFIG_SYS_LITTLE_ENDIAN
-
-		Defines the endianess of the CPU. Implementation of those
-		values is arch specific.
 
 		CONFIG_SYS_FSL_DDR
 		Freescale DDR driver in use. This type of DDR controller is
 		found in mpc83xx, mpc85xx as well as some ARM core SoCs.
 
-		CONFIG_SYS_FSL_DDR_ADDR
+		CFG_SYS_FSL_DDR_ADDR
 		Freescale DDR memory-mapped register base.
-
-		CONFIG_SYS_FSL_DDR_EMU
-		Specify emulator support for DDR. Some DDR features such as
-		deskew training are not available.
-
-		CONFIG_SYS_FSL_DDRC_GEN1
-		Freescale DDR1 controller.
-
-		CONFIG_SYS_FSL_DDRC_GEN2
-		Freescale DDR2 controller.
-
-		CONFIG_SYS_FSL_DDRC_GEN3
-		Freescale DDR3 controller.
-
-		CONFIG_SYS_FSL_DDRC_GEN4
-		Freescale DDR4 controller.
-
-		CONFIG_SYS_FSL_DDRC_ARM_GEN3
-		Freescale DDR3 controller for ARM-based SoCs.
-
-		CONFIG_SYS_FSL_DDR1
-		Board config to use DDR1. It can be enabled for SoCs with
-		Freescale DDR1 or DDR2 controllers, depending on the board
-		implemetation.
-
-		CONFIG_SYS_FSL_DDR2
-		Board config to use DDR2. It can be enabled for SoCs with
-		Freescale DDR2 or DDR3 controllers, depending on the board
-		implementation.
-
-		CONFIG_SYS_FSL_DDR3
-		Board config to use DDR3. It can be enabled for SoCs with
-		Freescale DDR3 or DDR3L controllers.
-
-		CONFIG_SYS_FSL_DDR3L
-		Board config to use DDR3L. It can be enabled for SoCs with
-		DDR3L controllers.
-
-		CONFIG_SYS_FSL_IFC_BE
-		Defines the IFC controller register space as Big Endian
-
-		CONFIG_SYS_FSL_IFC_LE
-		Defines the IFC controller register space as Little Endian
 
 		CONFIG_SYS_FSL_IFC_CLK_DIV
 		Defines divider of platform clock(clock input to IFC controller).
@@ -477,44 +339,12 @@ The following options need to be configured:
 		CONFIG_SYS_FSL_LBC_CLK_DIV
 		Defines divider of platform clock(clock input to eLBC controller).
 
-		CONFIG_SYS_FSL_DDR_BE
-		Defines the DDR controller register space as Big Endian
-
-		CONFIG_SYS_FSL_DDR_LE
-		Defines the DDR controller register space as Little Endian
-
-		CONFIG_SYS_FSL_DDR_SDRAM_BASE_PHY
+		CFG_SYS_FSL_DDR_SDRAM_BASE_PHY
 		Physical address from the view of DDR controllers. It is the
 		same as CONFIG_SYS_DDR_SDRAM_BASE for  all Power SoCs. But
 		it could be different for ARM SoCs.
 
-		CONFIG_SYS_FSL_DDR_INTLV_256B
-		DDR controller interleaving on 256-byte. This is a special
-		interleaving mode, handled by Dickens for Freescale layerscape
-		SoCs with ARM core.
-
-		CONFIG_SYS_FSL_DDR_MAIN_NUM_CTRLS
-		Number of controllers used as main memory.
-
-		CONFIG_SYS_FSL_OTHER_DDR_NUM_CTRLS
-		Number of controllers used for other than main memory.
-
-		CONFIG_SYS_FSL_HAS_DP_DDR
-		Defines the SoC has DP-DDR used for DPAA.
-
-		CONFIG_SYS_FSL_SEC_BE
-		Defines the SEC controller register space as Big Endian
-
-		CONFIG_SYS_FSL_SEC_LE
-		Defines the SEC controller register space as Little Endian
-
 - MIPS CPU options:
-		CONFIG_SYS_INIT_SP_OFFSET
-
-		Offset relative to CONFIG_SYS_SDRAM_BASE for initial stack
-		pointer. This is needed for the temporary stack before
-		relocation.
-
 		CONFIG_XWAY_SWAP_BYTES
 
 		Enable compilation of tools/xway-swap-bytes needed for Lantiq
@@ -565,18 +395,6 @@ The following options need to be configured:
 		boards with QUICC Engines require OF_QE to set UCC MAC
 		addresses
 
-		CONFIG_OF_BOARD_SETUP
-
-		Board code has addition modification that it wants to make
-		to the flat device tree before handing it off to the kernel
-
-		CONFIG_OF_SYSTEM_SETUP
-
-		Other code has addition modification that it wants to make
-		to the flat device tree before handing it off to the kernel.
-		This causes ft_system_setup() to be called before booting
-		the kernel.
-
 		CONFIG_OF_IDE_FIXUP
 
 		U-Boot can detect if an IDE device is present or not.
@@ -596,12 +414,7 @@ The following options need to be configured:
 		Note: If a "bootargs" environment is defined, it will override
 		the defaults discussed just above.
 
-- Cache Configuration:
-		CONFIG_SYS_L2CACHE_OFF- Do not enable L2 cache in U-Boot
-
 - Cache Configuration for ARM:
-		CONFIG_SYS_L2_PL310 - Enable support for ARM PL310 L2 cache
-				      controller
 		CONFIG_SYS_PL310_BASE - Physical base address of PL310
 					controller register space
 
@@ -622,28 +435,6 @@ The following options need to be configured:
 		Define this variable to enable hw flow control in serial driver.
 		Current user of this option is drivers/serial/nsl16550.c driver
 
-- Autoboot Command:
-		CONFIG_BOOTCOMMAND
-		Only needed when CONFIG_BOOTDELAY is enabled;
-		define a command string that is automatically executed
-		when no character is read on the console interface
-		within "Boot Delay" after reset.
-
-		CONFIG_RAMBOOT and CONFIG_NFSBOOT
-		The value of these goes into the environment as
-		"ramboot" and "nfsboot" respectively, and can be used
-		as a convenience, when switching between booting from
-		RAM and NFS.
-
-- Serial Download Echo Mode:
-		CONFIG_LOADS_ECHO
-		If defined to 1, all characters received during a
-		serial download (using the "loads" command) are
-		echoed back. This might be needed by some terminal
-		emulations (like "cu"), but may as well just take
-		time on others. This setting #define's the initial
-		value of the "loads_echo" environment variable.
-
 - Removal of commands
 		If no commands are needed to boot, you can disable
 		CONFIG_CMDLINE to remove them. In this case, the command line
@@ -659,50 +450,7 @@ The following options need to be configured:
 		which adds regex support to some commands, as for
 		example "env grep" and "setexpr".
 
-- Device tree:
-		CONFIG_OF_CONTROL
-		If this variable is defined, U-Boot will use a device tree
-		to configure its devices, instead of relying on statically
-		compiled #defines in the board file. This option is
-		experimental and only available on a few boards. The device
-		tree is available in the global data as gd->fdt_blob.
-
-		U-Boot needs to get its device tree from somewhere. This can
-		be done using one of the three options below:
-
-		CONFIG_OF_SEPARATE
-		If this variable is defined, U-Boot will build a device tree
-		binary. It will be called u-boot.dtb. Architecture-specific
-		code will locate it at run-time. Generally this works by:
-
-			cat u-boot.bin u-boot.dtb >image.bin
-
-		and in fact, U-Boot does this for you, creating a file called
-		u-boot-dtb.bin which is useful in the common case. You can
-		still use the individual files if you need something more
-		exotic.
-
-		CONFIG_OF_BOARD
-		If this variable is defined, U-Boot will use the device tree
-		provided by the board at runtime instead of embedding one with
-		the image. Only boards defining board_fdt_blob_setup() support
-		this option (see include/fdtdec.h file).
-
 - Watchdog:
-		CONFIG_WATCHDOG
-		If this variable is defined, it enables watchdog
-		support for the SoC. There must be support in the SoC
-		specific code for a watchdog. For the 8xx
-		CPUs, the SIU Watchdog feature is enabled in the SYPCR
-		register.  When supported for a specific SoC is
-		available, then no further board specific code should
-		be needed to use it.
-
-		CONFIG_HW_WATCHDOG
-		When using a watchdog circuitry external to the used
-		SoC, then define this variable and provide board
-		specific code for the "hw_watchdog_reset" function.
-
 		CONFIG_SYS_WATCHDOG_FREQ
 		Some platforms automatically call WATCHDOG_RESET()
 		from the timer interrupt handler every
@@ -784,42 +532,6 @@ The following options need to be configured:
 		CONFIG_SCSI) you must configure support for at
 		least one non-MTD partition type as well.
 
-- IDE Reset method:
-		CONFIG_IDE_RESET_ROUTINE - this is defined in several
-		board configurations files but used nowhere!
-
-		CONFIG_IDE_RESET - is this is defined, IDE Reset will
-		be performed by calling the function
-			ide_set_reset(int reset)
-		which has to be defined in a board specific file
-
-- ATAPI Support:
-		CONFIG_ATAPI
-
-		Set this to enable ATAPI support.
-
-- LBA48 Support
-		CONFIG_LBA48
-
-		Set this to enable support for disks larger than 137GB
-		Also look at CONFIG_SYS_64BIT_LBA.
-		Whithout these , LBA48 support uses 32bit variables and will 'only'
-		support disks up to 2.1TB.
-
-		CONFIG_SYS_64BIT_LBA:
-			When enabled, makes the IDE subsystem use 64bit sector addresses.
-			Default is 32bit.
-
-- SCSI Support:
-		CONFIG_SYS_SCSI_MAX_LUN [8], CONFIG_SYS_SCSI_MAX_SCSI_ID [7] and
-		CONFIG_SYS_SCSI_MAX_DEVICE [CONFIG_SYS_SCSI_MAX_SCSI_ID *
-		CONFIG_SYS_SCSI_MAX_LUN] can be adjusted to define the
-		maximum numbers of LUNs, SCSI ID's and target
-		devices.
-
-		The environment variable 'scsidevs' is set to the number of
-		SCSI devices found during the last scan.
-
 - NETWORK Support (PCI):
 		CONFIG_E1000_SPI
 		Utility code for direct access to the SPI bus on Intel 8257x.
@@ -841,20 +553,6 @@ The following options need to be configured:
 
 			CONFIG_LAN91C96_USE_32_BIT
 			Define this to enable 32 bit addressing
-
-		CONFIG_SMC91111
-		Support for SMSC's LAN91C111 chip
-
-			CONFIG_SMC91111_BASE
-			Define this to hold the physical address
-			of the device (I/O space)
-
-			CONFIG_SMC_USE_32_BIT
-			Define this if data bus is 32 bits
-
-			CONFIG_SMC_USE_IOFUNCS
-			Define this to use i/o functions instead of macros
-			(some hardware wont work with macros)
 
 			CONFIG_SYS_DAVINCI_EMAC_PHY_COUNT
 			Define this if you have more then 3 PHYs.
@@ -937,9 +635,6 @@ The following options need to be configured:
 		Supported are USB Keyboards and USB Floppy drives
 		(TEAC FD-05PUB).
 
-		CONFIG_USB_EHCI_TXFIFO_THRESH enables setting of the
-		txfilltuning field in the EHCI controller on reset.
-
 		CONFIG_USB_DWC2_REG_ADDR the physical CPU address of the DWC2
 		HW module registers.
 
@@ -1013,13 +708,6 @@ The following options need to be configured:
 		the appropriate value in Hz.
 
 - MMC Support:
-		The MMC controller on the Intel PXA is supported. To
-		enable this define CONFIG_MMC. The MMC can be
-		accessed from the boot prompt by mapping the device
-		to physical memory similar to flash. Command line is
-		enabled with CONFIG_CMD_MMC. The MMC driver also works with
-		the FAT fs. This is enabled with CONFIG_CMD_FAT.
-
 		CONFIG_SH_MMCIF
 		Support for Renesas on-chip MMCIF controller
 
@@ -1065,137 +753,13 @@ The following options need to be configured:
 		entering dfuMANIFEST state. Host waits this timeout, before
 		sending again an USB request to the device.
 
-- Journaling Flash filesystem support:
-		CONFIG_JFFS2_NAND
-		Define these for a default partition on a NAND device
-
-		CONFIG_SYS_JFFS2_FIRST_SECTOR,
-		CONFIG_SYS_JFFS2_FIRST_BANK, CONFIG_SYS_JFFS2_NUM_BANKS
-		Define these for a default partition on a NOR device
-
 - Keyboard Support:
 		See Kconfig help for available keyboard drivers.
-
-		CONFIG_KEYBOARD
-
-		Define this to enable a custom keyboard support.
-		This simply calls drv_keyboard_init() which must be
-		defined in your board-specific files. This option is deprecated
-		and is only used by novena. For new boards, use driver model
-		instead.
-
-- Video support:
-		CONFIG_FSL_DIU_FB
-		Enable the Freescale DIU video driver.	Reference boards for
-		SOCs that have a DIU should define this macro to enable DIU
-		support, and should also define these other macros:
-
-			CONFIG_SYS_DIU_ADDR
-			CONFIG_VIDEO
-			CONFIG_CFB_CONSOLE
-			CONFIG_VIDEO_SW_CURSOR
-			CONFIG_VGA_AS_SINGLE_DEVICE
-			CONFIG_VIDEO_LOGO
-			CONFIG_VIDEO_BMP_LOGO
-
-		The DIU driver will look for the 'video-mode' environment
-		variable, and if defined, enable the DIU as a console during
-		boot.  See the documentation file doc/README.video for a
-		description of this variable.
-
-- LCD Support:	CONFIG_LCD
-
-		Define this to enable LCD support (for output to LCD
-		display); also select one of the supported displays
-		by defining one of these:
-
-		CONFIG_ATMEL_LCD:
-
-			HITACHI TX09D70VM1CCA, 3.5", 240x320.
-
-		CONFIG_NEC_NL6448AC33:
-
-			NEC NL6448AC33-18. Active, color, single scan.
-
-		CONFIG_NEC_NL6448BC20
-
-			NEC NL6448BC20-08. 6.5", 640x480.
-			Active, color, single scan.
-
-		CONFIG_NEC_NL6448BC33_54
-
-			NEC NL6448BC33-54. 10.4", 640x480.
-			Active, color, single scan.
-
-		CONFIG_SHARP_16x9
-
-			Sharp 320x240. Active, color, single scan.
-			It isn't 16x9, and I am not sure what it is.
-
-		CONFIG_SHARP_LQ64D341
-
-			Sharp LQ64D341 display, 640x480.
-			Active, color, single scan.
-
-		CONFIG_HLD1045
-
-			HLD1045 display, 640x480.
-			Active, color, single scan.
-
-		CONFIG_OPTREX_BW
-
-			Optrex	 CBL50840-2 NF-FW 99 22 M5
-			or
-			Hitachi	 LMG6912RPFC-00T
-			or
-			Hitachi	 SP14Q002
-
-			320x240. Black & white.
-
-		CONFIG_LCD_ALIGNMENT
-
-		Normally the LCD is page-aligned (typically 4KB). If this is
-		defined then the LCD will be aligned to this value instead.
-		For ARM it is sometimes useful to use MMU_SECTION_SIZE
-		here, since it is cheaper to change data cache settings on
-		a per-section basis.
-
-
-		CONFIG_LCD_ROTATION
-
-		Sometimes, for example if the display is mounted in portrait
-		mode or even if it's mounted landscape but rotated by 180degree,
-		we need to rotate our content of the display relative to the
-		framebuffer, so that user can read the messages which are
-		printed out.
-		Once CONFIG_LCD_ROTATION is defined, the lcd_console will be
-		initialized with a given rotation from "vl_rot" out of
-		"vidinfo_t" which is provided by the board specific code.
-		The value for vl_rot is coded as following (matching to
-		fbcon=rotate:<n> linux-kernel commandline):
-		0 = no rotation respectively 0 degree
-		1 = 90 degree rotation
-		2 = 180 degree rotation
-		3 = 270 degree rotation
-
-		If CONFIG_LCD_ROTATION is not defined, the console will be
-		initialized with 0degree rotation.
-
-		CONFIG_LCD_BMP_RLE8
-
-		Support drawing of RLE8-compressed bitmaps on the LCD.
 
 - MII/PHY support:
 		CONFIG_PHY_CLOCK_FREQ (ppc4xx)
 
 		The clock frequency of the MII bus
-
-		CONFIG_PHY_RESET_DELAY
-
-		Some PHY like Intel LXT971A need extra delay after
-		reset before any MII register access is possible.
-		For such PHY, set this option to the usec delay
-		required. (minimum 300usec for LXT971A)
 
 		CONFIG_PHY_CMD_DELAY (ppc4xx)
 
@@ -1216,11 +780,6 @@ The following options need to be configured:
 		Defines a default value for the IP address of a TFTP
 		server to contact when using the "tftboot" command.
 		(Environment variable "serverip")
-
-		CONFIG_KEEP_SERVERADDR
-
-		Keeps the server's MAC address, in the env 'serveraddr'
-		for passing to bootargs (like Linux's netconsole option)
 
 - Gateway IP address:
 		CONFIG_GATEWAYIP
@@ -1277,38 +836,6 @@ The following options need to be configured:
 		from a BOOTP client in networks with unusually high latency.
 
 - DHCP Advanced Options:
-		You can fine tune the DHCP functionality by defining
-		CONFIG_BOOTP_* symbols:
-
-		CONFIG_BOOTP_NISDOMAIN
-		CONFIG_BOOTP_BOOTFILESIZE
-		CONFIG_BOOTP_NTPSERVER
-		CONFIG_BOOTP_TIMEOFFSET
-		CONFIG_BOOTP_VENDOREX
-		CONFIG_BOOTP_MAY_FAIL
-
-		CONFIG_BOOTP_SERVERIP - TFTP server will be the serverip
-		environment variable, not the BOOTP server.
-
-		CONFIG_BOOTP_MAY_FAIL - If the DHCP server is not found
-		after the configured retry count, the call will fail
-		instead of starting over.  This can be used to fail over
-		to Link-local IP address configuration if the DHCP server
-		is not available.
-
-		CONFIG_BOOTP_DHCP_REQUEST_DELAY
-
-		A 32bit value in microseconds for a delay between
-		receiving a "DHCP Offer" and sending the "DHCP Request".
-		This fixes a problem with certain DHCP servers that don't
-		respond 100% of the time to a "DHCP request". E.g. On an
-		AT91RM9200 processor running at 180MHz, this delay needed
-		to be *at least* 15,000 usec before a Windows Server 2003
-		DHCP server would reply 100% of the time. I recommend at
-		least 50,000 usec to be safe. The alternative is to hope
-		that one of the retries will be successful but note that
-		the DHCP timeout and retry process takes a longer than
-		this delay.
 
  - Link-local IP address negotiation:
 		Negotiate with other link-local clients on the local network
@@ -1511,17 +1038,6 @@ The following options need to be configured:
 		You should define these to the GPIO value as given directly to
 		the generic GPIO functions.
 
-		CONFIG_SYS_I2C_INIT_BOARD
-
-		When a board is reset during an i2c bus transfer
-		chips might think that the current transfer is still
-		in progress. On some boards it is possible to access
-		the i2c SCLK line directly, either by using the
-		processor pin as a GPIO or by having a second pin
-		connected to the bus. If this option is defined a
-		custom i2c_init_board() routine in boards/xxx/board.c
-		is run early in the boot sequence.
-
 		CONFIG_I2C_MULTI_BUS
 
 		This option allows the use of multiple I2C buses, each of which
@@ -1547,11 +1063,6 @@ The following options need to be configured:
 
 		will skip addresses 0x50 and 0x68 on bus 0 and address 0x54 on bus 1
 
-		CONFIG_SYS_SPD_BUS_NUM
-
-		If defined, then this indicates the I2C bus number for DDR SPD.
-		If not defined, then U-Boot assumes that SPD is on I2C bus 0.
-
 		CONFIG_SYS_RTC_BUS_NUM
 
 		If defined, then this indicates the I2C bus number for the RTC.
@@ -1573,16 +1084,6 @@ The following options need to be configured:
 		SPI EEPROM, also an instance works with Crystal A/D and
 		D/As on the SACSng board)
 
-		CONFIG_SOFT_SPI
-
-		Enables a software (bit-bang) SPI driver rather than
-		using hardware support. This is a general purpose
-		driver that only requires three general I/O port pins
-		(two outputs, one input) to function. If this is
-		defined, the board configuration must define several
-		SPI configuration items (port pins to use, etc). For
-		an example, see include/configs/sacsng.h.
-
 		CONFIG_SYS_SPI_MXC_WAIT
 		Timeout for waiting until spi transfer completed.
 		default: (CONFIG_SYS_HZ/100)     /* 10 ms */
@@ -1601,14 +1102,6 @@ The following options need to be configured:
 		Enables support for FPGA family.
 		(SPARTAN2, SPARTAN3, VIRTEX2, CYCLONE2, ACEX1K, ACEX)
 
-		CONFIG_FPGA_COUNT
-
-		Specify the number of FPGA devices to support.
-
-		CONFIG_SYS_FPGA_PROG_FEEDBACK
-
-		Enable printing of hash marks during FPGA configuration.
-
 		CONFIG_SYS_FPGA_CHECK_BUSY
 
 		Enable checks on FPGA configuration interface busy
@@ -1620,9 +1113,6 @@ The following options need to be configured:
 
 		If defined, a function that provides delays in the FPGA
 		configuration driver.
-
-		CONFIG_SYS_FPGA_CHECK_CTRLC
-		Allow Control-C to interrupt FPGA configuration
 
 		CONFIG_SYS_FPGA_CHECK_ERROR
 
@@ -1647,13 +1137,6 @@ The following options need to be configured:
 
 		Time to wait after FPGA configuration. The default is
 		200 ms.
-
-- Configuration Management:
-
-		CONFIG_IDENT_STRING
-
-		If defined, this string will be added to the U-Boot
-		version information (U_BOOT_VERSION)
 
 - Vendor Parameter Protection:
 
@@ -1716,33 +1199,7 @@ The following options need to be configured:
 			HERMES, IP860, RPXlite, LWMON,
 			FLAGADM
 
-- Access to physical memory region (> 4GB)
-		Some basic support is provided for operations on memory not
-		normally accessible to U-Boot - e.g. some architectures
-		support access to more than 4GB of memory on 32-bit
-		machines using physical address extension or similar.
-		Define CONFIG_PHYSMEM to access this basic support, which
-		currently only supports clearing the memory.
-
 - Error Recovery:
-		CONFIG_NET_RETRY_COUNT
-
-		This variable defines the number of retries for
-		network operations like ARP, RARP, TFTP, or BOOTP
-		before giving up the operation. If not defined, a
-		default value of 5 is used.
-
-		CONFIG_ARP_TIMEOUT
-
-		Timeout waiting for an ARP reply in milliseconds.
-
-		CONFIG_NFS_TIMEOUT
-
-		Timeout in milliseconds used in NFS protocol.
-		If you encounter "ERROR: Cannot umount" in nfs command,
-		try longer timeout such as
-		#define CONFIG_NFS_TIMEOUT 10000UL
-
 	Note:
 
 		In the current implementation, the local variables
@@ -1763,14 +1220,6 @@ The following options need to be configured:
 		surrounding the whole text of the variable, instead
 		of the backslashes before semicolons and special
 		symbols.
-
-- Command Line Editing and History:
-		CONFIG_CMDLINE_PS_SUPPORT
-
-		Enable support for changing the command prompt string
-		at run-time. Only static string is supported so far.
-		The string is obtained from environment variables PS1
-		and PS2.
 
 - Default Environment:
 		CONFIG_EXTRA_ENV_SETTINGS
@@ -1807,46 +1256,12 @@ The following options need to be configured:
 		this is instead controlled by the value of
 		/config/load-environment.
 
-- TFTP Fixed UDP Port:
-		CONFIG_TFTP_PORT
-
-		If this is defined, the environment variable tftpsrcp
-		is used to supply the TFTP UDP source port value.
-		If tftpsrcp isn't defined, the normal pseudo-random port
-		number generator is used.
-
-		Also, the environment variable tftpdstp is used to supply
-		the TFTP UDP destination port value.  If tftpdstp isn't
-		defined, the normal port 69 is used.
-
-		The purpose for tftpsrcp is to allow a TFTP server to
-		blindly start the TFTP transfer using the pre-configured
-		target IP address and UDP port. This has the effect of
-		"punching through" the (Windows XP) firewall, allowing
-		the remainder of the TFTP transfer to proceed normally.
-		A better solution is to properly configure the firewall,
-		but sometimes that is not allowed.
-
 		CONFIG_STANDALONE_LOAD_ADDR
 
 		This option defines a board specific value for the
 		address where standalone program gets loaded, thus
 		overwriting the architecture dependent default
 		settings.
-
-- Frame Buffer Address:
-		CONFIG_FB_ADDR
-
-		Define CONFIG_FB_ADDR if you want to use specific
-		address for frame buffer.  This is typically the case
-		when using a graphics controller has separate video
-		memory.  U-Boot will then place the frame buffer at
-		the given address instead of dynamically reserving it
-		in system RAM by calling lcd_setmem(), which grabs
-		the memory for the frame buffer depending on the
-		configured panel size.
-
-		Please see board_init_f function.
 
 - Automatic software updates via TFTP server
 		CONFIG_UPDATE_TFTP
@@ -1922,36 +1337,6 @@ The following options need to be configured:
 		CONFIG_SPL
 		Enable building of SPL globally.
 
-		CONFIG_SPL_MAX_FOOTPRINT
-		Maximum size in memory allocated to the SPL, BSS included.
-		When defined, the linker checks that the actual memory
-		used by SPL from _start to __bss_end does not exceed it.
-		CONFIG_SPL_MAX_FOOTPRINT and CONFIG_SPL_BSS_MAX_SIZE
-		must not be both defined at the same time.
-
-		CONFIG_SPL_MAX_SIZE
-		Maximum size of the SPL image (text, data, rodata, and
-		linker lists sections), BSS excluded.
-		When defined, the linker checks that the actual size does
-		not exceed it.
-
-		CONFIG_SPL_RELOC_TEXT_BASE
-		Address to relocate to.  If unspecified, this is equal to
-		CONFIG_SPL_TEXT_BASE (i.e. no relocation is done).
-
-		CONFIG_SPL_BSS_START_ADDR
-		Link address for the BSS within the SPL binary.
-
-		CONFIG_SPL_BSS_MAX_SIZE
-		Maximum size in memory allocated to the SPL BSS.
-		When defined, the linker checks that the actual memory used
-		by SPL from __bss_start to __bss_end does not exceed it.
-		CONFIG_SPL_MAX_FOOTPRINT and CONFIG_SPL_BSS_MAX_SIZE
-		must not be both defined at the same time.
-
-		CONFIG_SPL_STACK
-		Adress of the start of the stack SPL will use
-
 		CONFIG_SPL_PANIC_ON_RAW_IMAGE
 		When defined, SPL will panic() if the image it has
 		loaded does not have a signature.
@@ -1962,51 +1347,9 @@ The following options need to be configured:
 		consider that a completely unreadable NAND block is bad,
 		and thus should be skipped silently.
 
-		CONFIG_SPL_RELOC_STACK
-		Adress of the start of the stack SPL will use after
-		relocation.  If unspecified, this is equal to
-		CONFIG_SPL_STACK.
-
-		CONFIG_SYS_SPL_MALLOC_START
-		Starting address of the malloc pool used in SPL.
-		When this option is set the full malloc is used in SPL and
-		it is set up by spl_init() and before that, the simple malloc()
-		can be used if CONFIG_SYS_MALLOC_F is defined.
-
-		CONFIG_SYS_SPL_MALLOC_SIZE
-		The size of the malloc pool used in SPL.
-
 		CONFIG_SPL_DISPLAY_PRINT
 		For ARM, enable an optional function to print more information
 		about the running system.
-
-		CONFIG_SPL_INIT_MINIMAL
-		Arch init code should be built for a very small image
-
-		CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION
-		Partition on the MMC to load U-Boot from when the MMC is being
-		used in raw mode
-
-		CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR
-		Sector to load kernel uImage from when MMC is being
-		used in raw mode (for Falcon mode)
-
-		CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR,
-		CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS
-		Sector and number of sectors to load kernel argument
-		parameters from when MMC is being used in raw mode
-		(for falcon mode)
-
-		CONFIG_SPL_FS_LOAD_PAYLOAD_NAME
-		Filename to read to load U-Boot when reading from filesystem
-
-		CONFIG_SPL_FS_LOAD_KERNEL_NAME
-		Filename to read to load kernel uImage when reading
-		from filesystem (for Falcon mode)
-
-		CONFIG_SPL_FS_LOAD_ARGS_NAME
-		Filename to read to load kernel argument parameters
-		when reading from filesystem (for Falcon mode)
 
 		CONFIG_SPL_MPC83XX_WAIT_FOR_NAND
 		Set this for NAND SPL on PPC mpc83xx targets, so that
@@ -2014,24 +1357,9 @@ The following options need to be configured:
 		continuing (the hardware starts execution after just
 		loading the first page rather than the full 4K).
 
-		CONFIG_SPL_SKIP_RELOCATE
-		Avoid SPL relocation
-
-		CONFIG_SPL_NAND_IDENT
-		SPL uses the chip ID list to identify the NAND flash.
-		Requires CONFIG_SPL_NAND_BASE.
-
 		CONFIG_SPL_UBI
 		Support for a lightweight UBI (fastmap) scanner and
 		loader
-
-		CONFIG_SPL_NAND_RAW_ONLY
-		Support to boot only raw u-boot.bin images. Use this only
-		if you need to save space.
-
-		CONFIG_SPL_COMMON_INIT_DDR
-		Set for common ddr init with serial presence detect in
-		SPL binary.
 
 		CONFIG_SYS_NAND_5_ADDR_CYCLE, CONFIG_SYS_NAND_PAGE_COUNT,
 		CONFIG_SYS_NAND_PAGE_SIZE, CONFIG_SYS_NAND_OOBSIZE,
@@ -2057,34 +1385,11 @@ The following options need to be configured:
 		CONFIG_SPL_RAM_DEVICE
 		Support for running image already present in ram, in SPL binary
 
-		CONFIG_SPL_PAD_TO
-		Image offset to which the SPL should be padded before appending
-		the SPL payload. By default, this is defined as
-		CONFIG_SPL_MAX_SIZE, or 0 if CONFIG_SPL_MAX_SIZE is undefined.
-		CONFIG_SPL_PAD_TO must be either 0, meaning to append the SPL
-		payload without any padding, or >= CONFIG_SPL_MAX_SIZE.
-
-		CONFIG_SPL_TARGET
-		Final target image containing SPL and payload.  Some SPLs
-		use an arch-specific makefile fragment instead, for
-		example if more than one image needs to be produced.
-
 		CONFIG_SPL_FIT_PRINT
 		Printing information about a FIT image adds quite a bit of
 		code to SPL. So this is normally disabled in SPL. Use this
 		option to re-enable it. This will affect the output of the
 		bootm command when booting a FIT image.
-
-- TPL framework
-		CONFIG_TPL
-		Enable building of TPL globally.
-
-		CONFIG_TPL_PAD_TO
-		Image offset to which the TPL should be padded before appending
-		the TPL payload. By default, this is defined as
-		CONFIG_SPL_MAX_SIZE, or 0 if CONFIG_SPL_MAX_SIZE is undefined.
-		CONFIG_SPL_PAD_TO must be either 0, meaning to append the SPL
-		payload without any padding, or >= CONFIG_SPL_MAX_SIZE.
 
 - Interrupt support (PPC):
 
@@ -2113,7 +1418,6 @@ typically in board_init_f() and board_init_r().
 - CONFIG_BOARD_EARLY_INIT_F: Call board_early_init_f()
 - CONFIG_BOARD_EARLY_INIT_R: Call board_early_init_r()
 - CONFIG_BOARD_LATE_INIT: Call board_late_init()
-- CONFIG_BOARD_POSTCLK_INIT: Call board_postclk_init()
 
 Configuration Settings:
 -----------------------
@@ -2130,16 +1434,6 @@ Configuration Settings:
 - CONFIG_SYS_PROMPT:	This is what U-Boot prints on the console to
 		prompt for user input.
 
-- CONFIG_SYS_CBSIZE:	Buffer size for input from the Console
-
-- CONFIG_SYS_PBSIZE:	Buffer size for Console output
-
-- CONFIG_SYS_MAXARGS:	max. Number of arguments accepted for monitor commands
-
-- CONFIG_SYS_BARGSIZE: Buffer size for Boot Arguments which are passed to
-		the application (usually a Linux kernel) when it is
-		booted
-
 - CONFIG_SYS_BAUDRATE_TABLE:
 		List of legal baudrate settings for this board.
 
@@ -2152,26 +1446,11 @@ Configuration Settings:
 		the RAM base is not zero, or RAM is divided into banks,
 		this variable needs to be recalcuated to get the address.
 
-- CONFIG_SYS_LOADS_BAUD_CHANGE:
-		Enable temporary baudrate change while serial download
-
 - CONFIG_SYS_SDRAM_BASE:
 		Physical start address of SDRAM. _Must_ be 0 here.
 
 - CONFIG_SYS_FLASH_BASE:
 		Physical start address of Flash memory.
-
-- CONFIG_SYS_MONITOR_BASE:
-		Physical start address of boot monitor code (set by
-		make config files to be same as the text base address
-		(CONFIG_SYS_TEXT_BASE) used when linking) - same as
-		CONFIG_SYS_FLASH_BASE when booting from flash.
-
-- CONFIG_SYS_MONITOR_LEN:
-		Size of memory reserved for monitor code, used to
-		determine _at_compile_time_ (!) if the environment is
-		embedded within the U-Boot image, or in a separate
-		flash sector.
 
 - CONFIG_SYS_MALLOC_LEN:
 		Size of DRAM reserved for malloc() use.
@@ -2192,32 +1471,7 @@ Configuration Settings:
 - CONFIG_SYS_MALLOC_SIMPLE
 		Provides a simple and small malloc() and calloc() for those
 		boards which do not use the full malloc in SPL (which is
-		enabled with CONFIG_SYS_SPL_MALLOC_START).
-
-- CONFIG_SYS_NONCACHED_MEMORY:
-		Size of non-cached memory area. This area of memory will be
-		typically located right below the malloc() area and mapped
-		uncached in the MMU. This is useful for drivers that would
-		otherwise require a lot of explicit cache maintenance. For
-		some drivers it's also impossible to properly maintain the
-		cache. For example if the regions that need to be flushed
-		are not a multiple of the cache-line size, *and* padding
-		cannot be allocated between the regions to align them (i.e.
-		if the HW requires a contiguous array of regions, and the
-		size of each region is not cache-aligned), then a flush of
-		one region may result in overwriting data that hardware has
-		written to another region in the same cache-line. This can
-		happen for example in network drivers where descriptors for
-		buffers are typically smaller than the CPU cache-line (e.g.
-		16 bytes vs. 32 or 64 bytes).
-
-		Non-cached memory is only supported on 32-bit ARM at present.
-
-- CONFIG_SYS_BOOTM_LEN:
-		Normally compressed uImages are limited to an
-		uncompressed size of 8 MBytes. If this is not enough,
-		you can define CONFIG_SYS_BOOTM_LEN in your board config file
-		to adjust this setting to your needs.
+		enabled with CONFIG_SYS_SPL_MALLOC).
 
 - CONFIG_SYS_BOOTMAPSZ:
 		Maximum size of memory mapped by the startup code of
@@ -2231,11 +1485,6 @@ Configuration Settings:
 		CONFIG_SYS_BOOTMAPSZ.  If CONFIG_SYS_BOOTMAPSZ is undefined,
 		then the value in "bootm_size" will be used instead.
 
-- CONFIG_SYS_BOOT_RAMDISK_HIGH:
-		Enable initrd_high functionality.  If defined then the
-		initrd_high feature is enabled and the bootm ramdisk subcommand
-		is enabled.
-
 - CONFIG_SYS_BOOT_GET_CMDLINE:
 		Enables allocating and saving kernel cmdline in space between
 		"bootm_low" and "bootm_low" + BOOTMAPSZ.
@@ -2244,40 +1493,9 @@ Configuration Settings:
 		Enables allocating and saving a kernel copy of the bd_info in
 		space between "bootm_low" and "bootm_low" + BOOTMAPSZ.
 
-- CONFIG_SYS_MAX_FLASH_BANKS:
-		Max number of Flash memory banks
-
-- CONFIG_SYS_MAX_FLASH_SECT:
-		Max number of sectors on a Flash chip
-
-- CONFIG_SYS_FLASH_ERASE_TOUT:
-		Timeout for Flash erase operations (in ms)
-
-- CONFIG_SYS_FLASH_WRITE_TOUT:
-		Timeout for Flash write operations (in ms)
-
-- CONFIG_SYS_FLASH_LOCK_TOUT
-		Timeout for Flash set sector lock bit operation (in ms)
-
-- CONFIG_SYS_FLASH_UNLOCK_TOUT
-		Timeout for Flash clear lock bits operation (in ms)
-
 - CONFIG_SYS_FLASH_PROTECTION
 		If defined, hardware flash sectors protection is used
 		instead of U-Boot software protection.
-
-- CONFIG_SYS_DIRECT_FLASH_TFTP:
-
-		Enable TFTP transfers directly to flash memory;
-		without this option such a download has to be
-		performed in two steps: (1) download to RAM, and (2)
-		copy from RAM to flash.
-
-		The two-step approach is usually more reliable, since
-		you can check if the download worked before you erase
-		the flash, but in some situations (when system RAM is
-		too limited to allow for a temporary copy of the
-		downloaded image) this option may be very useful.
 
 - CONFIG_SYS_FLASH_CFI:
 		Define if the flash driver uses extra elements in the
@@ -2299,12 +1517,6 @@ Configuration Settings:
 		s29ws-n MirrorBit flash has non-standard addresses for buffered
 		write commands.
 
-- CONFIG_SYS_FLASH_QUIET_TEST
-		If this option is defined, the common CFI flash doesn't
-		print it's warning upon not recognized FLASH banks. This
-		is useful, if some of the configured banks are only
-		optionally available.
-
 - CONFIG_FLASH_SHOW_PROGRESS
 		If defined (must be an integer), print out countdown
 		digits and dots.  Recommended value: 45 (9..1) for 80
@@ -2318,22 +1530,6 @@ Configuration Settings:
 		since such flash programming errors usually are detected earlier
 		while unprotecting/erasing/programming. Please only enable
 		this option if you really know what you are doing.
-
-- CONFIG_SYS_RX_ETH_BUFFER:
-		Defines the number of Ethernet receive buffers. On some
-		Ethernet controllers it is recommended to set this value
-		to 8 or even higher (EEPRO100 or 405 EMAC), since all
-		buffers can be full shortly after enabling the interface
-		on high Ethernet traffic.
-		Defaults to 4 if not defined.
-
-- CONFIG_ENV_MAX_ENTRIES
-
-	Maximum number of entries in the hash table that is used
-	internally to store the environment settings. The default
-	setting is supposed to be generous and should work in most
-	cases. This setting can be used to tune behaviour; see
-	lib/hashtable.c for details.
 
 - CONFIG_ENV_FLAGS_LIST_DEFAULT
 - CONFIG_ENV_FLAGS_LIST_STATIC
@@ -2424,12 +1620,6 @@ Note: once the monitor has been relocated, then it will complain if
 the default environment is used; a new CRC is computed as soon as you
 use the "saveenv" command to store a valid environment.
 
-- CONFIG_SYS_FAULT_ECHO_LINK_DOWN:
-		Echo the inverted Ethernet link state to the fault LED.
-
-		Note: If this option is active, then CONFIG_SYS_FAULT_MII_ADDR
-		      also needs to be defined.
-
 - CONFIG_SYS_FAULT_MII_ADDR:
 		MII address of the PHY to check for the Ethernet link state.
 
@@ -2449,11 +1639,6 @@ use the "saveenv" command to store a valid environment.
 		Similar to the previous option, but display this information
 		later, once stdio is running and output goes to the LCD, if
 		present.
-
-- CONFIG_BOARD_SIZE_LIMIT:
-		Maximum size of the U-Boot image. When defined, the
-		build system checks that the actual size does not
-		exceed it.
 
 Low Level (hardware related) configuration options:
 ---------------------------------------------------
@@ -2491,18 +1676,6 @@ Low Level (hardware related) configuration options:
 		used in assembly code, so it must not contain typecasts or
 		integer size suffixes (e.g. "ULL").
 
-- CONFIG_SYS_CCSR_DO_NOT_RELOCATE:
-		If this macro is defined, then CONFIG_SYS_CCSRBAR_PHYS will be
-		forced to a value that ensures that CCSR is not relocated.
-
-- CONFIG_IDE_AHB:
-		Most IDE controllers were designed to be connected with PCI
-		interface. Only few of them were designed for AHB interface.
-		When software is doing ATA command and data transfer to
-		IDE devices through IDE-AHB controller, some additional
-		registers accessing to these kind of IDE-AHB controller
-		is required.
-
 - CONFIG_SYS_IMMR:	Physical address of the Internal Memory.
 		DO NOT CHANGE unless you know exactly what you're
 		doing! (11-4) [MPC8xx systems only]
@@ -2520,42 +1693,10 @@ Low Level (hardware related) configuration options:
 		U-Boot uses the following memory types:
 		- MPC8xx: IMMR (internal memory of the CPU)
 
-- CONFIG_SYS_GBL_DATA_OFFSET:
-
-		Offset of the initial data structure in the memory
-		area defined by CONFIG_SYS_INIT_RAM_ADDR. Usually
-		CONFIG_SYS_GBL_DATA_OFFSET is chosen such that the initial
-		data is located at the end of the available space
-		(sometimes written as (CONFIG_SYS_INIT_RAM_SIZE -
-		GENERATED_GBL_DATA_SIZE), and the initial stack is just
-		below that area (growing from (CONFIG_SYS_INIT_RAM_ADDR +
-		CONFIG_SYS_GBL_DATA_OFFSET) downward.
-
-	Note:
-		On the MPC824X (or other systems that use the data
-		cache for initial memory) the address chosen for
-		CONFIG_SYS_INIT_RAM_ADDR is basically arbitrary - it must
-		point to an otherwise UNUSED address space between
-		the top of RAM and the start of the PCI space.
-
 - CONFIG_SYS_SCCR:	System Clock and reset Control Register (15-27)
 
 - CONFIG_SYS_OR_TIMING_SDRAM:
 		SDRAM timing
-
-- CONFIG_SYS_MAMR_PTA:
-		periodic timer for refresh
-
-- FLASH_BASE0_PRELIM, FLASH_BASE1_PRELIM, CONFIG_SYS_REMAP_OR_AM,
-  CONFIG_SYS_PRELIM_OR_AM, CONFIG_SYS_OR_TIMING_FLASH, CONFIG_SYS_OR0_REMAP,
-  CONFIG_SYS_OR0_PRELIM, CONFIG_SYS_BR0_PRELIM, CONFIG_SYS_OR1_REMAP, CONFIG_SYS_OR1_PRELIM,
-  CONFIG_SYS_BR1_PRELIM:
-		Memory Controller Definitions: BR0/1 and OR0/1 (FLASH)
-
-- SDRAM_BASE2_PRELIM, SDRAM_BASE3_PRELIM, SDRAM_MAX_SIZE,
-  CONFIG_SYS_OR_TIMING_SDRAM, CONFIG_SYS_OR2_PRELIM, CONFIG_SYS_BR2_PRELIM,
-  CONFIG_SYS_OR3_PRELIM, CONFIG_SYS_BR3_PRELIM:
-		Memory Controller Definitions: BR2/3 and OR2/3 (SDRAM)
 
 - CONFIG_SYS_SRIO:
 		Chip has SRIO or not
@@ -2602,12 +1743,6 @@ Low Level (hardware related) configuration options:
 		one, specify here. Note that the value must resolve
 		to something your driver can deal with.
 
-- CONFIG_SYS_DDR_RAW_TIMING
-		Get DDR timing information from other than SPD. Common with
-		soldered DDR chips onboard without SPD. DDR raw timing
-		parameters are extracted from datasheet and hard-coded into
-		header files or board specific files.
-
 - CONFIG_FSL_DDR_INTERACTIVE
 		Enable interactive DDR debugging. See doc/README.fsl-ddr.
 
@@ -2616,10 +1751,6 @@ Low Level (hardware related) configuration options:
 
 - CONFIG_FSL_DDR_BIST
 		Enable built-in memory test for Freescale DDR controllers.
-
-- CONFIG_SYS_83XX_DDR_USES_CS0
-		Only for 83xx systems. If specified, then DDR should
-		be configured using CS0 and CS1 instead of CS2 and CS3.
 
 - CONFIG_RMII
 		Enable RMII mode for all FECs.
@@ -2665,11 +1796,6 @@ Low Level (hardware related) configuration options:
 		that will end up in the TPL (as opposed to the SPL or U-Boot
 		proper). Code that needs stage-specific behavior should check
 		this.
-
-- CONFIG_SYS_MPC85XX_NO_RESETVEC
-		Only for 85xx systems. If this variable is specified, the section
-		.resetvec is not kept and the section .bootpg is placed in the
-		previous 4k of the .text section.
 
 - CONFIG_ARCH_MAP_SYSMEM
 		Generally U-Boot (and in particular the md command) uses
@@ -2902,6 +2028,7 @@ rarpboot- boot image via network using RARP/TFTP protocol
 diskboot- boot from IDE devicebootd   - boot default, i.e., run 'bootcmd'
 loads	- load S-Record file over serial line
 loadb	- load binary file over serial line (kermit mode)
+loadm   - load binary blob from source address to destination address
 md	- memory display
 mm	- memory modify (auto-incrementing)
 nm	- memory modify (constant address)
@@ -2943,334 +2070,6 @@ Monitor Commands - Detailed Description:
 TODO.
 
 For now: just type "help <command>".
-
-
-Environment Variables:
-======================
-
-U-Boot supports user configuration using Environment Variables which
-can be made persistent by saving to Flash memory.
-
-Environment Variables are set using "setenv", printed using
-"printenv", and saved to Flash using "saveenv". Using "setenv"
-without a value can be used to delete a variable from the
-environment. As long as you don't save the environment you are
-working with an in-memory copy. In case the Flash area containing the
-environment is erased by accident, a default environment is provided.
-
-Some configuration options can be set using Environment Variables.
-
-List of environment variables (most likely not complete):
-
-  baudrate	- see CONFIG_BAUDRATE
-
-  bootdelay	- see CONFIG_BOOTDELAY
-
-  bootcmd	- see CONFIG_BOOTCOMMAND
-
-  bootargs	- Boot arguments when booting an RTOS image
-
-  bootfile	- Name of the image to load with TFTP
-
-  bootm_low	- Memory range available for image processing in the bootm
-		  command can be restricted. This variable is given as
-		  a hexadecimal number and defines lowest address allowed
-		  for use by the bootm command. See also "bootm_size"
-		  environment variable. Address defined by "bootm_low" is
-		  also the base of the initial memory mapping for the Linux
-		  kernel -- see the description of CONFIG_SYS_BOOTMAPSZ and
-		  bootm_mapsize.
-
-  bootm_mapsize - Size of the initial memory mapping for the Linux kernel.
-		  This variable is given as a hexadecimal number and it
-		  defines the size of the memory region starting at base
-		  address bootm_low that is accessible by the Linux kernel
-		  during early boot.  If unset, CONFIG_SYS_BOOTMAPSZ is used
-		  as the default value if it is defined, and bootm_size is
-		  used otherwise.
-
-  bootm_size	- Memory range available for image processing in the bootm
-		  command can be restricted. This variable is given as
-		  a hexadecimal number and defines the size of the region
-		  allowed for use by the bootm command. See also "bootm_low"
-		  environment variable.
-
-  bootstopkeysha256, bootdelaykey, bootstopkey	- See README.autoboot
-
-  updatefile	- Location of the software update file on a TFTP server, used
-		  by the automatic software update feature. Please refer to
-		  documentation in doc/README.update for more details.
-
-  autoload	- if set to "no" (any string beginning with 'n'),
-		  "bootp" will just load perform a lookup of the
-		  configuration from the BOOTP server, but not try to
-		  load any image using TFTP
-
-  autostart	- if set to "yes", an image loaded using the "bootp",
-		  "rarpboot", "tftpboot" or "diskboot" commands will
-		  be automatically started (by internally calling
-		  "bootm")
-
-		  If set to "no", a standalone image passed to the
-		  "bootm" command will be copied to the load address
-		  (and eventually uncompressed), but NOT be started.
-		  This can be used to load and uncompress arbitrary
-		  data.
-
-  fdt_high	- if set this restricts the maximum address that the
-		  flattened device tree will be copied into upon boot.
-		  For example, if you have a system with 1 GB memory
-		  at physical address 0x10000000, while Linux kernel
-		  only recognizes the first 704 MB as low memory, you
-		  may need to set fdt_high as 0x3C000000 to have the
-		  device tree blob be copied to the maximum address
-		  of the 704 MB low memory, so that Linux kernel can
-		  access it during the boot procedure.
-
-		  If this is set to the special value 0xFFFFFFFF then
-		  the fdt will not be copied at all on boot.  For this
-		  to work it must reside in writable memory, have
-		  sufficient padding on the end of it for u-boot to
-		  add the information it needs into it, and the memory
-		  must be accessible by the kernel.
-
-  fdtcontroladdr- if set this is the address of the control flattened
-		  device tree used by U-Boot when CONFIG_OF_CONTROL is
-		  defined.
-
-  i2cfast	- (PPC405GP|PPC405EP only)
-		  if set to 'y' configures Linux I2C driver for fast
-		  mode (400kHZ). This environment variable is used in
-		  initialization code. So, for changes to be effective
-		  it must be saved and board must be reset.
-
-  initrd_high	- restrict positioning of initrd images:
-		  If this variable is not set, initrd images will be
-		  copied to the highest possible address in RAM; this
-		  is usually what you want since it allows for
-		  maximum initrd size. If for some reason you want to
-		  make sure that the initrd image is loaded below the
-		  CONFIG_SYS_BOOTMAPSZ limit, you can set this environment
-		  variable to a value of "no" or "off" or "0".
-		  Alternatively, you can set it to a maximum upper
-		  address to use (U-Boot will still check that it
-		  does not overwrite the U-Boot stack and data).
-
-		  For instance, when you have a system with 16 MB
-		  RAM, and want to reserve 4 MB from use by Linux,
-		  you can do this by adding "mem=12M" to the value of
-		  the "bootargs" variable. However, now you must make
-		  sure that the initrd image is placed in the first
-		  12 MB as well - this can be done with
-
-		  setenv initrd_high 00c00000
-
-		  If you set initrd_high to 0xFFFFFFFF, this is an
-		  indication to U-Boot that all addresses are legal
-		  for the Linux kernel, including addresses in flash
-		  memory. In this case U-Boot will NOT COPY the
-		  ramdisk at all. This may be useful to reduce the
-		  boot time on your system, but requires that this
-		  feature is supported by your Linux kernel.
-
-  ipaddr	- IP address; needed for tftpboot command
-
-  loadaddr	- Default load address for commands like "bootp",
-		  "rarpboot", "tftpboot", "loadb" or "diskboot"
-
-  loads_echo	- see CONFIG_LOADS_ECHO
-
-  serverip	- TFTP server IP address; needed for tftpboot command
-
-  bootretry	- see CONFIG_BOOT_RETRY_TIME
-
-  bootdelaykey	- see CONFIG_AUTOBOOT_DELAY_STR
-
-  bootstopkey	- see CONFIG_AUTOBOOT_STOP_STR
-
-  ethprime	- controls which interface is used first.
-
-  ethact	- controls which interface is currently active.
-		  For example you can do the following
-
-		  => setenv ethact FEC
-		  => ping 192.168.0.1 # traffic sent on FEC
-		  => setenv ethact SCC
-		  => ping 10.0.0.1 # traffic sent on SCC
-
-  ethrotate	- When set to "no" U-Boot does not go through all
-		  available network interfaces.
-		  It just stays at the currently selected interface.
-
-  netretry	- When set to "no" each network operation will
-		  either succeed or fail without retrying.
-		  When set to "once" the network operation will
-		  fail when all the available network interfaces
-		  are tried once without success.
-		  Useful on scripts which control the retry operation
-		  themselves.
-
-  npe_ucode	- set load address for the NPE microcode
-
-  silent_linux  - If set then Linux will be told to boot silently, by
-		  changing the console to be empty. If "yes" it will be
-		  made silent. If "no" it will not be made silent. If
-		  unset, then it will be made silent if the U-Boot console
-		  is silent.
-
-  tftpsrcp	- If this is set, the value is used for TFTP's
-		  UDP source port.
-
-  tftpdstp	- If this is set, the value is used for TFTP's UDP
-		  destination port instead of the Well Know Port 69.
-
-  tftpblocksize - Block size to use for TFTP transfers; if not set,
-		  we use the TFTP server's default block size
-
-  tftptimeout	- Retransmission timeout for TFTP packets (in milli-
-		  seconds, minimum value is 1000 = 1 second). Defines
-		  when a packet is considered to be lost so it has to
-		  be retransmitted. The default is 5000 = 5 seconds.
-		  Lowering this value may make downloads succeed
-		  faster in networks with high packet loss rates or
-		  with unreliable TFTP servers.
-
-  tftptimeoutcountmax	- maximum count of TFTP timeouts (no
-		  unit, minimum value = 0). Defines how many timeouts
-		  can happen during a single file transfer before that
-		  transfer is aborted. The default is 10, and 0 means
-		  'no timeouts allowed'. Increasing this value may help
-		  downloads succeed with high packet loss rates, or with
-		  unreliable TFTP servers or client hardware.
-
-  tftpwindowsize	- if this is set, the value is used for TFTP's
-		  window size as described by RFC 7440.
-		  This means the count of blocks we can receive before
-		  sending ack to server.
-
-  vlan		- When set to a value < 4095 the traffic over
-		  Ethernet is encapsulated/received over 802.1q
-		  VLAN tagged frames.
-
-  bootpretryperiod	- Period during which BOOTP/DHCP sends retries.
-		  Unsigned value, in milliseconds. If not set, the period will
-		  be either the default (28000), or a value based on
-		  CONFIG_NET_RETRY_COUNT, if defined. This value has
-		  precedence over the valu based on CONFIG_NET_RETRY_COUNT.
-
-  memmatches	- Number of matches found by the last 'ms' command, in hex
-
-  memaddr	- Address of the last match found by the 'ms' command, in hex,
-		  or 0 if none
-
-  mempos	- Index position of the last match found by the 'ms' command,
-		  in units of the size (.b, .w, .l) of the search
-
-  zbootbase	- (x86 only) Base address of the bzImage 'setup' block
-
-  zbootaddr	- (x86 only) Address of the loaded bzImage, typically
-		  BZIMAGE_LOAD_ADDR which is 0x100000
-
-The following image location variables contain the location of images
-used in booting. The "Image" column gives the role of the image and is
-not an environment variable name. The other columns are environment
-variable names. "File Name" gives the name of the file on a TFTP
-server, "RAM Address" gives the location in RAM the image will be
-loaded to, and "Flash Location" gives the image's address in NOR
-flash or offset in NAND flash.
-
-*Note* - these variables don't have to be defined for all boards, some
-boards currently use other variables for these purposes, and some
-boards use these variables for other purposes.
-
-Image		    File Name	     RAM Address       Flash Location
------		    ---------	     -----------       --------------
-u-boot		    u-boot	     u-boot_addr_r     u-boot_addr
-Linux kernel	    bootfile	     kernel_addr_r     kernel_addr
-device tree blob    fdtfile	     fdt_addr_r	       fdt_addr
-ramdisk		    ramdiskfile	     ramdisk_addr_r    ramdisk_addr
-
-The following environment variables may be used and automatically
-updated by the network boot commands ("bootp" and "rarpboot"),
-depending the information provided by your boot server:
-
-  bootfile	- see above
-  dnsip		- IP address of your Domain Name Server
-  dnsip2	- IP address of your secondary Domain Name Server
-  gatewayip	- IP address of the Gateway (Router) to use
-  hostname	- Target hostname
-  ipaddr	- see above
-  netmask	- Subnet Mask
-  rootpath	- Pathname of the root filesystem on the NFS server
-  serverip	- see above
-
-
-There are two special Environment Variables:
-
-  serial#	- contains hardware identification information such
-		  as type string and/or serial number
-  ethaddr	- Ethernet address
-
-These variables can be set only once (usually during manufacturing of
-the board). U-Boot refuses to delete or overwrite these variables
-once they have been set once.
-
-
-Further special Environment Variables:
-
-  ver		- Contains the U-Boot version string as printed
-		  with the "version" command. This variable is
-		  readonly (see CONFIG_VERSION_VARIABLE).
-
-
-Please note that changes to some configuration parameters may take
-only effect after the next boot (yes, that's just like Windoze :-).
-
-
-Callback functions for environment variables:
----------------------------------------------
-
-For some environment variables, the behavior of u-boot needs to change
-when their values are changed.  This functionality allows functions to
-be associated with arbitrary variables.  On creation, overwrite, or
-deletion, the callback will provide the opportunity for some side
-effect to happen or for the change to be rejected.
-
-The callbacks are named and associated with a function using the
-U_BOOT_ENV_CALLBACK macro in your board or driver code.
-
-These callbacks are associated with variables in one of two ways.  The
-static list can be added to by defining CONFIG_ENV_CALLBACK_LIST_STATIC
-in the board configuration to a string that defines a list of
-associations.  The list must be in the following format:
-
-	entry = variable_name[:callback_name]
-	list = entry[,list]
-
-If the callback name is not specified, then the callback is deleted.
-Spaces are also allowed anywhere in the list.
-
-Callbacks can also be associated by defining the ".callbacks" variable
-with the same list format above.  Any association in ".callbacks" will
-override any association in the static list. You can define
-CONFIG_ENV_CALLBACK_LIST_DEFAULT to a list (string) to define the
-".callbacks" environment variable in the default or embedded environment.
-
-If CONFIG_REGEX is defined, the variable_name above is evaluated as a
-regular expression. This allows multiple variables to be connected to
-the same callback without explicitly listing them all out.
-
-The signature of the callback functions is:
-
-    int callback(const char *name, const char *value, enum env_op op, int flags)
-
-* name - changed environment variable
-* value - new value of the environment variable
-* op - operation (create, overwrite, or delete)
-* flags - attributes of the environment variable change, see flags H_* in
-  include/search.h
-
-The return value is 0 if the variable change is accepted and 1 otherwise.
 
 
 Note for Redundant Ethernet Interfaces:
@@ -3338,11 +2137,10 @@ details; basically, the header defines the following image properties:
 * Target Operating System (Provisions for OpenBSD, NetBSD, FreeBSD,
   4.4BSD, Linux, SVR4, Esix, Solaris, Irix, SCO, Dell, NCR, VxWorks,
   LynxOS, pSOS, QNX, RTEMS, INTEGRITY;
-  Currently supported: Linux, NetBSD, VxWorks, QNX, RTEMS, LynxOS,
-  INTEGRITY).
+  Currently supported: Linux, NetBSD, VxWorks, QNX, RTEMS, INTEGRITY).
 * Target CPU Architecture (Provisions for Alpha, ARM, Intel x86,
-  IA64, MIPS, NDS32, Nios II, PowerPC, IBM S390, SuperH, Sparc, Sparc 64 Bit;
-  Currently supported: ARM, Intel x86, MIPS, NDS32, Nios II, PowerPC).
+  IA64, MIPS, Nios II, PowerPC, IBM S390, SuperH, Sparc, Sparc 64 Bit;
+  Currently supported: ARM, Intel x86, MIPS, Nios II, PowerPC).
 * Compression Type (uncompressed, gzip, bzip2)
 * Load Address
 * Entry Point
@@ -4053,23 +2851,6 @@ On Nios II, the ABI is documented here:
 
     Note: on Nios II, we give "-G0" option to gcc and don't use gp
     to access small data sections, so gp is free.
-
-On NDS32, the following registers are used:
-
-	R0-R1:	argument/return
-	R2-R5:	argument
-	R15:	temporary register for assembler
-	R16:	trampoline register
-	R28:	frame pointer (FP)
-	R29:	global pointer (GP)
-	R30:	link register (LP)
-	R31:	stack pointer (SP)
-	PC:	program counter (PC)
-
-    ==> U-Boot will use R10 to hold a pointer to the global data
-
-NOTE: DECLARE_GLOBAL_DATA_PTR must be used with file-global scope,
-or current versions of GCC may "optimize" the code too much.
 
 On RISC-V, the following registers are used:
 

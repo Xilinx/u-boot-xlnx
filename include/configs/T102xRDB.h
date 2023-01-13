@@ -14,46 +14,25 @@
 #include <linux/stringify.h>
 
 /* High Level Configuration Options */
-#define CONFIG_SYS_BOOK3E_HV		/* Category E.HV supported */
-#define CONFIG_ENABLE_36BIT_PHYS
 
-#define CONFIG_SYS_FSL_CPC		/* Corenet Platform Cache */
 #define CONFIG_SYS_NUM_CPC		CONFIG_SYS_NUM_DDR_CTLRS
 
-/* support deep sleep */
-#ifdef CONFIG_ARCH_T1024
-#define CONFIG_DEEP_SLEEP
-#endif
-
 #ifdef CONFIG_RAMBOOT_PBL
-#define CONFIG_SPL_FLUSH_IMAGE
-#define CONFIG_SPL_PAD_TO		0x40000
-#define CONFIG_SPL_MAX_SIZE		0x28000
 #define RESET_VECTOR_OFFSET		0x27FFC
 #define BOOT_PAGE_OFFSET		0x27000
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SPL_SKIP_RELOCATE
-#define CONFIG_SPL_COMMON_INIT_DDR
-#define CONFIG_SYS_CCSR_DO_NOT_RELOCATE
-#endif
 
 #ifdef CONFIG_MTD_RAW_NAND
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	(768 << 10)
 #define CONFIG_SYS_NAND_U_BOOT_DST	0x30000000
 #define CONFIG_SYS_NAND_U_BOOT_START	0x30000000
-#define CONFIG_SYS_NAND_U_BOOT_OFFS	(256 << 10)
 #endif
 
 #ifdef CONFIG_SPIFLASH
 #define CONFIG_RESET_VECTOR_ADDRESS		0x30000FFC
-#define CONFIG_SPL_SPI_FLASH_MINIMAL
 #define CONFIG_SYS_SPI_FLASH_U_BOOT_SIZE	(768 << 10)
 #define CONFIG_SYS_SPI_FLASH_U_BOOT_DST		(0x30000000)
 #define CONFIG_SYS_SPI_FLASH_U_BOOT_START	(0x30000000)
 #define CONFIG_SYS_SPI_FLASH_U_BOOT_OFFS	(256 << 10)
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MPC85XX_NO_RESETVEC
-#endif
 #endif
 
 #ifdef CONFIG_SDCARD
@@ -62,9 +41,6 @@
 #define CONFIG_SYS_MMC_U_BOOT_DST	(0x30000000)
 #define CONFIG_SYS_MMC_U_BOOT_START	(0x30000000)
 #define CONFIG_SYS_MMC_U_BOOT_OFFS	(260 << 10)
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MPC85XX_NO_RESETVEC
-#endif
 #endif
 
 #endif /* CONFIG_RAMBOOT_PBL */
@@ -110,25 +86,16 @@
 #define CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR_PHYS \
 		(0x300000000ull | CONFIG_SYS_SRIO_PCIE_BOOT_UCODE_ENV_ADDR)
 /* Set 1M boot space for PCIe boot */
-#define CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR (CONFIG_SYS_TEXT_BASE & 0xfff00000)
+#define CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR (CONFIG_TEXT_BASE & 0xfff00000)
 #define CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR_PHYS	\
 		(0x300000000ull | CONFIG_SYS_SRIO_PCIE_BOOT_SLAVE_ADDR)
 #define CONFIG_RESET_VECTOR_ADDRESS 0xfffffffc
 #endif
 
-#ifndef __ASSEMBLY__
-unsigned long get_board_sys_clk(void);
-#endif
-
-#define CONFIG_SYS_CLK_FREQ	100000000
-
 /*
  * These can be toggled for performance analysis, otherwise use default.
  */
-#define CONFIG_SYS_CACHE_STASHING
-#define CONFIG_BACKSIDE_L2_CACHE
 #define CONFIG_SYS_INIT_L2CSR0		L2CSR0_L2E
-#define CONFIG_BTB			/* toggle branch predition */
 #ifdef CONFIG_DDR_ECC
 #define CONFIG_MEM_INIT_VALUE		0xdeadbeef
 #endif
@@ -137,21 +104,12 @@ unsigned long get_board_sys_clk(void);
  *  Config the L3 Cache as L3 SRAM
  */
 #define CONFIG_SYS_INIT_L3_ADDR		0xFFFC0000
-#define CONFIG_SYS_L3_SIZE		(256 << 10)
-#define CONFIG_SPL_GD_ADDR		(CONFIG_SYS_INIT_L3_ADDR + 32 * 1024)
 #define SPL_ENV_ADDR			(CONFIG_SPL_GD_ADDR + 4 * 1024)
-#define CONFIG_SPL_RELOC_MALLOC_ADDR	(CONFIG_SPL_GD_ADDR + 12 * 1024)
-#define CONFIG_SPL_RELOC_MALLOC_SIZE	(30 << 10)
-#define CONFIG_SPL_RELOC_STACK		(CONFIG_SPL_GD_ADDR + 64 * 1024)
 
 #ifdef CONFIG_PHYS_64BIT
 #define CONFIG_SYS_DCSRBAR		0xf0000000
 #define CONFIG_SYS_DCSRBAR_PHYS		0xf00000000ull
 #endif
-
-/* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM	0
 
 /*
  * DDR Setup
@@ -159,14 +117,10 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_VERY_BIG_RAM
 #define CONFIG_SYS_DDR_SDRAM_BASE	0x00000000
 #define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
-#define CONFIG_DIMM_SLOTS_PER_CTLR	1
-#define CONFIG_CHIP_SELECTS_PER_CTRL	(4 * CONFIG_DIMM_SLOTS_PER_CTLR)
 #if defined(CONFIG_TARGET_T1024RDB)
-#define CONFIG_SYS_SPD_BUS_NUM	0
 #define SPD_EEPROM_ADDRESS	0x51
 #define CONFIG_SYS_SDRAM_SIZE	4096	/* for fixed parameter use */
 #elif defined(CONFIG_TARGET_T1023RDB)
-#define CONFIG_SYS_DDR_RAW_TIMING
 #define CONFIG_SYS_SDRAM_SIZE   2048
 #endif
 
@@ -206,15 +160,8 @@ unsigned long get_board_sys_clk(void);
 				FTIM2_NOR_TWP(0x1c))
 #define CONFIG_SYS_NOR_FTIM3	0x0
 
-#define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45 /* count down from 45/5: 9..1 */
 
-#define CONFIG_SYS_MAX_FLASH_BANKS	1	/* number of banks */
-#define CONFIG_SYS_MAX_FLASH_SECT	1024	/* sectors per device */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
-
-#define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_FLASH_BANKS_LIST	{CONFIG_SYS_FLASH_BASE_PHYS}
 
 #ifdef CONFIG_TARGET_T1024RDB
@@ -289,7 +236,6 @@ unsigned long get_board_sys_clk(void);
 
 #define CONFIG_SYS_NAND_DDR_LAW		11
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 
 #if defined(CONFIG_MTD_RAW_NAND)
 #define CONFIG_SYS_CSPR0_EXT		CONFIG_SYS_NAND_CSPR_EXT
@@ -327,21 +273,10 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_CS1_FTIM3		CONFIG_SYS_NAND_FTIM3
 #endif
 
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SPL_TEXT_BASE
-#else
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
-#endif
-
-#if defined(CONFIG_RAMBOOT_PBL)
-#define CONFIG_SYS_RAMBOOT
-#endif
-
 #define CONFIG_HWCONFIG
 
 /* define to use L1 as initial stack */
 #define CONFIG_L1_INIT_RAM
-#define CONFIG_SYS_INIT_RAM_LOCK
 #define CONFIG_SYS_INIT_RAM_ADDR	0xfdd00000	/* Initial L1 address */
 #ifdef CONFIG_PHYS_64BIT
 #define CONFIG_SYS_INIT_RAM_ADDR_PHYS_HIGH	0xf
@@ -357,11 +292,7 @@ unsigned long get_board_sys_clk(void);
 #endif
 #define CONFIG_SYS_INIT_RAM_SIZE		0x00004000
 
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - \
-					GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-
-#define CONFIG_SYS_MONITOR_LEN		(768 * 1024)
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /* Serial Port */
 #define CONFIG_SYS_NS16550_SERIAL
@@ -375,20 +306,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_NS16550_COM2	(CONFIG_SYS_CCSRBAR+0x11C600)
 #define CONFIG_SYS_NS16550_COM3	(CONFIG_SYS_CCSRBAR+0x11D500)
 #define CONFIG_SYS_NS16550_COM4	(CONFIG_SYS_CCSRBAR+0x11D600)
-
-/* Video */
-#undef CONFIG_FSL_DIU_FB	/* RDB doesn't support DIU */
-#ifdef CONFIG_FSL_DIU_FB
-#define CONFIG_SYS_DIU_ADDR	(CONFIG_SYS_CCSRBAR + 0x180000)
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_VIDEO_BMP_LOGO
-#define CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS
-/*
- * With CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS, flash I/O is really slow, so
- * disable empty flash sector detection, which is I/O-intensive.
- */
-#undef CONFIG_SYS_FLASH_EMPTY_INFO
-#endif
 
 /* I2C */
 
@@ -413,10 +330,6 @@ unsigned long get_board_sys_clk(void);
  * General PCIe
  * Memory space is mapped 1-1, but I/O space must start from 0.
  */
-#define CONFIG_PCIE1		/* PCIE controller 1 */
-#define CONFIG_PCIE2		/* PCIE controller 2 */
-#define CONFIG_PCIE3		/* PCIE controller 3 */
-#define CONFIG_SYS_PCI_64BIT	/* enable 64-bit PCI resources */
 
 #ifdef CONFIG_PCI
 /* controller 1, direct to uli, tgtid 3, Base address 20000 */
@@ -442,25 +355,17 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_PCIE3_IO_VIRT	0xf8020000
 #define CONFIG_SYS_PCIE3_IO_PHYS	0xff8020000ull
 #endif
-
-#define CONFIG_PCI_SCAN_SHOW		/* show pci devices on startup */
 #endif	/* CONFIG_PCI */
 
 /*
  * USB
  */
-#define CONFIG_HAS_FSL_DR_USB
-
-#ifdef CONFIG_HAS_FSL_DR_USB
-#define CONFIG_USB_EHCI_FSL
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
-#endif
 
 /*
  * SDHC
  */
 #ifdef CONFIG_MMC
-#define CONFIG_SYS_FSL_ESDHC_ADDR	CONFIG_SYS_MPC85xx_ESDHC_ADDR
+#define CFG_SYS_FSL_ESDHC_ADDR	CFG_SYS_MPC85xx_ESDHC_ADDR
 #endif
 
 /* Qman/Bman */
@@ -499,8 +404,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_QMAN_SWP_ISDR_REG	0xE08
 
 #define CONFIG_SYS_DPAA_FMAN
-
-#define CONFIG_SYS_FDT_PAD		(0x3000 + CONFIG_SYS_QE_FMAN_FW_LENGTH)
 #endif /* CONFIG_NOBQFMAN */
 
 #ifdef CONFIG_SYS_DPAA_FMAN
@@ -516,19 +419,9 @@ unsigned long get_board_sys_clk(void);
 #endif
 #endif
 
-#ifdef CONFIG_FMAN_ENET
-#define CONFIG_ETHPRIME		"FM1@DTSEC4"
-#endif
-
 /*
  * Dynamic MTD Partition support with mtdparts
  */
-
-/*
- * Environment
- */
-#define CONFIG_LOADS_ECHO		/* echo on for serial download */
-#define CONFIG_SYS_LOADS_BAUD_CHANGE	/* allow baudrate change */
 
 /*
  * Miscellaneous configurable options
@@ -540,33 +433,32 @@ unsigned long get_board_sys_clk(void);
  * the maximum mapped by the Linux kernel during initialization.
  */
 #define CONFIG_SYS_BOOTMAPSZ	(64 << 20)	/* Initial map for Linux*/
-#define CONFIG_SYS_BOOTM_LEN	(64 << 20)	/* Increase max gunzip size */
 
 /*
  * Environment Configuration
  */
 #define CONFIG_ROOTPATH		"/opt/nfsroot"
-#define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_UBOOTPATH	u-boot.bin /* U-Boot image on TFTP server */
 #define __USB_PHY_TYPE		utmi
 
 #ifdef CONFIG_ARCH_T1024
-#define CONFIG_BOARDNAME t1024rdb
-#define BANK_INTLV cs0_cs1
+#define ARCH_EXTRA_ENV_SETTINGS \
+	"bank_intlv=cs0_cs1\0"			\
+	"ramdiskfile=t1024rdb/ramdisk.uboot\0"	\
+	"fdtfile=t1024rdb/t1024rdb.dtb\0"
 #else
-#define CONFIG_BOARDNAME t1023rdb
-#define BANK_INTLV  null
+#define ARCH_EXTRA_ENV_SETTINGS \
+	"bank_intlv=null\0"			\
+	"ramdiskfile=t1023rdb/ramdisk.uboot\0"	\
+	"fdtfile=t1023rdb/t1023rdb.dtb\0"
 #endif
 
 #define	CONFIG_EXTRA_ENV_SETTINGS				\
+	ARCH_EXTRA_ENV_SETTINGS					\
 	"hwconfig=fsl_ddr:ctlr_intlv=cacheline,"		\
-	"bank_intlv=" __stringify(BANK_INTLV) "\0"		\
 	"usb1:dr_mode=host,phy_type=" __stringify(__USB_PHY_TYPE) "\0"  \
-	"ramdiskfile=" __stringify(CONFIG_BOARDNAME) "/ramdisk.uboot\0" \
-	"fdtfile=" __stringify(CONFIG_BOARDNAME) "/"		\
-	__stringify(CONFIG_BOARDNAME) ".dtb\0"			\
 	"uboot=" __stringify(CONFIG_UBOOTPATH) "\0"		\
-	"ubootaddr=" __stringify(CONFIG_SYS_TEXT_BASE) "\0"	\
+	"ubootaddr=" __stringify(CONFIG_TEXT_BASE) "\0"	\
 	"bootargs=root=/dev/ram rw console=ttyS0,115200\0" \
 	"netdev=eth0\0"						\
 	"tftpflash=tftpboot $loadaddr $uboot && "		\
@@ -579,25 +471,6 @@ unsigned long get_board_sys_clk(void);
 	"ramdiskaddr=2000000\0"					\
 	"fdtaddr=1e00000\0"					\
 	"bdev=sda3\0"
-
-#define LINUXBOOTCOMMAND					\
-	"setenv bootargs root=/dev/ram rw "		\
-	"console=$consoledev,$baudrate $othbootargs;"	\
-	"setenv ramdiskaddr 0x02000000;"		\
-	"setenv fdtaddr 0x00c00000;"			\
-	"setenv loadaddr 0x1000000;"			\
-	"bootm $loadaddr $ramdiskaddr $fdtaddr"
-
-#define NFSBOOTCOMMAND			\
-	"setenv bootargs root=/dev/nfs rw "	\
-	"nfsroot=$serverip:$rootpath "		\
-	"ip=$ipaddr:$serverip:$gatewayip:$netmask:$hostname:$netdev:off " \
-	"console=$consoledev,$baudrate $othbootargs;"	\
-	"tftp $loadaddr $bootfile;"		\
-	"tftp $fdtaddr $fdtfile;"		\
-	"bootm $loadaddr - $fdtaddr"
-
-#define CONFIG_BOOTCOMMAND	LINUXBOOTCOMMAND
 
 #include <asm/fsl_secure_boot.h>
 

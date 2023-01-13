@@ -32,14 +32,10 @@
 					 42, 43, 44, 45, 46, 47, 48, 49, \
 					 50, 51, 52, 53, 54, 55, 56, 57, }
 
-/* CPSW Ethernet support */
-#define CONFIG_SYS_RX_ETH_BUFFER	64
-
 /* Power */
 #define CONFIG_POWER_TPS65218
 
 /* Enabling L2 Cache */
-#define CONFIG_SYS_L2_PL310
 #define CONFIG_SYS_PL310_BASE		0x48242000
 
 /*
@@ -50,7 +46,6 @@
 #define CONFIG_HSMMC2_8BIT
 
 #include <configs/ti_armv7_omap.h>
-#undef CONFIG_SYS_MONITOR_LEN
 
 #define V_OSCK				24000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
@@ -59,7 +54,6 @@
 	"loadaddr=0x80200000\0" \
 	"fdtaddr=0x81200000\0" \
 	"bootm_size=0x8000000\0" \
-	"autoload=no\0" \
 	"console=ttyO0,115200n8\0" \
 	"fdtfile=am437x-sb-som-t43.dtb\0" \
 	"kernel=zImage-cm-t43\0" \
@@ -78,21 +72,7 @@
 		"load mmc 1 ${fdtaddr} ${fdtfile} && " \
 		"bootz ${loadaddr} - ${fdtaddr}\0"
 
-#define CONFIG_BOOTCOMMAND \
-	"mmc dev 0; " \
-	"if mmc rescan; then " \
-		"if run loadbootscript; then " \
-			"run bootscript; " \
-		"fi; " \
-	"fi; " \
-	"mmc dev 1; " \
-	"if mmc rescan; then " \
-		"run emmcboot; " \
-	"fi;"
-
 /* SPL defines. */
-#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + (128 << 20))
-#define CONFIG_SYS_MONITOR_LEN		(512 * 1024)
 
 /* EEPROM */
 

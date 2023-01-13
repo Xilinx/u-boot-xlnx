@@ -11,9 +11,6 @@
 
 #include "rcar-gen3-common.h"
 
-/* Ethernet RAVB */
-#define CONFIG_BITBANGMII_MULTI
-
 /* Environment compatibility */
 
 /* SH Ether */
@@ -23,13 +20,8 @@
 #define CONFIG_SH_ETHER_CACHE_WRITEBACK
 #define CONFIG_SH_ETHER_CACHE_INVALIDATE
 #define CONFIG_SH_ETHER_ALIGNE_SIZE	64
-#define CONFIG_BITBANGMII_MULTI
 
 /* Board Clock */
 /* XTAL_CLK : 33.33MHz */
-#define CONFIG_SYS_CLK_FREQ	33333333u
-
-/* Generic Timer Definitions (use in assembler source) */
-#define COUNTER_FREQUENCY	0xFE502A	/* 16.66MHz from CPclk */
 
 #endif /* __CONDOR_H */

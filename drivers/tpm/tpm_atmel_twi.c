@@ -6,6 +6,7 @@
  */
 
 #include <common.h>
+#include <display_options.h>
 #include <dm.h>
 #include <tpm-v1.h>
 #include <i2c.h>
@@ -48,7 +49,7 @@ static int tpm_atmel_twi_close(struct udevice *dev)
  * @dev:        Device to check
  * @buf:        Buffer to put the string
  * @size:       Maximum size of buffer
- * @return length of string, or -ENOSPC it no space
+ * Return: length of string, or -ENOSPC it no space
  */
 static int tpm_atmel_twi_get_desc(struct udevice *dev, char *buf, int size)
 {

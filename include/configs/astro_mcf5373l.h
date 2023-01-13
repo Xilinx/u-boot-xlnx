@@ -46,19 +46,9 @@
  */
 #ifdef CONFIG_RAM
 #define CONFIG_MONITOR_IS_IN_RAM
-#define ENABLE_JFFS	0
-#else
-#define ENABLE_JFFS	1
 #endif
 
-#define CONFIG_MCFRTC
-#undef RTC_DEBUG
-
-/* Timer */
-#define CONFIG_MCFTMR
-
 /* I2C */
-#define CONFIG_SYS_IMMR			CONFIG_SYS_MBAR
 
 /*
  * Defines processor clock - important for correct timings concerning serial
@@ -68,11 +58,6 @@
 #define CONFIG_SYS_CLK			80000000
 #define CONFIG_SYS_CPU_CLK		(CONFIG_SYS_CLK * 3)
 #define CONFIG_SYS_SDRAM_SIZE		32		/* SDRAM size in MB */
-
-#define CONFIG_SYS_CORE_SRAM_SIZE	0x8000
-#define CONFIG_SYS_CORE_SRAM		0x80000000
-
-#define CONFIG_SYS_UNIFY_CACHE
 
 /*
  * Define baudrate for UART1 (console output, tftp, ...)
@@ -91,7 +76,6 @@
  */
 
 #ifndef CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT 3355	/* timeout in milliseconds */
 #endif
 
@@ -140,21 +124,7 @@
  * by external update.c; This is not included in mainline because
  * it needs non-blocking CFI routines.
  */
-#ifdef CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_BOOTCOMMAND	""	/* no autoboot in this case */
-#else
-#if ASTRO_V532
-#define CONFIG_BOOTCOMMAND	"protect off 0x80000 0x1ffffff;run env_check;"\
-				"run xilinxload&&run alteraload&&bootm 0x80000;"\
-				"update;reset"
-#else
-#define CONFIG_BOOTCOMMAND	"protect off 0x80000 0x1ffffff;run env_check;"\
-				"run xilinxload&&bootm 0x80000;update;reset"
-#endif
-#endif
 
-#define CONFIG_FPGA_COUNT	1
-#define CONFIG_SYS_FPGA_PROG_FEEDBACK
 #define CONFIG_SYS_FPGA_WAIT		1000
 
 /* End of user parameters to be customized */
@@ -182,9 +152,6 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	0x80000000
 #define CONFIG_SYS_INIT_RAM_SIZE		0x8000
 #define CONFIG_SYS_INIT_RAM_CTRL	0x221
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - \
-					 GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*
  * Start addresses for the final memory configuration
@@ -221,16 +188,7 @@
 
 #define CONFIG_SYS_FLASH_BASE		0x00000000
 
-#ifdef	CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
-#else
-/* This is mainly used during relocation in start.S */
-#define CONFIG_SYS_MONITOR_BASE		(CONFIG_SYS_FLASH_BASE + 0x400)
-#endif
 /* Reserve 256 kB for Monitor */
-#define CONFIG_SYS_MONITOR_LEN		(256 << 10)
-
-#define CONFIG_SYS_BOOTPARAMS_LEN	(64 * 1024)
 
 /*
  * For booting Linux, the board info and command line data
@@ -241,24 +199,12 @@
 						(CONFIG_SYS_SDRAM_SIZE << 20))
 
 /* FLASH organization */
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
-#define CONFIG_SYS_MAX_FLASH_SECT	259
-#define CONFIG_SYS_FLASH_ERASE_TOUT	1000
 
 #define CONFIG_SYS_FLASH_SIZE		0x2000000
-#define CONFIG_SYS_FLASH_CFI_NONBLOCK	1
 
 #define LDS_BOARD_TEXT \
 	. = DEFINED(env_offset) ? env_offset : .; \
 	env/embedded.o(.text*)
-
-#if ENABLE_JFFS
-/* JFFS Partition offset set */
-#define CONFIG_SYS_JFFS2_FIRST_BANK    0
-#define CONFIG_SYS_JFFS2_NUM_BANKS     1
-/* 512k reserved for u-boot */
-#define CONFIG_SYS_JFFS2_FIRST_SECTOR  0x40
-#endif
 
 /* Cache Configuration */
 

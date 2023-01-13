@@ -644,7 +644,7 @@ static int omap_hsmmc_execute_tuning(struct udevice *dev, uint opcode)
 	      ((mmc->selected_mode == UHS_SDR50) && (val & CAPA2_TSDR50))))
 		return 0;
 
-	ret = uclass_first_device(UCLASS_THERMAL, &thermal_dev);
+	ret = uclass_first_device_err(UCLASS_THERMAL, &thermal_dev);
 	if (ret) {
 		printf("Couldn't get thermal device for tuning\n");
 		return ret;
@@ -2019,6 +2019,7 @@ static const struct udevice_id omap_hsmmc_ids[] = {
 	{ .compatible = "ti,omap3-hsmmc" },
 	{ .compatible = "ti,omap4-hsmmc" },
 	{ .compatible = "ti,am33xx-hsmmc" },
+	{ .compatible = "ti,am335-sdhci" },
 	{ .compatible = "ti,dra7-hsmmc", .data = (ulong)&dra7_mmc_of_data },
 	{ }
 };

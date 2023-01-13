@@ -8,6 +8,7 @@
 #define LOG_CATEGORY UCLASS_MMC
 
 #include <common.h>
+#include <bootdev.h>
 #include <log.h>
 #include <mmc.h>
 #include <dm.h>
@@ -289,7 +290,7 @@ struct mmc *find_mmc_device(int dev_num)
 	struct udevice *dev, *mmc_dev;
 	int ret;
 
-	ret = blk_find_device(IF_TYPE_MMC, dev_num, &dev);
+	ret = blk_find_device(UCLASS_MMC, dev_num, &dev);
 
 	if (ret) {
 #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
@@ -307,12 +308,26 @@ struct mmc *find_mmc_device(int dev_num)
 
 int get_mmc_num(void)
 {
-	return max((blk_find_max_devnum(IF_TYPE_MMC) + 1), 0);
+	return max((blk_find_max_devnum(UCLASS_MMC) + 1), 0);
 }
 
 int mmc_get_next_devnum(void)
 {
-	return blk_find_max_devnum(IF_TYPE_MMC);
+	return blk_find_max_devnum(UCLASS_MMC);
+}
+
+int mmc_get_blk(struct udevice *dev, struct udevice **blkp)
+{
+	struct udevice *blk;
+	int ret;
+
+	device_find_first_child_by_uclass(dev, UCLASS_BLK, &blk);
+	ret = device_probe(blk);
+	if (ret)
+		return ret;
+	*blkp = blk;
+
+	return 0;
 }
 
 struct blk_desc *mmc_get_blk_desc(struct mmc *mmc)
@@ -320,7 +335,7 @@ struct blk_desc *mmc_get_blk_desc(struct mmc *mmc)
 	struct blk_desc *desc;
 	struct udevice *dev;
 
-	device_find_first_child(mmc->dev, &dev);
+	device_find_first_child_by_uclass(mmc->dev, UCLASS_BLK, &dev);
 	if (!dev)
 		return NULL;
 	desc = dev_get_uclass_plat(dev);
@@ -396,8 +411,8 @@ int mmc_bind(struct udevice *dev, struct mmc *mmc, const struct mmc_config *cfg)
 	/* Use the fixed index with aliases node's index */
 	debug("%s: alias devnum=%d\n", __func__, dev_seq(dev));
 
-	ret = blk_create_devicef(dev, "mmc_blk", "blk", IF_TYPE_MMC,
-			dev_seq(dev), 512, 0, &bdev);
+	ret = blk_create_devicef(dev, "mmc_blk", "blk", UCLASS_MMC,
+				 dev_seq(dev), 512, 0, &bdev);
 	if (ret) {
 		debug("Cannot create block device\n");
 		return ret;
@@ -405,6 +420,10 @@ int mmc_bind(struct udevice *dev, struct mmc *mmc, const struct mmc_config *cfg)
 	bdesc = dev_get_uclass_plat(bdev);
 	mmc->cfg = cfg;
 	mmc->priv = dev;
+
+	ret = bootdev_setup_for_dev(dev, "mmc_bootdev");
+	if (ret)
+		return log_msg_ret("bootdev", ret);
 
 	/* the following chunk was from mmc_register() */
 
@@ -424,12 +443,16 @@ int mmc_bind(struct udevice *dev, struct mmc *mmc, const struct mmc_config *cfg)
 int mmc_unbind(struct udevice *dev)
 {
 	struct udevice *bdev;
+	int ret;
 
-	device_find_first_child(dev, &bdev);
+	device_find_first_child_by_uclass(dev, UCLASS_BLK, &bdev);
 	if (bdev) {
 		device_remove(bdev, DM_REMOVE_NORMAL);
 		device_unbind(bdev);
 	}
+	ret = bootdev_unbind_dev(dev);
+	if (ret)
+		return log_msg_ret("bootdev", ret);
 
 	return 0;
 }
@@ -449,7 +472,7 @@ static int mmc_select_hwpart(struct udevice *bdev, int hwpart)
 
 	ret = mmc_switch_part(mmc, hwpart);
 	if (!ret)
-		blkcache_invalidate(desc->if_type, desc->devnum);
+		blkcache_invalidate(desc->uclass_id, desc->devnum);
 
 	return ret;
 }
@@ -464,6 +487,18 @@ static int mmc_blk_probe(struct udevice *dev)
 	ret = mmc_init(mmc);
 	if (ret) {
 		debug("%s: mmc_init() failed (err=%d)\n", __func__, ret);
+		return ret;
+	}
+
+	ret = device_probe(dev);
+	if (ret) {
+		debug("Probing %s failed (err=%d)\n", dev->name, ret);
+
+		if (CONFIG_IS_ENABLED(MMC_UHS_SUPPORT) ||
+		    CONFIG_IS_ENABLED(MMC_HS200_SUPPORT) ||
+		    CONFIG_IS_ENABLED(MMC_HS400_SUPPORT))
+			mmc_deinit(mmc);
+
 		return ret;
 	}
 

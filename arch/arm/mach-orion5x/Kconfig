@@ -1,18 +1,13 @@
 if ARCH_ORION5X
 
-choice
-	prompt "Marvell Orion board select"
-	optional
+config 88F5182
+	bool
 
-config TARGET_EDMINIV2
-	bool "LaCie Ethernet Disk mini V2"
-	select SUPPORT_SPL
-
-endchoice
+config FEROCEON
+	bool
 
 config SYS_SOC
 	default "orion5x"
 
-source "board/LaCie/edminiv2/Kconfig"
 
 endif

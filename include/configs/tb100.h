@@ -11,16 +11,10 @@
 /*
  * Memory configuration
  */
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
 
 #define CONFIG_SYS_DDR_SDRAM_BASE	0x80000000
 #define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
 #define CONFIG_SYS_SDRAM_SIZE		SZ_128M
-
-#define CONFIG_SYS_INIT_SP_ADDR		\
-	(CONFIG_SYS_SDRAM_BASE + 0x1000 - GENERATED_GBL_DATA_SIZE)
-
-#define CONFIG_SYS_BOOTM_LEN		SZ_32M
 
 /*
  * UART configuration
@@ -44,11 +38,6 @@
  */
 #define ETH0_BASE_ADDRESS		0xFE100000
 #define ETH1_BASE_ADDRESS		0xFE110000
-
-/*
- * Environment configuration
- */
-#define CONFIG_BOOTFILE			"uImage"
 
 /*
  * Console configuration

@@ -34,9 +34,8 @@
 #include <malloc.h>
 #include <pci.h>
 #include <pci_rom.h>
-#include <vbe.h>
+#include <vesa.h>
 #include <video.h>
-#include <video_fb.h>
 #include <acpi/acpi_s3.h>
 #include <asm/global_data.h>
 #include <linux/screen_info.h>
@@ -149,7 +148,7 @@ static int pci_rom_probe(struct udevice *dev, struct pci_rom_header **hdrp)
  * @ram_headerp:	Returns a pointer to the image in RAM
  * @allocedp:		Returns true if @ram_headerp was allocated and needs
  *			to be freed
- * @return 0 if OK, -ve on error. Note that @allocedp is set up regardless of
+ * Return: 0 if OK, -ve on error. Note that @allocedp is set up regardless of
  * the error state. Even if this function returns an error, it may have
  * allocated memory.
  */
@@ -203,7 +202,7 @@ static int pci_rom_load(struct pci_rom_header *rom_header,
 	return 0;
 }
 
-struct vbe_mode_info mode_info;
+struct vesa_state mode_info;
 
 void setup_video(struct screen_info *screen_info)
 {
@@ -326,10 +325,9 @@ err:
 	return ret;
 }
 
-#ifdef CONFIG_DM_VIDEO
-int vbe_setup_video_priv(struct vesa_mode_info *vesa,
-			 struct video_priv *uc_priv,
-			 struct video_uc_plat *plat)
+int vesa_setup_video_priv(struct vesa_mode_info *vesa,
+			  struct video_priv *uc_priv,
+			  struct video_uc_plat *plat)
 {
 	if (!vesa->x_resolution)
 		return log_msg_ret("No x resolution", -ENXIO);
@@ -359,7 +357,7 @@ int vbe_setup_video_priv(struct vesa_mode_info *vesa,
 	return 0;
 }
 
-int vbe_setup_video(struct udevice *dev, int (*int15_handler)(void))
+int vesa_setup_video(struct udevice *dev, int (*int15_handler)(void))
 {
 	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
@@ -379,7 +377,7 @@ int vbe_setup_video(struct udevice *dev, int (*int15_handler)(void))
 		return ret;
 	}
 
-	ret = vbe_setup_video_priv(&mode_info.vesa, uc_priv, plat);
+	ret = vesa_setup_video_priv(&mode_info.vesa, uc_priv, plat);
 	if (ret) {
 		if (ret == -ENFILE) {
 			/*
@@ -399,4 +397,3 @@ int vbe_setup_video(struct udevice *dev, int (*int15_handler)(void))
 
 	return 0;
 }
-#endif

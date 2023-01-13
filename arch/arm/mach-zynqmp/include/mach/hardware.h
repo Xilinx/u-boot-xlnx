@@ -152,8 +152,12 @@ struct apu_regs {
 #define CSU_JTAG_CHAIN_WR_SETUP		GENMASK(1, 0)
 #define CSU_PCAP_PROG_RELEASE_PL	BIT(0)
 
+#define ZYNQMP_CSU_STATUS_AUTHENTICATED	BIT(0)
+#define ZYNQMP_CSU_STATUS_ENCRYPTED	BIT(1)
+
 struct csu_regs {
-	u32 reserved0[4];
+	u32 status;
+	u32 reserved0[3];
 	u32 multi_boot;
 	u32 reserved1[7];
 	u32 jtag_chain_status_wr;
@@ -171,7 +175,9 @@ struct csu_regs {
 #define ZYNQMP_PMU_BASEADDR	0xFFD80000
 
 struct pmu_regs {
-	u32 reserved[18];
+	u32 reserved0[16];
+	u32 gen_storage4; /* 0x40 */
+	u32 reserved1[1];
 	u32 gen_storage6; /* 0x48 */
 };
 

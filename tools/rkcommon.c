@@ -123,6 +123,7 @@ struct spl_info {
 static struct spl_info spl_infos[] = {
 	{ "px30", "RK33", 0x2800, false, RK_HEADER_V1 },
 	{ "rk3036", "RK30", 0x1000, false, RK_HEADER_V1 },
+	{ "rk3066", "RK30", 0x8000 - 0x800, true, RK_HEADER_V1 },
 	{ "rk3128", "RK31", 0x1800, false, RK_HEADER_V1 },
 	{ "rk3188", "RK31", 0x8000 - 0x800, true, RK_HEADER_V1 },
 	{ "rk322x", "RK32", 0x8000 - 0x1000, false, RK_HEADER_V1 },
@@ -449,6 +450,10 @@ int rkcommon_verify_header(unsigned char *buf, int size,
 	struct header0_info header0;
 	struct spl_info *img_spl_info, *spl_info;
 	int ret;
+
+	/* spl_hdr is abandon on header_v2 */
+	if ((*(uint32_t *)buf) == RK_MAGIC_V2)
+		return 0;
 
 	ret = rkcommon_parse_header(buf, &header0, &img_spl_info);
 

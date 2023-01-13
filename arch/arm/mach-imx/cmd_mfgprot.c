@@ -12,12 +12,10 @@
 #include <linux/compiler.h>
 #include <command.h>
 #include <common.h>
-#include <environment.h>
+#include <env.h>
 #include <fsl_sec.h>
 #include <mapmem.h>
 #include <memalign.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 /**
  * do_mfgprot() - Handle the "mfgprot" command-line command
@@ -43,7 +41,7 @@ static int do_mfgprot(struct cmd_tbl *cmdtp, int flag, int argc, char *const arg
 	/* Enable HAB clock */
 	hab_caam_clock_enable(1);
 
-	u32 out_jr_size = sec_in32(CONFIG_SYS_FSL_JR0_ADDR +
+	u32 out_jr_size = sec_in32(CFG_SYS_FSL_JR0_ADDR +
 				   FSL_CAAM_ORSR_JRa_OFFSET);
 
 	if (out_jr_size != FSL_CAAM_MAX_JR_SIZE)

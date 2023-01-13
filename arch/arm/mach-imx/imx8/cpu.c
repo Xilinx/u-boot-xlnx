@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2018 NXP
+ * Copyright 2018, 2021 NXP
  */
 
 #include <common.h>
@@ -8,6 +8,7 @@
 #include <cpu.h>
 #include <cpu_func.h>
 #include <dm.h>
+#include <event.h>
 #include <init.h>
 #include <log.h>
 #include <asm/cache.h>
@@ -66,7 +67,7 @@ int arch_cpu_init(void)
 	return 0;
 }
 
-int arch_cpu_init_dm(void)
+static int imx8_init_mu(void *ctx, struct event *event)
 {
 	struct udevice *devp;
 	int node, ret;
@@ -88,6 +89,23 @@ int arch_cpu_init_dm(void)
 
 	return 0;
 }
+EVENT_SPY(EVT_DM_POST_INIT, imx8_init_mu);
+
+#if defined(CONFIG_ARCH_MISC_INIT)
+int arch_misc_init(void)
+{
+	if (IS_ENABLED(CONFIG_FSL_CAAM)) {
+		struct udevice *dev;
+		int ret;
+
+		ret = uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(caam_jr), &dev);
+		if (ret)
+			printf("Failed to initialize caam_jr: %d\n", ret);
+	}
+
+	return 0;
+}
+#endif
 
 int print_bootinfo(void)
 {
@@ -295,8 +313,8 @@ phys_size_t get_effective_memsize(void)
 
 			/* Find the memory region runs the U-Boot */
 			if (start >= phys_sdram_1_start && start <= end1 &&
-			    (start <= CONFIG_SYS_TEXT_BASE &&
-			    end >= CONFIG_SYS_TEXT_BASE)) {
+			    (start <= CONFIG_TEXT_BASE &&
+			    end >= CONFIG_TEXT_BASE)) {
 				if ((end + 1) <=
 				    ((sc_faddr_t)phys_sdram_1_start +
 				    phys_sdram_1_size))

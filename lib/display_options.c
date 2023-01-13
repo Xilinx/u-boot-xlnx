@@ -7,6 +7,7 @@
 #include <common.h>
 #include <compiler.h>
 #include <console.h>
+#include <display_options.h>
 #include <div64.h>
 #include <version_string.h>
 #include <linux/ctype.h>
@@ -126,6 +127,12 @@ void print_size(uint64_t size, const char *s)
 		if (m >= 10) {
 			m -= 10;
 			n += 1;
+
+			if (n == 1024 && i > 0) {
+				n = 1;
+				m = 0;
+				c = names[i - 1];
+			}
 		}
 	}
 

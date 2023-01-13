@@ -5,6 +5,7 @@
  */
 #include <common.h>
 #include <env.h>
+#include <image.h>
 #include <malloc.h>
 #include <asm/io.h>
 #include <linux/errno.h>
@@ -387,8 +388,8 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		struct udevice *new;
 
 		/* speed and mode will be read from DT */
-		ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS,
-					     CONFIG_ENV_SPI_CS, 0, 0, &new);
+		ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS,
+					     CONFIG_SF_DEFAULT_CS, &new);
 
 		ucode_flash = dev_get_uclass_priv(new);
 #else
@@ -402,7 +403,7 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 		} else {
 			ret = spi_flash_read(ucode_flash,
 					     CONFIG_SYS_FMAN_FW_ADDR +
-					     CONFIG_SYS_FSL_QSPI_BASE,
+					     CFG_SYS_FSL_QSPI_BASE,
 					     CONFIG_SYS_QE_FMAN_FW_LENGTH,
 					     addr);
 			if (ret)
@@ -474,8 +475,8 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 	struct udevice *new;
 
 	/* speed and mode will be read from DT */
-	ret = spi_flash_probe_bus_cs(CONFIG_ENV_SPI_BUS, CONFIG_ENV_SPI_CS,
-				     0, 0, &new);
+	ret = spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS, CONFIG_SF_DEFAULT_CS,
+				     &new);
 
 	ucode_flash = dev_get_uclass_priv(new);
 #else
@@ -512,6 +513,23 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 #else
 	void *addr = NULL;
 #endif
+
+	rc = fit_check_format(addr, CONFIG_SYS_QE_FMAN_FW_LENGTH);
+	if (!rc) {
+		size_t unused;
+		const void *new_addr;
+
+		rc = fit_get_data_conf_prop(addr, "fman", &new_addr, &unused);
+		if (rc)
+			return rc;
+		addr = (void *)new_addr;
+	} else if (CONFIG_IS_ENABLED(FIT_SIGNATURE)) {
+		/*
+		 * Using a (signed) FIT wrapper is mandatory if we are
+		 * doing verified boot.
+		 */
+		return rc;
+	}
 
 	/* Upload the Fman microcode if it's present */
 	rc = fman_upload_firmware(index, &reg->fm_imem, addr);

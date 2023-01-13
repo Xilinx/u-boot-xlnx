@@ -26,7 +26,7 @@ struct notification_context {
 };
 
 static struct efi_boot_services *boottime;
-static struct efi_event *event_notify;
+static struct efi_event *efi_st_event_notify;
 struct notification_record record;
 
 struct notification_context context_before = {
@@ -63,7 +63,7 @@ static void EFIAPI ebs_notify(struct efi_event *event, void *context)
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(const efi_handle_t handle,
 		 const struct efi_system_table *systable)
@@ -75,7 +75,7 @@ static int setup(const efi_handle_t handle,
 	ret = boottime->create_event(EVT_SIGNAL_EXIT_BOOT_SERVICES,
 				     TPL_CALLBACK, ebs_notify,
 				     &context,
-				     &event_notify);
+				     &efi_st_event_notify);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("could not create event\n");
 		return EFI_ST_FAILURE;
@@ -83,7 +83,7 @@ static int setup(const efi_handle_t handle,
 	ret = boottime->create_event_ex(0, TPL_CALLBACK, ebs_notify,
 					&context_before,
 					&guid_before_exit_boot_services,
-					&event_notify);
+					&efi_st_event_notify);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("could not create event\n");
 		return EFI_ST_FAILURE;
@@ -101,7 +101,7 @@ static int setup(const efi_handle_t handle,
  * Call ExitBootServices again and check that the notification function is
  * not called again.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int execute(void)
 {

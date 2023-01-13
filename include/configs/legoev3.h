@@ -18,7 +18,6 @@
  * SoC Configuration
  */
 #define CONFIG_SYS_EXCEPTION_VECTORS_HIGH
-#define CONFIG_SYS_CLK_FREQ		clk_get(DAVINCI_ARM_CLKID)
 #define CONFIG_SYS_OSCIN_FREQ		24000000
 #define CONFIG_SYS_TIMERBASE		DAVINCI_TIMER0_BASE
 #define CONFIG_SYS_HZ_CLOCK		clk_get(DAVINCI_AUXCLK_CLKID)
@@ -43,17 +42,8 @@
 #define CONFIG_SYS_SPI_CLK		clk_get(DAVINCI_SPI0_CLKID)
 
 /*
- * I2C Configuration
- */
-#define CONFIG_SYS_DAVINCI_I2C_SPEED		400000
-#define CONFIG_SYS_DAVINCI_I2C_SLAVE   10 /* Bogus, master-only in U-Boot */
-
-/*
  * U-Boot general configuration
  */
-#define CONFIG_BOOTFILE		"uImage" /* Boot file name */
-#define CONFIG_SYS_CBSIZE	1024 /* Console I/O Buffer Size	*/
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE /* Boot Args Buffer Size */
 
 /*
  * Linux Information
@@ -61,32 +51,6 @@
 #define LINUX_BOOT_PARAM_ADDR	(PHYS_SDRAM_1 + 0x100)
 #define CONFIG_HWCONFIG		/* enable hwconfig */
 #define CONFIG_SETUP_INITRD_TAG
-#define CONFIG_BOOTCOMMAND \
-	"if mmc rescan; then " \
-		"if run loadbootscr; then " \
-			"run bootscript; " \
-		"else " \
-			"if run loadbootenv; then " \
-				"echo Loaded env from ${bootenvfile};" \
-				"run importbootenv;" \
-			"fi;" \
-			"if test -n $uenvcmd; then " \
-				"echo Running uenvcmd...;" \
-				"run uenvcmd;" \
-			"fi;" \
-			"if run loadimage; then " \
-				"run mmcargs; " \
-				"if run loadfdt; then " \
-					"echo Using ${fdtfile}...;" \
-					"run fdtfixup; " \
-					"run fdtboot; "\
-				"fi; " \
-				"run mmcboot; " \
-			"fi; " \
-		"fi; " \
-	"fi; "\
-	"run flashargs; " \
-	"run flashboot"
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"bootenvfile=uEnv.txt\0" \
 	"fdtfile=da850-lego-ev3.dtb\0" \
@@ -121,14 +85,8 @@
 	"loadbootscr=fatload mmc 0 ${bootscraddr} boot.scr\0" \
 	"bootscript=source ${bootscraddr}\0"
 
-#ifdef CONFIG_CMD_BDI
-#define CONFIG_CLOCKS
-#endif
-
 /* additions for new relocation code, must added to all boards */
 #define CONFIG_SYS_SDRAM_BASE		0xc0000000
-
-#define CONFIG_SYS_INIT_SP_ADDR		0x80010000
 
 #include <asm/arch/hardware.h>
 

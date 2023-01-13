@@ -14,7 +14,7 @@ Development target
 ------------------
 
 The implementation of UEFI in U-Boot strives to reach the requirements described
-in the "Embedded Base Boot Requirements (EBBR) Specification - Release v1.0"
+in the "Embedded Base Boot Requirements (EBBR) Specification - Release v2.1.0"
 [2]. The "Server Base Boot Requirements System Software on ARM Platforms" [3]
 describes a superset of the EBBR specification and may be used as further
 reference.
@@ -105,7 +105,7 @@ The UEFI specification[1] defines a secure way of executing UEFI images
 by verifying a signature (or message digest) of image with certificates.
 This feature on U-Boot is enabled with::
 
-    CONFIG_UEFI_SECURE_BOOT=y
+    CONFIG_EFI_SECURE_BOOT=y
 
 To make the boot sequence safe, you need to establish a chain of trust;
 In UEFI secure boot the chain trust is defined by the following UEFI variables
@@ -277,6 +277,8 @@ Enable ``CONFIG_OPTEE``, ``CONFIG_CMD_OPTEE_RPMB`` and ``CONFIG_EFI_MM_COMM_TEE`
 
 [1] https://optee.readthedocs.io/en/latest/building/efi_vars/stmm.html
 
+.. _uefi_capsule_update_ref:
+
 Enabling UEFI Capsule Update feature
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -284,37 +286,162 @@ Support has been added for the UEFI capsule update feature which
 enables updating the U-Boot image using the UEFI firmware management
 protocol (FMP). The capsules are not passed to the firmware through
 the UpdateCapsule runtime service. Instead, capsule-on-disk
-functionality is used for fetching the capsule from the EFI System
-Partition (ESP) by placing the capsule file under the
-\EFI\UpdateCapsule directory.
+functionality is used for fetching capsules from the EFI System
+Partition (ESP) by placing capsule files under the directory::
 
-The directory \EFI\UpdateCapsule is checked for capsules only within the
-EFI system partition on the device specified in the active boot option
-determined by reference to BootNext variable or BootOrder variable processing.
-The active Boot Variable is the variable with highest priority BootNext or
-within BootOrder that refers to a device found to be present. Boot variables
-in BootOrder but referring to devices not present are ignored when determining
-active boot variable.
-Before starting a capsule update make sure your capsules are installed in the
-correct ESP partition or set BootNext.
+    \EFI\UpdateCapsule
+
+The directory is checked for capsules only within the
+EFI system partition on the device specified in the active boot option,
+which is determined by BootXXXX variable in BootNext, or if not, the highest
+priority one within BootOrder. Any BootXXXX variables referring to devices
+not present are ignored when determining the active boot option.
+
+Please note that capsules will be applied in the alphabetic order of
+capsule file names.
+
+Creating a capsule file
+***********************
+
+A capsule file can be created by using tools/mkeficapsule.
+To build this tool, enable::
+
+    CONFIG_TOOLS_MKEFICAPSULE=y
+    CONFIG_TOOLS_LIBCRYPTO=y
+
+Run the following command
+
+.. code-block:: console
+
+    $ mkeficapsule \
+      --index <index> --instance 0 \
+      --guid <image GUID> \
+      <capsule_file_name>
 
 Performing the update
 *********************
 
-Since U-boot doesn't currently support SetVariable at runtime there's a Kconfig
-option (CONFIG_EFI_IGNORE_OSINDICATIONS) to disable the OsIndications variable
-check. If that option is enabled just copy your capsule to \EFI\UpdateCapsule.
+Put capsule files under the directory mentioned above.
+Then, following the UEFI specification, you'll need to set
+the EFI_OS_INDICATIONS_FILE_CAPSULE_DELIVERY_SUPPORTED
+bit in OsIndications variable with
 
-If that option is disabled, you'll need to set the OsIndications variable with::
+.. code-block:: console
 
-    => setenv -e -nv -bs -rt -v OsIndications =0x04
+    => setenv -e -nv -bs -rt -v OsIndications =0x0000000000000004
 
-Finally, the capsule update can be initiated either by rebooting the board,
-which is the preferred method, or by issuing the following command::
+Since U-boot doesn't currently support SetVariable at runtime, its value
+won't be taken over across the reboot. If this is the case, you can skip
+this feature check with the Kconfig option (CONFIG_EFI_IGNORE_OSINDICATIONS)
+set.
 
-    => efidebug capsule disk-update
+A few values need to be defined in the board file for performing the
+capsule update. These values are defined in the board file by
+initialisation of a structure which provides information needed for
+capsule updates. The following structures have been defined for
+containing the image related information
 
-**The efidebug command is should only be used during debugging/development.**
+.. code-block:: c
+
+	struct efi_fw_image {
+		efi_guid_t image_type_id;
+		u16 *fw_name;
+		u8 image_index;
+	};
+
+	struct efi_capsule_update_info {
+		const char *dfu_string;
+		struct efi_fw_image *images;
+	};
+
+
+A string is defined which is to be used for populating the
+dfu_alt_info variable. This string is used by the function
+set_dfu_alt_info. Instead of taking the variable from the environment,
+the capsule update feature requires that the variable be set through
+the function, since that is more robust. Allowing the user to change
+the location of the firmware updates is not a very secure
+practice. Getting this information from the firmware itself is more
+secure, assuming the firmware has been verified by a previous stage
+boot loader.
+
+The firmware images structure defines the GUID values, image index
+values and the name of the images that are to be updated through
+the capsule update feature. These values are to be defined as part of
+an array. These GUID values would be used by the Firmware Management
+Protocol(FMP) to populate the image descriptor array and also
+displayed as part of the ESRT table. The image index values defined in
+the array should be one greater than the dfu alt number that
+corresponds to the firmware image. So, if the dfu alt number for an
+image is 2, the value of image index in the fw_images array for that
+image should be 3. The dfu alt number can be obtained by running the
+following command::
+
+    dfu list
+
+When the FWU Multi Bank Update feature is enabled on the platform, the
+image index is used only to identify the image index with the image
+GUID. The image index would not correspond to the dfu alt number. This
+is because the FWU feature supports multiple partitions(banks) of
+updatable images, and the actual dfu alt number to which the image is
+to be written to is determined at runtime, based on the value of the
+update bank to which the image is to be written. For more information
+on the FWU Multi Bank Update feature, please refer `doc
+<doc/develop/uefi/fwu_updates.rst>`__.
+
+When using the FMP for FIT images, the image index value needs to be
+set to 1.
+
+Finally, the capsule update can be initiated by rebooting the board.
+
+An example of setting the values in the struct efi_fw_image and
+struct efi_capsule_update_info is shown below
+
+.. code-block:: c
+
+	struct efi_fw_image fw_images[] = {
+		{
+			.image_type_id = DEVELOPERBOX_UBOOT_IMAGE_GUID,
+			.fw_name = u"DEVELOPERBOX-UBOOT",
+			.image_index = 1,
+		},
+		{
+			.image_type_id = DEVELOPERBOX_FIP_IMAGE_GUID,
+			.fw_name = u"DEVELOPERBOX-FIP",
+			.image_index = 2,
+		},
+		{
+			.image_type_id = DEVELOPERBOX_OPTEE_IMAGE_GUID,
+			.fw_name = u"DEVELOPERBOX-OPTEE",
+			.image_index = 3,
+		},
+	};
+
+	struct efi_capsule_update_info update_info = {
+		.dfu_string = "mtd nor1=u-boot.bin raw 200000 100000;"
+				"fip.bin raw 180000 78000;"
+				"optee.bin raw 500000 100000",
+		.images = fw_images,
+	};
+
+Platforms must declare a variable update_info of type struct
+efi_capsule_update_info as shown in the example above. The platform
+will also define a fw_images array which contains information of all
+the firmware images that are to be updated through capsule update
+mechanism. The dfu_string is the string that is to be set as
+dfu_alt_info. In the example above, the image index to be set for
+u-boot.bin binary is 0x1, for fip.bin is 0x2 and for optee.bin is 0x3.
+
+As an example, for generating the capsule for the optee.bin image, the
+following command can be issued
+
+.. code-block:: bash
+
+    $ ./tools/mkeficapsule \
+      --index 0x3 --instance 0 \
+      --guid c1b629f1-ce0e-4894-82bf-f0a38387e630 \
+      optee.bin optee.capsule
+
 
 Enabling Capsule Authentication
 *******************************
@@ -324,82 +451,64 @@ be updated by verifying the capsule signature. The capsule signature
 is computed and prepended to the capsule payload at the time of
 capsule generation. This signature is then verified by using the
 public key stored as part of the X509 certificate. This certificate is
-in the form of an efi signature list (esl) file, which is embedded as
-part of U-Boot.
+in the form of an efi signature list (esl) file, which is embedded in
+a device tree.
 
 The capsule authentication feature can be enabled through the
 following config, in addition to the configs listed above for capsule
 update::
 
     CONFIG_EFI_CAPSULE_AUTHENTICATE=y
-    CONFIG_EFI_CAPSULE_KEY_PATH=<path to .esl cert>
 
 The public and private keys used for the signing process are generated
-and used by the steps highlighted below::
+and used by the steps highlighted below.
 
-    1. Install utility commands on your host
-       * OPENSSL
+1. Install utility commands on your host
+       * openssl
        * efitools
 
-    2. Create signing keys and certificate files on your host
+2. Create signing keys and certificate files on your host
 
-        $ openssl req -x509 -sha256 -newkey rsa:2048 -subj /CN=CRT/ \
-            -keyout CRT.key -out CRT.crt -nodes -days 365
-        $ cert-to-efi-sig-list CRT.crt CRT.esl
+.. code-block:: console
 
-        $ openssl x509 -in CRT.crt -out CRT.cer -outform DER
-        $ openssl x509 -inform DER -in CRT.cer -outform PEM -out CRT.pub.pem
+    $ openssl req -x509 -sha256 -newkey rsa:2048 -subj /CN=CRT/ \
+        -keyout CRT.key -out CRT.crt -nodes -days 365
+    $ cert-to-efi-sig-list CRT.crt CRT.esl
 
-        $ openssl pkcs12 -export -out CRT.pfx -inkey CRT.key -in CRT.crt
-        $ openssl pkcs12 -in CRT.pfx -nodes -out CRT.pem
+3. Run the following command to create and sign the capsule file
 
-The capsule file can be generated by using the GenerateCapsule.py
-script in EDKII::
+.. code-block:: console
 
-    $ ./BaseTools/BinWrappers/PosixLike/GenerateCapsule -e -o \
-      <capsule_file_name> --monotonic-count <val> --fw-version \
-      <val> --lsv <val> --guid \
-      e2bb9c06-70e9-4b14-97a3-5a7913176e3f --verbose \
-      --update-image-index <val> --signer-private-cert \
-      /path/to/CRT.pem --trusted-public-cert \
-      /path/to/CRT.pub.pem --other-public-cert /path/to/CRT.pub.pem \
-      <u-boot.bin>
+    $ mkeficapsule --monotonic-count 1 \
+      --private-key CRT.key \
+      --certificate CRT.crt \
+      --index 1 --instance 0 \
+      [--fit | --raw | --guid <guid-string] \
+      <image_blob> <capsule_file_name>
 
-Place the capsule generated in the above step on the EFI System
-Partition under the EFI/UpdateCapsule directory
+4. Insert the signature list into a device tree in the following format::
 
-Testing on QEMU
-***************
+    {
+            signature {
+                    capsule-key = [ <binary of signature list> ];
+            }
+            ...
+    }
 
-Currently, support has been added on the QEMU ARM64 virt platform for
-updating the U-Boot binary as a raw image when the platform is booted
-in non-secure mode, i.e. with CONFIG_TFABOOT disabled. For this
-configuration, the QEMU platform needs to be booted with
-'secure=off'. The U-Boot binary placed on the first bank of the NOR
-flash at offset 0x0. The U-Boot environment is placed on the second
-NOR flash bank at offset 0x4000000.
+You can do step-4 manually with
 
-The capsule update feature is enabled with the following configuration
-settings::
+.. code-block:: console
 
-    CONFIG_MTD=y
-    CONFIG_FLASH_CFI_MTD=y
-    CONFIG_CMD_MTDPARTS=y
-    CONFIG_CMD_DFU=y
-    CONFIG_DFU_MTD=y
-    CONFIG_PCI_INIT_R=y
-    CONFIG_EFI_CAPSULE_ON_DISK=y
-    CONFIG_EFI_CAPSULE_FIRMWARE_MANAGEMENT=y
-    CONFIG_EFI_CAPSULE_FIRMWARE=y
-    CONFIG_EFI_CAPSULE_FIRMWARE_RAW=y
+    $ dtc -@ -I dts -O dtb -o signature.dtbo signature.dts
+    $ fdtoverlay -i orig.dtb -o new.dtb -v signature.dtbo
 
-In addition, the following config needs to be disabled(QEMU ARM specific)::
+where signature.dts looks like::
 
-    CONFIG_TFABOOT
-
-The capsule file can be generated by using the tools/mkeficapsule::
-
-    $ mkeficapsule --raw <u-boot.bin> --index 1 <capsule_file_name>
+    &{/} {
+            signature {
+                    capsule-key = /incbin/("CRT.esl");
+            };
+    };
 
 Executing the boot manager
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -651,7 +760,7 @@ UEFI block IO driver
 The UEFI block IO driver supports devices exposing the EFI_BLOCK_IO_PROTOCOL.
 
 When connected it creates a new U-Boot block IO device with interface type
-IF_TYPE_EFI_LOADER, adds child controllers mapping the partitions, and installs
+UCLASS_EFI_LOADER, adds child controllers mapping the partitions, and installs
 the EFI_SIMPLE_FILE_SYSTEM_PROTOCOL on these. This can be used together with the
 software iPXE to boot from iSCSI network drives [4].
 
@@ -690,8 +799,8 @@ Links
 -----
 
 * [1] http://uefi.org/specifications - UEFI specifications
-* [2] https://github.com/ARM-software/ebbr/releases/download/v1.0/ebbr-v1.0.pdf -
-  Embedded Base Boot Requirements (EBBR) Specification - Release v1.0
+* [2] https://github.com/ARM-software/ebbr/releases/download/v2.1.0/ebbr-v2.1.0.pdf -
+  Embedded Base Boot Requirements (EBBR) Specification - Release v2.1.0
 * [3] https://developer.arm.com/docs/den0044/latest/server-base-boot-requirements-system-software-on-arm-platforms-version-11 -
   Server Base Boot Requirements System Software on ARM Platforms - Version 1.1
 * [4] :doc:`iscsi`

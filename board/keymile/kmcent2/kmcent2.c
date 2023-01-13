@@ -6,6 +6,7 @@
  * Copyright 2013 Freescale Semiconductor, Inc.
  */
 
+#include <event.h>
 #include <asm/cache.h>
 #include <asm/fsl_fdt.h>
 #include <asm/fsl_law.h>
@@ -44,7 +45,7 @@ int checkboard(void)
 int board_early_init_f(void)
 {
 	struct fsl_ifc ifc = {(void *)CONFIG_SYS_IFC_ADDR, (void *)NULL};
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	bool cpuwd_flag = false;
 
 	/* board specific IFC configuration: increased bus turnaround time */
@@ -181,12 +182,7 @@ unsigned long get_serial_clock(unsigned long dummy)
 	return (gd->bus_clk / 2);
 }
 
-unsigned long get_board_sys_clk(unsigned long dummy)
-{
-	return 66666666;
-}
-
-int misc_init_f(void)
+static int kmcent2_misc_init_f(void *ctx, struct event *event)
 {
 	/* configure QRIO pis for i2c deblocking */
 	i2c_deblock_gpio_cfg();
@@ -214,6 +210,7 @@ int misc_init_f(void)
 
 	return 0;
 }
+EVENT_SPY(EVT_MISC_INIT_F, kmcent2_misc_init_f);
 
 #define USED_SRDS_BANK 0
 #define EXPECTED_SRDS_RFCK SRDS_PLLCR0_RFCK_SEL_100
@@ -223,9 +220,9 @@ int misc_init_f(void)
 
 int misc_init_r(void)
 {
-	serdes_corenet_t *regs = (void *)CONFIG_SYS_FSL_CORENET_SERDES_ADDR;
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_MPC85xx_SCFG;
-	ccsr_gur_t __iomem *gur = (ccsr_gur_t __iomem *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
+	serdes_corenet_t *regs = (void *)CFG_SYS_FSL_CORENET_SERDES_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_MPC85xx_SCFG;
+	ccsr_gur_t __iomem *gur = (ccsr_gur_t __iomem *)CFG_SYS_MPC85xx_GUTS_ADDR;
 
 	/* check SERDES bank 0 reference clock */
 	u32 actual = in_be32(&regs->bank[USED_SRDS_BANK].pllcr0);

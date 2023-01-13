@@ -9,7 +9,6 @@
 #include <asm/arch/base_addr_ac5.h>
 #include <linux/stringify.h>
 
-#define CONFIG_HUSH_INIT_VAR
 /* Eternal oscillator */
 #define CONFIG_SYS_TIMER_RATE	40000000
 
@@ -24,34 +23,7 @@
  */
 #define CONFIG_SYS_I2C_RTC_ADDR         0x68
 
-/* Booting Linux */
-#define CONFIG_BOOTFILE		"zImage"
-
-#define CONFIG_BOOTCOMMAND	\
-	"setenv bootcmd '"	\
-		"bridge enable; "	\
-		"if test ${bootnum} = \"b\"; " \
-		      "then run _fpga_loadsafe; " \
-		"else if test ${bootcount} -eq 4; then echo \"Switching copy...\"; setexpr x $bootnum % 2 && setexpr bootnum $x + 1; saveenv; fi; " \
-		      "run _fpga_loaduser; " \
-		"fi;" \
-		"echo \"Booting bank $bootnum\" && run userload && run userboot;" \
-	"' && " \
-	"setenv altbootcmd 'setenv bootnum b && saveenv && boot;' && " \
-	"saveenv && saveenv && boot;"
-
-#define CONFIG_SYS_BOOTM_LEN		(64 << 20)
-
 /* Environment settings */
-
-/*
- * Autoboot
- *
- * After 45s of inactivity in the prompt, the board will reset.
- * Set 'bootretry' in the environment to -1 to disable this behavior
- */
-#define CONFIG_BOOT_RETRY_TIME 45
-#define CONFIG_RESET_TO_RETRY
 
 /*
  * FPGA Remote Update related environment
@@ -92,8 +64,6 @@
 	"fdt_addr=" __stringify(CONFIG_KM_FDT_ADDR) "\0" \
 	"load=tftpboot ${loadaddr} u-boot-with-nand-spl.sfp\0" \
 	"loadaddr=" __stringify(CONFIG_KM_KERNEL_ADDR) "\0" \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
 	"update=nand erase 0x0 0x00100000 && nand write ${loadaddr} 0x0 ${filesize}\0" \
 	"userload=ubi part nand.ubi &&" \
 		"ubi check rootfs$bootnum &&" \
@@ -107,8 +77,5 @@
 
 /* The rest of the configuration is shared */
 #include <configs/socfpga_common.h>
-
-#undef CONFIG_WATCHDOG_TIMEOUT_MSECS
-#define CONFIG_WATCHDOG_TIMEOUT_MSECS	60000
 
 #endif	/* __CONFIG_SOCFPGA_SECU1_H__ */

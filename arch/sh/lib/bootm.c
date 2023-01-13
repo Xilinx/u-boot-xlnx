@@ -17,21 +17,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifdef CONFIG_SYS_DEBUG
-static void hexdump(unsigned char *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++) {
-		if ((i % 16) == 0)
-			printf("%s%08x: ", i ? "\n" : "",
-							(unsigned int)&buf[i]);
-		printf("%02x ", buf[i]);
-	}
-	printf("\n");
-}
-#endif
-
 #ifdef CONFIG_SH_SDRAM_OFFSET
 #define GET_INITRD_START(initrd, linux) (initrd - linux + CONFIG_SH_SDRAM_OFFSET)
 #else
@@ -55,7 +40,7 @@ static unsigned long sh_check_cmd_arg(char *cmdline, char *key, int base)
 }
 
 int do_bootm_linux(int flag, int argc, char *const argv[],
-		   bootm_headers_t *images)
+		   struct bootm_headers *images)
 {
 	/* Linux kernel load address */
 	void (*kernel) (void) = (void (*)(void))images->ep;

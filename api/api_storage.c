@@ -9,6 +9,7 @@
 #include <common.h>
 #include <api_public.h>
 #include <part.h>
+#include <scsi.h>
 
 #if defined(CONFIG_CMD_USB) && defined(CONFIG_USB_STORAGE)
 #include <usb.h>
@@ -43,10 +44,6 @@ struct stor_spec {
 
 static struct stor_spec specs[ENUM_MAX] = { { 0, 0, 0, 0, NULL }, };
 
-#ifndef CONFIG_SYS_MMC_MAX_DEVICE
-#define CONFIG_SYS_MMC_MAX_DEVICE	1
-#endif
-
 void dev_stor_init(void)
 {
 #if defined(CONFIG_IDE)
@@ -71,7 +68,7 @@ void dev_stor_init(void)
 	specs[ENUM_SATA].name = "sata";
 #endif
 #if defined(CONFIG_SCSI)
-	specs[ENUM_SCSI].max_dev = CONFIG_SYS_SCSI_MAX_DEVICE;
+	specs[ENUM_SCSI].max_dev = SCSI_MAX_DEVICE;
 	specs[ENUM_SCSI].enum_started = 0;
 	specs[ENUM_SCSI].enum_ended = 0;
 	specs[ENUM_SCSI].type = DEV_TYP_STOR | DT_STOR_SCSI;

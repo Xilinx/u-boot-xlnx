@@ -23,7 +23,7 @@
  */
 
 /*
- * Custom CONFIG_SYS_TEXT_BASE can be done in <board>.h
+ * Custom CONFIG_TEXT_BASE can be done in <board>.h
  */
 
 /* additions for new ARM relocation support */
@@ -50,12 +50,9 @@
 
 /* auto boot */
 
-#define	CONFIG_SYS_CBSIZE	1024	/* Console I/O Buff Size */
-
 /*
  * Other required minimal configurations
  */
-#define CONFIG_SYS_MAXARGS	32	/* max number of command args */
 
 /* ====> Include platform Common Definitions */
 #include <asm/arch/config.h>
@@ -64,8 +61,5 @@
 /*
  * Common NAND configuration
  */
-#ifdef CONFIG_CMD_NAND
-#define CONFIG_SYS_MAX_NAND_DEVICE     1
-#endif
 
 #endif /* _MV_COMMON_H */

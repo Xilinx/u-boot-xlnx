@@ -10,24 +10,13 @@
 
 #if defined(CONFIG_TFABOOT) || \
 	defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_QIXIS_I2C_ACCESS
-#endif
 #define SYS_NO_FLASH
 #endif
 
-#define CONFIG_SYS_CLK_FREQ		100000000
 #define COUNTER_FREQUENCY_REAL		25000000	/* 25MHz */
-#define COUNTER_FREQUENCY		25000000	/* 25MHz */
 
-#ifdef CONFIG_EMU
-#define CONFIG_SYS_FSL_DDR_EMU
-#else
 #define CONFIG_MEM_INIT_VALUE		0xdeadbeef
-#endif
 #define SPD_EEPROM_ADDRESS	0x51
-#define CONFIG_SYS_SPD_BUS_NUM	0	/* SPD on I2C bus 0 */
-#define CONFIG_DIMM_SLOTS_PER_CTLR	1
 
 
 #if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
@@ -58,15 +47,8 @@
 #define CONFIG_SYS_IFC_CCR	0x01000000
 
 #ifndef SYS_NO_FLASH
-#define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45 /* count down from 45/5: 9..1 */
 
-#define CONFIG_SYS_MAX_FLASH_BANKS	1	/* number of banks */
-#define CONFIG_SYS_MAX_FLASH_SECT	1024	/* sectors per device */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
-
-#define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE }
 #endif
 #endif
@@ -104,12 +86,7 @@
 #define CONFIG_SYS_NAND_FTIM3		0x0
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
-
-#ifndef SPL_NO_QIXIS
-#define CONFIG_FSL_QIXIS
-#endif
 
 #define CONFIG_SYS_I2C_FPGA_ADDR	0x66
 #define QIXIS_BRDCFG4_OFFSET            0x54
@@ -197,15 +174,9 @@
 #define I2C_VOL_MONITOR_BUS_V_SHIFT    3
 #define I2C_SVDD_MONITOR_ADDR		0x4F
 
-#define CONFIG_VID_FLS_ENV              "ls1088ardb_vdd_mv"
-#define CONFIG_VID
-
 /* The lowest and highest voltage allowed for LS1088ARDB */
 #define VDD_MV_MIN			819
 #define VDD_MV_MAX			1212
-
-#define CONFIG_VOL_MONITOR_LTC3882_SET
-#define CONFIG_VOL_MONITOR_LTC3882_READ
 
 #define PWM_CHANNEL0                    0x0
 
@@ -225,18 +196,6 @@
 #define RTC
 #define CONFIG_SYS_I2C_RTC_ADDR         0x51  /* Channel 3*/
 #endif
-
-/* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM		0
-
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SPL_TEXT_BASE
-#else
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SYS_TEXT_BASE
-#endif
-
-#define CONFIG_FSL_MEMAC
 
 #ifndef SPL_NO_ENV
 /* Initial environment variables */
@@ -294,7 +253,6 @@
 	"ramdisk_size=0x2000000\0"		\
 	"fdt_high=0xa0000000\0"			\
 	"initrd_high=0xffffffffffffffff\0"	\
-	"fdt_addr=0x64f00000\0"			\
 	"kernel_addr=0x1000000\0"		\
 	"kernel_addr_sd=0x8000\0"		\
 	"kernelhdr_addr_sd=0x3000\0"		\
@@ -363,7 +321,6 @@
 	"ramdisk_size=0x2000000\0"		\
 	"fdt_high=0xa0000000\0"			\
 	"initrd_high=0xffffffffffffffff\0"	\
-	"fdt_addr=0x64f00000\0"			\
 	"kernel_addr=0x1000000\0"		\
 	"kernel_addr_sd=0x8000\0"		\
 	"kernelhdr_addr_sd=0x3000\0"		\
@@ -424,7 +381,6 @@
 		"bootm $load_addr#$BOARD\0"
 #endif /* CONFIG_TFABOOT */
 
-#undef CONFIG_BOOTCOMMAND
 #ifdef CONFIG_TFABOOT
 #define QSPI_NOR_BOOTCOMMAND					\
 	"sf read 0x80001000 0xd00000 0x100000;"		\
@@ -446,26 +402,8 @@
 #else
 #if defined(CONFIG_QSPI_BOOT)
 /* Try to boot an on-QSPI kernel first, then do normal distro boot */
-#define CONFIG_BOOTCOMMAND                                      \
-		"sf read 0x80001000 0xd00000 0x100000;"		\
-		"env exists mcinitcmd && env exists secureboot "	\
-		" && sf read 0x806C0000 0x6C0000 0x100000 "	\
-		"&& esbc_validate 0x806C0000;env exists mcinitcmd "	\
-		"&& fsl_mc lazyapply dpl 0x80001000;"		\
-		"run distro_bootcmd;run qspi_bootcmd;"		\
-		"env exists secureboot && esbc_halt;"
 
 /* Try to boot an on-SD kernel first, then do normal distro boot */
-#elif defined(CONFIG_SD_BOOT)
-#define CONFIG_BOOTCOMMAND                                      \
-		"env exists mcinitcmd && mmcinfo; "		\
-		"mmc read 0x80001000 0x6800 0x800; "		\
-		"env exists mcinitcmd && env exists secureboot "	\
-		" && mmc read 0x806C0000 0x3600 0x20 "		\
-		"&& esbc_validate 0x806C0000;env exists mcinitcmd "	\
-		"&& fsl_mc lazyapply dpl 0x80001000;"		\
-		"run distro_bootcmd;run sd_bootcmd;"		\
-		"env exists secureboot && esbc_halt;"
 #endif
 #endif /* CONFIG_TFABOOT */
 
@@ -482,8 +420,6 @@
 #define QSGMII2_PORT2_PHY_ADDR		0x1d
 #define QSGMII2_PORT3_PHY_ADDR		0x1e
 #define QSGMII2_PORT4_PHY_ADDR		0x1f
-
-#define CONFIG_ETHPRIME		"DPMAC1@xgmii"
 #endif
 #endif
 

@@ -2,10 +2,11 @@
 /*
  * K3: Security functions
  *
- * Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2018-2022 Texas Instruments Incorporated - http://www.ti.com/
  *	Andrew F. Davis <afd@ti.com>
  */
 
+#include <asm/io.h>
 #include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
@@ -17,24 +18,73 @@
 #include <mach/spl.h>
 #include <spl.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/dma-mapping.h>
+
+#include "common.h"
+
+static bool ti_secure_cert_detected(void *p_image)
+{
+	/* Primitive certificate detection, check for DER starting with
+	 * two 4-Octet SEQUENCE tags
+	 */
+	return (((u8 *)p_image)[0] == 0x30 && ((u8 *)p_image)[1] == 0x82 &&
+		((u8 *)p_image)[4] == 0x30 && ((u8 *)p_image)[5] == 0x82);
+}
+
+/* Primitive certificate length, assumes one 2-Octet sized SEQUENCE */
+static size_t ti_secure_cert_length(void *p_image)
+{
+	size_t seq_length = be16_to_cpu(readw_relaxed(p_image + 2));
+	/* Add 4 for the SEQUENCE tag length */
+	return seq_length + 4;
+}
 
 void ti_secure_image_post_process(void **p_image, size_t *p_size)
 {
 	struct ti_sci_handle *ti_sci = get_ti_sci_handle();
 	struct ti_sci_proc_ops *proc_ops = &ti_sci->ops.proc_ops;
+	size_t cert_length;
 	u64 image_addr;
 	u32 image_size;
 	int ret;
 
-	image_addr = (uintptr_t)*p_image;
 	image_size = *p_size;
+
+	if (!image_size)
+		return;
+
+	if (get_device_type() == K3_DEVICE_TYPE_GP) {
+		if (ti_secure_cert_detected(*p_image)) {
+			printf("Warning: Detected image signing certificate on GP device. "
+			       "Skipping certificate to prevent boot failure. "
+			       "This will fail if the image was also encrypted\n");
+
+			cert_length = ti_secure_cert_length(*p_image);
+			if (cert_length > *p_size) {
+				printf("Invalid signing certificate size\n");
+				return;
+			}
+
+			*p_image += cert_length;
+			*p_size -= cert_length;
+		}
+
+		return;
+	}
+
+	if (get_device_type() != K3_DEVICE_TYPE_HS_SE &&
+	    !ti_secure_cert_detected(*p_image)) {
+		printf("Warning: Did not detect image signing certificate. "
+		       "Skipping authentication to prevent boot failure. "
+		       "This will fail on Security Enforcing(HS-SE) devices\n");
+		return;
+	}
+
+	/* Clean out image so it can be seen by system firmware */
+	image_addr = dma_map_single(*p_image, *p_size, DMA_BIDIRECTIONAL);
 
 	debug("Authenticating image at address 0x%016llx\n", image_addr);
 	debug("Authenticating image of size %d bytes\n", image_size);
-
-	flush_dcache_range((unsigned long)image_addr,
-			   ALIGN((unsigned long)image_addr + image_size,
-				 ARCH_DMA_MINALIGN));
 
 	/* Authenticate image */
 	ret = proc_ops->proc_auth_boot_image(ti_sci, &image_addr, &image_size);
@@ -43,10 +93,9 @@ void ti_secure_image_post_process(void **p_image, size_t *p_size)
 		hang();
 	}
 
+	/* Invalidate any stale lines over data written by system firmware */
 	if (image_size)
-		invalidate_dcache_range((unsigned long)image_addr,
-					ALIGN((unsigned long)image_addr +
-					      image_size, ARCH_DMA_MINALIGN));
+		dma_unmap_single(image_addr, image_size, DMA_BIDIRECTIONAL);
 
 	/*
 	 * The image_size returned may be 0 when the authentication process has

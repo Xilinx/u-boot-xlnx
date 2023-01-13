@@ -25,7 +25,6 @@
 # Enable all the config-independent tools
 ifneq ($(HOST_TOOLS_ALL),)
 CONFIG_ARCH_KIRKWOOD = y
-CONFIG_LCD_LOGO = y
 CONFIG_CMD_LOADS = y
 CONFIG_CMD_NET = y
 CONFIG_XWAY_SWAP_BYTES = y
@@ -48,7 +47,6 @@ CONFIG_BUILD_ENVCRC ?= $(ENVCRC-y)
 
 hostprogs-$(CONFIG_SPL_GENERATE_ATMEL_PMECC_HEADER) += atmel_pmecc_params
 
-hostprogs-$(CONFIG_LCD_LOGO) += bmp_logo
 hostprogs-$(CONFIG_VIDEO_LOGO) += bmp_logo
 HOSTCFLAGS_bmp_logo.o := -pedantic
 
@@ -74,7 +72,9 @@ mkenvimage-objs := mkenvimage.o os_support.o lib/crc32.o
 hostprogs-y += dumpimage mkimage
 hostprogs-$(CONFIG_TOOLS_LIBCRYPTO) += fit_info fit_check_sign
 
-hostprogs-$(CONFIG_CMD_BOOTEFI_SELFTEST) += file2include
+ifneq ($(CONFIG_CMD_BOOTEFI_SELFTEST)$(CONFIG_FWU_MDATA_GPT_BLK),)
+hostprogs-y += file2include
+endif
 
 FIT_OBJS-y := fit_common.o fit_image.o image-host.o boot/image-fit.o
 FIT_SIG_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := image-sig-host.o boot/image-fit-sig.o
@@ -94,9 +94,10 @@ ECDSA_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix lib/ecdsa/, ecdsa-libcrypto.
 AES_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix lib/aes/, \
 					aes-encrypt.o aes-decrypt.o)
 
-# Cryptographic helpers that depend on openssl/libcrypto
-LIBCRYPTO_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix lib/, \
-					fdt-libcrypto.o)
+# Cryptographic helpers and image types that depend on openssl/libcrypto
+LIBCRYPTO_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := \
+			lib/fdt-libcrypto.o \
+			sunxi_toc0.o
 
 ROCKCHIP_OBS = lib/rc4.o rkcommon.o rkimage.o rksd.o rkspi.o
 
@@ -131,7 +132,7 @@ dumpimage-mkimage-objs := aisimage.o \
 			$(ROCKCHIP_OBS) \
 			socfpgaimage.o \
 			sunxi_egon.o \
-			lib/crc16.o \
+			lib/crc16-ccitt.o \
 			lib/hash-checksum.o \
 			lib/sha1.o \
 			lib/sha256.o \
@@ -146,6 +147,7 @@ dumpimage-mkimage-objs := aisimage.o \
 			gpimage.o \
 			gpimage-common.o \
 			mtk_image.o \
+			mtk_nand_headers.o \
 			$(ECDSA_OBJS-y) \
 			$(RSA_OBJS-y) \
 			$(AES_OBJS-y)
@@ -196,6 +198,11 @@ hostprogs-$(CONFIG_EXYNOS5250) += mkexynosspl
 hostprogs-$(CONFIG_EXYNOS5420) += mkexynosspl
 HOSTCFLAGS_mkexynosspl.o := -pedantic
 
+HOSTCFLAGS_kwboot.o += -pthread
+HOSTLDLIBS_kwboot += -pthread
+HOSTLDLIBS_kwboot += \
+	$(shell pkg-config --libs tinfo 2> /dev/null || echo "-ltinfo")
+
 ifdtool-objs := $(LIBFDT_OBJS) ifdtool.o
 hostprogs-$(CONFIG_X86) += ifdtool
 
@@ -238,8 +245,15 @@ hostprogs-$(CONFIG_MIPS) += mips-relocs
 hostprogs-$(CONFIG_ASN1_COMPILER)	+= asn1_compiler
 HOSTCFLAGS_asn1_compiler.o = -idirafter $(srctree)/include
 
-mkeficapsule-objs	:= mkeficapsule.o $(LIBFDT_OBJS)
-hostprogs-$(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) += mkeficapsule
+HOSTCFLAGS_mkeficapsule.o += \
+	$(shell pkg-config --cflags gnutls 2> /dev/null || echo "")
+HOSTCFLAGS_mkeficapsule.o += \
+	$(shell pkg-config --cflags uuid 2> /dev/null || echo "")
+HOSTLDLIBS_mkeficapsule += \
+	$(shell pkg-config --libs gnutls 2> /dev/null || echo "-lgnutls")
+HOSTLDLIBS_mkeficapsule += \
+	$(shell pkg-config --libs uuid 2> /dev/null || echo "-luuid")
+hostprogs-$(CONFIG_TOOLS_MKEFICAPSULE) += mkeficapsule
 
 # We build some files with extra pedantic flags to try to minimize things
 # that won't build on some weird host compiler -- though there are lots of
@@ -264,8 +278,6 @@ always := $(hostprogs-y)
 # Generated LCD/video logo
 LOGO_H = $(objtree)/include/bmp_logo.h
 LOGO_DATA_H = $(objtree)/include/bmp_logo_data.h
-LOGO-$(CONFIG_LCD_LOGO) += $(LOGO_H)
-LOGO-$(CONFIG_LCD_LOGO) += $(LOGO_DATA_H)
 LOGO-$(CONFIG_VIDEO_LOGO) += $(LOGO_H)
 LOGO-$(CONFIG_VIDEO_LOGO) += $(LOGO_DATA_H)
 
@@ -302,7 +314,7 @@ __build:	$(LOGO-y)
 $(LOGO_H):	$(obj)/bmp_logo $(LOGO_BMP)
 	$(obj)/bmp_logo --gen-info $(LOGO_BMP) > $@
 
-ifeq ($(CONFIG_DM_VIDEO),y)
+ifeq ($(CONFIG_VIDEO),y)
 $(LOGO_DATA_H):	$(obj)/bmp_logo $(LOGO_BMP)
 	$(obj)/bmp_logo --gen-bmp $(LOGO_BMP) > $@
 else

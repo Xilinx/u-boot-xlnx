@@ -10,7 +10,7 @@ OUTPUT_ARCH(arc)
 ENTRY(_start)
 SECTIONS
 {
-	. = CONFIG_SYS_TEXT_BASE;
+	. = CONFIG_TEXT_BASE;
 	__image_copy_start = .;
 	. = ALIGN(1024);
 	__ivt_start = .;
@@ -39,8 +39,8 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	}
 
 	. = ALIGN(4);

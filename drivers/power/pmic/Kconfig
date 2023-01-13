@@ -158,13 +158,15 @@ config SPL_DM_PMIC_MP5416
 
 config DM_PMIC_PCA9450
 	bool "Enable Driver Model for PMIC PCA9450"
+	depends on DM_I2C
 	help
 	  This config enables implementation of driver-model pmic uclass features
 	  for PMIC PCA9450. The driver implements read/write operations.
 
 config SPL_DM_PMIC_PCA9450
-	bool "Enable Driver Model for PMIC PCA9450"
+	bool "Enable Driver Model for PMIC PCA9450 in SPL"
 	depends on SPL_DM_PMIC
+	depends on SPL_DM_I2C
 	help
 	  This config enables implementation of driver-model pmic uclass features
 	  for PMIC PCA9450 in SPL. The driver implements read/write operations.
@@ -214,10 +216,10 @@ config PMIC_MAX8997
 	- MUIC
 	- Others
 
-config PMIC_PM8916
-	bool "Enable Driver Model for Qualcomm PM8916 PMIC"
+config PMIC_QCOM
+	bool "Enable Driver Model for Qualcomm generic PMIC"
 	---help---
-	The PM8916 is a PMIC connected to one (or several) processors
+	The Qcom PMIC is connected to one (or several) processors
 	with SPMI bus. It has 2 slaves with several peripherals:
 	- 18x LDO
 	- 4x GPIO
@@ -227,7 +229,7 @@ config PMIC_PM8916
 	- Vibrator drivers
 	- Others
 
-	Driver binding info: doc/device-tree-bindings/pmic/pm8916.txt
+	Driver binding info: doc/device-tree-bindings/pmic/qcom,spmi-pmic.txt
 
 config PMIC_RK8XX
 	bool "Enable support for Rockchip PMIC RK8XX"
@@ -293,6 +295,14 @@ config PMIC_S5M8767
 
 config PMIC_RN5T567
 	bool "Enable driver for Ricoh RN5T567 PMIC"
+	---help---
+	The RN5T567 is a PMIC with 4 step-down DC/DC converters, 5 LDO
+	regulators Real-Time Clock and 4 GPIOs. This driver provides
+	register access only.
+
+config SPL_PMIC_RN5T567
+	bool "Enable driver for Ricoh RN5T567 PMIC in SPL"
+	depends on SPL_DM_PMIC
 	---help---
 	The RN5T567 is a PMIC with 4 step-down DC/DC converters, 5 LDO
 	regulators Real-Time Clock and 4 GPIOs. This driver provides
@@ -367,7 +377,21 @@ config PMIC_TPS65941
 	The TPS65941 is a PMIC containing a bunch of SMPS & LDOs.
 	This driver binds the pmic children.
 
+config PMIC_TPS65219
+	bool "Enable driver for Texas Instruments TPS65219 PMIC"
+	depends on DM_PMIC
+	help
+	The TPS65219 is a PMIC containing a bunch of SMPS & LDOs.
+	This driver binds the pmic children.
 endif
+
+config PMIC_TPS65217
+	bool "Enable driver for Texas Instruments TPS65217 PMIC"
+	---help---
+	The TPS65217 is a PMIC containing several LDOs, DC to DC convertors,
+	FETs and a battery charger. This driver provides register access
+	only, and you can enable the regulator/charger drivers separately if
+	required.
 
 config POWER_MC34VR500
 	bool "Enable driver for Freescale MC34VR500 PMIC"

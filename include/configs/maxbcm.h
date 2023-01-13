@@ -46,24 +46,7 @@
  * L2 cache thus cannot be used.
  */
 
-/* SPL */
-/* Defines for SPL */
-#define CONFIG_SPL_MAX_SIZE		((128 << 10) - 0x4030)
-
-#define CONFIG_SPL_BSS_START_ADDR	(0x40000000 + (128 << 10))
-#define CONFIG_SPL_BSS_MAX_SIZE		(16 << 10)
-
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MALLOC_SIMPLE
-#endif
-
-#define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
-#define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
-
-/* SPL related SPI defines */
-
 /* Enable DDR support in SPL (DDR3 training from Marvell bin_hdr) */
 #define CONFIG_SYS_SDRAM_SIZE		SZ_1G
-#define CONFIG_BOARD_ECC_SUPPORT	/* this board supports ECC */
 
 #endif /* _CONFIG_DB_MV7846MP_GP_H */

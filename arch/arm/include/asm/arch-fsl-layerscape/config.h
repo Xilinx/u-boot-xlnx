@@ -24,7 +24,7 @@
 #define SPL_TLB_SETBACK	0x1000000	/* 16MB under effective memory top */
 
 #ifdef CONFIG_ARCH_LS2080A
-#define CONFIG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1, 4, 4 }
+#define CFG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1, 4, 4 }
 #define	SRDS_MAX_LANES	8
 #define CONFIG_SYS_PAGE_SIZE		0x10000
 #ifndef L1_CACHE_BYTES
@@ -32,21 +32,13 @@
 #define L1_CACHE_BYTES		BIT(L1_CACHE_SHIFT)
 #endif
 
-#define CONFIG_SYS_FSL_OCRAM_BASE	0x18000000 /* initial RAM */
+#define CFG_SYS_FSL_OCRAM_BASE	0x18000000 /* initial RAM */
 #define SYS_FSL_OCRAM_SPACE_SIZE	0x00200000 /* 2M space */
-#define CONFIG_SYS_FSL_OCRAM_SIZE	0x00020000 /* Real size 128K */
+#define CFG_SYS_FSL_OCRAM_SIZE	0x00020000 /* Real size 128K */
 
 /* DDR */
 #define CONFIG_SYS_DDR_BLOCK1_SIZE	((phys_size_t)2 << 30)
 #define CONFIG_MAX_MEM_MAPPED		CONFIG_SYS_DDR_BLOCK1_SIZE
-
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
-#define CONFIG_SYS_FSL_CCSR_SCFG_LE
-#define CONFIG_SYS_FSL_ESDHC_LE
-#define CONFIG_SYS_FSL_IFC_LE
-#define CONFIG_SYS_FSL_PEX_LUT_LE
-
-#define CONFIG_SYS_MEMAC_LITTLE_ENDIAN
 
 /* Generic Interrupt Controller Definitions */
 #define GICD_BASE			0x06000000
@@ -54,20 +46,6 @@
 
 /* SMMU Defintions */
 #define SMMU_BASE			0x05000000 /* GR0 Base */
-
-/* SFP */
-#define CONFIG_SYS_FSL_SFP_VER_3_4
-#define CONFIG_SYS_FSL_SFP_LE
-#define CONFIG_SYS_FSL_SRK_LE
-
-/* Security Monitor */
-#define CONFIG_SYS_FSL_SEC_MON_LE
-
-/* Secure Boot */
-#define CONFIG_ESBC_HDR_LS
-
-/* DCFG - GUR */
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
 
 /* Cache Coherent Interconnect */
 #define CCI_MN_BASE			0x04000000
@@ -116,13 +94,8 @@
 #define EPU_EPCTR5		0x700060a14ULL
 #define EPU_EPGCR		0x700060000ULL
 
-#define CONFIG_SYS_FSL_ERRATUM_A008751
-
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC		1
-
 #elif defined(CONFIG_ARCH_LS1088A)
-#define CONFIG_SYS_FSL_NUM_CC_PLLS		3
-#define CONFIG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1 }
+#define CFG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1 }
 #define CONFIG_SYS_PAGE_SIZE		0x10000
 
 #define	SRDS_MAX_LANES	4
@@ -152,31 +125,10 @@
 #define CONFIG_SYS_DDR_BLOCK1_SIZE	((phys_size_t)2 << 30)
 #define CONFIG_MAX_MEM_MAPPED		CONFIG_SYS_DDR_BLOCK1_SIZE
 
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
-#define CONFIG_SYS_FSL_CCSR_SCFG_LE
-#define CONFIG_SYS_FSL_ESDHC_LE
-#define CONFIG_SYS_FSL_IFC_LE
-#define CONFIG_SYS_FSL_PEX_LUT_LE
-
-#define CONFIG_SYS_MEMAC_LITTLE_ENDIAN
-
-/* SFP */
-#define CONFIG_SYS_FSL_SFP_VER_3_4
-#define CONFIG_SYS_FSL_SFP_LE
-#define CONFIG_SYS_FSL_SRK_LE
-
-/* Security Monitor */
-#define CONFIG_SYS_FSL_SEC_MON_LE
-
-/* Secure Boot */
-#define CONFIG_ESBC_HDR_LS
-
 /* DCFG - GUR */
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC	1
-#define CONFIG_SYS_FSL_OCRAM_BASE	0x18000000 /* initial RAM */
+#define CFG_SYS_FSL_OCRAM_BASE	0x18000000 /* initial RAM */
 #define SYS_FSL_OCRAM_SPACE_SIZE	0x00200000 /* 2M space */
-#define CONFIG_SYS_FSL_OCRAM_SIZE	0x00020000 /* Real size 128K */
+#define CFG_SYS_FSL_OCRAM_SIZE	0x00020000 /* Real size 128K */
 
 /* LX2160A/LX2162A Soc Support */
 #elif defined(CONFIG_ARCH_LX2160A) || defined(CONFIG_ARCH_LX2162A)
@@ -187,26 +139,17 @@
 #define L1_CACHE_SHIFT		6
 #define L1_CACHE_BYTES		BIT(L1_CACHE_SHIFT)
 #endif
-#define CONFIG_SYS_FSL_CORES_PER_CLUSTER	2
-#define CONFIG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1, 1, 1, 4, 4, 4, 4 }
-#define CONFIG_SYS_FSL_NUM_CC_PLLS		4
+#define CFG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1, 1, 1, 4, 4, 4, 4 }
 
 #define CONFIG_SYS_PAGE_SIZE			0x10000
 
-#define CONFIG_SYS_FSL_OCRAM_BASE		0x18000000 /* initial RAM */
+#define CFG_SYS_FSL_OCRAM_BASE		0x18000000 /* initial RAM */
 #define SYS_FSL_OCRAM_SPACE_SIZE		0x00200000 /* 2M space */
-#define CONFIG_SYS_FSL_OCRAM_SIZE		0x00040000 /* Real size 256K */
+#define CFG_SYS_FSL_OCRAM_SIZE		0x00040000 /* Real size 256K */
 
 /* DDR */
 #define CONFIG_SYS_DDR_BLOCK1_SIZE		((phys_size_t)2 << 30)
 #define CONFIG_MAX_MEM_MAPPED			CONFIG_SYS_DDR_BLOCK1_SIZE
-
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
-#define CONFIG_SYS_FSL_CCSR_SCFG_LE
-#define CONFIG_SYS_FSL_ESDHC_LE
-#define CONFIG_SYS_FSL_PEX_LUT_LE
-
-#define CONFIG_SYS_MEMAC_LITTLE_ENDIAN
 
 /* Generic Interrupt Controller Definitions */
 #define GICD_BASE				0x06000000
@@ -215,26 +158,10 @@
 /* SMMU Definitions */
 #define SMMU_BASE				0x05000000 /* GR0 Base */
 
-/* SFP */
-#define CONFIG_SYS_FSL_SFP_VER_3_4
-#define CONFIG_SYS_FSL_SFP_LE
-#define CONFIG_SYS_FSL_SRK_LE
-
-/* Security Monitor */
-#define CONFIG_SYS_FSL_SEC_MON_LE
-
-/* Secure Boot */
-#define CONFIG_ESBC_HDR_LS
-
 /* DCFG - GUR */
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
-
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC		1
 
 #elif defined(CONFIG_ARCH_LS1028A)
-#define CONFIG_SYS_FSL_NUM_CC_PLLS		3
-#define CONFIG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1 }
-#define CONFIG_FSL_TZPC_BP147
+#define CFG_SYS_FSL_CLUSTER_CLOCKS		{ 1, 1 }
 #define CONFIG_FSL_TZASC_400
 
 /* TZ Protection Controller Definitions */
@@ -253,9 +180,9 @@
 #define	SRDS_MAX_LANES	4
 #define	SRDS_BITS_PER_LANE	4
 
-#define CONFIG_SYS_FSL_OCRAM_BASE		0x18000000 /* initial RAM */
+#define CFG_SYS_FSL_OCRAM_BASE		0x18000000 /* initial RAM */
 #define SYS_FSL_OCRAM_SPACE_SIZE		0x00200000 /* 2M */
-#define CONFIG_SYS_FSL_OCRAM_SIZE		0x00040000 /* Real size 256K */
+#define CFG_SYS_FSL_OCRAM_SIZE		0x00040000 /* Real size 256K */
 
 /* Generic Interrupt Controller Definitions */
 #define GICD_BASE				0x06000000
@@ -268,49 +195,20 @@
 #define CONFIG_SYS_DDR_BLOCK1_SIZE	((phys_size_t)2 << 30)
 #define CONFIG_MAX_MEM_MAPPED		CONFIG_SYS_DDR_BLOCK1_SIZE
 
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
-#define CONFIG_SYS_FSL_CCSR_SCFG_LE
-#define CONFIG_SYS_FSL_ESDHC_LE
-#define CONFIG_SYS_FSL_PEX_LUT_LE
-
-#define CONFIG_SYS_MEMAC_LITTLE_ENDIAN
-
-/* SFP */
-#define CONFIG_SYS_FSL_SFP_VER_3_4
-#define CONFIG_SYS_FSL_SFP_LE
-#define CONFIG_SYS_FSL_SRK_LE
-
 /* SEC */
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC		1
-
-/* Security Monitor */
-#define CONFIG_SYS_FSL_SEC_MON_LE
-
-/* Secure Boot */
-#define CONFIG_ESBC_HDR_LS
 
 /* DCFG - GUR */
-#define CONFIG_SYS_FSL_CCSR_GUR_LE
 
 #elif defined(CONFIG_FSL_LSCH2)
-#define CONFIG_SYS_FSL_OCRAM_BASE		0x10000000 /* initial RAM */
+#define CFG_SYS_FSL_OCRAM_BASE		0x10000000 /* initial RAM */
 #define SYS_FSL_OCRAM_SPACE_SIZE		0x00200000 /* 2M space */
-#define CONFIG_SYS_FSL_OCRAM_SIZE		0x00020000 /* Real size 128K */
+#define CFG_SYS_FSL_OCRAM_SIZE		0x00020000 /* Real size 128K */
 
 #define DCSR_DCFG_SBEESR2			0x20140534
 #define DCSR_DCFG_MBEESR2			0x20140544
 
-#define CONFIG_SYS_FSL_CCSR_SCFG_BE
-#define CONFIG_SYS_FSL_ESDHC_BE
-#define CONFIG_SYS_FSL_WDOG_BE
-#define CONFIG_SYS_FSL_DSPI_BE
-#define CONFIG_SYS_FSL_CCSR_GUR_BE
-#define CONFIG_SYS_FSL_PEX_LUT_BE
-
 /* SoC related */
 #ifdef CONFIG_ARCH_LS1043A
-#define CONFIG_SYS_FMAN_V3
-#define CONFIG_SYS_FSL_QMAN_V3
 #define CONFIG_SYS_NUM_FMAN			1
 #define CONFIG_SYS_NUM_FM1_DTSEC		7
 #define CONFIG_SYS_NUM_FM1_10GEC		1
@@ -320,13 +218,6 @@
 #define QE_MURAM_SIZE		0x6000UL
 #define MAX_QE_RISC		1
 #define QE_NUM_OF_SNUM		28
-
-#define CONFIG_SYS_FSL_IFC_BE
-#define CONFIG_SYS_FSL_SFP_VER_3_2
-#define CONFIG_SYS_FSL_SEC_MON_BE
-#define CONFIG_SYS_FSL_SFP_BE
-#define CONFIG_SYS_FSL_SRK_LE
-#define CONFIG_KEY_REVOCATION
 
 /* SMMU Defintions */
 #define SMMU_BASE		0x09000000
@@ -357,35 +248,18 @@
 #define GIC_ADDR_BIT		31
 #define SCFG_GIC400_ALIGN	0x1570188
 
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC		1
-
 #elif defined(CONFIG_ARCH_LS1012A)
 #define GICD_BASE		0x01401000
 #define GICC_BASE		0x01402000
-#define CONFIG_SYS_FSL_SFP_VER_3_2
-#define CONFIG_SYS_FSL_SEC_MON_BE
-#define CONFIG_SYS_FSL_SFP_BE
-#define CONFIG_SYS_FSL_SRK_LE
-#define CONFIG_KEY_REVOCATION
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC           1
 #define CONFIG_SYS_DDR_BLOCK1_SIZE	((phys_size_t)2 << 30)
 #define CONFIG_MAX_MEM_MAPPED		CONFIG_SYS_DDR_BLOCK1_SIZE
 
 #elif defined(CONFIG_ARCH_LS1046A)
-#define CONFIG_SYS_FMAN_V3
-#define CONFIG_SYS_FSL_QMAN_V3
 #define CONFIG_SYS_NUM_FMAN			1
 #define CONFIG_SYS_NUM_FM1_DTSEC		8
 #define CONFIG_SYS_NUM_FM1_10GEC		2
 #define CONFIG_SYS_DDR_BLOCK1_SIZE  ((phys_size_t)2 << 30)
 #define CONFIG_MAX_MEM_MAPPED           CONFIG_SYS_DDR_BLOCK1_SIZE
-
-#define CONFIG_SYS_FSL_IFC_BE
-#define CONFIG_SYS_FSL_SFP_VER_3_2
-#define CONFIG_SYS_FSL_SEC_MON_BE
-#define CONFIG_SYS_FSL_SFP_BE
-#define CONFIG_SYS_FSL_SRK_LE
-#define CONFIG_KEY_REVOCATION
 
 /* SMMU Defintions */
 #define SMMU_BASE		0x09000000
@@ -393,8 +267,6 @@
 /* Generic Interrupt Controller Definitions */
 #define GICD_BASE		0x01410000
 #define GICC_BASE		0x01420000
-
-#define CONFIG_SYS_FSL_MAX_NUM_OF_SEC		1
 #else
 #error SoC not defined
 #endif

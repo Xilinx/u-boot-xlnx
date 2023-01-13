@@ -61,6 +61,7 @@ config USB_GADGET_PRODUCT_NUM
 	hex "Product ID of the USB device"
 	default 0x1010 if ARCH_SUNXI
 	default 0x310a if ROCKCHIP_RK3036
+	default 0x300a if ROCKCHIP_RK3066
 	default 0x310c if ROCKCHIP_RK3128
 	default 0x320a if ROCKCHIP_RK3229 || ROCKCHIP_RK3288
 	default 0x330a if ROCKCHIP_RK3328
@@ -91,6 +92,11 @@ config USB_GADGET_DWC2_OTG
 	  USB_GADGET to be enabled.
 
 if USB_GADGET_DWC2_OTG
+
+config USB_GADGET_DWC2_OTG_PHY
+	bool "DesignWare USB2.0 HS OTG PHY"
+	help
+	  Enable the DesignWare USB2.0 HS OTG physical device interface.
 
 config USB_GADGET_DWC2_OTG_PHY_BUS_WIDTH_8
 	bool "DesignWare USB2.0 HS OTG controller 8-bit PHY bus width"
@@ -182,6 +188,15 @@ config USB_FUNCTION_THOR
 	  Enable Tizen's THOR download protocol support in U-Boot. It
 	  allows downloading images into memory and flash them to target device.
 
+config USB_FUNCTION_ACM
+	bool "Enable CDC ACM gadget"
+	select SYS_STDIO_DEREGISTER
+	select CIRCBUF
+	help
+	  ACM serial link. This function can be used to create a stdio device to
+	  interoperate with MS-Windows hosts or with the Linux-USB "cdc-acm"
+	  driver.
+
 endif # USB_GADGET_DOWNLOAD
 
 config USB_ETHER
@@ -226,7 +241,7 @@ config USB_ETH_RNDIS
 
 endchoice
 
-config USBNET_DEVADDR
+config USBNET_DEV_ADDR
 	string "USB Gadget Ethernet device mac address"
 	default "de:ad:be:ef:00:01"
 	help

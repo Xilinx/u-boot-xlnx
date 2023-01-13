@@ -61,7 +61,7 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	dev = (int)dectoul(argv[2], NULL);
 
-	addr = STM32_DDR_BASE;
+	addr = CONFIG_SYS_LOAD_ADDR;
 	size = 0;
 	if (argc > 3) {
 		addr = hextoul(argv[3], NULL);
@@ -73,20 +73,13 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	/* check STM32IMAGE presence */
 	if (size == 0) {
-		stm32prog_header_check((struct raw_header_s *)addr, &header);
+		stm32prog_header_check(addr, &header);
 		if (header.type == HEADER_STM32IMAGE) {
-			size = header.image_length + BL_HEADER_SIZE;
-
-#if defined(CONFIG_LEGACY_IMAGE_FORMAT)
-			/* uImage detected in STM32IMAGE, execute the script */
-			if (IMAGE_FORMAT_LEGACY ==
-			    genimg_get_format((void *)(addr + BL_HEADER_SIZE)))
-				return image_source_script(addr + BL_HEADER_SIZE, "script@1");
-#endif
+			size = header.image_length + header.length;
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_DM_VIDEO))
+	if (IS_ENABLED(CONFIG_VIDEO))
 		enable_vidconsole();
 
 	data = (struct stm32prog_data *)malloc(sizeof(*data));
@@ -133,21 +126,21 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
 		char *bootm_argv[5] = {
 			"bootm", boot_addr_start, "-", dtb_addr, NULL
 		};
-		u32 uimage = data->uimage;
-		u32 dtb = data->dtb;
-		u32 initrd = data->initrd;
+		const void *uimage = (void *)data->uimage;
+		const void *dtb = (void *)data->dtb;
+		const void *initrd = (void *)data->initrd;
 
 		if (!dtb)
 			bootm_argv[3] = env_get("fdtcontroladdr");
 		else
 			snprintf(dtb_addr, sizeof(dtb_addr) - 1,
-				 "0x%x", dtb);
+				 "0x%p", dtb);
 
 		snprintf(boot_addr_start, sizeof(boot_addr_start) - 1,
-			 "0x%x", uimage);
+			 "0x%p", uimage);
 
 		if (initrd) {
-			snprintf(initrd_addr, sizeof(initrd_addr) - 1, "0x%x:0x%x",
+			snprintf(initrd_addr, sizeof(initrd_addr) - 1, "0x%p:0x%zx",
 				 initrd, data->initrd_size);
 			bootm_argv[2] = initrd_addr;
 		}
@@ -155,11 +148,13 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
 		printf("Booting kernel at %s %s %s...\n\n\n",
 		       boot_addr_start, bootm_argv[2], bootm_argv[3]);
 		/* Try bootm for legacy and FIT format image */
-		if (genimg_get_format((void *)uimage) != IMAGE_FORMAT_INVALID)
+		if (genimg_get_format(uimage) != IMAGE_FORMAT_INVALID)
 			do_bootm(cmdtp, 0, 4, bootm_argv);
 		else if (CONFIG_IS_ENABLED(CMD_BOOTZ))
 			do_bootz(cmdtp, 0, 4, bootm_argv);
 	}
+	if (data->script)
+		image_source_script(data->script, "script@stm32prog");
 
 	if (reset) {
 		puts("Reset...\n");

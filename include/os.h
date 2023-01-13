@@ -17,6 +17,13 @@ struct rtc_time;
 struct sandbox_state;
 
 /**
+ * os_printf() - print directly to OS console
+ *
+ * @format: format string
+ */
+int os_printf(const char *format, ...);
+
+/**
  * Access to the OS read() system call
  *
  * @fd:		File descriptor as returned by os_open()
@@ -100,6 +107,27 @@ int os_unlink(const char *pathname);
  * @exit_code:	exit code for U-Boot
  */
 void os_exit(int exit_code) __attribute__((noreturn));
+
+/**
+ * os_alarm() - access to the OS alarm() system call
+ *
+ * @seconds: number of seconds before the signal is sent
+ * Returns: number of seconds remaining until any previously scheduled alarm was
+ * due to be delivered; 0 if there was no previously scheduled alarm
+ */
+unsigned int os_alarm(unsigned int seconds);
+
+/**
+ * os_set_alarm_handler() - set handler for SIGALRM
+ *
+ * @handler:   The handler function. Pass NULL for SIG_DFL.
+ */
+void os_set_alarm_handler(void (*handler)(int));
+
+/**
+ * os_raise_sigalrm() - do raise(SIGALRM)
+ */
+void os_raise_sigalrm(void);
 
 /**
  * os_tty_raw() - put tty into raw mode to mimic serial console better
@@ -266,7 +294,7 @@ const char *os_dirent_get_typename(enum os_dirent_t type);
  * @size:	size of file is returned if no error
  * Return:	0 on success or -1 if an error ocurred
  */
-int os_get_filesize(const char *fname, loff_t *size);
+int os_get_filesize(const char *fname, long long *size);
 
 /**
  * os_putc() - write a character to the controlling OS terminal
@@ -287,6 +315,14 @@ void os_putc(int ch);
  * @str:	string to write (note that \n is not appended)
  */
 void os_puts(const char *str);
+
+/**
+ * os_flush() - flush controlling OS terminal
+ *
+ * This bypasses the U-Boot console support and flushes directly the OS
+ * stdout file descriptor.
+ */
+void os_flush(void);
 
 /**
  * os_write_ram_buf() - write the sandbox RAM buffer to a existing file
@@ -418,6 +454,15 @@ int os_read_file(const char *name, void **bufp, int *sizep);
  * Return:	0 if OK, -ve on error
  */
 int os_map_file(const char *pathname, int os_flags, void **bufp, int *sizep);
+
+/**
+ * os_unmap() - Unmap a file previously mapped
+ *
+ * @buf: Mapped address
+ * @size: Size in bytes
+ * Return:	0 if OK, -ve on error
+ */
+int os_unmap(void *buf, int size);
 
 /*
  * os_find_text_base() - Find the text section in this running process

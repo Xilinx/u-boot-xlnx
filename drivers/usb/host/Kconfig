@@ -32,9 +32,17 @@ config USB_XHCI_DWC3_OF_SIMPLE
 	  Support USB2/3 functionality in simple SoC integrations with
 	  USB controller based on the DesignWare USB3 IP Core.
 
+config USB_XHCI_EXYNOS
+	bool "Support for Samsung Exynos5 family on-chip xHCI USB controller"
+	depends on ARCH_EXYNOS5
+	default y
+	help
+	  Enables support for he on-chip xHCI controller on Samsung Exynos5
+	  SoCs.
+
 config USB_XHCI_MTK
 	bool "Support for MediaTek on-chip xHCI USB controller"
-	depends on ARCH_MEDIATEK
+	depends on ARCH_MEDIATEK || SOC_MT7621
 	help
 	  Enables support for the on-chip xHCI controller on MediaTek SoCs.
 
@@ -116,11 +124,19 @@ config USB_XHCI_BRCM
 
 endif # USB_XHCI_HCD
 
+config EHCI_DESC_BIG_ENDIAN
+	bool
+
+config EHCI_MMIO_BIG_ENDIAN
+	bool
+
 config USB_EHCI_HCD
 	bool "EHCI HCD (USB 2.0) support"
 	default y if ARCH_MX5 || ARCH_MX6
 	depends on DM && OF_CONTROL
 	select USB_HOST
+	select EHCI_DESC_BIG_ENDIAN if SYS_BIG_ENDIAN
+	select EHCI_MMIO_BIG_ENDIAN if SYS_BIG_ENDIAN
 	---help---
 	  The Enhanced Host Controller Interface (EHCI) is standard for USB 2.0
 	  "high speed" (480 Mbit/sec, 60 Mbyte/sec) host controller hardware.
@@ -149,11 +165,20 @@ config USB_EHCI_ATMEL
 	---help---
 	  Enables support for the on-chip EHCI controller on Atmel chips.
 
+config USB_EHCI_EXYNOS
+	bool "Support for Samsung Exynos EHCI USB controller"
+	depends on ARCH_EXYNOS
+	default y
+	---help---
+	  Enables support for the on-chip EHCI controller on Samsung Exynos
+	  SoCs.
+
 config USB_EHCI_MARVELL
 	bool "Support for Marvell on-chip EHCI USB controller"
 	depends on ARCH_MVEBU || ARCH_KIRKWOOD || ARCH_ORION5X
 	default y
 	select USB_EHCI_IS_TDI if !ARM64
+	select USB_EHCI_IS_TDI if ALLEYCAT_5
 	---help---
 	  Enables support for the on-chip EHCI controller on MVEBU SoCs.
 
@@ -166,6 +191,7 @@ config USB_EHCI_MX5
 config USB_EHCI_MX6
 	bool "Support for i.MX6/i.MX7ULP on-chip EHCI USB controller"
 	depends on ARCH_MX6 || ARCH_MX7ULP || ARCH_IMXRT
+	select EHCI_HCD_INIT_AFTER_RESET
 	default y
 	---help---
 	  Enables support for the on-chip EHCI controller on i.MX6 SoCs.
@@ -173,6 +199,7 @@ config USB_EHCI_MX6
 config USB_EHCI_MX7
 	bool "Support for i.MX7 on-chip EHCI USB controller"
 	depends on ARCH_MX7 || IMX8M
+	select EHCI_HCD_INIT_AFTER_RESET if ARCH_MX7
 	select PHY if IMX8M
 	select NOP_PHY if IMX8M
 	default y
@@ -180,54 +207,31 @@ config USB_EHCI_MX7
 	  Enables support for the on-chip EHCI controller on i.MX7 SoCs.
 
 config USB_EHCI_MXS
-	bool "Support for i.MX23 EHCI USB controller"
-	depends on ARCH_MX23
+	bool "Support for i.MX23/i.MX28 EHCI USB controller"
+	depends on ARCH_MX23 || ARCH_MX28
 	default y
 	select USB_EHCI_IS_TDI
 	help
-	  Enables support for the on-chip EHCI controller on i.MX23 SoCs.
+	  Enables support for the on-chip EHCI controller on i.MX23 and
+	  i.MX28 SoCs.
+
+config USB_EHCI_NPCM
+	bool "Support for Nuvoton NPCM on-chip EHCI USB controller"
+	depends on ARCH_NPCM
+	default n
+	---help---
+	  Enables support for the on-chip EHCI controller on
+	  Nuvoton NPCM chips.
 
 config USB_EHCI_OMAP
 	bool "Support for OMAP3+ on-chip EHCI USB controller"
 	depends on ARCH_OMAP2PLUS
+	select PHY
+	imply NOP_PHY
 	default y
 	---help---
 	  Enables support for the on-chip EHCI controller on OMAP3 and later
 	  SoCs.
-
-if USB_EHCI_OMAP
-
-config HAS_OMAP_EHCI_PHY1_RESET_GPIO
-	bool "PHY #1 requires a GPIO hold to it in RESET while PHY settles"
-	help
-	  Enable this to be able to configure the GPIO number used to hold the
-	  PHY in RESET for enough time until the PHY is settled and ready.
-
-config OMAP_EHCI_PHY1_RESET_GPIO
-	int "GPIO number to hold PHY #1 in RESET"
-	depends on HAS_OMAP_EHCI_PHY1_RESET_GPIO
-
-config HAS_OMAP_EHCI_PHY2_RESET_GPIO
-	bool "PHY #2 requires a GPIO hold to it in RESET while PHY settles"
-	help
-	  Enable this to be able to configure the GPIO number used to hold the
-	  PHY in RESET for enough time until the PHY is settled and ready.
-
-config OMAP_EHCI_PHY2_RESET_GPIO
-	int "GPIO number to hold PHY #2 in RESET"
-	depends on HAS_OMAP_EHCI_PHY2_RESET_GPIO
-
-config HAS_OMAP_EHCI_PHY3_RESET_GPIO
-	bool "PHY #3 requires a GPIO hold to it in RESET while PHY settles"
-	help
-	  Enable this to be able to configure the GPIO number used to hold the
-	  PHY in RESET for enough time until the PHY is settled and ready.
-
-config OMAP_EHCI_PHY3_RESET_GPIO
-	int "GPIO number to hold PHY #3 in RESET"
-	depends on HAS_OMAP_EHCI_PHY3_RESET_GPIO
-
-endif
 
 config USB_EHCI_VF
 	bool "Support for Vybrid on-chip EHCI USB controller"
@@ -281,17 +285,44 @@ config USB_EHCI_GENERIC
 	---help---
 	  Enables support for generic EHCI controller.
 
+config EHCI_HCD_INIT_AFTER_RESET
+	bool
+
 config USB_EHCI_FSL
 	bool  "Support for FSL on-chip EHCI USB controller"
-	select  CONFIG_EHCI_HCD_INIT_AFTER_RESET
+	select EHCI_HCD_INIT_AFTER_RESET
+	select SYS_FSL_USB_INTERNAL_UTMI_PHY if MPC85xx && \
+		!(ARCH_B4860 || ARCH_B4420 || ARCH_P4080 || ARCH_P1020 || ARCH_P2020)
 	---help---
 	  Enables support for the on-chip EHCI controller on FSL chips.
+
+config SYS_FSL_USB_INTERNAL_UTMI_PHY
+	bool
+	depends on USB_EHCI_FSL
+
+config USB_EHCI_TXFIFO_THRESH
+	hex
+	depends on USB_EHCI_TEGRA
+	default 0x10
+	help
+	  This parameter affects a TXFILLTUNING field that controls how much
+	  data is sent to the latency fifo before it is sent to the wire.
+	  Without this parameter, the default (2) causes occasional Data Buffer
+	  Errors in OUT packets depending on the buffer address and size.
+
 endif # USB_EHCI_HCD
+
+config USB_OHCI_NEW
+	bool
+
+config SYS_USB_OHCI_CPU_INIT
+	bool
 
 config USB_OHCI_HCD
 	bool "OHCI HCD (USB 1.1) support"
 	depends on DM && OF_CONTROL
 	select USB_HOST
+	select USB_OHCI_NEW
 	---help---
 	  The Open Host Controller Interface (OHCI) is a standard for accessing
 	  USB 1.1 host controller hardware.  It does more in hardware than Intel's
@@ -321,7 +352,23 @@ config USB_OHCI_DA8XX
 	help
 	  Enable support for the da850 USB controller.
 
+config USB_OHCI_NPCM
+	bool "Support for Nuvoton NPCM on-chip OHCI USB controller"
+	depends on ARCH_NPCM
+	default n
+	---help---
+	  Enables support for the on-chip OHCI controller on
+	  Nuvoton NPCM chips.
+
 endif # USB_OHCI_HCD
+
+config SYS_USB_OHCI_SLOT_NAME
+	string "Display name for the OHCI controller"
+	depends on USB_OHCI_NEW && !DM_USB
+
+config SYS_OHCI_SWAP_REG_ACCESS
+	bool "Perform byte swapping on OHCI controller register accesses"
+	depends on USB_OHCI_NEW
 
 config USB_UHCI_HCD
 	bool "UHCI HCD (most Intel and VIA) support"
@@ -371,3 +418,33 @@ config USB_R8A66597_HCD
 	---help---
 	  This enables support for the on-chip Renesas R8A66597 USB 2.0
 	  controller, present in various RZ and SH SoCs.
+
+config USB_ATMEL
+	bool "AT91 OHCI USB support"
+	depends on ARCH_AT91
+	select SYS_USB_OHCI_CPU_INIT
+	select USB_OHCI_NEW
+
+choice
+	prompt "Clock for OHCI"
+	depends on USB_ATMEL
+
+config USB_ATMEL_CLK_SEL_PLLB
+	bool "PLLB"
+
+config USB_ATMEL_CLK_SEL_UPLL
+	bool "UPLL"
+
+endchoice
+
+config USB_OHCI_LPC32XX
+	bool "LPC32xx USB OHCI support"
+	depends on ARCH_LPC32XX
+	select SYS_USB_OHCI_CPU_INIT
+	select USB_OHCI_NEW
+
+config USB_MAX_CONTROLLER_COUNT
+	int "Maximum number of USB host controllers"
+	depends on USB_EHCI_FSL || USB_XHCI_FSL || \
+		(SPL_USB_HOST && !DM_SPL_USB) || (USB_HOST && !DM_USB)
+	default 1

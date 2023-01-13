@@ -146,9 +146,7 @@ efi_status_t __efi_runtime efi_var_mem_ins(
 
 	var = (struct efi_var_entry *)
 	      ((uintptr_t)efi_var_buf + efi_var_buf->length);
-	for (var_name_len = 0; variable_name[var_name_len]; ++var_name_len)
-		;
-	++var_name_len;
+	var_name_len = u16_strlen(variable_name) + 1;
 	data = var->name + var_name_len;
 
 	if ((uintptr_t)data - (uintptr_t)efi_var_buf + size1 + size2 >
@@ -315,14 +313,14 @@ efi_get_next_variable_name_mem(efi_uintn_t *variable_name_size,
 			       u16 *variable_name, efi_guid_t *vendor)
 {
 	struct efi_var_entry *var;
-	efi_uintn_t old_size;
+	efi_uintn_t len, old_size;
 	u16 *pdata;
 
 	if (!variable_name_size || !variable_name || !vendor)
 		return EFI_INVALID_PARAMETER;
 
-	if (u16_strnlen(variable_name, *variable_name_size) ==
-	    *variable_name_size)
+	len = *variable_name_size >> 1;
+	if (u16_strnlen(variable_name, len) == len)
 		return EFI_INVALID_PARAMETER;
 
 	if (!efi_var_mem_find(vendor, variable_name, &var) && *variable_name)

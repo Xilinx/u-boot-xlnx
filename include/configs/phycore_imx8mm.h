@@ -11,25 +11,13 @@
 #include <linux/stringify.h>
 #include <asm/arch/imx-regs.h>
 
-#define CONFIG_SYS_BOOTM_LEN		SZ_64M
-#define CONFIG_SPL_MAX_SIZE		(148 * SZ_1K)
-#define CONFIG_SYS_MONITOR_LEN		SZ_512K
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
-#define CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR	0x300
 #define CONFIG_SYS_UBOOT_BASE \
 		(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
 #ifdef CONFIG_SPL_BUILD
-#define CONFIG_SPL_STACK		0x920000
-#define CONFIG_SPL_BSS_START_ADDR	0x910000
-#define CONFIG_SPL_BSS_MAX_SIZE		SZ_8K
-#define CONFIG_SYS_SPL_MALLOC_START	0x42200000
-#define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_512K
-
 /* malloc f used before GD_FLG_FULL_MALLOC_INIT set */
 #define CONFIG_MALLOC_F_ADDR		0x930000
 /* For RAW image gives a error info not panic */
-#define CONFIG_SPL_ABORT_ON_RAW_IMAGE
 #endif
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -39,7 +27,7 @@
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"ip_dyn=yes\0" \
 	"mmcdev=" __stringify(CONFIG_SYS_MMC_ENV_DEV) "\0" \
-	"mmcpart=" __stringify(CONFIG_SYS_MMC_IMG_LOAD_PART) "\0" \
+	"mmcpart=1\0" \
 	"mmcroot=2\0" \
 	"mmcautodetect=yes\0" \
 	"mmcargs=setenv bootargs console=${console} " \
@@ -70,41 +58,15 @@
 			"echo WARN: Cannot load the DT; " \
 		"fi;\0" \
 
-#define CONFIG_BOOTCOMMAND \
-	"mmc dev ${mmcdev}; if mmc rescan; then " \
-		"if run loadimage; then " \
-			"run mmcboot; " \
-		"else run netboot; " \
-		"fi; " \
-	"fi;"
-
 /* Link Definitions */
 
 #define CONFIG_SYS_INIT_RAM_ADDR	0x40000000
 #define CONFIG_SYS_INIT_RAM_SIZE	SZ_512K
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
-#define CONFIG_MMCROOT			"/dev/mmcblk2p2"  /* USDHC3 */
 
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 
 #define PHYS_SDRAM			0x40000000
 #define PHYS_SDRAM_SIZE                 SZ_2G /* 2GB DDR */
-
-/* UART */
-#define CONFIG_MXC_UART_BASE		UART3_BASE_ADDR
-
-/* Monitor Command Prompt */
-#define CONFIG_SYS_CBSIZE		SZ_2K
-#define CONFIG_SYS_MAXARGS		64
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-
-/* USDHC */
-#define CONFIG_SYS_FSL_USDHC_NUM	2
-#define CONFIG_SYS_FSL_ESDHC_ADDR       0
-#define CONFIG_SYS_MMC_IMG_LOAD_PART	1
 
 #endif /* __PHYCORE_IMX8MM_H */

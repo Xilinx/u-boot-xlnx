@@ -16,12 +16,23 @@
 #define LOAD_LONG(reg, idx)	ld	reg, (idx*SIZE_LONG)(sp)
 #define PE_MACHINE	IMAGE_FILE_MACHINE_RISCV64
 #define PE_MAGIC    IMAGE_NT_OPTIONAL_HDR64_MAGIC
+#define IMG_CHARACTERISTICS \
+	(IMAGE_FILE_EXECUTABLE_IMAGE | \
+	 IMAGE_FILE_LINE_NUMS_STRIPPED | \
+	 IMAGE_FILE_LOCAL_SYMS_STRIPPED | \
+	 IMAGE_FILE_LARGE_ADDRESS_AWARE | \
+	 IMAGE_FILE_DEBUG_STRIPPED)
 #else
 #define SIZE_LONG	4
 #define SAVE_LONG(reg, idx)	sw	reg, (idx*SIZE_LONG)(sp)
 #define LOAD_LONG(reg, idx)	lw	reg, (idx*SIZE_LONG)(sp)
 #define PE_MACHINE	IMAGE_FILE_MACHINE_RISCV32
 #define PE_MAGIC    IMAGE_NT_OPTIONAL_HDR32_MAGIC
+#define IMG_CHARACTERISTICS \
+	(IMAGE_FILE_EXECUTABLE_IMAGE | \
+	 IMAGE_FILE_LINE_NUMS_STRIPPED | \
+	 IMAGE_FILE_LOCAL_SYMS_STRIPPED | \
+	 IMAGE_FILE_DEBUG_STRIPPED)
 #endif
 
 
@@ -47,11 +58,7 @@ coff_header:
 	.long	0				/* PointerToSymbolTable */
 	.long	0				/* NumberOfSymbols */
 	.short	section_table - optional_header	/* SizeOfOptionalHeader */
-	/* Characteristics */
-	.short	(IMAGE_FILE_EXECUTABLE_IMAGE | \
-		 IMAGE_FILE_LINE_NUMS_STRIPPED | \
-		 IMAGE_FILE_LOCAL_SYMS_STRIPPED | \
-		 IMAGE_FILE_DEBUG_STRIPPED)
+	.short	IMG_CHARACTERISTICS		/* Characteristics */
 optional_header:
 	.short	PE_MAGIC			/* PE32(+) format */
 	.byte	0x02				/* MajorLinkerVersion */
@@ -71,8 +78,8 @@ extra_header_fields:
 #else
 	.quad	0				/* ImageBase */
 #endif
-	.long	0x20				/* SectionAlignment */
-	.long	0x8				/* FileAlignment */
+	.long	0x200				/* SectionAlignment */
+	.long	0x200				/* FileAlignment */
 	.short	0				/* MajorOperatingSystemVersion */
 	.short	0				/* MinorOperatingSystemVersion */
 	.short	1				/* MajorImageVersion */
@@ -110,16 +117,6 @@ extra_header_fields:
 	.quad	0				/* ExceptionTable */
 	.quad	0				/* CertificationTable */
 	.quad	0				/* BaseRelocationTable */
-	.quad	0				/* Debug */
-	.quad	0				/* Architecture */
-	.quad	0				/* Global Ptr */
-	.quad	0				/* TLS Table */
-	.quad	0				/* Load Config Table */
-	.quad	0				/* Bound Import */
-	.quad	0				/* IAT */
-	.quad	0				/* Delay Import Descriptor */
-	.quad	0				/* CLR Runtime Header */
-	.quad	0				/* Reserved */
 
 	/* Section table */
 section_table:
@@ -158,6 +155,7 @@ section_table:
 	.short	0		/* NumberOfLineNumbers  (0 for executables) */
 	.long	0xe0500020	/* Characteristics (section flags) */
 
+	.align	9
 _start:
 	addi		sp, sp, -(SIZE_LONG * 3)
 	SAVE_LONG(a0, 0)

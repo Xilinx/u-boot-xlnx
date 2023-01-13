@@ -156,13 +156,12 @@ config RESET_IMX7
 	help
 	  Support for reset controller on i.MX7/8 SoCs.
 
-config RESET_IPQ419
-	bool "Reset driver for Qualcomm IPQ40xx SoCs"
-	depends on DM_RESET && ARCH_IPQ40XX
+config RESET_QCOM
+	bool "Reset driver for Qualcomm SoCs"
+	depends on DM_RESET && (ARCH_SNAPDRAGON || ARCH_IPQ40XX)
 	default y
 	help
-	  Support for reset controller on Qualcomm
-	  IPQ40xx SoCs.
+	  Support for reset controller on Qualcomm SoCs.
 
 config RESET_SIFIVE
 	bool "Reset Driver for SiFive SoC's"
@@ -202,8 +201,14 @@ config RESET_ZYNQMP
 	bool "Reset Driver for Xilinx ZynqMP & Versal SoC's"
 	depends on DM_RESET && ZYNQMP_FIRMWARE
 	help
-	  Support for reset controller on Xilinx ZynqMP SoC. Driver is only
-	  passing request via Xilinx firmware interface to TF-A and PMU
+	  Support for reset controller on Xilinx ZynqMP & Versal SoC's. Driver
+	  is only passing request via Xilinx firmware interface to TF-A and PMU
 	  firmware.
 
+config RESET_DRA7
+	bool "Support for TI's DRA7 Reset driver"
+	depends on DM_RESET
+	help
+	  Support for TI DRA7-RESET subsystem. Basic Assert/Deassert
+	  is supported.
 endmenu

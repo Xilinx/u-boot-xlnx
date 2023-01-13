@@ -23,35 +23,14 @@
 #define CMD_4BYTE_FAST_READ  0x0C
 #define CMD_4BYTE_OCTAL_READ 0x7c
 
-void cadence_qspi_apb_enable_linear_mode(bool enable)
-{
-	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE)) {
-		if (enable)
-			/* ahb read mode */
-			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,
-					  IOCTL_OSPI_MUX_SELECT,
-					  PM_OSPI_MUX_SEL_LINEAR, 0, NULL);
-		else
-			/* DMA mode */
-			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,
-					  IOCTL_OSPI_MUX_SELECT,
-					  PM_OSPI_MUX_SEL_DMA, 0, NULL);
-	} else {
-		if (enable)
-			writel(readl(VERSAL_AXI_MUX_SEL) |
-			       VERSAL_OSPI_LINEAR_MODE, VERSAL_AXI_MUX_SEL);
-		else
-			writel(readl(VERSAL_AXI_MUX_SEL) &
-			       ~VERSAL_OSPI_LINEAR_MODE, VERSAL_AXI_MUX_SEL);
-	}
-}
-
 int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
-			      unsigned int n_rx, u8 *rxbuf)
+			      const struct spi_mem_op *op)
 {
-	u32 reg, ret, rx_rem, bytes_to_dma, data;
-	u8 opcode, addr_bytes, dummy_cycles, unaligned_byte;
+	u32 reg, ret, rx_rem, n_rx, bytes_to_dma, data;
+	u8 opcode, addr_bytes, *rxbuf, dummy_cycles, unaligned_byte;
 
+	n_rx = op->data.nbytes;
+	rxbuf = op->data.buf.in;
 	rx_rem = n_rx % 4;
 	bytes_to_dma = n_rx - rx_rem;
 
@@ -186,14 +165,14 @@ int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
 
 	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE)) {
 		/* Assert ospi controller */
-		ret = reset_assert(priv->resets.resets);
+		ret = reset_assert(priv->resets->resets);
 		if (ret)
 			return ret;
 
 		udelay(10);
 
 		/* Deassert ospi controller */
-		ret = reset_deassert(priv->resets.resets);
+		ret = reset_deassert(priv->resets->resets);
 		if (ret)
 			return ret;
 	} else {
@@ -210,7 +189,7 @@ int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
 }
 
 #if defined(CONFIG_DM_GPIO)
-int cadence_spi_versal_flash_reset(struct udevice *dev)
+int cadence_qspi_versal_flash_reset(struct udevice *dev)
 {
 #ifndef CONFIG_ARCH_VERSAL_NET
 	struct gpio_desc gpio;
@@ -252,45 +231,69 @@ int cadence_spi_versal_flash_reset(struct udevice *dev)
 	return 0;
 }
 #else
-#define FLASH_RESET_GPIO	0xC
-int cadence_spi_versal_flash_reset(struct udevice *dev)
+int cadence_qspi_versal_flash_reset(struct udevice *dev)
 {
 	/* CRP WPROT */
-	writel(0, 0xf126001c);
+	writel(0, WPROT_CRP);
 	/* GPIO Reset */
-	writel(0, 0xf1260318);
+	writel(0, RST_GPIO);
 
 	/* disable IOU write protection */
-	writel(0, 0xff080728);
+	writel(0, WPROT_LPD_MIO);
 
 	/* set direction as output */
-	writel((readl(0xf1020204) | BIT(FLASH_RESET_GPIO)), 0xf1020204);
+	writel((readl(BOOT_MODE_DIR) | BIT(FLASH_RESET_GPIO)),
+	       BOOT_MODE_DIR);
 
 	/* Data output enable */
-	writel((readl(0xf1020208) | BIT(FLASH_RESET_GPIO)), 0xf1020208);
+	writel((readl(BOOT_MODE_OUT) | BIT(FLASH_RESET_GPIO)),
+	       BOOT_MODE_OUT);
 
 	/* IOU SLCR write enable */
-	writel(0, 0xf1060828);
+	writel(0, WPROT_PMC_MIO);
 
 	/* set MIO as GPIO */
-	writel(0x60, 0xf1060030);
+	writel(0x60, MIO_PIN_12);
 
 	/* Set value 1 to pin */
-	writel((readl(0xf1020040) | BIT(FLASH_RESET_GPIO)), 0xf1020040);
+	writel((readl(BANK0_OUTPUT) | BIT(FLASH_RESET_GPIO)), BANK0_OUTPUT);
 	udelay(10);
 
 	/* Disable Tri-state */
-	writel((readl(0xf1060200) & ~BIT(FLASH_RESET_GPIO)), 0xf1060200);
+	writel((readl(BANK0_TRI) & ~BIT(FLASH_RESET_GPIO)), BANK0_TRI);
 	udelay(1);
 
 	/* Set value 0 to pin */
-	writel((readl(0xf1020040) & ~BIT(FLASH_RESET_GPIO)), 0xf1020040);
+	writel((readl(BANK0_OUTPUT) & ~BIT(FLASH_RESET_GPIO)), BANK0_OUTPUT);
 	udelay(10);
 
 	/* Set value 1 to pin */
-	writel((readl(0xf1020040) | BIT(FLASH_RESET_GPIO)), 0xf1020040);
+	writel((readl(BANK0_OUTPUT) | BIT(FLASH_RESET_GPIO)), BANK0_OUTPUT);
 	udelay(10);
 
 	return 0;
 }
 #endif
+
+void cadence_qspi_apb_enable_linear_mode(bool enable)
+{
+	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE)) {
+		if (enable)
+			/* ahb read mode */
+			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,
+					  IOCTL_OSPI_MUX_SELECT,
+					  PM_OSPI_MUX_SEL_LINEAR, 0, NULL);
+		else
+			/* DMA mode */
+			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,
+					  IOCTL_OSPI_MUX_SELECT,
+					  PM_OSPI_MUX_SEL_DMA, 0, NULL);
+	} else {
+		if (enable)
+			writel(readl(VERSAL_AXI_MUX_SEL) |
+			       VERSAL_OSPI_LINEAR_MODE, VERSAL_AXI_MUX_SEL);
+		else
+			writel(readl(VERSAL_AXI_MUX_SEL) &
+			       ~VERSAL_OSPI_LINEAR_MODE, VERSAL_AXI_MUX_SEL);
+	}
+}

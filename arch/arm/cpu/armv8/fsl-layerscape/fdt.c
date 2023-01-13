@@ -161,14 +161,9 @@ void fsl_fdt_disable_usb(void *blob)
 	 * controller is used, SYSCLK must meet the additional requirement
 	 * of 100 MHz.
 	 */
-	if (CONFIG_SYS_CLK_FREQ != 100000000) {
-		off = fdt_node_offset_by_compatible(blob, -1, "snps,dwc3");
-		while (off != -FDT_ERR_NOTFOUND) {
+	if (get_board_sys_clk() != 100000000)
+		fdt_for_each_node_by_compatible(off, blob, -1, "snps,dwc3")
 			fdt_status_disabled(blob, off);
-			off = fdt_node_offset_by_compatible(blob, off,
-							    "snps,dwc3");
-		}
-	}
 }
 
 #ifdef CONFIG_HAS_FEATURE_GIC64K_ALIGN
@@ -176,9 +171,9 @@ static void fdt_fixup_gic(void *blob)
 {
 	int offset, err;
 	u64 reg[8];
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	unsigned int val;
-	struct ccsr_scfg __iomem *scfg = (void *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg __iomem *scfg = (void *)CFG_SYS_FSL_SCFG_ADDR;
 	int align_64k = 0;
 
 	val = gur_in32(&gur->svr);
@@ -360,7 +355,7 @@ static int _fdt_fixup_pci_msi(void *blob, const char *name, int rev)
 
 static void fdt_fixup_msi(void *blob)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	unsigned int rev;
 
 	rev = gur_in32(&gur->svr);
@@ -625,7 +620,7 @@ void fdt_fixup_pfe_firmware(void *blob)
 
 void ft_cpu_setup(void *blob, struct bd_info *bd)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	unsigned int svr = gur_in32(&gur->svr);
 
 	/* delete crypto node if not on an E-processor */
@@ -640,7 +635,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 		fdt_fixup_kaslr(blob);
 #endif
 
-		sec = (void __iomem *)CONFIG_SYS_FSL_SEC_ADDR;
+		sec = (void __iomem *)CFG_SYS_FSL_SEC_ADDR;
 		fdt_fixup_crypto_node(blob, sec_in32(&sec->secvid_ms));
 	}
 #endif
@@ -655,7 +650,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 #endif
 
 	do_fixup_by_path_u32(blob, "/sysclk", "clock-frequency",
-			     CONFIG_SYS_CLK_FREQ, 1);
+			     get_board_sys_clk(), 1);
 
 #ifdef CONFIG_GIC_V3_ITS
 	ls_gic_rd_tables_init(blob);
@@ -676,7 +671,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 			       "clock-frequency", get_qman_freq(), 1);
 #endif
 
-#ifdef CONFIG_SYS_DPAA_FMAN
+#ifdef CONFIG_FMAN_ENET
 	fdt_fixup_fman_firmware(blob);
 #endif
 #ifdef CONFIG_FSL_PFE

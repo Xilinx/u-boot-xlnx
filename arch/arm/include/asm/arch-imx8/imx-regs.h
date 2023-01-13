@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright 2018 NXP
+ * Copyright 2018, 2021 NXP
  */
 
 #ifndef __ASM_ARCH_IMX8_REGS_H__
@@ -46,5 +46,7 @@
 
 #define USB_BASE_ADDR		0x5b0d0000
 #define USB_PHY0_BASE_ADDR	0x5b100000
+
+#define CFG_SYS_FSL_SEC_ADDR (0x31400000)
 
 #endif /* __ASM_ARCH_IMX8_REGS_H__ */

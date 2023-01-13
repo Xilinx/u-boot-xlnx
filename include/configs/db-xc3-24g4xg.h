@@ -6,12 +6,6 @@
 #ifndef _CONFIG_DB_XC3_24G4G_H
 #define _CONFIG_DB_XC3_24G4G_H
 
-/*
- * High Level Configuration Options (easy to change)
- */
-
-#define CONFIG_SYS_KWD_CONFIG	$(CONFIG_BOARDDIR)/kwbimage.cfg
-
 /* Environment in SPI NOR flash */
 
 /* NAND */
@@ -26,7 +20,5 @@
  * to enable certain macros
  */
 #include "mv-common.h"
-#undef CONFIG_SYS_MAXARGS
-#define CONFIG_SYS_MAXARGS 96
 
 #endif /* _CONFIG_DB_XC3_24G4G_H */

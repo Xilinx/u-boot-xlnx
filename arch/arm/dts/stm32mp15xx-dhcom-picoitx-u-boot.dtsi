@@ -5,10 +5,6 @@
 
 #include "stm32mp15xx-dhcom-u-boot.dtsi"
 
-/ {
-	aliases {
-		/delete-property/ ethernet1;
-	};
+&usbotg_hs {
+	dr_mode = "peripheral";
 };
-
-/delete-node/ &ksz8851;

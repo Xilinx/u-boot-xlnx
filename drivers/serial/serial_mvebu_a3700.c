@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Stefan Roese <sr@denx.de>
+ * Copyright (C) 2021 Pali Rohár <pali@kernel.org>
  */
 
 #include <common.h>
@@ -320,7 +321,7 @@ U_BOOT_DRIVER(serial_mvebu) = {
 
 static inline void _debug_uart_init(void)
 {
-	void __iomem *base = (void __iomem *)CONFIG_DEBUG_UART_BASE;
+	void __iomem *base = (void __iomem *)CONFIG_VAL(DEBUG_UART_BASE);
 	u32 parent_rate, divider;
 
 	/* reset FIFOs */
@@ -348,7 +349,7 @@ static inline void _debug_uart_init(void)
 
 static inline void _debug_uart_putc(int ch)
 {
-	void __iomem *base = (void __iomem *)CONFIG_DEBUG_UART_BASE;
+	void __iomem *base = (void __iomem *)CONFIG_VAL(DEBUG_UART_BASE);
 
 	while (readl(base + UART_STATUS_REG) & UART_STATUS_TXFIFO_FULL)
 		;

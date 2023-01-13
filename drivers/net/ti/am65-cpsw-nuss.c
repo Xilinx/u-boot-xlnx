@@ -21,6 +21,7 @@
 #include <net.h>
 #include <phy.h>
 #include <power-domain.h>
+#include <soc.h>
 #include <linux/bitops.h>
 #include <linux/soc/ti/ti-udma.h>
 
@@ -127,6 +128,8 @@ struct am65_cpsw_priv {
 	bool			has_phy;
 	ofnode			phy_node;
 	u32			phy_addr;
+
+	bool			mdio_manual_mode;
 };
 
 #ifdef PKTSIZE_ALIGN
@@ -541,6 +544,20 @@ static const struct eth_ops am65_cpsw_ops = {
 	.read_rom_hwaddr = am65_cpsw_read_rom_hwaddr,
 };
 
+static const struct soc_attr k3_mdio_soc_data[] = {
+	{ .family = "AM62X", .revision = "SR1.0" },
+	{ .family = "AM64X", .revision = "SR1.0" },
+	{ .family = "AM64X", .revision = "SR2.0" },
+	{ .family = "AM65X", .revision = "SR1.0" },
+	{ .family = "AM65X", .revision = "SR2.0" },
+	{ .family = "J7200", .revision = "SR1.0" },
+	{ .family = "J7200", .revision = "SR2.0" },
+	{ .family = "J721E", .revision = "SR1.0" },
+	{ .family = "J721E", .revision = "SR1.1" },
+	{ .family = "J721S2", .revision = "SR1.0" },
+	{ /* sentinel */ },
+};
+
 static int am65_cpsw_mdio_init(struct udevice *dev)
 {
 	struct am65_cpsw_priv *priv = dev_get_priv(dev);
@@ -552,7 +569,8 @@ static int am65_cpsw_mdio_init(struct udevice *dev)
 	cpsw_common->bus = cpsw_mdio_init(dev->name,
 					  cpsw_common->mdio_base,
 					  cpsw_common->bus_freq,
-					  clk_get_rate(&cpsw_common->fclk));
+					  clk_get_rate(&cpsw_common->fclk),
+					  priv->mdio_manual_mode);
 	if (!cpsw_common->bus)
 		return -EFAULT;
 
@@ -597,33 +615,28 @@ static int am65_cpsw_phy_init(struct udevice *dev)
 	return ret;
 }
 
-static int am65_cpsw_ofdata_parse_phy(struct udevice *dev, ofnode port_np)
+static int am65_cpsw_ofdata_parse_phy(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct am65_cpsw_priv *priv = dev_get_priv(dev);
 	struct ofnode_phandle_args out_args;
-	const char *phy_mode;
 	int ret = 0;
 
-	phy_mode = ofnode_read_string(port_np, "phy-mode");
-	if (phy_mode) {
-		pdata->phy_interface =
-				phy_get_interface_by_name(phy_mode);
-		if (pdata->phy_interface == -1) {
-			dev_err(dev, "Invalid PHY mode '%s', port %u\n",
-				phy_mode, priv->port_id);
-			ret = -EINVAL;
-			goto out;
-		}
+	dev_read_u32(dev, "reg", &priv->port_id);
+
+	pdata->phy_interface = dev_read_phy_mode(dev);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA) {
+		dev_err(dev, "Invalid PHY mode, port %u\n", priv->port_id);
+		return -EINVAL;
 	}
 
-	ofnode_read_u32(port_np, "max-speed", (u32 *)&pdata->max_speed);
+	dev_read_u32(dev, "max-speed", (u32 *)&pdata->max_speed);
 	if (pdata->max_speed)
 		dev_err(dev, "Port %u speed froced to %uMbit\n",
 			priv->port_id, pdata->max_speed);
 
 	priv->has_phy  = true;
-	ret = ofnode_parse_phandle_with_args(port_np, "phy-handle",
+	ret = ofnode_parse_phandle_with_args(dev_ofnode(dev), "phy-handle",
 					     NULL, 0, 0, &out_args);
 	if (ret) {
 		dev_err(dev, "can't parse phy-handle port %u (%d)\n",
@@ -646,20 +659,49 @@ out:
 	return ret;
 }
 
-static int am65_cpsw_probe_cpsw(struct udevice *dev)
+static int am65_cpsw_port_probe(struct udevice *dev)
 {
 	struct am65_cpsw_priv *priv = dev_get_priv(dev);
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct am65_cpsw_common *cpsw_common;
-	ofnode ports_np, node;
-	int ret, i;
+	char portname[15];
+	int ret;
 
 	priv->dev = dev;
 
-	cpsw_common = calloc(1, sizeof(*priv->cpsw_common));
-	if (!cpsw_common)
-		return -ENOMEM;
+	cpsw_common = dev_get_priv(dev->parent);
 	priv->cpsw_common = cpsw_common;
+
+	sprintf(portname, "%s%s", dev->parent->name, dev->name);
+	device_set_name(dev, portname);
+
+	priv->mdio_manual_mode = false;
+	if (soc_device_match(k3_mdio_soc_data))
+		priv->mdio_manual_mode = true;
+
+	ret = am65_cpsw_ofdata_parse_phy(dev);
+	if (ret)
+		goto out;
+
+	am65_cpsw_gmii_sel_k3(priv, pdata->phy_interface, priv->port_id);
+
+	ret = am65_cpsw_mdio_init(dev);
+	if (ret)
+		goto out;
+
+	ret = am65_cpsw_phy_init(dev);
+	if (ret)
+		goto out;
+out:
+	return ret;
+}
+
+static int am65_cpsw_probe_nuss(struct udevice *dev)
+{
+	struct am65_cpsw_common *cpsw_common = dev_get_priv(dev);
+	ofnode ports_np, node;
+	int ret, i;
+	struct udevice *port_dev;
 
 	cpsw_common->dev = dev;
 	cpsw_common->ss_base = dev_read_addr(dev);
@@ -699,7 +741,7 @@ static int am65_cpsw_probe_cpsw(struct udevice *dev)
 
 		node_name = ofnode_get_name(node);
 
-		disabled = !ofnode_is_available(node);
+		disabled = !ofnode_is_enabled(node);
 
 		ret = ofnode_read_u32(node, "reg", &port_id);
 		if (ret) {
@@ -723,10 +765,9 @@ static int am65_cpsw_probe_cpsw(struct udevice *dev)
 		if (disabled)
 			continue;
 
-		priv->port_id = port_id;
-		ret = am65_cpsw_ofdata_parse_phy(dev, node);
+		ret = device_bind_driver_to_node(dev, "am65_cpsw_nuss_port", ofnode_get_name(node), node, &port_dev);
 		if (ret)
-			goto out;
+			dev_err(dev, "Failed to bind to %s node\n", ofnode_get_name(node));
 	}
 
 	for (i = 0; i < AM65_CPSW_CPSWNU_MAX_PORTS; i++) {
@@ -756,16 +797,6 @@ static int am65_cpsw_probe_cpsw(struct udevice *dev)
 			dev_read_u32_default(dev, "bus_freq",
 					     AM65_CPSW_MDIO_BUS_FREQ_DEF);
 
-	am65_cpsw_gmii_sel_k3(priv, pdata->phy_interface, priv->port_id);
-
-	ret = am65_cpsw_mdio_init(dev);
-	if (ret)
-		goto out;
-
-	ret = am65_cpsw_phy_init(dev);
-	if (ret)
-		goto out;
-
 	dev_info(dev, "K3 CPSW: nuss_ver: 0x%08X cpsw_ver: 0x%08X ale_ver: 0x%08X Ports:%u mdio_freq:%u\n",
 		 readl(cpsw_common->ss_base),
 		 readl(cpsw_common->cpsw_base),
@@ -786,13 +817,20 @@ static const struct udevice_id am65_cpsw_nuss_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(am65_cpsw_nuss_slave) = {
-	.name	= "am65_cpsw_nuss_slave",
-	.id	= UCLASS_ETH,
+U_BOOT_DRIVER(am65_cpsw_nuss) = {
+	.name	= "am65_cpsw_nuss",
+	.id	= UCLASS_MISC,
 	.of_match = am65_cpsw_nuss_ids,
-	.probe	= am65_cpsw_probe_cpsw,
+	.probe	= am65_cpsw_probe_nuss,
+	.priv_auto = sizeof(struct am65_cpsw_common),
+};
+
+U_BOOT_DRIVER(am65_cpsw_nuss_port) = {
+	.name	= "am65_cpsw_nuss_port",
+	.id	= UCLASS_ETH,
+	.probe	= am65_cpsw_port_probe,
 	.ops	= &am65_cpsw_ops,
 	.priv_auto	= sizeof(struct am65_cpsw_priv),
 	.plat_auto	= sizeof(struct eth_pdata),
-	.flags = DM_FLAG_ALLOC_PRIV_DMA,
+	.flags = DM_FLAG_ALLOC_PRIV_DMA | DM_FLAG_OS_PREPARE,
 };

@@ -22,7 +22,6 @@
 #include <asm/io.h>
 #include <asm/mach-imx/video.h>
 #include <malloc.h>
-#include <video_fb.h>
 #include "../videomodes.h"
 #include "ipu.h"
 #include "mxcfb.h"
@@ -428,7 +427,7 @@ static int mxcfb_unmap_video_memory(struct fb_info *fbi)
  * structures.  This includes information such as bits per pixel,
  * color maps, screen width/height and RGBA offsets.
  *
- * @return      Framebuffer structure initialized with our information
+ * Return:      Framebuffer structure initialized with our information
  */
 static struct fb_info *mxcfb_init_fbinfo(void)
 {
@@ -479,7 +478,7 @@ extern struct clk *g_ipu_clk;
  * this routine: Framebuffer initialization, Memory allocation and
  * mapping, Framebuffer registration, IPU initialization.
  *
- * @return      Appropriate error code to the kernel common code
+ * Return:      Appropriate error code to the kernel common code
  */
 static int mxcfb_probe(struct udevice *dev, u32 interface_pix_fmt,
 		       uint8_t disp, struct fb_videomode const *mode)
@@ -610,12 +609,11 @@ static int ipuv3_video_probe(struct udevice *dev)
 		return ret;
 
 #if defined(CONFIG_DISPLAY)
-	ret = uclass_first_device(UCLASS_DISPLAY, &disp_dev);
-	if (disp_dev) {
+	ret = uclass_first_device_err(UCLASS_DISPLAY, &disp_dev);
+	if (!ret)
 		ret = display_enable(disp_dev, 16, NULL);
-		if (ret < 0)
-			return ret;
-	}
+	if (ret < 0)
+		return ret;
 #endif
 	if (CONFIG_IS_ENABLED(PANEL)) {
 		struct udevice *panel_dev;

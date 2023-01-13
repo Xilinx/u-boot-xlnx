@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <common.h>
 #include <fs_internal.h>
+#include <log.h>
 #include <uuid.h>
 #include <memalign.h>
 #include "kernel-shared/btrfs_tree.h"
@@ -126,6 +127,8 @@ int btrfs_csum_data(u16 csum_type, const u8 *data, u8 *out, size_t len)
 		return hash_xxhash(data, len, out);
 	case BTRFS_CSUM_TYPE_SHA256:
 		return hash_sha256(data, len, out);
+	case BTRFS_CSUM_TYPE_BLAKE2:
+		return hash_blake2(data, len, out);
 	default:
 		printf("Unknown csum type %d\n", csum_type);
 		return -EINVAL;
@@ -780,8 +783,6 @@ struct btrfs_fs_info *btrfs_new_fs_info(void)
 	fs_info->fs_root_tree = RB_ROOT;
 	cache_tree_init(&fs_info->mapping_tree.cache_tree);
 
-	mutex_init(&fs_info->fs_mutex);
-
 	return fs_info;
 free_all:
 	btrfs_free_fs_info(fs_info);
@@ -910,9 +911,9 @@ static int btrfs_scan_fs_devices(struct blk_desc *desc,
 
 	if (round_up(BTRFS_SUPER_INFO_SIZE + BTRFS_SUPER_INFO_OFFSET,
 		     desc->blksz) > (part->size << desc->log2blksz)) {
-		error("superblock end %u is larger than device size " LBAFU,
-				BTRFS_SUPER_INFO_SIZE + BTRFS_SUPER_INFO_OFFSET,
-				part->size << desc->log2blksz);
+		log_debug("superblock end %u is larger than device size " LBAFU,
+			  BTRFS_SUPER_INFO_SIZE + BTRFS_SUPER_INFO_OFFSET,
+			  part->size << desc->log2blksz);
 		return -EINVAL;
 	}
 

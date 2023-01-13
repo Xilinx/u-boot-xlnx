@@ -345,7 +345,7 @@ int board_eth_init(struct bd_info *bis)
 	if (!bus)
 		return -EINVAL;
 	/* scan phy 4,5,6,7 */
-	phydev = phy_find_by_mask(bus, (0xf << 4), PHY_INTERFACE_MODE_RGMII);
+	phydev = phy_find_by_mask(bus, (0xf << 4));
 	if (!phydev) {
 		ret = -EINVAL;
 		goto free_bus;
@@ -356,10 +356,6 @@ int board_eth_init(struct bd_info *bis)
 		goto free_phydev;
 #endif
 
-#ifdef CONFIG_CI_UDC
-	/* For otg ethernet*/
-	usb_eth_initialize(bis);
-#endif
 	return 0;
 
 free_phydev:
@@ -933,7 +929,7 @@ U_BOOT_CMD(
 	"Returns 0 (true) to shell if key is pressed."
 );
 
-#ifdef CONFIG_PREBOOT
+#ifdef CONFIG_USE_PREBOOT
 static char const kbd_magic_prefix[] = "key_magic";
 static char const kbd_command_prefix[] = "key_cmd";
 
@@ -993,7 +989,7 @@ int misc_init_r(void)
 	gpio_request(IMX_GPIO_NR(2, 3), "search");
 	gpio_request(IMX_GPIO_NR(7, 13), "volup");
 	gpio_request(IMX_GPIO_NR(4, 5), "voldown");
-#ifdef CONFIG_PREBOOT
+#ifdef CONFIG_USE_PREBOOT
 	preboot_keys();
 #endif
 

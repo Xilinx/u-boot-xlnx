@@ -22,6 +22,7 @@
 #include <dm/uclass-internal.h>
 #include <spi_flash.h>
 
+#include <asm/io.h>
 #include <asm/arch/sys_proto.h>
 #include "common.h"
 
@@ -87,10 +88,10 @@ static void *sysfw_load_address;
  * Populate SPL hook to override the default load address used by the SPL
  * loader function with a custom address for SYSFW loading.
  */
-struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
+struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
 {
 	if (sysfw_loaded)
-		return (struct image_header *)(CONFIG_SYS_TEXT_BASE + offset);
+		return (struct legacy_img_hdr *)(CONFIG_TEXT_BASE + offset);
 	else if (sysfw_load_address)
 		return sysfw_load_address;
 	else
@@ -323,9 +324,36 @@ static void *k3_sysfw_get_spi_addr(void)
 	struct udevice *dev;
 	fdt_addr_t addr;
 	int ret;
+	unsigned int sf_bus = spl_spi_boot_bus();
 
-	ret = uclass_find_device_by_seq(UCLASS_SPI, CONFIG_SF_DEFAULT_BUS,
-					&dev);
+	ret = uclass_find_device_by_seq(UCLASS_SPI, sf_bus, &dev);
+	if (ret)
+		return NULL;
+
+	addr = dev_read_addr_index(dev, 1);
+	if (addr == FDT_ADDR_T_NONE)
+		return NULL;
+
+	return (void *)(addr + CONFIG_K3_SYSFW_IMAGE_SPI_OFFS);
+}
+
+static void k3_sysfw_spi_copy(u32 *dst, u32 *src, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len / sizeof(*dst); i++)
+		*dst++ = *src++;
+}
+#endif
+
+#if CONFIG_IS_ENABLED(NOR_SUPPORT)
+static void *get_sysfw_hf_addr(void)
+{
+	struct udevice *dev;
+	fdt_addr_t addr;
+	int ret;
+
+	ret = uclass_find_first_device(UCLASS_MTD, &dev);
 	if (ret)
 		return NULL;
 
@@ -344,6 +372,9 @@ void k3_sysfw_loader(bool rom_loaded_sysfw,
 	struct spl_image_info spl_image = { 0 };
 	struct spl_boot_device bootdev = { 0 };
 	struct ti_sci_handle *ti_sci;
+#if CONFIG_IS_ENABLED(SPI_LOAD)
+	void *sysfw_spi_base;
+#endif
 	int ret = 0;
 
 	if (rom_loaded_sysfw) {
@@ -394,9 +425,20 @@ void k3_sysfw_loader(bool rom_loaded_sysfw,
 #endif
 #if CONFIG_IS_ENABLED(SPI_LOAD)
 	case BOOT_DEVICE_SPI:
-		sysfw_load_address = k3_sysfw_get_spi_addr();
-		if (!sysfw_load_address)
+		sysfw_spi_base = k3_sysfw_get_spi_addr();
+		if (!sysfw_spi_base)
 			ret = -ENODEV;
+		k3_sysfw_spi_copy(sysfw_load_address, sysfw_spi_base,
+				  CONFIG_K3_SYSFW_IMAGE_SIZE_MAX);
+		break;
+#endif
+#if CONFIG_IS_ENABLED(NOR_SUPPORT)
+	case BOOT_DEVICE_HYPERFLASH:
+		sysfw_spi_base = get_sysfw_hf_addr();
+		if (!sysfw_spi_base)
+			ret = -ENODEV;
+		k3_sysfw_spi_copy(sysfw_load_address, sysfw_spi_base,
+				  CONFIG_K3_SYSFW_IMAGE_SIZE_MAX);
 		break;
 #endif
 #if CONFIG_IS_ENABLED(YMODEM_SUPPORT)
@@ -448,7 +490,7 @@ void k3_sysfw_loader(bool rom_loaded_sysfw,
 	sysfw_loaded = true;
 
 	/* Ensure the SYSFW image is in FIT format */
-	if (image_get_magic((const image_header_t *)sysfw_load_address) !=
+	if (image_get_magic((const struct legacy_img_hdr *)sysfw_load_address) !=
 	    FDT_MAGIC)
 		panic("SYSFW image not in FIT format!\n");
 

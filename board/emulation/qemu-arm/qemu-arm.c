@@ -6,14 +6,42 @@
 #include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
+#include <efi.h>
+#include <efi_loader.h>
 #include <fdtdec.h>
 #include <init.h>
 #include <log.h>
 #include <virtio_types.h>
 #include <virtio.h>
 
+#include <linux/kernel.h>
+
 #ifdef CONFIG_ARM64
 #include <asm/armv8/mmu.h>
+
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+struct efi_fw_image fw_images[] = {
+#if defined(CONFIG_TARGET_QEMU_ARM_32BIT)
+	{
+		.image_type_id = QEMU_ARM_UBOOT_IMAGE_GUID,
+		.fw_name = u"Qemu-Arm-UBOOT",
+		.image_index = 1,
+	},
+#elif defined(CONFIG_TARGET_QEMU_ARM_64BIT)
+	{
+		.image_type_id = QEMU_ARM64_UBOOT_IMAGE_GUID,
+		.fw_name = u"Qemu-Arm-UBOOT",
+		.image_index = 1,
+	},
+#endif
+};
+
+struct efi_capsule_update_info update_info = {
+	.images = fw_images,
+};
+
+u8 num_image_type_guids = ARRAY_SIZE(fw_images);
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 static struct mm_region qemu_arm64_mem_map[] = {
 	{
@@ -106,48 +134,6 @@ void enable_caches(void)
 	 icache_enable();
 	 dcache_enable();
 }
-
-#if defined(CONFIG_EFI_RNG_PROTOCOL)
-#include <efi_loader.h>
-#include <efi_rng.h>
-
-#include <dm/device-internal.h>
-
-efi_status_t platform_get_rng_device(struct udevice **dev)
-{
-	int ret;
-	efi_status_t status = EFI_DEVICE_ERROR;
-	struct udevice *bus, *devp;
-
-	for (uclass_first_device(UCLASS_VIRTIO, &bus); bus;
-	     uclass_next_device(&bus)) {
-		for (device_find_first_child(bus, &devp); devp;
-		     device_find_next_child(&devp)) {
-			if (device_get_uclass_id(devp) == UCLASS_RNG) {
-				*dev = devp;
-				status = EFI_SUCCESS;
-				break;
-			}
-		}
-	}
-
-	if (status != EFI_SUCCESS) {
-		debug("No rng device found\n");
-		return EFI_DEVICE_ERROR;
-	}
-
-	if (*dev) {
-		ret = device_probe(*dev);
-		if (ret)
-			return EFI_DEVICE_ERROR;
-	} else {
-		debug("Couldn't get child device\n");
-		return EFI_DEVICE_ERROR;
-	}
-
-	return EFI_SUCCESS;
-}
-#endif /* CONFIG_EFI_RNG_PROTOCOL */
 
 #ifdef CONFIG_ARM64
 #define __W	"w"

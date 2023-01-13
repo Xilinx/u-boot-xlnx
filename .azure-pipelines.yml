@@ -1,15 +1,17 @@
 variables:
   windows_vm: windows-2019
-  ubuntu_vm: ubuntu-18.04
-  macos_vm: macOS-10.15
-  ci_runner_image: trini/u-boot-gitlab-ci-runner:focal-20211006-14Nov2021
+  ubuntu_vm: ubuntu-22.04
+  macos_vm: macOS-12
+  ci_runner_image: trini/u-boot-gitlab-ci-runner:jammy-20221003-17Oct2022
   # Add '-u 0' options for Azure pipelines, otherwise we get "permission
   # denied" error when it tries to "useradd -m -u 1001 vsts_azpcontainer",
   # since our $(ci_runner_image) user is not root.
   container_option: -u 0
   work_dir: /u
 
-jobs:
+stages:
+- stage: testsuites
+  jobs:
   - job: tools_only_windows
     displayName: 'Ensure host tools build for Windows'
     pool:
@@ -20,10 +22,12 @@ jobs:
         displayName: 'Install MSYS2'
       - script: |
           sfx.exe -y -o%CD:~0,2%\
-          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm -Syyuu"
+          %CD:~0,2%\msys64\usr\bin\bash -lc " "
+          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm -Syuu"
+          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm -Syuu"
         displayName: 'Update MSYS2'
       - script: |
-          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm --needed -Sy make gcc bison flex diffutils openssl-devel"
+          %CD:~0,2%\msys64\usr\bin\bash -lc "pacman --noconfirm --needed -Sy make gcc bison flex diffutils openssl-devel libgnutls-devel libutil-linux-devel"
         displayName: 'Install Toolchain'
       - script: |
           echo make tools-only_defconfig tools-only NO_SDL=1 > build-tools.sh
@@ -40,7 +44,7 @@ jobs:
     pool:
       vmImage: $(macos_vm)
     steps:
-      - script: brew install make
+      - script: brew install make ossp-uuid
         displayName: Brew install dependencies
       - script: |
           gmake tools-only_config tools-only NO_SDL=1 \
@@ -48,6 +52,38 @@ jobs:
             HOSTLDFLAGS="-L/usr/local/opt/openssl@1.1/lib" \
             -j$(sysctl -n hw.logicalcpu)
         displayName: 'Perform tools-only build'
+
+  - job: check_for_migrated_symbols_in_board_header
+    displayName: 'Check for migrated symbols in board header'
+    pool:
+      vmImage: $(ubuntu_vm)
+    container:
+      image: $(ci_runner_image)
+      options: $(container_option)
+    steps:
+      - script: |
+          KSYMLST=`mktemp`
+          KUSEDLST=`mktemp`
+          RET=0
+          cat `find . -name "Kconfig*"` | \
+             sed -n -e 's/^\s*config *\([A-Za-z0-9_]*\).*$/CONFIG_\1/p' \
+             -e 's/^\s*menuconfig *\([A-Za-z0-9_]*\).*$/CONFIG_\1/p' \
+             | sort -u > $KSYMLST
+          for CFG in `find include/configs -name "*.h"`; do
+             (grep '#define[[:blank:]]CONFIG_' $CFG | \
+                sed -n 's/#define.\(CONFIG_[A-Za-z0-9_]*\).*/\1/p' ; \
+                grep '#undef[[:blank:]]CONFIG_' $CFG | \
+                sed -n 's/#undef.\(CONFIG_[A-Za-z0-9_]*\).*/\1/p') | \
+                sort -u > ${KUSEDLST} || true
+             NUM=`comm -123 --total --output-delimiter=, ${KSYMLST} ${KUSEDLST} | \
+                cut -d , -f 3`
+             if [[ $NUM -ne 0 ]]; then
+                echo "Unmigrated symbols found in $CFG:"
+                comm -12 ${KSYMLST} ${KUSEDLST}
+                RET=1
+             fi
+          done
+          exit $RET
 
   - job: cppcheck
     displayName: 'Static code analysis with cppcheck'
@@ -104,7 +140,7 @@ jobs:
       options: $(container_option)
     steps:
       - script: |
-          if [ `./tools/genboardscfg.py -f 2>&1 | wc -l` -ne 0 ]; then exit 1; fi
+          ./tools/buildman/buildman -R
 
   - job: tools_only
     displayName: 'Ensure host tools build'
@@ -134,13 +170,11 @@ jobs:
       vmImage: $(ubuntu_vm)
     steps:
       - script: |
-          cat << EOF > build.sh
-          set -ex
-          cd ${WORK_DIR}
-          EOF
-          cat << "EOF" >> build.sh
+          cat << "EOF" > build.sh
+          cd $(work_dir)
           git config --global user.name "Azure Pipelines"
           git config --global user.email bmeng.cn@gmail.com
+          git config --global --add safe.directory $(work_dir)
           export USER=azure
           virtualenv -p /usr/bin/python3 /tmp/venv
           . /tmp/venv/bin/activate
@@ -149,6 +183,7 @@ jobs:
           export PYTHONPATH=${UBOOT_TRAVIS_BUILD_DIR}/scripts/dtc/pylibfdt
           export PATH=${UBOOT_TRAVIS_BUILD_DIR}/scripts/dtc:${PATH}
           ./tools/buildman/buildman -T0 -o ${UBOOT_TRAVIS_BUILD_DIR} -w --board sandbox_spl
+          set -ex
           ./tools/binman/binman --toolpath ${UBOOT_TRAVIS_BUILD_DIR}/tools test
           ./tools/buildman/buildman -t
           ./tools/dtoc/dtoc -t
@@ -172,6 +207,31 @@ jobs:
           export PATH=/opt/gcc-11.1.0-nolibc/arm-linux-gnueabi/bin:$PATH
           test/nokia_rx51_test.sh
 
+  - job: pylint
+    displayName: Check for any pylint regressions
+    pool:
+      vmImage: $(ubuntu_vm)
+    container:
+      image: $(ci_runner_image)
+      options: $(container_option)
+    steps:
+      - script: |
+          git config --global --add safe.directory $(work_dir)
+          export USER=azure
+          pip install -r test/py/requirements.txt
+          pip install asteval pylint==2.12.2 pyopenssl
+          export PATH=${PATH}:~/.local/bin
+          echo "[MASTER]" >> .pylintrc
+          echo "load-plugins=pylint.extensions.docparams" >> .pylintrc
+          export UBOOT_TRAVIS_BUILD_DIR=/tmp/sandbox_spl
+          ./tools/buildman/buildman -T0 -o ${UBOOT_TRAVIS_BUILD_DIR} -w --board sandbox_spl
+          set -ex
+          pylint --version
+          export PYTHONPATH=${UBOOT_TRAVIS_BUILD_DIR}/scripts/dtc/pylibfdt
+          make pylint_err
+
+- stage: test_py
+  jobs:
   - job: test_py
     displayName: 'test.py'
     pool:
@@ -183,16 +243,29 @@ jobs:
         sandbox_clang:
           TEST_PY_BD: "sandbox"
           OVERRIDE: "-O clang-13"
+        sandbox_nolto:
+          TEST_PY_BD: "sandbox"
+          BUILD_ENV: "NO_LTO=1"
         sandbox_spl:
           TEST_PY_BD: "sandbox_spl"
           TEST_PY_TEST_SPEC: "test_ofplatdata or test_handoff or test_spl"
+        sandbox_vpl:
+          TEST_PY_BD: "sandbox_vpl"
+          TEST_PY_TEST_SPEC: "test_vpl_help or test_spl"
         sandbox_noinst:
           TEST_PY_BD: "sandbox_noinst"
           TEST_PY_TEST_SPEC: "test_ofplatdata or test_handoff or test_spl"
         sandbox_flattree:
           TEST_PY_BD: "sandbox_flattree"
+        coreboot:
+          TEST_PY_BD: "coreboot"
+          TEST_PY_ID: "--id qemu"
+          TEST_PY_TEST_SPEC: "not sleep"
         evb_ast2500:
           TEST_PY_BD: "evb-ast2500"
+          TEST_PY_ID: "--id qemu"
+        evb_ast2600:
+          TEST_PY_BD: "evb-ast2600"
           TEST_PY_ID: "--id qemu"
         vexpress_ca9x4:
           TEST_PY_BD: "vexpress_ca9x4"
@@ -284,10 +357,12 @@ jobs:
           export TEST_PY_ID="${TEST_PY_ID}"
           export TEST_PY_TEST_SPEC="${TEST_PY_TEST_SPEC}"
           export OVERRIDE="${OVERRIDE}"
+          export BUILD_ENV="${BUILD_ENV}"
           EOF
           cat << "EOF" >> test.sh
           # the below corresponds to .gitlab-ci.yml "before_script"
           cd ${WORK_DIR}
+          git config --global --add safe.directory ${WORK_DIR}
           git clone --depth=1 https://source.denx.de/u-boot/u-boot-test-hooks /tmp/uboot-test-hooks
           ln -s travis-ci /tmp/uboot-test-hooks/bin/`hostname`
           ln -s travis-ci /tmp/uboot-test-hooks/py/`hostname`
@@ -322,6 +397,12 @@ jobs:
               genimage --inputpath . --config board/sifive/unleashed/genimage_spi-nor.cfg;
               cp images/spi-nor.img ${UBOOT_TRAVIS_BUILD_DIR}/;
           fi
+          if [[ "${TEST_PY_BD}" == "coreboot" ]]; then
+              wget -O - "https://drive.google.com/uc?id=1x6nrtWIyIRPLS2cQBwYTnT2TbOI8UjmM&export=download" |xz -dc >${UBOOT_TRAVIS_BUILD_DIR}/coreboot.rom;
+              wget -O - "https://drive.google.com/uc?id=149Cz-5SZXHNKpi9xg6R_5XITWohu348y&export=download" >cbfstool;
+              chmod a+x cbfstool;
+              ./cbfstool ${UBOOT_TRAVIS_BUILD_DIR}/coreboot.rom add-flat-binary -f ${UBOOT_TRAVIS_BUILD_DIR}/u-boot.bin -n fallback/payload -c LZMA -l 0x1110000 -e 0x1110000;
+          fi
           virtualenv -p /usr/bin/python3 /tmp/venv
           . /tmp/venv/bin/activate
           pip install -r test/py/requirements.txt
@@ -354,16 +435,20 @@ jobs:
           # Some tests using libguestfs-tools need the fuse device to run
           docker run "$@" --device /dev/fuse:/dev/fuse -v $PWD:$(work_dir) $(ci_runner_image) /bin/bash $(work_dir)/test.sh
 
+- stage: world_build
+  jobs:
   - job: build_the_world
     displayName: 'Build the World'
     pool:
       vmImage: $(ubuntu_vm)
     strategy:
       # Use almost the same target division in .travis.yml, only merged
-      # 4 small build jobs (arc/microblaze/nds32/xtensa) into one.
+      # 3 small build jobs (arc/microblaze/xtensa) into one.
       matrix:
-        arc_microblaze_nds32_xtensa:
-          BUILDMAN: "arc microblaze nds32 xtensa"
+        arc_microblaze_xtensa:
+          BUILDMAN: "arc microblaze xtensa"
+        amlogic:
+          BUILDMAN: "amlogic"
         arm11_arm7_arm920t_arm946es:
           BUILDMAN: "arm11 arm7 arm920t arm946es"
         arm926ejs:
@@ -393,11 +478,17 @@ jobs:
         imx6:
           BUILDMAN: "mx6 -x boundary,engicam,freescale,technexion,toradex"
         imx:
-          BUILDMAN: "mx -x mx6,freescale,technexion,toradex"
-        imx8:
-          BUILDMAN: "imx8"
+          BUILDMAN: "mx -x mx6,imx8,freescale,technexion,toradex"
+        imx8_imx9:
+          BUILDMAN: "imx8 imx9"
         keystone2_keystone3:
           BUILDMAN: "k2 k3"
+        sandbox_asan:
+          BUILDMAN: "sandbox"
+          OVERRIDE: "-a ASAN"
+        sandbox_clang_asan:
+          BUILDMAN: "sandbox"
+          OVERRIDE: "-O clang-13 -a ASAN"
         samsung_socfpga:
           BUILDMAN: "samsung socfpga"
         sun4i:
@@ -430,20 +521,8 @@ jobs:
           BUILDMAN: "m68k"
         mips:
           BUILDMAN: "mips"
-        non_fsl_ppc:
-          BUILDMAN: "powerpc -x freescale"
-        mpc85xx_freescale:
-          BUILDMAN: "mpc85xx&freescale -x t208xrdb -x t102* -x p1_p2_rdb_pc -x p1010rdb -x corenet_ds -x bsc91*"
-        t208xrdb_corenet_ds:
-          BUILDMAN: "t208xrdb corenet_ds"
-        fsl_ppc:
-          BUILDMAN: "mpc83xx&freescale"
-        t102x:
-          BUILDMAN: "t102*"
-        p1_p2_rdb_pc:
-          BUILDMAN: "p1_p2_rdb_pc"
-        p1010rdb_bsc91:
-          BUILDMAN: "p1010rdb bsc91"
+        powerpc:
+          BUILDMAN: "powerpc"
         siemens:
           BUILDMAN: "siemens"
         tegra:
@@ -455,9 +534,11 @@ jobs:
         uniphier:
           BUILDMAN: "uniphier"
         aarch64_catch_all:
-          BUILDMAN: "aarch64 -x bcm,imx8,k3,tegra,ls1,ls2,lx216,mvebu,uniphier,renesas,sunxi,samsung,socfpga,rk,versal,zynq"
-        rockchip:
-          BUILDMAN: "rk"
+          BUILDMAN: "aarch64 -x amlogic,bcm,imx8,imx9,k3,tegra,ls1,ls2,lx216,mvebu,uniphier,renesas,sunxi,samsung,socfpga,rk,versal,zynq"
+        rockchip_32bit:
+          BUILDMAN: "rk -x aarch64"
+        rockchip_64bit:
+          BUILDMAN: "rk&aarch64"
         renesas:
           BUILDMAN: "renesas"
         zynq:
@@ -473,11 +554,12 @@ jobs:
           cd ${WORK_DIR}
           # make environment variables available as tests are running inside a container
           export BUILDMAN="${BUILDMAN}"
+          git config --global --add safe.directory ${WORK_DIR}
           EOF
           cat << "EOF" >> build.sh
           if [[ "${BUILDMAN}" != "" ]]; then
               ret=0;
-              tools/buildman/buildman -o /tmp -P -E -W ${BUILDMAN} ${OVERRIDE} || ret=$?;
+              tools/buildman/buildman -o /tmp -PEWM ${BUILDMAN} ${OVERRIDE} || ret=$?;
               if [[ $ret -ne 0 ]]; then
                   tools/buildman/buildman -o /tmp -seP ${BUILDMAN};
                   exit $ret;

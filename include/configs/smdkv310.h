@@ -10,12 +10,7 @@
 
 #include "exynos4-common.h"
 
-#undef CONFIG_BOARD_COMMON
-#undef CONFIG_USB_GADGET_DWC2_OTG_PHY
-
 /* High Level Configuration Options */
-#define CONFIG_EXYNOS4210		1	/* which is a EXYNOS4210 SoC */
-
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 
 /* Handling Sleep Mode*/
@@ -25,8 +20,6 @@
 
 /* MMC SPL */
 #define COPY_BL2_FNPTR_ADDR	0x00002488
-
-#define CONFIG_BOOTCOMMAND	"fatload mmc 0 40007000 uImage; bootm 40007000"
 
 /* SMDKV310 has 4 bank of DRAM */
 #define SDRAM_BANK_SIZE		(512UL << 20UL)	/* 512 MB */
@@ -41,22 +34,11 @@
 
 /* FLASH and environment organization */
 
-#define CONFIG_CLK_1000_400_200
-
 /* MIU (Memory Interleaving Unit) */
 #define CONFIG_MIU_2BIT_INTERLEAVED
 
 #define RESERVE_BLOCK_SIZE		(512)
 #define BL1_SIZE			(16 << 10) /*16 K reserved for BL1*/
-
-#define CONFIG_SPL_MAX_FOOTPRINT	(14 * 1024)
-
-#define CONFIG_SYS_INIT_SP_ADDR		0x02040000
-
-/* U-Boot copy size from boot Media to DRAM.*/
-#define	COPY_BL2_SIZE		0x80000
-#define BL2_START_OFFSET	((CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)/512)
-#define BL2_SIZE_BLOC_COUNT	(COPY_BL2_SIZE/512)
 
 /* Ethernet Controllor Driver */
 #ifdef CONFIG_CMD_NET

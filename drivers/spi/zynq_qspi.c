@@ -16,7 +16,7 @@
 #include <spi_flash.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
-#include <clk.h>
+#include <linux/bitops.h>
 #include <spi-mem.h>
 #include "../mtd/spi/sf_internal.h"
 
@@ -895,7 +895,7 @@ static int zynq_qspi_check_buswidth(struct spi_slave *slave, u8 width)
 		break;
 	}
 
-	return -ENOTSUPP;
+	return -EOPNOTSUPP;
 }
 
 bool zynq_qspi_mem_exec_op(struct spi_slave *slave,

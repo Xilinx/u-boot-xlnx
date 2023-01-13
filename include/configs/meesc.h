@@ -21,7 +21,7 @@
 #include <asm/hardware.h>
 
 /*
- * Warning: changing CONFIG_SYS_TEXT_BASE requires
+ * Warning: changing CONFIG_TEXT_BASE requires
  * adapting the initial boot program.
  * Since the linker has to swallow that define, we must use a pure
  * hex number here!
@@ -38,11 +38,6 @@
  */
 
 /*
- * BOOTP options
- */
-#define CONFIG_BOOTP_BOOTFILESIZE
-
-/*
  * SDRAM: 1 bank, min 32, max 128 MB
  * Initialized before u-boot gets started.
  */
@@ -52,17 +47,11 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
 #define CONFIG_SYS_SDRAM_SIZE		PHYS_SDRAM_SIZE
 
-/*
- * Initial stack pointer: 4k - GENERATED_GBL_DATA_SIZE in internal SRAM,
- * leaving the correct space for initial global data structure above
- * that address while providing maximum stack area below.
- */
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(ATMEL_BASE_SRAM0 + 16 * 1024 - GENERATED_GBL_DATA_SIZE)
+#define CONFIG_SYS_INIT_RAM_ADDR	ATMEL_BASE_SRAM0
+#define CONFIG_SYS_INIT_RAM_SIZE	(16 * 1024)
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-# define CONFIG_SYS_MAX_NAND_DEVICE		1
 # define CONFIG_SYS_NAND_BASE			ATMEL_BASE_CS3 /* 0x40000000 */
 # define CONFIG_SYS_NAND_DBW_8
 # define CONFIG_SYS_NAND_MASK_ALE		(1 << 21)
@@ -71,24 +60,7 @@
 # define CONFIG_SYS_NAND_READY_PIN		GPIO_PIN_PA(22)
 #endif
 
-/* Ethernet */
-#define CONFIG_RMII
-#define CONFIG_NET_RETRY_COUNT			20
-#undef CONFIG_RESET_PHY_R
-
 /* hw-controller addresses */
 #define CONFIG_ET1100_BASE		0x70000000
-
-#ifdef CONFIG_SYS_USE_DATAFLASH
-
-/* bootstrap + u-boot + env in dataflash on CS0 */
-
-#elif CONFIG_SYS_USE_NANDFLASH
-
-/* bootstrap + u-boot + env + linux in nandflash */
-
-#endif
-
-#define CONFIG_SYS_CBSIZE		512
 
 #endif

@@ -17,22 +17,6 @@ struct ast2600_reset_priv {
 	struct ast2600_scu *scu;
 };
 
-static int ast2600_reset_request(struct reset_ctl *reset_ctl)
-{
-	debug("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
-	      reset_ctl->dev, reset_ctl->id);
-
-	return 0;
-}
-
-static int ast2600_reset_free(struct reset_ctl *reset_ctl)
-{
-	debug("%s(reset_ctl=%p) (dev=%p, id=%lu)\n", __func__, reset_ctl,
-	      reset_ctl->dev, reset_ctl->id);
-
-	return 0;
-}
-
 static int ast2600_reset_assert(struct reset_ctl *reset_ctl)
 {
 	struct ast2600_reset_priv *priv = dev_get_priv(reset_ctl->dev);
@@ -61,6 +45,22 @@ static int ast2600_reset_deassert(struct reset_ctl *reset_ctl)
 		writel(BIT(reset_ctl->id - 32), &scu->modrst_clr2);
 
 	return 0;
+}
+
+static int ast2600_reset_status(struct reset_ctl *reset_ctl)
+{
+	struct ast2600_reset_priv *priv = dev_get_priv(reset_ctl->dev);
+	struct ast2600_scu *scu = priv->scu;
+	int status;
+
+	debug("%s: reset_ctl->id: %lu\n", __func__, reset_ctl->id);
+
+	if (reset_ctl->id < 32)
+		status = BIT(reset_ctl->id) & readl(&scu->modrst_ctrl1);
+	else
+		status = BIT(reset_ctl->id - 32) & readl(&scu->modrst_ctrl2);
+
+	return !!status;
 }
 
 static int ast2600_reset_probe(struct udevice *dev)
@@ -92,10 +92,9 @@ static const struct udevice_id ast2600_reset_ids[] = {
 };
 
 struct reset_ops ast2600_reset_ops = {
-	.request = ast2600_reset_request,
-	.rfree = ast2600_reset_free,
 	.rst_assert = ast2600_reset_assert,
 	.rst_deassert = ast2600_reset_deassert,
+	.rst_status = ast2600_reset_status,
 };
 
 U_BOOT_DRIVER(ast2600_reset) = {

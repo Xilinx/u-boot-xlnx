@@ -37,7 +37,7 @@ u32 dpmac_to_devdisr[] = {
 
 static int is_device_disabled(int dpmac_id)
 {
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 	u32 devdisr2 = in_le32(&gur->devdisr2);
 
 	return dpmac_to_devdisr[dpmac_id] & devdisr2;
@@ -45,14 +45,14 @@ static int is_device_disabled(int dpmac_id)
 
 void wriop_dpmac_disable(int dpmac_id)
 {
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 
 	setbits_le32(&gur->devdisr2, dpmac_to_devdisr[dpmac_id]);
 }
 
 void wriop_dpmac_enable(int dpmac_id)
 {
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 
 	clrbits_le32(&gur->devdisr2, dpmac_to_devdisr[dpmac_id]);
 }
@@ -62,7 +62,7 @@ phy_interface_t wriop_dpmac_enet_if(int dpmac_id, int lane_prtcl)
 	enum srds_prtcl;
 
 	if (is_device_disabled(dpmac_id + 1))
-		return PHY_INTERFACE_MODE_NONE;
+		return PHY_INTERFACE_MODE_NA;
 
 	if (lane_prtcl >= SGMII1 && lane_prtcl <= SGMII16)
 		return PHY_INTERFACE_MODE_SGMII;
@@ -76,7 +76,7 @@ phy_interface_t wriop_dpmac_enet_if(int dpmac_id, int lane_prtcl)
 	if (lane_prtcl >= QSGMII_A && lane_prtcl <= QSGMII_D)
 		return PHY_INTERFACE_MODE_QSGMII;
 
-	return PHY_INTERFACE_MODE_NONE;
+	return PHY_INTERFACE_MODE_NA;
 }
 
 void wriop_init_dpmac_qsgmii(int sd, int lane_prtcl)

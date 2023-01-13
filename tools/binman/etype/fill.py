@@ -23,13 +23,12 @@ class Entry_fill(Entry):
     """
     def __init__(self, section, etype, node):
         super().__init__(section, etype, node)
+        self.required_props = ['size']
 
     def ReadNode(self):
         super().ReadNode()
-        if self.size is None:
-            self.Raise("'fill' entry must have a size property")
         self.fill_value = fdt_util.GetByte(self._node, 'fill-byte', 0)
 
     def ObtainContents(self):
-        self.SetContents(tools.GetBytes(self.fill_value, self.size))
+        self.SetContents(tools.get_bytes(self.fill_value, self.size))
         return True

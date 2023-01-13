@@ -24,6 +24,7 @@
 #include <mapmem.h>
 #include <asm/io.h>
 #include <malloc.h>
+#include <memalign.h>
 #include <asm/global_data.h>
 #ifdef CONFIG_DM_HASH
 #include <dm.h>
@@ -191,7 +192,7 @@ static void fit_image_print_data(const void *fit, int noffset, const char *p,
 	const char *keyname;
 	uint8_t *value;
 	int value_len;
-	char *algo;
+	const char *algo;
 	const char *padding;
 	bool required;
 	int ret, i;
@@ -476,7 +477,7 @@ void fit_print_contents(const void *fit)
 void fit_image_print(const void *fit, int image_noffset, const char *p)
 {
 	char *desc;
-	uint8_t type, arch, os, comp;
+	uint8_t type, arch, os, comp = IH_COMP_NONE;
 	size_t size;
 	ulong load, entry;
 	const void *data;
@@ -793,12 +794,45 @@ int fit_image_get_comp(const void *fit, int noffset, uint8_t *comp)
 	data = fdt_getprop(fit, noffset, FIT_COMP_PROP, &len);
 	if (data == NULL) {
 		fit_get_debug(fit, noffset, FIT_COMP_PROP, len);
-		*comp = -1;
 		return -1;
 	}
 
 	/* Translate compression name to id */
 	*comp = genimg_get_comp_id(data);
+	return 0;
+}
+
+/**
+ * fit_image_get_phase() - get the phase for a configuration node
+ * @fit: pointer to the FIT format image header
+ * @offset: configuration-node offset
+ * @phasep: returns the phase
+ *
+ * Finds the phase property in a given configuration node. If the property is
+ * found, its (string) value is translated to the numeric id which is returned
+ * to the caller.
+ *
+ * Returns: 0 on success, -ENOENT if missing, -EINVAL for invalid value
+ */
+int fit_image_get_phase(const void *fit, int offset, enum image_phase_t *phasep)
+{
+	const void *data;
+	int len, ret;
+
+	/* Get phase name from property data */
+	data = fdt_getprop(fit, offset, FIT_PHASE_PROP, &len);
+	if (!data) {
+		fit_get_debug(fit, offset, FIT_PHASE_PROP, len);
+		*phasep = 0;
+		return -ENOENT;
+	}
+
+	/* Translate phase name to id */
+	ret = genimg_get_phase_id(data);
+	if (ret < 0)
+		return ret;
+	*phasep = ret;
+
 	return 0;
 }
 
@@ -1063,11 +1097,11 @@ int fit_image_get_data_and_size(const void *fit, int noffset,
  *     0, on success
  *     -1, on failure
  */
-int fit_image_hash_get_algo(const void *fit, int noffset, char **algo)
+int fit_image_hash_get_algo(const void *fit, int noffset, const char **algo)
 {
 	int len;
 
-	*algo = (char *)fdt_getprop(fit, noffset, FIT_ALGO_PROP, &len);
+	*algo = (const char *)fdt_getprop(fit, noffset, FIT_ALGO_PROP, &len);
 	if (*algo == NULL) {
 		fit_get_debug(fit, noffset, FIT_ALGO_PROP, len);
 		return -1;
@@ -1202,7 +1236,7 @@ int fit_set_timestamp(void *fit, int noffset, time_t timestamp)
  * calculate_hash - calculate and return hash for provided input data
  * @data: pointer to the input data
  * @data_len: data length
- * @algo: requested hash algorithm
+ * @name: requested hash algorithm name
  * @value: pointer to the char, will hold hash value data (caller must
  * allocate enough free space)
  * value_len: length of the calculated hash
@@ -1230,7 +1264,7 @@ int calculate_hash(const void *data, int data_len, const char *name,
 		return -1;
 	}
 
-	hash_algo = hash_algo_lookup_by_name(algo);
+	hash_algo = hash_algo_lookup_by_name(name);
 	if (hash_algo == HASH_ALGO_INVALID) {
 		debug("Unsupported hash algorithm\n");
 		return -1;
@@ -1263,9 +1297,9 @@ int calculate_hash(const void *data, int data_len, const char *name,
 static int fit_image_check_hash(const void *fit, int noffset, const void *data,
 				size_t size, char **err_msgp)
 {
-	uint8_t value[FIT_MAX_HASH_LEN];
+	ALLOC_CACHE_ALIGN_BUFFER(uint8_t, value, FIT_MAX_HASH_LEN);
 	int value_len;
-	char *algo;
+	const char *algo;
 	uint8_t *fit_value;
 	int fit_value_len;
 	int ignore;
@@ -1309,7 +1343,8 @@ static int fit_image_check_hash(const void *fit, int noffset, const void *data,
 }
 
 int fit_image_verify_with_data(const void *fit, int image_noffset,
-			       const void *data, size_t size)
+			       const void *key_blob, const void *data,
+			       size_t size)
 {
 	int		noffset = 0;
 	char		*err_msg = "";
@@ -1319,7 +1354,7 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
 	/* Verify all required signatures */
 	if (FIT_IMAGE_ENABLE_VERIFY &&
 	    fit_image_verify_required_sigs(fit, image_noffset, data, size,
-					   gd_fdt_blob(), &verify_all)) {
+					   key_blob, &verify_all)) {
 		err_msg = "Unable to verify required signature";
 		goto error;
 	}
@@ -1342,8 +1377,8 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
 		} else if (FIT_IMAGE_ENABLE_VERIFY && verify_all &&
 				!strncmp(name, FIT_SIG_NODENAME,
 					strlen(FIT_SIG_NODENAME))) {
-			ret = fit_image_check_sig(fit, noffset, data,
-							size, -1, &err_msg);
+			ret = fit_image_check_sig(fit, noffset, data, size,
+						  gd_fdt_blob(), -1, &err_msg);
 
 			/*
 			 * Show an indication on failure, but do not return
@@ -1406,7 +1441,8 @@ int fit_image_verify(const void *fit, int image_noffset)
 		goto err;
 	}
 
-	return fit_image_verify_with_data(fit, image_noffset, data, size);
+	return fit_image_verify_with_data(fit, image_noffset, gd_fdt_blob(),
+					  data, size);
 
 err:
 	printf("error!\n%s in '%s' image node\n", err_msg,
@@ -1595,7 +1631,7 @@ int fit_image_check_comp(const void *fit, int noffset, uint8_t comp)
  *
  * @fit: FIT to check
  * @parent: Parent node to check
- * @return 0 if OK, -EADDRNOTAVAIL is a node has a name containing '@'
+ * Return: 0 if OK, -EADDRNOTAVAIL is a node has a name containing '@'
  */
 static int fdt_check_no_at(const void *fit, int parent)
 {
@@ -1684,49 +1720,6 @@ int fit_check_format(const void *fit, ulong size)
 	return 0;
 }
 
-/**
- * fit_conf_find_compat
- * @fit: pointer to the FIT format image header
- * @fdt: pointer to the device tree to compare against
- *
- * fit_conf_find_compat() attempts to find the configuration whose fdt is the
- * most compatible with the passed in device tree.
- *
- * Example:
- *
- * / o image-tree
- *   |-o images
- *   | |-o fdt-1
- *   | |-o fdt-2
- *   |
- *   |-o configurations
- *     |-o config-1
- *     | |-fdt = fdt-1
- *     |
- *     |-o config-2
- *       |-fdt = fdt-2
- *
- * / o U-Boot fdt
- *   |-compatible = "foo,bar", "bim,bam"
- *
- * / o kernel fdt1
- *   |-compatible = "foo,bar",
- *
- * / o kernel fdt2
- *   |-compatible = "bim,bam", "baz,biz"
- *
- * Configuration 1 would be picked because the first string in U-Boot's
- * compatible list, "foo,bar", matches a compatible string in the root of fdt1.
- * "bim,bam" in fdt2 matches the second string which isn't as good as fdt1.
- *
- * As an optimization, the compatible property from the FDT's root node can be
- * copied into the configuration node in the FIT image. This is required to
- * match configurations with compressed FDTs.
- *
- * returns:
- *     offset to the configuration to use if one was found
- *     -1 otherwise
- */
 int fit_conf_find_compat(const void *fit, const void *fdt)
 {
 	int ndepth = 0;
@@ -1883,8 +1876,7 @@ int fit_conf_get_node(const void *fit, const char *conf_uname)
 		      conf_uname, fdt_strerror(noffset));
 	}
 
-	if (conf_uname_copy)
-		free(conf_uname_copy);
+	free(conf_uname_copy);
 
 	return noffset;
 }
@@ -1909,10 +1901,75 @@ int fit_conf_get_prop_node_index(const void *fit, int noffset,
 	return fit_image_get_node(fit, uname);
 }
 
-int fit_conf_get_prop_node(const void *fit, int noffset,
-		const char *prop_name)
+int fit_conf_get_prop_node(const void *fit, int noffset, const char *prop_name,
+			   enum image_phase_t sel_phase)
 {
-	return fit_conf_get_prop_node_index(fit, noffset, prop_name, 0);
+	int i, count;
+
+	if (sel_phase == IH_PHASE_NONE)
+		return fit_conf_get_prop_node_index(fit, noffset, prop_name, 0);
+
+	count = fit_conf_get_prop_node_count(fit, noffset, prop_name);
+	if (count < 0)
+		return count;
+
+	/* check each image in the list */
+	for (i = 0; i < count; i++) {
+		enum image_phase_t phase;
+		int ret, node;
+
+		node = fit_conf_get_prop_node_index(fit, noffset, prop_name, i);
+		ret = fit_image_get_phase(fit, node, &phase);
+
+		/* if the image is for any phase, let's use it */
+		if (ret == -ENOENT)
+			return node;
+		else if (ret < 0)
+			return ret;
+
+		if (phase == sel_phase)
+			return node;
+	}
+
+	return -ENOENT;
+}
+
+static int fit_get_data_tail(const void *fit, int noffset,
+			     const void **data, size_t *size)
+{
+	char *desc;
+
+	if (noffset < 0)
+		return noffset;
+
+	if (!fit_image_verify(fit, noffset))
+		return -EINVAL;
+
+	if (fit_image_get_data_and_size(fit, noffset, data, size))
+		return -ENOENT;
+
+	if (!fit_get_desc(fit, noffset, &desc))
+		printf("%s\n", desc);
+
+	return 0;
+}
+
+int fit_get_data_node(const void *fit, const char *image_uname,
+		      const void **data, size_t *size)
+{
+	int noffset = fit_image_get_node(fit, image_uname);
+
+	return fit_get_data_tail(fit, noffset, data, size);
+}
+
+int fit_get_data_conf_prop(const void *fit, const char *prop_name,
+			   const void **data, size_t *size)
+{
+	int noffset = fit_conf_get_node(fit, NULL);
+
+	noffset = fit_conf_get_prop_node(fit, noffset, prop_name,
+					 IH_PHASE_NONE);
+	return fit_get_data_tail(fit, noffset, data, size);
 }
 
 static int fit_image_select(const void *fit, int rd_noffset, int verify)
@@ -1931,8 +1988,8 @@ static int fit_image_select(const void *fit, int rd_noffset, int verify)
 	return 0;
 }
 
-int fit_get_node_from_config(bootm_headers_t *images, const char *prop_name,
-			ulong addr)
+int fit_get_node_from_config(struct bootm_headers *images,
+			     const char *prop_name, ulong addr)
 {
 	int cfg_noffset;
 	void *fit_hdr;
@@ -1949,7 +2006,8 @@ int fit_get_node_from_config(bootm_headers_t *images, const char *prop_name,
 		return -EINVAL;
 	}
 
-	noffset = fit_conf_get_prop_node(fit_hdr, cfg_noffset, prop_name);
+	noffset = fit_conf_get_prop_node(fit_hdr, cfg_noffset, prop_name,
+					 IH_PHASE_NONE);
 	if (noffset < 0) {
 		debug("*  %s: no '%s' in config\n", prop_name, prop_name);
 		return -ENOENT;
@@ -1961,7 +2019,7 @@ int fit_get_node_from_config(bootm_headers_t *images, const char *prop_name,
 /**
  * fit_get_image_type_property() - get property name for IH_TYPE_...
  *
- * @return the properly name where we expect to find the image in the
+ * Return: the properly name where we expect to find the image in the
  * config node
  */
 static const char *fit_get_image_type_property(int type)
@@ -1993,11 +2051,12 @@ static const char *fit_get_image_type_property(int type)
 	return "unknown";
 }
 
-int fit_image_load(bootm_headers_t *images, ulong addr,
+int fit_image_load(struct bootm_headers *images, ulong addr,
 		   const char **fit_unamep, const char **fit_uname_configp,
-		   int arch, int image_type, int bootstage_id,
+		   int arch, int ph_type, int bootstage_id,
 		   enum fit_load_op load_op, ulong *datap, ulong *lenp)
 {
+	int image_type = image_ph_type(ph_type);
 	int cfg_noffset, noffset;
 	const char *fit_uname;
 	const char *fit_uname_config;
@@ -2043,8 +2102,7 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 		if (IS_ENABLED(CONFIG_FIT_BEST_MATCH) && !fit_uname_config) {
 			cfg_noffset = fit_conf_find_compat(fit, gd_fdt_blob());
 		} else {
-			cfg_noffset = fit_conf_get_node(fit,
-							fit_uname_config);
+			cfg_noffset = fit_conf_get_node(fit, fit_uname_config);
 		}
 		if (cfg_noffset < 0) {
 			puts("Could not find configuration node\n");
@@ -2072,8 +2130,8 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 
 		bootstage_mark(BOOTSTAGE_ID_FIT_CONFIG);
 
-		noffset = fit_conf_get_prop_node(fit, cfg_noffset,
-						 prop_name);
+		noffset = fit_conf_get_prop_node(fit, cfg_noffset, prop_name,
+						 image_ph_phase(ph_type));
 		fit_uname = fit_get_name(fit, noffset, NULL);
 	}
 	if (noffset < 0) {
@@ -2251,8 +2309,8 @@ int fit_image_load(bootm_headers_t *images, ulong addr,
 	return noffset;
 }
 
-int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
-			ulong *setup_start, ulong *setup_len)
+int boot_get_setup_fit(struct bootm_headers *images, uint8_t arch,
+		       ulong *setup_start, ulong *setup_len)
 {
 	int noffset;
 	ulong addr;
@@ -2272,9 +2330,9 @@ int boot_get_setup_fit(bootm_headers_t *images, uint8_t arch,
 }
 
 #ifndef USE_HOSTCC
-int boot_get_fdt_fit(bootm_headers_t *images, ulong addr,
-		   const char **fit_unamep, const char **fit_uname_configp,
-		   int arch, ulong *datap, ulong *lenp)
+int boot_get_fdt_fit(struct bootm_headers *images, ulong addr,
+		     const char **fit_unamep, const char **fit_uname_configp,
+		     int arch, ulong *datap, ulong *lenp)
 {
 	int fdt_noffset, cfg_noffset, count;
 	const void *fit;
@@ -2418,9 +2476,6 @@ int boot_get_fdt_fit(bootm_headers_t *images, ulong addr,
 		}
 		fdt_pack(base);
 		len = fdt_totalsize(base);
-
-		free(ovcopy);
-		ovcopy = NULL;
 	}
 #else
 	printf("config with overlays but CONFIG_OF_LIBFDT_OVERLAY not set\n");
@@ -2438,11 +2493,9 @@ out:
 		*fit_uname_configp = fit_uname_config;
 
 #ifdef CONFIG_OF_LIBFDT_OVERLAY
-	if (ovcopy)
-		free(ovcopy);
+	free(ovcopy);
 #endif
-	if (fit_uname_config_copy)
-		free(fit_uname_config_copy);
+	free(fit_uname_config_copy);
 	return fdt_noffset;
 }
 #endif

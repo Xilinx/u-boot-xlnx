@@ -14,6 +14,7 @@
  */
 
 #include <common.h>
+#include <clk.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <dm/device_compat.h>
@@ -26,10 +27,12 @@
 #include <asm/io.h>
 #include <asm/mach-imx/regs-bch.h>
 #include <asm/mach-imx/regs-gpmi.h>
+#include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/sizes.h>
 #include <linux/types.h>
+#include <linux/math64.h>
 
 #define	MXS_NAND_DMA_DESCRIPTOR_COUNT		4
 
@@ -49,6 +52,10 @@
 #endif
 
 #define	MXS_NAND_BCH_TIMEOUT			10000
+#define	USEC_PER_SEC				1000000
+#define	NSEC_PER_SEC				1000000000L
+
+#define TO_CYCLES(duration, period) DIV_ROUND_UP_ULL(duration, period)
 
 struct nand_ecclayout fake_ecc_layout;
 
@@ -195,6 +202,7 @@ static inline int mxs_nand_legacy_calc_ecc_layout(struct bch_geometry *geo,
 	struct nand_chip *chip = mtd_to_nand(mtd);
 	struct mxs_nand_info *nand_info = nand_get_controller_data(chip);
 	unsigned int block_mark_bit_offset;
+	int corr, ds_corr;
 
 	/* The default for the length of Galois Field. */
 	geo->gf_len = 13;
@@ -224,6 +232,17 @@ static inline int mxs_nand_legacy_calc_ecc_layout(struct bch_geometry *geo,
 
 	geo->ecc_strength = min(round_down(geo->ecc_strength, 2),
 				nand_info->max_ecc_strength_supported);
+
+	/* check ecc strength, same as nand_ecc_is_strong_enough() did*/
+	if (chip->ecc_step_ds) {
+		corr = mtd->writesize * geo->ecc_strength /
+		       geo->ecc_chunkn_size;
+		ds_corr = mtd->writesize * chip->ecc_strength_ds /
+		       chip->ecc_step_ds;
+		if (corr < ds_corr ||
+		    geo->ecc_strength < chip->ecc_strength_ds)
+			return -EINVAL;
+	}
 
 	block_mark_bit_offset = mtd->writesize * 8 -
 		(geo->ecc_strength * geo->gf_len * (geo->ecc_chunk_count - 1)
@@ -1111,6 +1130,7 @@ static int mxs_nand_set_geometry(struct mtd_info *mtd, struct bch_geometry *geo)
 	struct nand_chip *chip = mtd_to_nand(mtd);
 	struct nand_chip *nand = mtd_to_nand(mtd);
 	struct mxs_nand_info *nand_info = nand_get_controller_data(nand);
+	int err;
 
 	if (chip->ecc_strength_ds > nand_info->max_ecc_strength_supported) {
 		printf("unsupported NAND chip, minimum ecc required %d\n"
@@ -1118,19 +1138,57 @@ static int mxs_nand_set_geometry(struct mtd_info *mtd, struct bch_geometry *geo)
 		return -EINVAL;
 	}
 
-	if ((!(chip->ecc_strength_ds > 0 && chip->ecc_step_ds > 0) &&
-	     mtd->oobsize < 1024) || nand_info->legacy_bch_geometry) {
-		dev_warn(mtd->dev, "use legacy bch geometry\n");
-		return mxs_nand_legacy_calc_ecc_layout(geo, mtd);
+	/* use the legacy bch setting by default */
+	if ((!nand_info->use_minimum_ecc && mtd->oobsize < 1024) ||
+	    !(chip->ecc_strength_ds > 0 && chip->ecc_step_ds > 0)) {
+		dev_dbg(mtd->dev, "use legacy bch geometry\n");
+		err = mxs_nand_legacy_calc_ecc_layout(geo, mtd);
+		if (!err)
+			return 0;
 	}
 
-	if (mtd->oobsize > 1024 || chip->ecc_step_ds < mtd->oobsize)
-		return mxs_nand_calc_ecc_for_large_oob(geo, mtd);
+	/* for large oob nand */
+	if (mtd->oobsize > 1024) {
+		dev_dbg(mtd->dev, "use large oob bch geometry\n");
+		err = mxs_nand_calc_ecc_for_large_oob(geo, mtd);
+		if (!err)
+			return 0;
+	}
 
-	return mxs_nand_calc_ecc_layout_by_info(geo, mtd,
-				chip->ecc_strength_ds, chip->ecc_step_ds);
+	/* otherwise use the minimum ecc nand chips required */
+	dev_dbg(mtd->dev, "use minimum ecc bch geometry\n");
+	err = mxs_nand_calc_ecc_layout_by_info(geo, mtd, chip->ecc_strength_ds,
+					       chip->ecc_step_ds);
 
-	return 0;
+	if (err)
+		dev_err(mtd->dev, "none of the bch geometry setting works\n");
+
+	return err;
+}
+
+void mxs_nand_dump_geo(struct mtd_info *mtd)
+{
+	struct nand_chip *nand = mtd_to_nand(mtd);
+	struct mxs_nand_info *nand_info = nand_get_controller_data(nand);
+	struct bch_geometry *geo = &nand_info->bch_geometry;
+
+	dev_dbg(mtd->dev, "BCH Geometry :\n"
+		"GF Length\t\t: %u\n"
+		"ECC Strength\t\t: %u\n"
+		"ECC for Meta\t\t: %u\n"
+		"ECC Chunk0 Size\t\t: %u\n"
+		"ECC Chunkn Size\t\t: %u\n"
+		"ECC Chunk Count\t\t: %u\n"
+		"Block Mark Byte Offset\t: %u\n"
+		"Block Mark Bit Offset\t: %u\n",
+		geo->gf_len,
+		geo->ecc_strength,
+		geo->ecc_for_meta,
+		geo->ecc_chunk0_size,
+		geo->ecc_chunkn_size,
+		geo->ecc_chunk_count,
+		geo->block_mark_byte_offset,
+		geo->block_mark_bit_offset);
 }
 
 /*
@@ -1158,6 +1216,8 @@ int mxs_nand_setup_ecc(struct mtd_info *mtd)
 	ret = mxs_nand_set_geometry(mtd, geo);
 	if (ret)
 		return ret;
+
+	mxs_nand_dump_geo(mtd);
 
 	/* Configure BCH and set NFC geometry */
 	mxs_reset_block(&bch_regs->hw_bch_ctrl_reg);
@@ -1192,22 +1252,6 @@ int mxs_nand_setup_ecc(struct mtd_info *mtd)
 
 	/* Enable BCH complete interrupt */
 	writel(BCH_CTRL_COMPLETE_IRQ_EN, &bch_regs->hw_bch_ctrl_set);
-
-	/* Hook some operations at the MTD level. */
-	if (mtd->_read_oob != mxs_nand_hook_read_oob) {
-		nand_info->hooked_read_oob = mtd->_read_oob;
-		mtd->_read_oob = mxs_nand_hook_read_oob;
-	}
-
-	if (mtd->_write_oob != mxs_nand_hook_write_oob) {
-		nand_info->hooked_write_oob = mtd->_write_oob;
-		mtd->_write_oob = mxs_nand_hook_write_oob;
-	}
-
-	if (mtd->_block_markbad != mxs_nand_hook_block_markbad) {
-		nand_info->hooked_block_markbad = mtd->_block_markbad;
-		mtd->_block_markbad = mxs_nand_hook_block_markbad;
-	}
 
 	return 0;
 }
@@ -1307,6 +1351,196 @@ err1:
 	return ret;
 }
 
+/*
+ * <1> Firstly, we should know what's the GPMI-clock means.
+ *     The GPMI-clock is the internal clock in the gpmi nand controller.
+ *     If you set 100MHz to gpmi nand controller, the GPMI-clock's period
+ *     is 10ns. Mark the GPMI-clock's period as GPMI-clock-period.
+ *
+ * <2> Secondly, we should know what's the frequency on the nand chip pins.
+ *     The frequency on the nand chip pins is derived from the GPMI-clock.
+ *     We can get it from the following equation:
+ *
+ *         F = G / (DS + DH)
+ *
+ *         F  : the frequency on the nand chip pins.
+ *         G  : the GPMI clock, such as 100MHz.
+ *         DS : GPMI_HW_GPMI_TIMING0:DATA_SETUP
+ *         DH : GPMI_HW_GPMI_TIMING0:DATA_HOLD
+ *
+ * <3> Thirdly, when the frequency on the nand chip pins is above 33MHz,
+ *     the nand EDO(extended Data Out) timing could be applied.
+ *     The GPMI implements a feedback read strobe to sample the read data.
+ *     The feedback read strobe can be delayed to support the nand EDO timing
+ *     where the read strobe may deasserts before the read data is valid, and
+ *     read data is valid for some time after read strobe.
+ *
+ *     The following figure illustrates some aspects of a NAND Flash read:
+ *
+ *                   |<---tREA---->|
+ *                   |             |
+ *                   |         |   |
+ *                   |<--tRP-->|   |
+ *                   |         |   |
+ *                  __          ___|__________________________________
+ *     RDN            \________/   |
+ *                                 |
+ *                                 /---------\
+ *     Read Data    --------------<           >---------
+ *                                 \---------/
+ *                                |     |
+ *                                |<-D->|
+ *     FeedbackRDN  ________             ____________
+ *                          \___________/
+ *
+ *          D stands for delay, set in the HW_GPMI_CTRL1:RDN_DELAY.
+ *
+ *
+ * <4> Now, we begin to describe how to compute the right RDN_DELAY.
+ *
+ *  4.1) From the aspect of the nand chip pins:
+ *        Delay = (tREA + C - tRP)               {1}
+ *
+ *        tREA : the maximum read access time.
+ *        C    : a constant to adjust the delay. default is 4000ps.
+ *        tRP  : the read pulse width, which is exactly:
+ *                   tRP = (GPMI-clock-period) * DATA_SETUP
+ *
+ *  4.2) From the aspect of the GPMI nand controller:
+ *         Delay = RDN_DELAY * 0.125 * RP        {2}
+ *
+ *         RP   : the DLL reference period.
+ *            if (GPMI-clock-period > DLL_THRETHOLD)
+ *                   RP = GPMI-clock-period / 2;
+ *            else
+ *                   RP = GPMI-clock-period;
+ *
+ *            Set the HW_GPMI_CTRL1:HALF_PERIOD if GPMI-clock-period
+ *            is greater DLL_THRETHOLD. In other SOCs, the DLL_THRETHOLD
+ *            is 16000ps, but in mx6q, we use 12000ps.
+ *
+ *  4.3) since {1} equals {2}, we get:
+ *
+ *                     (tREA + 4000 - tRP) * 8
+ *         RDN_DELAY = -----------------------     {3}
+ *                           RP
+ */
+static void mxs_compute_timings(struct nand_chip *chip,
+				const struct nand_sdr_timings *sdr)
+{
+	struct mxs_nand_info *nand_info = nand_get_controller_data(chip);
+	unsigned long clk_rate;
+	unsigned int dll_wait_time_us;
+	unsigned int dll_threshold_ps = nand_info->max_chain_delay;
+	unsigned int period_ps, reference_period_ps;
+	unsigned int data_setup_cycles, data_hold_cycles, addr_setup_cycles;
+	unsigned int tRP_ps;
+	bool use_half_period;
+	int sample_delay_ps, sample_delay_factor;
+	u16 busy_timeout_cycles;
+	u8 wrn_dly_sel;
+	u32 timing0;
+	u32 timing1;
+	u32 ctrl1n;
+
+	if (sdr->tRC_min >= 30000) {
+		/* ONFI non-EDO modes [0-3] */
+		clk_rate = 22000000;
+		wrn_dly_sel = GPMI_CTRL1_WRN_DLY_SEL_4_TO_8NS;
+	} else if (sdr->tRC_min >= 25000) {
+		/* ONFI EDO mode 4 */
+		clk_rate = 80000000;
+		wrn_dly_sel = GPMI_CTRL1_WRN_DLY_SEL_NO_DELAY;
+		debug("%s, setting ONFI onfi edo 4\n", __func__);
+	} else {
+		/* ONFI EDO mode 5 */
+		clk_rate = 100000000;
+		wrn_dly_sel = GPMI_CTRL1_WRN_DLY_SEL_NO_DELAY;
+		debug("%s, setting ONFI onfi edo 5\n", __func__);
+	}
+
+	/* SDR core timings are given in picoseconds */
+	period_ps = div_u64((u64)NSEC_PER_SEC * 1000, clk_rate);
+
+	addr_setup_cycles = TO_CYCLES(sdr->tALS_min, period_ps);
+	data_setup_cycles = TO_CYCLES(sdr->tDS_min, period_ps);
+	data_hold_cycles = TO_CYCLES(sdr->tDH_min, period_ps);
+	busy_timeout_cycles = TO_CYCLES(sdr->tWB_max + sdr->tR_max, period_ps);
+
+	timing0 = (addr_setup_cycles << GPMI_TIMING0_ADDRESS_SETUP_OFFSET) |
+		      (data_hold_cycles << GPMI_TIMING0_DATA_HOLD_OFFSET) |
+		      (data_setup_cycles << GPMI_TIMING0_DATA_SETUP_OFFSET);
+	timing1 = (busy_timeout_cycles * 4096) << GPMI_TIMING1_DEVICE_BUSY_TIMEOUT_OFFSET;
+
+	/*
+	 * Derive NFC ideal delay from {3}:
+	 *
+	 *                     (tREA + 4000 - tRP) * 8
+	 *         RDN_DELAY = -----------------------
+	 *                                RP
+	 */
+	if (period_ps > dll_threshold_ps) {
+		use_half_period = true;
+		reference_period_ps = period_ps / 2;
+	} else {
+		use_half_period = false;
+		reference_period_ps = period_ps;
+	}
+
+	tRP_ps = data_setup_cycles * period_ps;
+	sample_delay_ps = (sdr->tREA_max + 4000 - tRP_ps) * 8;
+	if (sample_delay_ps > 0)
+		sample_delay_factor = sample_delay_ps / reference_period_ps;
+	else
+		sample_delay_factor = 0;
+
+	ctrl1n = (wrn_dly_sel << GPMI_CTRL1_WRN_DLY_SEL_OFFSET);
+	if (sample_delay_factor)
+		ctrl1n |= (sample_delay_factor << GPMI_CTRL1_RDN_DELAY_OFFSET) |
+			GPMI_CTRL1_DLL_ENABLE |
+			(use_half_period ? GPMI_CTRL1_HALF_PERIOD : 0);
+
+	writel(timing0, &nand_info->gpmi_regs->hw_gpmi_timing0);
+	writel(timing1, &nand_info->gpmi_regs->hw_gpmi_timing1);
+
+	/*
+	 * Clear several CTRL1 fields, DLL must be disabled when setting
+	 * RDN_DELAY or HALF_PERIOD.
+	 */
+	writel(GPMI_CTRL1_CLEAR_MASK, &nand_info->gpmi_regs->hw_gpmi_ctrl1_clr);
+	writel(ctrl1n, &nand_info->gpmi_regs->hw_gpmi_ctrl1_set);
+
+	clk_set_rate(nand_info->gpmi_clk, clk_rate);
+
+	/* Wait 64 clock cycles before using the GPMI after enabling the DLL */
+	dll_wait_time_us = USEC_PER_SEC / clk_rate * 64;
+	if (!dll_wait_time_us)
+		dll_wait_time_us = 1;
+
+	/* Wait for the DLL to settle. */
+	udelay(dll_wait_time_us);
+}
+
+static int mxs_nand_setup_interface(struct mtd_info *mtd, int chipnr,
+				    const struct nand_data_interface *conf)
+{
+	struct nand_chip *chip = mtd_to_nand(mtd);
+	const struct nand_sdr_timings *sdr;
+
+	sdr = nand_get_sdr_timings(conf);
+	if (IS_ERR(sdr))
+		return PTR_ERR(sdr);
+
+	/* Stop here if this call was just a check */
+	if (chipnr < 0)
+		return 0;
+
+	/* Do the actual derivation of the controller timings */
+	mxs_compute_timings(chip, sdr);
+
+	return 0;
+}
+
 int mxs_nand_init_spl(struct nand_chip *nand)
 {
 	struct mxs_nand_info *nand_info;
@@ -1326,6 +1560,9 @@ int mxs_nand_init_spl(struct nand_chip *nand)
 		nand_info->max_ecc_strength_supported = 62;
 	else
 		nand_info->max_ecc_strength_supported = 40;
+
+	if (IS_ENABLED(CONFIG_NAND_MXS_USE_MINIMUM_ECC))
+		nand_info->use_minimum_ecc = true;
 
 	err = mxs_nand_alloc_buffers(nand_info);
 	if (err)
@@ -1392,6 +1629,9 @@ int mxs_nand_init_ctrl(struct mxs_nand_info *nand_info)
 	nand->read_buf		= mxs_nand_read_buf;
 	nand->write_buf		= mxs_nand_write_buf;
 
+	if (nand_info->gpmi_clk)
+		nand->setup_data_interface = mxs_nand_setup_interface;
+
 	/* first scan to find the device and get the page size */
 	if (nand_scan_ident(mtd, CONFIG_SYS_MAX_NAND_DEVICE, NULL))
 		goto err_free_buffers;
@@ -1413,6 +1653,22 @@ int mxs_nand_init_ctrl(struct mxs_nand_info *nand_info)
 	err = nand_scan_tail(mtd);
 	if (err)
 		goto err_free_buffers;
+
+	/* Hook some operations at the MTD level. */
+	if (mtd->_read_oob != mxs_nand_hook_read_oob) {
+		nand_info->hooked_read_oob = mtd->_read_oob;
+		mtd->_read_oob = mxs_nand_hook_read_oob;
+	}
+
+	if (mtd->_write_oob != mxs_nand_hook_write_oob) {
+		nand_info->hooked_write_oob = mtd->_write_oob;
+		mtd->_write_oob = mxs_nand_hook_write_oob;
+	}
+
+	if (mtd->_block_markbad != mxs_nand_hook_block_markbad) {
+		nand_info->hooked_block_markbad = mtd->_block_markbad;
+		mtd->_block_markbad = mxs_nand_hook_block_markbad;
+	}
 
 	err = nand_register(0, mtd);
 	if (err)

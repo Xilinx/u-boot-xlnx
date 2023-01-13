@@ -20,7 +20,8 @@ config MPC85xx
 	select CREATE_ARCH_SYMLINK
 	select SYS_FSL_DDR
 	select SYS_FSL_DDR_BE
-	select BINMAN if OF_SEPARATE
+	select SYS_FSL_IFC_BE
+	select BINMAN if MPC85XX_HAVE_RESET_VECTOR && OF_SEPARATE
 	imply CMD_HASH
 	imply CMD_IRQ
 	imply USB_EHCI_HCD if USB
@@ -38,6 +39,10 @@ config HIGH_BATS
 	help
 	  Enable BATs (block address translation registers) 4-7 on machines
 	  that support them.
+
+config SYS_INIT_RAM_LOCK
+	bool "Lock some portion of L1 for initial ram stack"
+	depends on MPC83xx || MPC85xx
 
 source "arch/powerpc/cpu/mpc83xx/Kconfig"
 source "arch/powerpc/cpu/mpc85xx/Kconfig"

@@ -15,8 +15,6 @@
 /* additions for new ARM relocation support */
 #define CONFIG_SYS_SDRAM_BASE	0x00000000
 
-#define CONFIG_SYS_BOOTM_LEN	SZ_64M /* Increase max gunzip size */
-
 #define CONFIG_SYS_BAUDRATE_TABLE	{ 300, 600, 1200, 1800, 2400, 4800, \
 					  9600, 19200, 38400, 57600, 115200, \
 					  230400, 460800, 500000, 576000, \
@@ -25,48 +23,59 @@
 					  4000000, 4500000, 5000000, 5500000, \
 					  6000000 }
 
-#define	CONFIG_SYS_CBSIZE	1024	/* Console I/O Buff Size */
-
 /*
  * Other required minimal configurations
  */
-#define CONFIG_SYS_MAXARGS	32	/* max number of command args */
-
-/* End of 16M scrubbed by training in bootrom */
-#define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SYS_TEXT_BASE + 0xFF0000)
 
 /*
  * Environment
  */
 #define DEFAULT_ENV_IS_RW		/* required for configuring default fdtfile= */
 
-/*
- * Ethernet Driver configuration
- */
-#define CONFIG_ARP_TIMEOUT	200
-#define CONFIG_NET_RETRY_COUNT	50
+#ifdef CONFIG_MMC
+#define BOOT_TARGET_DEVICES_MMC(func, i) func(MMC, mmc, i)
+#else
+#define BOOT_TARGET_DEVICES_MMC(func, i)
+#endif
 
-#define CONFIG_USB_MAX_CONTROLLER_COUNT (3 + 3)
+#ifdef CONFIG_USB_STORAGE
+#define BOOT_TARGET_DEVICES_USB(func) func(USB, usb, 0)
+#else
+#define BOOT_TARGET_DEVICES_USB(func)
+#endif
 
-/*
- * SATA/SCSI/AHCI configuration
- */
-#define CONFIG_SCSI_AHCI_PLAT
-#define CONFIG_LBA48
-#define CONFIG_SYS_64BIT_LBA
+#ifdef CONFIG_SCSI
+#define BOOT_TARGET_DEVICES_SCSI(func) func(SCSI, scsi, 0)
+#else
+#define BOOT_TARGET_DEVICES_SCSI(func)
+#endif
 
-#define CONFIG_SYS_SCSI_MAX_SCSI_ID	2
-#define CONFIG_SYS_SCSI_MAX_LUN		1
-#define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
-					 CONFIG_SYS_SCSI_MAX_LUN)
+#ifdef CONFIG_NVME
+#define BOOT_TARGET_DEVICES_NVME(func) func(NVME, nvme, 0)
+#else
+#define BOOT_TARGET_DEVICES_NVME(func)
+#endif
+
+#if defined(CONFIG_CMD_DHCP) && defined(CONFIG_CMD_PXE)
+#define BOOT_TARGET_DEVICES_PXE(func) func(PXE, pxe, na)
+#else
+#define BOOT_TARGET_DEVICES_PXE(func)
+#endif
+
+#ifdef CONFIG_CMD_DHCP
+#define BOOT_TARGET_DEVICES_DHCP(func) func(DHCP, dhcp, na)
+#else
+#define BOOT_TARGET_DEVICES_DHCP(func)
+#endif
 
 #define BOOT_TARGET_DEVICES(func) \
-	func(MMC, mmc, 1) \
-	func(MMC, mmc, 0) \
-	func(USB, usb, 0) \
-	func(SCSI, scsi, 0) \
-	func(PXE, pxe, na) \
-	func(DHCP, dhcp, na)
+	BOOT_TARGET_DEVICES_MMC(func, 1) \
+	BOOT_TARGET_DEVICES_MMC(func, 0) \
+	BOOT_TARGET_DEVICES_USB(func) \
+	BOOT_TARGET_DEVICES_NVME(func) \
+	BOOT_TARGET_DEVICES_SCSI(func) \
+	BOOT_TARGET_DEVICES_PXE(func) \
+	BOOT_TARGET_DEVICES_DHCP(func)
 
 #include <config_distro_bootcmd.h>
 

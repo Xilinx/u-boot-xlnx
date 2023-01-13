@@ -54,13 +54,6 @@
 	"fdt_addr_r=0x03000000\0" \
 	"ramdisk_addr_r=0x03100000\0"
 
-/* Defines for SPL */
-#define CONFIG_SYS_SPL_MALLOC_START	0x00090000
-#define CONFIG_SPL_STACK		0x000ffffc
-
-/* Align LCD to 1MB boundary */
-#define CONFIG_LCD_ALIGNMENT	MMU_SECTION_SIZE
-
 #ifdef CONFIG_TEGRA_LP0
 #define TEGRA_LP0_ADDR			0x1C406000
 #define TEGRA_LP0_SIZE			0x2000
@@ -70,15 +63,5 @@
 #else
 #define TEGRA_LP0_VEC
 #endif
-
-/*
- * This parameter affects a TXFILLTUNING field that controls how much data is
- * sent to the latency fifo before it is sent to the wire. Without this
- * parameter, the default (2) causes occasional Data Buffer Errors in OUT
- * packets depending on the buffer address and size.
- */
-#define CONFIG_USB_EHCI_TXFIFO_THRESH	0x10
-
-#define CONFIG_SYS_NAND_SELF_INIT
 
 #endif /* _TEGRA20_COMMON_H_ */

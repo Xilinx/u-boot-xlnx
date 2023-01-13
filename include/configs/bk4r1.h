@@ -32,17 +32,7 @@
 	"preboot=" BK4_NET_INIT \
 		"if ${ncenable}; then run if_netconsole start_netconsole; fi\0"
 
-/* BK4r1 boot command sets GPIO103/PTC30 to force USB hub out of reset*/
-#define BK4_BOOTCOMMAND "run set_gpio122; run set_gpio96; sf probe; " \
-			"run manage_userdata; "
-
 /* Enable PREBOOT variable */
-
-/* Set ARP_TIMEOUT to 500ms */
-#define CONFIG_ARP_TIMEOUT 500UL
-
-/* Set ARP_TIMEOUT_COUNT to 3 repetitions */
-#define CONFIG_NET_RETRY_COUNT	5
 
 /* BK4r1 net init sets GPIO122/PTE17 to enable Ethernet */
 #define BK4_NET_INIT "run set_gpio122;"
@@ -61,27 +51,14 @@
 #include <linux/sizes.h>
 
 /* NAND support */
-#define CONFIG_SYS_MAX_NAND_DEVICE 1
 
 #define IMX_FEC1_BASE			ENET1_BASE_ADDR
 
-/* QSPI Configs*/
-#ifdef CONFIG_FSL_QSPI
-#define FSL_QSPI_FLASH_SIZE		(SZ_16M)
-#define FSL_QSPI_FLASH_NUM		2
-#define CONFIG_SYS_FSL_QSPI_LE
-#endif
-
-/* We boot from the gfxRAM area of the OCRAM. */
-#define CONFIG_BOARD_SIZE_LIMIT		520192
-
 /* boot command, including the target-defined one if any */
-#define CONFIG_BOOTCOMMAND	BK4_BOOTCOMMAND "run bootcmd_nand"
 
 /* Extra env settings (including the target-defined ones if any) */
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	BK4_EXTRA_ENV_SETTINGS \
-	"autoload=no\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
 	"blimg_file=u-boot.vyb\0" \
@@ -95,7 +72,6 @@
 	"nfs_root=/path/to/nfs/root\0" \
 	"tftptimeout=1000\0" \
 	"tftptimeoutcountmax=1000000\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
 	"ipaddr=192.168.0.60\0" \
 	"serverip=192.168.0.1\0" \
 	"bootargs_base=setenv bootargs rw " \
@@ -226,10 +202,5 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 #endif /* __CONFIG_H */

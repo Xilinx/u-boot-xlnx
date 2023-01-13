@@ -1,5 +1,5 @@
 XILINX_ZYNQMP BOARDS
-M:	Michal Simek <michal.simek@xilinx.com>
+M:	Michal Simek <michal.simek@amd.com>
 S:	Maintained
 T:	git https://source.denx.de/u-boot/custodians/u-boot-microblaze.git
 F:	arch/arm/dts/zynqmp-*
@@ -11,7 +11,7 @@ F:	configs/xilinx_zynqmp*
 F:	configs/avnet_ultra96_rev1_defconfig
 
 ARM ZYNQMP AVNET ULTRAZED EV BOARD
-M:	Luca Ceresoli <luca@lucaceresoli.net>
+M:	Luca Ceresoli <luca.ceresoli@bootlin.com>
 S:	Maintained
 F:	arch/arm/dts/avnet-ultrazedev-*
 F:	configs/avnet_ultrazedev_cc_v1_0_ultrazedev_som_v1_0_defconfig

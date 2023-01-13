@@ -38,6 +38,14 @@ config TPL_DM_KEYBOARD
 	  includes methods to start/stop the device, check for available
 	  input and update LEDs if the keyboard has them.
 
+config APPLE_SPI_KEYB
+	bool "Enable Apple SPI keyboard support"
+	depends on DM_KEYBOARD && DM_SPI
+	help
+	  This adds a driver for the keyboards found on various
+	  laptops based on Apple SoCs. These keyboards use an
+	  Apple-specific HID-over-SPI protocol.
+
 config CROS_EC_KEYB
 	bool "Enable Chrome OS EC keyboard support"
 	depends on INPUT

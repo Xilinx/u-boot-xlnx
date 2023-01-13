@@ -17,10 +17,6 @@
 #include <phy.h>
 #include <hwconfig.h>
 
-#ifndef CONFIG_USB_MAX_CONTROLLER_COUNT
-#define CONFIG_USB_MAX_CONTROLLER_COUNT	1
-#endif
-
 #if defined(CONFIG_MP) && (defined(CONFIG_MPC85xx) || defined(CONFIG_MPC86xx))
 static int ft_del_cpuhandle(void *blob, int cpuhandle)
 {
@@ -132,7 +128,7 @@ void ft_srio_setup(void *blob)
 	/* search for srio node, if doesn't exist just return - nothing todo */
 	srio_off = fdt_node_offset_by_compatible(blob, -1, "fsl,srio");
 	if (srio_off < 0)
-		return ;
+		return;
 
 #ifdef CONFIG_SRIO1
 	if (is_serdes_configured(SRIO1))

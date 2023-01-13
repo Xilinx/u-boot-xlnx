@@ -48,11 +48,31 @@ config TPL_DM_GPIO
 	  particular GPIOs that they provide. The uclass interface
 	  is defined in include/asm-generic/gpio.h.
 
+config VPL_DM_GPIO
+	bool "Enable Driver Model for GPIO drivers in VPL"
+	depends on DM_GPIO && VPL_DM && VPL_GPIO
+	default y
+	help
+	  Enable driver model for GPIO access in VPL. The standard GPIO
+	  interface (gpio_get_value(), etc.) is then implemented by
+	  the GPIO uclass. Drivers provide methods to query the
+	  particular GPIOs that they provide. The uclass interface
+	  is defined in include/asm-generic/gpio.h.
+
 config GPIO_HOG
 	bool "Enable GPIO hog support"
 	depends on DM_GPIO
 	help
 	  Enable gpio hog support
+	  The GPIO chip may contain GPIO hog definitions. GPIO hogging
+	  is a mechanism providing automatic GPIO request and config-
+	  uration as part of the gpio-controller's driver probe function.
+
+config SPL_GPIO_HOG
+	bool "Enable GPIO hog support in SPL"
+	depends on SPL_GPIO
+	help
+	  Enable gpio hog support in SPL
 	  The GPIO chip may contain GPIO hog definitions. GPIO hogging
 	  is a mechanism providing automatic GPIO request and config-
 	  uration as part of the gpio-controller's driver probe function.
@@ -69,7 +89,7 @@ config DM_GPIO_LOOKUP_LABEL
 
 config SPL_DM_GPIO_LOOKUP_LABEL
 	bool "Enable searching for gpio labelnames"
-	depends on DM_GPIO && SPL_DM && SPL_GPIO
+	depends on SPL_DM_GPIO
 	help
 	  This option enables searching for gpio names in
 	  the defined gpio labels, if the search for the
@@ -84,10 +104,14 @@ config ALTERA_PIO
 	  Select this to enable PIO for Altera devices. Please find
 	  details on the "Embedded Peripherals IP User Guide" of Altera.
 
+config BCM2835_GPIO
+	bool "BCM2835 GPIO driver"
+	depends on DM_GPIO
+
 config BCM6345_GPIO
 	bool "BCM6345 GPIO driver"
-	depends on DM_GPIO && (ARCH_BMIPS || ARCH_BCM68360 || \
-			       ARCH_BCM6858 || ARCH_BCM63158)
+	depends on DM_GPIO && (ARCH_BMIPS || BCM6856 || \
+			       BCM6858 || BCM63158 || BCM6855)
 	help
 	  This driver supports the GPIO banks on BCM6345 SoCs.
 
@@ -126,10 +150,24 @@ config ATMEL_PIO4
 	  may be dedicated as a general purpose I/O or be assigned to
 	  a function of an embedded peripheral.
 
+config ASPEED_GPIO
+	bool "Aspeed GPIO Driver"
+	help
+	  Say yes here to support the Aspeed GPIO driver. The controller
+	  is found in the AST2400, AST2500 and AST2600 BMC SoCs and
+	  provides access to over 200 GPIOs on each chip.
+
 config DA8XX_GPIO
 	bool "DA8xx GPIO Driver"
 	help
 	  This driver supports the DA8xx GPIO controller
+
+config FXL6408_GPIO
+	bool "FXL6408 I2C GPIO expander driver"
+	depends on DM_GPIO && DM_I2C
+	help
+	  This driver supports the Fairchild FXL6408 device. FXL6408 is a
+	  fully configurable 8-bit I2C-controlled GPIO expander.
 
 config INTEL_BROADWELL_GPIO
 	bool "Intel Broadwell GPIO driver"
@@ -176,6 +214,11 @@ config HSDK_CREG_GPIO
 	depends on DM_GPIO
 	help
 	  This driver supports CREG GPIOs on Synopsys HSDK SOC.
+
+config KIRKWOOD_GPIO
+	bool "Kirkwood GPIO driver"
+	help
+	  This drdiver supports GPIOs on Kirkwood platforms
 
 config LPC32XX_GPIO
 	bool "LPC32XX GPIO driver"
@@ -235,6 +278,13 @@ config MXS_GPIO
 	help
 	  Support GPIO controllers on i.MX23 and i.MX28 platforms
 
+config NPCM_GPIO
+	bool "Nuvoton NPCM GPIO driver"
+	depends on DM_GPIO
+	help
+	  Support GPIO controllers on Nuvovon NPCM SoCs.
+	  NPCM7xx/NPCM8xx contain 8 GPIO banks, each bank contains 32 pins.
+
 config OMAP_GPIO
 	bool "TI OMAP GPIO driver"
 	depends on ARCH_OMAP2PLUS
@@ -252,14 +302,14 @@ config CMD_PCA953X
 	  legacy GPIO interface. Several subcommands are provided which mirror
 	  the standard 'gpio' command. It should use that instead.
 
-config PM8916_GPIO
-	bool "Qualcomm PM8916 PMIC GPIO/keypad driver"
-	depends on DM_GPIO && PMIC_PM8916
+config QCOM_PMIC_GPIO
+	bool "Qualcomm generic PMIC GPIO/keypad driver"
+	depends on DM_GPIO && PMIC_QCOM
 	help
 	  Support for GPIO pins and power/reset buttons found on
-	  Qualcomm PM8916 PMIC.
+	  Qualcomm SoCs PMIC.
 	  Default name for GPIO bank is "pm8916".
-	  Power and reset buttons are placed in "pm8916_key" bank and
+	  Power and reset buttons are placed in "pwkey_qcom" bank and
           have gpio numbers 0 and 1 respectively.
 
 config PCF8575_GPIO
@@ -314,6 +364,7 @@ config SANDBOX_GPIO_COUNT
 config SUNXI_GPIO
 	bool "Allwinner GPIO driver"
 	depends on ARCH_SUNXI
+	select SPL_STRTO if SPL
 	help
 	  Support the GPIO device in Allwinner SoCs.
 
@@ -439,7 +490,7 @@ config DM_PCA953X
 
 config SPL_DM_PCA953X
 	bool "PCA95[357]x, PCA9698, TCA64xx, and MAX7310 I/O ports in SPL"
-	depends on DM_GPIO
+	depends on SPL_DM_GPIO
 	help
 	  Say yes here to provide access to several register-oriented
 	  SMBus I/O expanders, made mostly by NXP or TI.  Compatible
@@ -501,7 +552,7 @@ config MT7620_GPIO
 
 config MT7621_GPIO
 	bool "MediaTek MT7621 GPIO driver"
-	depends on DM_GPIO && SOC_MT7628
+	depends on DM_GPIO && (SOC_MT7621 || SOC_MT7628)
 	default y
 	help
 	  Say yes here to support MediaTek MT7621 compatible GPIOs.
@@ -532,6 +583,12 @@ config ZYNQMP_GPIO_MODEPIN
 	  are accessed using xilinx firmware. In modepin register, [3:0] bits
 	  set direction, [7:4] bits read IO, [11:8] bits set/clear IO.
 
+config SL28CPLD_GPIO
+	bool "Kontron sl28cpld GPIO driver"
+	depends on DM_GPIO && SL28CPLD
+	help
+	  Support GPIO access on Kontron sl28cpld board management controllers.
+
 config SLG7XL45106_I2C_GPO
 	bool "slg7xl45106 i2c gpo expander"
 	depends on DM_GPIO
@@ -539,5 +596,24 @@ config SLG7XL45106_I2C_GPO
 	   Support for slg7xl45106 i2c gpo expander. It is an i2c based
 	   8-bit gpo expander, all gpo lines are controlled by writing
 	   value into data register.
+
+config TURRIS_OMNIA_MCU
+	bool "Turris Omnia MCU GPIO driver"
+	depends on DM_GPIO
+	default y if TARGET_TURRIS_OMNIA
+	help
+	   Support for GPIOs on MCU connected to Turris Omnia via i2c.
+
+config FTGPIO010
+	bool "Faraday Technology FTGPIO010 driver"
+	depends on DM_GPIO
+	help
+	   Support for GPIOs on Faraday Technology's FTGPIO010 controller.
+
+config ADP5585_GPIO
+	bool "ADP5585 GPIO driver"
+	depends on DM_GPIO && DM_I2C
+	help
+	  Support ADP5585 GPIO expander.
 
 endif

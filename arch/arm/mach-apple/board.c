@@ -5,7 +5,9 @@
 
 #include <common.h>
 #include <dm.h>
+#include <dm/uclass-internal.h>
 #include <efi_loader.h>
+#include <lmb.h>
 
 #include <asm/armv8/mmu.h>
 #include <asm/global_data.h>
@@ -14,12 +16,22 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-static struct mm_region apple_mem_map[] = {
+/* Apple M1/M2 */
+
+static struct mm_region t8103_mem_map[] = {
 	{
 		/* I/O */
 		.virt = 0x200000000,
 		.phys = 0x200000000,
-		.size = 8UL * SZ_1G,
+		.size = 2UL * SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x380000000,
+		.phys = 0x380000000,
+		.size = SZ_1G,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
@@ -27,7 +39,7 @@ static struct mm_region apple_mem_map[] = {
 		/* I/O */
 		.virt = 0x500000000,
 		.phys = 0x500000000,
-		.size = 2UL * SZ_1G,
+		.size = SZ_1G,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
@@ -63,15 +75,275 @@ static struct mm_region apple_mem_map[] = {
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 			 PTE_BLOCK_INNER_SHARE
 	}, {
-		/* Empty entry for framebuffer */
-		0,
+		/* Framebuffer */
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL_NC) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
 	}, {
 		/* List terminator */
 		0,
 	}
 };
 
-struct mm_region *mem_map = apple_mem_map;
+/* Apple M1 Pro/Max */
+
+static struct mm_region t6000_mem_map[] = {
+	{
+		/* I/O */
+		.virt = 0x280000000,
+		.phys = 0x280000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x380000000,
+		.phys = 0x380000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x580000000,
+		.phys = 0x580000000,
+		.size = SZ_512M,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* PCIE */
+		.virt = 0x5a0000000,
+		.phys = 0x5a0000000,
+		.size = SZ_512M,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRE) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* PCIE */
+		.virt = 0x5c0000000,
+		.phys = 0x5c0000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRE) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x700000000,
+		.phys = 0x700000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0xb00000000,
+		.phys = 0xb00000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0xf00000000,
+		.phys = 0xf00000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x1300000000,
+		.phys = 0x1300000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* RAM */
+		.virt = 0x10000000000,
+		.phys = 0x10000000000,
+		.size = 16UL * SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+			 PTE_BLOCK_INNER_SHARE
+	}, {
+		/* Framebuffer */
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL_NC) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* List terminator */
+		0,
+	}
+};
+
+/* Apple M1 Ultra */
+
+static struct mm_region t6002_mem_map[] = {
+	{
+		/* I/O */
+		.virt = 0x280000000,
+		.phys = 0x280000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x380000000,
+		.phys = 0x380000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x580000000,
+		.phys = 0x580000000,
+		.size = SZ_512M,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* PCIE */
+		.virt = 0x5a0000000,
+		.phys = 0x5a0000000,
+		.size = SZ_512M,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRE) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* PCIE */
+		.virt = 0x5c0000000,
+		.phys = 0x5c0000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRE) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x700000000,
+		.phys = 0x700000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0xb00000000,
+		.phys = 0xb00000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0xf00000000,
+		.phys = 0xf00000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x1300000000,
+		.phys = 0x1300000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x2280000000,
+		.phys = 0x2280000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x2380000000,
+		.phys = 0x2380000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x2580000000,
+		.phys = 0x2580000000,
+		.size = SZ_512M,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* PCIE */
+		.virt = 0x25a0000000,
+		.phys = 0x25a0000000,
+		.size = SZ_512M,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRE) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* PCIE */
+		.virt = 0x25c0000000,
+		.phys = 0x25c0000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRE) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x2700000000,
+		.phys = 0x2700000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x2b00000000,
+		.phys = 0x2b00000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x2f00000000,
+		.phys = 0x2f00000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* I/O */
+		.virt = 0x3300000000,
+		.phys = 0x3300000000,
+		.size = SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* RAM */
+		.virt = 0x10000000000,
+		.phys = 0x10000000000,
+		.size = 16UL * SZ_1G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+			 PTE_BLOCK_INNER_SHARE
+	}, {
+		/* Framebuffer */
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL_NC) |
+			 PTE_BLOCK_INNER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* List terminator */
+		0,
+	}
+};
+
+struct mm_region *mem_map;
 
 int board_init(void)
 {
@@ -80,67 +352,12 @@ int board_init(void)
 
 int dram_init(void)
 {
-	ofnode node;
-	int index, ret;
-	fdt_addr_t base;
-	fdt_size_t size;
-
-	ret = fdtdec_setup_mem_size_base();
-	if (ret)
-		return ret;
-
-	/* Update RAM mapping */
-	index = ARRAY_SIZE(apple_mem_map) - 3;
-	apple_mem_map[index].virt = gd->ram_base;
-	apple_mem_map[index].phys = gd->ram_base;
-	apple_mem_map[index].size = gd->ram_size;
-
-	node = ofnode_path("/chosen/framebuffer");
-	if (!ofnode_valid(node))
-		return 0;
-
-	base = ofnode_get_addr_size(node, "reg", &size);
-	if (base == FDT_ADDR_T_NONE)
-		return 0;
-
-	/* Add framebuffer mapping */
-	index = ARRAY_SIZE(apple_mem_map) - 2;
-	apple_mem_map[index].virt = base;
-	apple_mem_map[index].phys = base;
-	apple_mem_map[index].size = size;
-	apple_mem_map[index].attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL_NC) |
-		PTE_BLOCK_INNER_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN;
-
-	return 0;
+	return fdtdec_setup_mem_size_base();
 }
 
 int dram_init_banksize(void)
 {
 	return fdtdec_setup_memory_banksize();
-}
-
-#define APPLE_WDT_BASE		0x23d2b0000ULL
-
-#define APPLE_WDT_SYS_CTL_ENABLE	BIT(2)
-
-typedef struct apple_wdt {
-	u32	reserved0[3];
-	u32	chip_ctl;
-	u32	sys_tmr;
-	u32	sys_cmp;
-	u32	reserved1;
-	u32	sys_ctl;
-} apple_wdt_t;
-
-void reset_cpu(void)
-{
-	apple_wdt_t *wdt = (apple_wdt_t *)APPLE_WDT_BASE;
-
-	writel(0, &wdt->sys_cmp);
-	writel(APPLE_WDT_SYS_CTL_ENABLE, &wdt->sys_ctl);
-
-	while(1)
-		wfi();
 }
 
 extern long fw_dtb_pointer;
@@ -152,11 +369,136 @@ void *board_fdt_blob_setup(int *err)
 	return (void *)fw_dtb_pointer;
 }
 
-ulong board_get_usable_ram_top(ulong total_size)
+void build_mem_map(void)
 {
-	/*
-	 * Top part of RAM is used by firmware for things like the
-	 * framebuffer.  This gives us plenty of room to play with.
+	ofnode node;
+	fdt_addr_t base;
+	fdt_size_t size;
+	int i;
+
+	if (of_machine_is_compatible("apple,t8103") ||
+	    of_machine_is_compatible("apple,t8112"))
+		mem_map = t8103_mem_map;
+	else if (of_machine_is_compatible("apple,t6000"))
+		mem_map = t6000_mem_map;
+	else if (of_machine_is_compatible("apple,t6001"))
+		mem_map = t6000_mem_map;
+	else if (of_machine_is_compatible("apple,t6002"))
+		mem_map = t6002_mem_map;
+	else
+		panic("Unsupported SoC\n");
+
+	/* Find list terminator. */
+	for (i = 0; mem_map[i].size || mem_map[i].attrs; i++)
+		;
+
+	/* Align RAM mapping to page boundaries */
+	base = gd->bd->bi_dram[0].start;
+	size = gd->bd->bi_dram[0].size;
+	size += (base - ALIGN_DOWN(base, SZ_4K));
+	base = ALIGN_DOWN(base, SZ_4K);
+	size = ALIGN(size, SZ_4K);
+
+	/* Update RAM mapping */
+	mem_map[i - 2].virt = base;
+	mem_map[i - 2].phys = base;
+	mem_map[i - 2].size = size;
+
+	node = ofnode_path("/chosen/framebuffer");
+	if (!ofnode_valid(node))
+		return;
+
+	base = ofnode_get_addr_size(node, "reg", &size);
+	if (base == FDT_ADDR_T_NONE)
+		return;
+
+	/* Align framebuffer mapping to page boundaries */
+	size += (base - ALIGN_DOWN(base, SZ_4K));
+	base = ALIGN_DOWN(base, SZ_4K);
+	size = ALIGN(size, SZ_4K);
+
+	/* Add framebuffer mapping */
+	mem_map[i - 1].virt = base;
+	mem_map[i - 1].phys = base;
+	mem_map[i - 1].size = size;
+}
+
+void enable_caches(void)
+{
+	build_mem_map();
+
+	icache_enable();
+	dcache_enable();
+}
+
+u64 get_page_table_size(void)
+{
+	return SZ_256K;
+}
+
+#define KERNEL_COMP_SIZE	SZ_128M
+
+int board_late_init(void)
+{
+	struct lmb lmb;
+	u32 status = 0;
+
+	lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
+
+	/* somewhat based on the Linux Kernel boot requirements:
+	 * align by 2M and maximal FDT size 2M
 	 */
-	return 0x980000000;
+	status |= env_set_hex("loadaddr", lmb_alloc(&lmb, SZ_1G, SZ_2M));
+	status |= env_set_hex("fdt_addr_r", lmb_alloc(&lmb, SZ_2M, SZ_2M));
+	status |= env_set_hex("kernel_addr_r", lmb_alloc(&lmb, SZ_128M, SZ_2M));
+	status |= env_set_hex("ramdisk_addr_r", lmb_alloc(&lmb, SZ_1G, SZ_2M));
+	status |= env_set_hex("kernel_comp_addr_r",
+			      lmb_alloc(&lmb, KERNEL_COMP_SIZE, SZ_2M));
+	status |= env_set_hex("kernel_comp_size", KERNEL_COMP_SIZE);
+	status |= env_set_hex("scriptaddr", lmb_alloc(&lmb, SZ_4M, SZ_2M));
+	status |= env_set_hex("pxefile_addr_r", lmb_alloc(&lmb, SZ_4M, SZ_2M));
+
+	if (status)
+		log_warning("late_init: Failed to set run time variables\n");
+
+	return 0;
+}
+
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	struct udevice *dev;
+	const char *stdoutname;
+	int node, ret;
+
+	/*
+	 * Modify the "stdout-path" property under "/chosen" to point
+	 * at "/chosen/framebuffer if a keyboard is available and
+	 * we're not running under the m1n1 hypervisor.
+	 * Developers can override this behaviour by dropping
+	 * "vidconsole" from the "stdout" environment variable.
+	 */
+
+	/* EL1 means we're running under the m1n1 hypervisor. */
+	if (current_el() == 1)
+		return 0;
+
+	ret = uclass_find_device(UCLASS_KEYBOARD, 0, &dev);
+	if (ret < 0)
+		return 0;
+
+	stdoutname = env_get("stdout");
+	if (!stdoutname || !strstr(stdoutname, "vidconsole"))
+		return 0;
+
+	/* Make sure we actually have a framebuffer. */
+	node = fdt_path_offset(blob, "/chosen/framebuffer");
+	if (node < 0 || !fdtdec_get_is_enabled(blob, node))
+		return 0;
+
+	node = fdt_path_offset(blob, "/chosen");
+	if (node < 0)
+		return 0;
+	fdt_setprop_string(blob, node, "stdout-path", "/chosen/framebuffer");
+
+	return 0;
 }

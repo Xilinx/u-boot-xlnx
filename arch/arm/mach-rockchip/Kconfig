@@ -8,7 +8,6 @@ config ROCKCHIP_PX30
 	select SPL
 	select TPL
 	select TPL_TINY_FRAMEWORK if TPL
-	select TPL_NEEDS_SEPARATE_TEXT_BASE if SPL
 	select TPL_NEEDS_SEPARATE_STACK if TPL
 	imply SPL_SEPARATE_BSS
 	select SPL_SERIAL
@@ -35,6 +34,28 @@ config ROCKCHIP_RK3036
 	  including NEON and GPU, Mali-400 graphics, several DDR3 options
 	  and video codec support. Peripherals include Gigabit Ethernet,
 	  USB2 host and OTG, SDIO, I2S, UART, SPI, I2C and PWMs.
+
+config ROCKCHIP_RK3066
+	bool "Support Rockchip RK3066"
+	select CPU_V7A
+	select SPL_BOARD_INIT if SPL
+	select SUPPORT_SPL
+	select SUPPORT_TPL
+	select SPL
+	select TPL
+	select TPL_ROCKCHIP_BACK_TO_BROM
+	select TPL_ROCKCHIP_EARLYRETURN_TO_BROM
+	imply ROCKCHIP_COMMON_BOARD
+	imply SPL_ROCKCHIP_COMMON_BOARD
+	imply SPL_SERIAL
+	imply TPL_ROCKCHIP_COMMON_BOARD
+	imply TPL_SERIAL
+	help
+	  The Rockchip RK3066 is a ARM-based SoC with a dual-core Cortex-A9
+	  including NEON and GPU, 512KB L2 cache, Mali-400 graphics, two
+	  video interfaces, several memory options and video codec support.
+	  Peripherals include Fast Ethernet, USB2 host and OTG, SDIO, I2S,
+	  UART, SPI, I2C and PWMs.
 
 config ROCKCHIP_RK3128
 	bool "Support Rockchip RK3128"
@@ -80,7 +101,6 @@ config ROCKCHIP_RK322X
 	select TPL
 	select TPL_DM
 	select TPL_OF_LIBFDT
-	select TPL_NEEDS_SEPARATE_TEXT_BASE if SPL
 	select TPL_NEEDS_SEPARATE_STACK if TPL
 	select SPL_DRIVERS_MISC
 	imply ROCKCHIP_COMMON_BOARD
@@ -112,7 +132,6 @@ config ROCKCHIP_RK3288
 	imply TPL_DRIVERS_MISC
 	imply TPL_LIBCOMMON_SUPPORT
 	imply TPL_LIBGENERIC_SUPPORT
-	imply TPL_NEEDS_SEPARATE_TEXT_BASE
 	imply TPL_NEEDS_SEPARATE_STACK
 	imply TPL_OF_CONTROL
 	imply TPL_OF_PLATDATA
@@ -160,7 +179,6 @@ config ROCKCHIP_RK3328
 	select SPL
 	select SUPPORT_TPL
 	select TPL
-	select TPL_NEEDS_SEPARATE_TEXT_BASE if TPL
 	select TPL_NEEDS_SEPARATE_STACK if TPL
 	imply ROCKCHIP_COMMON_BOARD
 	imply ROCKCHIP_SDRAM_COMMON
@@ -183,7 +201,6 @@ config ROCKCHIP_RK3368
 	select ARM64
 	select SUPPORT_SPL
 	select SUPPORT_TPL
-	select TPL_NEEDS_SEPARATE_TEXT_BASE if SPL
 	select TPL_NEEDS_SEPARATE_STACK if TPL
 	imply ROCKCHIP_COMMON_BOARD
 	imply SPL_ROCKCHIP_COMMON_BOARD
@@ -216,7 +233,6 @@ config ROCKCHIP_RK3399
 	select SPL_RAM if SPL
 	select SPL_REGMAP if SPL
 	select SPL_SYSCON if SPL
-	select TPL_NEEDS_SEPARATE_TEXT_BASE if TPL
 	select TPL_NEEDS_SEPARATE_STACK if TPL
 	select SPL_SEPARATE_BSS
 	select SPL_SERIAL
@@ -230,6 +246,7 @@ config ROCKCHIP_RK3399
 	select DM_PMIC
 	select DM_REGULATOR_FIXED
 	select BOARD_LATE_INIT
+	imply PARTITION_TYPE_GUID
 	imply PRE_CONSOLE_BUFFER
 	imply ROCKCHIP_COMMON_BOARD
 	imply ROCKCHIP_SDRAM_COMMON
@@ -345,6 +362,26 @@ config ROCKCHIP_BOOT_MODE_REG
 	  The Soc will enter to different boot mode(defined in asm/arch-rockchip/boot_mode.h)
 	  according to the value from this register.
 
+config ROCKCHIP_RK8XX_DISABLE_BOOT_ON_POWERON
+	bool "Disable device boot on power plug-in"
+	depends on PMIC_RK8XX
+	default n
+	---help---
+	  Say Y here to prevent the device from booting up because of a plug-in
+	  event. When set, the device will boot briefly to determine why it was
+	  powered on, and if it was determined because of a plug-in event
+	  instead of a button press event it will shut back off.
+
+config ROCKCHIP_STIMER
+	bool "Rockchip STIMER support"
+	default y
+	help
+	  Enable Rockchip STIMER support.
+
+config ROCKCHIP_STIMER_BASE
+	hex
+	depends on ROCKCHIP_STIMER
+
 config ROCKCHIP_SPL_RESERVE_IRAM
 	hex "Size of IRAM reserved in SPL"
 	default 0
@@ -389,15 +426,17 @@ config SPL_MMC
 
 config ROCKCHIP_SPI_IMAGE
 	bool "Build a SPI image for rockchip"
-	depends on HAS_ROM
 	help
 	  Some Rockchip SoCs support booting from SPI flash. Enable this
-	  option to produce a 4MB SPI-flash image (called u-boot.rom)
-	  containing U-Boot. The image is built by binman. U-Boot sits near
-	  the start of the image.
+	  option to produce a SPI-flash image containing U-Boot. The image
+	  is built by binman. U-Boot sits near the start of the image.
+
+config LNX_KRNL_IMG_TEXT_OFFSET_BASE
+	default TEXT_BASE
 
 source "arch/arm/mach-rockchip/px30/Kconfig"
 source "arch/arm/mach-rockchip/rk3036/Kconfig"
+source "arch/arm/mach-rockchip/rk3066/Kconfig"
 source "arch/arm/mach-rockchip/rk3128/Kconfig"
 source "arch/arm/mach-rockchip/rk3188/Kconfig"
 source "arch/arm/mach-rockchip/rk322x/Kconfig"

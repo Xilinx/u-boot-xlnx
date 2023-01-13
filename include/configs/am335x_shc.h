@@ -16,27 +16,11 @@
 
 /* settings we don;t want on this board */
 
-#ifndef CONFIG_SPL_BUILD
-# define CONFIG_TIMESTAMP
-#endif
-
-#define CONFIG_SYS_BOOTM_LEN		(16 << 20)
-
 /* Clock Defines */
 #define V_OSCK				24000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
 
 #define CONFIG_HSMMC2_8BIT
-
-#ifndef CONFIG_SHC_ICT
-/*
- * In builds other than ICT, reset to retry after timeout
- * Define a timeout after which a stopped bootloader continues autoboot
- * (only works with CONFIG_RESET_TO_RETRY)
- */
-# define CONFIG_BOOT_RETRY_TIME 30
-# define CONFIG_RESET_TO_RETRY
-#endif
 
 #ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -139,64 +123,15 @@
 
 #if defined CONFIG_SHC_NETBOOT
 /* Network Boot */
-# define CONFIG_BOOTCOMMAND \
-	"run fusecmd; " \
-	"if run netboot; then " \
-		"echo Booting from network; " \
-	"else " \
-		"echo ERROR: Cannot boot from network!; " \
-		"panic; " \
-	"fi; "
 
 #elif defined CONFIG_SHC_SDBOOT /* !defined CONFIG_SHC_NETBOOT */
 /* SD-Card Boot */
-# define CONFIG_BOOTCOMMAND \
-	"if mmc dev 0; mmc rescan; then " \
-		"run sd_setup; " \
-	"else " \
-		"echo ERROR: SD/MMC-Card not detected!; " \
-		"panic; " \
-	"fi; " \
-	"if run loaduimage; then " \
-		"echo Bootable SD/MMC-Card inserted, booting from it!; " \
-		"run mmcboot; " \
-	"else " \
-		"echo ERROR: Unable to load uImage from SD/MMC-Card!; " \
-		"panic; " \
-	"fi; "
 
 #elif defined CONFIG_SHC_ICT
 /* ICT adapter boots only u-boot and does HW partitioning */
-# define CONFIG_BOOTCOMMAND \
-	"if mmc dev 0; mmc rescan; then " \
-		"run sd_setup; " \
-	"else " \
-		"echo ERROR: SD/MMC-Card not detected!; " \
-		"panic; " \
-	"fi; " \
-	"run fusecmd; "
 
 #else /* !defined CONFIG_SHC_NETBOOT, !defined CONFIG_SHC_SDBOOT */
 /* Regular Boot from internal eMMC */
-# define CONFIG_BOOTCOMMAND \
-	"if mmc dev 1; mmc rescan; then " \
-		"run emmc_setup; " \
-	"else " \
-		"echo ERROR: eMMC device not detected!; " \
-		"panic; " \
-	"fi; " \
-	"if run loaduimage; then " \
-		"run mmcboot; " \
-	"else " \
-		"echo ERROR Unable to load uImage from eMMC!; " \
-		"echo Performing Rollback!; " \
-		"setenv _active_ ${active_root}; " \
-		"setenv _inactive_ ${inactive_root}; " \
-		"setenv active_root ${_inactive_}; " \
-		"setenv inactive_root ${_active_}; " \
-		"saveenv; " \
-		"reset; " \
-	"fi; "
 
 #endif /* Regular Boot */
 
@@ -208,19 +143,4 @@
 #define CONFIG_SYS_NS16550_COM5		0x481a8000	/* UART4 */
 #define CONFIG_SYS_NS16550_COM6		0x481aa000	/* UART5 */
 
-/* PMIC support */
-#define CONFIG_POWER_TPS65217
-
-/* SPL */
-
-/*
- * Disable MMC DM for SPL build and can be re-enabled after adding
- * DM support in SPL
- */
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_DM_MMC
-#undef CONFIG_TIMER
-#endif
-
-#define CONFIG_NET_RETRY_COUNT         10
 #endif	/* ! __CONFIG_AM335X_SHC_H */

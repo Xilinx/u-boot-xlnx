@@ -14,7 +14,7 @@
 #include <net.h>
 #include <vxworks.h>
 #ifdef CONFIG_X86
-#include <vbe.h>
+#include <vesa.h>
 #include <asm/cache.h>
 #include <asm/e820.h>
 #include <linux/linkage.h>
@@ -41,7 +41,6 @@ int do_bootelf(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	unsigned long addr; /* Address of the ELF image */
 	unsigned long rc; /* Return value from user code */
 	char *sload = NULL;
-	const char *ep = env_get("autostart");
 	int rcode = 0;
 
 	/* Consume 'bootelf' */
@@ -69,10 +68,11 @@ int do_bootelf(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	else
 		addr = load_elf_image_shdr(addr);
 
-	if (ep && !strcmp(ep, "no"))
+	if (!env_get_autostart())
 		return rcode;
 
 	printf("## Starting application at 0x%08lx ...\n", addr);
+	flush();
 
 	/*
 	 * pass address parameter as argv[0] (aka command name),
@@ -275,6 +275,7 @@ int do_bootvx(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		puts("## Not an ELF image, assuming binary\n");
 
 	printf("## Starting vxWorks at 0x%08lx ...\n", addr);
+	flush();
 
 	dcache_disable();
 #if defined(CONFIG_ARM64) && defined(CONFIG_ARMV8_PSCI)

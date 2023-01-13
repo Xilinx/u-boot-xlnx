@@ -275,13 +275,6 @@ static void rp_writel(struct tegra_pcie_port *port, unsigned long value,
 	writel(value, port->regs.start + offset);
 }
 
-static unsigned long tegra_pcie_conf_offset(pci_dev_t bdf, int where)
-{
-	return ((where & 0xf00) << 16) | (PCI_BUS(bdf) << 16) |
-	       (PCI_DEV(bdf) << 11) | (PCI_FUNC(bdf) << 8) |
-	       (where & 0xfc);
-}
-
 static int tegra_pcie_conf_address(struct tegra_pcie *pcie, pci_dev_t bdf,
 				   int where, unsigned long *address)
 {
@@ -305,7 +298,9 @@ static int tegra_pcie_conf_address(struct tegra_pcie *pcie, pci_dev_t bdf,
 			return -EFAULT;
 #endif
 
-		*address = pcie->cs.start + tegra_pcie_conf_offset(bdf, where);
+		*address = pcie->cs.start +
+			   (PCI_CONF1_EXT_ADDRESS(PCI_BUS(bdf), PCI_DEV(bdf),
+			    PCI_FUNC(bdf), where) & ~PCI_CONF1_ENABLE);
 		return 0;
 	}
 }
@@ -330,8 +325,8 @@ static int pci_tegra_read_config(const struct udevice *bus, pci_dev_t bdf,
 	/* fixup root port class */
 	if (PCI_BUS(bdf) == 0) {
 		if ((offset & ~3) == PCI_CLASS_REVISION) {
-			value &= ~0x00ff0000;
-			value |= PCI_CLASS_BRIDGE_PCI << 16;
+			value &= ~0x00ffff00;
+			value |= PCI_CLASS_BRIDGE_PCI_NORMAL << 8;
 		}
 	}
 #endif
@@ -460,7 +455,7 @@ static int tegra_pcie_parse_port_info(ofnode node, uint *index, uint *lanes)
 
 	err = ofnode_read_u32_default(node, "nvidia,num-lanes", -1);
 	if (err < 0) {
-		pr_err("failed to parse \"nvidia,num-lanes\" property");
+		pr_err("failed to parse \"nvidia,num-lanes\" property\n");
 		return err;
 	}
 
@@ -468,7 +463,7 @@ static int tegra_pcie_parse_port_info(ofnode node, uint *index, uint *lanes)
 
 	err = ofnode_read_pci_addr(node, 0, "reg", &addr);
 	if (err < 0) {
-		pr_err("failed to parse \"reg\" property");
+		pr_err("failed to parse \"reg\" property\n");
 		return err;
 	}
 
@@ -536,7 +531,7 @@ static int tegra_pcie_parse_dt(struct udevice *dev, enum tegra_pci_id id,
 
 		lanes |= num_lanes << (index << 3);
 
-		if (!ofnode_is_available(subnode))
+		if (!ofnode_is_enabled(subnode))
 			continue;
 
 		port = malloc(sizeof(*port));

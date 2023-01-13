@@ -13,6 +13,7 @@
 #include <asm-offsets.h>
 #include <asm/macro.h>
 #include <linux/linkage.h>
+#include <system-constants.h>
 
 /*
  * This file handles the target-independent stages of the U-Boot
@@ -81,7 +82,7 @@ ENTRY(_main)
 #endif
 	add	x0, x0, #CONFIG_SYS_INIT_SP_BSS_OFFSET
 #else
-	ldr	x0, =(CONFIG_SYS_INIT_SP_ADDR)
+	ldr	x0, =(SYS_INIT_SP_ADDR)
 #endif
 	bic	sp, x0, #0xf	/* 16-byte alignment for ABI compliance */
 	mov	x0, sp
@@ -90,6 +91,10 @@ ENTRY(_main)
 	/* set up gd here, outside any C code */
 	mov	x18, x0
 	bl	board_init_f_init_reserve
+
+#if defined(CONFIG_DEBUG_UART) && CONFIG_IS_ENABLED(SERIAL)
+	bl	debug_uart_init
+#endif
 
 	mov	x0, #0
 	bl	board_init_f

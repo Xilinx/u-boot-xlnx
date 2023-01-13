@@ -11,9 +11,6 @@
 #define PHYS_SDRAM_1_SIZE		0x40000000	/* 1GiB on VINING_FPGA */
 
 /* Booting Linux */
-#define CONFIG_BOOTFILE		"fitImage"
-#define CONFIG_BOOTCOMMAND	"run selboot"
-#define CONFIG_SYS_BOOTM_LEN	0x2000000	/* 32 MiB */
 
 /* Extra Environment */
 #define CONFIG_HOSTNAME			"socfpga_vining_fpga"
@@ -61,7 +58,7 @@
 		"256k(softing1),"					\
 		"256k(softing2),"					\
 		"14720k(rcvrfs),"	/* Recovery */			\
-		"64m(rootfs),"		/* Root */			\
+		"192m(rootfs),"		/* Root */			\
 		"-(userfs)\0"		/* User */			\
 	"mtdparts_1_128m=ff705000.spi.1:" /* 16MiB+128MiB SF config */	\
 		"64m(rootfs),"						\
@@ -118,7 +115,8 @@
 	"addargs=run addcons addmtd addmisc\0"				\
 	"ubiload="							\
 		"ubi part ${ubimtd} ; ubifsmount ${ubipart} ; "		\
-		"ubifsload ${kernel_addr_r} /boot/${bootfile}\0"	\
+		"ubifsload ${kernel_addr_r} /boot/${bootfile} ; "	\
+		"ubifsumount ; ubi detach\0"				\
 	"netload="							\
 		"tftp ${kernel_addr_r} ${hostname}/${bootfile}\0"	\
 	"miscargs=nohlt panic=1\0"					\
@@ -187,9 +185,6 @@
 		"else echo \"Unsupported boot mode: \"${bootmode} ; "	\
 		"fi\0"							\
 		"socfpga_legacy_reset_compat=1\0"
-
-/* Support changing the prompt string */
-#define CONFIG_CMDLINE_PS_SUPPORT
 
 /* The rest of the configuration is shared */
 #include <configs/socfpga_common.h>

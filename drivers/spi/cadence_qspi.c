@@ -29,6 +29,17 @@
 #define CQSPI_READ			2
 #define CQSPI_WRITE			3
 
+__weak int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
+				     const struct spi_mem_op *op)
+{
+	return 0;
+}
+
+__weak int cadence_qspi_versal_flash_reset(struct udevice *dev)
+{
+	return 0;
+}
+
 static int cadence_spi_write_speed(struct udevice *bus, uint hz)
 {
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
@@ -162,9 +173,17 @@ static int cadence_spi_set_speed(struct udevice *bus, uint hz)
 	 * If the device tree already provides a read delay value, use that
 	 * instead of calibrating.
 	 */
-	if (priv->previous_hz != hz ||
-	    priv->qspi_calibrated_hz != hz ||
-	    priv->qspi_calibrated_cs != priv->cs) {
+	if (priv->read_delay >= 0) {
+		cadence_spi_write_speed(bus, hz);
+		cadence_qspi_apb_readdata_capture(priv->regbase, 1,
+						  priv->read_delay);
+	} else if (priv->previous_hz != hz ||
+		   priv->qspi_calibrated_hz != hz ||
+		   priv->qspi_calibrated_cs != priv->cs) {
+		/*
+		 * Calibration required for different current SCLK speed,
+		 * requested SCLK speed or chip select
+		 */
 		err = spi_calibration(bus, hz);
 		if (err)
 			return err;
@@ -192,11 +211,6 @@ static int cadence_spi_child_pre_probe(struct udevice *bus)
 	return 0;
 }
 
-__weak int cadence_spi_versal_flash_reset(struct udevice *dev)
-{
-	return 0;
-}
-
 __weak int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
 {
 	return -ENOTSUPP;
@@ -217,6 +231,7 @@ static int cadence_spi_probe(struct udevice *bus)
 	priv->fifo_depth	= plat->fifo_depth;
 	priv->fifo_width	= plat->fifo_width;
 	priv->trigger_address	= plat->trigger_address;
+	priv->read_delay	= plat->read_delay;
 	priv->ahbsize		= plat->ahbsize;
 	priv->max_hz		= plat->max_hz;
 
@@ -236,9 +251,9 @@ static int cadence_spi_probe(struct udevice *bus)
 		ret = clk_get_by_index(bus, 0, &clk);
 		if (ret) {
 #ifdef CONFIG_HAS_CQSPI_REF_CLK
-			plat->ref_clk_hz = CONFIG_CQSPI_REF_CLK;
+			priv->ref_clk_hz = CONFIG_CQSPI_REF_CLK;
 #elif defined(CONFIG_ARCH_SOCFPGA)
-			plat->ref_clk_hz = cm_get_qspi_controller_clk_hz();
+			priv->ref_clk_hz = cm_get_qspi_controller_clk_hz();
 #else
 			return ret;
 #endif
@@ -250,11 +265,9 @@ static int cadence_spi_probe(struct udevice *bus)
 		}
 	}
 
-	ret = reset_get_bulk(bus, &priv->resets);
-	if (ret)
-		dev_warn(bus, "Can't get reset: %d\n", ret);
-	else
-		reset_deassert_bulk(&priv->resets);
+	priv->resets = devm_reset_bulk_get_optional(bus);
+	if (priv->resets)
+		reset_deassert_bulk(priv->resets);
 
 	if (!priv->qspi_is_init) {
 		cadence_qspi_apb_controller_init(priv);
@@ -269,17 +282,30 @@ static int cadence_spi_probe(struct udevice *bus)
 	if (ret == -ENOTSUPP)
 		debug("DLL mode set to bypass mode : %x\n", ret);
 
-	priv->wr_delay = 50 * DIV_ROUND_UP(NSEC_PER_SEC, plat->ref_clk_hz);
+	priv->wr_delay = 50 * DIV_ROUND_UP(NSEC_PER_SEC, priv->ref_clk_hz);
 
-	/* Reset ospi flash device */
-	return cadence_spi_versal_flash_reset(bus);
+	if (CONFIG_IS_ENABLED(ARCH_VERSAL)) {
+		/* Versal platform uses spi calibration to set read delay */
+		if (priv->read_delay >= 0)
+			priv->read_delay = -1;
+		/* Reset ospi flash device */
+		ret = cadence_qspi_versal_flash_reset(bus);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
 }
 
 static int cadence_spi_remove(struct udevice *dev)
 {
 	struct cadence_spi_priv *priv = dev_get_priv(dev);
+	int ret = 0;
 
-	return reset_release_bulk(&priv->resets);
+	if (priv->resets)
+		ret = reset_release_bulk(priv->resets);
+
+	return ret;
 }
 
 static int cadence_spi_set_mode(struct udevice *bus, uint mode)
@@ -434,8 +460,8 @@ static int cadence_spi_setdlldelay(struct udevice *bus)
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	void *regbase = priv->regbase;
 	u32 txtap;
-	int ret;
-	u8 extra_dummy, rxtap;
+	int ret, rxtap;
+	u8 extra_dummy;
 
 	ret = wait_for_bit_le32(regbase + CQSPI_REG_CONFIG,
 				1 << CQSPI_REG_CONFIG_IDLE_LSB,
@@ -544,7 +570,9 @@ static int priv_setup_ddrmode(struct udevice *bus)
 	setbits_le32(regbase + CQSPI_REG_CONFIG,
 		     CQSPI_REG_CONFIG_DTR_PROT_EN_MASK);
 
-	clrsetbits_le32(regbase + CQSPI_REG_RD_DATA_CAPTURE, ~0,
+	clrsetbits_le32(regbase + CQSPI_REG_RD_DATA_CAPTURE,
+			(CQSPI_REG_RD_DATA_CAPTURE_DELAY_MASK <<
+			 CQSPI_REG_RD_DATA_CAPTURE_DELAY_LSB),
 			CQSPI_REG_READCAPTURE_DQS_ENABLE);
 
 	/* Enable QSPI */
@@ -669,9 +697,7 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 		err = cadence_qspi_apb_read_setup(priv, op);
 		if (!err) {
 			if (priv->is_dma)
-				err = cadence_qspi_apb_dma_read(priv,
-								op->data.nbytes,
-								op->data.buf.in);
+				err = cadence_qspi_apb_dma_read(priv, op);
 			else
 				err = cadence_qspi_apb_read_execute(priv, op);
 		}

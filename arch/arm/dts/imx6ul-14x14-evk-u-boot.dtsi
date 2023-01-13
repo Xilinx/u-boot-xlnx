@@ -8,13 +8,7 @@
 	display0 = &lcdif;
 };
 
-&qspi {
-	flash0: n25q256a@0 {
-		compatible = "jedec,spi-nor";
-	};
-};
-
-&{/soc} {
+&soc {
 	u-boot,dm-pre-reloc;
 };
 

@@ -9,13 +9,14 @@
 
 #include <common.h>
 #include <efi_api.h>
+#include <host_arch.h>
 
 /*
  * Entry point of the EFI application.
  *
  * @handle	handle of the loaded image
  * @systable	system table
- * @return	status code
+ * Return:	status code
  */
 efi_status_t EFIAPI efi_main(efi_handle_t handle,
 			     struct efi_system_table *systable)
@@ -23,7 +24,7 @@ efi_status_t EFIAPI efi_main(efi_handle_t handle,
 	struct efi_simple_text_output_protocol *con_out = systable->con_out;
 
 	con_out->output_string(con_out,
-			       L"EFI application triggers exception.\n");
+			       u"EFI application triggers exception.\n");
 
 #if defined(CONFIG_ARM)
 	/*
@@ -33,11 +34,17 @@ efi_status_t EFIAPI efi_main(efi_handle_t handle,
 	asm volatile (".word 0xe7f7defb\n");
 #elif defined(CONFIG_RISCV)
 	asm volatile (".word 0xffffffff\n");
-#elif defined(CONFIG_SANDBOX)
-	asm volatile (".word 0xffffffff\n");
 #elif defined(CONFIG_X86)
 	asm volatile (".word 0xffff\n");
+#elif defined(CONFIG_SANDBOX)
+#if (HOST_ARCH == HOST_ARCH_ARM || HOST_ARCH == HOST_ARCH_AARCH64)
+	asm volatile (".word 0xe7f7defb\n");
+#elif (HOST_ARCH == HOST_ARCH_RISCV32 || HOST_ARCH == HOST_ARCH_RISCV64)
+	asm volatile (".word 0xffffffff\n");
+#elif (HOST_ARCH == HOST_ARCH_X86 || HOST_ARCH == HOST_ARCH_X86_64)
+	asm volatile (".word 0xffff\n");
 #endif
-	con_out->output_string(con_out, L"Exception not triggered.\n");
+#endif
+	con_out->output_string(con_out, u"Exception not triggered.\n");
 	return EFI_ABORTED;
 }

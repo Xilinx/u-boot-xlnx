@@ -49,16 +49,15 @@ int board_fit_config_name_match(const char *name)
 	return 0;
 }
 
-struct image_header *spl_get_load_buffer(ssize_t offset, size_t size)
+struct legacy_img_hdr *spl_get_load_buffer(ssize_t offset, size_t size)
 {
 	return map_sysmem(0x100000, 0);
 }
 
 static int spl_test_load(struct unit_test_state *uts)
 {
-	const char *cur_prefix, *next_prefix;
 	struct spl_image_info image;
-	struct image_header *header;
+	struct legacy_img_hdr *header;
 	struct text_ctx text_ctx;
 	struct spl_load_info load;
 	char fname[256];
@@ -69,10 +68,7 @@ static int spl_test_load(struct unit_test_state *uts)
 	load.bl_len = 512;
 	load.read = read_fit_image;
 
-	cur_prefix = spl_phase_prefix(spl_phase());
-	next_prefix = spl_phase_prefix(spl_next_phase());
-	ret = os_find_u_boot(fname, sizeof(fname), true, cur_prefix,
-			     next_prefix);
+	ret = sandbox_find_next_phase(fname, sizeof(fname), true);
 	if (ret) {
 		printf("(%s not found, error %d)\n", fname, ret);
 		return ret;

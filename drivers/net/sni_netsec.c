@@ -621,12 +621,10 @@ static int netsec_stop_gmac(struct netsec_priv *priv)
 
 static void netsec_spi_read(char *buf, loff_t len, loff_t offset)
 {
-	struct udevice *new;
 	struct spi_flash *flash;
 
-	spi_flash_probe_bus_cs(CONFIG_SF_DEFAULT_BUS, CONFIG_SF_DEFAULT_CS,
-			       CONFIG_SF_DEFAULT_SPEED, CONFIG_SF_DEFAULT_MODE, &new);
-	flash = dev_get_uclass_priv(new);
+	flash = spi_flash_probe(CONFIG_SF_DEFAULT_BUS, CONFIG_SF_DEFAULT_CS,
+				CONFIG_SF_DEFAULT_SPEED, CONFIG_SF_DEFAULT_MODE);
 
 	spi_flash_read(flash, offset, len, buf);
 }
@@ -1029,19 +1027,13 @@ static int netsec_of_to_plat(struct udevice *dev)
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct netsec_priv *priv = dev_get_priv(dev);
 	struct ofnode_phandle_args phandle_args;
-	const char *phy_mode;
 
 	pdata->iobase = dev_read_addr_index(dev, 0);
 	priv->eeprom_base = dev_read_addr_index(dev, 1) - EERPROM_MAP_OFFSET;
 
-	pdata->phy_interface = -1;
-	phy_mode = dev_read_prop(dev, "phy-mode", NULL);
-	if (phy_mode)
-		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	if (pdata->phy_interface == -1) {
-		pr_err("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
+	pdata->phy_interface = dev_read_phy_mode(dev);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA)
 		return -EINVAL;
-	}
 
 	if (!dev_read_phandle_with_args(dev, "phy-handle", NULL, 0, 0,
 					&phandle_args))

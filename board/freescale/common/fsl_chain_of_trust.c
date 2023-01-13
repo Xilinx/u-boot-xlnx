@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015 Freescale Semiconductor, Inc.
+ * Copyright 2022 NXP
  */
 
 #include <common.h>
 #include <dm.h>
 #include <env.h>
+#include <init.h>
 #include <fsl_validate.h>
 #include <fsl_secboot_err.h>
 #include <fsl_sfp.h>
 #include <log.h>
 #include <dm/root.h>
+#include <asm/fsl_secure_boot.h>
 
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_FRAMEWORK)
 #include <spl.h>
-#endif
-
-#ifdef CONFIG_ADDR_MAP
-#include <asm/mmu.h>
 #endif
 
 #ifdef CONFIG_FSL_CORENET
@@ -29,9 +28,9 @@
 #endif
 
 #if defined(CONFIG_MPC85xx)
-#define CONFIG_DCFG_ADDR	CONFIG_SYS_MPC85xx_GUTS_ADDR
+#define CONFIG_DCFG_ADDR	CFG_SYS_MPC85xx_GUTS_ADDR
 #else
-#define CONFIG_DCFG_ADDR	CONFIG_SYS_FSL_GUTS_ADDR
+#define CONFIG_DCFG_ADDR	CFG_SYS_FSL_GUTS_ADDR
 #endif
 
 #ifdef CONFIG_SYS_FSL_CCSR_GUR_LE
@@ -79,14 +78,14 @@ int fsl_setenv_chain_of_trust(void)
 
 	/* If Boot mode is Secure, set the environment variables
 	 * bootdelay = 0 (To disable Boot Prompt)
-	 * bootcmd = CONFIG_CHAIN_BOOT_CMD (Validate and execute Boot script)
+	 * bootcmd = CHAIN_BOOT_CMD (Validate and execute Boot script)
 	 */
 	env_set("bootdelay", "-2");
 
 #ifdef CONFIG_ARM
 	env_set("secureboot", "y");
 #else
-	env_set("bootcmd", CONFIG_CHAIN_BOOT_CMD);
+	env_set("bootcmd", CHAIN_BOOT_CMD);
 #endif
 
 	return 0;
@@ -114,11 +113,6 @@ void spl_validate_uboot(uint32_t hdr_addr, uintptr_t img_addr)
 #ifdef CONFIG_FSL_CORENET
 	if (pamu_init() < 0)
 		fsl_secboot_handle_error(ERROR_ESBC_PAMU_INIT);
-#endif
-
-#ifdef CONFIG_FSL_CAAM
-	if (sec_init() < 0)
-		fsl_secboot_handle_error(ERROR_ESBC_SEC_INIT);
 #endif
 
 /*

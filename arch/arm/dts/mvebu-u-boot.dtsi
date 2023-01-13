@@ -1,0 +1,35 @@
+#include <config.h>
+
+#ifdef CONFIG_ARMADA_32BIT
+
+/ {
+	soc {
+		u-boot,dm-pre-reloc;
+		internal-regs {
+			u-boot,dm-pre-reloc;
+		};
+	};
+};
+
+&uart0 {
+	u-boot,dm-pre-reloc;
+};
+
+#ifdef CONFIG_ARMADA_375
+/* Armada 375 has multiple timers, use timer1 here */
+&timer1 {
+	u-boot,dm-pre-reloc;
+};
+#else
+&timer {
+	u-boot,dm-pre-reloc;
+};
+#endif
+
+#ifdef CONFIG_SPL_SPI
+&spi0 {
+	u-boot,dm-pre-reloc;
+};
+#endif
+
+#endif

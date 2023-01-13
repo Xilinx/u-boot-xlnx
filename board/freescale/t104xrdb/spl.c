@@ -25,11 +25,6 @@ phys_size_t get_effective_memsize(void)
 	return CONFIG_SYS_L3_SIZE;
 }
 
-unsigned long get_board_sys_clk(void)
-{
-	return CONFIG_SYS_CLK_FREQ;
-}
-
 #define FSL_CORENET_CCSR_PORSR1_RCW_MASK	0xFF800000
 void board_init_f(ulong bootflag)
 {
@@ -38,7 +33,7 @@ void board_init_f(ulong bootflag)
 	u32 porsr1, pinctl;
 	u32 svr = get_svr();
 #endif
-	ccsr_gur_t *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
+	ccsr_gur_t *gur = (void *)CFG_SYS_MPC85xx_GUTS_ADDR;
 
 #if defined(CONFIG_SPL_NAND_BOOT) && defined(CONFIG_A008044_WORKAROUND)
 	if (IS_SVR_REV(svr, 1, 0)) {

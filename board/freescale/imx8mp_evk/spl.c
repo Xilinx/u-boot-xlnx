@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2019, 2021 NXP
  *
- * SPDX-License-Identifier:	GPL-2.0+
  */
 
 #include <common.h>
@@ -20,6 +20,8 @@
 #include <asm/arch/ddr.h>
 #include <power/pmic.h>
 #include <power/pca9450.h>
+#include <dm/uclass.h>
+#include <dm/device.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -35,6 +37,8 @@ void spl_dram_init(void)
 
 void spl_board_init(void)
 {
+	arch_misc_init();
+
 	/*
 	 * Set GIC clock to 500Mhz for OD VDD_SOC. Kernel driver does
 	 * not allow to change it. Should set the clock after PMIC
@@ -123,8 +127,6 @@ void board_init_f(ulong dummy)
 	arch_cpu_init();
 
 	init_uart_clk(1);
-
-	board_early_init_f();
 
 	ret = spl_early_init();
 	if (ret) {

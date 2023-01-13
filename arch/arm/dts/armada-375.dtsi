@@ -103,7 +103,6 @@
 
 	soc {
 		compatible = "marvell,armada375-mbus", "simple-bus";
-		u-boot,dm-pre-reloc;
 		#address-cells = <2>;
 		#size-cells = <1>;
 		controller = <&mbusc>;
@@ -168,7 +167,6 @@
 
 		internal-regs {
 			compatible = "simple-bus";
-			u-boot,dm-pre-reloc;
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges = <0 MBUS_ID(0xf0, 0x01) 0 0x100000>;
@@ -189,7 +187,7 @@
 				reg = <0xc000 0x58>;
 			};
 
-			timer@c600 {
+			timer0: timer@c600 {
 				compatible = "arm,cortex-a9-twd-timer";
 				reg = <0xc600 0x20>;
 				interrupts = <GIC_PPI 13 (IRQ_TYPE_EDGE_RISING | GIC_CPU_MASK_SIMPLE(2))>;
@@ -384,9 +382,10 @@
 				interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
-			system-controller@18200 {
+			systemc: system-controller@18200 {
 				compatible = "marvell,armada-375-system-controller";
 				reg = <0x18200 0x100>;
+				#reset-cells = <2>;
 			};
 
 			gateclk: clock-gating-control@18220 {
@@ -417,7 +416,7 @@
 				interrupts = <GIC_PPI 15 IRQ_TYPE_LEVEL_HIGH>;
 			};
 
-			timer@20300 {
+			timer1: timer@20300 {
 				compatible = "marvell,armada-375-timer", "marvell,armada-370-timer";
 				reg = <0x20300 0x30>, <0x21040 0x30>;
 				interrupts-extended = <&gic  GIC_SPI  8 IRQ_TYPE_LEVEL_HIGH>,
@@ -540,7 +539,7 @@
 			};
 
 			nand@d0000 {
-				compatible = "marvell,armada370-nand";
+				compatible = "marvell,armada370-nand-controller";
 				reg = <0xd0000 0x54>;
 				#address-cells = <1>;
 				#size-cells = <1>;
@@ -616,6 +615,7 @@
 				marvell,pcie-port = <0>;
 				marvell,pcie-lane = <0>;
 				clocks = <&gateclk 5>;
+				resets = <&systemc 0 0>;
 				status = "disabled";
 			};
 
@@ -634,6 +634,7 @@
 				marvell,pcie-port = <0>;
 				marvell,pcie-lane = <1>;
 				clocks = <&gateclk 6>;
+				resets = <&systemc 0 1>;
 				status = "disabled";
 			};
 

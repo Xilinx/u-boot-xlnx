@@ -14,6 +14,8 @@
 #include <linux/bitops.h>
 
 static const struct ccu_clk_gate a64_gates[] = {
+	[CLK_PLL_PERIPH0]	= GATE(0x028, BIT(31)),
+
 	[CLK_BUS_MMC0]		= GATE(0x060, BIT(8)),
 	[CLK_BUS_MMC1]		= GATE(0x060, BIT(9)),
 	[CLK_BUS_MMC2]		= GATE(0x060, BIT(10)),
@@ -25,6 +27,8 @@ static const struct ccu_clk_gate a64_gates[] = {
 	[CLK_BUS_EHCI1]		= GATE(0x060, BIT(25)),
 	[CLK_BUS_OHCI0]		= GATE(0x060, BIT(28)),
 	[CLK_BUS_OHCI1]		= GATE(0x060, BIT(29)),
+
+	[CLK_BUS_PIO]		= GATE(0x068, BIT(5)),
 
 	[CLK_BUS_I2C0]		= GATE(0x06c, BIT(0)),
 	[CLK_BUS_I2C1]		= GATE(0x06c, BIT(1)),
@@ -73,28 +77,9 @@ static const struct ccu_reset a64_resets[] = {
 	[RST_BUS_UART4]		= RESET(0x2d8, BIT(20)),
 };
 
-static const struct ccu_desc a64_ccu_desc = {
+const struct ccu_desc a64_ccu_desc = {
 	.gates = a64_gates,
 	.resets = a64_resets,
-};
-
-static int a64_clk_bind(struct udevice *dev)
-{
-	return sunxi_reset_bind(dev, ARRAY_SIZE(a64_resets));
-}
-
-static const struct udevice_id a64_ccu_ids[] = {
-	{ .compatible = "allwinner,sun50i-a64-ccu",
-	  .data = (ulong)&a64_ccu_desc },
-	{ }
-};
-
-U_BOOT_DRIVER(clk_sun50i_a64) = {
-	.name		= "sun50i_a64_ccu",
-	.id		= UCLASS_CLK,
-	.of_match	= a64_ccu_ids,
-	.priv_auto	= sizeof(struct ccu_priv),
-	.ops		= &sunxi_clk_ops,
-	.probe		= sunxi_clk_probe,
-	.bind		= a64_clk_bind,
+	.num_gates = ARRAY_SIZE(a64_gates),
+	.num_resets = ARRAY_SIZE(a64_resets),
 };

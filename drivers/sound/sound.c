@@ -15,7 +15,10 @@ void sound_create_square_wave(uint sample_rate, unsigned short *data, int size,
 	const int period = freq ? sample_rate / freq : 0;
 	const int half = period / 2;
 
-	assert(freq);
+	if (!half) {
+		memset(data, 0, size);
+		return;
+	}
 
 	/* Make sure we don't overflow our buffer */
 	if (size % 2)
@@ -25,13 +28,11 @@ void sound_create_square_wave(uint sample_rate, unsigned short *data, int size,
 		int i, j;
 
 		for (i = 0; size && i < half; i++) {
-			size -= 2;
-			for (j = 0; j < channels; j++)
+			for (j = 0; size && j < channels; j++, size -= 2)
 				*data++ = amplitude;
 		}
 		for (i = 0; size && i < period - half; i++) {
-			size -= 2;
-			for (j = 0; j < channels; j++)
+			for (j = 0; size && j < channels; j++, size -= 2)
 				*data++ = -amplitude;
 		}
 	}

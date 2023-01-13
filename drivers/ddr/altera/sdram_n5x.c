@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2020-2021 Intel Corporation <www.intel.com>
+ * Copyright (C) 2020-2022 Intel Corporation <www.intel.com>
  *
  */
 
@@ -517,7 +517,7 @@ static int ensure_retry_procedure_complete(phys_addr_t umctl2_base)
 			      DDR4_CRCPARSTAT_CMD_IN_ERR_WINDOW;
 
 		udelay(1);
-		WATCHDOG_RESET();
+		schedule();
 	}
 
 	return 0;
@@ -1349,7 +1349,7 @@ static int ddr_post_handoff_config(phys_addr_t umctl2_base,
 		}
 
 		udelay(1);
-		WATCHDOG_RESET();
+		schedule();
 
 		/* Polling until SDRAM entered normal operating mode */
 		value = readl(umctl2_base + DDR4_STAT_OFFSET) &

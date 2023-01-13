@@ -149,7 +149,7 @@ static int eeprom_rw(unsigned dev_addr, unsigned offset, uchar *buffer,
 	int rcode = 0;
 	uchar addr[3];
 
-#if defined(CONFIG_SYS_I2C_EEPROM_BUS)
+#if !CONFIG_IS_ENABLED(DM_I2C) && defined(CONFIG_SYS_I2C_EEPROM_BUS)
 	eeprom_init(CONFIG_SYS_I2C_EEPROM_BUS);
 #endif
 
@@ -200,10 +200,10 @@ int eeprom_write(unsigned dev_addr, unsigned offset,
 	return ret;
 }
 
-static int parse_numeric_param(char *str)
+static long parse_numeric_param(char *str)
 {
 	char *endptr;
-	int value = simple_strtol(str, &endptr, 16);
+	long value = simple_strtol(str, &endptr, 16);
 
 	return (*endptr != '\0') ? -1 : value;
 }

@@ -15,7 +15,6 @@
 #include "siemens-am33x-common.h"
 /* NAND specific changes for etamin due to different page size */
 #undef CONFIG_SYS_NAND_ECCPOS
-#undef CONFIG_SYS_ENV_SECT_SIZE
 
 #define CONFIG_SYS_ENV_SECT_SIZE       (512 << 10)     /* 512 KiB */
 #define CONFIG_SYS_NAND_ECCPOS	{ 2, 3, 4, 5, 6, 7, 8, 9, \
@@ -46,8 +45,6 @@
 #define CONFIG_SYS_NAND_ECCSIZE 512
 #define CONFIG_SYS_NAND_ECCBYTES 26
 
-#undef CONFIG_SYS_MAX_NAND_DEVICE
-#define CONFIG_SYS_MAX_NAND_DEVICE      3
 #define CONFIG_SYS_NAND_BASE2           (0x18000000)    /* physical address */
 #define CONFIG_SYS_NAND_BASE_LIST       {CONFIG_SYS_NAND_BASE, \
 					CONFIG_SYS_NAND_BASE2}
@@ -75,22 +72,7 @@
 #define EEPROM_ADDR_DDR3 0x90
 #define EEPROM_ADDR_CHIP 0x120
 
-#define CONFIG_FACTORYSET
-
-/* use both define to compile a SPL compliance test  */
-/*
-#define CONFIG_SPL_CMT
-#define CONFIG_SPL_CMT_DEBUG
-*/
-
 /* nedded by compliance test in read mode */
-#if defined(CONFIG_SPL_CMT)
-#define CONFIG_SYS_DCACHE_OFF
-#endif
-
-/* Define own nand partitions */
-#define CONFIG_ENV_RANGE		(4 * CONFIG_SYS_ENV_SECT_SIZE)
-
 
 #undef COMMON_ENV_DFU_ARGS
 #define COMMON_ENV_DFU_ARGS	"dfu_args=run bootargs_defaults;" \
@@ -116,7 +98,7 @@
 	"nand_active_ubi_vol=rootfs_a\0" \
 	"rootfs_name=rootfs\0" \
 	"kernel_name=uImage\0"\
-	"nand_root_fs_type=ubifs rootwait=1\0" \
+	"nand_root_fs_type=ubifs rootwait\0" \
 	"nand_args=run bootargs_defaults;" \
 		"mtdparts default;" \
 		"setenv ${partitionset_active} true;" \
@@ -154,7 +136,6 @@
 #define ETAMIN_NAND_GPMC_CONFIG4	0x16051807
 #define ETAMIN_NAND_GPMC_CONFIG5	0x00151e1e
 #define ETAMIN_NAND_GPMC_CONFIG6	0x16000f80
-#define CONFIG_MTD_CONCAT
 
 /* Default env settings */
 #define CONFIG_EXTRA_ENV_SETTINGS \
@@ -166,26 +147,5 @@
 	CONFIG_ENV_SETTINGS_BUTTONS_AND_LEDS \
 	CONFIG_ENV_SETTINGS_V2 \
 	CONFIG_ENV_SETTINGS_NAND_V2
-
-#ifndef CONFIG_RESTORE_FLASH
-
-#define CONFIG_BOOTCOMMAND \
-"if dfubutton; then " \
-	"run dfu_start; " \
-	"reset; " \
-"fi;" \
-"run nand_boot;" \
-"run nand_boot_backup;" \
-"reset;"
-
-
-#else
-#define CONFIG_BOOTCOMMAND			\
-	"setenv autoload no; "			\
-	"dhcp; "				\
-	"if tftp 80000000 debrick.scr; then "	\
-		"source 80000000; "		\
-	"fi"
-#endif
 #endif	/* CONFIG_SPL_BUILD */
 #endif	/* ! __CONFIG_ETAMIN_H */

@@ -83,21 +83,73 @@ struct cpld_data {
 #define CPLD_FXS_LED	0x0F
 #define CPLD_SYS_RST	0x00
 
+void board_reset_prepare(void)
+{
+	/*
+	 * During reset preparation, turn off external watchdog.
+	 * This ensures that external watchdog does not trigger
+	 * another reset or possible infinite reset loop.
+	 */
+	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
+	out_8(&cpld_data->wd_cfg, CPLD_WD_CFG);
+	in_8(&cpld_data->wd_cfg); /* Read back to sync write */
+}
+
+void board_reset_last(void)
+{
+	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
+	out_8(&cpld_data->system_rst, 1);
+}
+
 void board_cpld_init(void)
 {
 	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
+	u8 prev_wd_cfg = in_8(&cpld_data->wd_cfg);
 
 	out_8(&cpld_data->wd_cfg, CPLD_WD_CFG);
 	out_8(&cpld_data->status_led, CPLD_STATUS_LED);
 	out_8(&cpld_data->fxo_led, CPLD_FXO_LED);
 	out_8(&cpld_data->fxs_led, CPLD_FXS_LED);
+
+	/*
+	 * CPLD's system reset register on P1/P2 RDB boards is not autocleared
+	 * after flipping it. If this register is set to one then CPLD triggers
+	 * reset of CPU in few ms.
+	 *
+	 * CPLD does not trigger reset of CPU for 100ms after the last reset.
+	 *
+	 * This means that trying to reset board via CPLD system reset register
+	 * cause reboot loop. To prevent this reboot loop, the only workaround
+	 * is to try to clear CPLD's system reset register as early as possible
+	 * and it has to be done in 100ms since the last start of reset.
+	 */
 	out_8(&cpld_data->system_rst, CPLD_SYS_RST);
+
+	/*
+	 * If watchdog timer was already set to non-disabled value then it means
+	 * that watchdog timer was already activated, has already expired and
+	 * caused CPU reset. If this happened then due to CPLD firmware bug,
+	 * writing to wd_cfg register has no effect and therefore it is not
+	 * possible to reactivate watchdog timer again. Also if CPU was reset
+	 * via watchdog then some peripherals like i2c do not work. Watchdog and
+	 * i2c start working again after CPU reset via non-watchdog method.
+	 *
+	 * So in case watchdog timer register in CPLD was already enabled then
+	 * disable it in CPLD and reset CPU which cause new boot. Watchdog timer
+	 * is disabled few lines above, after reading CPLD previous value.
+	 * This logic (disabling timer before reset) prevents reboot loop.
+	 */
+	if (prev_wd_cfg != CPLD_WD_CFG) {
+		eieio();
+		do_reset(NULL, 0, 0, NULL);
+		while (1); /* do_reset() does not occur immediately */
+	}
 }
 
 void board_gpio_init(void)
 {
 #ifdef CONFIG_QE
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	par_io_t *par_io = (par_io_t *) &(gur->qe_par_io);
 
 	/* Enable VSC7385 switch */
@@ -107,7 +159,7 @@ void board_gpio_init(void)
 	setbits_be32(&par_io[GPIO_SLIC_PORT].cpdat, GPIO_SLIC_DATA);
 #else
 
-	ccsr_gpio_t *pgpio = (void *)(CONFIG_SYS_MPC85xx_GPIO_ADDR);
+	ccsr_gpio_t *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
 
 	/*
 	 * GPIO10 DDR Reset, open drain
@@ -145,14 +197,18 @@ void board_gpio_init(void)
 
 int board_early_init_f(void)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
-	setbits_be32(&gur->pmuxcr,
-			(MPC85xx_PMUXCR_SDHC_CD | MPC85xx_PMUXCR_SDHC_WP));
+	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_SDHC_CD);
+#ifndef SDHC_WP_IS_GPIO
+	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_SDHC_WP);
+#endif
 	clrbits_be32(&gur->sdhcdcr, SDHCDCR_CD_INV);
 
 	clrbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_SD_DATA);
+#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 	setbits_be32(&gur->pmuxcr, MPC85xx_PMUXCR_TDM_ENA);
+#endif
 
 	board_gpio_init();
 	board_cpld_init();
@@ -160,14 +216,27 @@ int board_early_init_f(void)
 	return 0;
 }
 
+#if defined(CONFIG_TARGET_P1020RDB_PC)
+#define BOARD_NAME "P1020RDB-PC"
+#elif defined(CONFIG_TARGET_P1020RDB_PD)
+#define BOARD_NAME "P1020RDB-PD"
+#elif defined(CONFIG_TARGET_P2020RDB)
+#define BOARD_NAME "P2020RDB-PC"
+#endif
+
 int checkboard(void)
 {
 	struct cpld_data *cpld_data = (void *)(CONFIG_SYS_CPLD_BASE);
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
-	u8 in, out, io_config, val;
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
+	u8 in, out, invert, io_config, val;
 	int bus_num = CONFIG_SYS_SPD_BUS_NUM;
 
-	printf("Board: %s CPLD: V%d.%d PCBA: V%d.0\n", CONFIG_BOARDNAME,
+	/* FIXME: This should just use the model from the device tree or similar */
+#ifdef BOARD_NAME
+	printf("Board: %s ", BOARD_NAME);
+#endif
+
+	printf("CPLD: V%d.%d PCBA: V%d.0\n",
 		in_8(&cpld_data->cpld_rev_major) & 0x0F,
 		in_8(&cpld_data->cpld_rev_minor) & 0x0F,
 		in_8(&cpld_data->pcba_rev) & 0x0F);
@@ -182,11 +251,12 @@ int checkboard(void)
 	if (ret) {
 		printf("%s: Cannot find udev for a bus %d\n", __func__,
 		       bus_num);
-		return -ENXIO;
+		return 0; /* Don't want to hang() on this error */
 	}
 
 	if (dm_i2c_read(dev, 0, &in, 1) < 0 ||
 	    dm_i2c_read(dev, 1, &out, 1) < 0 ||
+	    dm_i2c_read(dev, 2, &invert, 1) < 0 ||
 	    dm_i2c_read(dev, 3, &io_config, 1) < 0) {
 		printf("Error reading i2c boot information!\n");
 		return 0; /* Don't want to hang() on this error */
@@ -196,17 +266,25 @@ int checkboard(void)
 
 	if (i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 0, 1, &in, 1) < 0 ||
 	    i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 1, 1, &out, 1) < 0 ||
+	    i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 2, 1, &invert, 1) < 0 ||
 	    i2c_read(CONFIG_SYS_I2C_PCA9557_ADDR, 3, 1, &io_config, 1) < 0) {
 		printf("Error reading i2c boot information!\n");
 		return 0; /* Don't want to hang() on this error */
 	}
 	#endif
 
-	val = (in & io_config) | (out & (~io_config));
+	val = ((in ^ invert) & io_config) | (out & (~io_config));
 
 	puts("rom_loc: ");
-	if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SD) {
+	if (0) {
+#ifdef __SW_BOOT_SD
+	} else if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SD) {
 		puts("sd");
+#endif
+#ifdef __SW_BOOT_SD2
+	} else if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SD2) {
+		puts("sd");
+#endif
 #ifdef __SW_BOOT_SPI
 	} else if ((val & (~__SW_BOOT_MASK)) == __SW_BOOT_SPI) {
 		puts("spi");
@@ -292,7 +370,7 @@ int board_eth_init(struct bd_info *bis)
 	struct fsl_pq_mdio_info mdio_info;
 	struct tsec_info_struct tsec_info[4];
 	ccsr_gur_t *gur __attribute__((unused)) =
-		(void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+		(void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	int num = 0;
 
 #ifdef CONFIG_TSEC1
@@ -336,6 +414,24 @@ int board_eth_init(struct bd_info *bis)
 }
 #endif
 
+#if defined(CONFIG_OF_BOARD_SETUP) || defined(CONFIG_OF_BOARD_FIXUP)
+static void fix_max6370_watchdog(void *blob)
+{
+	int off = fdt_node_offset_by_compatible(blob, -1, "maxim,max6370");
+	ccsr_gpio_t *pgpio = (void *)(CFG_SYS_MPC85xx_GPIO_ADDR);
+	u32 gpioval = in_be32(&pgpio->gpdat);
+
+	/*
+	 * Delete watchdog max6370 node in load_default mode (detected by
+	 * GPIO7 - LOAD_DEFAULT_N) because CPLD in load_default mode ignores
+	 * watchdog reset signal. CPLD in load_default mode does not reset
+	 * board when watchdog triggers reset signal.
+	 */
+	if (!(gpioval & BIT(31-7)) && off >= 0)
+		fdt_del_node(blob, off);
+}
+#endif
+
 #ifdef CONFIG_OF_BOARD_SETUP
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
@@ -344,9 +440,9 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 #if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 	const char *soc_usb_compat = "fsl-usb2-dr";
 	int usb_err, usb1_off, usb2_off;
-#endif
 #if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)
 	int err;
+#endif
 #endif
 
 	ft_cpu_setup(blob, bd);
@@ -361,10 +457,13 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 			sizeof("okay"), 0);
 #endif
 
+	fix_max6370_watchdog(blob);
+
 #if defined(CONFIG_HAS_FSL_DR_USB)
 	fsl_fdt_fixup_dr_usb(blob, bd);
 #endif
 
+#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 #if defined(CONFIG_SDCARD) || defined(CONFIG_SPIFLASH)
 	/* Delete eLBC node as it is muxed with USB2 controller */
 	if (hwconfig("usb2")) {
@@ -386,7 +485,6 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	}
 #endif
 
-#if defined(CONFIG_TARGET_P1020RDB_PD) || defined(CONFIG_TARGET_P1020RDB_PC)
 /* Delete USB2 node as it is muxed with eLBC */
 	usb1_off = fdt_node_offset_by_compatible(blob, -1,
 		soc_usb_compat);
@@ -409,6 +507,14 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	}
 #endif
 
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_OF_BOARD_FIXUP
+int board_fix_fdt(void *blob)
+{
+	fix_max6370_watchdog(blob);
 	return 0;
 }
 #endif

@@ -14,8 +14,11 @@
 
 #include <linux/types.h>
 
-/* Avoid using CONFIG_EFI_STUB directly as we may boot from other loaders */
-#ifdef CONFIG_EFI_STUB
+/*
+ * In case of the EFI app the UEFI firmware provides the low-level
+ * initialisation.
+ */
+#ifdef CONFIG_EFI
 #define ll_boot_init()	false
 #else
 #include <asm/global_data.h>
@@ -41,17 +44,6 @@ void board_init_f(ulong dummy);
  * Return: 0 on success, otherwise error
  */
 int arch_cpu_init(void);
-
-/**
- * arch_cpu_init_dm() - init CPU after driver model is available
- *
- * This is called immediately after driver model is available before
- * relocation. This is similar to arch_cpu_init() but is able to reference
- * devices
- *
- * Return: 0 if OK, -ve on error
- */
-int arch_cpu_init_dm(void);
 
 /**
  * mach_cpu_init() - SoC/machine dependent CPU setup
@@ -112,6 +104,19 @@ phys_size_t get_effective_memsize(void);
 int testdram(void);
 
 /**
+ * arch_setup_dest_addr() - Fix up initial reloc address
+ *
+ * This is called in generic board init sequence in common/board_f.c at the end
+ * of the setup_dest_addr() initcall. Each architecture could provide this
+ * function to make adjustments to the initial reloc address.
+ *
+ * If an implementation is not provided, it will just be a nop stub.
+ *
+ * Return: 0 if OK
+ */
+int arch_setup_dest_addr(void);
+
+/**
  * arch_reserve_stacks() - Reserve all necessary stacks
  *
  * This is used in generic board init sequence in common/board_f.c. Each
@@ -162,6 +167,19 @@ int arch_setup_bdinfo(void);
  * Return: 0 if OK
  */
 int setup_bdinfo(void);
+
+#if defined(CONFIG_SAVE_PREV_BL_INITRAMFS_START_ADDR) || \
+defined(CONFIG_SAVE_PREV_BL_FDT_ADDR)
+/**
+ * save_prev_bl_data - Save prev bl data in env vars.
+ *
+ * When u-boot is chain-loaded, save previous bootloader data,
+ * like initramfs address to environment variables.
+ *
+ * Return: 0 if ok; -ENODATA on error
+ */
+int save_prev_bl_data(void);
+#endif
 
 /**
  * cpu_secondary_init_r() - CPU-specific secondary initialization
@@ -214,7 +232,6 @@ int init_cache_f_r(void);
 int print_cpuinfo(void);
 #endif
 int timer_init(void);
-int misc_init_f(void);
 
 #if defined(CONFIG_DTB_RESELECT)
 int embedded_dtb_select(void);
@@ -287,7 +304,7 @@ int show_board_info(void);
  *
  * @param total_size	Size of U-Boot (unused?)
  */
-ulong board_get_usable_ram_top(ulong total_size);
+phys_size_t board_get_usable_ram_top(phys_size_t total_size);
 
 int board_early_init_f(void);
 
@@ -306,6 +323,16 @@ int board_early_init_r(void);
  * Return: 0 if OK
  */
 int arch_initr_trap(void);
+
+/**
+ * init_addr_map()
+ *
+ * Initialize non-identity virtual-physical memory mappings for 32bit CPUs.
+ * It is called during the generic board init sequence, after relocation.
+ *
+ * Return: 0 if OK
+ */
+int init_addr_map(void);
 
 /**
  * main_loop() - Enter the main loop of U-Boot
@@ -328,6 +355,19 @@ void bdinfo_print_num_ll(const char *name, unsigned long long value);
 
 /* Print a clock speed in MHz */
 void bdinfo_print_mhz(const char *name, unsigned long hz);
+
+/**
+ * bdinfo_print_size - print size variables in bdinfo format
+ * @name:	string to print before the size
+ * @size:	size to print
+ *
+ * Helper function for displaying size variables as properly formatted bdinfo
+ * entries. The size is printed as "xxx Bytes", "xxx KiB", "xxx MiB",
+ * "xxx GiB", etc. as needed;
+ *
+ * For use in arch_print_bdinfo().
+ */
+void bdinfo_print_size(const char *name, uint64_t size);
 
 /* Show arch-specific information for the 'bd' command */
 void arch_print_bdinfo(void);

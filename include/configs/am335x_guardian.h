@@ -12,12 +12,6 @@
 
 #include <configs/ti_am335x_common.h>
 
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_TIMESTAMP
-#endif
-
-#define CONFIG_SYS_BOOTM_LEN		(16 << 20)
-
 /* Clock Defines */
 #define V_OSCK				24000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
@@ -33,7 +27,7 @@
 	"ramdisk_addr_r=0x88080000\0" \
 
 #define BOOT_TARGET_DEVICES(func) \
-	func(UBIFS, ubifs, 0)
+	func(UBIFS, ubifs, 0, UBI, rootfs)
 
 #define AM335XX_BOARD_FDTFILE "fdtfile=" CONFIG_DEFAULT_DEVICE_TREE ".dtb\0"
 
@@ -56,9 +50,7 @@
 	MEM_LAYOUT_ENV_SETTINGS \
 	BOOTENV \
 	GUARDIAN_DEFAULT_PROD_ENV \
-	"autoload=no\0" \
 	"backlight_brightness=50\0" \
-	"bootubivol=rootfs\0" \
 	"distro_bootcmd=" \
 		"setenv rootflags \"bulk_read,chk_data_crc\"; " \
 		"setenv ethact usb_ether; " \
@@ -98,12 +90,6 @@
 #define CONFIG_SYS_NS16550_COM5		0x481a8000	/* UART4 */
 #define CONFIG_SYS_NS16550_COM6		0x481aa000	/* UART5 */
 
-/* PMIC support */
-#define CONFIG_POWER_TPS65217
-
-/* Bootcount using the RTC block */
-#define CONFIG_SYS_BOOTCOUNT_LE
-
 #ifdef CONFIG_MTD_RAW_NAND
 #define CONFIG_SYS_NAND_ECCPOS  {   2,   3,   4,   5,   6,   7,   8,   9, \
 			 10,  11,  12,  13,  14,  15,  16,  17,  18,  19, \
@@ -132,10 +118,5 @@
 #define MTDIDS_DEFAULT                  "nand0=nand.0"
 
 #endif /* CONFIG_MTD_RAW_NAND */
-
-#define CONFIG_AM335X_USB0
-#define CONFIG_AM335X_USB0_MODE MUSB_PERIPHERAL
-#define CONFIG_AM335X_USB1
-#define CONFIG_AM335X_USB1_MODE MUSB_HOST
 
 #endif	/* ! __CONFIG_AM335X_GUARDIAN_H */

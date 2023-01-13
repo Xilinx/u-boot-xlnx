@@ -6,7 +6,7 @@
 #ifndef _ASM_ARCH_SPL_H_
 #define _ASM_ARCH_SPL_H_
 
-#ifdef CONFIG_SOC_K3_AM6
+#ifdef CONFIG_SOC_K3_AM654
 #include "am6_spl.h"
 #endif
 
@@ -14,7 +14,16 @@
 #include "j721e_spl.h"
 #endif
 
+#ifdef CONFIG_SOC_K3_J721S2
+#include "j721s2_spl.h"
+#endif
+
 #ifdef CONFIG_SOC_K3_AM642
 #include "am64_spl.h"
 #endif
+
+#ifdef CONFIG_SOC_K3_AM625
+#include "am62_spl.h"
+#endif
+
 #endif /* _ASM_ARCH_SPL_H_ */

@@ -89,7 +89,7 @@ int board_eth_init(struct bd_info *bis)
 		case PHY_INTERFACE_MODE_QSGMII:
 			fm_info_set_phy_address(i, 0);
 			break;
-		case PHY_INTERFACE_MODE_NONE:
+		case PHY_INTERFACE_MODE_NA:
 			fm_info_set_phy_address(i, 0);
 			break;
 		default:
@@ -99,7 +99,7 @@ int board_eth_init(struct bd_info *bis)
 			break;
 		}
 		if (fm_info_get_enet_if(i) == PHY_INTERFACE_MODE_QSGMII ||
-		    fm_info_get_enet_if(i) == PHY_INTERFACE_MODE_NONE)
+		    fm_info_get_enet_if(i) == PHY_INTERFACE_MODE_NA)
 			fm_info_set_mdio(i, NULL);
 		else
 			fm_info_set_mdio(i,
@@ -142,7 +142,7 @@ int board_eth_init(struct bd_info *bis)
 	if (serdes_get_first_lane(FSL_SRDS_1, SGMII_FM1_DTSEC2) < 0) {
 		/* Enable L2 On MAC2 using SCFG */
 		struct ccsr_scfg *scfg = (struct ccsr_scfg *)
-				CONFIG_SYS_MPC85xx_SCFG;
+				CFG_SYS_MPC85xx_SCFG;
 
 		out_be32(&scfg->esgmiiselcr, in_be32(&scfg->esgmiiselcr) |
 			 (0x80000000));

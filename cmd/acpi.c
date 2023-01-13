@@ -5,6 +5,7 @@
  */
 #include <common.h>
 #include <command.h>
+#include <display_options.h>
 #include <mapmem.h>
 #include <acpi/acpi_table.h>
 #include <asm/acpi_table.h>
@@ -24,10 +25,10 @@ static void dump_hdr(struct acpi_table_header *hdr)
 {
 	bool has_hdr = memcmp(hdr->signature, "FACS", ACPI_NAME_LEN);
 
-	printf("%.*s %08lx %06x", ACPI_NAME_LEN, hdr->signature,
+	printf("%.*s  %08lx  %5x", ACPI_NAME_LEN, hdr->signature,
 	       (ulong)map_to_sysmem(hdr), hdr->length);
 	if (has_hdr) {
-		printf(" (v%02d %.6s %.8s %x %.4s %x)\n", hdr->revision,
+		printf("  v%02d %.6s %.8s %x %.4s %x\n", hdr->revision,
 		       hdr->oem_id, hdr->oem_table_id, hdr->oem_revision,
 		       hdr->aslc_id, hdr->aslc_revision);
 	} else {
@@ -39,7 +40,7 @@ static void dump_hdr(struct acpi_table_header *hdr)
  * find_table() - Look up an ACPI table
  *
  * @sig: Signature of table (4 characters, upper case)
- * @return pointer to table header, or NULL if not found
+ * Return: pointer to table header, or NULL if not found
  */
 struct acpi_table_header *find_table(const char *sig)
 {
@@ -47,7 +48,7 @@ struct acpi_table_header *find_table(const char *sig)
 	struct acpi_rsdt *rsdt;
 	int len, i, count;
 
-	rsdp = map_sysmem(gd->arch.acpi_start, 0);
+	rsdp = map_sysmem(gd_acpi_start(), 0);
 	if (!rsdp)
 		return NULL;
 	rsdt = map_sysmem(rsdp->rsdt_address, 0);
@@ -129,7 +130,7 @@ static int list_rsdp(struct acpi_rsdp *rsdp)
 	struct acpi_rsdt *rsdt;
 	struct acpi_xsdt *xsdt;
 
-	printf("RSDP %08lx %06x (v%02d %.6s)\n", (ulong)map_to_sysmem(rsdp),
+	printf("RSDP  %08lx  %5x  v%02d %.6s\n", (ulong)map_to_sysmem(rsdp),
 	       rsdp->length, rsdp->revision, rsdp->oem_id);
 	rsdt = map_sysmem(rsdp->rsdt_address, 0);
 	xsdt = map_sysmem(rsdp->xsdt_address, 0);
@@ -143,12 +144,13 @@ static int do_acpi_list(struct cmd_tbl *cmdtp, int flag, int argc,
 {
 	struct acpi_rsdp *rsdp;
 
-	rsdp = map_sysmem(gd->arch.acpi_start, 0);
+	rsdp = map_sysmem(gd_acpi_start(), 0);
 	if (!rsdp) {
 		printf("No ACPI tables present\n");
 		return 0;
 	}
-	printf("ACPI tables start at %lx\n", gd->arch.acpi_start);
+	printf("Name      Base   Size  Detail\n");
+	printf("----  --------  -----  ------\n");
 	list_rsdp(rsdp);
 
 	return 0;
@@ -177,7 +179,7 @@ static int do_acpi_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 		printf("Table name '%s' must be four characters\n", name);
 		return CMD_RET_FAILURE;
 	}
-	str_to_upper(name, sig, -1);
+	str_to_upper(name, sig, ACPI_NAME_LEN);
 	ret = dump_table_name(sig);
 	if (ret) {
 		printf("Table '%.*s' not found\n", ACPI_NAME_LEN, sig);

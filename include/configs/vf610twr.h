@@ -11,29 +11,19 @@
 #include <asm/arch/imx-regs.h>
 #include <linux/stringify.h>
 
-#define CONFIG_SYS_FSL_CLK
-
 /* NAND support */
 
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		NFC_BASE_ADDR
 
 /* Dynamic MTD partition support */
 #endif
 
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
-#define CONFIG_SYS_FSL_ESDHC_NUM	1
+#define CFG_SYS_FSL_ESDHC_ADDR	0
 
-#define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_FEC_XCV_TYPE		RMII
 #define CONFIG_FEC_MXC_PHYADDR          0
 
 /* I2C Configs */
-#define CONFIG_SYS_SPD_BUS_NUM		0
-
-/* We boot from the gfxRAM area of the OCRAM. */
-#define CONFIG_BOARD_SIZE_LIMIT		520192
 
 /*
  * We do have 128MB of memory on the Vybrid Tower board. Leave the last
@@ -127,18 +117,6 @@
 			"bootz; " \
 		"fi;\0"
 
-#define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev}; if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loadimage; then " \
-				   "run mmcboot; " \
-			   "else run netboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "else run netboot; fi"
-
 /* Miscellaneous configurable options */
 
 /* Physical memory map */
@@ -148,14 +126,5 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-#ifdef CONFIG_ENV_IS_IN_NAND
-#define CONFIG_ENV_RANGE		(512 * 1024)
-#endif
 
 #endif

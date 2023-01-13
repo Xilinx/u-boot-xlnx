@@ -24,15 +24,7 @@
 
 #define CFG_IND_ADDR_MASK            0x00001ffc
 
-#define CFG_ADDR_BUS_NUM_SHIFT       20
-#define CFG_ADDR_BUS_NUM_MASK        0x0ff00000
-#define CFG_ADDR_DEV_NUM_SHIFT       15
-#define CFG_ADDR_DEV_NUM_MASK        0x000f8000
-#define CFG_ADDR_FUNC_NUM_SHIFT      12
-#define CFG_ADDR_FUNC_NUM_MASK       0x00007000
-#define CFG_ADDR_REG_NUM_SHIFT       2
-#define CFG_ADDR_REG_NUM_MASK        0x00000ffc
-#define CFG_ADDR_CFG_TYPE_SHIFT      0
+#define CFG_ADDR_CFG_ECAM_MASK       0xfffffffc
 #define CFG_ADDR_CFG_TYPE_MASK       0x00000003
 
 #define IPROC_PCI_PM_CAP             0x48
@@ -473,11 +465,8 @@ static int iproc_pcie_map_ep_cfg_reg(const struct udevice *udev, pci_dev_t bdf,
 		return -ENODEV;
 
 	/* EP device access */
-	val = (busno << CFG_ADDR_BUS_NUM_SHIFT) |
-		(slot << CFG_ADDR_DEV_NUM_SHIFT) |
-		(fn << CFG_ADDR_FUNC_NUM_SHIFT) |
-		(where & CFG_ADDR_REG_NUM_MASK) |
-		(1 & CFG_ADDR_CFG_TYPE_MASK);
+	val = (PCIE_ECAM_OFFSET(busno, slot, fn, where) & CFG_ADDR_CFG_ECAM_MASK)
+	    | (1 & CFG_ADDR_CFG_TYPE_MASK);
 
 	iproc_pcie_write_reg(pcie, IPROC_PCIE_CFG_ADDR, val);
 	offset = iproc_pcie_reg_offset(pcie, IPROC_PCIE_CFG_DATA);
@@ -1127,15 +1116,14 @@ static int iproc_pcie_check_link(struct iproc_pcie *pcie)
 	u32 link_status, class;
 
 	pcie->link_is_active = false;
-	/* force class to PCI_CLASS_BRIDGE_PCI (0x0604) */
+	/* force class to PCI bridge Normal decode (0x060400) */
 #define PCI_BRIDGE_CTRL_REG_OFFSET      0x43c
-#define PCI_CLASS_BRIDGE_MASK           0xffff00
-#define PCI_CLASS_BRIDGE_SHIFT          8
+#define PCI_BRIDGE_CTRL_REG_CLASS_MASK  0xffffff
 	iproc_pci_raw_config_read32(pcie, 0,
 				    PCI_BRIDGE_CTRL_REG_OFFSET,
 				    4, &class);
-	class &= ~PCI_CLASS_BRIDGE_MASK;
-	class |= (PCI_CLASS_BRIDGE_PCI << PCI_CLASS_BRIDGE_SHIFT);
+	class &= ~PCI_BRIDGE_CTRL_REG_CLASS_MASK;
+	class |= PCI_CLASS_BRIDGE_PCI_NORMAL;
 	iproc_pci_raw_config_write32(pcie, 0,
 				     PCI_BRIDGE_CTRL_REG_OFFSET,
 				     4, class);

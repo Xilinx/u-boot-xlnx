@@ -22,7 +22,6 @@
 /*
  * Boot info
  */
-#define CONFIG_SYS_INIT_SP_ADDR		(0xe0000000)	/* stack of init proccess */
 
 /*
  * Hardware drivers support
@@ -37,27 +36,30 @@
 #define CONFIG_PL01x_PORTS		{(void *)(0x2a400000)}
 
 /* Support MTD */
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
 #define CONFIG_SYS_FLASH_BASE		(0x08000000)
 #define CONFIG_SYS_FLASH_BANKS_LIST	{CONFIG_SYS_FLASH_BASE}
 
-#define CONFIG_SYS_MEMTEST_START	(CONFIG_SYS_SDRAM_BASE + (512 * 1024))
-#define CONFIG_SYS_MEMTEST_END		(CONFIG_SYS_SDRAM_BASE + PHYS_SDRAM_SIZE)
-
-#define CONFIG_SYS_CBSIZE		1024
-#define CONFIG_SYS_MAXARGS		128
-#define CONFIG_SYS_PBSIZE		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-
 /* Since U-Boot 64bit PCIe support is limited, disable 64bit MMIO support */
-/* #define CONFIG_SYS_PCI_64BIT		1 */
 
 #define DEFAULT_DFU_ALT_INFO "dfu_alt_info="				\
 			"mtd nor1=u-boot.bin raw 200000 100000;"	\
 			"fip.bin raw 180000 78000;"			\
 			"optee.bin raw 500000 100000\0"
 
+/* GUIDs for capsule updatable firmware images */
+#define DEVELOPERBOX_UBOOT_IMAGE_GUID \
+	EFI_GUID(0x53a92e83, 0x4ef4, 0x473a, 0x8b, 0x0d, \
+		 0xb5, 0xd8, 0xc7, 0xb2, 0xd6, 0x00)
+
+#define DEVELOPERBOX_FIP_IMAGE_GUID \
+	EFI_GUID(0x880866e9, 0x84ba, 0x4793, 0xa9, 0x08, \
+		 0x33, 0xe0, 0xb9, 0x16, 0xf3, 0x98)
+
+#define DEVELOPERBOX_OPTEE_IMAGE_GUID \
+	EFI_GUID(0xc1b629f1, 0xce0e, 0x4894, 0x82, 0xbf, \
+		 0xf0, 0xa3, 0x83, 0x87, 0xe6, 0x30)
+
 /* Distro boot settings */
-#ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_CMD_USB
 #define BOOT_TARGET_DEVICE_USB(func)	func(USB, usb, 0)
 #else
@@ -89,9 +91,6 @@
 	BOOT_TARGET_DEVICE_NVME(func)	\
 
 #include <config_distro_bootcmd.h>
-#else /* CONFIG_SPL_BUILD */
-#define BOOTENV
-#endif
 
 #define	CONFIG_EXTRA_ENV_SETTINGS		\
 	"fdt_addr_r=0x9fe00000\0"		\

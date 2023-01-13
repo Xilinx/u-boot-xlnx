@@ -23,6 +23,7 @@ _default_settings = {
     "u-boot": {},
     "linux": {
         "process_tags": "False",
+        "check_patch_use_tree": "True",
     },
     "gcc": {
         "process_tags": "False",
@@ -71,7 +72,7 @@ class _ProjectConfigParser(ConfigParser.SafeConfigParser):
     >>> config = _ProjectConfigParser("linux")
     >>> config.readfp(StringIO(sample_config))
     >>> sorted((str(a), str(b)) for (a, b) in config.items("settings"))
-    [('am_hero', 'True'), ('process_tags', 'False')]
+    [('am_hero', 'True'), ('check_patch_use_tree', 'True'), ('process_tags', 'False')]
 
     # Check to make sure that settings works with unknown project.
     >>> config = _ProjectConfigParser("unknown")
@@ -198,14 +199,14 @@ def CreatePatmanConfigFile(gitutil, config_fname):
     Returns:
         None
     """
-    name = gitutil.GetDefaultUserName()
+    name = gitutil.get_default_user_name()
     if name == None:
-        name = raw_input("Enter name: ")
+        name = input("Enter name: ")
 
-    email = gitutil.GetDefaultUserEmail()
+    email = gitutil.get_default_user_email()
 
     if email == None:
-        email = raw_input("Enter email: ")
+        email = input("Enter email: ")
 
     try:
         f = open(config_fname, 'w')
@@ -246,8 +247,10 @@ def _UpdateDefaults(main_parser, config):
 
     # Collect the defaults from each parser
     defaults = {}
+    parser_defaults = []
     for parser in parsers:
         pdefs = parser.parse_known_args()[0]
+        parser_defaults.append(pdefs)
         defaults.update(vars(pdefs))
 
     # Go through the settings and collect defaults
@@ -264,8 +267,11 @@ def _UpdateDefaults(main_parser, config):
         else:
             print("WARNING: Unknown setting %s" % name)
 
-    # Set all the defaults (this propagates through all subparsers)
+    # Set all the defaults and manually propagate them to subparsers
     main_parser.set_defaults(**defaults)
+    for parser, pdefs in zip(parsers, parser_defaults):
+        parser.set_defaults(**{ k: v for k, v in defaults.items()
+                                    if k in pdefs })
 
 def _ReadAliasFile(fname):
     """Read in the U-Boot git alias file if it exists.

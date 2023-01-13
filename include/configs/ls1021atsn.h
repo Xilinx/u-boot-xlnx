@@ -6,19 +6,10 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#define CONFIG_ARMV7_SECURE_BASE	OCRAM_BASE_S_ADDR
-
-#define CONFIG_SYS_FSL_CLK
-
-#define CONFIG_DEEP_SLEEP
-
 #define CONFIG_SYS_INIT_RAM_ADDR	OCRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	OCRAM_SIZE
 
 /* XHCI Support - enabled by default */
-#define CONFIG_USB_MAX_CONTROLLER_COUNT	1
-
-#define CONFIG_SYS_CLK_FREQ		100000000
 
 #define DDR_SDRAM_CFG			0x470c0008
 #define DDR_CS0_BNDS			0x008000bf
@@ -52,16 +43,6 @@
 #define CONFIG_U_BOOT_HDR_SIZE		(16 << 10)
 #endif /* ifdef CONFIG_NXP_ESBC */
 
-#define CONFIG_SPL_MAX_SIZE		0x1a000
-#define CONFIG_SPL_STACK		0x1001d000
-#define CONFIG_SPL_PAD_TO		0x1c000
-
-#define CONFIG_SYS_SPL_MALLOC_START	(CONFIG_SYS_TEXT_BASE + \
-		CONFIG_SYS_MONITOR_LEN)
-#define CONFIG_SYS_SPL_MALLOC_SIZE	0x100000
-#define CONFIG_SPL_BSS_START_ADDR	0x80100000
-#define CONFIG_SPL_BSS_MAX_SIZE		0x80000
-
 #ifdef CONFIG_U_BOOT_HDR_SIZE
 /*
  * HDR would be appended at end of image and copied to DDR along
@@ -69,20 +50,14 @@
  * size increases then increase this size in case of secure boot as
  * it uses raw U-Boot image instead of FIT image.
  */
-#define CONFIG_SYS_MONITOR_LEN		(0x100000 + CONFIG_U_BOOT_HDR_SIZE)
-#else
-#define CONFIG_SYS_MONITOR_LEN		0x100000
 #endif /* ifdef CONFIG_U_BOOT_HDR_SIZE */
 #endif
 
-#define CONFIG_NR_DRAM_BANKS		1
 #define PHYS_SDRAM			0x80000000
 #define PHYS_SDRAM_SIZE			(1u * 1024 * 1024 * 1024)
 
 #define CONFIG_SYS_DDR_SDRAM_BASE	0x80000000UL
 #define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
-
-#define CONFIG_CHIP_SELECTS_PER_CTRL	4
 
 /* Serial Port */
 #define CONFIG_SYS_NS16550_SERIAL
@@ -93,24 +68,8 @@
 
 /* I2C */
 
-/* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM	0
-
-/* QSPI */
-#define FSL_QSPI_FLASH_SIZE		(1 << 24)
-#define FSL_QSPI_FLASH_NUM		2
-
 /* PCIe */
-#define CONFIG_PCIE1			/* PCIE controller 1 */
-#define CONFIG_PCIE2			/* PCIE controller 2 */
 #define FSL_PCIE_COMPAT			"fsl,ls1021a-pcie"
-#ifdef CONFIG_PCI
-#define CONFIG_PCI_SCAN_SHOW
-#endif
-
-#define CONFIG_LAYERSCAPE_NS_ACCESS
-#define COUNTER_FREQUENCY		12500000
 
 #define CONFIG_HWCONFIG
 #define HWCONFIG_BUFFER_SIZE		256
@@ -126,7 +85,6 @@
 #define CONFIG_EXTRA_ENV_SETTINGS					\
 	"bootargs=root=/dev/ram0 rw console=ttyS0,115200\0"		\
 	"initrd_high=0xffffffff\0"					\
-	"fdt_addr=0x64f00000\0"						\
 	"kernel_addr=0x61000000\0"					\
 	"kernelheader_addr=0x60800000\0"				\
 	"scriptaddr=0x80000000\0"					\
@@ -189,27 +147,8 @@
 /* Miscellaneous configurable options */
 #define CONFIG_SYS_BOOTMAPSZ		(256 << 20)
 
-#define CONFIG_SYS_CBSIZE		256	/* Console I/O Buffer Size */
-#define CONFIG_SYS_PBSIZE		\
-		(CONFIG_SYS_CBSIZE + sizeof(CONFIG_SYS_PROMPT) + 16)
-#define CONFIG_SYS_MAXARGS		16	/* max number of command args */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-
 #define CONFIG_LS102XA_STREAM_ID
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SPL_TEXT_BASE
-#else
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SYS_TEXT_BASE    /* start of monitor */
-#endif
-
 /* Environment */
-
-#define CONFIG_SYS_BOOTM_LEN		0x8000000 /* 128 MB */
 
 #endif

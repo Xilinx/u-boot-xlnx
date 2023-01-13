@@ -12,20 +12,12 @@
 
 #include <configs/x86-common.h>
 
-#define CONFIG_SYS_MONITOR_LEN		(1 << 20)
-
 #define CONFIG_STD_DEVICES_SETTINGS     "stdin=serial\0" \
 					"stdout=serial\0" \
 					"stderr=serial\0"
 
 #define VIDEO_IO_OFFSET				0
 #define CONFIG_X86EMU_RAW_IO
-
-#undef CONFIG_BOOTCOMMAND
-#define CONFIG_BOOTCOMMAND	\
-	"load scsi 0:2 03000000 /boot/vmlinuz-${kernel-ver}-generic;"	\
-	"load scsi 0:2 04000000 /boot/initrd.img-${kernel-ver}-generic;" \
-	"run boot"
 
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS				\

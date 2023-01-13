@@ -62,7 +62,7 @@ efi_status_t EFIAPI efi_get_variable(u16 *variable_name,
 {
 	efi_status_t ret;
 
-	EFI_ENTRY("\"%ls\" %pUl %p %p %p", variable_name, vendor, attributes,
+	EFI_ENTRY("\"%ls\" %pUs %p %p %p", variable_name, vendor, attributes,
 		  data_size, data);
 
 	ret = efi_get_variable_int(variable_name, vendor, attributes,
@@ -96,7 +96,7 @@ efi_status_t EFIAPI efi_set_variable(u16 *variable_name,
 {
 	efi_status_t ret;
 
-	EFI_ENTRY("\"%ls\" %pUl %x %zu %p", variable_name, vendor, attributes,
+	EFI_ENTRY("\"%ls\" %pUs %x %zu %p", variable_name, vendor, attributes,
 		  data_size, data);
 
 	/* Make sure that the EFI_VARIABLE_READ_ONLY flag is not set */
@@ -127,7 +127,7 @@ efi_status_t EFIAPI efi_get_next_variable_name(efi_uintn_t *variable_name_size,
 {
 	efi_status_t ret;
 
-	EFI_ENTRY("%p \"%ls\" %pUl", variable_name_size, variable_name, vendor);
+	EFI_ENTRY("%p \"%ls\" %pUs", variable_name_size, variable_name, vendor);
 
 	ret = efi_get_next_variable_name_int(variable_name_size, variable_name,
 					     vendor);
@@ -229,26 +229,26 @@ static efi_status_t efi_set_secure_state(u8 secure_boot, u8 setup_mode,
 
 	efi_secure_boot = secure_boot;
 
-	ret = efi_set_variable_int(L"SecureBoot", &efi_global_variable_guid,
+	ret = efi_set_variable_int(u"SecureBoot", &efi_global_variable_guid,
 				   attributes_ro, sizeof(secure_boot),
 				   &secure_boot, false);
 	if (ret != EFI_SUCCESS)
 		goto err;
 
-	ret = efi_set_variable_int(L"SetupMode", &efi_global_variable_guid,
+	ret = efi_set_variable_int(u"SetupMode", &efi_global_variable_guid,
 				   attributes_ro, sizeof(setup_mode),
 				   &setup_mode, false);
 	if (ret != EFI_SUCCESS)
 		goto err;
 
-	ret = efi_set_variable_int(L"AuditMode", &efi_global_variable_guid,
+	ret = efi_set_variable_int(u"AuditMode", &efi_global_variable_guid,
 				   audit_mode || setup_mode ?
 				   attributes_ro : attributes_rw,
 				   sizeof(audit_mode), &audit_mode, false);
 	if (ret != EFI_SUCCESS)
 		goto err;
 
-	ret = efi_set_variable_int(L"DeployedMode",
+	ret = efi_set_variable_int(u"DeployedMode",
 				   &efi_global_variable_guid,
 				   audit_mode || deployed_mode || setup_mode ?
 				   attributes_ro : attributes_rw,
@@ -280,7 +280,7 @@ static efi_status_t efi_transfer_secure_state(enum efi_secure_mode mode)
 		if (ret != EFI_SUCCESS)
 			goto err;
 	} else if (mode == EFI_MODE_AUDIT) {
-		ret = efi_set_variable_int(L"PK", &efi_global_variable_guid,
+		ret = efi_set_variable_int(u"PK", &efi_global_variable_guid,
 					   EFI_VARIABLE_BOOTSERVICE_ACCESS |
 					   EFI_VARIABLE_RUNTIME_ACCESS,
 					   0, NULL, false);
@@ -354,7 +354,7 @@ efi_status_t efi_init_secure_state(void)
 		return ret;
 
 	/* As we do not provide vendor keys this variable is always 0. */
-	ret = efi_set_variable_int(L"VendorKeys",
+	ret = efi_set_variable_int(u"VendorKeys",
 				   &efi_global_variable_guid,
 				   EFI_VARIABLE_BOOTSERVICE_ACCESS |
 				   EFI_VARIABLE_RUNTIME_ACCESS |

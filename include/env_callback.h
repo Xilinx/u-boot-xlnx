@@ -24,12 +24,6 @@
 #define SILENT_CALLBACK
 #endif
 
-#ifdef CONFIG_SPLASHIMAGE_GUARD
-#define SPLASHIMAGE_CALLBACK "splashimage:splashimage,"
-#else
-#define SPLASHIMAGE_CALLBACK
-#endif
-
 #ifdef CONFIG_REGEX
 #define ENV_DOT_ESCAPE "\\"
 #else
@@ -57,6 +51,21 @@
 #define NET_CALLBACKS
 #endif
 
+#ifdef CONFIG_IPV6
+#define NET6_CALLBACKS \
+	"ip6addr:ip6addr," \
+	"serverip6:serverip6," \
+	"gatewayip6:gatewayip6,"
+#else
+#define NET6_CALLBACKS
+#endif
+
+#ifdef CONFIG_BOOTSTD
+#define BOOTSTD_CALLBACK	"bootmeths:bootmeths,"
+#else
+#define BOOTSTD_CALLBACK
+#endif
+
 /*
  * This list of callback bindings is static, but may be overridden by defining
  * a new association in the ".callbacks" environment variable.
@@ -65,9 +74,10 @@
 	ENV_DOT_ESCAPE ENV_FLAGS_VAR ":flags," \
 	"baudrate:baudrate," \
 	NET_CALLBACKS \
+	NET6_CALLBACKS \
+	BOOTSTD_CALLBACK \
 	"loadaddr:loadaddr," \
 	SILENT_CALLBACK \
-	SPLASHIMAGE_CALLBACK \
 	"stdin:console,stdout:console,stderr:console," \
 	"serial#:serialno," \
 	CONFIG_ENV_CALLBACK_LIST_STATIC

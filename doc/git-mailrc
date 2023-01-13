@@ -52,7 +52,7 @@ alias wd             Wolfgang Denk <wd@denx.de>
 alias priyankajain   Priyanka Jain <priyanka.jain@nxp.com>
 
 # Architecture aliases
-alias arch           arc, arm, m68k, microblaze, mips, nds32, nios2, powerpc, sandbox, superh, x86
+alias arch           arc, arm, m68k, microblaze, mips, nios2, powerpc, sandbox, superh, x86
 alias arches         arch
 
 alias arc            uboot, abrodkin
@@ -90,14 +90,12 @@ alias mb             microblaze
 
 alias mips           uboot, danielschwierzeck
 
-alias nds32          uboot, macpaul
-
 alias nios           uboot, Thomas Chou <thomas@wytron.com.tw>, smcnutt
 alias nios2          nios
 
 alias powerpc        uboot, afleming, stroese, wd, priyankajain, mariosix
 alias ppc            powerpc
-alias mpc8xx         uboot, wd, Christophe Leroy <christophe.leroy@c-s.fr>
+alias mpc8xx         uboot, wd, Christophe Leroy <christophe.leroy@csgroup.eu>
 alias mpc83xx        uboot, mariosix
 alias mpc85xx        uboot, afleming, priyankajain
 
@@ -113,7 +111,6 @@ alias x86            uboot, sjg, bmeng
 alias dm             uboot, sjg
 alias cfi            uboot, stroese
 alias dfu            uboot, lukma
-alias efi            uboot, agraf
 alias eth            uboot, jhersh
 alias kerneldoc      uboot, marex
 alias fdt            uboot, sjg

@@ -14,21 +14,14 @@
 
 #ifdef CONFIG_SPL_OS_BOOT
 /* Falcon Mode */
-#define CONFIG_SPL_FS_LOAD_ARGS_NAME   "args"
-#define CONFIG_SPL_FS_LOAD_KERNEL_NAME "uImage"
-#define CONFIG_SYS_SPL_ARGS_ADDR   0x18000000
 
 /* Falcon Mode - MMC support: args@1MB kernel@2MB */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR  0x800   /* 1MB */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS (CONFIG_CMD_SPL_WRITE_SIZE / 512)
-#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR        0x1000  /* 2MB */
 #endif
 
 #define CONFIG_MXC_UART_BASE		UART1_BASE
 
 /* MMC Configuration */
-#define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC3_BASE_ADDR
-#define CONFIG_SYS_FSL_ESDHC_HAS_DDR_MODE
+#define CFG_SYS_FSL_ESDHC_ADDR	USDHC3_BASE_ADDR
 
 /* USB Configs */
 #define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
@@ -110,34 +103,12 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /* Environment organization */
 
-/* Environment starts at 768k = 768 * 1024 = 786432 */
-/*
- * Detect overlap between U-Boot image and environment area in build-time
- *
- * CONFIG_BOARD_SIZE_LIMIT = CONFIG_ENV_OFFSET - u-boot.img offset
- * CONFIG_BOARD_SIZE_LIMIT = 768k - 69k = 699k = 715776
- *
- * Currently CONFIG_BOARD_SIZE_LIMIT does not handle expressions, so
- * write the direct value here
- */
-#define CONFIG_BOARD_SIZE_LIMIT		715776
-
 /* Ethernet Configuration */
-#define IMX_FEC_BASE			ENET_BASE_ADDR
-#define CONFIG_FEC_XCV_TYPE		RGMII
-#define CONFIG_ETHPRIME			"FEC"
 #define CONFIG_FEC_MXC_PHYADDR		1
 
 /* Framebuffer */
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 

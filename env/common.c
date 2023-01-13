@@ -47,7 +47,7 @@ struct hsearch_data env_htab = {
  *
  * @param varname	Environment variable to set
  * @param value		Value to set it to
- * @return 0 if ok, 1 on error
+ * Return: 0 if ok, 1 on error
  */
 int env_set_ulong(const char *varname, ulong value)
 {
@@ -62,7 +62,7 @@ int env_set_ulong(const char *varname, ulong value)
  *
  * @param varname	Environment variable to set
  * @param value		Value to set it to
- * @return 0 if ok, 1 on error
+ * Return: 0 if ok, 1 on error
  */
 int env_set_hex(const char *varname, ulong value)
 {
@@ -115,7 +115,7 @@ char *env_get(const char *name)
 	if (gd->flags & GD_FLG_ENV_READY) { /* after import into hashtable */
 		struct env_entry e, *ep;
 
-		WATCHDOG_RESET();
+		schedule();
 
 		e.key	= name;
 		e.data	= NULL;
@@ -208,7 +208,7 @@ int env_get_f(const char *name, char *buf, unsigned len)
  * @param base		Number base to use (normally 10, or 16 for hex)
  * @param default_val	Default value to return if the variable is not
  *			found
- * @return the decoded value, or default_val if not found
+ * Return: the decoded value, or default_val if not found
  */
 ulong env_get_ulong(const char *name, int base, ulong default_val)
 {
@@ -233,6 +233,11 @@ int env_get_yesno(const char *var)
 		return -1;
 	return (*s == '1' || *s == 'y' || *s == 'Y' || *s == 't' || *s == 'T') ?
 		1 : 0;
+}
+
+bool env_get_autostart(void)
+{
+	return env_get_yesno("autostart") == 1;
 }
 
 /*
@@ -534,12 +539,12 @@ void env_import_fdt(void)
 		return;
 	}
 
-	for (res = ofnode_get_first_property(node, &prop);
+	for (res = ofnode_first_property(node, &prop);
 	     !res;
-	     res = ofnode_get_next_property(&prop)) {
+	     res = ofnode_next_property(&prop)) {
 		const char *name, *val;
 
-		val = ofnode_get_property_by_prop(&prop, &name, NULL);
+		val = ofprop_get_property(&prop, &name, NULL);
 		env_set(name, val);
 	}
 }

@@ -61,7 +61,7 @@ int dram_init(void)
 	return 0;
 }
 
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 #ifdef CONFIG_PHYS_64BIT
 	/* Limit RAM used by U-Boot to the DDR low region */
@@ -115,20 +115,11 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 		return ret;
 	}
 
-#if defined(CONFIG_TI_SECURE_DEVICE)
-	/* Make Crypto HW reserved for secure world use */
-	ret = fdt_disable_node(blob, "/bus@100000/crypto@4e00000");
-	if (ret < 0)
-		ret = fdt_disable_node(blob,
-				       "/interconnect@100000/crypto@4E00000");
-	if (ret)
-		printf("%s: disabling SA2UL failed %d\n", __func__, ret);
-#endif
-
 	return 0;
 }
 #endif
 
+#ifdef CONFIG_TI_I2C_BOARD_DETECT
 int do_board_detect(void)
 {
 	int ret;
@@ -353,23 +344,26 @@ static int probe_daughtercards(void)
 
 	return 0;
 }
+#endif
 
 int board_late_init(void)
 {
-	struct ti_am6_eeprom *ep = TI_AM6_EEPROM_DATA;
+	if (IS_ENABLED(CONFIG_TI_I2C_BOARD_DETECT)) {
+		struct ti_am6_eeprom *ep = TI_AM6_EEPROM_DATA;
 
-	setup_board_eeprom_env();
+		setup_board_eeprom_env();
 
-	/*
-	 * The first MAC address for ethernet a.k.a. ethernet0 comes from
-	 * efuse populated via the am654 gigabit eth switch subsystem driver.
-	 * All the other ones are populated via EEPROM, hence continue with
-	 * an index of 1.
-	 */
-	board_ti_am6_set_ethaddr(1, ep->mac_addr_cnt);
+		/*
+		 * The first MAC address for ethernet a.k.a. ethernet0 comes from
+		 * efuse populated via the am654 gigabit eth switch subsystem driver.
+		 * All the other ones are populated via EEPROM, hence continue with
+		 * an index of 1.
+		 */
+		board_ti_am6_set_ethaddr(1, ep->mac_addr_cnt);
 
-	/* Check for and probe any plugged-in daughtercards */
-	probe_daughtercards();
+		/* Check for and probe any plugged-in daughtercards */
+		probe_daughtercards();
+	}
 
 	return 0;
 }

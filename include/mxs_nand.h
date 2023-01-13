@@ -12,6 +12,7 @@
 #include <asm/cache.h>
 #include <nand.h>
 #include <asm/mach-imx/dma.h>
+#include <clk.h>
 
 /**
  * @gf_len:                   The length of Galois Field. (e.g., 13 or 14)
@@ -43,9 +44,8 @@ struct mxs_nand_info {
 	struct nand_chip chip;
 	struct udevice *dev;
 	unsigned int	max_ecc_strength_supported;
+	int		max_chain_delay;
 	bool		use_minimum_ecc;
-	/* legacy bch geometry flag */
-	bool		legacy_bch_geometry;
 	int		cur_chip;
 
 	uint32_t	cmd_queue_len;
@@ -61,6 +61,7 @@ struct mxs_nand_info {
 
 	struct mxs_gpmi_regs *gpmi_regs;
 	struct mxs_bch_regs *bch_regs;
+	struct clk *gpmi_clk;
 
 	/* Functions with altered behaviour */
 	int		(*hooked_read_oob)(struct mtd_info *mtd,

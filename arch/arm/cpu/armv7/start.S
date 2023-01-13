@@ -17,6 +17,7 @@
 #include <asm/system.h>
 #include <linux/linkage.h>
 #include <asm/armv7.h>
+#include <system-constants.h>
 
 /*************************************************************************
  *
@@ -97,12 +98,10 @@ switch_to_hypervisor_ret:
 	orr	r0, r0, #0xc0		@ disable FIQ and IRQ
 	msr	cpsr,r0
 
+#if !CONFIG_IS_ENABLED(SYS_NO_VECTOR_TABLE)
 /*
  * Setup vector:
- * (OMAP4 spl TEXT_BASE is not 32 byte aligned.
- * Continue to use ROM code vector only in OMAP4 spl)
  */
-#if !(defined(CONFIG_OMAP44XX) && defined(CONFIG_SPL_BUILD))
 	/* Set V=0 in CP15 SCTLR register - for VBAR to point to vector */
 	mrc	p15, 0, r0, c1, c0, 0	@ Read CP15 SCTLR Register
 	bic	r0, #CR_V		@ V = 0
@@ -173,6 +172,17 @@ ENDPROC(switch_to_hypervisor)
  *
  *************************************************************************/
 ENTRY(cpu_init_cp15)
+
+#if CONFIG_IS_ENABLED(ARMV7_SET_CORTEX_SMPEN)
+	/*
+	 * The Arm Cortex-A7 TRM says this bit must be enabled before
+	 * "any cache or TLB maintenance operations are performed".
+	 */
+	mrc	p15, 0, r0, c1, c0, 1	@ read auxilary control register
+	orr	r0, r0, #1 << 6		@ set SMP bit to enable coherency
+	mcr	p15, 0, r0, c1, c0, 1	@ write auxilary control register
+#endif
+
 	/*
 	 * Invalidate L1 I/D
 	 */
@@ -245,7 +255,7 @@ ENTRY(cpu_init_cp15)
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_STACK)
 	ldr	r0, =(CONFIG_SPL_STACK)
 #else
-	ldr	r0, =(CONFIG_SYS_INIT_SP_ADDR)
+	ldr	r0, =(SYS_INIT_SP_ADDR)
 #endif
 	bic	r0, r0, #7	/* 8-byte alignment for ABI compliance */
 	mov	sp, r0

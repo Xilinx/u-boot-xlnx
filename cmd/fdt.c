@@ -40,6 +40,7 @@ void set_working_fdt_addr(ulong addr)
 {
 	void *buf;
 
+	printf("Working FDT set to %lx\n", addr);
 	buf = map_sysmem(addr, 0);
 	working_fdt = buf;
 	env_set_hex("fdtaddr", addr);
@@ -48,11 +49,30 @@ void set_working_fdt_addr(ulong addr)
 /*
  * Get a value from the fdt and format it to be set in the environment
  */
-static int fdt_value_env_set(const void *nodep, int len, const char *var)
+static int fdt_value_env_set(const void *nodep, int len,
+			     const char *var, int index)
 {
-	if (is_printable_string(nodep, len))
-		env_set(var, (void *)nodep);
-	else if (len == 4) {
+	if (is_printable_string(nodep, len)) {
+		const char *nodec = (const char *)nodep;
+		int i;
+
+		/*
+		 * Iterate over all members in stringlist and find the one at
+		 * offset $index. If no such index exists, indicate failure.
+		 */
+		for (i = 0; i < len; ) {
+			if (index-- > 0) {
+				i += strlen(nodec) + 1;
+				nodec += strlen(nodec) + 1;
+				continue;
+			}
+
+			env_set(var, nodec);
+			return 0;
+		}
+
+		return 1;
+	} else if (len == 4) {
 		char buf[11];
 
 		sprintf(buf, "0x%08X", fdt32_to_cpu(*(fdt32_t *)nodep));
@@ -119,13 +139,27 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	if (strncmp(argv[1], "ad", 2) == 0) {
 		unsigned long addr;
 		int control = 0;
+		int quiet = 0;
 		struct fdt_header *blob;
 
 		/* Set the address [and length] of the fdt */
 		argc -= 2;
 		argv += 2;
-		if (argc && !strcmp(*argv, "-c")) {
-			control = 1;
+		while (argc > 0 && **argv == '-') {
+			char *arg = *argv;
+
+			while (*++arg) {
+				switch (*arg) {
+				case 'c':
+					control = 1;
+					break;
+				case 'q':
+					quiet = 1;
+					break;
+				default:
+					return CMD_RET_USAGE;
+				}
+			}
 			argc--;
 			argv++;
 		}
@@ -145,7 +179,8 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 
 		addr = hextoul(argv[0], NULL);
 		blob = map_sysmem(addr, 0);
-		if (!fdt_valid(&blob))
+		if ((quiet && fdt_check_header(blob)) ||
+		    (!quiet && !fdt_valid(&blob)))
 			return 1;
 		if (control)
 			gd->fdt_blob = blob;
@@ -159,12 +194,13 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 			/* Optional new length */
 			len = hextoul(argv[1], NULL);
 			if (len < fdt_totalsize(blob)) {
-				printf("New length %d < existing length %d, ignoring\n",
-				       len, fdt_totalsize(blob));
+				if (!quiet)
+					printf("New length %d < existing length %d, ignoring\n",
+					       len, fdt_totalsize(blob));
 			} else {
 				/* Open in place with a new length */
 				err = fdt_open_into(blob, blob, len);
-				if (err != 0) {
+				if (!quiet && err != 0) {
 					printf("libfdt fdt_open_into(): %s\n",
 					       fdt_strerror(err));
 				}
@@ -410,10 +446,14 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 				return 0;
 			} else if (nodep && len > 0) {
 				if (subcmd[0] == 'v') {
+					int index = 0;
 					int ret;
 
+					if (argc == 7)
+						index = simple_strtoul(argv[6], NULL, 10);
+
 					ret = fdt_value_env_set(nodep, len,
-								var);
+								var, index);
 					if (ret != 0)
 						return ret;
 				} else if (subcmd[0] == 'a') {
@@ -638,7 +678,7 @@ static int do_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 
 		if (argc == 4) {
 			initrd_start = hextoul(argv[2], NULL);
-			initrd_end = hextoul(argv[3], NULL);
+			initrd_end = initrd_start + hextoul(argv[3], NULL) - 1;
 		}
 
 		fdt_chosen(working_fdt);
@@ -1055,7 +1095,7 @@ static int fdt_print(const char *pathp, char *prop, int depth)
 /********************************************************************/
 #ifdef CONFIG_SYS_LONGHELP
 static char fdt_help_text[] =
-	"addr [-c]  <addr> [<length>]   - Set the [control] fdt location to <addr>\n"
+	"addr [-c] [-q] <addr> [<size>]  - Set the [control] fdt location to <addr>\n"
 #ifdef CONFIG_OF_LIBFDT_OVERLAY
 	"fdt apply <addr>                    - Apply overlay to the DT\n"
 #endif
@@ -1069,7 +1109,9 @@ static char fdt_help_text[] =
 	"fdt resize [<extrasize>]            - Resize fdt to size + padding to 4k addr + some optional <extrasize> if needed\n"
 	"fdt print  <path> [<prop>]          - Recursive print starting at <path>\n"
 	"fdt list   <path> [<prop>]          - Print one level starting at <path>\n"
-	"fdt get value <var> <path> <prop>   - Get <property> and store in <var>\n"
+	"fdt get value <var> <path> <prop> [<index>] - Get <property> and store in <var>\n"
+	"                                      In case of stringlist property, use optional <index>\n"
+	"                                      to select string within the stringlist. Default is 0.\n"
 	"fdt get name <var> <path> <index>   - Get name of node <index> and store in <var>\n"
 	"fdt get addr <var> <path> <prop>    - Get start address of <property> and store in <var>\n"
 	"fdt get size <var> <path> [<prop>]  - Get size of [<property>] or num nodes and store in <var>\n"
@@ -1083,8 +1125,8 @@ static char fdt_help_text[] =
 	"fdt rsvmem print                    - Show current mem reserves\n"
 	"fdt rsvmem add <addr> <size>        - Add a mem reserve\n"
 	"fdt rsvmem delete <index>           - Delete a mem reserves\n"
-	"fdt chosen [<start> <end>]          - Add/update the /chosen branch in the tree\n"
-	"                                        <start>/<end> - initrd start/end addr\n"
+	"fdt chosen [<start> <size>]         - Add/update the /chosen branch in the tree\n"
+	"                                        <start>/<size> - initrd start addr/size\n"
 #if defined(CONFIG_FIT_SIGNATURE)
 	"fdt checksign [<addr>]              - check FIT signature\n"
 	"                                        <start> - addr of key blob\n"

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-/* Copyright 2016-2019 NXP
+/* Copyright 2016-2019, 2021 NXP
  */
 #include <common.h>
 #include <clock_legacy.h>
@@ -28,7 +28,7 @@ DECLARE_GLOBAL_DATA_PTR;
 static void ddrmc_init(void)
 {
 #if (!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD))
-	struct ccsr_ddr *ddr = (struct ccsr_ddr *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_ddr *ddr = (struct ccsr_ddr *)CFG_SYS_FSL_DDR_ADDR;
 	u32 temp_sdram_cfg, tmp;
 
 	out_be32(&ddr->sdram_cfg, DDR_SDRAM_CFG);
@@ -130,7 +130,7 @@ int board_eth_init(struct bd_info *bis)
 
 int board_early_init_f(void)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 
 #ifdef CONFIG_TSEC_ENET
 	/*
@@ -188,7 +188,7 @@ void board_init_f(ulong dummy)
 	 * in last boot.
 	 */
 	if (is_warm_boot()) {
-		second_uboot = (void (*)(void))CONFIG_SYS_TEXT_BASE;
+		second_uboot = (void (*)(void))CONFIG_TEXT_BASE;
 		second_uboot();
 	}
 
@@ -238,10 +238,7 @@ int misc_init_r(void)
 #ifdef CONFIG_FSL_DEVICE_DISABLE
 	device_disable(devdis_tbl, ARRAY_SIZE(devdis_tbl));
 #endif
-
-#ifdef CONFIG_FSL_CAAM
-	return sec_init();
-#endif
+	return 0;
 }
 #endif
 

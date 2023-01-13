@@ -27,7 +27,7 @@
  *
  * @param cmd	Command to run
  * @param flag	Execution flags (CMD_FLAG_...)
- * @return 0 on success, or != 0 on error.
+ * Return: 0 on success, or != 0 on error.
  */
 int run_command(const char *cmd, int flag)
 {
@@ -54,7 +54,7 @@ int run_command(const char *cmd, int flag)
  *
  * @param cmd	Command to run
  * @param flag	Execution flags (CMD_FLAG_...)
- * @return 0 (not repeatable) or 1 (repeatable) on success, -1 on error.
+ * Return: 0 (not repeatable) or 1 (repeatable) on success, -1 on error.
  */
 int run_command_repeatable(const char *cmd, int flag)
 {
@@ -124,6 +124,21 @@ int run_command_list(const char *cmd, int len, int flag)
 		free(buff);
 
 	return rcode;
+}
+
+int run_commandf(const char *fmt, ...)
+{
+	va_list args;
+	char cmd[128];
+	int i, ret;
+
+	va_start(args, fmt);
+	i = vsnprintf(cmd, sizeof(cmd), fmt, args);
+	va_end(args);
+
+	ret = run_command(cmd, 0);
+
+	return ret;
 }
 
 /****************************************************************************/

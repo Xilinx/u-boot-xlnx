@@ -8,6 +8,9 @@ config TARGET_EVB_RK3229
 config ROCKCHIP_BOOT_MODE_REG
 	default 0x110005c8
 
+config ROCKCHIP_STIMER_BASE
+	default 0x110d0020
+
 config SYS_SOC
 	default "rk322x"
 
@@ -22,9 +25,6 @@ config SPL_LIBGENERIC_SUPPORT
 
 config SPL_SERIAL
 	default y
-
-config TPL_MAX_SIZE
-        default 28672
 
 config TPL_STACK
         default 0x10088000

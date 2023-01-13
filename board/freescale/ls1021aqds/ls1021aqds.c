@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2019 NXP
+ * Copyright 2019, 2021 NXP
  */
 
 #include <common.h>
@@ -20,7 +20,6 @@
 #include <mmc.h>
 #include <fsl_csu.h>
 #include <fsl_ifc.h>
-#include <fsl_sec.h>
 #include <spl.h>
 #include <fsl_devdis.h>
 #include <fsl_validate.h>
@@ -102,6 +101,7 @@ int checkboard(void)
 	return 0;
 }
 
+#ifdef CONFIG_DYNAMIC_SYS_CLK_FREQ
 unsigned long get_board_sys_clk(void)
 {
 	u8 sysclk_conf = QIXIS_READ(brdcfg[1]);
@@ -126,6 +126,7 @@ unsigned long get_board_sys_clk(void)
 	}
 	return 66666666;
 }
+#endif
 
 #ifdef CONFIG_DYNAMIC_DDR_CLK_FREQ
 unsigned long get_board_ddr_clk(void)
@@ -159,7 +160,7 @@ int dram_init(void)
 
 int board_early_init_f(void)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 
 #ifdef CONFIG_TSEC_ENET
 	/* clear BD & FR bits for BE BD's and frame data */
@@ -184,7 +185,7 @@ int board_early_init_f(void)
 void board_init_f(ulong dummy)
 {
 #ifdef CONFIG_NAND_BOOT
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 	u32 porsr1, pinctl;
 
 	/*
@@ -233,7 +234,7 @@ void board_init_f(ulong dummy)
 
 void config_etseccm_source(int etsec_gtx_125_mux)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 
 	switch (etsec_gtx_125_mux) {
 	case GE0_CLK125:
@@ -307,7 +308,7 @@ int config_board_mux(int ctrl_type)
 
 int config_serdes_mux(void)
 {
-	struct ccsr_gur *gur = (struct ccsr_gur *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur *gur = (struct ccsr_gur *)CFG_SYS_FSL_GUTS_ADDR;
 	u32 cfg;
 
 	cfg = in_be32(&gur->rcwsr[4]) & RCWSR4_SRDS1_PRTCL_MASK;
@@ -386,9 +387,6 @@ int misc_init_r(void)
 
 #ifdef CONFIG_FSL_DEVICE_DISABLE
 	device_disable(devdis_tbl, ARRAY_SIZE(devdis_tbl));
-#endif
-#ifdef CONFIG_FSL_CAAM
-	return sec_init();
 #endif
 	return 0;
 }

@@ -92,6 +92,12 @@ pxe boot
      fdtoverlay_addr_r - location in RAM at which 'pxe boot' will temporarily store
      fdt overlay(s) before applying them to the fdt blob stored at 'fdt_addr_r'.
 
+     pxe_label_override - override label to be used, if exists, instead of the
+     default label. This will allow consumers to choose a pxe label at
+     runtime instead of having to prompt the user. If "pxe_label_override" is set
+     but does not exist in the pxe menu, pxe would fallback to the default label if
+     given, and no failure is returned but rather a warning message.
+
 pxe file format
 ===============
 The pxe file format is nearly a subset of the PXELINUX file format; see
@@ -157,6 +163,15 @@ fdtoverlays <path> [...] - if this label is chosen, use tftp to retrieve the DT
                       and then applied in the load order to the fdt blob stored at the
                       address indicated in the fdt_addr_r environment variable.
 
+devicetree-overlay <path> [...] - if this label is chosen, use tftp to retrieve the DT
+                      overlay(s) at <path>. it will be temporarily stored at the
+                      address indicated in the fdtoverlay_addr_r environment variable,
+                      and then applied in the load order to the fdt blob stored at the
+                      address indicated in the fdt_addr_r environment variable.
+                      Alias for fdtoverlays.
+
+kaslrseed           - set this label to request random number from hwrng as kaslr seed.
+
 append <string>	    - use <string> as the kernel command line when booting this
 		      label.
 
@@ -169,6 +184,11 @@ fdt <path>	    - if this label is chosen, use tftp to retrieve the fdt blob
 		      at <path>. it will be stored at the address indicated in
 		      the fdt_addr_r environment variable, and that address will
 		      be passed to bootm.
+
+devicetree <path>   - if this label is chosen, use tftp to retrieve the fdt blob
+		      at <path>. it will be stored at the address indicated in
+		      the fdt_addr_r environment variable, and that address will
+		      be passed to bootm. Alias for fdt.
 
 fdtdir <path>	    - if this label is chosen, use tftp to retrieve a fdt blob
 		      relative to <path>. If the fdtfile environment variable

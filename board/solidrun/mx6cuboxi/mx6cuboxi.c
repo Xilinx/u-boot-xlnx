@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
+ * Copyright (C) 2022 Josua Mayer <josua@solid-run.com>
+ *
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
  *
  * Author: Fabio Estevam <fabio.estevam@freescale.com>
@@ -39,6 +41,8 @@
 #include <spl.h>
 #include <usb.h>
 #include <usb/ehci-ci.h>
+#include <netdev.h>
+#include <phy.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -407,6 +411,91 @@ out:
 	return 0;
 }
 
+static int find_ethernet_phy(void)
+{
+	struct mii_dev *bus = NULL;
+	struct phy_device *phydev = NULL;
+	int phy_addr = -ENOENT;
+
+#ifdef CONFIG_FEC_MXC
+	bus = fec_get_miibus(ENET_BASE_ADDR, -1);
+	if (!bus)
+		return -ENOENT;
+
+	// scan address 0, 1, 4
+	phydev = phy_find_by_mask(bus, 0b00010011);
+	if (!phydev) {
+		free(bus);
+		return -ENOENT;
+	}
+	pr_debug("%s: detected ethernet phy at address %d\n", __func__, phydev->addr);
+	phy_addr = phydev->addr;
+
+	free(phydev);
+#endif
+
+	return phy_addr;
+}
+
+#if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)
+/*
+ * Configure the correct ethernet PHYs nodes in device-tree:
+ * - AR8035 at addresses 0 or 4: Cubox
+ * - AR8035 at address 0: HummingBoard, HummingBoard 2
+ * - ADIN1300 at address 1: since SoM rev 1.9
+ */
+int ft_board_setup(void *fdt, struct bd_info *bd)
+{
+	int node_phy0, node_phy1, node_phy4;
+	int ret, phy;
+	bool enable_phy0 = false, enable_phy1 = false, enable_phy4 = false;
+	enum board_type board;
+
+	// detect device
+	request_detect_gpios();
+	board = board_type();
+	free_detect_gpios();
+
+	// detect phy
+	phy = find_ethernet_phy();
+	if (phy == 0 || phy == 4) {
+		enable_phy0 = true;
+		switch (board) {
+		case HUMMINGBOARD:
+		case HUMMINGBOARD2:
+			/* atheros phy may appear only at address 0 */
+			break;
+		case CUBOXI:
+		case UNKNOWN:
+		default:
+			/* atheros phy may appear at either address 0 or 4 */
+			enable_phy4 = true;
+		}
+	} else if (phy == 1) {
+		enable_phy1 = true;
+	} else {
+		pr_err("%s: couldn't detect ethernet phy, not patching dtb!\n", __func__);
+		return 0;
+	}
+
+	// update all phy nodes status
+	node_phy0 = fdt_path_offset(fdt, "/soc/bus@2100000/ethernet@2188000/mdio/ethernet-phy@0");
+	ret = fdt_setprop_string(fdt, node_phy0, "status", enable_phy0 ? "okay" : "disabled");
+	if (ret < 0 && enable_phy0)
+		pr_err("%s: failed to enable ethernet phy at address 0 in dtb!\n", __func__);
+	node_phy1 = fdt_path_offset(fdt, "/soc/bus@2100000/ethernet@2188000/mdio/ethernet-phy@1");
+	ret = fdt_setprop_string(fdt, node_phy1, "status", enable_phy1 ? "okay" : "disabled");
+	if (ret < 0 && enable_phy1)
+		pr_err("%s: failed to enable ethernet phy at address 1 in dtb!\n", __func__);
+	node_phy4 = fdt_path_offset(fdt, "/soc/bus@2100000/ethernet@2188000/mdio/ethernet-phy@4");
+	ret = fdt_setprop_string(fdt, node_phy4, "status", enable_phy4 ? "okay" : "disabled");
+	if (ret < 0 && enable_phy4)
+		pr_err("%s: failed to enable ethernet phy at address 4 in dtb!\n", __func__);
+
+	return 0;
+}
+#endif
+
 /* Override the default implementation, DT model is not accurate */
 int show_board_info(void)
 {
@@ -754,6 +843,9 @@ void board_init_f(ulong dummy)
 
 	/* setup GP timer */
 	timer_init();
+
+	/* Enable device tree and early DM support*/
+	spl_early_init();
 
 	/* UART clocks enabled and gd valid - init serial console */
 	preloader_console_init();

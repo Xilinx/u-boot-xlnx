@@ -20,7 +20,6 @@
 #define CONFIG_I2C_MVTWSI_BASE0		MVEBU_TWSI_BASE
 
 /* USB/EHCI configuration */
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 3
 
 /* Environment in SPI NOR flash */
 
@@ -32,31 +31,7 @@
  */
 #include "mv-common.h"
 
-/*
- * Memory layout while starting into the bin_hdr via the
- * BootROM:
- *
- * 0x4000.4000 - 0x4003.4000	headers space (192KiB)
- * 0x4000.4030			bin_hdr start address
- * 0x4003.4000 - 0x4004.7c00	BootROM memory allocations (15KiB)
- * 0x4007.fffc			BootROM stack top
- *
- * The address space between 0x4007.fffc and 0x400f.fff is not locked in
- * L2 cache thus cannot be used.
- */
-
 /* SPL */
 /* Defines for SPL */
-#define CONFIG_SPL_MAX_SIZE		((128 << 10) - 0x4030)
-
-#define CONFIG_SPL_BSS_START_ADDR	(0x40000000 + (128 << 10))
-#define CONFIG_SPL_BSS_MAX_SIZE		(16 << 10)
-
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_MALLOC_SIMPLE
-#endif
-
-#define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
-#define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
 
 #endif /* _CONFIG_DB_88F6720_H */

@@ -10,6 +10,8 @@
 #include "imagetool.h"
 #include "mkimage.h"
 #include "imximage.h"
+#include <fit_common.h>
+#include <getopt.h>
 #include <image.h>
 #include <version.h>
 #ifdef __linux__
@@ -81,8 +83,10 @@ static int show_valid_options(enum ih_category category)
 static void usage(const char *msg)
 {
 	fprintf(stderr, "Error: %s\n", msg);
-	fprintf(stderr, "Usage: %s -l image\n"
-			 "          -l ==> list image header information\n",
+	fprintf(stderr, "Usage: %s [-T type] -l image\n"
+			 "          -l ==> list image header information\n"
+			 "          -T ==> parse image file as 'type'\n"
+			 "          -q ==> quiet\n",
 		params.cmdname);
 	fprintf(stderr,
 		"       %s [-x] -A arch -O os -T type -C comp -a addr -e ep -n name -d data_file[:data_file...] image\n"
@@ -93,8 +97,11 @@ static void usage(const char *msg)
 		"          -a ==> set load address to 'addr' (hex)\n"
 		"          -e ==> set entry point to 'ep' (hex)\n"
 		"          -n ==> set image name to 'name'\n"
+		"          -R ==> set second image name to 'name'\n"
 		"          -d ==> use image data from 'datafile'\n"
-		"          -x ==> set XIP (execute in place)\n",
+		"          -x ==> set XIP (execute in place)\n"
+		"          -s ==> create an image with no data\n"
+		"          -v ==> verbose\n",
 		params.cmdname);
 	fprintf(stderr,
 		"       %s [-D dtc_options] [-f fit-image.its|-f auto|-F] [-b <dtb> [-b <dtb>]] [-E] [-B size] [-i <ramdisk.cpio.gz>] fit-image\n"
@@ -105,18 +112,22 @@ static void usage(const char *msg)
 		"          -f => input filename for FIT source\n"
 		"          -i => input filename for ramdisk file\n"
 		"          -E => place data outside of the FIT structure\n"
-		"          -B => align size in hex for FIT structure and header\n");
+		"          -B => align size in hex for FIT structure and header\n"
+		"          -b => append the device tree binary to the FIT\n"
+		"          -t => update the timestamp in the FIT\n");
 #ifdef CONFIG_FIT_SIGNATURE
 	fprintf(stderr,
 		"Signing / verified boot options: [-k keydir] [-K dtb] [ -c <comment>] [-p addr] [-r] [-N engine]\n"
 		"          -k => set directory containing private keys\n"
 		"          -K => write public keys to this .dtb file\n"
+		"          -g => set key name hint\n"
 		"          -G => use this signing key (in lieu of -k)\n"
 		"          -c => add comment in signature node\n"
 		"          -F => re-sign existing FIT image\n"
 		"          -p => place external data at a static position\n"
 		"          -r => mark keys used as 'required' in dtb\n"
-		"          -N => openssl engine to use for signing\n");
+		"          -N => openssl engine to use for signing\n"
+		"          -o => algorithm to use for signing\n");
 #else
 	fprintf(stderr,
 		"Signing / verified boot not supported (CONFIG_FIT_SIGNATURE undefined)\n");
@@ -124,6 +135,7 @@ static void usage(const char *msg)
 	fprintf(stderr, "       %s -V ==> print version information and exit\n",
 		params.cmdname);
 	fprintf(stderr, "Use '-T list' to see a list of available image types\n");
+	fprintf(stderr, "Long options are available; read the man page for details\n");
 
 	exit(EXIT_FAILURE);
 }
@@ -146,7 +158,45 @@ static int add_content(int type, const char *fname)
 	return 0;
 }
 
-#define OPT_STRING "a:A:b:B:c:C:d:D:e:Ef:Fk:i:K:ln:N:p:O:rR:qstT:vVx"
+static const char optstring[] =
+	"a:A:b:B:c:C:d:D:e:Ef:Fg:G:i:k:K:ln:N:o:O:p:qrR:stT:vVx";
+
+static const struct option longopts[] = {
+	{ "load-address", required_argument, NULL, 'a' },
+	{ "architecture", required_argument, NULL, 'A' },
+	{ "device-tree", required_argument, NULL, 'b' },
+	{ "alignment", required_argument, NULL, 'B' },
+	{ "comment", required_argument, NULL, 'c' },
+	{ "compression", required_argument, NULL, 'C' },
+	{ "image", required_argument, NULL, 'd' },
+	{ "dtcopts", required_argument, NULL, 'D' },
+	{ "entry-point", required_argument, NULL, 'e' },
+	{ "external", no_argument, NULL, 'E' },
+	{ "fit", required_argument, NULL, 'f' },
+	{ "update", no_argument, NULL, 'F' },
+	{ "key-name-hint", required_argument, NULL, 'g' },
+	{ "key-file", required_argument, NULL, 'G' },
+	{ "help", no_argument, NULL, 'h' },
+	{ "initramfs", required_argument, NULL, 'i' },
+	{ "key-dir", required_argument, NULL, 'k' },
+	{ "key-dest", required_argument, NULL, 'K' },
+	{ "list", no_argument, NULL, 'l' },
+	{ "config", required_argument, NULL, 'n' },
+	{ "engine", required_argument, NULL, 'N' },
+	{ "algo", required_argument, NULL, 'o' },
+	{ "os", required_argument, NULL, 'O' },
+	{ "position", required_argument, NULL, 'p' },
+	{ "quiet", no_argument, NULL, 'q' },
+	{ "key-required", no_argument, NULL, 'r' },
+	{ "secondary-config", required_argument, NULL, 'R' },
+	{ "no-copy", no_argument, NULL, 's' },
+	{ "touch", no_argument, NULL, 't' },
+	{ "type", required_argument, NULL, 'T' },
+	{ "verbose", no_argument, NULL, 'v' },
+	{ "version", no_argument, NULL, 'V' },
+	{ "xip", no_argument, NULL, 'x' },
+};
+
 static void process_args(int argc, char **argv)
 {
 	char *ptr;
@@ -154,8 +204,8 @@ static void process_args(int argc, char **argv)
 	char *datafile = NULL;
 	int opt;
 
-	while ((opt = getopt(argc, argv,
-		   "a:A:b:B:c:C:d:D:e:Ef:FG:k:i:K:ln:N:p:O:rR:qstT:vVx")) != -1) {
+	while ((opt = getopt_long(argc, argv, optstring,
+				  longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'a':
 			params.addr = strtoull(optarg, &ptr, 16);
@@ -171,6 +221,7 @@ static void process_args(int argc, char **argv)
 				show_valid_options(IH_ARCH);
 				usage("Invalid architecture");
 			}
+			params.Aflag = 1;
 			break;
 		case 'b':
 			if (add_content(IH_TYPE_FLATDT, optarg)) {
@@ -230,6 +281,8 @@ static void process_args(int argc, char **argv)
 			params.type = IH_TYPE_FLATDT;
 			params.fflag = 1;
 			break;
+		case 'g':
+			params.keyname = optarg;
 		case 'G':
 			params.keyfile = optarg;
 			break;
@@ -250,6 +303,9 @@ static void process_args(int argc, char **argv)
 			break;
 		case 'N':
 			params.engine_id = optarg;
+			break;
+		case 'o':
+			params.algo_name = optarg;
 			break;
 		case 'O':
 			params.os = genimg_get_os_id(optarg);
@@ -326,7 +382,7 @@ static void process_args(int argc, char **argv)
 			params.datafile = datafile;
 		else if (!params.datafile)
 			usage("Missing data file for auto-FIT (use -d)");
-	} else if (type != IH_TYPE_INVALID) {
+	} else if (params.lflag || type != IH_TYPE_INVALID) {
 		if (type == IH_TYPE_SCRIPT && !params.datafile)
 			usage("Missing data file for script (use -d)");
 		params.type = type;
@@ -334,6 +390,44 @@ static void process_args(int argc, char **argv)
 
 	if (!params.imagefile)
 		usage("Missing output filename");
+}
+
+static void verify_image(const struct image_type_params *tparams)
+{
+	struct stat sbuf;
+	void *ptr;
+	int ifd;
+
+	ifd = open(params.imagefile, O_RDONLY | O_BINARY);
+	if (ifd < 0) {
+		fprintf(stderr, "%s: Can't open %s: %s\n",
+			params.cmdname, params.imagefile,
+			strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if (fstat(ifd, &sbuf) < 0) {
+		fprintf(stderr, "%s: Can't stat %s: %s\n",
+			params.cmdname, params.imagefile, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	params.file_size = sbuf.st_size;
+
+	ptr = mmap(0, params.file_size, PROT_READ, MAP_SHARED, ifd, 0);
+	if (ptr == MAP_FAILED) {
+		fprintf(stderr, "%s: Can't map %s: %s\n",
+			params.cmdname, params.imagefile, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if (tparams->verify_header((unsigned char *)ptr, params.file_size, &params) != 0) {
+		fprintf(stderr, "%s: Failed to verify header of %s\n",
+			params.cmdname, params.imagefile);
+		exit(EXIT_FAILURE);
+	}
+
+	(void)munmap(ptr, params.file_size);
+	(void)close(ifd);
 }
 
 int main(int argc, char **argv)
@@ -355,7 +449,7 @@ int main(int argc, char **argv)
 
 	/* set tparams as per input type_id */
 	tparams = imagetool_get_type(params.type);
-	if (tparams == NULL) {
+	if (tparams == NULL && !params.lflag) {
 		fprintf (stderr, "%s: unsupported type %s\n",
 			params.cmdname, genimg_get_type_name(params.type));
 		exit (EXIT_FAILURE);
@@ -365,18 +459,23 @@ int main(int argc, char **argv)
 	 * check the passed arguments parameters meets the requirements
 	 * as per image type to be generated/listed
 	 */
-	if (tparams->check_params)
+	if (tparams && tparams->check_params)
 		if (tparams->check_params (&params))
 			usage("Bad parameters for image type");
 
 	if (!params.eflag) {
 		params.ep = params.addr;
 		/* If XIP, entry point must be after the U-Boot header */
-		if (params.xflag)
+		if (params.xflag && tparams)
 			params.ep += tparams->header_size;
 	}
 
 	if (params.fflag){
+		if (!tparams) {
+			fprintf(stderr, "%s: Missing FIT support\n",
+				params.cmdname);
+			exit (EXIT_FAILURE);
+		}
 		if (tparams->fflag_handle)
 			/*
 			 * in some cases, some additional processing needs
@@ -387,7 +486,7 @@ int main(int argc, char **argv)
 			retval = tparams->fflag_handle(&params);
 
 		if (retval != EXIT_SUCCESS)
-			exit (retval);
+			usage("Bad parameters for FIT image type");
 	}
 
 	if (params.lflag || params.fflag) {
@@ -433,11 +532,12 @@ int main(int argc, char **argv)
 				params.cmdname, params.imagefile);
 			exit (EXIT_FAILURE);
 #endif
-		} else if ((unsigned)sbuf.st_size < tparams->header_size) {
+		} else if (tparams && sbuf.st_size < (off_t)tparams->header_size) {
 			fprintf (stderr,
-				"%s: Bad size: \"%s\" is not valid image: size %ld < %u\n",
+				"%s: Bad size: \"%s\" is not valid image: size %llu < %u\n",
 				params.cmdname, params.imagefile,
-				sbuf.st_size, tparams->header_size);
+				(unsigned long long) sbuf.st_size,
+				tparams->header_size);
 			exit (EXIT_FAILURE);
 		} else {
 			size = sbuf.st_size;
@@ -451,24 +551,18 @@ int main(int argc, char **argv)
 			exit (EXIT_FAILURE);
 		}
 
-		if (params.fflag) {
-			/*
-			 * Verifies the header format based on the expected header for image
-			 * type in tparams
-			 */
-			retval = imagetool_verify_print_header_by_type(ptr, &sbuf,
-					tparams, &params);
-		} else {
-			/**
-			 * When listing the image, we are not given the image type. Simply check all
-			 * image types to find one that matches our header
-			 */
-			retval = imagetool_verify_print_header(ptr, &sbuf,
-					tparams, &params);
-		}
+		/*
+		 * Verifies the header format based on the expected header for image
+		 * type in tparams. If tparams is NULL simply check all image types
+		 * to find one that matches our header.
+		 */
+		retval = imagetool_verify_print_header(ptr, &sbuf, tparams, &params);
 
 		(void) munmap((void *)ptr, sbuf.st_size);
 		(void) close (ifd);
+		if (!retval)
+			summary_show(&params.summary, params.imagefile,
+				     params.keydest);
 
 		exit (retval);
 	}
@@ -698,6 +792,9 @@ int main(int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 
+	if (tparams->verify_header)
+		verify_image(tparams);
+
 	exit (EXIT_SUCCESS);
 }
 
@@ -748,7 +845,7 @@ copy_file (int ifd, const char *datafile, int pad)
 	if (params.xflag) {
 		unsigned char *p = NULL;
 		/*
-		 * XIP: do not append the image_header_t at the
+		 * XIP: do not append the struct legacy_img_hdr at the
 		 * beginning of the file, but consume the space
 		 * reserved for it.
 		 */

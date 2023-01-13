@@ -9,6 +9,7 @@
 #include <asm-offsets.h>
 #include <linux/linkage.h>
 #include <asm/assembler.h>
+#include <system-constants.h>
 
 /*
  * This file handles the target-independent stages of the U-Boot
@@ -90,6 +91,11 @@ clbss_l:cmp	r0, r1			/* while not at end of BSS */
 
 ENTRY(_main)
 
+/* Call arch_very_early_init before initializing C runtime environment. */
+#if CONFIG_IS_ENABLED(ARCH_VERY_EARLY_INIT)
+	bl	arch_very_early_init
+#endif
+
 /*
  * Set up initial C runtime environment and call board_init_f(0).
  */
@@ -99,7 +105,7 @@ ENTRY(_main)
 #elif defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_STACK)
 	ldr	r0, =(CONFIG_SPL_STACK)
 #else
-	ldr	r0, =(CONFIG_SYS_INIT_SP_ADDR)
+	ldr	r0, =(SYS_INIT_SP_ADDR)
 #endif
 	bic	r0, r0, #7	/* 8-byte alignment for ABI compliance */
 	mov	sp, r0
@@ -108,6 +114,10 @@ ENTRY(_main)
 	/* set up gd here, outside any C code */
 	mov	r9, r0
 	bl	board_init_f_init_reserve
+
+#if defined(CONFIG_DEBUG_UART) && CONFIG_IS_ENABLED(SERIAL)
+	bl	debug_uart_init
+#endif
 
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_EARLY_BSS)
 	CLEAR_BSS
@@ -134,9 +144,14 @@ ENTRY(_main)
 	adr	r0, _main
 	ldr	r1, _start_ofs
 	add	r0, r1
-	ldr	r1, =CONFIG_SYS_TEXT_BASE
+	ldr	r1, =CONFIG_TEXT_BASE
 	sub	r1, r0
 	add	lr, r1
+#if defined(CONFIG_SYS_RELOC_GD_ENV_ADDR)
+	ldr	r0, [r9, #GD_ENV_ADDR]		/* r0 = gd->env_addr */
+	add	r0, r0, r1
+	str	r0, [r9, #GD_ENV_ADDR]
+#endif
 #endif
 	ldr	r0, [r9, #GD_RELOC_OFF]		/* r0 = gd->reloc_off */
 	add	lr, lr, r0

@@ -84,7 +84,7 @@ u8 clk_mux_get_parent(struct clk *clk);
  * @table: array of register values corresponding to the parent index (optional)
  * @flags: hardware-specific flags
  * @index: parent clock index
- * @return the register value
+ * Return: the register value
  */
 unsigned int clk_mux_index_to_val(u32 *table, unsigned int flags, u8 index);
 
@@ -143,7 +143,7 @@ extern const struct clk_ops clk_divider_ops;
  *
  * @table:  array of register values corresponding to valid dividers
  * @val: value to convert
- * @return the divider
+ * Return: the divider
  */
 unsigned int clk_divider_get_table_div(const struct clk_div_table *table,
 				       unsigned int val);
@@ -156,7 +156,7 @@ unsigned int clk_divider_get_table_div(const struct clk_div_table *table,
  *
  * @table: array of register values corresponding to valid dividers
  * @div: requested divider
- * @return the register value
+ * Return: the register value
  */
 unsigned int clk_divider_get_table_val(const struct clk_div_table *table,
 				       unsigned int div);
@@ -167,7 +167,7 @@ unsigned int clk_divider_get_table_val(const struct clk_div_table *table,
  * @table: array of valid dividers (optional)
  * @div: divider to check
  * @flags: hardware-specific flags
- * @return true if the divider is valid, false otherwise
+ * Return: true if the divider is valid, false otherwise
  */
 bool clk_divider_is_valid_div(const struct clk_div_table *table,
 			      unsigned int div, unsigned long flags);
@@ -177,7 +177,7 @@ bool clk_divider_is_valid_div(const struct clk_div_table *table,
  *
  * @table: array of valid dividers
  * @div: divider to check
- * @return true if the divider is found in the @table array, false otherwise
+ * Return: true if the divider is found in the @table array, false otherwise
  */
 bool clk_divider_is_valid_table_div(const struct clk_div_table *table,
 				    unsigned int div);
@@ -254,4 +254,12 @@ const char *clk_hw_get_name(const struct clk *hw);
 ulong clk_generic_get_rate(struct clk *clk);
 
 struct clk *dev_get_clk_ptr(struct udevice *dev);
+
+ulong ccf_clk_get_rate(struct clk *clk);
+ulong ccf_clk_set_rate(struct clk *clk, unsigned long rate);
+int ccf_clk_set_parent(struct clk *clk, struct clk *parent);
+int ccf_clk_enable(struct clk *clk);
+int ccf_clk_disable(struct clk *clk);
+extern const struct clk_ops ccf_clk_ops;
+
 #endif /* __LINUX_CLK_PROVIDER_H */

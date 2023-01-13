@@ -272,12 +272,7 @@ static void usb_oc_config(struct usbnc_regs *usbnc, int index)
 {
 	void __iomem *ctrl = (void __iomem *)(&usbnc->ctrl[index]);
 
-#if CONFIG_MACH_TYPE == MACH_TYPE_MX6Q_ARM2
-	/* mx6qarm2 seems to required a different setting*/
-	clrbits_le32(ctrl, UCTRL_OVER_CUR_POL);
-#else
 	setbits_le32(ctrl, UCTRL_OVER_CUR_POL);
-#endif
 
 	setbits_le32(ctrl, UCTRL_OVER_CUR_DIS);
 
@@ -543,7 +538,7 @@ static int ehci_usb_phy_mode(struct udevice *dev)
 			plat->init_type = USB_INIT_DEVICE;
 		else
 			plat->init_type = USB_INIT_HOST;
-	} else if (is_mx7()) {
+	} else if (is_mx7() || is_imx8mm() || is_imx8mn()) {
 		phy_status = (void __iomem *)(addr +
 					      USBNC_PHY_STATUS_OFFSET);
 		val = readl(phy_status);
@@ -573,9 +568,8 @@ static int ehci_usb_of_to_plat(struct udevice *dev)
 	case USB_DR_MODE_PERIPHERAL:
 		plat->init_type = USB_INIT_DEVICE;
 		break;
-	case USB_DR_MODE_OTG:
-	case USB_DR_MODE_UNKNOWN:
-		return ehci_usb_phy_mode(dev);
+	default:
+		plat->init_type = USB_INIT_UNKNOWN;
 	};
 
 	return 0;
@@ -677,6 +671,20 @@ static int ehci_usb_probe(struct udevice *dev)
 	mdelay(1);
 #endif
 
+	/*
+	 * If the device tree didn't specify host or device,
+	 * the default is USB_INIT_UNKNOWN, so we need to check
+	 * the register. For imx8mm and imx8mn, the clocks need to be
+	 * running first, so we defer the check until they are.
+	 */
+	if (priv->init_type == USB_INIT_UNKNOWN) {
+		ret = ehci_usb_phy_mode(dev);
+		if (ret)
+			goto err_clk;
+		else
+			priv->init_type = plat->init_type;
+	}
+
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
 	ret = device_get_supply_regulator(dev, "vbus-supply",
 					  &priv->vbus_supply);
@@ -718,7 +726,7 @@ static int ehci_usb_probe(struct udevice *dev)
 	mdelay(10);
 
 #if defined(CONFIG_PHY)
-	ret = ehci_setup_phy(dev, &priv->phy, 0);
+	ret = generic_setup_phy(dev, &priv->phy, 0);
 	if (ret)
 		goto err_regulator;
 #endif
@@ -735,14 +743,14 @@ static int ehci_usb_probe(struct udevice *dev)
 
 err_phy:
 #if defined(CONFIG_PHY)
-	ehci_shutdown_phy(dev, &priv->phy);
+	generic_shutdown_phy(&priv->phy);
 err_regulator:
 #endif
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
 	if (priv->vbus_supply)
 		regulator_set_enable(priv->vbus_supply, false);
-err_clk:
 #endif
+err_clk:
 #if CONFIG_IS_ENABLED(CLK)
 	clk_disable(&priv->clk);
 #else
@@ -759,7 +767,7 @@ int ehci_usb_remove(struct udevice *dev)
 	ehci_deregister(dev);
 
 #if defined(CONFIG_PHY)
-	ehci_shutdown_phy(dev, &priv->phy);
+	generic_shutdown_phy(&priv->phy);
 #endif
 
 #if CONFIG_IS_ENABLED(DM_REGULATOR)

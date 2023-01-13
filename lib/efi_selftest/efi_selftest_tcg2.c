@@ -401,7 +401,7 @@ static struct boot_variable boot_variable_test[] = {
  * efi_status_t decompress() - Decompress the disk image.
  *
  * @image	decompressed disk image
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t decompress(u8 **image)
 {
@@ -438,7 +438,7 @@ static efi_status_t decompress(u8 **image)
  * Preexisting variable values are saved and will be restored by
  * calling restore_boot_variable().
  *
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t setup_boot_variable(void)
 {
@@ -494,7 +494,7 @@ static efi_status_t setup_boot_variable(void)
  *
  * Restore the variable values saved in setup_boot_variable().
  *
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t restore_boot_variable(void)
 {
@@ -536,7 +536,7 @@ static efi_status_t restore_boot_variable(void)
  * void *find_smbios_table() - Find smbios table
  *
  * @systable	system table
- * @return	status code
+ * Return:	status code
  */
 static void *find_smbios_table(const struct efi_system_table *systable)
 {
@@ -554,7 +554,7 @@ static void *find_smbios_table(const struct efi_system_table *systable)
  * efi_status_t setup_smbios_table() - Prepare the dummy SMBIOS table
  *
  * @systable	system table
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t setup_smbios_table(const struct efi_system_table *systable)
 {
@@ -612,7 +612,7 @@ static efi_status_t setup_smbios_table(const struct efi_system_table *systable)
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	status code
+ * Return:	status code
  */
 static int efi_st_tcg2_setup(const efi_handle_t img_handle,
 			     const struct efi_system_table *systable)
@@ -631,8 +631,10 @@ static int efi_st_tcg2_setup(const efi_handle_t img_handle,
 				      sizeof(struct efi_tcg2_event) +
 				      sizeof(struct uefi_image_load_event),
 				      (void **)&efi_tcg2_event);
-	if (!efi_tcg2_event)
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Out of memory\n");
 		return EFI_ST_FAILURE;
+	}
 
 	efi_tcg2_event->size = sizeof(struct efi_tcg2_event) +
 			       sizeof(struct uefi_image_load_event);
@@ -659,8 +661,10 @@ static int efi_st_tcg2_setup(const efi_handle_t img_handle,
 				      (EFI_TCG2_MAX_PCR_INDEX + 1) *
 				      TPM2_SHA256_DIGEST_SIZE,
 				      (void **)&pcrs);
-	if (!pcrs)
+	if (ret != EFI_SUCCESS) {
+		efi_st_error("Out of memory\n");
 		return EFI_ST_FAILURE;
+	}
 
 	boottime->set_mem(pcrs, (EFI_TCG2_MAX_PCR_INDEX + 1) * TPM2_SHA256_DIGEST_SIZE, 0);
 
@@ -676,7 +680,7 @@ static int efi_st_tcg2_setup(const efi_handle_t img_handle,
  *
  * @tcg2		tcg2 protocol
  * @manufacturer_id	pointer to the manufacturer_id
- * @return		status code
+ * Return:		status code
  */
 static efi_status_t get_manufacturer_id(struct efi_tcg2_protocol *tcg2, u32 *manufacturer_id)
 {
@@ -716,7 +720,7 @@ static efi_status_t get_manufacturer_id(struct efi_tcg2_protocol *tcg2, u32 *man
  *
  * @tcg2		tcg2 protocol
  * @manufacturer_id	pointer to the manufacturer_id
- * @return		status code
+ * Return:		status code
  */
 static efi_status_t get_manufacturer_id_buffer_small(struct efi_tcg2_protocol *tcg2)
 {
@@ -742,7 +746,7 @@ static efi_status_t get_manufacturer_id_buffer_small(struct efi_tcg2_protocol *t
  *
  * @tcg2	tcg2 protocol
  * @idx		pcr index to read
- * @return	status code
+ * Return:	status code
  */
 static efi_status_t read_pcr(struct efi_tcg2_protocol *tcg2, u32 idx)
 {
@@ -779,7 +783,7 @@ static efi_status_t read_pcr(struct efi_tcg2_protocol *tcg2, u32 idx)
 /**
  * int validate_pcrs() - Compare the expected and actual pcrs
  *
- * @return	status code
+ * Return:	status code
  */
 static int validate_pcrs(void)
 {
@@ -949,7 +953,7 @@ static int efi_st_tcg2_execute(void)
 /*
  * efi_st_tcg2_teardown() - Tear down unit test
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int efi_st_tcg2_teardown(void)
 {

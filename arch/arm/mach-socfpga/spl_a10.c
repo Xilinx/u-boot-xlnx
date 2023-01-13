@@ -99,7 +99,7 @@ u32 spl_boot_device(void)
 }
 
 #ifdef CONFIG_SPL_MMC
-u32 spl_mmc_boot_mode(const u32 boot_device)
+u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 {
 #if defined(CONFIG_SPL_FS_FAT) || defined(CONFIG_SPL_FS_EXT4)
 	return MMCSD_MODE_FS;
@@ -117,7 +117,7 @@ void spl_board_init(void)
 
 	/* enable console uart printing */
 	preloader_console_init();
-	WATCHDOG_RESET();
+	schedule();
 
 	arch_early_init_r();
 
@@ -203,7 +203,7 @@ void spl_board_init(void)
 			 */
 			set_regular_boot(true);
 
-			WATCHDOG_RESET();
+			schedule();
 
 			reset_cpu();
 		}
@@ -268,11 +268,11 @@ void board_init_f(ulong dummy)
 
 	/* reconfigure and enable the watchdog */
 	hw_watchdog_init();
-	WATCHDOG_RESET();
+	schedule();
 #endif /* CONFIG_HW_WATCHDOG */
 
 	config_dedicated_pins(gd->fdt_blob);
-	WATCHDOG_RESET();
+	schedule();
 }
 
 /* board specific function prior loading SSBL / U-Boot proper */

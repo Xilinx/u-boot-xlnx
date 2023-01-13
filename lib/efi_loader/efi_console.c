@@ -5,6 +5,9 @@
  *  Copyright (c) 2016 Alexander Graf
  */
 
+#define LOG_CATEGORY LOGC_EFI
+
+#include <ansi.h>
 #include <common.h>
 #include <charset.h>
 #include <malloc.h>
@@ -12,6 +15,7 @@
 #include <dm/device.h>
 #include <efi_loader.h>
 #include <env.h>
+#include <log.h>
 #include <stdio_dev.h>
 #include <video_console.h>
 #include <linux/delay.h>
@@ -24,6 +28,8 @@ struct cout_mode {
 	unsigned long rows;
 	int present;
 };
+
+__maybe_unused static struct efi_object uart_obj;
 
 static struct cout_mode efi_cout_modes[] = {
 	/* EFI Mode 0 is 80x25 and always present */
@@ -56,7 +62,12 @@ const efi_guid_t efi_guid_text_output_protocol =
 #define cESC '\x1b'
 #define ESC "\x1b"
 
-/* Default to mode 0 */
+/*
+ * efi_con_mode - mode information of the Simple Text Output Protocol
+ *
+ * Use safe settings before efi_setup_console_size() is called.
+ * By default enable only the 80x25 mode which must always exist.
+ */
 static struct simple_text_output_mode efi_con_mode = {
 	.max_mode = 1,
 	.mode = 0,
@@ -331,23 +342,25 @@ static int __maybe_unused query_vidconsole(int *rows, int *cols)
 }
 
 /**
- * query_console_size() - update the mode table.
+ * efi_setup_console_size() - update the mode table.
  *
  * By default the only mode available is 80x25. If the console has at least 50
  * lines, enable mode 80x50. If we can query the console size and it is neither
  * 80x25 nor 80x50, set it as an additional mode.
  */
-static void query_console_size(void)
+void efi_setup_console_size(void)
 {
 	int rows = 25, cols = 80;
 	int ret = -ENODEV;
 
-	if (IS_ENABLED(CONFIG_DM_VIDEO))
+	if (IS_ENABLED(CONFIG_VIDEO))
 		ret = query_vidconsole(&rows, &cols);
 	if (ret)
 		ret = query_console_serial(&rows, &cols);
 	if (ret)
 		return;
+
+	log_debug("Console size %dx%d\n", rows, cols);
 
 	/* Test if we can have Mode 1 */
 	if (cols >= 80 && rows >= 50) {
@@ -368,7 +381,6 @@ static void query_console_size(void)
 		efi_con_mode.mode = EFI_COUT_MODE_2;
 	}
 }
-
 
 /**
  * efi_cout_query_mode() - get terminal size for a text mode
@@ -450,6 +462,20 @@ static efi_status_t EFIAPI efi_cout_set_attribute(
 
 /**
  * efi_cout_clear_screen() - clear screen
+ */
+static void efi_clear_screen(void)
+{
+	/*
+	 * The Linux console wants both a clear and a home command. The video
+	 * uclass does not support <ESC>[H without coordinates, yet.
+	 */
+	printf(ESC "[2J" ESC "[1;1H");
+	efi_con_mode.cursor_column = 0;
+	efi_con_mode.cursor_row = 0;
+}
+
+/**
+ * efi_cout_clear_screen() - clear screen
  *
  * This function implements the ClearScreen service of the simple text output
  * protocol. See the Unified Extensible Firmware Interface (UEFI) specification
@@ -463,13 +489,7 @@ static efi_status_t EFIAPI efi_cout_clear_screen(
 {
 	EFI_ENTRY("%p", this);
 
-	/*
-	 * The Linux console wants both a clear and a home command. The video
-	 * uclass does not support <ESC>[H without coordinates, yet.
-	 */
-	printf(ESC "[2J" ESC "[1;1H");
-	efi_con_mode.cursor_column = 0;
-	efi_con_mode.cursor_row = 0;
+	efi_clear_screen();
 
 	return EFI_EXIT(EFI_SUCCESS);
 }
@@ -498,7 +518,7 @@ static efi_status_t EFIAPI efi_cout_set_mode(
 		return EFI_EXIT(EFI_UNSUPPORTED);
 
 	efi_con_mode.mode = mode_number;
-	EFI_CALL(efi_cout_clear_screen(this));
+	efi_clear_screen();
 
 	return EFI_EXIT(EFI_SUCCESS);
 }
@@ -520,11 +540,11 @@ static efi_status_t EFIAPI efi_cout_reset(
 {
 	EFI_ENTRY("%p, %d", this, extended_verification);
 
-	/* Clear screen */
-	EFI_CALL(efi_cout_clear_screen(this));
 	/* Set default colors */
 	efi_con_mode.attribute = 0x07;
 	printf(ESC "[0;37;40m");
+	/* Clear screen */
+	efi_clear_screen();
 
 	return EFI_EXIT(EFI_SUCCESS);
 }
@@ -976,12 +996,14 @@ static efi_status_t EFIAPI efi_cin_read_key_stroke_ex(
 	efi_cin_check();
 
 	if (!key_available) {
+		memset(key_data, 0, sizeof(struct efi_key_data));
 		ret = EFI_NOT_READY;
 		goto out;
 	}
 	/*
 	 * CTRL+A - CTRL+Z have to be signaled as a - z.
 	 * SHIFT+CTRL+A - SHIFT+CTRL+Z have to be signaled as A - Z.
+	 * CTRL+\ - CTRL+_ have to be signaled as \ - _.
 	 */
 	switch (next_key.key.unicode_char) {
 	case 0x01 ... 0x07:
@@ -994,6 +1016,9 @@ static efi_status_t EFIAPI efi_cin_read_key_stroke_ex(
 			next_key.key.unicode_char += 0x40;
 		else
 			next_key.key.unicode_char += 0x60;
+		break;
+	case 0x1c ... 0x1f:
+			next_key.key.unicode_char += 0x40;
 	}
 	*key_data = next_key;
 	key_available = false;
@@ -1258,37 +1283,32 @@ static void EFIAPI efi_key_notify(struct efi_event *event, void *context)
 efi_status_t efi_console_register(void)
 {
 	efi_status_t r;
-	efi_handle_t console_output_handle;
-	efi_handle_t console_input_handle;
+	struct efi_device_path *dp;
 
-	/* Set up mode information */
-	query_console_size();
+	/* Install protocols on root node */
+	r = efi_install_multiple_protocol_interfaces(&efi_root,
+						     &efi_guid_text_output_protocol,
+						     &efi_con_out,
+						     &efi_guid_text_input_protocol,
+						     &efi_con_in,
+						     &efi_guid_text_input_ex_protocol,
+						     &efi_con_in_ex,
+						     NULL);
 
-	/* Create handles */
-	r = efi_create_handle(&console_output_handle);
-	if (r != EFI_SUCCESS)
-		goto out_of_memory;
+	/* Create console node and install device path protocols */
+	if (CONFIG_IS_ENABLED(DM_SERIAL)) {
+		dp = efi_dp_from_uart();
+		if (!dp)
+			goto out_of_memory;
 
-	r = efi_add_protocol(console_output_handle,
-			     &efi_guid_text_output_protocol, &efi_con_out);
-	if (r != EFI_SUCCESS)
-		goto out_of_memory;
-	systab.con_out_handle = console_output_handle;
-	systab.stderr_handle = console_output_handle;
+		/* Hook UART up to the device list */
+		efi_add_handle(&uart_obj);
 
-	r = efi_create_handle(&console_input_handle);
-	if (r != EFI_SUCCESS)
-		goto out_of_memory;
-
-	r = efi_add_protocol(console_input_handle,
-			     &efi_guid_text_input_protocol, &efi_con_in);
-	if (r != EFI_SUCCESS)
-		goto out_of_memory;
-	systab.con_in_handle = console_input_handle;
-	r = efi_add_protocol(console_input_handle,
-			     &efi_guid_text_input_ex_protocol, &efi_con_in_ex);
-	if (r != EFI_SUCCESS)
-		goto out_of_memory;
+		/* Install device path */
+		r = efi_add_protocol(&uart_obj, &efi_guid_device_path, dp);
+		if (r != EFI_SUCCESS)
+			goto out_of_memory;
+	}
 
 	/* Create console events */
 	r = efi_create_event(EVT_NOTIFY_WAIT, TPL_CALLBACK, efi_key_notify,
@@ -1313,4 +1333,71 @@ efi_status_t efi_console_register(void)
 out_of_memory:
 	printf("ERROR: Out of memory\n");
 	return r;
+}
+
+/**
+ * efi_console_get_u16_string() - get user input string
+ *
+ * @cin:		protocol interface to EFI_SIMPLE_TEXT_INPUT_PROTOCOL
+ * @buf:		buffer to store user input string in UTF16
+ * @count:		number of u16 string including NULL terminator that buf has
+ * @filter_func:	callback to filter user input
+ * @row:		row number to locate user input form
+ * @col:		column number to locate user input form
+ * Return:		status code
+ */
+efi_status_t efi_console_get_u16_string(struct efi_simple_text_input_protocol *cin,
+					u16 *buf, efi_uintn_t count,
+					efi_console_filter_func filter_func,
+					int row, int col)
+{
+	efi_status_t ret;
+	efi_uintn_t len = 0;
+	struct efi_input_key key;
+
+	printf(ANSI_CURSOR_POSITION
+	       ANSI_CLEAR_LINE_TO_END
+	       ANSI_CURSOR_SHOW, row, col);
+
+	efi_cin_empty_buffer();
+
+	for (;;) {
+		do {
+			ret = EFI_CALL(cin->read_key_stroke(cin, &key));
+			mdelay(10);
+		} while (ret == EFI_NOT_READY);
+
+		if (key.unicode_char == u'\b') {
+			if (len > 0)
+				buf[--len] = u'\0';
+
+			printf(ANSI_CURSOR_POSITION
+			       "%ls"
+			       ANSI_CLEAR_LINE_TO_END, row, col, buf);
+			continue;
+		} else if (key.unicode_char == u'\r') {
+			buf[len] = u'\0';
+			return EFI_SUCCESS;
+		} else if (key.unicode_char == 0x3 || key.scan_code == 23) {
+			return EFI_ABORTED;
+		} else if (key.unicode_char < 0x20) {
+			/* ignore control codes other than Ctrl+C, '\r' and '\b' */
+			continue;
+		} else if (key.scan_code != 0) {
+			/* only accept single ESC press for cancel */
+			continue;
+		}
+
+		if (filter_func) {
+			if (filter_func(&key) != EFI_SUCCESS)
+				continue;
+		}
+
+		if (len >= (count - 1))
+			continue;
+
+		buf[len] = key.unicode_char;
+		len++;
+		printf(ANSI_CURSOR_POSITION "%ls", row, col, buf);
+	}
 }

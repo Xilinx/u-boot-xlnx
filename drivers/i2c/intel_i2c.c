@@ -213,7 +213,7 @@ static int intel_i2c_xfer(struct udevice *bus, struct i2c_msg *msg, int nmsgs)
 
 	/*
 	 * We expect either two messages (one with an offset and one with the
-	 * actucal data) or one message (just data)
+	 * actual data) or one message (just data)
 	 */
 	if (nmsgs > 2 || nmsgs == 0) {
 		debug("%s: Only one or two messages are supported", __func__);
@@ -251,7 +251,7 @@ static int intel_i2c_probe(struct udevice *dev)
 	ulong base;
 
 	/* Save base address from PCI BAR */
-	priv->base = (ulong)dm_pci_map_bar(dev, PCI_BASE_ADDRESS_4,
+	priv->base = (ulong)dm_pci_map_bar(dev, PCI_BASE_ADDRESS_4, 0, 0, PCI_REGION_TYPE,
 					   PCI_REGION_IO);
 	base = priv->base;
 

@@ -28,8 +28,8 @@ struct notify_context {
 	unsigned int timer_ticks;
 };
 
-static struct efi_event *event_notify;
-static struct efi_event *event_wait;
+static struct efi_event *efi_st_event_notify;
+static struct efi_event *efi_st_event_wait;
 static struct efi_boot_services *boottime;
 static struct notify_context notification_context;
 static bool watchdog_reset;
@@ -65,7 +65,7 @@ static void EFIAPI notify(struct efi_event *event, void *context)
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(const efi_handle_t handle,
 		 const struct efi_system_table *systable)
@@ -79,13 +79,14 @@ static int setup(const efi_handle_t handle,
 	ret = boottime->create_event(EVT_TIMER | EVT_NOTIFY_SIGNAL,
 				     TPL_CALLBACK, notify,
 				     (void *)&notification_context,
-				     &event_notify);
+				     &efi_st_event_notify);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("could not create event\n");
 		return EFI_ST_FAILURE;
 	}
 	ret = boottime->create_event(EVT_TIMER | EVT_NOTIFY_WAIT,
-				     TPL_CALLBACK, notify, NULL, &event_wait);
+				     TPL_CALLBACK, notify, NULL,
+				     &efi_st_event_wait);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("could not create event\n");
 		return EFI_ST_FAILURE;
@@ -98,7 +99,7 @@ static int setup(const efi_handle_t handle,
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup_timer(const efi_handle_t handle,
 		       const struct efi_system_table *systable)
@@ -112,7 +113,7 @@ static int setup_timer(const efi_handle_t handle,
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup_reboot(const efi_handle_t handle,
 			const struct efi_system_table *systable)
@@ -126,7 +127,7 @@ static int setup_reboot(const efi_handle_t handle,
  *
  * Close the events created in setup.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int teardown(void)
 {
@@ -138,17 +139,17 @@ static int teardown(void)
 		efi_st_error("Setting watchdog timer failed\n");
 		return EFI_ST_FAILURE;
 	}
-	if (event_notify) {
-		ret = boottime->close_event(event_notify);
-		event_notify = NULL;
+	if (efi_st_event_notify) {
+		ret = boottime->close_event(efi_st_event_notify);
+		efi_st_event_notify = NULL;
 		if (ret != EFI_SUCCESS) {
 			efi_st_error("Could not close event\n");
 			return EFI_ST_FAILURE;
 		}
 	}
-	if (event_wait) {
-		ret = boottime->close_event(event_wait);
-		event_wait = NULL;
+	if (efi_st_event_wait) {
+		ret = boottime->close_event(efi_st_event_wait);
+		efi_st_event_wait = NULL;
 		if (ret != EFI_SUCCESS) {
 			efi_st_error("Could not close event\n");
 			return EFI_ST_FAILURE;
@@ -166,7 +167,7 @@ static int teardown(void)
  * Run a 1350 ms single shot timer and check that the 600ms timer has
  * been called 2 times.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int execute(void)
 {
@@ -181,21 +182,22 @@ static int execute(void)
 	}
 	if (watchdog_reset) {
 		/* Set 600 ms timer */
-		ret = boottime->set_timer(event_notify, EFI_TIMER_PERIODIC,
-					  6000000);
+		ret = boottime->set_timer(efi_st_event_notify,
+					  EFI_TIMER_PERIODIC, 6000000);
 		if (ret != EFI_SUCCESS) {
 			efi_st_error("Could not set timer\n");
 			return EFI_ST_FAILURE;
 		}
 	}
 	/* Set 1350 ms timer */
-	ret = boottime->set_timer(event_wait, EFI_TIMER_RELATIVE, 13500000);
+	ret = boottime->set_timer(efi_st_event_wait, EFI_TIMER_RELATIVE,
+				  13500000);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Could not set timer\n");
 		return EFI_ST_FAILURE;
 	}
 
-	ret = boottime->wait_for_event(1, &event_wait, &index);
+	ret = boottime->wait_for_event(1, &efi_st_event_wait, &index);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("Could not wait for event\n");
 		return EFI_ST_FAILURE;

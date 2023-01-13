@@ -15,14 +15,6 @@
 #include <configs/xilinx_zynqmp.h>
 
 /* Undef unneeded configs */
-#undef CONFIG_BOOTCOMMAND
 #undef CONFIG_EXTRA_ENV_SETTINGS
-#undef CONFIG_SYS_INIT_SP_ADDR
-
-/* BOOTP options */
-#undef CONFIG_BOOTP_BOOTFILESIZE
-#undef CONFIG_BOOTP_MAY_FAIL
-#undef CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_CBSIZE		1024
 
 #endif /* __CONFIG_ZYNQMP_MINI_H */

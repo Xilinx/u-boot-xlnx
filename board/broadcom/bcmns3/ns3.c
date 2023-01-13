@@ -150,7 +150,10 @@ int board_init(void)
 
 	if (bl33_info->version != BL33_INFO_VERSION)
 		printf("*** warning: ATF BL31 and U-Boot not in sync! ***\n");
-
+#if CONFIG_IS_ENABLED(BNXT_ETH)
+	if (chimp_fastboot_optee() != 0)
+		printf("*** warning: secure chimp fastboot failed! ***\n");
+#endif
 	return 0;
 }
 
@@ -180,7 +183,7 @@ int dram_init_banksize(void)
 }
 
 /* Limit RAM used by U-Boot to the DDR first bank End region */
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	return BCM_NS3_MEM_END;
 }

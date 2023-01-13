@@ -192,6 +192,22 @@
 	u-boot,dm-spl;
 };
 
+&hbmc {
+	u-boot,dm-spl;
+
+	flash@0,0 {
+		u-boot,dm-spl;
+	};
+};
+
+&hbmc_mux {
+	u-boot,dm-spl;
+};
+
+&wkup_gpio0 {
+	u-boot,dm-spl;
+};
+
 &ospi0 {
 	u-boot,dm-spl;
 
@@ -206,6 +222,14 @@
 	flash@0 {
 		u-boot,dm-spl;
 	};
+};
+
+&mcu_fss0_hpb0_pins_default {
+	u-boot,dm-spl;
+};
+
+&wkup_gpio_pins_default {
+	u-boot,dm-spl;
 };
 
 &mcu_fss0_ospi1_pins_default {
@@ -231,4 +255,19 @@
 
 &usb_serdes_mux {
 	u-boot,mux-autoprobe;
+};
+
+&serdes0 {
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-parents;
+};
+
+&serdes0_pcie_link {
+	assigned-clocks = <&serdes0 CDNS_SIERRA_PLL_CMNLC>;
+	assigned-clock-parents = <&wiz0_pll1_refclk>;
+};
+
+&serdes0_qsgmii_link {
+	assigned-clocks = <&serdes0 CDNS_SIERRA_PLL_CMNLC1>;
+	assigned-clock-parents = <&wiz0_pll1_refclk>;
 };

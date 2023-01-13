@@ -11,7 +11,6 @@
 #include <fdt_support.h>
 #include <fdt_simplefb.h>
 #include <init.h>
-#include <lcd.h>
 #include <memalign.h>
 #include <mmc.h>
 #include <asm/gpio.h>
@@ -335,7 +334,7 @@ static void set_fdt_addr(void)
 /*
  * Prevent relocation from stomping on a firmware provided FDT blob.
  */
-unsigned long board_get_usable_ram_top(unsigned long total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	if ((gd->ram_top - fw_dtb_pointer) > SZ_64M)
 		return gd->ram_top;
@@ -510,7 +509,7 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 
 	node = fdt_node_offset_by_compatible(blob, -1, "simple-framebuffer");
 	if (node < 0)
-		lcd_dt_simplefb_add_node(blob);
+		fdt_simplefb_add_node(blob);
 
 #ifdef CONFIG_EFI_LOADER
 	/* Reserve the spin table */

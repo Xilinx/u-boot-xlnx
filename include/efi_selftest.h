@@ -16,7 +16,10 @@
 
 #define EFI_ST_SUCCESS 0
 #define EFI_ST_FAILURE 1
-#define EFI_ST_SUCCESS_STR L"SUCCESS"
+#define EFI_ST_SUCCESS_STR u"SUCCESS"
+
+extern const struct efi_system_table *st_systable;
+extern const struct efi_boot_services *st_boottime;
 
 /**
  * efi_st_printf() - print a message
@@ -111,7 +114,7 @@ u16 *efi_st_translate_char(u16 code);
  * efi_st_translate_code() - translate a scan code to a human readable string
  *
  * This function translates the scan code returned by the simple text input
- * protocol to a human readable string, e.g. 0x04 is translated to L"Left".
+ * protocol to a human readable string, e.g. 0x04 is translated to u"Left".
  *
  * @code:	scan code
  * Return:	Unicode string
@@ -128,7 +131,15 @@ u16 *efi_st_translate_code(u16 code);
  * @buf2:	char string
  * Return:	0 if both buffers contain equivalent strings
  */
-int efi_st_strcmp_16_8(const u16 *buf1, const char *buf2);
+int efi_st_strcmp_16_8(const u16 *buf1, const unsigned char *buf2);
+
+/**
+ * efi_st_get_config_table() - get configuration table
+ *
+ * @guid:	GUID of the configuration table
+ * Return:	pointer to configuration table or NULL
+ */
+void *efi_st_get_config_table(const efi_guid_t *guid);
 
 /**
  * efi_st_get_key() - reads an Unicode character from the input device

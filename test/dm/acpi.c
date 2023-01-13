@@ -45,6 +45,27 @@ struct testacpi_plat {
 	bool no_name;
 };
 
+/**
+ * setup_ctx_and_base_tables() - Set up context along with RSDP, RSDT and XSDT
+ *
+ * Set up the context with the given start position. Some basic tables are
+ * always needed, so set them up as well.
+ *
+ * @ctx: Context to set up
+ */
+static int setup_ctx_and_base_tables(struct unit_test_state *uts,
+				     struct acpi_ctx *ctx, ulong start)
+{
+	struct acpi_writer *entry = ACPI_WRITER_GET(0base);
+
+	acpi_setup_ctx(ctx, start);
+
+	ctx->tab_start = ctx->current;
+	ut_assertok(acpi_write_one(ctx, entry));
+
+	return 0;
+}
+
 static int testacpi_write_tables(const struct udevice *dev,
 				 struct acpi_ctx *ctx)
 {
@@ -148,28 +169,28 @@ static int dm_test_acpi_get_name(struct unit_test_state *uts)
 	ut_asserteq_str("GHIJ", name);
 
 	/* Test getting the name from acpi_device_get_name() */
-	ut_assertok(uclass_first_device(UCLASS_I2C, &i2c));
+	ut_assertok(uclass_first_device_err(UCLASS_I2C, &i2c));
 	ut_assertok(acpi_get_name(i2c, name));
 	ut_asserteq_str("I2C0", name);
 
-	ut_assertok(uclass_first_device(UCLASS_SPI, &spi));
+	ut_assertok(uclass_first_device_err(UCLASS_SPI, &spi));
 	ut_assertok(acpi_get_name(spi, name));
 	ut_asserteq_str("SPI0", name);
 
 	/* ACPI doesn't know about the timer */
-	ut_assertok(uclass_first_device(UCLASS_TIMER, &timer));
+	ut_assertok(uclass_first_device_err(UCLASS_TIMER, &timer));
 	ut_asserteq(-ENOENT, acpi_get_name(timer, name));
 
 	/* May as well test the rest of the cases */
-	ut_assertok(uclass_first_device(UCLASS_SOUND, &sound));
+	ut_assertok(uclass_first_device_err(UCLASS_SOUND, &sound));
 	ut_assertok(acpi_get_name(sound, name));
 	ut_asserteq_str("HDAS", name);
 
-	ut_assertok(uclass_first_device(UCLASS_PCI, &pci));
+	ut_assertok(uclass_first_device_err(UCLASS_PCI, &pci));
 	ut_assertok(acpi_get_name(pci, name));
 	ut_asserteq_str("PCI0", name);
 
-	ut_assertok(uclass_first_device(UCLASS_ROOT, &root));
+	ut_assertok(uclass_first_device_err(UCLASS_ROOT, &root));
 	ut_assertok(acpi_get_name(root, name));
 	ut_asserteq_str("\\_SB", name);
 
@@ -198,7 +219,7 @@ static int dm_test_acpi_create_dmar(struct unit_test_state *uts)
 	struct acpi_dmar dmar;
 	struct udevice *cpu;
 
-	ut_assertok(uclass_first_device(UCLASS_CPU, &cpu));
+	ut_assertok(uclass_first_device_err(UCLASS_CPU, &cpu));
 	ut_assertnonnull(cpu);
 	ut_assertok(acpi_create_dmar(&dmar, DMAR_INTR_REMAP));
 	ut_asserteq(DMAR_INTR_REMAP, dmar.flags);
@@ -240,13 +261,15 @@ static int dm_test_acpi_write_tables(struct unit_test_state *uts)
 {
 	struct acpi_dmar *dmar;
 	struct acpi_ctx ctx;
+	ulong addr;
 	void *buf;
 	int i;
 
 	buf = malloc(BUF_SIZE);
 	ut_assertnonnull(buf);
+	addr = map_to_sysmem(buf);
 
-	acpi_setup_base_tables(&ctx, buf);
+	ut_assertok(setup_ctx_and_base_tables(uts, &ctx, addr));
 	dmar = ctx.current;
 	ut_assertok(acpi_write_dev_tables(&ctx));
 
@@ -304,14 +327,15 @@ static int dm_test_acpi_basic(struct unit_test_state *uts)
 }
 DM_TEST(dm_test_acpi_basic, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
-/* Test acpi_setup_base_tables */
-static int dm_test_acpi_setup_base_tables(struct unit_test_state *uts)
+/* Test setup_ctx_and_base_tables */
+static int dm_test_setup_ctx_and_base_tables(struct unit_test_state *uts)
 {
 	struct acpi_rsdp *rsdp;
 	struct acpi_rsdt *rsdt;
 	struct acpi_xsdt *xsdt;
 	struct acpi_ctx ctx;
 	void *buf, *end;
+	ulong addr;
 
 	/*
 	 * Use an unaligned address deliberately, by allocating an aligned
@@ -319,8 +343,9 @@ static int dm_test_acpi_setup_base_tables(struct unit_test_state *uts)
 	 */
 	buf = memalign(64, BUF_SIZE);
 	ut_assertnonnull(buf);
-	acpi_setup_base_tables(&ctx, buf + 4);
-	ut_asserteq(map_to_sysmem(PTR_ALIGN(buf + 4, 16)), gd->arch.acpi_start);
+	addr = map_to_sysmem(buf);
+	ut_assertok(setup_ctx_and_base_tables(uts, &ctx, addr + 4));
+	ut_asserteq(map_to_sysmem(PTR_ALIGN(buf + 4, 16)), gd_acpi_start());
 
 	rsdp = buf + 16;
 	ut_asserteq_ptr(rsdp, ctx.rsdp);
@@ -349,7 +374,7 @@ static int dm_test_acpi_setup_base_tables(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_acpi_setup_base_tables,
+DM_TEST(dm_test_setup_ctx_and_base_tables,
 	UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test 'acpi list' command */
@@ -361,32 +386,33 @@ static int dm_test_acpi_cmd_list(struct unit_test_state *uts)
 
 	buf = memalign(16, BUF_SIZE);
 	ut_assertnonnull(buf);
-	acpi_setup_base_tables(&ctx, buf);
+	addr = map_to_sysmem(buf);
+	ut_assertok(setup_ctx_and_base_tables(uts, &ctx, addr));
 
 	ut_assertok(acpi_write_dev_tables(&ctx));
 
 	console_record_reset();
 	run_command("acpi list", 0);
-	addr = (ulong)map_to_sysmem(buf);
-	ut_assert_nextline("ACPI tables start at %lx", addr);
-	ut_assert_nextline("RSDP %08lx %06zx (v02 U-BOOT)", addr,
+	ut_assert_nextline("Name      Base   Size  Detail");
+	ut_assert_nextline("----  --------  -----  ------");
+	ut_assert_nextline("RSDP  %08lx  %5zx  v02 U-BOOT", addr,
 			   sizeof(struct acpi_rsdp));
 	addr = ALIGN(addr + sizeof(struct acpi_rsdp), 16);
-	ut_assert_nextline("RSDT %08lx %06zx (v01 U-BOOT U-BOOTBL %x INTL 0)",
+	ut_assert_nextline("RSDT  %08lx  %5zx  v01 U-BOOT U-BOOTBL %x INTL 0",
 			   addr, sizeof(struct acpi_table_header) +
 			   3 * sizeof(u32), OEM_REVISION);
 	addr = ALIGN(addr + sizeof(struct acpi_rsdt), 16);
-	ut_assert_nextline("XSDT %08lx %06zx (v01 U-BOOT U-BOOTBL %x INTL 0)",
+	ut_assert_nextline("XSDT  %08lx  %5zx  v01 U-BOOT U-BOOTBL %x INTL 0",
 			   addr, sizeof(struct acpi_table_header) +
 			   3 * sizeof(u64), OEM_REVISION);
 	addr = ALIGN(addr + sizeof(struct acpi_xsdt), 64);
-	ut_assert_nextline("DMAR %08lx %06zx (v01 U-BOOT U-BOOTBL %x INTL 0)",
+	ut_assert_nextline("DMAR  %08lx  %5zx  v01 U-BOOT U-BOOTBL %x INTL 0",
 			   addr, sizeof(struct acpi_dmar), OEM_REVISION);
 	addr = ALIGN(addr + sizeof(struct acpi_dmar), 16);
-	ut_assert_nextline("DMAR %08lx %06zx (v01 U-BOOT U-BOOTBL %x INTL 0)",
+	ut_assert_nextline("DMAR  %08lx  %5zx  v01 U-BOOT U-BOOTBL %x INTL 0",
 			   addr, sizeof(struct acpi_dmar), OEM_REVISION);
 	addr = ALIGN(addr + sizeof(struct acpi_dmar), 16);
-	ut_assert_nextline("DMAR %08lx %06zx (v01 U-BOOT U-BOOTBL %x INTL 0)",
+	ut_assert_nextline("DMAR  %08lx  %5zx  v01 U-BOOT U-BOOTBL %x INTL 0",
 			   addr, sizeof(struct acpi_dmar), OEM_REVISION);
 	ut_assert_console_end();
 
@@ -403,7 +429,8 @@ static int dm_test_acpi_cmd_dump(struct unit_test_state *uts)
 
 	buf = memalign(16, BUF_SIZE);
 	ut_assertnonnull(buf);
-	acpi_setup_base_tables(&ctx, buf);
+	addr = map_to_sysmem(buf);
+	ut_assertok(setup_ctx_and_base_tables(uts, &ctx, addr));
 
 	ut_assertok(acpi_write_dev_tables(&ctx));
 
@@ -540,18 +567,22 @@ DM_TEST(dm_test_acpi_inject_dsdt, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 static int dm_test_acpi_cmd_items(struct unit_test_state *uts)
 {
 	struct acpi_ctx ctx;
+	ulong addr;
 	void *buf;
 
 	buf = malloc(BUF_SIZE);
 	ut_assertnonnull(buf);
+	addr = map_to_sysmem(buf);
 
 	acpi_reset_items();
 	ctx.current = buf;
 	ut_assertok(acpi_fill_ssdt(&ctx));
 	console_record_reset();
 	run_command("acpi items", 0);
-	ut_assert_nextline("dev 'acpi-test', type 1, size 2");
-	ut_assert_nextline("dev 'acpi-test2', type 1, size 2");
+	ut_assert_nextline("Seq  Type       Base   Size  Device/Writer");
+	ut_assert_nextline("---  -----  --------   ----  -------------");
+	ut_assert_nextline("  0  ssdt   %8lx      2  acpi-test", addr);
+	ut_assert_nextline("  1  ssdt   %8lx      2  acpi-test2", addr + 2);
 	ut_assert_console_end();
 
 	acpi_reset_items();
@@ -559,16 +590,20 @@ static int dm_test_acpi_cmd_items(struct unit_test_state *uts)
 	ut_assertok(acpi_inject_dsdt(&ctx));
 	console_record_reset();
 	run_command("acpi items", 0);
-	ut_assert_nextline("dev 'acpi-test', type 2, size 2");
-	ut_assert_nextline("dev 'acpi-test2', type 2, size 2");
+	ut_assert_nextlinen("Seq");
+	ut_assert_nextlinen("---");
+	ut_assert_nextline("  0  dsdt   %8lx      2  acpi-test", addr);
+	ut_assert_nextline("  1  dsdt   %8lx      2  acpi-test2", addr + 2);
 	ut_assert_console_end();
 
 	console_record_reset();
 	run_command("acpi items -d", 0);
-	ut_assert_nextline("dev 'acpi-test', type 2, size 2");
+	ut_assert_nextlinen("Seq");
+	ut_assert_nextlinen("---");
+	ut_assert_nextline("  0  dsdt   %8lx      2  acpi-test", addr);
 	ut_assert_nextlines_are_dump(2);
 	ut_assert_nextline("%s", "");
-	ut_assert_nextline("dev 'acpi-test2', type 2, size 2");
+	ut_assert_nextline("  1  dsdt   %8lx      2  acpi-test2", addr + 2);
 	ut_assert_nextlines_are_dump(2);
 	ut_assert_nextline("%s", "");
 	ut_assert_console_end();

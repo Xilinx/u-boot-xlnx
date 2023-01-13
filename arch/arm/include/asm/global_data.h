@@ -90,15 +90,18 @@ struct arch_global_data {
 	struct udevice *scu_dev;
 #endif
 
-#ifdef CONFIG_ARCH_IMX8ULP
+#ifdef CONFIG_IMX_SENTINEL
 	struct udevice *s400_dev;
+	u32 soc_rev;
+	u32 lifecycle;
+	u32 uid[4];
 #endif
 
 };
 
 #include <asm-generic/global_data.h>
 
-#if defined(__clang__) || defined(CONFIG_LTO)
+#if defined(__clang__) || defined(LTO_ENABLE)
 
 #define DECLARE_GLOBAL_DATA_PTR
 #define gd	get_gd()

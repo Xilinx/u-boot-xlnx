@@ -50,7 +50,7 @@ static int pci_mmc_probe(struct udevice *dev)
 	desc = mmc_get_blk_desc(&plat->mmc);
 	desc->removable = !(plat->cfg.host_caps & MMC_CAP_NONREMOVABLE);
 
-	host->ioaddr = (void *)dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0,
+	host->ioaddr = (void *)dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0, 0, 0, PCI_REGION_TYPE,
 					      PCI_REGION_MEM);
 	host->name = dev->name;
 	host->cd_gpio = priv->cd_gpio;
@@ -86,6 +86,7 @@ static int pci_mmc_bind(struct udevice *dev)
 	return sdhci_bind(dev, &plat->mmc, &plat->cfg);
 }
 
+__maybe_unused
 static int pci_mmc_acpi_fill_ssdt(const struct udevice *dev,
 				  struct acpi_ctx *ctx)
 {
@@ -138,7 +139,9 @@ static int pci_mmc_acpi_fill_ssdt(const struct udevice *dev,
 }
 
 struct acpi_ops pci_mmc_acpi_ops = {
+#ifdef CONFIG_ACPIGEN
 	.fill_ssdt	= pci_mmc_acpi_fill_ssdt,
+#endif
 };
 
 static const struct udevice_id pci_mmc_match[] = {

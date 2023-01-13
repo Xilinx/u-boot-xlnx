@@ -780,7 +780,7 @@ static const struct octeontx_sd_mods octeontx_cr_types[] = {
  * @param	mmc	mmc device
  * @param	cmd	command information
  *
- * @return octeontx_mmc_cr_mods data structure with various quirks and flags
+ * Return: octeontx_mmc_cr_mods data structure with various quirks and flags
  */
 static struct octeontx_mmc_cr_mods
 octeontx_mmc_get_cr_mods(struct mmc *mmc, const struct mmc_cmd *cmd,
@@ -993,7 +993,7 @@ static void octeontx_mmc_start_dma(struct mmc *mmc, bool write,
  * @param	mmc	mmc device
  * @param	timeout	timeout in ms
  *
- * @return	0 for success (could be DMA errors), -ETIMEDOUT on timeout
+ * Return:	0 for success (could be DMA errors), -ETIMEDOUT on timeout
  */
 
 /**
@@ -1023,7 +1023,7 @@ static void octeontx_mmc_cleanup_dma(struct mmc *mmc,
 		start = get_timer(0);
 		do {
 			rsp_sts.u = read_csr(mmc, MIO_EMM_RSP_STS());
-			WATCHDOG_RESET();
+			schedule();
 		} while (get_timer(start) < 100 &&
 			 (rsp_sts.s.dma_val || rsp_sts.s.dma_pend));
 	} while (retries-- >= 0 && rsp_sts.s.dma_pend);
@@ -1042,7 +1042,7 @@ static void octeontx_mmc_cleanup_dma(struct mmc *mmc,
  * @param	timeout	timeout in ms
  * @param	verbose	true to print out error information
  *
- * @return	0 for success (could be DMA errors), -ETIMEDOUT on timeout
+ * Return:	0 for success (could be DMA errors), -ETIMEDOUT on timeout
  *		or -EIO if IO error.
  */
 static int octeontx_mmc_wait_dma(struct mmc *mmc, bool write, ulong timeout,
@@ -1107,7 +1107,7 @@ static int octeontx_mmc_wait_dma(struct mmc *mmc, bool write, ulong timeout,
 		} else if (!rsp_sts.s.dma_val && emm_dma_int.s.done) {
 			break;
 		}
-		WATCHDOG_RESET();
+		schedule();
 		timed_out = (get_timer(start_time) > timeout);
 	} while (!timed_out);
 
@@ -1140,7 +1140,7 @@ static int octeontx_mmc_wait_dma(struct mmc *mmc, bool write, ulong timeout,
  * @param	data	data for read
  * @param	verbose	true to print out error information
  *
- * @return	number of blocks read or 0 if error
+ * Return:	number of blocks read or 0 if error
  */
 static int octeontx_mmc_read_blocks(struct mmc *mmc, struct mmc_cmd *cmd,
 				    struct mmc_data *data, bool verbose)
@@ -1219,7 +1219,7 @@ static int octeontx_mmc_read_blocks(struct mmc *mmc, struct mmc_cmd *cmd,
 				}
 				return blkcnt - count;
 			}
-			WATCHDOG_RESET();
+			schedule();
 		} while (--count);
 	}
 #ifdef DEBUG
@@ -1253,7 +1253,7 @@ static int octeontx_mmc_poll_ready(struct mmc *mmc, ulong timeout)
 		} else if (cmd.response[0] & R1_READY_FOR_DATA) {
 			return 0;
 		}
-		WATCHDOG_RESET();
+		schedule();
 	} while (get_timer(start) < timeout);
 
 	if (not_ready)
@@ -1328,7 +1328,7 @@ static ulong octeontx_mmc_write_blocks(struct mmc *mmc, struct mmc_cmd *cmd,
 				       read_csr(mmc, MIO_EMM_DMA()));
 				return blkcnt - count;
 			}
-			WATCHDOG_RESET();
+			schedule();
 		} while (--count);
 	}
 
@@ -1342,7 +1342,7 @@ static ulong octeontx_mmc_write_blocks(struct mmc *mmc, struct mmc_cmd *cmd,
  * @param cmd	cmd to send and response
  * @param data	additional data
  * @param flags
- * @return	0 for success, otherwise error
+ * Return:	0 for success, otherwise error
  */
 static int octeontx_mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 				 struct mmc_data *data)
@@ -1491,7 +1491,7 @@ static int octeontx_mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 	start = get_timer(0);
 	do {
 		rsp_sts.u = read_csr(mmc, MIO_EMM_RSP_STS());
-		WATCHDOG_RESET();
+		schedule();
 	} while (!rsp_sts.s.cmd_done && !rsp_sts.s.rsp_timeout &&
 		 (get_timer(start) < timeout + 10));
 	octeontx_mmc_print_rsp_errors(mmc, rsp_sts);
@@ -2021,7 +2021,7 @@ struct adj adj[] = {
  * @param	adj	parameter to tune
  * @param	opcode	command opcode to use
  *
- * @return	0 for success, -1 if tuning failed
+ * Return:	0 for success, -1 if tuning failed
  */
 static int octeontx_mmc_adjust_tuning(struct mmc *mmc, struct adj *adj,
 				      u32 opcode)
@@ -2426,7 +2426,7 @@ static void octeontx_mmc_set_emm_timing(struct mmc *mmc,
  * Calculate the clock period with rounding up
  *
  * @param	mmc	mmc device
- * @return	clock period in system clocks for clk_lo + clk_hi
+ * Return:	clock period in system clocks for clk_lo + clk_hi
  */
 static u32 octeontx_mmc_calc_clk_period(struct mmc *mmc)
 {
@@ -2916,7 +2916,7 @@ static void do_switch(struct mmc *mmc, union mio_emm_switch emm_switch)
  *
  * @param	mmc	Pointer to mmc data structure
  *
- * @return	0 for success or -ETIMEDOUT on error
+ * Return:	0 for success or -ETIMEDOUT on error
  *
  * NOTE: On error a default value will be calculated.
  */
@@ -2942,7 +2942,7 @@ static int octeontx_mmc_calibrate_delay(struct mmc *mmc)
  * @param	mmc	mmc data structure
  * @param	delay	delay in picoseconds
  *
- * @return	Number of tap cycles or error if -1
+ * Return:	Number of tap cycles or error if -1
  */
 static int octeontx2_mmc_calc_delay(struct mmc *mmc, int delay)
 {
@@ -3136,7 +3136,7 @@ static int octeontx_mmc_set_input_bus_timing(struct mmc *mmc)
  *
  * @param	mmc	mmc data structure
  *
- * @return	0 for success, error otherwise
+ * Return:	0 for success, error otherwise
  */
 static int octeontx_mmc_set_output_bus_timing(struct mmc *mmc)
 {
@@ -3369,7 +3369,7 @@ static void octeontx_mmc_switch_to(struct mmc *mmc)
  *
  * @param mmc	mmc device
  *
- * @return 0 for success
+ * Return: 0 for success
  *
  * NOTE: This will need to be updated when new silicon comes out
  */
@@ -3395,7 +3395,7 @@ static int octeontx_mmc_init_timing(struct mmc *mmc)
  *
  * @param	mmc	mmc device
  *
- * @return	0 for success, error otherwise
+ * Return:	0 for success, error otherwise
  */
 static int octeontx_mmc_init_lowlevel(struct mmc *mmc)
 {
@@ -3453,7 +3453,7 @@ static int octeontx_mmc_init_lowlevel(struct mmc *mmc)
  *
  * @param	voltage	voltage in microvolts
  *
- * @return	MMC register value for voltage
+ * Return:	MMC register value for voltage
  */
 static u32 xlate_voltage(u32 voltage)
 {
@@ -3506,7 +3506,7 @@ static u32 xlate_voltage(u32 voltage)
  *
  * @param	dev	slot device to check
  *
- * @return	true if status reports "ok" or "okay" or if no status,
+ * Return:	true if status reports "ok" or "okay" or if no status,
  *		false otherwise.
  */
 static bool octeontx_mmc_get_valid(struct udevice *dev)
@@ -3524,7 +3524,7 @@ static bool octeontx_mmc_get_valid(struct udevice *dev)
  *
  * @param	dev	slot device
  *
- * @return	0 on success, otherwise error
+ * Return:	0 on success, otherwise error
  */
 static int octeontx_mmc_get_config(struct udevice *dev)
 {
@@ -3705,7 +3705,7 @@ static int octeontx_mmc_get_config(struct udevice *dev)
  *
  * @param	dev	mmc device
  *
- * @return	0 for success, error otherwise
+ * Return:	0 for success, error otherwise
  */
 static int octeontx_mmc_slot_probe(struct udevice *dev)
 {
@@ -3802,7 +3802,7 @@ U_BOOT_DRIVER(octeontx_hsmmc_slot) = {
  *
  * @param	dev	mmc host controller device
  *
- * @return	0 for success, -1 on error
+ * Return:	0 for success, -1 on error
  */
 static int octeontx_mmc_host_probe(struct udevice *dev)
 {
@@ -3822,7 +3822,7 @@ static int octeontx_mmc_host_probe(struct udevice *dev)
 
 	/* Octeon TX & TX2 use PCI based probing */
 	if (device_is_compatible(dev, "cavium,thunder-8890-mmc")) {
-		host->base_addr = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0,
+		host->base_addr = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0, 0, 0, PCI_REGION_TYPE,
 						 PCI_REGION_MEM);
 		if (!host->base_addr) {
 			pr_err("%s: Error: MMC base address not found\n",
@@ -3910,7 +3910,7 @@ static int octeontx_mmc_host_probe(struct udevice *dev)
  *
  * @param dev:	MMC slot device
  *
- * @return 0 for success, -1 on failure
+ * Return: 0 for success, -1 on failure
  *
  * Do some pre-initialization before probing a slot.
  */

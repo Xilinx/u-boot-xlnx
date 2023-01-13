@@ -56,10 +56,6 @@
 #define XR3PCI_ATR_TRSLID_PCIE_IO	(0x020000)
 #define XR3PCI_ATR_TRSLID_PCIE_MEMORY	(0x000000)
 
-#define XR3PCI_ECAM_OFFSET(b, d, o)	(((b) << 20) | \
-					(PCI_SLOT(d) << 15) | \
-					(PCI_FUNC(d) << 12) | o)
-
 #define JUNO_RESET_CTRL			0x1004
 #define JUNO_RESET_CTRL_PHY		BIT(0)
 #define JUNO_RESET_CTRL_RC		BIT(1)
@@ -154,7 +150,7 @@ static void xr3pci_init(void)
 	/* allow ECRC */
 	writel(0x6006, XR3_CONFIG_BASE + XR3PCI_PEX_SPC2);
 	/* setup the correct class code for the host bridge */
-	writel(PCI_CLASS_BRIDGE_PCI << 16, XR3_CONFIG_BASE + XR3PCI_BRIDGE_PCI_IDS);
+	writel(PCI_CLASS_BRIDGE_PCI_NORMAL << 8, XR3_CONFIG_BASE + XR3PCI_BRIDGE_PCI_IDS);
 
 	/* reset phy and root complex */
 	writel(JUNO_RESET_CTRL_PHY | JUNO_RESET_CTRL_RC,

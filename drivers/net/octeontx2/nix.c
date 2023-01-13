@@ -36,7 +36,7 @@
  * @param elem_size Size of each element
  * @param msg       Text string to show when allocation fails
  *
- * @return A valid memory location or NULL on failure
+ * Return: A valid memory location or NULL on failure
  */
 static void *nix_memalloc(int num_elements, size_t elem_size, const char *msg)
 {
@@ -580,7 +580,7 @@ int nix_lf_xmit(struct udevice *dev, void *pkt, int pkt_len)
 		__iowmb();
 		result = lmt_submit((u64)(nix->nix_base +
 					       NIXX_LF_OP_SENDX(0)));
-		WATCHDOG_RESET();
+		schedule();
 	} while (result == 0);
 
 	return 0;

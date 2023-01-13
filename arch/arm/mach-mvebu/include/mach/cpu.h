@@ -61,23 +61,16 @@ enum cpu_attrib {
 	CPU_ATTR_DEV_CS3 = 0x37,
 };
 
-enum {
-	MVEBU_SOC_AXP,
-	MVEBU_SOC_A375,
-	MVEBU_SOC_A38X,
-	MVEBU_SOC_MSYS,
-	MVEBU_SOC_UNKNOWN,
-};
-
 #define MVEBU_SDRAM_SIZE_MAX	0xc0000000
 
 /*
  * Default Device Address MAP BAR values
  */
+#define MBUS_PCI_MAX_PORTS	6
 #define MBUS_PCI_MEM_BASE	MVEBU_SDRAM_SIZE_MAX
-#define MBUS_PCI_MEM_SIZE	(128 << 20)
+#define MBUS_PCI_MEM_SIZE	((MBUS_PCI_MAX_PORTS * 128) << 20)
 #define MBUS_PCI_IO_BASE	0xF1100000
-#define MBUS_PCI_IO_SIZE	(64 << 10)
+#define MBUS_PCI_IO_SIZE	((MBUS_PCI_MAX_PORTS * 64) << 10)
 #define MBUS_SPI_BASE		0xF4000000
 #define MBUS_SPI_SIZE		(8 << 20)
 #define MBUS_DFX_BASE		0xF6000000
@@ -129,17 +122,13 @@ struct sar_freq_modes {
 	u32 d_clk;
 };
 
-/* Needed for dynamic (board-specific) mbus configuration */
-extern struct mvebu_mbus_state mbus_state;
-
 /*
  * functions
  */
 unsigned int mvebu_sdram_bar(enum memory_bank bank);
 unsigned int mvebu_sdram_bs(enum memory_bank bank);
 void mvebu_sdram_size_adjust(enum memory_bank bank);
-int mvebu_mbus_probe(struct mbus_win windows[], int count);
-int mvebu_soc_family(void);
+int mvebu_mbus_probe(const struct mbus_win windows[], int count);
 u32 mvebu_get_nand_clock(void);
 
 void __noreturn return_to_bootrom(void);
@@ -184,6 +173,10 @@ int a3700_dram_init_banksize(void);
 
 /* A3700 PCIe regions fixer for device tree */
 int a3700_fdt_fix_pcie_regions(void *blob);
+
+/* Alleycat5 dram functions */
+int alleycat5_dram_init(void);
+int alleycat5_dram_init_banksize(void);
 
 /*
  * get_ref_clk

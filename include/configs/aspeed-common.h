@@ -24,27 +24,8 @@
 #define CONFIG_SYS_INIT_RAM_SIZE	(ASPEED_SRAM_SIZE)
 #endif
 
-#define SYS_INIT_RAM_END		(CONFIG_SYS_INIT_RAM_ADDR \
-					 + CONFIG_SYS_INIT_RAM_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR		(SYS_INIT_RAM_END \
-					 - GENERATED_GBL_DATA_SIZE)
-
 /*
  * NS16550 Configuration
  */
-
-/*
- * BOOTP options
- */
-#define CONFIG_BOOTP_BOOTFILESIZE
-
-/*
- * Miscellaneous configurable options
- */
-
-#define CONFIG_EXTRA_ENV_SETTINGS \
-	"verify=yes\0"	\
-	"spi_dma=yes\0" \
-	""
 
 #endif	/* __AST_COMMON_CONFIG_H */

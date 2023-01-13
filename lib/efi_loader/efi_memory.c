@@ -452,7 +452,7 @@ static uint64_t efi_find_free_memory(uint64_t len, uint64_t max_addr)
  * @memory_type		usage type of the allocated memory
  * @pages		number of pages to be allocated
  * @memory		allocated memory
- * @return		status code
+ * Return:		status code
  */
 efi_status_t efi_allocate_pages(enum efi_allocate_type type,
 				enum efi_memory_type memory_type,
@@ -483,6 +483,8 @@ efi_status_t efi_allocate_pages(enum efi_allocate_type type,
 			return EFI_OUT_OF_RESOURCES;
 		break;
 	case EFI_ALLOCATE_ADDRESS:
+		if (*memory & EFI_PAGE_MASK)
+			return EFI_NOT_FOUND;
 		/* Exact address, reserve it. The addr is already in *memory. */
 		ret = efi_check_allocated(*memory, false);
 		if (ret != EFI_SUCCESS)
@@ -680,7 +682,7 @@ efi_status_t efi_free_pool(void *buffer)
  * @map_key		key for the memory map
  * @descriptor_size	size of an individual memory descriptor
  * @descriptor_version	version number of the memory descriptor structure
- * @return		status code
+ * Return:		status code
  */
 efi_status_t efi_get_memory_map(efi_uintn_t *memory_map_size,
 				struct efi_mem_desc *memory_map,
@@ -735,6 +737,40 @@ efi_status_t efi_get_memory_map(efi_uintn_t *memory_map_size,
 }
 
 /**
+ * efi_get_memory_map_alloc() - allocate map describing memory usage
+ *
+ * The caller is responsible for calling FreePool() if the call succeeds.
+ *
+ * @memory_map		buffer to which the memory map is written
+ * @map_size		size of the memory map
+ * Return:		status code
+ */
+efi_status_t efi_get_memory_map_alloc(efi_uintn_t *map_size,
+				      struct efi_mem_desc **memory_map)
+{
+	efi_status_t ret;
+
+	*memory_map = NULL;
+	*map_size = 0;
+	ret = efi_get_memory_map(map_size, *memory_map, NULL, NULL, NULL);
+	if (ret == EFI_BUFFER_TOO_SMALL) {
+		*map_size += sizeof(struct efi_mem_desc); /* for the map */
+		ret = efi_allocate_pool(EFI_BOOT_SERVICES_DATA, *map_size,
+					(void **)memory_map);
+		if (ret != EFI_SUCCESS)
+			return ret;
+		ret = efi_get_memory_map(map_size, *memory_map,
+					 NULL, NULL, NULL);
+		if (ret != EFI_SUCCESS) {
+			efi_free_pool(*memory_map);
+			*memory_map = NULL;
+		}
+	}
+
+	return ret;
+}
+
+/**
  * efi_add_conventional_memory_map() - add a RAM memory area to the map
  *
  * @ram_start:		start address of a RAM memory area
@@ -771,7 +807,7 @@ efi_status_t efi_add_conventional_memory_map(u64 ram_start, u64 ram_end,
 		/* ram_top is before this region, reserve all */
 		efi_add_memory_map_pg(ram_start, pages,
 				      EFI_BOOT_SERVICES_DATA, true);
-	} else if ((ram_top >= ram_start) && (ram_top < ram_end)) {
+	} else if (ram_top < ram_end) {
 		/* ram_top is inside this region, reserve parts */
 		pages = (ram_end - ram_top) >> EFI_PAGE_SHIFT;
 
@@ -821,7 +857,7 @@ static void add_u_boot_and_runtime(void)
 		       uboot_stack_size) & ~EFI_PAGE_MASK;
 	uboot_pages = ((uintptr_t)map_sysmem(gd->ram_top - 1, 0) -
 		       uboot_start + EFI_PAGE_MASK) >> EFI_PAGE_SHIFT;
-	efi_add_memory_map_pg(uboot_start, uboot_pages, EFI_LOADER_DATA,
+	efi_add_memory_map_pg(uboot_start, uboot_pages, EFI_BOOT_SERVICES_CODE,
 			      false);
 
 #if defined(__aarch64__)
@@ -855,7 +891,7 @@ int efi_memory_init(void)
 	/* Request a 32bit 64MB bounce buffer region */
 	uint64_t efi_bounce_buffer_addr = 0xffffffff;
 
-	if (efi_allocate_pages(EFI_ALLOCATE_MAX_ADDRESS, EFI_LOADER_DATA,
+	if (efi_allocate_pages(EFI_ALLOCATE_MAX_ADDRESS, EFI_BOOT_SERVICES_DATA,
 			       (64 * 1024 * 1024) >> EFI_PAGE_SHIFT,
 			       &efi_bounce_buffer_addr) != EFI_SUCCESS)
 		return -1;

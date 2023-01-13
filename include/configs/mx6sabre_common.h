@@ -13,7 +13,7 @@
 #include "mx6_common.h"
 
 /* MMC Configs */
-#define CONFIG_SYS_FSL_ESDHC_ADDR      0
+#define CFG_SYS_FSL_ESDHC_ADDR      0
 
 #ifdef CONFIG_SUPPORT_EMMC_BOOT
 #define EMMC_ENV \
@@ -136,22 +136,6 @@
 					"echo WARNING: Could not determine dtb to use; fi; " \
 			"fi;\0" \
 
-#define CONFIG_BOOTCOMMAND \
-	"run findfdt;" \
-	"mmc dev ${mmcdev};" \
-	"if mmc rescan; then " \
-		"if run loadbootscript; then " \
-		"run bootscript; " \
-		"else " \
-			"if run loadimage; then " \
-				"run mmcboot; " \
-			"else run netboot; " \
-			"fi; " \
-		"fi; " \
-	"else run netboot; fi"
-
-#define CONFIG_ARP_TIMEOUT     200UL
-
 /* Physical Memory Map */
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
 
@@ -159,16 +143,9 @@
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE       IRAM_SIZE
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /* Environment organization */
 
 /* Framebuffer */
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 

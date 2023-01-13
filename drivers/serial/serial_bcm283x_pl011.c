@@ -17,14 +17,14 @@
  * The serial device will only work properly if it has been muxed to the serial
  * pins by firmware. Check whether that happened here.
  *
- * @return true if serial device is muxed, false if not
+ * Return: true if serial device is muxed, false if not
  */
 static bool bcm283x_is_serial_muxed(void)
 {
 	int serial_gpio = 15;
 	struct udevice *dev;
 
-	if (uclass_first_device(UCLASS_PINCTRL, &dev) || !dev)
+	if (uclass_first_device_err(UCLASS_PINCTRL, &dev))
 		return false;
 
 	if (pinctrl_get_gpio_mux(dev, 0, serial_gpio) != BCM2835_GPIO_ALT0)

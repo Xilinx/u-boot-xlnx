@@ -26,7 +26,10 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 #if defined(CONFIG_FPGA_VERSALPL)
-static xilinx_desc versalpl = XILINX_VERSAL_DESC;
+static xilinx_desc versalpl = {
+	xilinx_versal, csu_dma, 1, &versal_op, 0, &versal_op, NULL,
+	FPGA_LEGACY
+};
 #endif
 
 int board_init(void)
@@ -73,7 +76,7 @@ int board_early_init_r(void)
 	 * Program freq register in System counter and
 	 * enable system counter.
 	 */
-	writel(COUNTER_FREQUENCY,
+	writel(CONFIG_COUNTER_FREQUENCY,
 	       &iou_scntr_secure->base_frequency_id_register);
 
 	debug("counter val 0x%x\n",

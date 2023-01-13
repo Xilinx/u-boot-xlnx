@@ -27,11 +27,8 @@
 #define CONFIG_POWER_TPS62362
 
 /* SPL defines. */
-#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
-					 (128 << 20))
 
 /* Enabling L2 Cache */
-#define CONFIG_SYS_L2_PL310
 #define CONFIG_SYS_PL310_BASE	0x48242000
 
 /*
@@ -49,34 +46,6 @@
 
 /* NS16550 Configuration */
 #define CONFIG_SYS_NS16550_COM1		0x44e09000	/* Base EVM has UART0 */
-
-/* SPL USB Support */
-
-#if defined(CONFIG_SPL_USB_HOST) || !defined(CONFIG_SPL_BUILD)
-#define CONFIG_SYS_USB_FAT_BOOT_PARTITION		1
-#endif
-
-#if defined(CONFIG_SPL_BUILD) && !defined(CONFIG_SPL_USB_GADGET)
-#undef CONFIG_USB_DWC3_PHY_OMAP
-#undef CONFIG_USB_DWC3_OMAP
-#undef CONFIG_USB_DWC3
-#undef CONFIG_USB_DWC3_GADGET
-
-#undef CONFIG_USB_GADGET_DOWNLOAD
-#undef CONFIG_USB_GADGET_VBUS_DRAW
-#undef CONFIG_USB_GADGET_MANUFACTURER
-#undef CONFIG_USB_GADGET_VENDOR_NUM
-#undef CONFIG_USB_GADGET_PRODUCT_NUM
-#undef CONFIG_USB_GADGET_DUALSPEED
-#endif
-
-/*
- * Disable MMC DM for SPL build and can be re-enabled after adding
- * DM support in SPL
- */
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_TIMER
-#endif
 
 #ifndef CONFIG_SPL_BUILD
 /* USB Device Firmware Update support */
@@ -145,14 +114,7 @@
 
 #endif
 
-#ifndef CONFIG_SPL_BUILD
-/* CPSW Ethernet */
-#define CONFIG_NET_RETRY_COUNT		10
-#endif
-
 #define PHY_ANEG_TIMEOUT	8000 /* PHY needs longer aneg time at 1G */
-
-#define CONFIG_SYS_RX_ETH_BUFFER	64
 
 /* NAND support */
 #ifdef CONFIG_MTD_RAW_NAND
@@ -182,20 +144,13 @@
 			}
 #define CONFIG_SYS_NAND_ECCSIZE		512
 #define CONFIG_SYS_NAND_ECCBYTES	26
-/* NAND: SPL related configs */
-/* NAND: SPL falcon mode configs */
-#ifdef CONFIG_SPL_OS_BOOT
-#define CONFIG_SYS_NAND_SPL_KERNEL_OFFS	0x00300000 /* kernel offset */
-#endif
 #define NANDARGS \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
 	"nandargs=setenv bootargs console=${console} " \
 		"${optargs} " \
 		"root=${nandroot} " \
 		"rootfstype=${nandrootfstype}\0" \
 	"nandroot=ubi0:rootfs rw ubi.mtd=NAND.file-system,4096\0" \
-	"nandrootfstype=ubifs rootwait=1\0" \
+	"nandrootfstype=ubifs rootwait\0" \
 	"nandboot=echo Booting from nand ...; " \
 		"run nandargs; " \
 		"nand read ${fdtaddr} NAND.u-boot-spl-os; " \

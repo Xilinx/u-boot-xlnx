@@ -13,14 +13,7 @@
 #include <asm/arch/omap.h>
 
 #define CONFIG_EXTRA_ENV_SETTINGS	\
-	DEFAULT_LINUX_BOOT_ENV \
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0" \
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0" \
-
-#define CONFIG_BOOTCOMMAND			\
-	"mmc rescan;"				\
-	"fatload mmc 0 ${loadaddr} uImage;"	\
-	"bootm ${loadaddr}"			\
+	DEFAULT_LINUX_BOOT_ENV
 
 /* Clock Defines */
 #define V_OSCK          24000000    /* Clock output from T2 */
@@ -32,9 +25,7 @@
 /**
  * Platform/Board specific defs
  */
-#define CONFIG_SYS_CLK_FREQ     27000000
 #define CONFIG_SYS_TIMERBASE    0x4802E000
-#define CONFIG_SYS_PTV          2   /* Divisor: 2^(PTV+1) => 8 */
 
 /*
  * NS16550 Configuration
@@ -52,7 +43,6 @@
  * access CS0 at is 0x8000000.
  */
 #define CONFIG_SYS_NAND_BASE		0x8000000
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 
 /* NAND: SPL related configs */
 
@@ -71,21 +61,5 @@
 
 /* SPL */
 /* Defines for SPL */
-#define CONFIG_SPL_MAX_SIZE		(SRAM_SCRATCH_SPACE_ADDR - \
-					 CONFIG_SPL_TEXT_BASE)
 
-#define CONFIG_NET_RETRY_COUNT	10
-
-/* Since SPL did pll and ddr initialization for us,
- * we don't need to do it twice.
- */
-
-/*
- * Disable MMC DM for SPL build and can be re-enabled after adding
- * DM support in SPL
- */
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_DM_MMC
-#undef CONFIG_TIMER
-#endif
 #endif

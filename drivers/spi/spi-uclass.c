@@ -130,6 +130,21 @@ void spi_release_bus(struct spi_slave *slave)
 	dm_spi_release_bus(slave->dev);
 }
 
+int spi_set_speed(struct spi_slave *slave, uint hz)
+{
+	struct dm_spi_ops *ops;
+	int ret;
+
+	ops = spi_get_ops(slave->dev->parent);
+	if (ops->set_speed)
+		ret = ops->set_speed(slave->dev->parent, hz);
+	else
+		ret = -EINVAL;
+	if (ret)
+		dev_err(slave->dev, "Cannot set speed (err=%d)\n", ret);
+	return ret;
+}
+
 int spi_xfer(struct spi_slave *slave, unsigned int bitlen,
 	     const void *dout, void *din, unsigned long flags)
 {
@@ -340,9 +355,65 @@ int spi_find_bus_and_cs(int busnum, int cs, struct udevice **busp,
 	return ret;
 }
 
-int spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
-		       const char *drv_name, const char *dev_name,
-		       struct udevice **busp, struct spi_slave **devp)
+int spi_get_bus_and_cs(int busnum, int cs, struct udevice **busp,
+		       struct spi_slave **devp)
+{
+	struct udevice *bus, *dev;
+	struct dm_spi_bus *bus_data;
+	struct spi_slave *slave;
+	int ret;
+
+#if CONFIG_IS_ENABLED(OF_PLATDATA)
+	ret = uclass_first_device_err(UCLASS_SPI, &bus);
+#else
+	ret = uclass_get_device_by_seq(UCLASS_SPI, busnum, &bus);
+#endif
+	if (ret) {
+		log_err("Invalid bus %d (err=%d)\n", busnum, ret);
+		return ret;
+	}
+	ret = spi_find_chip_select(bus, cs, &dev);
+	if (ret) {
+		dev_err(bus, "Invalid chip select %d:%d (err=%d)\n", busnum, cs, ret);
+		return ret;
+	}
+
+	if (!device_active(dev)) {
+		struct spi_slave *slave;
+
+		ret = device_probe(dev);
+		if (ret)
+			goto err;
+		slave = dev_get_parent_priv(dev);
+		slave->dev = dev;
+	}
+
+	slave = dev_get_parent_priv(dev);
+	bus_data = dev_get_uclass_priv(bus);
+
+	/*
+	 * In case the operation speed is not yet established by
+	 * dm_spi_claim_bus() ensure the bus is configured properly.
+	 */
+	if (!bus_data->speed) {
+		ret = spi_claim_bus(slave);
+		if (ret)
+			goto err;
+	}
+	*busp = bus;
+	*devp = slave;
+
+	return 0;
+
+err:
+	log_debug("%s: Error path, device '%s'\n", __func__, dev->name);
+
+	return ret;
+}
+
+int _spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
+			const char *drv_name, const char *dev_name,
+			struct udevice **busp, struct spi_slave **devp)
 {
 	struct udevice *bus, *dev;
 	struct dm_spi_slave_plat *plat;
@@ -453,8 +524,8 @@ struct spi_slave *spi_setup_slave(unsigned int busnum, unsigned int cs,
 	struct udevice *dev;
 	int ret;
 
-	ret = spi_get_bus_and_cs(busnum, cs, speed, mode, NULL, 0, &dev,
-				 &slave);
+	ret = _spi_get_bus_and_cs(busnum, cs, speed, mode, NULL, 0, &dev,
+				  &slave);
 	if (ret)
 		return NULL;
 

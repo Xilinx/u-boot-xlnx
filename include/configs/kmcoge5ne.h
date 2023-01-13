@@ -11,7 +11,6 @@
 #define CONFIG_HOSTNAME		"kmcoge5ne"
 #define CONFIG_NAND_ECC_BCH
 #define CONFIG_NAND_KMETER1
-#define CONFIG_SYS_MAX_NAND_DEVICE		1
 #define NAND_MAX_CHIPS				1
 #define CONFIG_SYS_NAND_BASE CONFIG_SYS_KMBEC_FPGA_BASE /* PRIO_BASE_ADDRESS */
 
@@ -24,12 +23,6 @@
 #include "km/km-mpc83xx.h"
 #include "km/km-mpc8360.h"
 
-/*
- * System Clock Setup
- */
-#define CONFIG_SYS_CLK_FREQ		66000000
-#define CONFIG_83XX_PCICLK		66000000
-
 /**
  * KMCOGE5NE has 512 MB RAM
  */
@@ -40,12 +33,6 @@
 	CSCONFIG_BANK_BIT_3 | \
 	CSCONFIG_ROW_BIT_13 | \
 	CSCONFIG_COL_BIT_10)
-
-/*
- * BFTIC3 on the local bus CS4
- */
-#define CONFIG_SYS_BFTIC3_BASE			0xB0000000
-#define CONFIG_SYS_BFTIC3_SIZE			256
 
 /* enable POST tests */
 #define CONFIG_POST (CONFIG_SYS_POST_MEMORY|CONFIG_SYS_POST_MEM_REGIONS)

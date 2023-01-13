@@ -15,7 +15,7 @@
 
 /* Dual SPI flash memories - see SPI_COMM_DUAL_... */
 enum spi_dual_flash {
-	SF_SINGLE_FLASH	= 0,
+	SF_SINGLE_FLASH = 0,
 	SF_DUAL_STACKED_FLASH	= BIT(0),
 	SF_DUAL_PARALLEL_FLASH	= BIT(1),
 };
@@ -75,8 +75,9 @@ struct flash_info {
 #define USE_CLSR		BIT(14)	/* use CLSR command */
 #define SPI_NOR_HAS_SST26LOCK	BIT(15)	/* Flash supports lock/unlock via BPR */
 #define SPI_NOR_OCTAL_READ	BIT(16)	/* Flash supports Octal Read */
-#define SPI_NOR_OCTAL_DTR_READ	BIT(17) /* Flash supports Octal Read */
-#define SPI_NOR_MULTI_DIE	BIT(18) /* Flash has multi dies & need split reads*/
+#define SPI_NOR_OCTAL_DTR_READ	BIT(17)	/* Flash supports Octal DTR Read */
+#define SPI_NOR_OCTAL_DTR_PP	BIT(18) /* Flash supports Octal DTR page program */
+#define SPI_NOR_MULTI_DIE	BIT(19) /* Flash has multi dies & need split reads*/
 };
 
 extern const struct flash_info spi_nor_ids[];

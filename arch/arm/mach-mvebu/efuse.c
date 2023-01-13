@@ -10,6 +10,7 @@
 #include <asm/arch/cpu.h>
 #include <asm/arch/efuse.h>
 #include <asm/arch/soc.h>
+#include <asm/gpio.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/mbus.h>
@@ -27,6 +28,7 @@
 
 enum {
 	MVEBU_EFUSE_CTRL_PROGRAM_ENABLE = (1 << 31),
+	MVEBU_EFUSE_LD1_SELECT          = (1 <<  6),
 };
 
 struct mvebu_hd_efuse {
@@ -39,8 +41,10 @@ struct mvebu_hd_efuse {
 #ifndef DRY_RUN
 static struct mvebu_hd_efuse *efuses =
 	(struct mvebu_hd_efuse *)(MBUS_EFUSE_BASE + 0xF9000);
+static u32 *ld_efuses = (void *)MBUS_EFUSE_BASE + 0xF8F00;
 #else
 static struct mvebu_hd_efuse efuses[EFUSE_LINE_MAX + 1];
+static u32 ld_efuses[EFUSE_LD_WORDS];
 #endif
 
 static int efuse_initialised;
@@ -53,17 +57,48 @@ static struct mvebu_hd_efuse *get_efuse_line(int nr)
 	return efuses + nr;
 }
 
-static void enable_efuse_program(void)
+#ifndef DRY_RUN
+static int vhv_gpio;
+#endif
+
+static int enable_efuse_program(void)
 {
 #ifndef DRY_RUN
+	if (CONFIG_MVEBU_EFUSE_VHV_GPIO[0]) {
+		if (gpio_lookup_name(CONFIG_MVEBU_EFUSE_VHV_GPIO, NULL, NULL, &vhv_gpio)) {
+			printf("Error: VHV gpio lookup failed\n");
+			return -EOPNOTSUPP;
+		}
+		if (gpio_request(vhv_gpio, CONFIG_MVEBU_EFUSE_VHV_GPIO)) {
+			printf("Error: VHV gpio request failed\n");
+			return -EOPNOTSUPP;
+		}
+		if (gpio_direction_output(vhv_gpio,
+		    IS_ENABLED(CONFIG_MVEBU_EFUSE_VHV_GPIO_ACTIVE_LOW) ? 0 : 1)) {
+			printf("Error: VHV gpio enable failed\n");
+			return -EINVAL;
+		}
+		mdelay(5); /* Wait for the VHV power to stabilize */
+	}
+
 	setbits_le32(MVEBU_EFUSE_CONTROL, MVEBU_EFUSE_CTRL_PROGRAM_ENABLE);
 #endif
+
+	return 0;
 }
 
 static void disable_efuse_program(void)
 {
 #ifndef DRY_RUN
 	clrbits_le32(MVEBU_EFUSE_CONTROL, MVEBU_EFUSE_CTRL_PROGRAM_ENABLE);
+
+	if (CONFIG_MVEBU_EFUSE_VHV_GPIO[0]) {
+		if (gpio_direction_output(vhv_gpio,
+		    IS_ENABLED(CONFIG_MVEBU_EFUSE_VHV_GPIO_ACTIVE_LOW) ? 1 : 0))
+			printf("Error: VHV gpio disable failed\n");
+		gpio_free(vhv_gpio);
+		vhv_gpio = 0;
+	}
 #endif
 }
 
@@ -120,13 +155,57 @@ static int prog_efuse(int nr, struct efuse_val *new_val, u32 mask0, u32 mask1)
 	if (!new_val->dwords.d[0] && !new_val->dwords.d[1] && (mask0 | mask1))
 		return 0;
 
-	enable_efuse_program();
+	res = enable_efuse_program();
+	if (res)
+		return res;
 
 	res = do_prog_efuse(efuse, new_val, mask0, mask1);
 
 	disable_efuse_program();
 
 	return res;
+}
+
+int mvebu_prog_ld_efuse(int ld1, u32 word, u32 val)
+{
+	int i, res;
+	u32 line[EFUSE_LD_WORDS];
+
+	res = mvebu_efuse_init_hw();
+	if (res)
+		return res;
+
+	mvebu_read_ld_efuse(ld1, line);
+
+	/* check if lock bit is already programmed */
+	if (line[EFUSE_LD_WORDS - 1])
+		return -EPERM;
+
+	/* check if word is valid */
+	if (word >= EFUSE_LD_WORDS)
+		return -EINVAL;
+
+	/* check if there is some bit for programming */
+	if (val == (line[word] & val))
+		return 0;
+
+	res = enable_efuse_program();
+	if (res)
+		return res;
+
+	mvebu_read_ld_efuse(ld1, line);
+	line[word] |= val;
+
+	for (i = 0; i < EFUSE_LD_WORDS; i++) {
+		writel(line[i], ld_efuses + i);
+		mdelay(1);
+	}
+
+	mdelay(5);
+
+	disable_efuse_program();
+
+	return 0;
 }
 
 int mvebu_efuse_init_hw(void)
@@ -169,6 +248,21 @@ int mvebu_read_efuse(int nr, struct efuse_val *val)
 	return 0;
 }
 
+void mvebu_read_ld_efuse(int ld1, u32 *line)
+{
+	int i;
+
+#ifndef DRY_RUN
+	if (ld1)
+		setbits_le32(MVEBU_EFUSE_CONTROL, MVEBU_EFUSE_LD1_SELECT);
+	else
+		clrbits_le32(MVEBU_EFUSE_CONTROL, MVEBU_EFUSE_LD1_SELECT);
+#endif
+
+	for (i = 0; i < EFUSE_LD_WORDS; i++)
+		line[i] = readl(ld_efuses + i);
+}
+
 int mvebu_write_efuse(int nr, struct efuse_val *val)
 {
 	return prog_efuse(nr, val, ~0, ~0);
@@ -199,7 +293,17 @@ static int valid_prog_words;
 int fuse_read(u32 bank, u32 word, u32 *val)
 {
 	struct efuse_val fuse_line;
+	u32 ld_line[EFUSE_LD_WORDS];
 	int res;
+
+	if ((bank == EFUSE_LD0_LINE || bank == EFUSE_LD1_LINE) && word < EFUSE_LD_WORDS) {
+		res = mvebu_efuse_init_hw();
+		if (res)
+			return res;
+		mvebu_read_ld_efuse(bank == EFUSE_LD1_LINE, ld_line);
+		*val = ld_line[word];
+		return 0;
+	}
 
 	if (bank < EFUSE_LINE_MIN || bank > EFUSE_LINE_MAX || word > 2)
 		return -EINVAL;
@@ -225,6 +329,9 @@ int fuse_sense(u32 bank, u32 word, u32 *val)
 int fuse_prog(u32 bank, u32 word, u32 val)
 {
 	int res = 0;
+
+	if (bank == EFUSE_LD0_LINE || bank == EFUSE_LD1_LINE)
+		return mvebu_prog_ld_efuse(bank == EFUSE_LD1_LINE, word, val);
 
 	/*
 	 * NOTE: Fuse line should be written as whole.

@@ -1,9 +1,6 @@
 menu "Sandbox architecture"
 	depends on SANDBOX
 
-config ARCH_MAP_SYSMEM
-	def_bool y
-
 config SYS_ARCH
 	default "sandbox"
 
@@ -16,15 +13,15 @@ config SYS_CPU
 config SANDBOX64
 	bool "Use 64-bit addresses"
 	select PHYS_64BIT
-	select HOST_64BIT
+	depends on HOST_64BIT
 
 config SANDBOX_RAM_SIZE_MB
 	int "RAM size in MiB"
-	default 128
+	default 256
 	range 64 4095 if !SANDBOX64
 	range 64 268435456 if SANDBOX64
 	help
-	  Memory size of the sandbox in MiB. The default value is 128 MiB.
+	  Memory size of the sandbox in MiB. The default value is 256 MiB.
 	  The minimum value is 64 MiB. The maximum value is 4095 MiB for the
 	  32bit sandbox.
 
@@ -32,27 +29,23 @@ config SANDBOX_SPL
 	bool "Enable SPL for sandbox"
 	select SUPPORT_SPL
 
+config SANDBOX_TPL
+	bool "Enable TPL for sandbox"
+	select SUPPORT_TPL
+
+config SANDBOX_VPL
+	bool "Enable VPL for sandbox"
+	select SUPPORT_VPL
+
 config SYS_CONFIG_NAME
 	default "sandbox_spl" if SANDBOX_SPL
 	default "sandbox" if !SANDBOX_SPL
 
-choice
-	prompt "Run sandbox on 32/64-bit host"
-	default HOST_64BIT
-	help
-	  Sandbox can be built on 32-bit and 64-bit hosts.
-	  The default is to build on a 64-bit host and run
-	  on a 64-bit host. If you want to run sandbox on
-	  a 32-bit host, change it here.
-
 config HOST_32BIT
-	bool "32-bit host"
-	depends on !PHYS_64BIT
+	def_bool ! $(cc-define,_LP64)
 
 config HOST_64BIT
-	bool "64-bit host"
-
-endchoice
+	def_bool $(cc-define,_LP64)
 
 config SANDBOX_CRASH_RESET
 	bool "Reset on crash"
@@ -68,4 +61,20 @@ config SANDBOX_BITS_PER_LONG
 	default 32 if HOST_32BIT
 	default 64 if HOST_64BIT
 
+config SYS_FDT_LOAD_ADDR
+	hex "Address at which to load devicetree"
+	default 0x100
+	help
+	  With sandbox the devicetree is loaded into the emulated RAM. This sets
+	  the address that is used. There must be enough space at this address
+	  to load the full devicetree without it overwriting anything else.
+
+	  See `doc/arch/sandbox.rst` for more information.
+
 endmenu
+
+config FWU_NUM_BANKS
+	default 2
+
+config FWU_NUM_IMAGES_PER_BANK
+	default 2

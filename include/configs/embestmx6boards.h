@@ -18,14 +18,11 @@
 #define PHYS_SDRAM_SIZE		(1u * 1024 * 1024 * 1024)
 
 /* USB Configs */
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET	/* For OTG port */
 #define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS	0
 
 /* MMC Configs */
-#define CONFIG_SYS_FSL_ESDHC_ADDR      0
-
-#define CONFIG_ARP_TIMEOUT     200UL
+#define CFG_SYS_FSL_ESDHC_ADDR      0
 
 /* Physical Memory Map */
 #define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
@@ -34,26 +31,19 @@
 #define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE       IRAM_SIZE
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /* Environment organization */
 
 #if defined(CONFIG_ENV_IS_IN_MMC)
 /* RiOTboard */
 #define CONFIG_FDTFILE	"imx6dl-riotboard.dtb"
-#define CONFIG_SYS_FSL_USDHC_NUM	3
+#define CFG_SYS_FSL_USDHC_NUM	3
 #elif defined(CONFIG_ENV_IS_IN_SPI_FLASH)
 /* MarSBoard */
 #define CONFIG_FDTFILE	"imx6q-marsboard.dtb"
-#define CONFIG_SYS_FSL_USDHC_NUM	2
+#define CFG_SYS_FSL_USDHC_NUM	2
 #endif
 
 /* Framebuffer */
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_VIDEO_BMP_LOGO
 #define CONFIG_IMX_HDMI
 #define CONFIG_IMX_VIDEO_SKIP
 
@@ -62,13 +52,6 @@
 #ifdef CONFIG_SPL
 #include "imx6_spl.h"
 /* RiOTboard */
-#define CONFIG_SYS_SPL_ARGS_ADDR 0x13000000
-#define CONFIG_SPL_FS_LOAD_KERNEL_NAME "uImage"
-#define CONFIG_SPL_FS_LOAD_ARGS_NAME "imx6dl-riotboard.dtb"
-
-#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR        0 /* offset 69KB */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR  0 /* offset 69KB */
-#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS 0 /* offset 69KB */
 
 #endif
 

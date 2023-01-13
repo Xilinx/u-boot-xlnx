@@ -35,12 +35,13 @@
 #include <malloc.h>
 #include <dm/device-internal.h>
 #include <dm/root.h>
+#include <dm/tag.h>
 
-/*
- * EFI attributes of the udevice handled by this driver.
+/**
+ * struct efi_blk_plat - attributes of a block device
  *
- * handle	handle of the controller on which this driver is installed
- * io		block io protocol proxied by this driver
+ * @handle:	handle of the controller on which this driver is installed
+ * @io:		block io protocol proxied by this driver
  */
 struct efi_blk_plat {
 	efi_handle_t		handle;
@@ -48,7 +49,7 @@ struct efi_blk_plat {
 };
 
 /**
- * Read from block device
+ * efi_bl_read() - read from block device
  *
  * @dev:	device
  * @blknr:	first block to be read
@@ -77,7 +78,7 @@ static ulong efi_bl_read(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 }
 
 /**
- * Write to block device
+ * efi_bl_write() - write to block device
  *
  * @dev:	device
  * @blknr:	first block to be write
@@ -107,65 +108,41 @@ static ulong efi_bl_write(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 }
 
 /**
- * Create partions for the block device.
- *
- * @handle:	EFI handle of the block device
- * @dev:	udevice of the block device
- * Return:	number of partitions created
- */
-static int efi_bl_bind_partitions(efi_handle_t handle, struct udevice *dev)
-{
-	struct blk_desc *desc;
-	const char *if_typename;
-
-	desc = dev_get_uclass_plat(dev);
-	if_typename = blk_get_if_type_name(desc->if_type);
-
-	return efi_disk_create_partitions(handle, desc, if_typename,
-					  desc->devnum, dev->name);
-}
-
-/**
- * Create a block device for a handle
+ * efi_bl_create_block_device() - create a block device for a handle
  *
  * @handle:	handle
  * @interface:	block io protocol
- * Return:	0 = success
+ * Return:	status code
  */
-static int efi_bl_bind(efi_handle_t handle, void *interface)
+static efi_status_t
+efi_bl_create_block_device(efi_handle_t handle, void *interface)
 {
-	struct udevice *bdev, *parent = dm_root();
-	int ret, devnum;
+	struct udevice *bdev = NULL, *parent = dm_root();
+	efi_status_t ret;
+	int devnum;
 	char *name;
-	struct efi_object *obj = efi_search_obj(handle);
 	struct efi_block_io *io = interface;
-	int disks;
 	struct efi_blk_plat *plat;
 
-	EFI_PRINT("%s: handle %p, interface %p\n", __func__, handle, io);
-
-	if (!obj)
-		return -ENOENT;
-
-	devnum = blk_find_max_devnum(IF_TYPE_EFI_LOADER);
+	devnum = blk_find_max_devnum(UCLASS_EFI_LOADER);
 	if (devnum == -ENODEV)
 		devnum = 0;
 	else if (devnum < 0)
-		return devnum;
+		return EFI_OUT_OF_RESOURCES;
 
 	name = calloc(1, 18); /* strlen("efiblk#2147483648") + 1 */
 	if (!name)
-		return -ENOMEM;
+		return EFI_OUT_OF_RESOURCES;
 	sprintf(name, "efiblk#%d", devnum);
 
 	/* Create driver model udevice for the EFI block io device */
-	ret = blk_create_device(parent, "efi_blk", name, IF_TYPE_EFI_LOADER,
-				devnum, io->media->block_size,
-				(lbaint_t)io->media->last_block, &bdev);
-	if (ret)
-		return ret;
-	if (!bdev)
-		return -ENOENT;
+	if (blk_create_device(parent, "efi_blk", name, UCLASS_EFI_LOADER,
+			      devnum, io->media->block_size,
+			      (lbaint_t)io->media->last_block, &bdev)) {
+		ret = EFI_OUT_OF_RESOURCES;
+		free(name);
+		goto err;
+	}
 	/* Set the DM_FLAG_NAME_ALLOCED flag to avoid a memory leak */
 	device_set_name_alloced(bdev);
 
@@ -173,16 +150,78 @@ static int efi_bl_bind(efi_handle_t handle, void *interface)
 	plat->handle = handle;
 	plat->io = interface;
 
-	ret = device_probe(bdev);
-	if (ret)
-		return ret;
+	if (efi_link_dev(handle, bdev)) {
+		ret = EFI_OUT_OF_RESOURCES;
+		goto err;
+	}
+
+	if (device_probe(bdev)) {
+		ret = EFI_DEVICE_ERROR;
+		goto err;
+	}
 	EFI_PRINT("%s: block device '%s' created\n", __func__, bdev->name);
 
-	/* Create handles for the partions of the block device */
-	disks = efi_bl_bind_partitions(handle, bdev);
-	EFI_PRINT("Found %d partitions\n", disks);
+	return EFI_SUCCESS;
 
-	return 0;
+err:
+	efi_unlink_dev(handle);
+	if (bdev)
+		device_unbind(bdev);
+
+	return ret;
+}
+
+/**
+ * efi_bl_bind() - bind to a block io protocol
+ *
+ * @this:	driver binding protocol
+ * @handle:	handle
+ * @interface:	block io protocol
+ * Return:	status code
+ */
+static efi_status_t efi_bl_bind(
+			struct efi_driver_binding_extended_protocol *this,
+			efi_handle_t handle, void *interface)
+{
+	efi_status_t ret = EFI_SUCCESS;
+	struct efi_object *obj = efi_search_obj(handle);
+
+	EFI_PRINT("%s: handle %p, interface %p\n", __func__, handle, interface);
+
+	if (!obj || !interface)
+		return EFI_INVALID_PARAMETER;
+
+	if (!handle->dev)
+		ret = efi_bl_create_block_device(handle, interface);
+
+	return ret;
+}
+
+/**
+ * efi_bl_init() - initialize block device driver
+ *
+ * @this:	extended driver binding protocol
+ */
+static efi_status_t
+efi_bl_init(struct efi_driver_binding_extended_protocol *this)
+{
+	int ret;
+
+	ret = event_register("efi_disk add", EVT_DM_POST_PROBE,
+			     efi_disk_probe, this);
+	if (ret) {
+		log_err("Event registration for efi_disk add failed\n");
+		return EFI_OUT_OF_RESOURCES;
+	}
+
+	ret = event_register("efi_disk del", EVT_DM_PRE_REMOVE,
+			     efi_disk_remove, this);
+	if (ret) {
+		log_err("Event registration for efi_disk del failed\n");
+		return EFI_OUT_OF_RESOURCES;
+	}
+
+	return EFI_SUCCESS;
 }
 
 /* Block device driver operators */
@@ -193,9 +232,9 @@ static const struct blk_ops efi_blk_ops = {
 
 /* Identify as block device driver */
 U_BOOT_DRIVER(efi_blk) = {
-	.name			= "efi_blk",
-	.id			= UCLASS_BLK,
-	.ops			= &efi_blk_ops,
+	.name		= "efi_blk",
+	.id		= UCLASS_BLK,
+	.ops		= &efi_blk_ops,
 	.plat_auto	= sizeof(struct efi_blk_plat),
 };
 
@@ -203,6 +242,7 @@ U_BOOT_DRIVER(efi_blk) = {
 static const struct efi_driver_ops driver_ops = {
 	.protocol	= &efi_block_io_guid,
 	.child_protocol = &efi_block_io_guid,
+	.init		= efi_bl_init,
 	.bind		= efi_bl_bind,
 };
 

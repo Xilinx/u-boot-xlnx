@@ -8,20 +8,9 @@
 
 #include "ls1046a_common.h"
 
-#ifndef __ASSEMBLY__
-unsigned long get_board_sys_clk(void);
-#endif
-
-#define CONFIG_SYS_CLK_FREQ		get_board_sys_clk()
-
-#define CONFIG_LAYERSCAPE_NS_ACCESS
-
-#define CONFIG_DIMM_SLOTS_PER_CTLR	1
 /* Physical Memory Map */
-#define CONFIG_CHIP_SELECTS_PER_CTRL	4
 
 #define SPD_EEPROM_ADDRESS		0x51
-#define CONFIG_SYS_SPD_BUS_NUM		0
 
 #ifdef CONFIG_DDR_ECC
 #define CONFIG_MEM_INIT_VALUE           0xdeadbeef
@@ -43,34 +32,27 @@ unsigned long get_board_sys_clk(void);
 
 /* IFC */
 #if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
-#define	CONFIG_FSL_IFC
 /*
  * CONFIG_SYS_FLASH_BASE has the final address (core view)
  * CONFIG_SYS_FLASH_BASE_PHYS has the final address (IFC view)
  * CONFIG_SYS_FLASH_BASE_PHYS_EARLY has the temporary IFC address
- * CONFIG_SYS_TEXT_BASE is linked to 0x60000000 for booting
+ * CONFIG_TEXT_BASE is linked to 0x60000000 for booting
  */
 #define CONFIG_SYS_FLASH_BASE			0x60000000
 #define CONFIG_SYS_FLASH_BASE_PHYS		CONFIG_SYS_FLASH_BASE
 #define CONFIG_SYS_FLASH_BASE_PHYS_EARLY	0x00000000
 
 #ifdef CONFIG_MTD_NOR_FLASH
-#define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45	/* count down from 45/5: 9..1 */
 #endif
 #endif
 
 /* LPUART */
 #ifdef CONFIG_LPUART
-#define CONFIG_LPUART_32B_REG
 #define CFG_UART_MUX_MASK	0x6
 #define CFG_UART_MUX_SHIFT	1
 #define CFG_LPUART_EN		0x2
 #endif
-
-/* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM		0
 
 /*
  * IFC Definitions
@@ -104,16 +86,9 @@ unsigned long get_board_sys_clk(void);
 					FTIM2_NOR_TWP(0x1c))
 #define CONFIG_SYS_NOR_FTIM3		0
 
-#define CONFIG_SYS_MAX_FLASH_BANKS	2	/* number of banks */
-#define CONFIG_SYS_MAX_FLASH_SECT	1024	/* sectors per device */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
-
-#define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_FLASH_BANKS_LIST	{CONFIG_SYS_FLASH_BASE_PHYS, \
 					CONFIG_SYS_FLASH_BASE_PHYS + 0x8000000}
 
-#define CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS
 #define CONFIG_SYS_WRITE_SWAPPED_DATA
 
 /*
@@ -152,24 +127,20 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_NAND_FTIM3           0x0
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
 #endif
 
 #ifdef CONFIG_NAND_BOOT
-#define CONFIG_SPL_PAD_TO		0x40000		/* block aligned */
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	(768 << 10)
 #endif
 
 #if defined(CONFIG_TFABOOT) || \
 	defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
-#define CONFIG_QIXIS_I2C_ACCESS
 #endif
 
 /*
  * QIXIS Definitions
  */
-#define CONFIG_FSL_QIXIS
 
 #ifdef CONFIG_FSL_QIXIS
 #define QIXIS_BASE			0x7fb00000
@@ -339,12 +310,6 @@ unsigned long get_board_sys_clk(void);
 #define I2C_VOL_MONITOR_BUS_V_OVF      0x1
 #define I2C_VOL_MONITOR_BUS_V_SHIFT    3
 
-#define CONFIG_VID_FLS_ENV		"ls1046aqds_vdd_mv"
-#ifndef CONFIG_SPL_BUILD
-#define CONFIG_VID
-#endif
-#define CONFIG_VOL_MONITOR_IR36021_SET
-#define CONFIG_VOL_MONITOR_INA220
 /* The lowest and highest voltage allowed for LS1046AQDS */
 #define VDD_MV_MIN			819
 #define VDD_MV_MAX			1212
@@ -353,16 +318,10 @@ unsigned long get_board_sys_clk(void);
  * Miscellaneous configurable options
  */
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-
-#define CONFIG_SYS_MONITOR_BASE CONFIG_SYS_TEXT_BASE    /* start of monitor */
-
 /*
  * Environment
  */
 
-#undef CONFIG_BOOTCOMMAND
 #ifdef CONFIG_TFABOOT
 #define IFC_NAND_BOOTCOMMAND "run distro_bootcmd; run nand_bootcmd; "	\
 			   "env exists secureboot && esbc_halt;;"
@@ -372,20 +331,6 @@ unsigned long get_board_sys_clk(void);
 			   "env exists secureboot && esbc_halt;;"
 #define SD_BOOTCOMMAND "run distro_bootcmd; run sd_bootcmd; "	\
 			   "env exists secureboot && esbc_halt;;"
-#else
-#if defined(CONFIG_QSPI_BOOT)
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run nor_bootcmd; "	\
-			   "env exists secureboot && esbc_halt;;"
-#elif defined(CONFIG_NAND_BOOT)
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run nand_bootcmd; "	\
-			   "env exists secureboot && esbc_halt;;"
-#elif defined(CONFIG_SD_BOOT)
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run sd_bootcmd; "	\
-			   "env exists secureboot && esbc_halt;;"
-#else
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run nor_bootcmd; "	\
-			   "env exists secureboot && esbc_halt;;"
-#endif
 #endif
 
 #include <asm/fsl_secure_boot.h>

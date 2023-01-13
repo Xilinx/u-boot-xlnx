@@ -53,7 +53,12 @@ enum efuse_line {
 
 	EFUSE_LINE_MIN = 0,
 	EFUSE_LINE_MAX = 63,
+
+	EFUSE_LD0_LINE = 64,
+	EFUSE_LD1_LINE = 65,
 };
+
+#define EFUSE_LD_WORDS 9
 
 #endif
 
@@ -64,5 +69,9 @@ int mvebu_read_efuse(int nr, struct efuse_val *val);
 int mvebu_write_efuse(int nr, struct efuse_val *val);
 
 int mvebu_lock_efuse(int nr);
+
+void mvebu_read_ld_efuse(int ld1, u32 *line);
+
+int mvebu_prog_ld_efuse(int ld1, u32 word, u32 val);
 
 #endif

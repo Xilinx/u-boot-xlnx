@@ -21,11 +21,8 @@
 #include <linux/libfdt.h>
 #include <mapmem.h>
 #include <asm/io.h>
+#include <dm/ofnode.h>
 #include <tee/optee.h>
-
-#ifndef CONFIG_SYS_FDT_PAD
-#define CONFIG_SYS_FDT_PAD 0x3000
-#endif
 
 /* adding a ramdisk needs 0x44 bytes in version 2008.10 */
 #define FDT_RAMDISK_OVERHEAD	0x80
@@ -40,9 +37,9 @@ static void fdt_error(const char *msg)
 }
 
 #if CONFIG_IS_ENABLED(LEGACY_IMAGE_FORMAT)
-static const image_header_t *image_get_fdt(ulong fdt_addr)
+static const struct legacy_img_hdr *image_get_fdt(ulong fdt_addr)
 {
-	const image_header_t *fdt_hdr = map_sysmem(fdt_addr, 0);
+	const struct legacy_img_hdr *fdt_hdr = map_sysmem(fdt_addr, 0);
 
 	image_print_contents(fdt_hdr);
 
@@ -165,8 +162,11 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 {
 	void	*fdt_blob = *of_flat_tree;
 	void	*of_start = NULL;
+	u64	start, size, usable;
 	char	*fdt_high;
+	ulong	mapsize, low;
 	ulong	of_len = 0;
+	int	bank;
 	int	err;
 	int	disable_relocation = 0;
 
@@ -186,30 +186,59 @@ int boot_relocate_fdt(struct lmb *lmb, char **of_flat_tree, ulong *of_size)
 	/* If fdt_high is set use it to select the relocation address */
 	fdt_high = env_get("fdt_high");
 	if (fdt_high) {
-		void *desired_addr = (void *)hextoul(fdt_high, NULL);
+		ulong desired_addr = hextoul(fdt_high, NULL);
+		ulong addr;
 
-		if (((ulong) desired_addr) == ~0UL) {
+		if (desired_addr == ~0UL) {
 			/* All ones means use fdt in place */
 			of_start = fdt_blob;
-			lmb_reserve(lmb, (ulong)of_start, of_len);
+			lmb_reserve(lmb, map_to_sysmem(of_start), of_len);
 			disable_relocation = 1;
 		} else if (desired_addr) {
-			of_start =
-			    (void *)(ulong) lmb_alloc_base(lmb, of_len, 0x1000,
-							   (ulong)desired_addr);
+			addr = lmb_alloc_base(lmb, of_len, 0x1000,
+					      desired_addr);
+			of_start = map_sysmem(addr, of_len);
 			if (of_start == NULL) {
 				puts("Failed using fdt_high value for Device Tree");
 				goto error;
 			}
 		} else {
-			of_start =
-			    (void *)(ulong) lmb_alloc(lmb, of_len, 0x1000);
+			addr = lmb_alloc(lmb, of_len, 0x1000);
+			of_start = map_sysmem(addr, of_len);
 		}
 	} else {
-		of_start =
-		    (void *)(ulong) lmb_alloc_base(lmb, of_len, 0x1000,
-						   env_get_bootm_mapsize()
-						   + env_get_bootm_low());
+		mapsize = env_get_bootm_mapsize();
+		low = env_get_bootm_low();
+		of_start = NULL;
+
+		for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
+			start = gd->bd->bi_dram[bank].start;
+			size = gd->bd->bi_dram[bank].size;
+
+			/* DRAM bank addresses are too low, skip it. */
+			if (start + size < low)
+				continue;
+
+			usable = min(size, (u64)mapsize);
+
+			/*
+			 * At least part of this DRAM bank is usable, try
+			 * using it for LMB allocation.
+			 */
+			of_start = map_sysmem((ulong)lmb_alloc_base(lmb,
+				    of_len, 0x1000, start + usable), of_len);
+			/* Allocation succeeded, use this block. */
+			if (of_start != NULL)
+				break;
+
+			/*
+			 * Reduce the mapping size in the next bank
+			 * by the size of attempt in current bank.
+			 */
+			mapsize -= usable - max(start, (u64)low);
+			if (!mapsize)
+				break;
+		}
 	}
 
 	if (of_start == NULL) {
@@ -258,11 +287,11 @@ error:
  * @select: name of FDT to select, or NULL for any
  * @arch: expected FDT architecture
  * @fdt_addrp: pointer to a ulong variable, will hold FDT pointer
- * @return 0 if OK, -ENOPKG if no FDT (but an error should not be reported),
+ * Return: 0 if OK, -ENOPKG if no FDT (but an error should not be reported),
  *	other -ve value on other error
  */
 
-static int select_fdt(bootm_headers_t *images, const char *select, u8 arch,
+static int select_fdt(struct bootm_headers *images, const char *select, u8 arch,
 		      ulong *fdt_addrp)
 {
 	const char *buf;
@@ -329,7 +358,7 @@ static int select_fdt(bootm_headers_t *images, const char *select, u8 arch,
 	switch (genimg_get_format(buf)) {
 #if CONFIG_IS_ENABLED(LEGACY_IMAGE_FORMAT)
 	case IMAGE_FORMAT_LEGACY: {
-			const image_header_t *fdt_hdr;
+			const struct legacy_img_hdr *fdt_hdr;
 			ulong load, load_end;
 			ulong image_start, image_data, image_end;
 
@@ -441,7 +470,7 @@ static int select_fdt(bootm_headers_t *images, const char *select, u8 arch,
  *     of_flat_tree and of_size are set to 0 if no fdt exists
  */
 int boot_get_fdt(int flag, int argc, char *const argv[], uint8_t arch,
-		 bootm_headers_t *images, char **of_flat_tree, ulong *of_size)
+		 struct bootm_headers *images, char **of_flat_tree, ulong *of_size)
 {
 	ulong		img_addr;
 	ulong		fdt_addr;
@@ -573,7 +602,7 @@ __weak int arch_fixup_fdt(void *blob)
 	return 0;
 }
 
-int image_setup_libfdt(bootm_headers_t *images, void *blob,
+int image_setup_libfdt(struct bootm_headers *images, void *blob,
 		       int of_size, struct lmb *lmb)
 {
 	ulong *initrd_start = &images->initrd_start;
@@ -600,6 +629,12 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 		       fdt_strerror(fdt_ret));
 		goto err;
 	}
+
+	/* Store name of configuration node as u-boot,bootconf in /chosen node */
+	if (images->fit_uname_cfg)
+		fdt_find_and_setprop(blob, "/chosen", "u-boot,bootconf",
+					images->fit_uname_cfg,
+					strlen(images->fit_uname_cfg) + 1, 1);
 
 	/* Update ethernet nodes */
 	fdt_fixup_ethernet(blob);
@@ -628,6 +663,20 @@ int image_setup_libfdt(bootm_headers_t *images, void *blob,
 			printf("ERROR: system-specific fdt fixup failed: %s\n",
 			       fdt_strerror(fdt_ret));
 			goto err;
+		}
+	}
+	if (!of_live_active() && CONFIG_IS_ENABLED(EVENT)) {
+		struct event_ft_fixup fixup;
+
+		fixup.tree = oftree_from_fdt(blob);
+		fixup.images = images;
+		if (oftree_valid(fixup.tree)) {
+			ret = event_notify(EVT_FT_FIXUP, &fixup, sizeof(fixup));
+			if (ret) {
+				printf("ERROR: fdt fixup event failed: %d\n",
+				       ret);
+				goto err;
+			}
 		}
 	}
 

@@ -17,7 +17,7 @@ static struct efi_runtime_services *runtime;
  *
  * @handle:	handle of the loaded image
  * @systable:	system table
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(const efi_handle_t handle,
 		 const struct efi_system_table *systable)
@@ -29,11 +29,11 @@ static int setup(const efi_handle_t handle,
 /*
  * Execute unit test.
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int execute(void)
 {
-	u16 reset_data[] = L"Reset by selftest";
+	u16 reset_data[] = u"Reset by selftest";
 
 	runtime->reset_system(EFI_RESET_COLD, EFI_SUCCESS,
 			      sizeof(reset_data), reset_data);

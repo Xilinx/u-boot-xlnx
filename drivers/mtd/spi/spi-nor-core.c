@@ -10,7 +10,7 @@
  */
 
 #include <common.h>
-#include <flash.h>
+#include <display_options.h>
 #include <log.h>
 #include <watchdog.h>
 #include <dm.h>
@@ -65,6 +65,10 @@ struct sfdp_parameter_header {
 #define SFDP_SECTOR_MAP_ID	0xff81	/* Sector Map Table */
 #define SFDP_SST_ID		0x01bf	/* Manufacturer specific Table */
 #define SFDP_PROFILE1_ID	0xff05	/* xSPI Profile 1.0 Table */
+#define SFDP_SCCR_MAP_ID	0xff87	/*
+					 * Status, Control and Configuration
+					 * Register Map.
+					 */
 
 #define SFDP_SIGNATURE		0x50444653U
 #define SFDP_JESD216_MAJOR	1
@@ -157,6 +161,7 @@ struct sfdp_header {
 #define BFPT_DWORD15_QER_SR2_BIT1		(0x5UL << 20) /* Spansion */
 
 #define BFPT_DWORD16_SOFT_RST			BIT(12)
+#define BFPT_DWORD16_EX4B_PWRCYC		BIT(21)
 
 #define BFPT_DWORD18_CMD_EXT_MASK		GENMASK(30, 29)
 #define BFPT_DWORD18_CMD_EXT_REP		(0x0UL << 29) /* Repeat */
@@ -173,6 +178,9 @@ struct sfdp_header {
 #define PROFILE1_DWORD5_DUMMY_133MHZ		GENMASK(21, 17)
 #define PROFILE1_DWORD5_DUMMY_100MHZ		GENMASK(11, 7)
 #define PROFILE1_DUMMY_DEFAULT			20
+
+/* Status, Control and Configuration Register Map(SCCR) */
+#define SCCR_DWORD22_OCTAL_DTR_EN_VOLATILE      BIT(31)
 
 struct sfdp_bfpt {
 	u32	dwords[BFPT_DWORD_MAX];
@@ -239,9 +247,9 @@ static u8 spi_nor_get_cmd_ext(const struct spi_nor *nor,
  *			need to be initialized.
  * @proto:		the protocol from which the properties need to be set.
  */
-static void spi_nor_setup_op(const struct spi_nor *nor,
-			     struct spi_mem_op *op,
-			     const enum spi_nor_protocol proto)
+void spi_nor_setup_op(const struct spi_nor *nor,
+		      struct spi_mem_op *op,
+		      const enum spi_nor_protocol proto)
 {
 	u8 ext;
 
@@ -322,10 +330,10 @@ static int spansion_read_any_reg(struct spi_nor *nor, u32 addr, u8 dummy,
 				 u8 *val)
 {
 	struct spi_mem_op op =
-			SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_RDAR, 1),
-				   SPI_MEM_OP_ADDR(nor->addr_width, addr, 1),
-				   SPI_MEM_OP_DUMMY(dummy / 8, 1),
-				   SPI_MEM_OP_DATA_IN(1, NULL, 1));
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_RDAR, 1),
+			   SPI_MEM_OP_ADDR(nor->addr_mode_nbytes, addr, 1),
+			   SPI_MEM_OP_DUMMY(dummy / 8, 1),
+			   SPI_MEM_OP_DATA_IN(1, NULL, 1));
 
 	return spi_nor_read_write_reg(nor, &op, val);
 }
@@ -333,10 +341,10 @@ static int spansion_read_any_reg(struct spi_nor *nor, u32 addr, u8 dummy,
 static int spansion_write_any_reg(struct spi_nor *nor, u32 addr, u8 val)
 {
 	struct spi_mem_op op =
-			SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WRAR, 1),
-				   SPI_MEM_OP_ADDR(nor->addr_width, addr, 1),
-				   SPI_MEM_OP_NO_DUMMY,
-				   SPI_MEM_OP_DATA_OUT(1, NULL, 1));
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WRAR, 1),
+			   SPI_MEM_OP_ADDR(nor->addr_mode_nbytes, addr, 1),
+			   SPI_MEM_OP_NO_DUMMY,
+			   SPI_MEM_OP_DATA_OUT(1, NULL, 1));
 
 	return spi_nor_read_write_reg(nor, &op, &val);
 }
@@ -362,13 +370,29 @@ static ssize_t spi_nor_read_data(struct spi_nor *nor, loff_t from, size_t len,
 
 	while (remaining) {
 		op.data.nbytes = remaining < UINT_MAX ? remaining : UINT_MAX;
-		ret = spi_mem_adjust_op_size(nor->spi, &op);
-		if (ret)
-			return ret;
 
-		ret = spi_mem_exec_op(nor->spi, &op);
-		if (ret)
-			return ret;
+		if (CONFIG_IS_ENABLED(SPI_DIRMAP) && nor->dirmap.rdesc) {
+			/*
+			 * Record current operation information which may be used
+			 * when the address or data length exceeds address mapping.
+			 */
+			memcpy(&nor->dirmap.rdesc->info.op_tmpl, &op,
+			       sizeof(struct spi_mem_op));
+			ret = spi_mem_dirmap_read(nor->dirmap.rdesc,
+						  op.addr.val, op.data.nbytes,
+						  op.data.buf.in);
+			if (ret < 0)
+				return ret;
+			op.data.nbytes = ret;
+		} else {
+			ret = spi_mem_adjust_op_size(nor->spi, &op);
+			if (ret)
+				return ret;
+
+			ret = spi_mem_exec_op(nor->spi, &op);
+			if (ret)
+				return ret;
+		}
 
 		op.addr.val += op.data.nbytes;
 		remaining -= op.data.nbytes;
@@ -393,14 +417,21 @@ static ssize_t spi_nor_write_data(struct spi_nor *nor, loff_t to, size_t len,
 
 	spi_nor_setup_op(nor, &op, nor->write_proto);
 
-	ret = spi_mem_adjust_op_size(nor->spi, &op);
-	if (ret)
-		return ret;
-	op.data.nbytes = len < op.data.nbytes ? len : op.data.nbytes;
+	if (CONFIG_IS_ENABLED(SPI_DIRMAP) && nor->dirmap.wdesc) {
+		memcpy(&nor->dirmap.wdesc->info.op_tmpl, &op,
+		       sizeof(struct spi_mem_op));
+		op.data.nbytes = spi_mem_dirmap_write(nor->dirmap.wdesc, op.addr.val,
+						      op.data.nbytes, op.data.buf.out);
+	} else {
+		ret = spi_mem_adjust_op_size(nor->spi, &op);
+		if (ret)
+			return ret;
+		op.data.nbytes = len < op.data.nbytes ? len : op.data.nbytes;
 
-	ret = spi_mem_exec_op(nor->spi, &op);
-	if (ret)
-		return ret;
+		ret = spi_mem_exec_op(nor->spi, &op);
+		if (ret)
+			return ret;
+	}
 
 	return op.data.nbytes;
 }
@@ -1001,19 +1032,9 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 	instr->state = MTD_ERASING;
 	addr_known = true;
 
-	if (nor->flash_is_locked) {
-		write_disable(nor);
-
-		if (nor->flash_is_locked(nor, addr, len) > 0) {
-			printf("offset 0x%x is protected and cannot be erased\n",
-			       addr);
-			return -EINVAL;
-		}
-	}
-
 	while (len) {
-		WATCHDOG_RESET();
-		if (ctrlc()) {
+		schedule();
+		if (!IS_ENABLED(CONFIG_SPL_BUILD) && ctrlc()) {
 			addr_known = false;
 			ret = -EINTR;
 			goto erase_err;
@@ -1413,13 +1434,13 @@ static int stm_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 }
 
 /*
- * Check if a region of the flash is (completely) locked. See stm_lock() for
+ * Check if a region of the flash is (completely) unlocked. See stm_lock() for
  * more info.
  *
- * Returns 1 if entire region is locked, 0 if any portion is unlocked, and
+ * Returns 1 if entire region is unlocked, 0 if any portion is locked, and
  * negative on errors.
  */
-static int stm_is_locked(struct spi_nor *nor, loff_t ofs, uint64_t len)
+static int stm_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
 	int status;
 
@@ -1427,7 +1448,7 @@ static int stm_is_locked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	if (status < 0)
 		return status;
 
-	return stm_is_locked_sr(nor, ofs, len, status);
+	return stm_is_unlocked_sr(nor, ofs, len, status);
 }
 #endif /* CONFIG_SPI_FLASH_STMICRO */
 
@@ -1548,6 +1569,10 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 			read_len = len;
 		else
 			read_len = rem_bank_len;
+
+		ret = spi_nor_wait_till_ready(nor);
+		if (ret)
+			goto read_err;
 
 		ret = nor->read(nor, offset, read_len, buf);
 		if (ret == 0) {
@@ -1739,21 +1764,21 @@ static int sst26_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 }
 
 /*
- * Returns EACCES (positive value) if region is locked, 0 if region is unlocked,
- * and negative on errors.
+ * Returns EACCES (positive value) if region is (partially) locked, 0 if region
+ * is completely unlocked, and negative on errors.
  */
-static int sst26_is_locked(struct spi_nor *nor, loff_t ofs, uint64_t len)
+static int sst26_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
 	/*
-	 * is_locked function is used for check before reading or erasing flash
-	 * region, so offset and length might be not 64k allighned, so adjust
-	 * them to be 64k allighned as sst26_lock_ctl works only with 64k
-	 * allighned regions.
+	 * is_unlocked function is used for check before reading or erasing
+	 * flash region, so offset and length might be not 64k aligned, so
+	 * adjust them to be 64k aligned as sst26_lock_ctl works only with 64k
+	 * aligned regions.
 	 */
 	ofs -= ofs & (SZ_64K - 1);
 	len = len & (SZ_64K - 1) ? (len & ~(SZ_64K - 1)) + SZ_64K : len;
 
-	return sst26_lock_ctl(nor, ofs, len, SST26_CTL_CHECK);
+	return !sst26_lock_ctl(nor, ofs, len, SST26_CTL_CHECK);
 }
 
 static int sst_write_byteprogram(struct spi_nor *nor, loff_t to, size_t len,
@@ -1897,7 +1922,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 	for (i = 0; i < len; ) {
 		ssize_t written;
 		loff_t addr = to + i;
-		WATCHDOG_RESET();
+		schedule();
 
 		/*
 		 * If page_size is a power of two, the offset can be quickly
@@ -1935,6 +1960,11 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 
 		page_remain = min_t(size_t, nor->page_size - page_offset,
 				    len - i);
+
+		ret = spi_nor_wait_till_ready(nor);
+		if (ret)
+			goto write_err;
+
 		write_enable(nor);
 		ret = nor->write(nor, offset, page_remain, buf + i);
 		if (ret < 0)
@@ -2491,11 +2521,14 @@ static int spi_nor_parse_bfpt(struct spi_nor *nor,
 	/* Number of address bytes. */
 	switch (bfpt.dwords[BFPT_DWORD(1)] & BFPT_DWORD1_ADDRESS_BYTES_MASK) {
 	case BFPT_DWORD1_ADDRESS_BYTES_3_ONLY:
+	case BFPT_DWORD1_ADDRESS_BYTES_3_OR_4:
 		nor->addr_width = 3;
+		nor->addr_mode_nbytes = 3;
 		break;
 
 	case BFPT_DWORD1_ADDRESS_BYTES_4_ONLY:
 		nor->addr_width = 4;
+		nor->addr_mode_nbytes = 4;
 		break;
 
 	default:
@@ -2742,6 +2775,44 @@ out:
 }
 
 /**
+ * spi_nor_parse_sccr() - Parse the Status, Control and Configuration Register
+ *			  Map.
+ * @nor:		  pointer to a 'struct spi_nor'
+ * @sccr_header:	  pointer to the 'struct sfdp_parameter_header' describing
+ * 			  the SCCR Map table length and version.
+ *
+ * Return: 0 on success, -errno otherwise.
+ */
+static int spi_nor_parse_sccr(struct spi_nor *nor,
+			      const struct sfdp_parameter_header *sccr_header)
+{
+	u32 *table, addr;
+	size_t len;
+	int ret, i;
+
+	len = sccr_header->length * sizeof(*table);
+	table = kmalloc(len, GFP_KERNEL);
+	if (!table)
+		return -ENOMEM;
+
+	addr = SFDP_PARAM_HEADER_PTP(sccr_header);
+	ret = spi_nor_read_sfdp(nor, addr, len, table);
+	if (ret)
+		goto out;
+
+	/* Fix endianness of the table DWORDs. */
+	for (i = 0; i < sccr_header->length; i++)
+		table[i] = le32_to_cpu(table[i]);
+
+	if (FIELD_GET(SCCR_DWORD22_OCTAL_DTR_EN_VOLATILE, table[21]))
+		nor->flags |= SNOR_F_IO_MODE_EN_VOLATILE;
+
+out:
+	kfree(table);
+	return ret;
+}
+
+/**
  * spi_nor_parse_sfdp() - parse the Serial Flash Discoverable Parameters.
  * @nor:		pointer to a 'struct spi_nor'
  * @params:		pointer to the 'struct spi_nor_flash_parameter' to be
@@ -2845,6 +2916,10 @@ static int spi_nor_parse_sfdp(struct spi_nor *nor,
 
 		case SFDP_PROFILE1_ID:
 			err = spi_nor_parse_profile1(nor, param_header, params);
+			break;
+
+		case SFDP_SCCR_MAP_ID:
+			err = spi_nor_parse_sccr(nor, param_header);
 			break;
 
 		default:
@@ -2972,7 +3047,8 @@ static int spi_nor_init_params(struct spi_nor *nor,
 	 * Since xSPI Page Program opcode is backward compatible with
 	 * Legacy SPI, use Legacy SPI opcode there as well.
 	 */
-	if (CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE)) {
+	if (CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE) && info->flags & SPI_NOR_OCTAL_DTR_PP) {
+		params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
 		spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP_8_8_8_DTR],
 					SPINOR_OP_PP, SNOR_PROTO_8_8_8_DTR);
 	}
@@ -3508,10 +3584,24 @@ static int s25hx_t_post_bfpt_fixup(struct spi_nor *nor,
 	nor->erase_opcode = SPINOR_OP_SE_4B;
 	nor->mtd.erasesize = nor->info->sector_size;
 
-	ret = set_4byte(nor, nor->info, 1);
-	if (ret)
-		return ret;
-	nor->addr_width = 4;
+	/*
+	 * The default address mode in multi-die package parts (>1Gb) may be
+	 * 3- or 4-byte, depending on model number. BootROM code in some SoCs
+	 * use 3-byte mode for backward compatibility and should switch to
+	 * 4-byte mode after BootROM phase. Since registers in the 2nd die are
+	 * mapped within 32-bit address space, we need to make sure the flash is
+	 * in 4-byte address mode. The default address mode can be distinguished
+	 * by BFPT 16th DWORD. Power cycle exits 4-byte address mode if default
+	 * is 3-byte address mode.
+	 */
+	if (params->size > SZ_128M) {
+		if (bfpt->dwords[BFPT_DWORD(16)] & BFPT_DWORD16_EX4B_PWRCYC) {
+			ret = set_4byte(nor, nor->info, 1);
+			if (ret)
+				return ret;
+		}
+		nor->addr_mode_nbytes = 4;
+	}
 
 	/*
 	 * The page_size is set to 512B from BFPT, but it actually depends on
@@ -3568,7 +3658,7 @@ static struct spi_nor_fixups s25fl256l_fixups = {
 };
 #endif
 
-#ifdef CONFIG_SPI_FLASH_S28HS512T
+#ifdef CONFIG_SPI_FLASH_S28HX_T
 /**
  * spi_nor_cypress_octal_dtr_enable() - Enable octal DTR on Cypress flashes.
  * @nor:		pointer to a 'struct spi_nor'
@@ -3627,15 +3717,15 @@ static int spi_nor_cypress_octal_dtr_enable(struct spi_nor *nor)
 	return 0;
 }
 
-static int s28hs512t_erase_non_uniform(struct spi_nor *nor, loff_t addr)
+static int s28hx_t_erase_non_uniform(struct spi_nor *nor, loff_t addr)
 {
 	/* Factory default configuration: 32 x 4 KiB sectors at bottom. */
 	return spansion_erase_non_uniform(nor, addr, SPINOR_OP_S28_SE_4K,
 					  0, SZ_128K);
 }
 
-static int s28hs512t_setup(struct spi_nor *nor, const struct flash_info *info,
-			   const struct spi_nor_flash_parameter *params)
+static int s28hx_t_setup(struct spi_nor *nor, const struct flash_info *info,
+			 const struct spi_nor_flash_parameter *params)
 {
 	struct spi_mem_op op;
 	u8 buf;
@@ -3662,19 +3752,19 @@ static int s28hs512t_setup(struct spi_nor *nor, const struct flash_info *info,
 		return ret;
 
 	if (!(buf & SPINOR_REG_CYPRESS_CFR3V_UNISECT))
-		nor->erase = s28hs512t_erase_non_uniform;
+		nor->erase = s28hx_t_erase_non_uniform;
 
 	return spi_nor_default_setup(nor, info, params);
 }
 
-static void s28hs512t_default_init(struct spi_nor *nor)
+static void s28hx_t_default_init(struct spi_nor *nor)
 {
 	nor->octal_dtr_enable = spi_nor_cypress_octal_dtr_enable;
-	nor->setup = s28hs512t_setup;
+	nor->setup = s28hx_t_setup;
 }
 
-static void s28hs512t_post_sfdp_fixup(struct spi_nor *nor,
-				      struct spi_nor_flash_parameter *params)
+static void s28hx_t_post_sfdp_fixup(struct spi_nor *nor,
+				    struct spi_nor_flash_parameter *params)
 {
 	/*
 	 * On older versions of the flash the xSPI Profile 1.0 table has the
@@ -3704,10 +3794,10 @@ static void s28hs512t_post_sfdp_fixup(struct spi_nor *nor,
 	params->rdsr_addr_nbytes = 4;
 }
 
-static int s28hs512t_post_bfpt_fixup(struct spi_nor *nor,
-				     const struct sfdp_parameter_header *bfpt_header,
-				     const struct sfdp_bfpt *bfpt,
-				     struct spi_nor_flash_parameter *params)
+static int s28hx_t_post_bfpt_fixup(struct spi_nor *nor,
+				   const struct sfdp_parameter_header *bfpt_header,
+				   const struct sfdp_bfpt *bfpt,
+				   struct spi_nor_flash_parameter *params)
 {
 	struct spi_mem_op op;
 	u8 buf;
@@ -3744,12 +3834,12 @@ static int s28hs512t_post_bfpt_fixup(struct spi_nor *nor,
 	return 0;
 }
 
-static struct spi_nor_fixups s28hs512t_fixups = {
-	.default_init = s28hs512t_default_init,
-	.post_sfdp = s28hs512t_post_sfdp_fixup,
-	.post_bfpt = s28hs512t_post_bfpt_fixup,
+static struct spi_nor_fixups s28hx_t_fixups = {
+	.default_init = s28hx_t_default_init,
+	.post_sfdp = s28hx_t_post_sfdp_fixup,
+	.post_bfpt = s28hx_t_post_bfpt_fixup,
 };
-#endif /* CONFIG_SPI_FLASH_S28HS512T */
+#endif /* CONFIG_SPI_FLASH_S28HX_T */
 
 #ifdef CONFIG_SPI_FLASH_MT35XU
 static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
@@ -3837,6 +3927,84 @@ static struct spi_nor_fixups mt35xu512aba_fixups = {
 };
 #endif /* CONFIG_SPI_FLASH_MT35XU */
 
+#if CONFIG_IS_ENABLED(SPI_FLASH_MACRONIX)
+/**
+ * spi_nor_macronix_octal_dtr_enable() - Enable octal DTR on Macronix flashes.
+ * @nor:	pointer to a 'struct spi_nor'
+ *
+ * Set Macronix max dummy cycles 20 to allow the flash to run at fastest frequency.
+ *
+ * Return: 0 on success, -errno otherwise.
+ */
+static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
+{
+	struct spi_mem_op op;
+	int ret;
+	u8 buf;
+
+	ret = write_enable(nor);
+	if (ret)
+		return ret;
+
+	buf = SPINOR_REG_MXIC_DC_20;
+	op = (struct spi_mem_op)
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WR_CR2, 1),
+			   SPI_MEM_OP_ADDR(4, SPINOR_REG_MXIC_CR2_DC, 1),
+			   SPI_MEM_OP_NO_DUMMY,
+			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+
+	ret = spi_mem_exec_op(nor->spi, &op);
+	if (ret)
+		return ret;
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret)
+		return ret;
+
+	nor->read_dummy = MXIC_MAX_DC;
+	ret = write_enable(nor);
+	if (ret)
+		return ret;
+
+	buf = SPINOR_REG_MXIC_OPI_DTR_EN;
+	op = (struct spi_mem_op)
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WR_CR2, 1),
+			   SPI_MEM_OP_ADDR(4, SPINOR_REG_MXIC_CR2_MODE, 1),
+			   SPI_MEM_OP_NO_DUMMY,
+			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+
+	ret = spi_mem_exec_op(nor->spi, &op);
+	if (ret) {
+		dev_err(nor->dev, "Failed to enable octal DTR mode\n");
+		return ret;
+	}
+	nor->reg_proto = SNOR_PROTO_8_8_8_DTR;
+
+	return 0;
+}
+
+static void macronix_octal_default_init(struct spi_nor *nor)
+{
+	nor->octal_dtr_enable = spi_nor_macronix_octal_dtr_enable;
+}
+
+static void macronix_octal_post_sfdp_fixup(struct spi_nor *nor,
+					 struct spi_nor_flash_parameter *params)
+{
+	/*
+	 * Adding SNOR_HWCAPS_PP_8_8_8_DTR in hwcaps.mask when
+	 * SPI_NOR_OCTAL_DTR_READ flag exists.
+	 */
+	if (params->hwcaps.mask & SNOR_HWCAPS_READ_8_8_8_DTR)
+		params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
+}
+
+static struct spi_nor_fixups macronix_octal_fixups = {
+	.default_init = macronix_octal_default_init,
+	.post_sfdp = macronix_octal_post_sfdp_fixup,
+};
+#endif /* CONFIG_SPI_FLASH_MACRONIX */
+
 /** spi_nor_octal_dtr_enable() - enable Octal DTR I/O if needed
  * @nor:                 pointer to a 'struct spi_nor'
  *
@@ -3851,6 +4019,9 @@ static int spi_nor_octal_dtr_enable(struct spi_nor *nor)
 
 	if (!(nor->read_proto == SNOR_PROTO_8_8_8_DTR &&
 	      nor->write_proto == SNOR_PROTO_8_8_8_DTR))
+		return 0;
+
+	if (!(nor->flags & SNOR_F_IO_MODE_EN_VOLATILE))
 		return 0;
 
 	ret = nor->octal_dtr_enable(nor);
@@ -4064,11 +4235,14 @@ static void micron_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	}
 }
 
-static int micron_is_locked_sr(struct spi_nor *nor, loff_t ofs, uint64_t len,
+static int micron_is_unlocked_sr(struct spi_nor *nor, loff_t ofs, uint64_t len,
 			       u8 sr)
 {
 	loff_t lock_offs;
 	u64 lock_len;
+	int given_range, locked_range;
+	bool locked_value = false;
+	bool offset_value = false;
 
 	ofs >>= nor->shift;
 	/* Avoid shifting of data length for size 1 */
@@ -4081,11 +4255,19 @@ static int micron_is_locked_sr(struct spi_nor *nor, loff_t ofs, uint64_t len,
 
 	micron_get_locked_range(nor, sr, &lock_offs, &lock_len);
 
-	if (!(sr & SR_TB))
-		return (ofs + len <= lock_offs + lock_len) &&
-		       (ofs >= lock_offs);
-	else
-		return (ofs + len <= lock_offs + lock_len);
+	given_range = ofs + len;
+	locked_range = lock_offs + lock_len;
+
+	if (given_range <= locked_range)
+		locked_value = true;
+
+	if (ofs >= lock_offs)
+		offset_value = true;
+
+	if (sr & SR_TB)
+		return !locked_value;
+
+	return !(locked_value && offset_value);
 }
 
 static int micron_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
@@ -4142,7 +4324,7 @@ static int micron_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	return 0;
 }
 
-static int micron_is_locked(struct spi_nor *nor, loff_t ofs, uint64_t len)
+static int micron_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
 	int status;
 
@@ -4150,7 +4332,7 @@ static int micron_is_locked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	if (status < 0)
 		return status;
 
-	return micron_is_locked_sr(nor, ofs, len, status);
+	return micron_is_unlocked_sr(nor, ofs, len, status);
 }
 #endif /* CONFIG_SPI_FLASH_STMICRO */
 
@@ -4171,7 +4353,12 @@ static int spi_nor_soft_reset(struct spi_nor *nor)
 	enum spi_nor_cmd_ext ext;
 
 	ext = nor->cmd_ext_type;
-	nor->cmd_ext_type = SPI_NOR_EXT_REPEAT;
+	if (nor->cmd_ext_type == SPI_NOR_EXT_NONE) {
+		nor->cmd_ext_type = SPI_NOR_EXT_REPEAT;
+#if CONFIG_IS_ENABLED(SPI_NOR_BOOT_SOFT_RESET_EXT_INVERT)
+		nor->cmd_ext_type = SPI_NOR_EXT_INVERT;
+#endif /* SPI_NOR_BOOT_SOFT_RESET_EXT_INVERT */
+	}
 
 	op = (struct spi_mem_op)SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_SRSTEN, 0),
 			SPI_MEM_OP_NO_DUMMY,
@@ -4229,6 +4416,13 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 			nor->fixups = &s25hx_t_fixups;
 			break;
 
+#ifdef CONFIG_SPI_FLASH_S28HX_T
+		case 0x5a: /* S28HL (Octal, 3.3V) */
+		case 0x5b: /* S28HS (Octal, 1.8V) */
+			nor->fixups = &s28hx_t_fixups;
+			break;
+#endif
+
 		default:
 			break;
 		}
@@ -4239,16 +4433,15 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 		nor->fixups = &s25fl256l_fixups;
 #endif
 
-#ifdef CONFIG_SPI_FLASH_S28HS512T
-	if (!strcmp(nor->info->name, "s28hs512t"))
-		nor->fixups = &s28hs512t_fixups;
-#endif
-
 #ifdef CONFIG_SPI_FLASH_MT35XU
 	if (!strcmp(nor->info->name, "mt35xu512aba") ||
 	    !strcmp(nor->info->name, "mt35xu02g"))
 		nor->fixups = &mt35xu512aba_fixups;
 #endif
+
+#if CONFIG_IS_ENABLED(SPI_FLASH_MACRONIX)
+	nor->fixups = &macronix_octal_fixups;
+#endif /* SPI_FLASH_MACRONIX */
 }
 
 int spi_nor_scan(struct spi_nor *nor)
@@ -4260,8 +4453,8 @@ int spi_nor_scan(struct spi_nor *nor)
 	int ret;
 	int cfi_mtd_nb = 0;
 
-#ifdef CONFIG_SYS_MAX_FLASH_BANKS
-	cfi_mtd_nb = CONFIG_SYS_MAX_FLASH_BANKS;
+#ifdef CONFIG_FLASH_CFI_MTD
+	cfi_mtd_nb = CFI_FLASH_BANKS;
 #endif
 
 	/* Reset SPI protocol for all commands. */
@@ -4272,6 +4465,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	nor->write = spi_nor_write_data;
 	nor->read_reg = spi_nor_read_reg;
 	nor->write_reg = spi_nor_write_reg;
+
 	nor->setup = spi_nor_default_setup;
 
 #ifdef CONFIG_SPI_FLASH_SOFT_RESET_ON_BOOT
@@ -4341,7 +4535,7 @@ int spi_nor_scan(struct spi_nor *nor)
 			info->flags & SPI_NOR_HAS_LOCK) {
 		nor->flash_lock = stm_lock;
 		nor->flash_unlock = stm_unlock;
-		nor->flash_is_locked = stm_is_locked;
+		nor->flash_is_unlocked = stm_is_unlocked;
 	}
 #endif
 
@@ -4349,7 +4543,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	if (JEDEC_MFR(info) == SNOR_MFR_ST) {
 		nor->flash_lock = micron_flash_lock;
 		nor->flash_unlock = micron_flash_unlock;
-		nor->flash_is_locked = micron_is_locked;
+		nor->flash_is_unlocked = micron_is_unlocked;
 	}
 #endif
 
@@ -4361,7 +4555,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	if (info->flags & SPI_NOR_HAS_SST26LOCK) {
 		nor->flash_lock = sst26_lock;
 		nor->flash_unlock = sst26_unlock;
-		nor->flash_is_locked = sst26_is_locked;
+		nor->flash_is_unlocked = sst26_is_unlocked;
 	}
 #endif
 

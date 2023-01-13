@@ -30,7 +30,7 @@ int x86_cpu_init_f(void);
  * identify so that CPU functions can be used correctly, but does not change
  * anything.
  *
- * @return 0 (indicating success, to mimic cpu_init_f())
+ * Return: 0 (indicating success, to mimic cpu_init_f())
  */
 int x86_cpu_reinit_f(void);
 
@@ -39,7 +39,7 @@ int x86_cpu_reinit_f(void);
  *
  * This just sets up the CPU features and figured out the identity
  *
- * @return 0 (indicating success, to mimic cpu_init_f())
+ * Return: 0 (indicating success, to mimic cpu_init_f())
  */
 int x86_cpu_init_tpl(void);
 
@@ -77,7 +77,7 @@ int x86_cleanup_before_linux(void);
 void x86_enable_caches(void);
 void x86_disable_caches(void);
 int x86_init_cache(void);
-ulong board_get_usable_ram_top(ulong total_size);
+phys_size_t board_get_usable_ram_top(phys_size_t total_size);
 int default_print_cpuinfo(void);
 
 /* Set up a UART which can be used with printch(), printhex8(), etc. */

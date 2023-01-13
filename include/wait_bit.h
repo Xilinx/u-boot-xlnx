@@ -31,7 +31,7 @@
  * @param set		Selects wait condition (bit set or clear)
  * @param timeout_ms	Timeout (in milliseconds)
  * @param breakable	Enables CTRL-C interruption
- * @return		0 on success, -ETIMEDOUT or -EINTR on failure
+ * Return:		0 on success, -ETIMEDOUT or -EINTR on failure
  */
 
 #define BUILD_WAIT_FOR_BIT(sfx, type, read)				\
@@ -63,7 +63,7 @@ static inline int wait_for_bit_##sfx(const void *reg,			\
 		}							\
 									\
 		udelay(1);						\
-		WATCHDOG_RESET();					\
+		schedule();					\
 	}								\
 									\
 	debug("%s: Timeout (reg=%p mask=%x wait_set=%i)\n", __func__,	\

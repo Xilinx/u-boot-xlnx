@@ -16,8 +16,6 @@
 
 #define CONFIG_IODELAY_RECALIBRATION
 
-#define CONFIG_SYS_BOOTM_LEN		SZ_64M
-
 #define CONFIG_SYS_NS16550_COM1		UART1_BASE	/* Base EVM has UART0 */
 #define CONFIG_SYS_NS16550_COM2		UART2_BASE	/* UART2 */
 #define CONFIG_SYS_NS16550_COM3		UART3_BASE	/* UART3 */
@@ -45,15 +43,7 @@
 #define CONFIG_HSMMC2_8BIT
 
 /* CPSW Ethernet */
-#define CONFIG_NET_RETRY_COUNT		10
 #define PHY_ANEG_TIMEOUT	8000	/* PHY needs longer aneg time at 1G */
-
-/* SATA */
-#define CONFIG_SCSI_AHCI_PLAT
-#define CONFIG_SYS_SCSI_MAX_SCSI_ID	1
-#define CONFIG_SYS_SCSI_MAX_LUN		1
-#define CONFIG_SYS_SCSI_MAX_DEVICE	(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
-						CONFIG_SYS_SCSI_MAX_LUN)
 
 /*
  * Default to using SPI for environment, etc.

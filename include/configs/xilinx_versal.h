@@ -10,38 +10,18 @@
 #ifndef __XILINX_VERSAL_H
 #define __XILINX_VERSAL_H
 
-#define CONFIG_REMAKE_ELF
-
-/* #define CONFIG_ARMV8_SWITCH_TO_EL1 */
-
 /* Generic Interrupt Controller Definitions */
 #define GICD_BASE	0xF9000000
 #define GICR_BASE	0xF9080000
 
-#define CONFIG_SYS_INIT_SP_ADDR		CONFIG_SYS_TEXT_BASE
-
-/* Generic Timer Definitions - setup in EL3. Setup by ATF for other cases */
-#if CONFIG_COUNTER_FREQUENCY
-# define COUNTER_FREQUENCY	CONFIG_COUNTER_FREQUENCY
-#endif
-
 /* Serial setup */
-#define CONFIG_CPU_ARMV8
-
 #define CONFIG_SYS_BAUDRATE_TABLE \
 	{ 4800, 9600, 19200, 38400, 57600, 115200 }
 
-/* BOOTP options */
-#define CONFIG_BOOTP_BOOTFILESIZE
-#define CONFIG_BOOTP_MAY_FAIL
-
-/* Miscellaneous configurable options */
-
-/* Monitor Command Prompt */
-/* Console I/O Buffer Size */
-#define CONFIG_SYS_CBSIZE		2048
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_MAXARGS		64
+/* GUID for capsule updatable firmware image */
+#define XILINX_BOOT_IMAGE_GUID \
+	EFI_GUID(0x20c5fba5, 0x0171, 0x457f, 0xb9, 0xcd, \
+		 0xf5, 0x12, 0x9c, 0xd0, 0x72, 0x28)
 
 #if defined(CONFIG_CMD_DFU)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
@@ -50,13 +30,8 @@
 
 /* Ethernet driver */
 #if defined(CONFIG_ZYNQ_GEM)
-# define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
 # define PHY_ANEG_TIMEOUT       20000
 #endif
-
-#define CONFIG_SYS_BOOTM_LEN	(100 * 1024 * 1024)
-
-#define CONFIG_CLOCKS
 
 #define ENV_MEM_LAYOUT_SETTINGS \
 	"fdt_addr_r=0x40000000\0" \

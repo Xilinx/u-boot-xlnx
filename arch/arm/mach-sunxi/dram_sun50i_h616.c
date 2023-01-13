@@ -19,6 +19,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/dram.h>
 #include <asm/arch/cpu.h>
+#include <asm/arch/prcm.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/kconfig.h>
@@ -360,7 +361,7 @@ static bool mctl_phy_read_calibration(struct dram_para *para)
 			}
 		}
 
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 8, 1);
+		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 8, 1);
 	}
 
 	clrbits_le32(SUNXI_DRAM_PHY0_BASE + 8, 0x30);
@@ -720,7 +721,7 @@ static bool mctl_phy_init(struct dram_para *para)
 	writel(0x80, SUNXI_DRAM_PHY0_BASE + 0x3dc);
 	writel(0x80, SUNXI_DRAM_PHY0_BASE + 0x45c);
 
-	if (IS_ENABLED(DRAM_ODT_EN))
+	if (IS_ENABLED(CONFIG_DRAM_ODT_EN))
 		mctl_phy_configure_odt();
 
 	clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 7, 0xa);
@@ -1001,14 +1002,16 @@ static unsigned long mctl_calc_size(struct dram_para *para)
 
 unsigned long sunxi_dram_init(void)
 {
+	struct sunxi_prcm_reg *const prcm =
+		(struct sunxi_prcm_reg *)SUNXI_PRCM_BASE;
 	struct dram_para para = {
 		.clk = CONFIG_DRAM_CLK,
 		.type = SUNXI_DRAM_TYPE_DDR3,
 	};
 	unsigned long size;
 
-	setbits_le32(0x7010310, BIT(8));
-	clrbits_le32(0x7010318, 0x3f);
+	setbits_le32(&prcm->res_cal_ctrl, BIT(8));
+	clrbits_le32(&prcm->ohms240, 0x3f);
 
 	mctl_auto_detect_rank_width(&para);
 	mctl_auto_detect_dram_size(&para);

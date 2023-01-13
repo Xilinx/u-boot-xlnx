@@ -16,11 +16,9 @@
  * High Level Configuration Options
  * (easy to change)
  */
-#define CONFIG_MCFTMR
 
 #define CONFIG_SYS_UART_PORT		(0)
 
-#undef CONFIG_WATCHDOG
 #define CONFIG_WATCHDOG_TIMEOUT 10000	/* timeout in milliseconds */
 
 #undef CONFIG_MONITOR_IS_IN_RAM	/* define if monitor is started from a pre-loader */
@@ -32,27 +30,6 @@
 #define LDS_BOARD_TEXT \
 	. = DEFINED(env_offset) ? env_offset : .; \
 	env/embedded.o(.text);
-
-/*
- * BOOTP options
- */
-#define CONFIG_BOOTP_BOOTFILESIZE
-
-#ifdef CONFIG_MCFFEC
-#	define CONFIG_MII_INIT		1
-#	define CONFIG_SYS_DISCOVER_PHY
-#	define CONFIG_SYS_RX_ETH_BUFFER	8
-#	define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-/* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
-#	ifndef CONFIG_SYS_DISCOVER_PHY
-#		define FECDUPLEX	FULL
-#		define FECSPEED		_100BASET
-#	else
-#		ifndef CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#			define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#		endif
-#	endif			/* CONFIG_SYS_DISCOVER_PHY */
-#endif
 
 #ifdef CONFIG_MCFFEC
 #	define CONFIG_IPADDR	192.162.1.2
@@ -90,8 +67,6 @@
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	0x20000000
 #define CONFIG_SYS_INIT_RAM_SIZE	0x1000	/* Size of used area in internal SRAM    */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
  * Start addresses for the final memory configuration
@@ -101,15 +76,6 @@
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
 #define CONFIG_SYS_SDRAM_SIZE		4	/* SDRAM size in MB */
 #define CONFIG_SYS_FLASH_BASE		0xffe00000
-
-#ifdef	CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_SYS_MONITOR_BASE	0x20000
-#else
-#define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_FLASH_BASE + 0x400)
-#endif
-
-#define CONFIG_SYS_MONITOR_LEN		0x20000
-#define CONFIG_SYS_BOOTPARAMS_LEN	64*1024
 
 /*
  * For booting Linux, the board info and command line data
@@ -123,9 +89,6 @@
  */
 #ifdef CONFIG_SYS_FLASH_CFI
 #	define CONFIG_SYS_FLASH_SIZE		0x800000	/* Max size that the board might have */
-#	define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
-#	define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
-#	define CONFIG_SYS_MAX_FLASH_SECT	137	/* max number of sectors on one chip */
 #endif
 
 /*-----------------------------------------------------------------------
@@ -144,26 +107,6 @@
 					 CF_CACR_DISD | CF_CACR_INVI | \
 					 CF_CACR_CEIB | CF_CACR_DCM | \
 					 CF_CACR_EUSP)
-
-/*-----------------------------------------------------------------------
- * Memory bank definitions
- */
-#define CONFIG_SYS_BR0_PRELIM		0xFFE00201
-#define CONFIG_SYS_OR0_PRELIM		0xFFE00014
-#define CONFIG_SYS_BR1_PRELIM		0
-#define CONFIG_SYS_OR1_PRELIM		0
-#define CONFIG_SYS_BR2_PRELIM		0x30000001
-#define CONFIG_SYS_OR2_PRELIM		0xFFF80000
-#define CONFIG_SYS_BR3_PRELIM		0
-#define CONFIG_SYS_OR3_PRELIM		0
-#define CONFIG_SYS_BR4_PRELIM		0
-#define CONFIG_SYS_OR4_PRELIM		0
-#define CONFIG_SYS_BR5_PRELIM		0
-#define CONFIG_SYS_OR5_PRELIM		0
-#define CONFIG_SYS_BR6_PRELIM		0
-#define CONFIG_SYS_OR6_PRELIM		0
-#define CONFIG_SYS_BR7_PRELIM		0x00000701
-#define CONFIG_SYS_OR7_PRELIM		0xFFC0007C
 
 /*-----------------------------------------------------------------------
  * Port configuration

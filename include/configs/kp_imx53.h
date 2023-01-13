@@ -10,8 +10,6 @@
 #include <asm/arch/imx-regs.h>
 #include <linux/sizes.h>
 
-#define CONFIG_SYS_FSL_CLK
-
 /* USB Configs */
 #define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS	0
@@ -56,18 +54,13 @@
 	       "bootm ${loadaddr}#${fit_config}\0" \
 	BOOTENV
 
-#define CONFIG_BOOTCOMMAND		"run usbupd; run distro_bootcmd"
-
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
 	func(DHCP, dhcp, na)
 
 #include <config_distro_bootcmd.h>
 
-#define CONFIG_ARP_TIMEOUT	200UL
-
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 
 /* Physical Memory Map */
 #define PHYS_SDRAM_1			CSD0_BASE_ADDR
@@ -77,11 +70,6 @@
 #define CONFIG_SYS_SDRAM_BASE		(PHYS_SDRAM_1)
 #define CONFIG_SYS_INIT_RAM_ADDR	(IRAM_BASE_ADDR)
 #define CONFIG_SYS_INIT_RAM_SIZE	(IRAM_SIZE)
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /* environment organization */
 

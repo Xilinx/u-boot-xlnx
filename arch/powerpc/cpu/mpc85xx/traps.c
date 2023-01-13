@@ -60,10 +60,6 @@ static __inline__ unsigned long get_esr(void)
 #define ESR_DIZ 0x00400000
 #define ESR_U0F 0x00008000
 
-#if defined(CONFIG_CMD_BEDBUG)
-extern void do_bedbug_breakpoint(struct pt_regs *);
-#endif
-
 /*
  * Trap & Exception support
  */
@@ -264,7 +260,7 @@ void UnknownException(struct pt_regs *regs)
 
 void ExtIntException(struct pt_regs *regs)
 {
-	volatile ccsr_pic_t *pic = (void *)(CONFIG_SYS_MPC8xxx_PIC_ADDR);
+	volatile ccsr_pic_t *pic = (void *)(CFG_SYS_MPC8xxx_PIC_ADDR);
 
 	uint vect;
 
@@ -285,7 +281,4 @@ void DebugException(struct pt_regs *regs)
 {
 	printf("Debugger trap at @ %lx\n", regs->nip );
 	show_regs(regs);
-#if defined(CONFIG_CMD_BEDBUG)
-	do_bedbug_breakpoint( regs );
-#endif
 }

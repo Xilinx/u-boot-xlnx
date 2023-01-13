@@ -17,7 +17,6 @@
 #include <net.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/gpio.h>
 
 /* EMAC register  */
 struct emac_regs {
@@ -272,12 +271,11 @@ static int sunxi_emac_init_phy(struct emac_eth_dev *priv, void *dev)
 	if (ret)
 		return ret;
 
-	priv->phydev = phy_find_by_mask(priv->bus, mask,
-					PHY_INTERFACE_MODE_MII);
+	priv->phydev = phy_find_by_mask(priv->bus, mask);
 	if (!priv->phydev)
 		return -ENODEV;
 
-	phy_connect_dev(priv->phydev, dev);
+	phy_connect_dev(priv->phydev, dev, PHY_INTERFACE_MODE_MII);
 	phy_config(priv->phydev);
 
 	return 0;
@@ -511,14 +509,10 @@ static int sunxi_emac_board_setup(struct udevice *dev,
 	struct sunxi_sramc_regs *sram =
 		(struct sunxi_sramc_regs *)SUNXI_SRAMC_BASE;
 	struct emac_regs *regs = priv->regs;
-	int pin, ret;
+	int ret;
 
 	/* Map SRAM to EMAC */
 	setbits_le32(&sram->ctrl1, 0x5 << 2);
-
-	/* Configure pin mux settings for MII Ethernet */
-	for (pin = SUNXI_GPA(0); pin <= SUNXI_GPA(17); pin++)
-		sunxi_gpio_set_cfgpin(pin, SUNXI_GPA_EMAC);
 
 	/* Set up clock gating */
 	ret = clk_enable(&priv->clk);

@@ -8,6 +8,7 @@ config AHAB_BOOT
 
 config IMX8
 	bool
+	select HAS_CAAM
 
 config MU_BASE_SPL
 	hex "MU base address used in SPL"
@@ -19,13 +20,13 @@ config MU_BASE_SPL
 config IMX8QM
 	select IMX8
 	select SUPPORT_SPL
-	select SPL_RECOVER_DATA_SECTION
+	select SPL_RECOVER_DATA_SECTION if SPL
 	bool
 
 config IMX8QXP
 	select IMX8
 	select SUPPORT_SPL
-	select SPL_RECOVER_DATA_SECTION
+	select SPL_RECOVER_DATA_SECTION if SPL
 	bool
 
 config SYS_SOC
@@ -50,45 +51,55 @@ config TARGET_APALIS_IMX8
 
 config TARGET_COLIBRI_IMX8X
 	bool "Support Colibri iMX8X module"
-	select BOARD_LATE_INIT
-	select IMX8QXP
-
-config TARGET_APALIS_IMX8X
-	bool "Support Apalis iMX8X module"
+	select BINMAN
 	select BOARD_LATE_INIT
 	select IMX8QXP
 
 config TARGET_DENEB
 	bool "Support i.MX8QXP Capricorn Deneb board"
+	select BINMAN
 	select BOARD_LATE_INIT
+	select FACTORYSET
 	select IMX8QXP
 
 config TARGET_GIEDI
 	bool "Support i.MX8QXP Capricorn Giedi board"
+	select BINMAN
 	select BOARD_LATE_INIT
+	select FACTORYSET
 	select IMX8QXP
 
 config TARGET_IMX8QM_MEK
 	bool "Support i.MX8QM MEK board"
+	select BINMAN
 	select BOARD_LATE_INIT
 	select IMX8QM
+	select FSL_CAAM
+	select ARCH_MISC_INIT
+	select SPL_CRYPTO if SPL
 
 config TARGET_CONGA_QMX8
 	bool "Support congatec conga-QMX8 board"
+	select BINMAN
 	select BOARD_LATE_INIT
 	select SUPPORT_SPL
 	select IMX8QM
 
 config TARGET_IMX8QM_ROM7720_A1
 	bool "Support i.MX8QM ROM-7720-A1"
+	select BINMAN
 	select BOARD_LATE_INIT
 	select SUPPORT_SPL
 	select IMX8QM
 
 config TARGET_IMX8QXP_MEK
 	bool "Support i.MX8QXP MEK board"
+	select BINMAN
 	select BOARD_LATE_INIT
 	select IMX8QXP
+	select FSL_CAAM
+	select ARCH_MISC_INIT
+	select SPL_CRYPTO if SPL
 
 endchoice
 
@@ -98,7 +109,6 @@ source "board/congatec/cgtqmx8/Kconfig"
 source "board/advantech/imx8qm_rom7720_a1/Kconfig"
 source "board/toradex/apalis-imx8/Kconfig"
 source "board/toradex/colibri-imx8x/Kconfig"
-source "board/toradex/apalis-imx8x/Kconfig"
 source "board/siemens/capricorn/Kconfig"
 
 config IMX_SNVS_SEC_SC

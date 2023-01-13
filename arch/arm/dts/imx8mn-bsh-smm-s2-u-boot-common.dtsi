@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright 2021 Collabora Ltd.
+ * Copyright 2021 BSH Hausgeraete GmbH
+ */
+
+#include "imx8mn-u-boot.dtsi"
+
+&{/soc@0/bus@30800000/i2c@30a20000/pmic@4b} {
+	u-boot,dm-spl;
+};
+
+&{/soc@0/bus@30800000/i2c@30a20000/pmic@4b/regulators} {
+	u-boot,dm-spl;
+};
+
+&gpio1 {
+	u-boot,dm-spl;
+};
+
+&gpio2 {
+	u-boot,dm-spl;
+};
+
+&gpio4 {
+	u-boot,dm-spl;
+};
+
+&i2c1 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_i2c1 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_pmic {
+	u-boot,dm-spl;
+};
+
+&pinctrl_uart4 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_wdog {
+	u-boot,dm-spl;
+};
+
+&uart4 {
+	u-boot,dm-spl;
+};
+
+&wdog1 {
+	u-boot,dm-spl;
+};

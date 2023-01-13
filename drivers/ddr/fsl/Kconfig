@@ -10,6 +10,12 @@ config SYS_FSL_MMDC
 	help
 	  Select Freescale Multi Mode DDR controller (MMDC).
 
+config SYS_FSL_DDR_EMU
+	bool
+	help
+	  Specify emulator support for DDR. Some DDR features such as deskew
+	  training are not available.
+
 if SYS_FSL_DDR || SYS_FSL_MMDC
 
 config SYS_FSL_DDR_BE
@@ -34,6 +40,9 @@ config FSL_DDR_SYNC_REFRESH
 config FSL_DDR_FIRST_SLOT_QUAD_CAPABLE
 	bool
 
+config SYS_FSL_OTHER_DDR_NUM_CTRLS
+	bool
+
 menu "Freescale DDR controllers"
 	depends on SYS_FSL_DDR
 
@@ -48,6 +57,18 @@ config SYS_NUM_DDR_CTLRS
 			ARCH_LX2160A	|| \
 			ARCH_LX2162A
 	default 1
+
+config CHIP_SELECTS_PER_CTRL
+	int "Number of chip selects per controller"
+	default 4
+
+config DIMM_SLOTS_PER_CTLR
+	int "Number of DIMM slots per controller"
+	default 1
+
+config SYS_FSL_DDR_MAIN_NUM_CTRLS
+	int "Number of controllers used as main memory"
+	default SYS_NUM_DDR_CTLRS
 
 config SYS_FSL_DDR_VER
 	int
@@ -160,6 +181,126 @@ config ECC_INIT_VIA_DDRCONTROLLER
 	help
 	  Use the DDR controller to auto initialize memory.  If not enabled,
 	  the DMA controller is responsible for doing this.
+
+config SYS_DDR_RAW_TIMING
+	bool "Get DDR timing information from something other than SPD"
+	help
+	  This is common with soldered DDR chips onboard without SPD. DDR raw
+	  timing parameters are extracted from datasheet and hard-coded into
+	  header files or board specific files.
+
+config SYS_FSL_DDR_INTLV_256B
+	bool "Enforce 256-byte interleave"
+	help
+	  DDR controller interleaving on 256-byte. This is a special
+	  interleaving mode, handled by Dickens for Freescale layerscape SoCs
+	  with ARM core.
+
+endif
+
+menu "PowerPC / M68K initial memory controller definitions (FLASH, SDRAM, etc)"
+	depends on MCF52x2 || MPC8xx || MPC83xx || MPC85xx
+
+config SYS_BR0_PRELIM_BOOL
+	bool "Define Bank 0"
+
+config SYS_BR0_PRELIM
+	hex "Preliminary value for BR0"
+	depends on SYS_BR0_PRELIM_BOOL
+
+config SYS_OR0_PRELIM
+	hex "Preliminary value for OR0"
+	depends on SYS_BR0_PRELIM_BOOL
+
+config SYS_BR1_PRELIM_BOOL
+	bool "Define Bank 1"
+
+config SYS_BR1_PRELIM
+	hex "Preliminary value for BR1"
+	depends on SYS_BR1_PRELIM_BOOL
+
+config SYS_OR1_PRELIM
+	hex "Preliminary value for OR1"
+	depends on SYS_BR1_PRELIM_BOOL
+
+config SYS_BR2_PRELIM_BOOL
+	bool "Define Bank 2"
+
+config SYS_BR2_PRELIM
+	hex "Preliminary value for BR2"
+	depends on SYS_BR2_PRELIM_BOOL
+
+config SYS_OR2_PRELIM
+	hex "Preliminary value for OR2"
+	depends on SYS_BR2_PRELIM_BOOL
+
+config SYS_BR3_PRELIM_BOOL
+	bool "Define Bank 3"
+
+config SYS_BR3_PRELIM
+	hex "Preliminary value for BR3"
+	depends on SYS_BR3_PRELIM_BOOL
+
+config SYS_OR3_PRELIM
+	hex "Preliminary value for OR3"
+	depends on SYS_BR3_PRELIM_BOOL
+
+config SYS_BR4_PRELIM_BOOL
+	bool "Define Bank 4"
+
+config SYS_BR4_PRELIM
+	hex "Preliminary value for BR4"
+	depends on SYS_BR4_PRELIM_BOOL
+
+config SYS_OR4_PRELIM
+	hex "Preliminary value for OR4"
+	depends on SYS_BR4_PRELIM_BOOL
+
+config SYS_BR5_PRELIM_BOOL
+	bool "Define Bank 5"
+
+config SYS_BR5_PRELIM
+	hex "Preliminary value for BR5"
+	depends on SYS_BR5_PRELIM_BOOL
+
+config SYS_OR5_PRELIM
+	hex "Preliminary value for OR5"
+	depends on SYS_BR5_PRELIM_BOOL
+
+config SYS_BR6_PRELIM_BOOL
+	bool "Define Bank 6"
+
+config SYS_BR6_PRELIM
+	hex "Preliminary value for BR6"
+	depends on SYS_BR6_PRELIM_BOOL
+
+config SYS_OR6_PRELIM
+	hex "Preliminary value for OR6"
+	depends on SYS_BR6_PRELIM_BOOL
+
+config SYS_BR7_PRELIM_BOOL
+	bool "Define Bank 7"
+
+config SYS_BR7_PRELIM
+	hex "Preliminary value for BR7"
+	depends on SYS_BR7_PRELIM_BOOL
+
+config SYS_OR7_PRELIM
+	hex "Preliminary value for OR7"
+	depends on SYS_BR7_PRELIM_BOOL
+endmenu
+
+if TARGET_P1010RDB_PA || TARGET_P1010RDB_PB || TARGET_P1020RDB_PC || \
+	TARGET_P1020RDB_PD || TARGET_P2020RDB
+
+config COMMON_INIT_DDR
+	bool "Do not have a TLB entry to cover common DDR init with serial presence detect (SPD)"
+
+config SPL_COMMON_INIT_DDR
+	bool "Do not have a TLB entry to cover common DDR init with SPD in SPL"
+
+config TPL_COMMON_INIT_DDR
+	bool "Do not have a TLB entry to cover common DDR init with SPD in TPL"
 
 endif
 

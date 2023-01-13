@@ -119,6 +119,7 @@ static struct usb_descriptor_header *fb_fs_function[] = {
 	(struct usb_descriptor_header *)&interface_desc,
 	(struct usb_descriptor_header *)&fs_ep_in,
 	(struct usb_descriptor_header *)&fs_ep_out,
+	NULL,
 };
 
 static struct usb_descriptor_header *fb_hs_function[] = {
@@ -543,6 +544,7 @@ static void rx_handler_command(struct usb_ep *ep, struct usb_request *req)
 		case FASTBOOT_COMMAND_REBOOT_FASTBOOTD:
 		case FASTBOOT_COMMAND_REBOOT_RECOVERY:
 			fastboot_func->in_req->complete = compl_do_reset;
+			g_dnl_trigger_detach();
 			break;
 #if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT)
 		case FASTBOOT_COMMAND_ACMD:

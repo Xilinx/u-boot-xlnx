@@ -12,6 +12,10 @@
 	aliases {
 		mmc1 = &sdhci1;
 	};
+
+	memory@80000000 {
+		u-boot,dm-spl;
+	};
 };
 
 &cbass_main{
@@ -20,7 +24,7 @@
 		compatible = "ti,omap5430-timer";
 		reg = <0x0 0x2400000 0x0 0x80>;
 		ti,timer-alwon;
-		clock-frequency = <250000000>;
+		clock-frequency = <200000000>;
 		u-boot,dm-spl;
 	};
 };
@@ -48,6 +52,67 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_i2c0_pins_default>;
 	clock-frequency = <400000>;
+
+	tps65219: pmic@30 {
+		compatible = "ti,tps65219";
+		reg = <0x30>;
+
+		regulators {
+			buck1_reg: buck1 {
+				regulator-name = "VDD_CORE";
+				regulator-min-microvolt = <750000>;
+				regulator-max-microvolt = <750000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			buck2_reg: buck2 {
+				regulator-name = "VCC1V8";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			buck3_reg: buck3 {
+				regulator-name = "VDD_LPDDR4";
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo1_reg: ldo1 {
+				regulator-name = "VDDSHV_SD_IO_PMIC";
+				regulator-min-microvolt = <33000000>;
+				regulator-max-microvolt = <33000000>;
+			};
+
+			ldo2_reg: ldo2 {
+				regulator-name = "VDDAR_CORE";
+				regulator-min-microvolt = <850000>;
+				regulator-max-microvolt = <850000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo3_reg: ldo3 {
+				regulator-name = "VDDA_1V8";
+				regulator-min-microvolt = <18000000>;
+				regulator-max-microvolt = <18000000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+
+			ldo4_reg: ldo4 {
+				regulator-name = "VDD_PHY_2V5";
+				regulator-min-microvolt = <25000000>;
+				regulator-max-microvolt = <25000000>;
+				regulator-boot-on;
+				regulator-always-on;
+			};
+		};
+	};
 };
 
 &main_uart0 {
@@ -100,13 +165,76 @@
 	      <0x0 0x43000200 0x0 0x8>;
 	reg-names = "cpsw_nuss", "mac_efuse";
 	/delete-property/ ranges;
+	u-boot,dm-spl;
 
 	cpsw-phy-sel@04044 {
 		compatible = "ti,am64-phy-gmii-sel";
 		reg = <0x0 0x43004044 0x0 0x8>;
+		u-boot,dm-spl;
+	};
+
+	ethernet-ports {
+		u-boot,dm-spl;
 	};
 };
 
 &cpsw_port2 {
-	status = "disabled";
+	u-boot,dm-spl;
+};
+
+&main_bcdma {
+	u-boot,dm-spl;
+};
+
+&main_pktdma {
+	u-boot,dm-spl;
+};
+
+&rgmii1_pins_default {
+	u-boot,dm-spl;
+};
+
+&rgmii2_pins_default {
+	u-boot,dm-spl;
+};
+
+&mdio1_pins_default {
+	u-boot,dm-spl;
+};
+
+&cpsw3g_phy1 {
+	u-boot,dm-spl;
+};
+
+&main_usb0_pins_default {
+	u-boot,dm-spl;
+};
+
+&serdes_ln_ctrl {
+	u-boot,mux-autoprobe;
+};
+
+&usbss0 {
+	u-boot,dm-spl;
+};
+
+&usb0 {
+	dr_mode = "host";
+	u-boot,dm-spl;
+};
+
+&serdes_wiz0 {
+	u-boot,dm-spl;
+};
+
+&serdes0_usb_link {
+	u-boot,dm-spl;
+};
+
+&serdes0 {
+	u-boot,dm-spl;
+};
+
+&serdes_refclk {
+	u-boot,dm-spl;
 };

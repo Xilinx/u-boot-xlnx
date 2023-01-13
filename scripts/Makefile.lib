@@ -175,7 +175,9 @@ u_boot_dtsi_options_raw = $(warning Automatic .dtsi inclusion: options: \
 
 # Uncomment for debugging
 # This shows all the files that were considered and the one that we chose.
-# u_boot_dtsi_options_debug = $(u_boot_dtsi_options_raw)
+ifdef DEVICE_TREE_DEBUG
+u_boot_dtsi_options_debug = $(warning $(u_boot_dtsi_options_raw))
+endif
 
 # We use the first match
 u_boot_dtsi = $(strip $(u_boot_dtsi_options_debug) \
@@ -183,12 +185,10 @@ u_boot_dtsi = $(strip $(u_boot_dtsi_options_debug) \
 
 # Modified for U-Boot
 dtc_cpp_flags  = -Wp,-MD,$(depfile).pre.tmp -nostdinc                    \
+		 $(UBOOTINCLUDE)                                         \
 		 -I$(srctree)/arch/$(ARCH)/dts                           \
 		 -I$(srctree)/arch/$(ARCH)/dts/include                   \
-		 -Iinclude                                               \
 		 -I$(srctree)/include                                    \
-		 -I$(srctree)/arch/$(ARCH)/include                       \
-		 -include $(srctree)/include/linux/kconfig.h             \
 		 -D__ASSEMBLY__                                          \
 		 -undef -D__DTS__
 
@@ -318,8 +318,11 @@ endif
 quiet_cmd_dtc = DTC     $@
 # Modified for U-Boot
 # Bring in any U-Boot-specific include at the end of the file
+# And finally any custom .dtsi fragments specified with CONFIG_DEVICE_TREE_INCLUDES
 cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
 	(cat $<; $(if $(u_boot_dtsi),echo '$(pound)include "$(u_boot_dtsi)"')) > $(pre-tmp); \
+	$(foreach f,$(subst $(quote),,$(CONFIG_DEVICE_TREE_INCLUDES)), \
+	  echo '$(pound)include "$(f)"' >> $(pre-tmp);) \
 	$(HOSTCC) -E $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $(pre-tmp) ; \
 	$(DTC) -O dtb -o $@ -b 0 \
 		-i $(dir $<) $(DTC_FLAGS) \
@@ -372,6 +375,27 @@ cmd_S_ttf=						\
 $(obj)/%.S: $(src)/%.ttf
 	$(call cmd,S_ttf)
 
+# Splash logos
+# ---------------------------------------------------------------------------
+
+# Generate an assembly file to wrap the splash data
+quiet_cmd_S_splash= TTF     $@
+# Modified for U-Boot
+cmd_S_splash=						\
+(							\
+	echo '.section .rodata.splash.init,"a"';		\
+	echo '.balign 16';				\
+	echo '.global __splash_$(*F)_begin';		\
+	echo '__splash_$(*F)_begin:';			\
+	echo '.incbin "$<" ';				\
+	echo '__splash_$(*F)_end:';			\
+	echo '.global __splash_$(*F)_end';			\
+	echo '.balign 16';				\
+) > $@
+
+$(obj)/%.S: $(src)/%.bmp
+	$(call cmd,S_splash)
+
 # EFI applications
 # A Makefile target *.efi is built as EFI application.
 # A Makefile target *_efi.S wraps *.efi as built-in EFI application.
@@ -402,8 +426,8 @@ $(obj)/%.efi: $(obj)/%_efi.so
 	$(call cmd,efi_objcopy)
 
 quiet_cmd_efi_ld = LD      $@
-cmd_efi_ld = $(LD) -nostdlib -znocombreloc -T $(EFI_LDS_PATH) -shared \
-		-Bsymbolic -znorelro -s $^ -o $@
+cmd_efi_ld = $(LD) -nostdlib -zexecstack -znocombreloc -T $(EFI_LDS_PATH) \
+		-shared -Bsymbolic -znorelro -s $^ -o $@
 
 EFI_LDS_PATH = $(srctree)/arch/$(ARCH)/lib/$(EFI_LDS)
 
@@ -430,20 +454,21 @@ CFLAGS_REMOVE_efi_freestanding.o := $(LTO_CFLAGS)
 # which is pure ASL code. The Intel ASL (ACPI (Advanced Configuration and Power
 # Interface) Source Language compiler (iasl) then converts this ASL code into a
 # C file containing the hex data to build into U-Boot. This file is called
-# dsdt.hex (despite us setting the prefix to .../dsdt.asl.tmp) so must be
-# renamed to dsdt.c for consumption by the build system.
+# dsdt_generated.hex (despite us setting the prefix to .../dsdt_generated.asl.tmp)
+# so must be renamed to dsdt_generated.c for consumption by the build system.
 ASL_TMP = $(patsubst %.c,%.asl.tmp,$@)
 
 quiet_cmd_acpi_c_asl= ASL     $<
 cmd_acpi_c_asl=         \
 	$(CPP) -x assembler-with-cpp -D__ASSEMBLY__ -D__ACPI__ \
 		-P $(UBOOTINCLUDE) -o $(ASL_TMP) $< && \
-	iasl -p $@ -tc $(ASL_TMP) $(if $(KBUILD_VERBOSE:1=), >/dev/null) && \
+	iasl -p $@ -I $(srctree)/board/$(BOARDDIR) -tc $(ASL_TMP) \
+		$(if $(KBUILD_VERBOSE:1=), >/dev/null) && \
 	mv $(patsubst %.c,%.hex,$@) $@
 
-$(obj)/dsdt.c:    $(src)/dsdt.asl
+$(obj)/dsdt_generated.c:    $(src)/dsdt.asl
 	$(call cmd,acpi_c_asl)
-	$(Q)sed -i -e "s,dsdt_aml_code,AmlCode," $@
+	$(Q)sed -i -e "s,dsdt_generated_aml_code,AmlCode," $@
 
 # Bzip2
 # ---------------------------------------------------------------------------
@@ -542,6 +567,11 @@ cmd_xzmisc = (cat $(filter-out FORCE,$^) | \
 
 # Additional commands for U-Boot
 #
+# bin2c
+# ---------------------------------------------------------------------------
+quiet_cmd_bin2c = BIN2C   $@
+      cmd_bin2c = $(objtree)/scripts/bin2c $2 < $< > $@
+
 # mkimage
 # ---------------------------------------------------------------------------
 MKIMAGEOUTPUT ?= /dev/null
@@ -556,16 +586,21 @@ cmd_mkimage = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d $< $@ \
 # 'u-boot,dm-pre-reloc' property and thus are not needed by SPL. The second
 # pass removes various unused properties from the remaining nodes.
 # The output is typically a much smaller device tree file.
+ifeq ($(CONFIG_VPL_BUILD),y)
+fdtgrep_props := -b u-boot,dm-pre-reloc -b u-boot,dm-vpl
+else
 ifeq ($(CONFIG_TPL_BUILD),y)
 fdtgrep_props := -b u-boot,dm-pre-reloc -b u-boot,dm-tpl
 else
 fdtgrep_props := -b u-boot,dm-pre-reloc -b u-boot,dm-spl
+endif
 endif
 quiet_cmd_fdtgrep = FDTGREP $@
       cmd_fdtgrep = $(objtree)/tools/fdtgrep $(fdtgrep_props) -RT $< \
 		-n /chosen -n /config -O dtb | \
 	$(objtree)/tools/fdtgrep -r -O dtb - -o $@ \
 		-P u-boot,dm-pre-reloc -P u-boot,dm-spl -P u-boot,dm-tpl \
+		 -P u-boot,dm-vpl \
 		$(addprefix -P ,$(subst $\",,$(CONFIG_OF_SPL_REMOVE_PROPS)))
 
 # fdt_rm_props

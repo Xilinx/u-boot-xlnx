@@ -30,17 +30,29 @@ static int print_guid(struct unit_test_state *uts)
 	unsigned char guid[16] = {
 		1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 	};
+	unsigned char guid_esp[16] = {
+		0x28, 0x73, 0x2a, 0xc1, 0x1f, 0xf8, 0xd2, 0x11,
+		0xBA, 0x4B, 0x00, 0xA0, 0xC9, 0x3E, 0xC9, 0x3B
+	};
 	char str[40];
 	int ret;
 
 	sprintf(str, "%pUb", guid);
-	ut_assertok(strcmp("01020304-0506-0708-090a-0b0c0d0e0f10", str));
+	ut_asserteq_str("01020304-0506-0708-090a-0b0c0d0e0f10", str);
 	sprintf(str, "%pUB", guid);
-	ut_assertok(strcmp("01020304-0506-0708-090A-0B0C0D0E0F10", str));
+	ut_asserteq_str("01020304-0506-0708-090A-0B0C0D0E0F10", str);
 	sprintf(str, "%pUl", guid);
-	ut_assertok(strcmp("04030201-0605-0807-090a-0b0c0d0e0f10", str));
+	ut_asserteq_str("04030201-0605-0807-090a-0b0c0d0e0f10", str);
+	sprintf(str, "%pUs", guid);
+	ut_asserteq_str("04030201-0605-0807-090a-0b0c0d0e0f10", str);
 	sprintf(str, "%pUL", guid);
-	ut_assertok(strcmp("04030201-0605-0807-090A-0B0C0D0E0F10", str));
+	ut_asserteq_str("04030201-0605-0807-090A-0B0C0D0E0F10", str);
+	sprintf(str, "%pUs", guid_esp);
+	if (IS_ENABLED(CONFIG_PARTITION_TYPE_GUID)) { /* brace needed */
+		ut_asserteq_str("system", str);
+	} else {
+		ut_asserteq_str("c12a7328-f81f-11d2-ba4b-00a0c93ec93b", str);
+	}
 	ret = snprintf(str, 4, "%pUL", guid);
 	ut_asserteq(0, str[3]);
 	ut_asserteq(36, ret);
@@ -106,7 +118,7 @@ static int print_printf(struct unit_test_state *uts)
 	snprintf(str, 0, "testing none");
 	ut_asserteq('x', *str);
 
-	sprintf(big_str, "_%ls_", L"foo");
+	sprintf(big_str, "_%ls_", u"foo");
 	ut_assertok(strcmp("_foo_", big_str));
 
 	/* Test the banner function */
@@ -333,31 +345,23 @@ static int print_do_hex_dump(struct unit_test_state *uts)
 }
 PRINT_TEST(print_do_hex_dump, UT_TESTF_CONSOLE_REC);
 
-static int print_itoa(struct unit_test_state *uts)
-{
-	ut_asserteq_str("123", simple_itoa(123));
-	ut_asserteq_str("0", simple_itoa(0));
-	ut_asserteq_str("2147483647", simple_itoa(0x7fffffff));
-	ut_asserteq_str("4294967295", simple_itoa(0xffffffff));
-
-	/* Use #ifdef here to avoid a compiler warning on 32-bit machines */
-#ifdef CONFIG_PHYS_64BIT
-	if (sizeof(ulong) == 8) {
-		ut_asserteq_str("9223372036854775807",
-				simple_itoa((1UL << 63) - 1));
-		ut_asserteq_str("18446744073709551615", simple_itoa(-1));
-	}
-#endif /* CONFIG_PHYS_64BIT */
-
-	return 0;
-}
-PRINT_TEST(print_itoa, 0);
-
 static int snprint(struct unit_test_state *uts)
 {
 	char buf[10] = "xxxxxxxxx";
 	int ret;
 
+	ret = snprintf(buf, 5, "%d", 12345678);
+	ut_asserteq_str("1234", buf);
+	ut_asserteq(8, ret);
+	ret = snprintf(buf, 5, "0x%x", 0x1234);
+	ut_asserteq_str("0x12", buf);
+	ut_asserteq(6, ret);
+	ret = snprintf(buf, 5, "0x%08x", 0x1234);
+	ut_asserteq_str("0x00", buf);
+	ut_asserteq(10, ret);
+	ret = snprintf(buf, 3, "%s", "abc");
+	ut_asserteq_str("ab", buf);
+	ut_asserteq(3, ret);
 	ret = snprintf(buf, 4, "%s:%s", "abc", "def");
 	ut_asserteq(0, buf[3]);
 	ut_asserteq(7, ret);
@@ -366,26 +370,6 @@ static int snprint(struct unit_test_state *uts)
 	return 0;
 }
 PRINT_TEST(snprint, 0);
-
-static int print_xtoa(struct unit_test_state *uts)
-{
-	ut_asserteq_str("7f", simple_xtoa(127));
-	ut_asserteq_str("00", simple_xtoa(0));
-	ut_asserteq_str("7fffffff", simple_xtoa(0x7fffffff));
-	ut_asserteq_str("ffffffff", simple_xtoa(0xffffffff));
-
-	/* Use #ifdef here to avoid a compiler warning on 32-bit machines */
-#ifdef CONFIG_PHYS_64BIT
-	if (sizeof(ulong) == 8) {
-		ut_asserteq_str("7fffffffffffffff",
-				simple_xtoa((1UL << 63) - 1));
-		ut_asserteq_str("ffffffffffffffff", simple_xtoa(-1));
-	}
-#endif /* CONFIG_PHYS_64BIT */
-
-	return 0;
-}
-PRINT_TEST(print_xtoa, 0);
 
 int do_ut_print(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {

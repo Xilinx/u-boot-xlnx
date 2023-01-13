@@ -8,7 +8,7 @@
 #ifndef _GWVENTANA_COMMON_H_
 #define _GWVENTANA_COMMON_H_
 
-#include "ventana_eeprom.h"
+#include "eeprom.h"
 
 /* GPIO's common to all baseboards */
 #define GP_RS232_EN	IMX_GPIO_NR(2, 11)
@@ -79,17 +79,7 @@ struct ventana {
 
 extern struct ventana gpio_cfg[GW_UNKNOWN];
 
-/* configure i2c iomux */
-void setup_ventana_i2c(int);
-/* configure uart iomux */
-void setup_iomux_uart(void);
-/* conifgure PMIC */
-void setup_pmic(void);
 /* configure gpio iomux/defaults */
-void setup_iomux_gpio(int board, struct ventana_board_info *);
-/* late setup of GPIO (configuration per baseboard and env) */
-void setup_board_gpio(int board, struct ventana_board_info *);
-/* early model/revision ft fixups */
-void ft_early_fixup(void *fdt, int board_type);
+void setup_iomux_gpio(int board);
 
 #endif /* #ifndef _GWVENTANA_COMMON_H_ */

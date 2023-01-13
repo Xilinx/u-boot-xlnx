@@ -15,55 +15,7 @@
 
 #include "clk.h"
 
-#define PLL_1416X_RATE(_rate, _m, _p, _s)		\
-	{						\
-		.rate	=	(_rate),		\
-		.mdiv	=	(_m),			\
-		.pdiv	=	(_p),			\
-		.sdiv	=	(_s),			\
-	}
-
-#define PLL_1443X_RATE(_rate, _m, _p, _s, _k)		\
-	{						\
-		.rate	=	(_rate),		\
-		.mdiv	=	(_m),			\
-		.pdiv	=	(_p),			\
-		.sdiv	=	(_s),			\
-		.kdiv	=	(_k),			\
-	}
-
-static const struct imx_pll14xx_rate_table imx8mn_pll1416x_tbl[] = {
-	PLL_1416X_RATE(1800000000U, 225, 3, 0),
-	PLL_1416X_RATE(1600000000U, 200, 3, 0),
-	PLL_1416X_RATE(1200000000U, 300, 3, 1),
-	PLL_1416X_RATE(1000000000U, 250, 3, 1),
-	PLL_1416X_RATE(800000000U,  200, 3, 1),
-	PLL_1416X_RATE(750000000U,  250, 2, 2),
-	PLL_1416X_RATE(700000000U,  350, 3, 2),
-	PLL_1416X_RATE(600000000U,  300, 3, 2),
-};
-
-static const struct imx_pll14xx_rate_table imx8mn_drampll_tbl[] = {
-	PLL_1443X_RATE(650000000U, 325, 3, 2, 0),
-};
-
-static struct imx_pll14xx_clk imx8mn_dram_pll __initdata = {
-		.type = PLL_1443X,
-		.rate_table = imx8mn_drampll_tbl,
-		.rate_count = ARRAY_SIZE(imx8mn_drampll_tbl),
-};
-
-static struct imx_pll14xx_clk imx8mn_arm_pll __initdata = {
-		.type = PLL_1416X,
-		.rate_table = imx8mn_pll1416x_tbl,
-		.rate_count = ARRAY_SIZE(imx8mn_pll1416x_tbl),
-};
-
-static struct imx_pll14xx_clk imx8mn_sys_pll __initdata = {
-		.type = PLL_1416X,
-		.rate_table = imx8mn_pll1416x_tbl,
-		.rate_count = ARRAY_SIZE(imx8mn_pll1416x_tbl),
-};
+static u32 share_count_nand;
 
 static const char *pll_ref_sels[] = { "clock-osc-24m", "dummy", "dummy", "dummy", };
 static const char *dram_pll_bypass_sels[] = {"dram_pll", "dram_pll_ref_sel", };
@@ -140,6 +92,10 @@ static const char *imx8mn_usdhc3_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sy
 static const char *imx8mn_qspi_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll2_333m", "sys_pll2_500m",
 					   "audio_pll2_out", "sys_pll1_266m", "sys_pll3_out", "sys_pll1_100m", };
 
+static const char * const imx8mn_nand_sels[] = {"osc_24m", "sys_pll2_500m", "audio_pll1_out",
+						"sys_pll1_400m", "audio_pll2_out", "sys_pll3_out",
+						"sys_pll2_250m", "video_pll1_out", };
+
 static const char * const imx8mn_usb_core_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m",
 						"sys_pll2_100m", "sys_pll2_200m", "clk_ext2",
 						"clk_ext3", "audio_pll2_out", };
@@ -147,92 +103,6 @@ static const char * const imx8mn_usb_core_sels[] = {"clock-osc-24m", "sys_pll1_1
 static const char * const imx8mn_usb_phy_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m",
 						"sys_pll2_100m", "sys_pll2_200m", "clk_ext2",
 						"clk_ext3", "audio_pll2_out", };
-
-static ulong imx8mn_clk_get_rate(struct clk *clk)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu)\n", __func__, clk->id);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	return clk_get_rate(c);
-}
-
-static ulong imx8mn_clk_set_rate(struct clk *clk, unsigned long rate)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu), rate: %lu\n", __func__, clk->id, rate);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	return clk_set_rate(c, rate);
-}
-
-static int __imx8mn_clk_enable(struct clk *clk, bool enable)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu) en: %d\n", __func__, clk->id, enable);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	if (enable)
-		ret = clk_enable(c);
-	else
-		ret = clk_disable(c);
-
-	return ret;
-}
-
-static int imx8mn_clk_disable(struct clk *clk)
-{
-	return __imx8mn_clk_enable(clk, 0);
-}
-
-static int imx8mn_clk_enable(struct clk *clk)
-{
-	return __imx8mn_clk_enable(clk, 1);
-}
-
-static int imx8mn_clk_set_parent(struct clk *clk, struct clk *parent)
-{
-	struct clk *c, *cp;
-	int ret;
-
-	debug("%s(#%lu), parent: %lu\n", __func__, clk->id, parent->id);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	ret = clk_get_by_id(parent->id, &cp);
-	if (ret)
-		return ret;
-
-	ret = clk_set_parent(c, cp);
-	c->dev->parent = cp->dev;
-
-	return ret;
-}
-
-static struct clk_ops imx8mn_clk_ops = {
-	.set_rate = imx8mn_clk_set_rate,
-	.get_rate = imx8mn_clk_get_rate,
-	.enable = imx8mn_clk_enable,
-	.disable = imx8mn_clk_disable,
-	.set_parent = imx8mn_clk_set_parent,
-};
 
 static int imx8mn_clk_probe(struct udevice *dev)
 {
@@ -258,19 +128,19 @@ static int imx8mn_clk_probe(struct udevice *dev)
 
 	clk_dm(IMX8MN_DRAM_PLL,
 	       imx_clk_pll14xx("dram_pll", "dram_pll_ref_sel",
-			       base + 0x50, &imx8mn_dram_pll));
+			       base + 0x50, &imx_1443x_dram_pll));
 	clk_dm(IMX8MN_ARM_PLL,
 	       imx_clk_pll14xx("arm_pll", "arm_pll_ref_sel",
-			       base + 0x84, &imx8mn_arm_pll));
+			       base + 0x84, &imx_1416x_pll));
 	clk_dm(IMX8MN_SYS_PLL1,
 	       imx_clk_pll14xx("sys_pll1", "sys_pll1_ref_sel",
-			       base + 0x94, &imx8mn_sys_pll));
+			       base + 0x94, &imx_1416x_pll));
 	clk_dm(IMX8MN_SYS_PLL2,
 	       imx_clk_pll14xx("sys_pll2", "sys_pll2_ref_sel",
-			       base + 0x104, &imx8mn_sys_pll));
+			       base + 0x104, &imx_1416x_pll));
 	clk_dm(IMX8MN_SYS_PLL3,
 	       imx_clk_pll14xx("sys_pll3", "sys_pll3_ref_sel",
-			       base + 0x114, &imx8mn_sys_pll));
+			       base + 0x114, &imx_1416x_pll));
 
 	/* PLL bypass out */
 	clk_dm(IMX8MN_DRAM_PLL_BYPASS,
@@ -404,6 +274,8 @@ static int imx8mn_clk_probe(struct udevice *dev)
 	clk_dm(IMX8MN_CLK_USDHC3,
 	       imx8m_clk_composite("usdhc3", imx8mn_usdhc3_sels,
 				   base + 0xbc80));
+	clk_dm(IMX8MN_CLK_NAND,
+	       imx8m_clk_composite("nand", imx8mn_nand_sels, base + 0xab00));
 	clk_dm(IMX8MN_CLK_QSPI,
 	       imx8m_clk_composite("qspi", imx8mn_qspi_sels, base + 0xab80));
 	clk_dm(IMX8MN_CLK_USB_CORE_REF,
@@ -435,6 +307,12 @@ static int imx8mn_clk_probe(struct udevice *dev)
 	       imx_clk_gate4("usdhc3_root_clk", "usdhc3", base + 0x45e0, 0));
 	clk_dm(IMX8MN_CLK_QSPI_ROOT,
 	       imx_clk_gate4("qspi_root_clk", "qspi", base + 0x42f0, 0));
+	clk_dm(IMX8MN_CLK_NAND_ROOT,
+	       imx_clk_gate2_shared2("nand_root_clk", "nand", base + 0x4300, 0, &share_count_nand));
+	clk_dm(IMX8MN_CLK_NAND_USDHC_BUS_RAWNAND_CLK,
+	       imx_clk_gate2_shared2("nand_usdhc_rawnand_clk",
+				     "nand_usdhc_bus", base + 0x4300, 0,
+				     &share_count_nand));
 	clk_dm(IMX8MN_CLK_USB1_CTRL_ROOT,
 		imx_clk_gate4("usb1_ctrl_root_clk", "usb_bus", base + 0x44d0, 0));
 
@@ -481,7 +359,7 @@ U_BOOT_DRIVER(imx8mn_clk) = {
 	.name = "clk_imx8mn",
 	.id = UCLASS_CLK,
 	.of_match = imx8mn_clk_ids,
-	.ops = &imx8mn_clk_ops,
+	.ops = &ccf_clk_ops,
 	.probe = imx8mn_clk_probe,
 	.flags = DM_FLAG_PRE_RELOC,
 };

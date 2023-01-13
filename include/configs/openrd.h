@@ -13,12 +13,6 @@
 #ifndef _CONFIG_OPENRD_H
 #define _CONFIG_OPENRD_H
 
-/*
- * High Level Configuration Options (easy to change)
- */
-#define CONFIG_SHEEVA_88SV131	1	/* CPU Core subversion */
-#define CONFIG_KW88F6281	1	/* SOC Name */
-
 #include "mv-common.h"
 
 /*
@@ -28,18 +22,10 @@
  * max 4k env size is enough, but in case of nand
  * it has to be rounded to sector size
  */
-/*
- * Environment is right behind U-Boot in flash. Make sure U-Boot
- * doesn't grow into the environment area.
- */
-#define CONFIG_BOARD_SIZE_LIMIT		CONFIG_ENV_OFFSET
 
 /*
  * Default environment variables
  */
-#define CONFIG_BOOTCOMMAND		"${x_bootcmd_kernel}; "	\
-	"setenv bootargs ${x_bootargs} ${x_bootargs_root}; "	\
-	"${x_bootcmd_usb}; bootm 0x6400000;"
 
 #define CONFIG_EXTRA_ENV_SETTINGS	"x_bootargs=console=ttyS0,115200 " \
 	CONFIG_MTDPARTS_DEFAULT " rw ubi.mtd=2,2048\0" \
@@ -68,9 +54,5 @@
 /*
  * SATA Driver configuration
  */
-#ifdef CONFIG_MVSATA_IDE
-#define CONFIG_SYS_ATA_IDE0_OFFSET	MV_SATA_PORT0_OFFSET
-#define CONFIG_SYS_ATA_IDE1_OFFSET	MV_SATA_PORT1_OFFSET
-#endif /*CONFIG_MVSATA_IDE*/
 
 #endif /* _CONFIG_OPENRD_BASE_H */

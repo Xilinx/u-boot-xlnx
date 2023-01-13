@@ -35,7 +35,7 @@ _start:
 
 .globl	_TEXT_BASE
 _TEXT_BASE:
-	.quad	CONFIG_SYS_TEXT_BASE
+	.quad	CONFIG_TEXT_BASE
 
 /*
  * These are defined in the linker script.
@@ -104,10 +104,6 @@ pie_skip_reloc:
 pie_fixup_done:
 #endif
 
-#ifdef CONFIG_SYS_RESET_SCTRL
-	bl reset_sctrl
-#endif
-
 #if defined(CONFIG_ARMV8_SPL_EXCEPTION_VECTORS) || !defined(CONFIG_SPL_BUILD)
 .macro	set_vbar, regname, reg
 	msr	\regname, \reg
@@ -129,7 +125,9 @@ pie_fixup_done:
 	msr	cptr_el3, xzr			/* Enable FP/SIMD */
 	b	0f
 2:	mrs	x1, hcr_el2
-	tbnz	x1, #34, 1f			/* HCR_EL2.E2H */
+	tbnz	x1, #HCR_EL2_E2H_BIT, 1f	/* HCR_EL2.E2H */
+	orr	x1, x1, #HCR_EL2_AMO_EL2	/* Route SErrors to EL2 */
+	msr	hcr_el2, x1
 	set_vbar vbar_el2, x0
 	mov	x0, #0x33ff
 	msr	cptr_el2, x0			/* Enable FP/SIMD */
@@ -138,10 +136,11 @@ pie_fixup_done:
 	mov	x0, #3 << 20
 	msr	cpacr_el1, x0			/* Enable FP/SIMD */
 0:
+	msr	daifclr, #0x4			/* Unmask SError interrupts */
 
-#ifdef COUNTER_FREQUENCY
+#if CONFIG_COUNTER_FREQUENCY
 	branch_if_not_highest_el x0, 4f
-	ldr	x0, =COUNTER_FREQUENCY
+	ldr	x0, =CONFIG_COUNTER_FREQUENCY
 	msr	cntfrq_el0, x0			/* Initialize CNTFRQ */
 #endif
 
@@ -176,11 +175,11 @@ pie_fixup_done:
 	bl	lowlevel_init
 
 #if defined(CONFIG_ARMV8_SPIN_TABLE) && !defined(CONFIG_SPL_BUILD)
-	branch_if_master x0, x1, master_cpu
+	branch_if_master x0, master_cpu
 	b	spin_table_secondary_jump
 	/* never return */
 #elif defined(CONFIG_ARMV8_MULTIENTRY)
-	branch_if_master x0, x1, master_cpu
+	branch_if_master x0, master_cpu
 
 	/*
 	 * Slave CPUs
@@ -193,40 +192,8 @@ slave_cpu:
 	br	x0			/* branch to the given address */
 #endif /* CONFIG_ARMV8_MULTIENTRY */
 master_cpu:
+	msr	SPSel, #1		/* make sure we use SP_ELx */
 	bl	_main
-
-#ifdef CONFIG_SYS_RESET_SCTRL
-reset_sctrl:
-	switch_el x1, 3f, 2f, 1f
-3:
-	mrs	x0, sctlr_el3
-	b	0f
-2:
-	mrs	x0, sctlr_el2
-	b	0f
-1:
-	mrs	x0, sctlr_el1
-
-0:
-	ldr	x1, =0xfdfffffa
-	and	x0, x0, x1
-
-	switch_el x1, 6f, 5f, 4f
-6:
-	msr	sctlr_el3, x0
-	b	7f
-5:
-	msr	sctlr_el2, x0
-	b	7f
-4:
-	msr	sctlr_el1, x0
-
-7:
-	dsb	sy
-	isb
-	b	__asm_invalidate_tlb_all
-	ret
-#endif
 
 /*-----------------------------------------------------------------------*/
 
@@ -338,7 +305,7 @@ WEAK(lowlevel_init)
 #endif
 
 #ifdef CONFIG_ARMV8_MULTIENTRY
-	branch_if_master x0, x1, 2f
+	branch_if_master x0, 2f
 
 	/*
 	 * Slave should wait for master clearing spin table.

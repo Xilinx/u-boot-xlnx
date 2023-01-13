@@ -19,11 +19,11 @@ DECLARE_GLOBAL_DATA_PTR;
 #define CLKIN_25M 25000000UL
 
 /* MAC Clock Delay settings */
-#define MAC12_DEF_DELAY_1G		0x0041b75d
-#define MAC12_DEF_DELAY_100M	0x00417410
-#define MAC12_DEF_DELAY_10M		0x00417410
-#define MAC34_DEF_DELAY_1G		0x0010438a
-#define MAC34_DEF_DELAY_100M	0x00104208
+#define MAC12_DEF_DELAY_1G		0x0028a410
+#define MAC12_DEF_DELAY_100M		0x00410410
+#define MAC12_DEF_DELAY_10M		0x00410410
+#define MAC34_DEF_DELAY_1G		0x00104208
+#define MAC34_DEF_DELAY_100M		0x00104208
 #define MAC34_DEF_DELAY_10M		0x00104208
 
 /*
@@ -471,7 +471,7 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 		rate = ast2600_get_uart_huxclk_rate(priv->scu);
 		break;
 	default:
-		debug("can't get clk rate\n");
+		debug("%s: unknown clk %ld\n", __func__, clk->id);
 		return -ENOENT;
 	}
 
@@ -481,7 +481,7 @@ static ulong ast2600_clk_get_rate(struct clk *clk)
 /**
  * @brief	lookup PLL divider config by input/output rate
  * @param[in]	*pll - PLL descriptor
- * @return	true - if PLL divider config is found, false - else
+ * Return:	true - if PLL divider config is found, false - else
  * The function caller shall fill "pll->in" and "pll->out",
  * then this function will search the lookup table
  * to find a valid PLL divider configuration.
@@ -1013,6 +1013,46 @@ static ulong ast2600_enable_usbbhclk(struct ast2600_scu *scu)
 	return 0;
 }
 
+static ulong ast2600_enable_haceclk(struct ast2600_scu *scu)
+{
+	uint32_t reset_bit;
+	uint32_t clkgate_bit;
+
+	/* share the same reset control bit with ACRY */
+	reset_bit = BIT(ASPEED_RESET_HACE);
+	clkgate_bit = SCU_CLKGATE1_HACE;
+
+	/*
+	 * we don't do reset assertion here as HACE
+	 * shares the same reset control with ACRY
+	 */
+	writel(clkgate_bit, &scu->clkgate_clr1);
+	mdelay(20);
+	writel(reset_bit, &scu->modrst_clr1);
+
+	return 0;
+}
+
+static ulong ast2600_enable_rsaclk(struct ast2600_scu *scu)
+{
+	uint32_t reset_bit;
+	uint32_t clkgate_bit;
+
+	/* same reset control bit with HACE */
+	reset_bit = BIT(ASPEED_RESET_HACE);
+	clkgate_bit = SCU_CLKGATE1_ACRY;
+
+	/*
+	 * we don't do reset assertion here as HACE
+	 * shares the same reset control with ACRY
+	 */
+	writel(clkgate_bit, &scu->clkgate_clr1);
+	mdelay(20);
+	writel(reset_bit, &scu->modrst_clr1);
+
+	return 0;
+}
+
 static int ast2600_clk_enable(struct clk *clk)
 {
 	struct ast2600_clk_priv *priv = dev_get_priv(clk->dev);
@@ -1033,13 +1073,13 @@ static int ast2600_clk_enable(struct clk *clk)
 	case ASPEED_CLK_GATE_SDCLK:
 		ast2600_enable_sdclk(priv->scu);
 		break;
-	case ASPEED_CLK_GATE_SDEXTCLK:
+	case ASPEED_CLK_SDIO:
 		ast2600_enable_extsdclk(priv->scu);
 		break;
 	case ASPEED_CLK_GATE_EMMCCLK:
 		ast2600_enable_emmcclk(priv->scu);
 		break;
-	case ASPEED_CLK_GATE_EMMCEXTCLK:
+	case ASPEED_CLK_EMMC:
 		ast2600_enable_extemmcclk(priv->scu);
 		break;
 	case ASPEED_CLK_GATE_FSICLK:
@@ -1051,8 +1091,14 @@ static int ast2600_clk_enable(struct clk *clk)
 	case ASPEED_CLK_GATE_USBPORT2CLK:
 		ast2600_enable_usbbhclk(priv->scu);
 		break;
+	case ASPEED_CLK_GATE_YCLK:
+		ast2600_enable_haceclk(priv->scu);
+		break;
+	case ASPEED_CLK_GATE_RSACLK:
+		ast2600_enable_rsaclk(priv->scu);
+		break;
 	default:
-		pr_err("can't enable clk\n");
+		debug("%s: unknown clk %ld\n", __func__, clk->id);
 		return -ENOENT;
 	}
 

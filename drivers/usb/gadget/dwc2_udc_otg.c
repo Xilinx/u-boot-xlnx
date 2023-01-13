@@ -461,7 +461,7 @@ static void reconfig_usbd(struct dwc2_udc *dev)
 	u32 max_hw_ep;
 	int pdata_hw_ep;
 
-	debug("Reseting OTG controller\n");
+	debug("Resetting OTG controller\n");
 
 	dflt_gusbcfg =
 		0<<15		/* PHY Low Power Clock sel*/
@@ -996,8 +996,9 @@ static int dwc2_udc_otg_of_to_plat(struct udevice *dev)
 	plat->rx_fifo_sz = dev_read_u32_default(dev, "g-rx-fifo-size", 0);
 	plat->np_tx_fifo_sz = dev_read_u32_default(dev, "g-np-tx-fifo-size", 0);
 
-	plat->tx_fifo_sz_nb =
-		dev_read_size(dev, "g-tx-fifo-size") / sizeof(u32);
+	ret = dev_read_size(dev, "g-tx-fifo-size");
+	if (ret > 0)
+		plat->tx_fifo_sz_nb = ret / sizeof(u32);
 	if (plat->tx_fifo_sz_nb > DWC2_MAX_HW_ENDPOINTS)
 		plat->tx_fifo_sz_nb = DWC2_MAX_HW_ENDPOINTS;
 	if (plat->tx_fifo_sz_nb) {

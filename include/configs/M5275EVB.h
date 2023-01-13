@@ -21,8 +21,6 @@
  * (easy to change)
  */
 
-#define CONFIG_MCFTMR
-
 #define CONFIG_SYS_UART_PORT		(0)
 
 /* Configuration for environment
@@ -33,40 +31,14 @@
 	. = DEFINED(env_offset) ? env_offset : .; \
 	env/embedded.o(.text);
 
-/*
- * BOOTP options
- */
-#define CONFIG_BOOTP_BOOTFILESIZE
-
 /* Available command configuration */
 
-#ifdef CONFIG_MCFFEC
-#define CONFIG_MII_INIT		1
-#define CONFIG_SYS_DISCOVER_PHY
-#define CONFIG_SYS_RX_ETH_BUFFER	8
-#define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#define CONFIG_HAS_ETH1
-/* If CONFIG_SYS_DISCOVER_PHY is not defined - hardcoded */
-#ifndef CONFIG_SYS_DISCOVER_PHY
-#define FECDUPLEX		FULL
-#define FECSPEED		_100BASET
-#else
-#ifndef CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#define CONFIG_SYS_FAULT_ECHO_LINK_DOWN
-#endif
-#endif
-#endif
-
 /* I2C */
-#define CONFIG_SYS_IMMR		CONFIG_SYS_MBAR
 #define CONFIG_SYS_I2C_PINMUX_REG	(gpio_reg->par_feci2c)
 #define CONFIG_SYS_I2C_PINMUX_CLR	(0xFFF0)
 #define CONFIG_SYS_I2C_PINMUX_SET	(0x000F)
 
-#define CONFIG_BOOTCOMMAND	"bootm ffe40000"
-
 #ifdef CONFIG_MCFFEC
-#	define CONFIG_NET_RETRY_COUNT	5
 #	define CONFIG_OVERWRITE_ETHADDR_ONCE
 #endif				/* FEC_ENET */
 
@@ -97,8 +69,6 @@
  */
 #define CONFIG_SYS_INIT_RAM_ADDR	0x20000000
 #define CONFIG_SYS_INIT_RAM_SIZE	0x10000	/* Size of used area in internal SRAM */
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 /*-----------------------------------------------------------------------
  * Start addresses for the final memory configuration
@@ -109,29 +79,16 @@
 #define CONFIG_SYS_SDRAM_SIZE		16	/* SDRAM size in MB */
 #define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_CS0_BASE
 
-#ifdef CONFIG_MONITOR_IS_IN_RAM
-#define CONFIG_SYS_MONITOR_BASE	0x20000
-#else
-#define CONFIG_SYS_MONITOR_BASE	(CONFIG_SYS_FLASH_BASE + 0x400)
-#endif
-
-#define CONFIG_SYS_MONITOR_LEN		0x20000
-#define CONFIG_SYS_BOOTPARAMS_LEN	64*1024
-
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization ??
  */
 #define CONFIG_SYS_BOOTMAPSZ		(CONFIG_SYS_SDRAM_BASE + (CONFIG_SYS_SDRAM_SIZE << 20))
-#define CONFIG_SYS_BOOTM_LEN		(CONFIG_SYS_SDRAM_SIZE << 20)
 
 /*-----------------------------------------------------------------------
  * FLASH organization
  */
-#define CONFIG_SYS_MAX_FLASH_BANKS	1	/* max number of memory banks */
-#define CONFIG_SYS_MAX_FLASH_SECT	11	/* max number of sectors on one chip */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	1000
 
 #define CONFIG_SYS_FLASH_SIZE		0x200000
 
@@ -162,10 +119,5 @@
 #define CONFIG_SYS_CS1_BASE		0x30000000
 #define CONFIG_SYS_CS1_CTRL		0x00001900
 #define CONFIG_SYS_CS1_MASK		0x00070001
-
-/*-----------------------------------------------------------------------
- * Port configuration
- */
-#define CONFIG_SYS_FECI2C		0x0FA0
 
 #endif	/* _M5275EVB_H */

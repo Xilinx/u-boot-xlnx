@@ -106,6 +106,8 @@ const char *get_imx_type(u32 imxtype)
 		return "8MP Lite[4]";	/* Quad-core Lite version of the imx8mp */
 	case MXC_CPU_IMX8MP6:
 		return "8MP[6]";	/* Quad-core version of the imx8mp, NPU fused */
+	case MXC_CPU_IMX8MPUL:
+		return "8MP UltraLite";	/* Quad-core UltraLite version of the imx8mp */
 	case MXC_CPU_IMX8MN:
 		return "8MNano Quad"; /* Quad-core version */
 	case MXC_CPU_IMX8MND:
@@ -308,7 +310,7 @@ void arch_preboot_os(void)
 	/* disable video before launching O/S */
 	ipuv3_fb_shutdown();
 #endif
-#if defined(CONFIG_VIDEO_MXS) && !defined(CONFIG_DM_VIDEO)
+#if defined(CONFIG_VIDEO_MXS) && !defined(CONFIG_VIDEO)
 	lcdif_power_down();
 #endif
 }

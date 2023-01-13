@@ -8,11 +8,31 @@ menuconfig NET
 
 if NET
 
+config ARP_TIMEOUT
+	int "Milliseconds before trying ARP again"
+	default 5000
+
+config NET_RETRY_COUNT
+	int "Number of timeouts before giving up"
+	default 5
+	help
+	  This variable defines the number of retries for network operations
+	  like ARP, RARP, TFTP, or BOOTP before giving up the operation.
+
 config PROT_UDP
 	bool "Enable generic udp framework"
 	help
 	  Enable a generic udp framework that allows defining a custom
 	  handler for udp protocol.
+
+config BOOTDEV_ETH
+	bool "Enable bootdev for ethernet"
+	depends on BOOTSTD
+	default y
+	help
+	  Provide a bootdev for ethernet so that is it possible to boot
+	  an operationg system over the network, using the PXE (Preboot
+	  Execution Environment) protocol.
 
 config BOOTP_SEND_HOSTNAME
 	bool "Send hostname to DNS server"
@@ -55,6 +75,13 @@ config NET_MAXDEFRAG
 	  used for reassembly, and thus an upper bound for the size of
 	  IP datagrams that can be received.
 
+config SYS_FAULT_ECHO_LINK_DOWN
+	bool "Echo the inverted Ethernet link state to the fault LED"
+	help
+	  Echo the inverted Ethernet link state to the fault LED.  Note, if
+	  this option is active, then CONFIG_SYS_FAULT_MII_ADDR also needs to
+	  be configured.
+
 config TFTP_BLOCKSIZE
 	int "TFTP block size"
 	default 1468
@@ -64,6 +91,24 @@ config TFTP_BLOCKSIZE
 	  1468 (MTU minus eth.hdrs) provides a good throughput with
 	  almost-MTU block sizes.
 	  You can also activate CONFIG_IP_DEFRAG to set a larger block.
+
+config TFTP_PORT
+	bool "Set TFTP UDP source/destination ports via the environment"
+	help
+	  If this is defined, the environment variable tftpsrcp is used to
+	  supply the TFTP UDP source port value.  If tftpsrcp isn't defined,
+	  the normal pseudo-random port number generator is used.
+
+	  Also, the environment variable tftpdstp is used to supply the TFTP
+	  UDP destination port value.  If tftpdstp isn't defined, the normal
+	  port 69 is used.
+
+	  The purpose for tftpsrcp is to allow a TFTP server to blindly start
+	  the TFTP transfer using the pre-configured target IP address and UDP
+	  port. This has the effect of "punching through" the (Windows XP)
+	  firewall, allowing the remainder of the TFTP transfer to proceed
+	  normally.  A better solution is to properly configure the firewall,
+	  but sometimes that is not allowed.
 
 config TFTP_WINDOWSIZE
 	int "TFTP window size"
@@ -99,4 +144,69 @@ config SERVERIP_FROM_PROXYDHCP_DELAY_MS
 		receiving response from main DHCP server. Has no effect if
 		SERVERIP_FROM_PROXYDHCP is false.
 
+config KEEP_SERVERADDR
+	bool "Write the server's MAC address to 'serveraddr'"
+	default y if SANDBOX
+	help
+	  Keeps the server's MAC address, in the env 'serveraddr'
+	  for passing to bootargs (like Linux's netconsole option). If this is
+	  enabled, when an ARP reply is received, the server's IP address is
+	  written there.
+
+config UDP_CHECKSUM
+	bool "Check the UDP checksum"
+	default y if SANDBOX
+	help
+	  Enable this to verify the checksum on UDP packets. If the checksum
+	  is wrong then the packet is discarded and an error is shown, like
+	  "UDP wrong checksum 29374a23 30ff3826"
+
+config BOOTP_SERVERIP
+	bool "Use the 'serverip' env var for tftp, not bootp"
+	help
+	  Enable this if the TFTP server will be the 'serverip' environment
+	  variable, not the BOOTP server. This affects the operation of both
+	  bootp and tftp.
+
+config BOOTP_MAX_ROOT_PATH_LEN
+	int "Option 17 root path length"
+	default 64
+	help
+	  Select maximal length of option 17 root path.
+
+config PROT_TCP
+	bool "TCP stack"
+	help
+	  Enable a generic tcp framework that allows defining a custom
+	  handler for tcp protocol.
+
+config PROT_TCP_SACK
+	bool "TCP SACK support"
+	depends on PROT_TCP
+	help
+	  TCP protocol with SACK. SACK means selective acknowledgements.
+	  By turning this option on TCP will learn what segments are already
+	  received. So that it improves TCP's retransmission efficiency.
+	  This option should be turn on if you want to achieve the fastest
+	  file transfer possible.
+
+config IPV6
+	bool "IPv6 support"
+	help
+	  Enable IPv6 support. It includes Neighbour Discovery protocol, ICMPv6
+	  and auxiliary stuff to make it work. Since it is enabled u-boot
+	  network subsystem can get and handle incoming packets and send packets
+	  through IPv6 network. It allows to use environment variables such as
+	  ip6addr, serverip6. If a u-boot command is capable to parse an IPv6
+	  address and find it, it will force using IPv6 in the network stack.
+
 endif   # if NET
+
+config SYS_RX_ETH_BUFFER
+	int "Number of receive packet buffers"
+	default 4
+	help
+	  Defines the number of Ethernet receive buffers. On some Ethernet
+	  controllers it is recommended to set this value to 8 or even higher,
+	  since all buffers can be full shortly after enabling the interface on
+	  high Ethernet traffic.

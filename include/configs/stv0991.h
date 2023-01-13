@@ -14,34 +14,12 @@
 #define PHYS_SDRAM_1_SIZE			0x00198000
 
 /* user interface */
-#define CONFIG_SYS_CBSIZE			1024
 
 /* MISC */
 #define CONFIG_SYS_INIT_RAM_SIZE		0x8000
 #define CONFIG_SYS_INIT_RAM_ADDR		0x00190000
-#define CONFIG_SYS_INIT_SP_OFFSET		\
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 /* U-Boot Load Address */
-#define CONFIG_SYS_INIT_SP_ADDR			\
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-/* GMAC related configs */
-
-#define CONFIG_DW_ALTDESCRIPTOR
-
-/* Command support defines */
-#define CONFIG_PHY_RESET_DELAY			10000		/* in usec */
 
 /* Misc configuration */
-
-#define CONFIG_BOOTCOMMAND                     "go 0x40040000"
-
-/*
-+ * QSPI support
-+ */
-#ifdef CONFIG_OF_CONTROL		/* QSPI is controlled via DT */
-#define CONFIG_CQSPI_REF_CLK		((30/4)/2)*1000*1000
-
-#endif
 
 #endif /* __CONFIG_H */

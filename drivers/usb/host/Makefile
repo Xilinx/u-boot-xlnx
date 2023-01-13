@@ -8,16 +8,20 @@ obj-y += usb-uclass.o
 obj-$(CONFIG_SANDBOX) += usb-sandbox.o
 endif
 
+ifdef CONFIG_$(SPL_TPL_)USB_STORAGE
+obj-$(CONFIG_$(SPL_TPL_)BOOTSTD) += usb_bootdev.o
+endif
+
 # ohci
 obj-$(CONFIG_USB_OHCI_NEW) += ohci-hcd.o
 obj-$(CONFIG_USB_ATMEL) += ohci-at91.o
 obj-$(CONFIG_USB_OHCI_DA8XX) += ohci-da8xx.o
 obj-$(CONFIG_USB_R8A66597_HCD) += r8a66597-hcd.o
 obj-$(CONFIG_USB_SL811HS) += sl811-hcd.o
-obj-$(CONFIG_USB_OHCI_EP93XX) += ohci-ep93xx.o
 obj-$(CONFIG_USB_OHCI_LPC32XX) += ohci-lpc32xx.o
 obj-$(CONFIG_USB_OHCI_PCI) += ohci-pci.o
 obj-$(CONFIG_USB_OHCI_GENERIC) += ohci-generic.o
+obj-$(CONFIG_USB_OHCI_NPCM) += ohci-npcm.o
 
 # echi
 obj-$(CONFIG_USB_EHCI_HCD) += ehci-hcd.o
@@ -27,11 +31,11 @@ obj-$(CONFIG_USB_EHCI_FSL) += ehci-fsl.o
 obj-$(CONFIG_USB_EHCI_FARADAY) += ehci-faraday.o
 obj-$(CONFIG_USB_EHCI_GENERIC) += ehci-generic.o
 obj-$(CONFIG_USB_EHCI_EXYNOS) += ehci-exynos.o
-obj-$(CONFIG_USB_EHCI_MXC) += ehci-mxc.o
 obj-$(CONFIG_USB_EHCI_MXS) += ehci-mxs.o
 obj-$(CONFIG_USB_EHCI_MX5) += ehci-mx5.o
 obj-$(CONFIG_USB_EHCI_MX6) += ehci-mx6.o
 obj-$(CONFIG_USB_EHCI_MX7) += ehci-mx6.o
+obj-$(CONFIG_USB_EHCI_NPCM) += ehci-npcm.o
 obj-$(CONFIG_USB_EHCI_OMAP) += ehci-omap.o
 obj-$(CONFIG_USB_EHCI_MARVELL) += ehci-marvell.o
 obj-$(CONFIG_USB_EHCI_MSM) += ehci-msm.o

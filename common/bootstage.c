@@ -147,15 +147,9 @@ ulong bootstage_add_record(enum bootstage_id id, const char *name,
 	return mark;
 }
 
-
-ulong bootstage_mark(enum bootstage_id id)
+ulong bootstage_error_name(enum bootstage_id id, const char *name)
 {
-	return bootstage_add_record(id, NULL, 0, timer_get_boot_us());
-}
-
-ulong bootstage_error(enum bootstage_id id)
-{
-	return bootstage_add_record(id, NULL, BOOTSTAGEF_ERROR,
+	return bootstage_add_record(id, name, BOOTSTAGEF_ERROR,
 				    timer_get_boot_us());
 }
 
@@ -230,7 +224,7 @@ uint32_t bootstage_accum(enum bootstage_id id)
  * @param buf	Buffer to put name if needed
  * @param len	Length of buffer
  * @param rec	Boot stage record to get the name from
- * @return pointer to name, either from the record or pointing to buf.
+ * Return: pointer to name, either from the record or pointing to buf.
  */
 static const char *get_record_name(char *buf, int len,
 				   const struct bootstage_record *rec)
@@ -273,7 +267,7 @@ static int h_compare_record(const void *r1, const void *r2)
  * Add all bootstage timings to a device tree.
  *
  * @param blob	Device tree blob
- * @return 0 on success, != 0 on failure.
+ * Return: 0 on success, != 0 on failure.
  */
 static int add_bootstages_devicetree(struct fdt_header *blob)
 {

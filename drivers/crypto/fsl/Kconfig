@@ -2,6 +2,7 @@ config FSL_CAAM
 	bool "Freescale Crypto Driver Support"
 	select SHA_HW_ACCEL
 	# hw_sha1() under drivers/crypto, and needed with SHA_HW_ACCEL
+	select MISC if DM
 	imply SPL_CRYPTO if (ARM && SPL)
 	imply CMD_HASH
 	help
@@ -9,9 +10,14 @@ config FSL_CAAM
 	  Module (CAAM), also known as the SEC version 4 (SEC4). The driver uses
 	  Job Ring as interface to communicate with CAAM.
 
+config SYS_FSL_MAX_NUM_OF_SEC
+	int "Number of job rings in the CAAM"
+	depends on FSL_CAAM
+	default 1
+
 config CAAM_64BIT
 	bool
-	default y if PHYS_64BIT && !ARCH_IMX8M
+	default y if PHYS_64BIT && !ARCH_IMX8M && !ARCH_IMX8
 	help
 	  Select Crypto driver for 64 bits CAAM version
 

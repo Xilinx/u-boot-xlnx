@@ -48,7 +48,7 @@ static void release_mmc(struct optee_private *priv)
 	if (!priv->rpmb_mmc)
 		return;
 
-	rc = blk_select_hwpart_devnum(IF_TYPE_MMC, priv->rpmb_dev_id,
+	rc = blk_select_hwpart_devnum(UCLASS_MMC, priv->rpmb_dev_id,
 				      priv->rpmb_original_part);
 	if (rc)
 		debug("%s: blk_select_hwpart_devnum() failed: %d\n",
@@ -72,6 +72,10 @@ static struct mmc *get_mmc(struct optee_private *priv, int dev_id)
 		debug("Cannot find RPMB device\n");
 		return NULL;
 	}
+	if (mmc_init(mmc)) {
+		log(LOGC_BOARD, LOGL_ERR, "%s:MMC device %d init failed\n", __func__, dev_id);
+		return NULL;
+	}
 	if (!(mmc->version & MMC_VERSION_MMC)) {
 		debug("Device id %d is not an eMMC device\n", dev_id);
 		return NULL;
@@ -84,7 +88,7 @@ static struct mmc *get_mmc(struct optee_private *priv, int dev_id)
 
 	priv->rpmb_original_part = mmc_get_blk_desc(mmc)->hwpart;
 
-	rc = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_id, MMC_PART_RPMB);
+	rc = blk_select_hwpart_devnum(UCLASS_MMC, dev_id, MMC_PART_RPMB);
 	if (rc) {
 		debug("Device id %d: cannot select RPMB partition: %d\n",
 		      dev_id, rc);
@@ -103,6 +107,11 @@ static u32 rpmb_get_dev_info(u16 dev_id, struct rpmb_dev_info *info)
 
 	if (!mmc)
 		return TEE_ERROR_ITEM_NOT_FOUND;
+
+	if (mmc_init(mmc)) {
+		log(LOGC_BOARD, LOGL_ERR, "%s:MMC device %d init failed\n", __func__, dev_id);
+		return TEE_ERROR_NOT_SUPPORTED;
+	}
 
 	if (!mmc->ext_csd)
 		return TEE_ERROR_GENERIC;

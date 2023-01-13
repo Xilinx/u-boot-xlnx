@@ -1494,8 +1494,8 @@ int tegra_dp_enable(struct udevice *dev, int panel_bpp,
 		return -ENOLINK;
 	}
 
-	ret = uclass_first_device(UCLASS_VIDEO_BRIDGE, &sor);
-	if (ret || !sor) {
+	ret = uclass_first_device_err(UCLASS_VIDEO_BRIDGE, &sor);
+	if (ret) {
 		debug("dp: failed to find SOR device: ret=%d\n", ret);
 		return ret;
 	}
@@ -1609,6 +1609,7 @@ static int dp_tegra_probe(struct udevice *dev)
 
 static const struct udevice_id tegra_dp_ids[] = {
 	{ .compatible = "nvidia,tegra124-dpaux" },
+	{ .compatible = "nvidia,tegra210-dpaux" },
 	{ }
 };
 

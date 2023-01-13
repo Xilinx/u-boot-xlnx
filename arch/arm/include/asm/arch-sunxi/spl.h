@@ -19,8 +19,16 @@
 #define SUNXI_BOOTED_FROM_MMC0_HIGH	0x10
 #define SUNXI_BOOTED_FROM_MMC2_HIGH	0x12
 
-#define is_boot0_magic(addr)	(memcmp((void *)(addr), BOOT0_MAGIC, 8) == 0)
+/*
+ * Values taken from the F1C200s BootROM stack
+ * to determine where we booted from.
+ */
+#define SUNIV_BOOTED_FROM_MMC0	0xffff40f8
+#define SUNIV_BOOTED_FROM_NAND	0xffff4114
+#define SUNIV_BOOTED_FROM_SPI	0xffff4130
+#define SUNIV_BOOTED_FROM_MMC1	0xffff4150
 
 uint32_t sunxi_get_boot_device(void);
+uint32_t sunxi_get_spl_size(void);
 
 #endif

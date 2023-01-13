@@ -11,6 +11,8 @@
 #include <linux/bitops.h>
 
 static struct ccu_clk_gate h6_r_gates[] = {
+	[CLK_R_APB1]		= GATE_DUMMY,
+
 	[CLK_R_APB1_TIMER]	= GATE(0x11c, BIT(0)),
 	[CLK_R_APB1_TWD]	= GATE(0x12c, BIT(0)),
 	[CLK_R_APB1_PWM]	= GATE(0x13c, BIT(0)),
@@ -32,30 +34,9 @@ static struct ccu_reset h6_r_resets[] = {
 	[RST_R_APB1_W1]		= RESET(0x1ec, BIT(16)),
 };
 
-static const struct ccu_desc h6_r_ccu_desc = {
+const struct ccu_desc h6_r_ccu_desc = {
 	.gates = h6_r_gates,
 	.resets = h6_r_resets,
-};
-
-static int h6_r_clk_bind(struct udevice *dev)
-{
-	return sunxi_reset_bind(dev, ARRAY_SIZE(h6_r_resets));
-}
-
-static const struct udevice_id h6_r_clk_ids[] = {
-	{ .compatible = "allwinner,sun50i-h6-r-ccu",
-	  .data = (ulong)&h6_r_ccu_desc },
-	{ .compatible = "allwinner,sun50i-h616-r-ccu",
-	  .data = (ulong)&h6_r_ccu_desc },
-	{ }
-};
-
-U_BOOT_DRIVER(clk_sun6i_h6_r) = {
-	.name		= "sun6i_h6_r_ccu",
-	.id		= UCLASS_CLK,
-	.of_match	= h6_r_clk_ids,
-	.priv_auto	= sizeof(struct ccu_priv),
-	.ops		= &sunxi_clk_ops,
-	.probe		= sunxi_clk_probe,
-	.bind		= h6_r_clk_bind,
+	.num_gates = ARRAY_SIZE(h6_r_gates),
+	.num_resets = ARRAY_SIZE(h6_r_resets),
 };

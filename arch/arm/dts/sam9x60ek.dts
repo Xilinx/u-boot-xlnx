@@ -49,7 +49,7 @@
 				status = "okay";
 
 				nor_flash: sst26vf064@0 {
-					compatible = "spi-flash";
+					compatible = "jedec,spi-nor";
 					reg = <0>;
 					spi-max-frequency = <80000000>;
 					spi-rx-bus-width = <4>;
@@ -72,7 +72,7 @@
 					status = "okay";
 
 					eeprom@53 {
-						compatible = "atmel,24c32";
+						compatible = "atmel,24c02"; /* EEPROM is 2Kbits microchip 24aa025e48, an at24c02 with page size of 16 */
 						reg = <0x53>;
 						pagesize = <16>;
 					};
@@ -80,26 +80,26 @@
 			};
 
 			pinctrl {
-					pinctrl_qspi: qspi {
-						atmel,pins =
-							<AT91_PIOB 19 AT91_PERIPH_A AT91_PINCTRL_NONE
-							 AT91_PIOB 20 AT91_PERIPH_A AT91_PINCTRL_NONE
-							 AT91_PIOB 21 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
-							 AT91_PIOB 22 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
-							 AT91_PIOB 23 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
-							 AT91_PIOB 24 AT91_PERIPH_A AT91_PINCTRL_PULL_UP>;
-					};
+				pinctrl_qspi: qspi {
+					atmel,pins =
+						<AT91_PIOB 19 AT91_PERIPH_A AT91_PINCTRL_NONE
+						 AT91_PIOB 20 AT91_PERIPH_A AT91_PINCTRL_NONE
+						 AT91_PIOB 21 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
+						 AT91_PIOB 22 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
+						 AT91_PIOB 23 AT91_PERIPH_A AT91_PINCTRL_PULL_UP
+						 AT91_PIOB 24 AT91_PERIPH_A AT91_PINCTRL_PULL_UP>;
+				};
 
-					pinctrl_flx0: flx0_default {
-						atmel,pins =
-							<AT91_PIOA 0 AT91_PERIPH_A AT91_PINCTRL_NONE
-							 AT91_PIOA 1 AT91_PERIPH_A AT91_PINCTRL_NONE>;
-					};
+				pinctrl_flx0: flx0_default {
+					atmel,pins =
+						<AT91_PIOA 0 AT91_PERIPH_A AT91_PINCTRL_NONE
+						 AT91_PIOA 1 AT91_PERIPH_A AT91_PINCTRL_NONE>;
+				};
 
-					pinctrl_onewire_tm_default: onewire_tm_default {
-						atmel,pins =
-							<AT91_PIOD 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP>;
-					};
+				pinctrl_onewire_tm_default: onewire_tm_default {
+					atmel,pins =
+						<AT91_PIOD 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP>;
+				};
 
 			};
 		};

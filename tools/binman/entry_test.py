@@ -5,21 +5,23 @@
 # Test for the Entry class
 
 import collections
+import importlib
 import os
 import sys
 import unittest
 
 from binman import entry
+from binman.etype.blob import Entry_blob
 from dtoc import fdt
 from dtoc import fdt_util
 from patman import tools
 
 class TestEntry(unittest.TestCase):
     def setUp(self):
-        tools.PrepareOutputDir(None)
+        tools.prepare_output_dir(None)
 
     def tearDown(self):
-        tools.FinaliseOutputDir()
+        tools.finalise_output_dir()
 
     def GetNode(self):
         binman_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -31,11 +33,7 @@ class TestEntry(unittest.TestCase):
     def _ReloadEntry(self):
         global entry
         if entry:
-            if sys.version_info[0] >= 3:
-                import importlib
-                importlib.reload(entry)
-            else:
-                reload(entry)
+            importlib.reload(entry)
         else:
             from binman import entry
 
@@ -99,6 +97,23 @@ class TestEntry(unittest.TestCase):
             entry.Entry.Create(None, self.GetNode(), 'missing', expanded=True)
         self.assertIn("Unknown entry type 'missing' in node '/binman/u-boot'",
                       str(e.exception))
+
+    def testMissingEtype(self):
+        """Test use of a blob etype when the requested one is not available"""
+        ent = entry.Entry.Create(None, self.GetNode(), 'missing',
+                                 missing_etype=True)
+        self.assertTrue(isinstance(ent, Entry_blob))
+        self.assertEquals('missing', ent.etype)
+
+    def testDecompressData(self):
+        """Test the DecompressData() method of the base class"""
+        base = entry.Entry.Create(None, self.GetNode(), 'blob-dtb')
+        base.compress = 'lz4'
+        bintools = {}
+        base.comp_bintool = base.AddBintool(bintools, '_testing')
+        self.assertEquals(tools.get_bytes(0, 1024), base.CompressData(b'abc'))
+        self.assertEquals(tools.get_bytes(0, 1024), base.DecompressData(b'abc'))
+
 
 if __name__ == "__main__":
     unittest.main()

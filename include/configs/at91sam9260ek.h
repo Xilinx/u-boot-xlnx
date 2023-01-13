@@ -17,7 +17,7 @@
 #include <asm/hardware.h>
 
 /*
- * Warning: changing CONFIG_SYS_TEXT_BASE requires
+ * Warning: changing CONFIG_TEXT_BASE requires
  * adapting the initial boot program.
  * Since the linker has to swallow that define, we must use a pure
  * hex number here!
@@ -27,23 +27,6 @@
 #define CONFIG_SYS_AT91_SLOW_CLOCK	32768		/* slow clock xtal */
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000	/* main clock xtal */
 
-/* Define actual evaluation board type from used processor type */
-#ifdef CONFIG_AT91SAM9G20
-# define CONFIG_AT91SAM9G20EK	/* It's an Atmel AT91SAM9G20 EK */
-#else
-# define CONFIG_AT91SAM9260EK	/* It's an Atmel AT91SAM9260 EK */
-#endif
-
-/* Misc CPU related */
-
-/* general purpose I/O */
-#define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
-
-/*
- * BOOTP options
- */
-#define CONFIG_BOOTP_BOOTFILESIZE	1
-
 /*
  * SDRAM: 1 bank, min 32, max 128 MB
  * Initialized before u-boot gets started.
@@ -51,22 +34,15 @@
 #define CONFIG_SYS_SDRAM_BASE		ATMEL_BASE_CS1
 #define CONFIG_SYS_SDRAM_SIZE		0x04000000
 
-/*
- * Initial stack pointer: 4k - GENERATED_GBL_DATA_SIZE in internal SRAM,
- * leaving the correct space for initial global data structure above
- * that address while providing maximum stack area below.
- */
+#define CONFIG_SYS_INIT_RAM_SIZE	(16 * 1024)
 #ifdef CONFIG_AT91SAM9XE
-# define CONFIG_SYS_INIT_SP_ADDR \
-	(ATMEL_BASE_SRAM + 16 * 1024 - GENERATED_GBL_DATA_SIZE)
+# define CONFIG_SYS_INIT_RAM_ADDR	ATMEL_BASE_SRAM
 #else
-# define CONFIG_SYS_INIT_SP_ADDR \
-	(ATMEL_BASE_SRAM1 + 16 * 1024 - GENERATED_GBL_DATA_SIZE)
+# define CONFIG_SYS_INIT_RAM_ADDR	ATMEL_BASE_SRAM1
 #endif
 
 /* NAND flash */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
 #define CONFIG_SYS_NAND_MASK_ALE	(1 << 21)
@@ -76,38 +52,6 @@
 #endif
 
 /* USB */
-#define CONFIG_USB_ATMEL
-#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
-#define CONFIG_USB_OHCI_NEW		1
-#define CONFIG_SYS_USB_OHCI_CPU_INIT		1
 #define CONFIG_SYS_USB_OHCI_REGS_BASE		0x00500000	/* AT91SAM9260_UHP_BASE */
-#define CONFIG_SYS_USB_OHCI_SLOT_NAME		"at91sam9260"
-#define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
-
-#ifdef CONFIG_SYS_USE_DATAFLASH_CS0
-
-/* bootstrap + u-boot + env + linux in dataflash on CS0 */
-#define CONFIG_BOOTCOMMAND	"sf probe 0:0; " \
-				"sf read 0x22000000 0x84000 0x294000; " \
-				"bootm 0x22000000"
-
-#elif CONFIG_SYS_USE_DATAFLASH_CS1
-
-#define CONFIG_BOOTCOMMAND	"sf probe 0:1; " \
-				"sf read 0x22000000 0x84000 0x294000; " \
-				"bootm 0x22000000"
-
-#elif defined(CONFIG_SYS_USE_NANDFLASH)
-
-/* bootstrap + u-boot + env + linux in nandflash */
-#define CONFIG_BOOTCOMMAND	"nand read 0x22000000 0x200000 0x300000; bootm"
-
-#else	/* CONFIG_SYS_USE_MMC */
-/* bootstrap + u-boot + env + linux in mmc */
-/* For FAT system, most cases it should be in the reserved sector */
-
-#define CONFIG_BOOTCOMMAND						\
-	"fatload mmc 0:1 0x22000000 uImage; bootm"
-#endif
 
 #endif

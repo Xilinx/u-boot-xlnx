@@ -34,6 +34,9 @@ static int mmc_set_signal_voltage(struct mmc *mmc, uint signal_voltage);
 
 static int mmc_wait_dat0(struct mmc *mmc, int state, int timeout_us)
 {
+	if (mmc->cfg->ops->wait_dat0)
+		return mmc->cfg->ops->wait_dat0(mmc, state, timeout_us);
+
 	return -ENOSYS;
 }
 
@@ -132,7 +135,7 @@ void mmc_trace_state(struct mmc *mmc, struct mmc_cmd *cmd)
 }
 #endif
 
-#if CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG)
+#if CONFIG_IS_ENABLED(MMC_VERBOSE) || defined(DEBUG) || CONFIG_VAL(LOGLEVEL) >= LOGL_DEBUG
 const char *mmc_mode_name(enum bus_mode mode)
 {
 	static const char *const names[] = {
@@ -215,7 +218,7 @@ int mmc_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd, struct mmc_data *data)
  * @data:	additional data to send/receive
  * @retries:	how many times to retry; mmc_send_cmd is always called at least
  *              once
- * @return 0 if ok, -ve on error
+ * Return: 0 if ok, -ve on error
  */
 static int mmc_send_cmd_retry(struct mmc *mmc, struct mmc_cmd *cmd,
 			      struct mmc_data *data, uint retries)
@@ -239,7 +242,7 @@ static int mmc_send_cmd_retry(struct mmc *mmc, struct mmc_cmd *cmd,
  * @quirk:	retry only if this quirk is enabled
  * @retries:	how many times to retry; mmc_send_cmd is always called at least
  *              once
- * @return 0 if ok, -ve on error
+ * Return: 0 if ok, -ve on error
  */
 static int mmc_send_cmd_quirks(struct mmc *mmc, struct mmc_cmd *cmd,
 			       struct mmc_data *data, u32 quirk, uint retries)
@@ -828,6 +831,9 @@ static int __mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value,
 		return 0;
 	}
 
+	if (!send_status)
+		return 0;
+
 	/* Finally wait until the card is ready or indicates a failure
 	 * to switch. It doesn't hurt to use CMD13 here even if send_status
 	 * is false, because by now (after 'timeout_ms' ms) the bus should be
@@ -858,6 +864,33 @@ int mmc_switch(struct mmc *mmc, u8 set, u8 index, u8 value)
 int mmc_boot_wp(struct mmc *mmc)
 {
 	return mmc_switch(mmc, EXT_CSD_CMD_SET_NORMAL, EXT_CSD_BOOT_WP, 1);
+}
+
+int mmc_boot_wp_single_partition(struct mmc *mmc, int partition)
+{
+	u8 value;
+	int ret;
+
+	value = EXT_CSD_BOOT_WP_B_PWR_WP_EN;
+
+	if (partition == 0) {
+		value |= EXT_CSD_BOOT_WP_B_SEC_WP_SEL;
+		ret = mmc_switch(mmc,
+				 EXT_CSD_CMD_SET_NORMAL,
+				 EXT_CSD_BOOT_WP,
+				 value);
+	} else if (partition == 1) {
+		value |= EXT_CSD_BOOT_WP_B_SEC_WP_SEL;
+		value |= EXT_CSD_BOOT_WP_B_PWR_WP_SEC_SEL;
+		ret = mmc_switch(mmc,
+				 EXT_CSD_CMD_SET_NORMAL,
+				 EXT_CSD_BOOT_WP,
+				 value);
+	} else {
+		ret = mmc_boot_wp(mmc);
+	}
+
+	return ret;
 }
 
 #if !CONFIG_IS_ENABLED(MMC_TINY)
@@ -3080,10 +3113,12 @@ int mmc_init_device(int num)
 	}
 
 	m = mmc_get_mmc_dev(dev);
-	m->user_speed_mode = MMC_MODES_END; /* Initialising user set speed mode */
-
 	if (!m)
 		return 0;
+
+	/* Initialising user set speed mode */
+	m->user_speed_mode = MMC_MODES_END;
+
 	if (m->preinit)
 		mmc_start_init(m);
 

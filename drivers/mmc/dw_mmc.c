@@ -168,7 +168,8 @@ static int dwmci_data_transfer(struct dwmci_host *host, struct mmc_data *data)
 			if (data->flags == MMC_DATA_READ &&
 			    (mask & (DWMCI_INTMSK_RXDR | DWMCI_INTMSK_DTO))) {
 				dwmci_writel(host, DWMCI_RINTSTS,
-					     DWMCI_INTMSK_RXDR | DWMCI_INTMSK_DTO);
+					     mask & (DWMCI_INTMSK_RXDR |
+						     DWMCI_INTMSK_DTO));
 				while (size) {
 					ret = dwmci_fifo_ready(host,
 							DWMCI_FIFO_EMPTY,
@@ -301,7 +302,7 @@ static int dwmci_send_cmd(struct mmc *mmc, struct mmc_cmd *cmd,
 		flags = dwmci_set_transfer_mode(host, data);
 
 	if ((cmd->resp_type & MMC_RSP_136) && (cmd->resp_type & MMC_RSP_BUSY))
-		return -1;
+		return -EBUSY;
 
 	if (cmd->cmdidx == MMC_CMD_STOP_TRANSMISSION)
 		flags |= DWMCI_CMD_ABORT_STOP;

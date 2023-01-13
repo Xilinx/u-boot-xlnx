@@ -68,13 +68,6 @@ static uint flash_verbose = 1;
 
 flash_info_t flash_info[CFI_MAX_FLASH_BANKS];	/* FLASH chips info */
 
-/*
- * Check if chip width is defined. If not, start detecting with 8bit.
- */
-#ifndef CONFIG_SYS_FLASH_CFI_WIDTH
-#define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_8BIT
-#endif
-
 #ifdef CONFIG_CFI_FLASH_USE_WEAK_ACCESSORS
 #define __maybe_weak __weak
 #else
@@ -96,7 +89,7 @@ static u16 cfi_flash_config_reg(int i)
 }
 
 #if defined(CONFIG_SYS_MAX_FLASH_BANKS_DETECT)
-int cfi_flash_num_flash_banks = CONFIG_SYS_MAX_FLASH_BANKS_DETECT;
+int cfi_flash_num_flash_banks = CFI_MAX_FLASH_BANKS;
 #else
 int cfi_flash_num_flash_banks;
 #endif
@@ -191,7 +184,7 @@ static flash_info_t *flash_get_info(ulong base)
 	int i;
 	flash_info_t *info;
 
-	for (i = 0; i < CONFIG_SYS_MAX_FLASH_BANKS; i++) {
+	for (i = 0; i < CFI_FLASH_BANKS; i++) {
 		info = &flash_info[i];
 		if (info->size && info->start[0] <= base &&
 		    base <= info->start[0] + info->size - 1)
@@ -591,7 +584,7 @@ static int flash_status_check(flash_info_t *info, flash_sect_t sector,
 	reset_timer();
 #endif
 	start = get_timer(0);
-	WATCHDOG_RESET();
+	schedule();
 	while (flash_is_busy(info, sector)) {
 		if (get_timer(start) > tout) {
 			printf("Flash %s timeout at address %lx data %lx\n",
@@ -684,7 +677,7 @@ static int flash_status_poll(flash_info_t *info, void *src, void *dst,
 	reset_timer();
 #endif
 	start = get_timer(0);
-	WATCHDOG_RESET();
+	schedule();
 	while (1) {
 		switch (info->portwidth) {
 		case FLASH_CFI_8BIT:
@@ -2419,7 +2412,7 @@ unsigned long flash_init(void)
 #endif
 
 	/* Init: no FLASHes known */
-	for (i = 0; i < CONFIG_SYS_MAX_FLASH_BANKS; ++i) {
+	for (i = 0; i < CFI_FLASH_BANKS; ++i) {
 		flash_info[i].flash_id = FLASH_UNKNOWN;
 
 		/* Optionally write flash configuration register */

@@ -10,10 +10,8 @@
 
 #define CONFIG_HOSTNAME			"AMCORE"
 
-#define CONFIG_MCFTMR
 #define CONFIG_SYS_UART_PORT		0
 
-#define CONFIG_BOOTCOMMAND		"bootm ffc20000"
 #define CONFIG_EXTRA_ENV_SETTINGS				\
 	"upgrade_uboot=loady; "					\
 		"protect off 0xffc00000 0xffc1ffff; "		\
@@ -34,23 +32,14 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	0x20000000
 /* size of internal SRAM */
 #define CONFIG_SYS_INIT_RAM_SIZE	0x1000
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - \
-					 GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
 
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
 #define CONFIG_SYS_SDRAM_SIZE		0x1000000
 #define CONFIG_SYS_FLASH_BASE		0xffc00000
-#define CONFIG_SYS_MAX_FLASH_BANKS	1
-#define CONFIG_SYS_MAX_FLASH_SECT	1024
-#define CONFIG_SYS_FLASH_ERASE_TOUT	1000
 
 /* amcore design has flash data bytes wired swapped */
 #define CONFIG_SYS_WRITE_SWAPPED_DATA
 /* reserve 128-4KB */
-#define CONFIG_SYS_MONITOR_BASE		(CONFIG_SYS_FLASH_BASE + 0x400)
-#define CONFIG_SYS_MONITOR_LEN          ((128 - 4) * 1024)
-#define CONFIG_SYS_BOOTPARAMS_LEN	(64 * 1024)
 
 #define LDS_BOARD_TEXT \
 	. = DEFINED(env_offset) ? env_offset : .; \

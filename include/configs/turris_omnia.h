@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2017 Marek Behun <marek.behun@nic.cz>
+ * Copyright (C) 2017 Marek Behún <kabel@kernel.org>
  * Copyright (C) 2016 Tomas Hlavacek <tomas.hlavacek@nic.cz>
  */
 
@@ -26,23 +26,6 @@
 	"fdt_high=0x10000000\0"		\
 	"initrd_high=0x10000000\0"
 
-/* Defines for SPL */
-#define CONFIG_SPL_SIZE			(140 << 10)
-#define CONFIG_SPL_MAX_SIZE		(CONFIG_SPL_SIZE - 0x0030)
-
-#define CONFIG_SPL_BSS_START_ADDR	(0x40000000 + CONFIG_SPL_SIZE)
-#define CONFIG_SPL_BSS_MAX_SIZE		(16 << 10)
-
-#define CONFIG_SPL_STACK		(0x40000000 + ((192 - 16) << 10))
-#define CONFIG_SPL_BOOTROM_SAVE		(CONFIG_SPL_STACK + 4)
-
-#ifdef CONFIG_MVEBU_SPL_BOOT_DEVICE_MMC
-/* SPL related MMC defines */
-# ifdef CONFIG_SPL_BUILD
-#  define CONFIG_FIXED_SDHCI_ALIGNED_BUFFER	0x00180000	/* in SDRAM */
-# endif
-#endif
-
 /*
  * mv-common.h should be defined after CMD configs since it used them
  * to enable certain macros
@@ -52,28 +35,11 @@
 /* Include the common distro boot environment */
 #ifndef CONFIG_SPL_BUILD
 
-#ifdef CONFIG_MMC
-#define BOOT_TARGET_DEVICES_MMC(func) func(MMC, mmc, 0)
-#else
-#define BOOT_TARGET_DEVICES_MMC(func)
-#endif
-
-#ifdef CONFIG_USB_STORAGE
-#define BOOT_TARGET_DEVICES_USB(func) func(USB, usb, 0)
-#else
-#define BOOT_TARGET_DEVICES_USB(func)
-#endif
-
-#ifdef CONFIG_SCSI
-#define BOOT_TARGET_DEVICES_SCSI(func) func(SCSI, scsi, 0)
-#else
-#define BOOT_TARGET_DEVICES_SCSI(func)
-#endif
-
 #define BOOT_TARGET_DEVICES(func) \
-	BOOT_TARGET_DEVICES_MMC(func) \
-	BOOT_TARGET_DEVICES_SCSI(func) \
-	BOOT_TARGET_DEVICES_USB(func) \
+	func(MMC, mmc, 0) \
+	func(NVME, nvme, 0) \
+	func(SCSI, scsi, 0) \
+	func(USB, usb, 0) \
 	func(PXE, pxe, na) \
 	func(DHCP, dhcp, na)
 
@@ -119,7 +85,6 @@
 	LOAD_ADDRESS_ENV_SETTINGS \
 	"fdtfile=" CONFIG_DEFAULT_DEVICE_TREE ".dtb\0" \
 	"console=ttyS0,115200\0" \
-	"ethact=ethernet@34000\0" \
 	"bootcmd_rescue=" TURRIS_OMNIA_BOOTCMD_RESCUE "\0" \
 	BOOTENV
 

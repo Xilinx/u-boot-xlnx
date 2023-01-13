@@ -38,6 +38,7 @@ class Entry_vblock(Entry_collection):
     """
     def __init__(self, section, etype, node):
         super().__init__(section, etype, node)
+        self.futility = None
         (self.keydir, self.keyblock, self.signprivate, self.version,
          self.kernelkey, self.preamble_flags) = self.GetEntryArgsOrProps([
             EntryArg('keydir', str),
@@ -64,23 +65,25 @@ class Entry_vblock(Entry_collection):
             return None
 
         uniq = self.GetUniqueName()
-        output_fname = tools.GetOutputFilename('vblock.%s' % uniq)
-        input_fname = tools.GetOutputFilename('input.%s' % uniq)
-        tools.WriteFile(input_fname, input_data)
+        output_fname = tools.get_output_filename('vblock.%s' % uniq)
+        input_fname = tools.get_output_filename('input.%s' % uniq)
+        tools.write_file(input_fname, input_data)
         prefix = self.keydir + '/'
-        args = [
-            'vbutil_firmware',
-            '--vblock', output_fname,
-            '--keyblock', prefix + self.keyblock,
-            '--signprivate', prefix + self.signprivate,
-            '--version', '%d' % self.version,
-            '--fv', input_fname,
-            '--kernelkey', prefix + self.kernelkey,
-            '--flags', '%d' % self.preamble_flags,
-        ]
-        #out.Notice("Sign '%s' into %s" % (', '.join(self.value), self.label))
-        stdout = tools.Run('futility', *args)
-        return tools.ReadFile(output_fname)
+        stdout = self.futility.sign_firmware(
+            vblock=output_fname,
+            keyblock=prefix + self.keyblock,
+            signprivate=prefix + self.signprivate,
+            version=f'{self.version:d}',
+            firmware=input_fname,
+            kernelkey=prefix + self.kernelkey,
+            flags=f'{self.preamble_flags}')
+        if stdout is not None:
+            data = tools.read_file(output_fname)
+        else:
+            # Bintool is missing; just use 4KB of zero data
+            self.record_missing_bintool(self.futility)
+            data = tools.get_bytes(0, 4096)
+        return data
 
     def ObtainContents(self):
         data = self.GetVblock(False)
@@ -93,3 +96,7 @@ class Entry_vblock(Entry_collection):
         # The blob may have changed due to WriteSymbols()
         data = self.GetVblock(True)
         return self.ProcessContentsUpdate(data)
+
+    def AddBintools(self, btools):
+        super().AddBintools(btools)
+        self.futility = self.AddBintool(btools, 'futility')

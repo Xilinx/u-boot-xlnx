@@ -12,6 +12,9 @@
 	EXPORT_FUNC(tstc, int, tstc, void)
 	EXPORT_FUNC(putc, void, putc, const char)
 	EXPORT_FUNC(puts, void, puts, const char *)
+#ifdef CONFIG_CONSOLE_FLUSH_SUPPORT
+	EXPORT_FUNC(flush, void, flush, void)
+#endif
 	EXPORT_FUNC(printf, int, printf, const char*, ...)
 #if (defined(CONFIG_X86) && !defined(CONFIG_X86_64)) || defined(CONFIG_PPC)
 	EXPORT_FUNC(irq_install_handler, void, install_hdlr,
@@ -77,8 +80,7 @@
 	EXPORT_FUNC(mdio_get_current_dev, struct mii_dev *,
 		    mdio_get_current_dev, void)
 	EXPORT_FUNC(phy_find_by_mask, struct phy_device *, phy_find_by_mask,
-		    struct mii_dev *bus, unsigned phy_mask,
-		    phy_interface_t interface)
+		    struct mii_dev *bus, unsigned phy_mask)
 	EXPORT_FUNC(mdio_phydev_for_ethname, struct phy_device *,
 		    mdio_phydev_for_ethname, const char *ethname)
 	EXPORT_FUNC(miiphy_set_current_dev, int, miiphy_set_current_dev,

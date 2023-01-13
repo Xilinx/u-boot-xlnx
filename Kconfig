@@ -72,14 +72,31 @@ config CLANG_VERSION
 	int
 	default $(shell,$(srctree)/scripts/clang-version.sh $(CC))
 
+choice
+	prompt "Optimization level"
+	default CC_OPTIMIZE_FOR_SIZE
+
 config CC_OPTIMIZE_FOR_SIZE
 	bool "Optimize for size"
-	default y
 	help
-	  Enabling this option will pass "-Os" instead of "-O2" to gcc
-	  resulting in a smaller U-Boot image.
+	  Enabling this option will pass "-Os" to gcc, resulting in a smaller
+	  U-Boot image.
 
 	  This option is enabled by default for U-Boot.
+
+config CC_OPTIMIZE_FOR_SPEED
+	bool "Optimize for speed"
+	help
+	  Enabling this option will pass "-O2" to gcc, resulting in a faster
+	  U-Boot image.
+
+config CC_OPTIMIZE_FOR_DEBUG
+	bool "Optimize for debugging"
+	help
+	  Enabling this option will pass "-Og" to gcc, enabling optimizations
+	  which don't interfere with debugging.
+
+endchoice
 
 config OPTIMIZE_INLINING
 	bool "Allow compiler to uninline functions marked 'inline' in full U-Boot"
@@ -136,6 +153,22 @@ config CC_COVERAGE
 	help
 	  Enabling this option will pass "--coverage" to gcc to compile
 	  and link code instrumented for coverage analysis.
+
+config ASAN
+	bool "Enable AddressSanitizer"
+	depends on SANDBOX
+	help
+	  Enables AddressSanitizer to discover out-of-bounds accesses,
+	  use-after-free, double-free and memory leaks.
+
+config FUZZ
+	bool "Enable fuzzing"
+	depends on CC_IS_CLANG
+	depends on DM_FUZZING_ENGINE
+	select ASAN
+	help
+	  Enables the fuzzing infrastructure to generate fuzzing data and run
+          fuzz tests.
 
 config CC_HAS_ASM_INLINE
 	def_bool $(success,echo 'void foo(void) { asm inline (""); }' | $(CC) -x c - -c -o /dev/null)
@@ -211,11 +244,37 @@ config SYS_BOOT_GET_CMDLINE
 	  Enables allocating and saving kernel cmdline in space between
 	  "bootm_low" and "bootm_low" + BOOTMAPSZ.
 
+config SYS_BARGSIZE
+	int "Size of kernel command line buffer in bytes"
+	depends on SYS_BOOT_GET_CMDLINE
+	default 512
+	help
+	  Buffer size for Boot Arguments which are passed to the application
+	  (usually a Linux kernel) when it is booted
+
 config SYS_BOOT_GET_KBD
 	bool "Enable kernel board information setup"
 	help
 	  Enables allocating and saving a kernel copy of the bd_info in
 	  space between "bootm_low" and "bootm_low" + BOOTMAPSZ.
+
+config HAS_CUSTOM_SYS_INIT_SP_ADDR
+	bool "Use a custom location for the initial stack pointer address"
+	depends on ARC || (ARM && !INIT_SP_RELATIVE) || MIPS || PPC || RISCV
+	default y if TFABOOT
+	help
+	  Typically, we use an initial stack pointer address that is calculated
+	  by taking the statically defined CONFIG_SYS_INIT_RAM_ADDR, adding the
+	  statically defined CONFIG_SYS_INIT_RAM_SIZE and then subtracting the
+	  build-time constant of GENERATED_GBL_DATA_SIZE.  On MIPS a different
+	  but statica calculation is performed.  However, some platforms will
+	  take a different approach.  Say Y here to define the address statically
+	  instead.
+
+config CUSTOM_SYS_INIT_SP_ADDR
+	hex "Static location for the initial stack pointer"
+	depends on HAS_CUSTOM_SYS_INIT_SP_ADDR
+	default TEXT_BASE if TFABOOT
 
 config SYS_MALLOC_F
 	bool "Enable malloc() pool before relocation"
@@ -230,13 +289,18 @@ config SYS_MALLOC_F
 config SYS_MALLOC_F_LEN
 	hex "Size of malloc() pool before relocation"
 	depends on SYS_MALLOC_F
-	default 0x1000 if AM33XX
-	default 0x4000 if SANDBOX
-	default 0x2000 if (ARCH_IMX8 || ARCH_IMX8M || ARCH_MX7 || \
-			   ARCH_MX7ULP || ARCH_MX6 || ARCH_MX5 || \
-			   ARCH_LS1012A || ARCH_LS1021A || ARCH_LS1043A || \
-			   ARCH_LS1046A || ARCH_QEMU || ARCH_SUNXI || ARCH_OWL)
-	default 0x400
+	default 0x400 if M68K || PPC || ROCKCHIP_PX30 || ROCKCHIP_RK3036 || \
+			 ROCKCHIP_RK3308 || ROCKCHIP_RV1108
+	default 0x600 if ARCH_ZYNQMP_R5 || ARCH_ZYNQMP
+	default 0x800 if ARCH_ZYNQ || ROCKCHIP_RK3128 || ROCKCHIP_RK3188 || \
+			 ROCKCHIP_RK322X || X86
+	default 0x1000 if ARCH_MESON || ARCH_BMIPS || ARCH_MTMIPS
+	default 0x1800 if ARCH_TEGRA
+	default 0x4000 if SANDBOX || RISCV || ARCH_APPLE || ROCKCHIP_RK3368 || \
+			  ROCKCHIP_RK3399
+	default 0x8000 if RCAR_GEN3
+	default 0x10000 if ARCH_IMX8 || ARCH_IMX8M
+	default 0x2000
 	help
 	  Before relocation, memory is very limited on many platforms. Still,
 	  we can provide a small malloc() pool if needed. Driver model in
@@ -245,10 +309,12 @@ config SYS_MALLOC_F_LEN
 
 config SYS_MALLOC_LEN
 	hex "Define memory for Dynamic allocation"
+	default 0x4000000 if SANDBOX
 	default 0x2000000 if ARCH_ROCKCHIP || ARCH_OMAP2PLUS || ARCH_MESON
-	default 0x4020000 if ARCH_SUNXI && !MACH_SUN8I_V3S
 	default 0x200000 if ARCH_BMIPS || X86
-	default 0x220000 if ARCH_SUNXI && MACH_SUN8I_V3S
+	default 0x4020000 if SUNXI_MINIMUM_DRAM_MB >= 256
+	default 0x220000 if SUNXI_MINIMUM_DRAM_MB >= 64
+	default 0x120000 if SUNXI_MINIMUM_DRAM_MB >= 32
 	default 0x400000
 	help
 	  This defines memory to be allocated for Dynamic allocation
@@ -257,7 +323,9 @@ config SYS_MALLOC_LEN
 config SPL_SYS_MALLOC_F_LEN
 	hex "Size of malloc() pool in SPL"
 	depends on SYS_MALLOC_F && SPL
+	default 0 if !SPL_FRAMEWORK
 	default 0x2800 if RCAR_GEN3
+	default 0x2000 if IMX8MQ
 	default SYS_MALLOC_F_LEN
 	help
 	  In SPL memory is very limited on many platforms. Still,
@@ -274,6 +342,31 @@ config TPL_SYS_MALLOC_F_LEN
 	default SPL_SYS_MALLOC_F_LEN
 	help
 	  In TPL memory is very limited on many platforms. Still,
+	  we can provide a small malloc() pool if needed. Driver model in
+	  particular needs this to operate, so that it can allocate the
+	  initial serial device and any others that are needed.
+
+config VALGRIND
+	bool "Inform valgrind about memory allocations"
+	depends on !RISCV
+	help
+	  Valgrind is an instrumentation framework for building dynamic analysis
+	  tools. In particular, it may be used to detect memory management bugs
+	  in U-Boot. It relies on knowing when heap blocks are allocated in
+	  order to give accurate results. This happens automatically for
+	  standard allocator functions provided by the host OS. However, this
+	  doesn't automatically happen for U-Boot's malloc implementation.
+
+	  Enable this option to annotate U-Boot's malloc implementation so that
+	  it can be handled accurately by Valgrind. If you aren't planning on
+	  using valgrind to debug U-Boot, say 'n'.
+
+config VPL_SYS_MALLOC_F_LEN
+	hex "Size of malloc() pool in VPL before relocation"
+	depends on SYS_MALLOC_F && VPL
+	default SYS_MALLOC_F_LEN
+	help
+	  Before relocation, memory is very limited on many platforms. Still,
 	  we can provide a small malloc() pool if needed. Driver model in
 	  particular needs this to operate, so that it can allocate the
 	  initial serial device and any others that are needed.
@@ -363,7 +456,7 @@ config BUILD_TARGET
 	string "Build target special images"
 	default "u-boot-with-spl.sfp" if TARGET_SOCFPGA_ARRIA10
 	default "u-boot-with-spl.sfp" if TARGET_SOCFPGA_GEN5
-	default "u-boot-spl.kwb" if ARCH_MVEBU && SPL
+	default "u-boot-with-spl.kwb" if ARCH_MVEBU && SPL
 	default "u-boot-elf.srec" if RCAR_GEN3
 	default "u-boot.itb" if !BINMAN && SPL_LOAD_FIT && (ARCH_ROCKCHIP || \
 				ARCH_SUNXI || RISCV || ARCH_ZYNQMP)
@@ -376,6 +469,23 @@ config BUILD_TARGET
 	  CONFIG_BUILD_TARGET in the SoC / board header, this
 	  special image will be automatically built upon calling
 	  make / buildman.
+
+config HAS_BOARD_SIZE_LIMIT
+	bool "Define a maximum size for the U-Boot image"
+	default y if RCAR_GEN3
+	help
+	  In some cases, we need to enforce a hard limit on how big the U-Boot
+	  image itself can be.
+
+config BOARD_SIZE_LIMIT
+	int "Maximum size of the U-Boot image in bytes"
+	default 1048576 if RCAR_GEN3
+	depends on HAS_BOARD_SIZE_LIMIT
+	help
+	  Maximum size of the U-Boot image. When defined, the build system
+	  checks that the actual size does not exceed it.  This does not
+	  include SPL nor TPL, on platforms that use that functionality, they
+	  have a separate option to restict size.
 
 config SYS_CUSTOM_LDSCRIPT
 	bool "Use a custom location for the U-Boot linker script"
@@ -398,8 +508,9 @@ config SYS_LOAD_ADDR
 	hex "Address in memory to use by default"
 	default 0x01000000 if ARCH_SOCFPGA
 	default 0x02000000 if PPC || X86
+	default 0x81000000 if MACH_SUNIV
 	default 0x22000000 if MACH_SUN9I
-	default 0x42000000 if ARCH_SUNXI && !MACH_SUN9I
+	default 0x42000000 if ARCH_SUNXI
 	default 0x82000000 if ARCH_KEYSTONE || ARCH_OMAP2PLUS || ARCH_K3
 	default 0x82000000 if ARCH_MX6 && (MX6SL || MX6SLL  || MX6SX || MX6UL || MX6ULL)
 	default 0x12000000 if ARCH_MX6 && !(MX6SL || MX6SLL  || MX6SX || MX6UL || MX6ULL)
@@ -471,6 +582,24 @@ config SYS_SRAM_SIZE
 	default 0x10000 if TARGET_DEVKIT8000
 	default 0x10000 if TARGET_TRICORDER
 	default 0x0
+
+config SYS_MONITOR_LEN
+	int "Maximum size in bytes reserved for U-Boot in memory"
+	default 1048576 if X86
+	default 786432 if ARCH_SUNXI
+	default 0
+	help
+	  Size of memory reserved for monitor code, used to determine
+	  _at_compile_time_ (!) if the environment is embedded within the
+	  U-Boot image, or in a separate flash sector, among other uses where
+	  we need to set a maximum size of the U-Boot binary itself that will
+	  be loaded.
+
+config MP
+	bool "Support for multiprocessor"
+	help
+	  This provides an option to bringup different processors
+	  in multiprocessor cases.
 
 config EXAMPLES
 	bool "Compile API examples"

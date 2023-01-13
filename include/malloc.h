@@ -883,11 +883,27 @@ extern Void_t*     sbrk();
 
 void malloc_simple_info(void);
 
+/**
+ * malloc_enable_testing() - Put malloc() into test mode
+ *
+ * This only works if UNIT_TESTING is enabled
+ *
+ * @max_allocs: return -ENOMEM after max_allocs calls to malloc()
+ */
+void malloc_enable_testing(int max_allocs);
+
+/** malloc_disable_testing() - Put malloc() into normal mode */
+void malloc_disable_testing(void);
+
 #if CONFIG_IS_ENABLED(SYS_MALLOC_SIMPLE)
 #define malloc malloc_simple
 #define realloc realloc_simple
 #define memalign memalign_simple
+#if IS_ENABLED(CONFIG_VALGRIND)
+#define free free_simple
+#else
 static inline void free(void *ptr) {}
+#endif
 void *calloc(size_t nmemb, size_t size);
 void *realloc_simple(void *ptr, size_t size);
 #else

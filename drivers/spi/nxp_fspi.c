@@ -866,9 +866,6 @@ static int nxp_fspi_default_setup(struct nxp_fspi *f)
 	u32 reg;
 
 #if CONFIG_IS_ENABLED(CLK)
-	/* disable and unprepare clock to avoid glitch pass to controller */
-	nxp_fspi_clk_disable_unprep(f);
-
 	/* the default frequency, we will change it later if necessary. */
 	ret = clk_set_rate(&f->clk, 20000000);
 	if (ret < 0)
@@ -1053,6 +1050,7 @@ static const struct dm_spi_ops nxp_fspi_ops = {
 static const struct udevice_id nxp_fspi_ids[] = {
 	{ .compatible = "nxp,lx2160a-fspi", .data = (ulong)&lx2160a_data, },
 	{ .compatible = "nxp,imx8mm-fspi", .data = (ulong)&imx8mm_data, },
+	{ .compatible = "nxp,imx8mp-fspi", .data = (ulong)&imx8mm_data, },
 	{ }
 };
 

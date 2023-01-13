@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright 2022 Gateworks Corporation
+ */
+
+#include "imx8mn-u-boot.dtsi"
+
+&gpio1 {
+	u-boot,dm-spl;
+};
+
+&gpio2 {
+	u-boot,dm-spl;
+};
+
+&gpio3 {
+	u-boot,dm-spl;
+};
+
+&gpio4 {
+	u-boot,dm-spl;
+};
+
+&gpio5 {
+	u-boot,dm-spl;
+};
+
+&uart2 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_uart2 {
+	u-boot,dm-spl;
+};
+
+&usdhc3 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_usdhc3 {
+	u-boot,dm-spl;
+};
+
+&i2c1 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_i2c1 {
+	u-boot,dm-spl;
+};
+
+&gsc {
+	u-boot,dm-spl;
+};
+
+&i2c2 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_i2c2 {
+	u-boot,dm-spl;
+};
+
+&pinctrl_wdog {
+	u-boot,dm-spl;
+};

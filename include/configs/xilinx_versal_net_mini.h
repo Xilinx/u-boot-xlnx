@@ -2,7 +2,9 @@
 /*
  * Configuration for Xilinx Versal NET MINI configuration
  *
- * (C) Copyright 2018-2022 Xilinx, Inc.
+ * Copyright (C) 2018 - 2022, Xilinx, Inc.
+ * Copyright (C) 2022, Advanced Micro Devices, Inc.
+ *
  * Michal Simek <michal.simek@amd.com>
  */
 
@@ -15,12 +17,5 @@
 
 /* Undef unneeded configs */
 #undef CONFIG_EXTRA_ENV_SETTINGS
-
-/* BOOTP options */
-#undef CONFIG_BOOTP_BOOTFILESIZE
-#undef CONFIG_BOOTP_MAY_FAIL
-
-#undef CONFIG_SYS_CBSIZE
-#define CONFIG_SYS_CBSIZE		1024
 
 #endif /* __CONFIG_VERSAL_NET_MINI_H */

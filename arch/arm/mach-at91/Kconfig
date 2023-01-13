@@ -50,6 +50,7 @@ config SAM9X60
 config SAMA7G5
 	bool
 	select CPU_V7A
+	select AT91RESET_EXTRST
 
 config SAMA5D2
 	bool
@@ -78,17 +79,10 @@ config TARGET_ETHERNUT5
 	bool "Ethernut5 board"
 	select AT91SAM9XE
 
-config TARGET_SNAPPER9260
-	bool "Support snapper9260"
-	select AT91SAM9260
-	select DM
-	select DM_GPIO
-	select DM_SERIAL
-	imply CMD_DM
-
 config TARGET_GURNARD
 	bool "Support gurnard"
 	select AT91SAM9G45
+	select AT91_WANTS_COMMON_PHY
 	select BOARD_LATE_INIT
 	select DM
 	select DM_ETH
@@ -115,6 +109,7 @@ config TARGET_AT91SAM9263EK
 config TARGET_USB_A9263
 	bool "Caloa USB A9260 board"
 	select AT91SAM9263
+	select AT91_WANTS_COMMON_PHY
 
 config TARGET_PM9263
 	bool "Ronetix pm9263 board"
@@ -161,6 +156,12 @@ config TARGET_SAM9X60EK
 	select BOARD_EARLY_INIT_F
 	select BOARD_LATE_INIT
 
+config TARGET_SAM9X60_CURIOSITY
+        bool "SAM9X60 CURIOSITY board"
+        select SAM9X60
+        select BOARD_EARLY_INIT_F
+        select BOARD_LATE_INIT
+
 config TARGET_SAMA5D2_PTC_EK
 	bool "SAMA5D2 PTC EK board"
 	select BOARD_EARLY_INIT_F
@@ -176,6 +177,7 @@ config TARGET_SAMA5D2_XPLAINED
 
 config TARGET_SAMA5D27_SOM1_EK
 	bool "SAMA5D27 SOM1 EK board"
+	select SAMA5D2
 	select BOARD_EARLY_INIT_F
 	select BOARD_LATE_INIT
 	select CPU_V7A
@@ -249,6 +251,7 @@ config TARGET_MEESC
 config TARGET_CORVUS
 	bool "Support corvus"
 	select AT91SAM9M10G45
+	select AT91_WANTS_COMMON_PHY
 	select DM
 	select DM_ETH
 	select DM_GPIO
@@ -266,6 +269,7 @@ config TARGET_SAMA7G5EK
 config TARGET_TAURUS
 	bool "Support taurus"
 	select AT91SAM9G20
+	select AT91_WANTS_COMMON_PHY
 	select DM
 	select DM_ETH
 	select DM_GPIO
@@ -278,6 +282,7 @@ config TARGET_TAURUS
 config TARGET_SMARTWEB
 	bool "Support smartweb"
 	select AT91SAM9260
+	select AT91_WANTS_COMMON_PHY
 	select DM
 	select DM_ETH
 	select DM_GPIO
@@ -299,8 +304,36 @@ endchoice
 config ATMEL_SFR
 	bool
 
+config AT91RESET_EXTRST
+	bool
+
 config SYS_SOC
 	default "at91"
+
+config AT91_EFLASH
+	bool "Support AT91 flash driver"
+	depends on AT91SAM9XE
+	select USE_SYS_MAX_FLASH_BANKS
+	help
+	  Enable the driver for the embedded flash used in the Atmel
+	  AT91SAM9XE devices.
+
+config EFLASH_PROTSECTORS
+	int "Number of flash sectors to protect from erasing"
+	depends on AT91_EFLASH
+	help
+	  If non-zero, this will be the number of sectors of the flash to disallow
+	  U-Boot to ease, starting from the beginning of flash.
+
+config AT91_GPIO_PULLUP
+	bool "Keep pullups on peripheral pins"
+	depends on CPU_ARM926EJS
+
+config ATMEL_LEGACY
+	bool "Legacy GPIO support"
+
+config AT91_WANTS_COMMON_PHY
+	bool
 
 source "board/atmel/at91sam9260ek/Kconfig"
 source "board/atmel/at91sam9261ek/Kconfig"
@@ -310,6 +343,7 @@ source "board/atmel/at91sam9n12ek/Kconfig"
 source "board/atmel/at91sam9rlek/Kconfig"
 source "board/atmel/at91sam9x5ek/Kconfig"
 source "board/atmel/sam9x60ek/Kconfig"
+source "board/atmel/sam9x60_curiosity/Kconfig"
 source "board/atmel/sama7g5ek/Kconfig"
 source "board/atmel/sama5d2_ptc_ek/Kconfig"
 source "board/atmel/sama5d2_xplained/Kconfig"
@@ -321,7 +355,6 @@ source "board/atmel/sama5d3xek/Kconfig"
 source "board/atmel/sama5d4_xplained/Kconfig"
 source "board/atmel/sama5d4ek/Kconfig"
 source "board/bluewater/gurnard/Kconfig"
-source "board/bluewater/snapper9260/Kconfig"
 source "board/calao/usb_a9263/Kconfig"
 source "board/egnite/ethernut5/Kconfig"
 source "board/esd/meesc/Kconfig"
@@ -333,9 +366,5 @@ source "board/ronetix/pm9g45/Kconfig"
 source "board/siemens/corvus/Kconfig"
 source "board/siemens/taurus/Kconfig"
 source "board/siemens/smartweb/Kconfig"
-
-config SPL_LDSCRIPT
-	default "arch/arm/mach-at91/arm926ejs/u-boot-spl.lds" if CPU_ARM926EJS
-	default "arch/arm/mach-at91/armv7/u-boot-spl.lds" if CPU_V7A
 
 endif

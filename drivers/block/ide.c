@@ -45,10 +45,6 @@ struct blk_desc ide_dev_desc[CONFIG_SYS_IDE_MAXDEVICE];
 
 #define IDE_SPIN_UP_TIME_OUT 5000 /* 5 sec spin-up timeout */
 
-#ifndef CONFIG_SYS_ATA_PORT_ADDR
-#define CONFIG_SYS_ATA_PORT_ADDR(port) (port)
-#endif
-
 #ifdef CONFIG_IDE_RESET
 extern void ide_set_reset(int idereset);
 
@@ -66,7 +62,7 @@ static void ide_reset(void)
 	/* the reset signal shall be asserted for et least 25 us */
 	udelay(25);
 
-	WATCHDOG_RESET();
+	schedule();
 
 	/* de-assert RESET signal */
 	ide_set_reset(0);
@@ -529,8 +525,8 @@ static void ide_ident(struct blk_desc *dev_desc)
 {
 	unsigned char c;
 	hd_driveid_t iop;
-
 #ifdef CONFIG_ATAPI
+	bool is_atapi = false;
 	int retries = 0;
 #endif
 	int device;
@@ -541,7 +537,7 @@ static void ide_ident(struct blk_desc *dev_desc)
 	/* Select device
 	 */
 	ide_outb(device, ATA_DEV_HD, ATA_LBA | ATA_DEVICE(device));
-	dev_desc->if_type = IF_TYPE_IDE;
+	dev_desc->uclass_id = UCLASS_IDE;
 #ifdef CONFIG_ATAPI
 
 	retries = 0;
@@ -554,7 +550,7 @@ static void ide_ident(struct blk_desc *dev_desc)
 		    (ide_inb(device, ATA_CYL_LOW) == 0x14) &&
 		    (ide_inb(device, ATA_CYL_HIGH) == 0xEB)) {
 			/* ATAPI Signature found */
-			dev_desc->if_type = IF_TYPE_ATAPI;
+			is_atapi = true;
 			/*
 			 * Start Ident Command
 			 */
@@ -627,7 +623,7 @@ static void ide_ident(struct blk_desc *dev_desc)
 		dev_desc->removable = 0;
 
 #ifdef CONFIG_ATAPI
-	if (dev_desc->if_type == IF_TYPE_ATAPI) {
+	if (is_atapi) {
 		atapi_inquiry(dev_desc);
 		return;
 	}
@@ -678,35 +674,19 @@ static void ide_ident(struct blk_desc *dev_desc)
 __weak void ide_outb(int dev, int port, unsigned char val)
 {
 	debug("ide_outb (dev= %d, port= 0x%x, val= 0x%02x) : @ 0x%08lx\n",
-	      dev, port, val,
-	      (ATA_CURR_BASE(dev) + CONFIG_SYS_ATA_PORT_ADDR(port)));
+	      dev, port, val, ATA_CURR_BASE(dev) + port);
 
-#if defined(CONFIG_IDE_AHB)
-	if (port) {
-		/* write command */
-		ide_write_register(dev, port, val);
-	} else {
-		/* write data */
-		outb(val, (ATA_CURR_BASE(dev)));
-	}
-#else
-	outb(val, (ATA_CURR_BASE(dev) + CONFIG_SYS_ATA_PORT_ADDR(port)));
-#endif
+	outb(val, ATA_CURR_BASE(dev) + port);
 }
 
 __weak unsigned char ide_inb(int dev, int port)
 {
 	uchar val;
 
-#if defined(CONFIG_IDE_AHB)
-	val = ide_read_register(dev, port);
-#else
-	val = inb((ATA_CURR_BASE(dev) + CONFIG_SYS_ATA_PORT_ADDR(port)));
-#endif
+	val = inb(ATA_CURR_BASE(dev) + port);
 
 	debug("ide_inb (dev= %d, port= 0x%x) : @ 0x%08lx -> 0x%02x\n",
-	      dev, port,
-	      (ATA_CURR_BASE(dev) + CONFIG_SYS_ATA_PORT_ADDR(port)), val);
+	      dev, port, ATA_CURR_BASE(dev) + port, val);
 	return val;
 }
 
@@ -715,16 +695,7 @@ void ide_init(void)
 	unsigned char c;
 	int i, bus;
 
-#ifdef CONFIG_IDE_PREINIT
-	WATCHDOG_RESET();
-
-	if (ide_preinit()) {
-		puts("ide_preinit failed\n");
-		return;
-	}
-#endif /* CONFIG_IDE_PREINIT */
-
-	WATCHDOG_RESET();
+	schedule();
 
 	/* ATAPI Drives seems to need a proper IDE Reset */
 	ide_reset();
@@ -774,14 +745,14 @@ void ide_init(void)
 			puts("OK ");
 			ide_bus_ok[bus] = 1;
 		}
-		WATCHDOG_RESET();
+		schedule();
 	}
 
 	putc('\n');
 
 	for (i = 0; i < CONFIG_SYS_IDE_MAXDEVICE; ++i) {
 		ide_dev_desc[i].type = DEV_TYPE_UNKNOWN;
-		ide_dev_desc[i].if_type = IF_TYPE_IDE;
+		ide_dev_desc[i].uclass_id = UCLASS_IDE;
 		ide_dev_desc[i].devnum = i;
 		ide_dev_desc[i].part_type = PART_TYPE_UNKNOWN;
 		ide_dev_desc[i].blksz = 0;
@@ -804,7 +775,7 @@ void ide_init(void)
 		}
 #endif
 	}
-	WATCHDOG_RESET();
+	schedule();
 
 #ifdef CONFIG_BLK
 	struct udevice *dev;
@@ -830,9 +801,6 @@ __weak void ide_input_swap_data(int dev, ulong *sect_buf, int words)
 
 __weak void ide_output_data(int dev, const ulong *sect_buf, int words)
 {
-#if defined(CONFIG_IDE_AHB)
-	ide_write_data(dev, sect_buf, words);
-#else
 	uintptr_t paddr = (ATA_CURR_BASE(dev) + ATA_DATA_REG);
 	ushort *dbuf;
 
@@ -843,14 +811,10 @@ __weak void ide_output_data(int dev, const ulong *sect_buf, int words)
 		EIEIO;
 		outw(cpu_to_le16(*dbuf++), paddr);
 	}
-#endif /* CONFIG_IDE_AHB */
 }
 
 __weak void ide_input_data(int dev, ulong *sect_buf, int words)
 {
-#if defined(CONFIG_IDE_AHB)
-	ide_read_data(dev, sect_buf, words);
-#else
 	uintptr_t paddr = (ATA_CURR_BASE(dev) + ATA_DATA_REG);
 	ushort *dbuf;
 
@@ -864,7 +828,6 @@ __weak void ide_input_data(int dev, ulong *sect_buf, int words)
 		EIEIO;
 		*dbuf++ = le16_to_cpu(inw(paddr));
 	}
-#endif /* CONFIG_IDE_AHB */
 }
 
 #ifdef CONFIG_BLK
@@ -1147,8 +1110,12 @@ static int ide_probe(struct udevice *udev)
 			if (!blksz)
 				continue;
 			ret = blk_create_devicef(udev, "ide_blk", name,
-						 IF_TYPE_IDE, i,
+						 UCLASS_IDE, i,
 						 blksz, size, &blk_dev);
+			if (ret)
+				return ret;
+
+			ret = blk_probe_or_unbind(blk_dev);
 			if (ret)
 				return ret;
 		}
@@ -1176,8 +1143,8 @@ UCLASS_DRIVER(ide) = {
 };
 #else
 U_BOOT_LEGACY_BLK(ide) = {
-	.if_typename	= "ide",
-	.if_type	= IF_TYPE_IDE,
+	.uclass_idname	= "ide",
+	.uclass_id	= UCLASS_IDE,
 	.max_devs	= CONFIG_SYS_IDE_MAXDEVICE,
 	.desc		= ide_dev_desc,
 };

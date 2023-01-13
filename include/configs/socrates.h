@@ -22,7 +22,6 @@
 /*
  * Only possible on E500 Version 2 or newer cores.
  */
-#define CONFIG_ENABLE_36BIT_PHYS	1
 
 /*
  * sysclk for MPC85xx
@@ -38,15 +37,10 @@
  * in the README.mpc85xxads.
  */
 
-#ifndef CONFIG_SYS_CLK_FREQ
-#define CONFIG_SYS_CLK_FREQ	66666666
-#endif
-
 /*
  * These can be toggled for performance analysis, otherwise use default.
  */
 #define CONFIG_L2_CACHE			/* toggle L2 cache		*/
-#define CONFIG_BTB			/* toggle branch predition	*/
 
 #define CONFIG_SYS_INIT_DBCR DBCR_IDM		/* Enable Debug Exceptions	*/
 
@@ -63,9 +57,6 @@
 #define CONFIG_SYS_DDR_SDRAM_BASE	0x00000000
 #define CONFIG_SYS_SDRAM_BASE		CONFIG_SYS_DDR_SDRAM_BASE
 #define CONFIG_VERY_BIG_RAM
-
-#define CONFIG_DIMM_SLOTS_PER_CTLR	1
-#define CONFIG_CHIP_SELECTS_PER_CTRL	2
 
 /* I2C addresses of SPD EEPROMs */
 #define SPD_EEPROM_ADDRESS	0x50	/* CTLR 0 DIMM 0 */
@@ -87,9 +78,6 @@
 /*
  * Flash on the LocalBus
  */
-#define CONFIG_SYS_LBC_CACHE_BASE	0xf0000000	/* Localbus cacheable	 */
-
-#define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_SYS_FLASH0		0xFE000000
 #define CONFIG_SYS_FLASH1		0xFC000000
 #define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH1, CONFIG_SYS_FLASH0 }
@@ -97,58 +85,30 @@
 #define CONFIG_SYS_LBC_FLASH_BASE	CONFIG_SYS_FLASH1	/* Localbus flash start	*/
 #define CONFIG_SYS_FLASH_BASE		CONFIG_SYS_LBC_FLASH_BASE /* start of FLASH	*/
 
-#define CONFIG_SYS_BR0_PRELIM		0xfe001001	/* port size 16bit	*/
-#define CONFIG_SYS_OR0_PRELIM		0xfe000030	/* 32MB Flash		*/
-#define CONFIG_SYS_BR1_PRELIM		0xfc001001	/* port size 16bit	*/
-#define CONFIG_SYS_OR1_PRELIM		0xfe000030	/* 32MB Flash		*/
-
-#define CONFIG_SYS_MAX_FLASH_BANKS	2		/* number of banks	*/
-#define CONFIG_SYS_MAX_FLASH_SECT	256		/* sectors per device	*/
-#undef	CONFIG_SYS_FLASH_CHECKSUM
-#define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms)	*/
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms)	*/
-
-#define CONFIG_SYS_MONITOR_BASE	CONFIG_SYS_TEXT_BASE	/* start of monitor	*/
-
 #define CONFIG_SYS_LBC_LCRR		0x00030004    /* LB clock ratio reg	*/
 #define CONFIG_SYS_LBC_LBCR		0x00000000    /* LB config reg		*/
 #define CONFIG_SYS_LBC_LSRT		0x20000000    /* LB sdram refresh timer	*/
 #define CONFIG_SYS_LBC_MRTPR		0x20000000    /* LB refresh timer presc.*/
 
-#define CONFIG_SYS_INIT_RAM_LOCK	1
 #define CONFIG_SYS_INIT_RAM_ADDR	0xe4010000	/* Initial RAM address	*/
 #define CONFIG_SYS_INIT_RAM_SIZE	0x4000		/* Size used area in RAM*/
 
-#define CONFIG_SYS_GBL_DATA_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_OFFSET	CONFIG_SYS_GBL_DATA_OFFSET
-
-#define CONFIG_SYS_MONITOR_LEN		(384 * 1024)	/* Reserve 384KiB for Mon */
+#define CONFIG_SYS_INIT_SP_OFFSET	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
 
 /* FPGA and NAND */
 #define CONFIG_SYS_FPGA_BASE		0xc0000000
 #define CONFIG_SYS_FPGA_SIZE		0x00100000	/* 1 MB		*/
-#define CONFIG_SYS_HMI_BASE		0xc0010000
-#define CONFIG_SYS_BR3_PRELIM		0xc0001881	/* UPMA, 32-bit */
-#define CONFIG_SYS_OR3_PRELIM		0xfff00000	/* 1 MB		*/
 
 #define CONFIG_SYS_NAND_BASE		(CONFIG_SYS_FPGA_BASE + 0x70)
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 
 /* LIME GDC */
 #define CONFIG_SYS_LIME_BASE		0xc8000000
-#define CONFIG_SYS_LIME_SIZE		0x04000000	/* 64 MB	*/
-#define CONFIG_SYS_BR2_PRELIM		0xc80018a1	/* UPMB, 32-bit	*/
-#define CONFIG_SYS_OR2_PRELIM		0xfc000000	/* 64 MB	*/
-
-#define CONFIG_SYS_SPD_BUS_NUM 0
 
 /*
  * General PCI
  * Memory space is mapped 1-1.
  */
 
-/* PCI is clocked by the external source at 33 MHz */
-#define CONFIG_PCI_CLK_FREQ	33000000
 #define CONFIG_SYS_PCI1_MEM_BASE	0x80000000
 #define CONFIG_SYS_PCI1_MEM_PHYS	CONFIG_SYS_PCI1_MEM_BASE
 #define CONFIG_SYS_PCI1_MEM_SIZE	0x20000000	/* 512M			*/
@@ -171,26 +131,6 @@
 #define TSEC3_FLAGS		TSEC_GIGABIT
 
 /* Options are: TSEC[0,1] */
-#define CONFIG_ETHPRIME		"TSEC0"
-
-#define CONFIG_HAS_ETH0
-#define CONFIG_HAS_ETH1
-
-/*
- * Environment
- */
-
-#define CONFIG_LOADS_ECHO	1	/* echo on for serial download	*/
-#define CONFIG_SYS_LOADS_BAUD_CHANGE	1	/* allow baudrate change	*/
-
-#define	CONFIG_TIMESTAMP		/* Print image info with ts	*/
-
-/*
- * BOOTP options
- */
-#define CONFIG_BOOTP_BOOTFILESIZE
-
-#undef CONFIG_WATCHDOG			/* watchdog disabled		*/
 
 /*
  * Miscellaneous configurable options
@@ -258,15 +198,7 @@
 		"bootm ${kernel_addr_r} - ${fdt_addr};"			\
 		"bootm ${kernel_addr} ${ramdisk_addr} ${fdt_addr}\0"	\
 	""
-#define CONFIG_BOOTCOMMAND	"run boot_nor"
 
 /* pass open firmware flat tree */
-
-/* USB support */
-#define CONFIG_USB_OHCI_NEW		1
-#define CONFIG_PCI_OHCI			1
-#define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	15
-#define CONFIG_SYS_USB_OHCI_SLOT_NAME		"ohci_pci"
-#define CONFIG_SYS_OHCI_SWAP_REG_ACCESS	1
 
 #endif	/* __CONFIG_H */

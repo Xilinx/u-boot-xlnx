@@ -52,7 +52,7 @@ char lmac_speed_to_str[][8] = {
  *
  * @param instance	instance to find
  *
- * @return	pointer to lmac data structure or NULL if not found
+ * Return:	pointer to lmac data structure or NULL if not found
  */
 struct lmac *nix_get_cgx_lmac(int lmac_instance)
 {
@@ -253,7 +253,7 @@ int cgx_probe(struct udevice *dev)
 	struct cgx *cgx = dev_get_priv(dev);
 	int err;
 
-	cgx->reg_base = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0,
+	cgx->reg_base = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0, 0, 0, PCI_REGION_TYPE,
 				       PCI_REGION_MEM);
 	cgx->dev = dev;
 	cgx->cgx_id = ((u64)(cgx->reg_base) >> 24) & 0x7;

@@ -4,9 +4,12 @@
  */
 
 #include <common.h>
+#include <addr_map.h>
 #include <cpu_func.h>
 #include <cros_ec.h>
 #include <dm.h>
+#include <efi.h>
+#include <efi_loader.h>
 #include <env_internal.h>
 #include <init.h>
 #include <led.h>
@@ -14,6 +17,7 @@
 #include <asm/global_data.h>
 #include <asm/test.h>
 #include <asm/u-boot-sandbox.h>
+#include <linux/kernel.h>
 #include <malloc.h>
 
 #include <extension_board.h>
@@ -24,6 +28,50 @@
  * Here we initialize it.
  */
 gd_t *gd;
+
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+/* GUIDs for capsule updatable firmware images */
+#define SANDBOX_UBOOT_IMAGE_GUID \
+	EFI_GUID(0x09d7cf52, 0x0720, 0x4710, 0x91, 0xd1, \
+		 0x08, 0x46, 0x9b, 0x7f, 0xe9, 0xc8)
+
+#define SANDBOX_UBOOT_ENV_IMAGE_GUID \
+	EFI_GUID(0x5a7021f5, 0xfef2, 0x48b4, 0xaa, 0xba, \
+		 0x83, 0x2e, 0x77, 0x74, 0x18, 0xc0)
+
+#define SANDBOX_FIT_IMAGE_GUID \
+	EFI_GUID(0x3673b45d, 0x6a7c, 0x46f3, 0x9e, 0x60, \
+		 0xad, 0xab, 0xb0, 0x3f, 0x79, 0x37)
+
+struct efi_fw_image fw_images[] = {
+#if defined(CONFIG_EFI_CAPSULE_FIRMWARE_RAW)
+	{
+		.image_type_id = SANDBOX_UBOOT_IMAGE_GUID,
+		.fw_name = u"SANDBOX-UBOOT",
+		.image_index = 1,
+	},
+	{
+		.image_type_id = SANDBOX_UBOOT_ENV_IMAGE_GUID,
+		.fw_name = u"SANDBOX-UBOOT-ENV",
+		.image_index = 2,
+	},
+#elif defined(CONFIG_EFI_CAPSULE_FIRMWARE_FIT)
+	{
+		.image_type_id = SANDBOX_FIT_IMAGE_GUID,
+		.fw_name = u"SANDBOX-FIT",
+		.image_index = 1,
+	},
+#endif
+};
+
+struct efi_capsule_update_info update_info = {
+	.dfu_string = "sf 0:0=u-boot-bin raw 0x100000 0x50000;"
+		"u-boot-env raw 0x150000 0x200000",
+	.images = fw_images,
+};
+
+u8 num_image_type_guids = ARRAY_SIZE(fw_images);
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 #if !CONFIG_IS_ENABLED(OF_PLATDATA)
 /*
@@ -73,9 +121,6 @@ int dram_init(void)
 
 int board_init(void)
 {
-	if (IS_ENABLED(CONFIG_LED))
-		led_default_state();
-
 	return 0;
 }
 
@@ -97,7 +142,7 @@ int extension_board_scan(struct list_head *extension_list)
 		snprintf(extension->name, sizeof(extension->name), "extension board %d", i);
 		snprintf(extension->owner, sizeof(extension->owner), "sandbox");
 		snprintf(extension->version, sizeof(extension->version), "1.1");
-		snprintf(extension->other, sizeof(extension->other), "Fictionnal extension board");
+		snprintf(extension->other, sizeof(extension->other), "Fictional extension board");
 		list_add_tail(&extension->list, extension_list);
 	}
 
@@ -122,5 +167,21 @@ int board_late_init(void)
 		return -1;
 	}
 	return 0;
+}
+#endif
+
+int init_addr_map(void)
+{
+	if (IS_ENABLED(CONFIG_ADDR_MAP))
+		addrmap_set_entry(0, 0, CONFIG_SYS_SDRAM_SIZE, 0);
+
+	return 0;
+}
+
+#if defined(CONFIG_FWU_MULTI_BANK_UPDATE)
+void fwu_plat_get_bootidx(uint *boot_idx)
+{
+	/* Dummy value */
+	*boot_idx = 0;
 }
 #endif

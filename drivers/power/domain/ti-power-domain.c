@@ -16,7 +16,9 @@
 #include <linux/iopoll.h>
 
 #define PSC_PTCMD		0x120
+#define PSC_PTCMD_H		0x124
 #define PSC_PTSTAT		0x128
+#define PSC_PTSTAT_H		0x12C
 #define PSC_PDSTAT		0x200
 #define PSC_PDCTL		0x300
 #define PSC_MDSTAT		0x800
@@ -79,6 +81,17 @@ static const struct soc_attr ti_k3_soc_pd_data[] = {
 		.family = "J7200",
 		.data = &j7200_pd_platdata,
 	},
+#elif CONFIG_SOC_K3_J721S2
+	{
+		.family = "J721S2",
+		.data = &j721s2_pd_platdata,
+	},
+#endif
+#ifdef CONFIG_SOC_K3_AM625
+	{
+		.family = "AM62X",
+		.data = &am62x_pd_platdata,
+	},
 #endif
 	{ /* sentinel */ }
 };
@@ -115,10 +128,17 @@ static int ti_power_domain_probe(struct udevice *dev)
 static int ti_pd_wait(struct ti_pd *pd)
 {
 	u32 ptstat;
+	u32 pdoffset = 0;
+	u32 ptstatreg = PSC_PTSTAT;
 	int ret;
 
-	ret = readl_poll_timeout(pd->psc->base + PSC_PTSTAT, ptstat,
-				 !(ptstat & BIT(pd->id)), PD_TIMEOUT);
+	if (pd->id > 31) {
+		pdoffset = 32;
+		ptstatreg = PSC_PTSTAT_H;
+	}
+
+	ret = readl_poll_timeout(pd->psc->base + ptstatreg, ptstat,
+				 !(ptstat & BIT(pd->id - pdoffset)), PD_TIMEOUT);
 
 	if (ret)
 		printf("%s: psc%d, pd%d failed to transition.\n", __func__,
@@ -129,7 +149,15 @@ static int ti_pd_wait(struct ti_pd *pd)
 
 static void ti_pd_transition(struct ti_pd *pd)
 {
-	psc_write(BIT(pd->id), pd->psc, PSC_PTCMD);
+	u32 pdoffset = 0;
+	u32 ptcmdreg = PSC_PTCMD;
+
+	if (pd->id > 31) {
+		pdoffset = 32;
+		ptcmdreg = PSC_PTCMD_H;
+	}
+
+	psc_write(BIT(pd->id - pdoffset), pd->psc, ptcmdreg);
 }
 
 u8 ti_pd_state(struct ti_pd *pd)
@@ -334,17 +362,6 @@ static int ti_power_domain_of_xlate(struct power_domain *pd,
 
 	return 0;
 }
-
-static int ti_power_domain_request(struct power_domain *pd)
-{
-	return 0;
-}
-
-static int ti_power_domain_free(struct power_domain *pd)
-{
-	return 0;
-}
-
 static const struct udevice_id ti_power_domain_of_match[] = {
 	{ .compatible = "ti,sci-pm-domain" },
 	{ /* sentinel */ }
@@ -354,8 +371,6 @@ static struct power_domain_ops ti_power_domain_ops = {
 	.on = ti_power_domain_on,
 	.off = ti_power_domain_off,
 	.of_xlate = ti_power_domain_of_xlate,
-	.request = ti_power_domain_request,
-	.rfree = ti_power_domain_free,
 };
 
 U_BOOT_DRIVER(ti_pm_domains) = {

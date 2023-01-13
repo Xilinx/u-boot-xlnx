@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2015 Freescale Semiconductor, Inc.
- * Copyright 2021 NXP
+ * Copyright 2021-2022 NXP
  */
 
 #include <common.h>
 #include <dm.h>
-#include <flash.h>
 #include <fsl_validate.h>
 #include <fsl_secboot_err.h>
 #include <fsl_sfp.h>
@@ -20,6 +19,7 @@
 #ifdef CONFIG_ARCH_LS1021A
 #include <asm/arch/immap_ls102xa.h>
 #endif
+#include <dm/lists.h>
 
 #define SHA256_BITS	256
 #define SHA256_BYTES	(256/8)
@@ -79,9 +79,11 @@ static u32 check_ie(struct fsl_secboot_img_priv *img)
  * address
  */
 #if defined(CONFIG_MPC85xx)
+#include <flash.h>
+
 int get_csf_base_addr(u32 *csf_addr, u32 *flash_base_addr)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 csf_hdr_addr = in_be32(&gur->scratchrw[0]);
 	u32 csf_flash_offset = csf_hdr_addr & ~(CONFIG_SYS_PBI_FLASH_BASE);
 	u32 flash_addr, addr;
@@ -112,7 +114,7 @@ int get_csf_base_addr(u32 *csf_addr, u32 *flash_base_addr)
  */
 int get_csf_base_addr(u32 *csf_addr, u32 *flash_base_addr)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 csf_hdr_addr = in_be32(&gur->scratchrw[0]);
 
 	if (memcmp((u8 *)(uintptr_t)csf_hdr_addr,
@@ -128,7 +130,7 @@ int get_csf_base_addr(u32 *csf_addr, u32 *flash_base_addr)
 #if defined(CONFIG_ESBC_HDR_LS)
 static int get_ie_info_addr(uintptr_t *ie_addr)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	/* For LS-CH3, the address of IE Table is
 	 * stated in Scratch13 and scratch14 of DCFG.
 	 * Bootrom validates this table while validating uboot.
@@ -806,6 +808,13 @@ static int calculate_cmp_img_sig(struct fsl_secboot_img_priv *img)
 	prop.num_bits = key_len * 8;
 	prop.exp_len = key_len;
 
+#if defined(CONFIG_SPL_BUILD)
+	ret = device_bind_driver(NULL, "fsl_rsa_mod_exp", "fsl_rsa_mod_exp", NULL);
+	if (ret) {
+		printf("Couldn't bind fsl_rsa_mod_exp driver (%d)\n", ret);
+		return -EINVAL;
+	}
+#endif
 	ret = uclass_get_device(UCLASS_MOD_EXP, 0, &mod_exp_dev);
 	if (ret) {
 		printf("RSA: Can't find Modular Exp implementation\n");
@@ -871,7 +880,7 @@ int fsl_secboot_validate(uintptr_t haddr, char *arg_hash_str,
 	int ret, i, hash_cmd = 0;
 	u32 srk_hash[8];
 
-	if (arg_hash_str != NULL) {
+	if (strlen(arg_hash_str) != 0) {
 		const char *cp = arg_hash_str;
 		int i = 0;
 

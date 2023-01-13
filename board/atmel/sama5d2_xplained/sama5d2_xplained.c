@@ -21,6 +21,13 @@ extern void at91_pda_detect(void);
 
 DECLARE_GLOBAL_DATA_PTR;
 
+static void rgb_leds_init(void)
+{
+	atmel_pio4_set_pio_output(AT91_PIO_PORTB, 6, 1);	/* LED RED */
+	atmel_pio4_set_pio_output(AT91_PIO_PORTB, 5, 1);	/* LED GREEN */
+	atmel_pio4_set_pio_output(AT91_PIO_PORTB, 0, 0);	/* LED BLUE */
+}
+
 #ifdef CONFIG_CMD_USB
 static void board_usb_hw_init(void)
 {
@@ -31,7 +38,7 @@ static void board_usb_hw_init(void)
 #ifdef CONFIG_BOARD_LATE_INIT
 int board_late_init(void)
 {
-#ifdef CONFIG_DM_VIDEO
+#ifdef CONFIG_VIDEO
 	at91_video_show_board_info();
 #endif
 	at91_pda_detect();
@@ -57,10 +64,6 @@ void board_debug_uart_init(void)
 #ifdef CONFIG_BOARD_EARLY_INIT_F
 int board_early_init_f(void)
 {
-#ifdef CONFIG_DEBUG_UART
-	debug_uart_init();
-#endif
-
 	return 0;
 }
 #endif
@@ -69,6 +72,8 @@ int board_init(void)
 {
 	/* address of boot parameters */
 	gd->bd->bi_boot_params = gd->bd->bi_dram[0].start + 0x100;
+
+	rgb_leds_init();
 
 #ifdef CONFIG_CMD_USB
 	board_usb_hw_init();

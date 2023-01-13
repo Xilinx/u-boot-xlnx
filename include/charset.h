@@ -174,6 +174,19 @@ s32 utf_to_lower(const s32 code);
 s32 utf_to_upper(const s32 code);
 
 /**
+ * u16_strcasecmp() - compare two u16 strings case insensitively
+ *
+ * @s1:		first string to compare
+ * @s2:		second string to compare
+ * @n:		maximum number of u16 to compare
+ * Return:	0  if the first n u16 are the same in s1 and s2
+ *		< 0 if the first different u16 in s1 is less than the
+ *		corresponding u16 in s2
+ *		> 0 if the first different u16 in s1 is greater than the
+ */
+int u16_strcasecmp(const u16 *s1, const u16 *s2);
+
+/**
  * u16_strncmp() - compare two u16 string
  *
  * @s1:		first string to compare
@@ -201,18 +214,6 @@ int u16_strncmp(const u16 *s1, const u16 *s2, size_t n);
 #define u16_strcmp(s1, s2)	u16_strncmp((s1), (s2), SIZE_MAX)
 
 /**
- * u16_strlen - count non-zero words
- *
- * This function matches wsclen() if the -fshort-wchar compiler flag is set.
- * In the EFI context we explicitly need a function handling u16 strings.
- *
- * @in:			null terminated u16 string
- * Return:		number of non-zero words.
- *			This is not the number of utf-16 letters!
- */
-size_t u16_strlen(const void *in);
-
-/**
  * u16_strsize() - count size of u16 string in bytes including the null
  *		   character
  *
@@ -237,6 +238,20 @@ size_t u16_strsize(const void *in);
 size_t u16_strnlen(const u16 *in, size_t count);
 
 /**
+ * u16_strlen - count non-zero words
+ *
+ * This function matches wsclen() if the -fshort-wchar compiler flag is set.
+ * In the EFI context we explicitly need a function handling u16 strings.
+ *
+ * @in:			null terminated u16 string
+ * Return:		number of non-zero words.
+ *			This is not the number of utf-16 letters!
+ */
+size_t u16_strlen(const void *in);
+
+#define u16_strlen(in) u16_strnlen(in, SIZE_MAX)
+
+/**
  * u16_strcpy() - copy u16 string
  *
  * Copy u16 string pointed to by src, including terminating null word, to
@@ -258,6 +273,20 @@ u16 *u16_strcpy(u16 *dest, const u16 *src);
  * Return:		allocated new buffer on success, NULL on failure
  */
 u16 *u16_strdup(const void *src);
+
+/**
+ * u16_strlcat() - Append a length-limited, %NUL-terminated string to another
+ *
+ * Append the source string @src to the destination string @dest, overwriting
+ * null word at the end of @dest adding  a terminating null word.
+ *
+ * @dest:		zero terminated u16 destination string
+ * @src:		zero terminated u16 source string
+ * @count:		size of buffer in u16 words including taling 0x0000
+ * Return:		required size including trailing 0x0000 in u16 words
+ *			If return value >= count, truncation occurred.
+ */
+size_t u16_strlcat(u16 *dest, const u16 *src, size_t count);
 
 /**
  * utf16_to_utf8() - Convert an utf16 string to utf8

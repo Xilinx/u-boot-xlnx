@@ -126,7 +126,7 @@ static void octeon_spi_wait_ready(struct udevice *dev)
 
 	do {
 		mpi_sts = readq(base + MPI_STS);
-		WATCHDOG_RESET();
+		schedule();
 	} while (mpi_sts & MPI_STS_BUSY);
 
 	debug("%s(%s)\n", __func__, dev->name);
@@ -137,7 +137,7 @@ static void octeon_spi_wait_ready(struct udevice *dev)
  *
  * @param	dev	SPI bus
  *
- * @return	0 for success, -EINVAL if chip select is invalid
+ * Return:	0 for success, -EINVAL if chip select is invalid
  */
 static int octeon_spi_claim_bus(struct udevice *dev)
 {
@@ -168,7 +168,7 @@ static int octeon_spi_claim_bus(struct udevice *dev)
  *
  * @param	dev	SPI bus
  *
- * @return	0 for success, -EINVAL if chip select is invalid
+ * Return:	0 for success, -EINVAL if chip select is invalid
  */
 static int octeon_spi_release_bus(struct udevice *dev)
 {
@@ -568,7 +568,7 @@ static int octeon_spi_probe(struct udevice *dev)
 		pci_dev_t bdf = dm_pci_get_bdf(dev);
 
 		debug("SPI PCI device: %x\n", bdf);
-		priv->base = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0,
+		priv->base = dm_pci_map_bar(dev, PCI_BASE_ADDRESS_0, 0, 0, PCI_REGION_TYPE,
 					    PCI_REGION_MEM);
 		/* Add base offset */
 		priv->base += 0x1000;

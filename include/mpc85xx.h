@@ -26,7 +26,7 @@
  * Define default values for some CCSR macros to make header files cleaner*
  *
  * To completely disable CCSR relocation in a board header file, define
- * CONFIG_SYS_CCSR_DO_NOT_RELOCATE.  This will force CONFIG_SYS_CCSRBAR_PHYS
+ * CONFIG_SPL_SYS_CCSR_DO_NOT_RELOCATE.  This will force CONFIG_SYS_CCSRBAR_PHYS
  * to a value that is the same as CONFIG_SYS_CCSRBAR.
  */
 
@@ -35,7 +35,7 @@
 CONFIG_SYS_CCSRBAR_PHYS_LOW and/or CONFIG_SYS_CCSRBAR_PHYS_HIGH instead."
 #endif
 
-#ifdef CONFIG_SYS_CCSR_DO_NOT_RELOCATE
+#if CONFIG_IS_ENABLED(SYS_CCSR_DO_NOT_RELOCATE)
 #undef CONFIG_SYS_CCSRBAR_PHYS_HIGH
 #undef CONFIG_SYS_CCSRBAR_PHYS_LOW
 #define CONFIG_SYS_CCSRBAR_PHYS_HIGH	0
@@ -59,9 +59,5 @@ CONFIG_SYS_CCSRBAR_PHYS_LOW and/or CONFIG_SYS_CCSRBAR_PHYS_HIGH instead."
 
 #define CONFIG_SYS_CCSRBAR_PHYS ((CONFIG_SYS_CCSRBAR_PHYS_HIGH * 1ull) << 32 | \
 				 CONFIG_SYS_CCSRBAR_PHYS_LOW)
-
-#ifndef CONFIG_SYS_IMMR
-#define CONFIG_SYS_IMMR			CONFIG_SYS_CCSRBAR
-#endif
 
 #endif	/* __MPC85xx_H__ */

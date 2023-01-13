@@ -33,11 +33,6 @@
 #include <bootm.h>
 #include <image.h>
 
-#ifndef CONFIG_SYS_BOOTM_LEN
-/* use 8MByte as default max gunzip size */
-#define CONFIG_SYS_BOOTM_LEN	0x800000
-#endif
-
 #define MAX_CMDLINE_SIZE	SZ_4K
 
 #define IH_INITRD_ARCH IH_ARCH_DEFAULT
@@ -46,10 +41,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-bootm_headers_t images;		/* pointers to os/initrd/fdt images */
+struct bootm_headers images;		/* pointers to os/initrd/fdt images */
 
 static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
-				   char *const argv[], bootm_headers_t *images,
+				   char *const argv[], struct bootm_headers *images,
 				   ulong *os_data, ulong *os_len);
 
 __weak void board_quiesce_devices(void)
@@ -57,7 +52,7 @@ __weak void board_quiesce_devices(void)
 }
 
 #ifdef CONFIG_LMB
-static void boot_start_lmb(bootm_headers_t *images)
+static void boot_start_lmb(struct bootm_headers *images)
 {
 	ulong		mem_start;
 	phys_size_t	mem_size;
@@ -70,7 +65,7 @@ static void boot_start_lmb(bootm_headers_t *images)
 }
 #else
 #define lmb_reserve(lmb, base, size)
-static inline void boot_start_lmb(bootm_headers_t *images) { }
+static inline void boot_start_lmb(struct bootm_headers *images) { }
 #endif
 
 static int bootm_start(struct cmd_tbl *cmdtp, int flag, int argc,
@@ -85,6 +80,33 @@ static int bootm_start(struct cmd_tbl *cmdtp, int flag, int argc,
 	images.state = BOOTM_STATE_START;
 
 	return 0;
+}
+
+static ulong bootm_data_addr(int argc, char *const argv[])
+{
+	ulong addr;
+
+	if (argc > 0)
+		addr = simple_strtoul(argv[0], NULL, 16);
+	else
+		addr = image_load_addr;
+
+	return addr;
+}
+
+static int bootm_pre_load(struct cmd_tbl *cmdtp, int flag, int argc,
+			  char *const argv[])
+{
+	ulong data_addr = bootm_data_addr(argc, argv);
+	int ret = 0;
+
+	if (CONFIG_IS_ENABLED(CMD_BOOTM_PRE_LOAD))
+		ret = image_pre_load(data_addr);
+
+	if (ret)
+		ret = CMD_RET_FAILURE;
+
+	return ret;
 }
 
 static int bootm_find_os(struct cmd_tbl *cmdtp, int flag, int argc,
@@ -283,9 +305,9 @@ int bootm_find_images(int flag, int argc, char *const argv[], ulong start,
 	/* check if FDT overlaps OS image */
 	if (images.ft_addr &&
 	    (((ulong)images.ft_addr >= start &&
-	      (ulong)images.ft_addr <= start + size) ||
+	      (ulong)images.ft_addr < start + size) ||
 	     ((ulong)images.ft_addr + images.ft_len >= start &&
-	      (ulong)images.ft_addr + images.ft_len <= start + size))) {
+	      (ulong)images.ft_addr + images.ft_len < start + size))) {
 		printf("ERROR: FDT image overlaps OS image (OS=0x%lx..0x%lx)\n",
 		       start, start + size);
 		return 1;
@@ -342,10 +364,12 @@ static int bootm_find_other(struct cmd_tbl *cmdtp, int flag, int argc,
  *
  * @comp_type:		Compression type being used (IH_COMP_...)
  * @uncomp_size:	Number of bytes uncompressed
+ * @buf_size:		Number of bytes the decompresion buffer was
  * @ret:		errno error code received from compression library
- * @return Appropriate BOOTM_ERR_ error code
+ * Return: Appropriate BOOTM_ERR_ error code
  */
-static int handle_decomp_error(int comp_type, size_t uncomp_size, int ret)
+static int handle_decomp_error(int comp_type, size_t uncomp_size,
+			       size_t buf_size, int ret)
 {
 	const char *name = genimg_get_comp_name(comp_type);
 
@@ -353,7 +377,7 @@ static int handle_decomp_error(int comp_type, size_t uncomp_size, int ret)
 	if (ret == -ENOSYS)
 		return BOOTM_ERR_UNIMPLEMENTED;
 
-	if (uncomp_size >= CONFIG_SYS_BOOTM_LEN)
+	if (uncomp_size >= buf_size)
 		printf("Image too large: increase CONFIG_SYS_BOOTM_LEN\n");
 	else
 		printf("%s: uncompress error %d\n", name, ret);
@@ -373,9 +397,9 @@ static int handle_decomp_error(int comp_type, size_t uncomp_size, int ret)
 #endif
 
 #ifndef USE_HOSTCC
-static int bootm_load_os(bootm_headers_t *images, int boot_progress)
+static int bootm_load_os(struct bootm_headers *images, int boot_progress)
 {
-	image_info_t os = images->os;
+	struct image_info os = images->os;
 	ulong load = os.load;
 	ulong load_end;
 	ulong blob_start = os.start;
@@ -393,7 +417,8 @@ static int bootm_load_os(bootm_headers_t *images, int boot_progress)
 			   load_buf, image_buf, image_len,
 			   CONFIG_SYS_BOOTM_LEN, &load_end);
 	if (err) {
-		err = handle_decomp_error(os.comp, load_end - load, err);
+		err = handle_decomp_error(os.comp, load_end - load,
+					  CONFIG_SYS_BOOTM_LEN, err);
 		bootstage_error(BOOTSTAGE_ID_DECOMP_IMAGE);
 		return err;
 	}
@@ -434,7 +459,7 @@ static int bootm_load_os(bootm_headers_t *images, int boot_progress)
 /**
  * bootm_disable_interrupts() - Disable interrupts in preparation for load/boot
  *
- * @return interrupt flag (0 if interrupts were disabled, non-zero if they were
+ * Return: interrupt flag (0 if interrupts were disabled, non-zero if they were
  *	enabled)
  */
 ulong bootm_disable_interrupts(void)
@@ -471,7 +496,8 @@ ulong bootm_disable_interrupts(void)
 }
 
 #define CONSOLE_ARG		"console="
-#define CONSOLE_ARG_SIZE	sizeof(CONSOLE_ARG)
+#define NULL_CONSOLE		(CONSOLE_ARG "ttynull")
+#define CONSOLE_ARG_SIZE	sizeof(NULL_CONSOLE)
 
 /**
  * fixup_silent_linux() - Handle silencing the linux boot if required
@@ -481,7 +507,7 @@ ulong bootm_disable_interrupts(void)
  *
  * @buf: Buffer containing the string to process
  * @maxlen: Maximum length of buffer
- * @return 0 if OK, -ENOSPC if @maxlen is too small
+ * Return: 0 if OK, -ENOSPC if @maxlen is too small
  */
 static int fixup_silent_linux(char *buf, int maxlen)
 {
@@ -523,21 +549,22 @@ static int fixup_silent_linux(char *buf, int maxlen)
 			char *end = strchr(start, ' ');
 			int start_bytes;
 
-			start_bytes = start - cmdline + CONSOLE_ARG_SIZE - 1;
+			start_bytes = start - cmdline;
 			strncpy(buf, cmdline, start_bytes);
+			strncpy(buf + start_bytes, NULL_CONSOLE, CONSOLE_ARG_SIZE);
 			if (end)
-				strcpy(buf + start_bytes, end);
+				strcpy(buf + start_bytes + CONSOLE_ARG_SIZE - 1, end);
 			else
-				buf[start_bytes] = '\0';
+				buf[start_bytes + CONSOLE_ARG_SIZE] = '\0';
 		} else {
-			sprintf(buf, "%s %s", cmdline, CONSOLE_ARG);
+			sprintf(buf, "%s %s", cmdline, NULL_CONSOLE);
 		}
 		if (buf + strlen(buf) >= cmdline)
 			return -ENOSPC;
 	} else {
-		if (maxlen < sizeof(CONSOLE_ARG))
+		if (maxlen < CONSOLE_ARG_SIZE)
 			return -ENOSPC;
-		strcpy(buf, CONSOLE_ARG);
+		strcpy(buf, NULL_CONSOLE);
 	}
 	debug("after silent fix-up: %s\n", buf);
 
@@ -551,7 +578,7 @@ static int fixup_silent_linux(char *buf, int maxlen)
  *
  * @buf: Buffer containing the string to process
  * @maxlen: Maximum length of buffer
- * @return 0 if OK, -ENOSPC if @maxlen is too small
+ * Return: 0 if OK, -ENOSPC if @maxlen is too small
  */
 static int process_subst(char *buf, int maxlen)
 {
@@ -655,13 +682,13 @@ int bootm_process_cmdline_env(int flags)
  * @param states	Mask containing states to run (BOOTM_STATE_...)
  * @param images	Image header information
  * @param boot_progress 1 to show boot progress, 0 to not do this
- * @return 0 if ok, something else on error. Some errors will cause this
+ * Return: 0 if ok, something else on error. Some errors will cause this
  *	function to perform a reboot! If states contains BOOTM_STATE_OS_GO
  *	then the intent is to boot an OS, so this function will not return
  *	unless the image type is standalone.
  */
 int do_bootm_states(struct cmd_tbl *cmdtp, int flag, int argc,
-		    char *const argv[], int states, bootm_headers_t *images,
+		    char *const argv[], int states, struct bootm_headers *images,
 		    int boot_progress)
 {
 	boot_os_fn *boot_fn;
@@ -676,6 +703,9 @@ int do_bootm_states(struct cmd_tbl *cmdtp, int flag, int argc,
 	 */
 	if (states & BOOTM_STATE_START)
 		ret = bootm_start(cmdtp, flag, argc, argv);
+
+	if (!ret && (states & BOOTM_STATE_PRE_LOAD))
+		ret = bootm_pre_load(cmdtp, flag, argc, argv);
 
 	if (!ret && (states & BOOTM_STATE_FINDOS))
 		ret = bootm_find_os(cmdtp, flag, argc, argv);
@@ -760,7 +790,7 @@ int do_bootm_states(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	/* Check for unsupported subcommand. */
 	if (ret) {
-		puts("subcommand not supported\n");
+		printf("subcommand failed (err=%d)\n", ret);
 		return ret;
 	}
 
@@ -795,9 +825,9 @@ err:
  *     pointer to a legacy image header if valid image was found
  *     otherwise return NULL
  */
-static image_header_t *image_get_kernel(ulong img_addr, int verify)
+static struct legacy_img_hdr *image_get_kernel(ulong img_addr, int verify)
 {
-	image_header_t *hdr = (image_header_t *)img_addr;
+	struct legacy_img_hdr *hdr = (struct legacy_img_hdr *)img_addr;
 
 	if (!image_check_magic(hdr)) {
 		puts("Bad Magic Number\n");
@@ -848,11 +878,11 @@ static image_header_t *image_get_kernel(ulong img_addr, int verify)
  *     address and length, otherwise NULL
  */
 static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
-				   char *const argv[], bootm_headers_t *images,
+				   char *const argv[], struct bootm_headers *images,
 				   ulong *os_data, ulong *os_len)
 {
 #if CONFIG_IS_ENABLED(LEGACY_IMAGE_FORMAT)
-	image_header_t	*hdr;
+	struct legacy_img_hdr	*hdr;
 #endif
 	ulong		img_addr;
 	const void *buf;
@@ -865,6 +895,9 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
 	img_addr = genimg_get_kernel_addr_fit(argc < 1 ? NULL : argv[0],
 					      &fit_uname_config,
 					      &fit_uname_kernel);
+
+	if (CONFIG_IS_ENABLED(CMD_BOOTM_PRE_LOAD))
+		img_addr += image_load_offset;
 
 	bootstage_mark(BOOTSTAGE_ID_CHECK_MAGIC);
 
@@ -907,7 +940,7 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
 		 * kernel decompression.
 		 */
 		memmove(&images->legacy_hdr_os_copy, hdr,
-			sizeof(image_header_t));
+			sizeof(struct legacy_img_hdr));
 
 		/* save pointer to image header */
 		images->legacy_hdr_os = hdr;
@@ -969,11 +1002,11 @@ static int bootm_host_load_image(const void *fit, int req_image_type,
 {
 	const char *fit_uname_config = NULL;
 	ulong data, len;
-	bootm_headers_t images;
+	struct bootm_headers images;
 	int noffset;
-	ulong load_end;
+	ulong load_end, buf_size;
 	uint8_t image_type;
-	uint8_t imape_comp;
+	uint8_t image_comp;
 	void *load_buf;
 	int ret;
 
@@ -991,20 +1024,18 @@ static int bootm_host_load_image(const void *fit, int req_image_type,
 		return -EINVAL;
 	}
 
-	if (fit_image_get_comp(fit, noffset, &imape_comp)) {
-		puts("Can't get image compression!\n");
-		return -EINVAL;
-	}
+	if (fit_image_get_comp(fit, noffset, &image_comp))
+		image_comp = IH_COMP_NONE;
 
 	/* Allow the image to expand by a factor of 4, should be safe */
-	load_buf = malloc((1 << 20) + len * 4);
-	ret = image_decomp(imape_comp, 0, data, image_type, load_buf,
-			   (void *)data, len, CONFIG_SYS_BOOTM_LEN,
-			   &load_end);
+	buf_size = (1 << 20) + len * 4;
+	load_buf = malloc(buf_size);
+	ret = image_decomp(image_comp, 0, data, image_type, load_buf,
+			   (void *)data, len, buf_size, &load_end);
 	free(load_buf);
 
 	if (ret) {
-		ret = handle_decomp_error(imape_comp, load_end - 0, ret);
+		ret = handle_decomp_error(image_comp, load_end - 0, buf_size, ret);
 		if (ret != BOOTM_ERR_UNIMPLEMENTED)
 			return ret;
 	}

@@ -28,7 +28,7 @@ static struct efi_hii_string_protocol *hii_string_protocol;
  * @handle:	handle of the loaded image
  * @systable:	system table
  *
- * @return:	EFI_ST_SUCCESS for success
+ * Return:	EFI_ST_SUCCESS for success
  */
 static int setup(const efi_handle_t handle,
 		 const struct efi_system_table *systable)
@@ -699,7 +699,7 @@ static int test_hii_string_new_string(void)
 
 	ret = hii_string_protocol->new_string(hii_string_protocol, handle,
 					      &id, (u8 *)"en-US",
-					      L"Japanese", L"Japanese", NULL);
+					      u"Japanese", u"Japanese", NULL);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("new_string returned %u\n",
 			     (unsigned int)ret);
@@ -752,7 +752,7 @@ static int test_hii_string_get_string(void)
 
 	ret = hii_string_protocol->new_string(hii_string_protocol, handle,
 					      &id, (u8 *)"en-US",
-					      L"Japanese", L"Japanese", NULL);
+					      u"Japanese", u"Japanese", NULL);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("new_string returned %u\n",
 			     (unsigned int)ret);
@@ -831,7 +831,7 @@ static int test_hii_string_set_string(void)
 
 	ret = hii_string_protocol->new_string(hii_string_protocol, handle,
 					      &id, (u8 *)"en-US",
-					      L"Japanese", L"Japanese", NULL);
+					      u"Japanese", u"Japanese", NULL);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("new_string returned %u\n",
 			     (unsigned int)ret);
@@ -840,7 +840,7 @@ static int test_hii_string_set_string(void)
 
 	ret = hii_string_protocol->set_string(hii_string_protocol, handle,
 					      id, (u8 *)"en-US",
-					      L"Nihongo", NULL);
+					      u"Nihongo", NULL);
 	if (ret != EFI_SUCCESS) {
 		efi_st_error("set_string returned %u\n",
 			     (unsigned int)ret);
@@ -1033,7 +1033,7 @@ static int test_hii_string_protocol(void)
 /*
  * Execute unit test.
  *
- * @return:	EFI_ST_SUCCESS for success, EFI_ST_FAILURE for failure
+ * Return:	EFI_ST_SUCCESS for success, EFI_ST_FAILURE for failure
  */
 static int execute(void)
 {

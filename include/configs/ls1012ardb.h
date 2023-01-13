@@ -10,8 +10,6 @@
 #include "ls1012a_common.h"
 
 /* DDR */
-#define CONFIG_DIMM_SLOTS_PER_CTLR	1
-#define CONFIG_CHIP_SELECTS_PER_CTRL	1
 #define CONFIG_SYS_SDRAM_SIZE		0x40000000
 
 /*
@@ -38,15 +36,10 @@
 #define __PHY_ETH2_MASK		0xFB
 #define __PHY_ETH1_MASK		0xFD
 
-#define CONFIG_PCIE1		/* PCIE controller 1 */
-
-#define CONFIG_PCI_SCAN_SHOW
-
 #undef CONFIG_EXTRA_ENV_SETTINGS
 #define CONFIG_EXTRA_ENV_SETTINGS		\
 	"verify=no\0"				\
 	"initrd_high=0xffffffffffffffff\0"	\
-	"fdt_addr=0x00f00000\0"			\
 	"kernel_addr=0x01000000\0"		\
 	"kernelheader_addr=0x600000\0"		\
 	"scriptaddr=0x80000000\0"		\
@@ -92,14 +85,10 @@
 		"$kernelheader_size && esbc_validate ${kernelheader_addr_r}; " \
 		"bootm $load_addr#$board\0"
 
-#undef CONFIG_BOOTCOMMAND
 #ifdef CONFIG_TFABOOT
 #undef QSPI_NOR_BOOTCOMMAND
 #define QSPI_NOR_BOOTCOMMAND "run distro_bootcmd; run qspi_bootcmd; "\
 			     "env exists secureboot && esbc_halt;"
-#else
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run qspi_bootcmd; "\
-			   "env exists secureboot && esbc_halt;"
 #endif
 
 #include <asm/fsl_secure_boot.h>

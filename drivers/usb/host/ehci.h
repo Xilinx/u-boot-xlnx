@@ -280,7 +280,7 @@ void ehci_set_controller_priv(int index, void *priv,
  * ehci_get_controller_priv() - Get controller private data
  *
  * @index	Controller number to get
- * @return controller pointer for this index
+ * Return: controller pointer for this index
  */
 void *ehci_get_controller_priv(int index);
 
@@ -294,10 +294,6 @@ int ehci_register(struct udevice *dev, struct ehci_hccr *hccr,
 		  uint tweaks, enum usb_init_type init);
 int ehci_deregister(struct udevice *dev);
 extern struct dm_usb_ops ehci_usb_ops;
-
-/* EHCI PHY functions */
-int ehci_setup_phy(struct udevice *dev, struct phy *phy, int index);
-int ehci_shutdown_phy(struct udevice *dev, struct phy *phy);
 
 #include <linux/bitops.h>
 #endif /* USB_EHCI_H */

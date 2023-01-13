@@ -271,6 +271,7 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+		power-domains = <&zynqmp_firmware PD_PL>;
 	};
 
 	amba: axi {
@@ -995,9 +996,8 @@
 				iommus = <&smmu 0x860>;
 				snps,quirk-frame-length-adjustment = <0x20>;
 				clock-names = "ref";
-				snps,resume-hs-terminations;
+				snps,enable_guctl1_resume_quirk;
 				snps,enable_guctl1_ipd_quirk;
-				snps,xhci-reset-on-resume;
 				snps,xhci-stream-quirk;
 				/* dma-coherent; */
 			};
@@ -1026,11 +1026,9 @@
 				interrupts = <0 70 4>, <0 74 4>, <0 76 4>;
 				iommus = <&smmu 0x861>;
 				snps,quirk-frame-length-adjustment = <0x20>;
-				snps,refclk_fladj;
 				clock-names = "ref";
-				snps,resume-hs-terminations;
+				snps,enable_guctl1_resume_quirk;
 				snps,enable_guctl1_ipd_quirk;
-				snps,xhci-reset-on-resume;
 				snps,xhci-stream-quirk;
 				/* dma-coherent; */
 			};

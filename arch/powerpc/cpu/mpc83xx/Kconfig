@@ -1,8 +1,20 @@
 menu "mpc83xx CPU"
 	depends on MPC83xx
 
+config DEFAULT_IMMR
+	hex
+	default 0xFF400000
+
+config E300
+	def_bool y
+
 config SYS_CPU
 	default "mpc83xx"
+
+config SYS_83XX_DDR_USES_CS0
+	bool
+	help
+	  DDR should be configured using CS0 and CS1 instead of CS2 and CS3.
 
 choice
 	prompt "Target select"
@@ -12,12 +24,7 @@ config TARGET_MPC837XERDB
 	bool "Support MPC837XERDB"
 	select ARCH_MPC837X
 	select BOARD_EARLY_INIT_F
-
-config TARGET_IDS8313
-	bool "Support ids8313"
-	select ARCH_MPC8313
-	select DM
-	imply CMD_DM
+	select SYS_83XX_DDR_USES_CS0
 
 config TARGET_KMETER1
 	bool "Support kmeter1"
@@ -125,15 +132,6 @@ config ARCH_MPC8308
 	select MPC83XX_PCIE1_SUPPORT
 	select MPC83XX_SECOND_I2C
 
-config ARCH_MPC8309
-	bool
-	select ARCH_MPC830X
-	select MPC83XX_QUICC_ENGINE
-	select MPC83XX_PCI_SUPPORT
-	select MPC83XX_SECOND_I2C
-	select SYS_FSL_ERRATUM_ESDHC111
-	select FSL_ELBC
-
 config ARCH_MPC831X
 	bool
 	select MPC83XX_PCI_SUPPORT
@@ -179,13 +177,6 @@ config ARCH_MPC837X
 	select SYS_CACHE_SHIFT_5
 	select FSL_ELBC
 
-config SYS_IMMR
-	hex "Value for IMMR"
-	default 0xE0000000
-	help
-	  Address for the Internal Memory-Mapped Registers (IMMR) window used
-	  to configure the features of the SoC.
-
 source "arch/powerpc/cpu/mpc83xx/hrcw/Kconfig"
 source "arch/powerpc/cpu/mpc83xx/bats/Kconfig"
 source "arch/powerpc/cpu/mpc83xx/lblaw/Kconfig"
@@ -195,12 +186,17 @@ source "arch/powerpc/cpu/mpc83xx/sysio/Kconfig"
 source "arch/powerpc/cpu/mpc83xx/arbiter/Kconfig"
 source "arch/powerpc/cpu/mpc83xx/initreg/Kconfig"
 
+config 83XX_PCICLK
+	hex "PCI clock frequency"
+	default 0xDEADBEEF
+	help
+	  If required, the PCI clock frequency to use when configuring
+	  the host bridge.
+
 config FSL_ELBC
 	bool
 
 source "board/freescale/mpc837xerdb/Kconfig"
-source "board/ids/ids8313/Kconfig"
-source "board/keymile/Kconfig"
 source "board/gdsys/mpc8308/Kconfig"
 
 endmenu

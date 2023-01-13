@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
- * Copyright 2019-2020 NXP
+ * Copyright 2019-2021 NXP
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <i2c.h>
 #include <fdt_support.h>
 #include <fsl_ddr_sdram.h>
@@ -27,7 +28,6 @@
 #include <fsl_csu.h>
 #include <fsl_esdhc.h>
 #include <fsl_ifc.h>
-#include <fsl_sec.h>
 #include <spl.h>
 #include "../common/i2c_mux.h"
 
@@ -300,9 +300,9 @@ int i2c_multiplexer_select_vid_channel(u8 channel)
 
 int board_early_init_f(void)
 {
-	u32 __iomem *cntcr = (u32 *)CONFIG_SYS_FSL_TIMER_ADDR;
+	u32 __iomem *cntcr = (u32 *)CFG_SYS_FSL_TIMER_ADDR;
 #ifdef CONFIG_HAS_FSL_XHCI_USB
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 	u32 usb_pwrfault;
 #endif
 #ifdef CONFIG_LPUART
@@ -347,7 +347,7 @@ int board_early_init_f(void)
 bool is_warm_boot(void)
 {
 #define DCFG_CCSR_CRSTSR_WDRFR	(1 << 3)
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 
 	if (in_be32(&gur->crstsr) & DCFG_CCSR_CRSTSR_WDRFR)
 		return 1;
@@ -395,7 +395,7 @@ int board_init(void)
 {
 	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 
-#ifdef CONFIG_SYS_FSL_SERDES
+#ifdef CFG_SYS_FSL_SERDES
 	config_serdes_mux();
 #endif
 
@@ -420,10 +420,6 @@ int board_init(void)
 	out_le32(SMMU_NSCR0, val);
 #endif
 
-#ifdef CONFIG_FSL_CAAM
-	sec_init();
-#endif
-
 	return 0;
 }
 
@@ -443,10 +439,7 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	fdt_fixup_memory_banks(blob, base, size, 2);
 	ft_cpu_setup(blob, bd);
 
-#ifdef CONFIG_SYS_DPAA_FMAN
-#ifndef CONFIG_DM_ETH
-	fdt_fixup_fman_ethernet(blob);
-#endif
+#ifdef CONFIG_FMAN_ENET
 	fdt_fixup_board_enet(blob);
 #endif
 
@@ -486,6 +479,6 @@ u16 flash_read16(void *addr)
 #if defined(CONFIG_TFABOOT) && defined(CONFIG_ENV_IS_IN_SPI_FLASH)
 void *env_sf_get_env_addr(void)
 {
-	return (void *)(CONFIG_SYS_FSL_QSPI_BASE + CONFIG_ENV_OFFSET);
+	return (void *)(CFG_SYS_FSL_QSPI_BASE + CONFIG_ENV_OFFSET);
 }
 #endif

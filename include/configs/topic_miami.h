@@ -16,19 +16,6 @@
 
 /* Fixup settings */
 
-/* SPL settings */
-#undef CONFIG_SPL_ETH
-#undef CONFIG_SPL_MAX_FOOTPRINT
-#define CONFIG_SPL_MAX_FOOTPRINT	CONFIG_SYS_SPI_U_BOOT_OFFS
-#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME     "u-boot.img"
-
-/* FPGA commands that we don't use */
-
-/* Extras */
-
-/* Faster flash, ours may run at 108 MHz */
-#undef CONFIG_SPI_FLASH_WINBOND
-
 /* Setup proper boot sequences for Miami boards */
 
 #if defined(CONFIG_USB_HOST)
@@ -93,10 +80,5 @@
 		"fi\0" \
 	EXTRA_ENV_USB \
 	DFU_ALT_INFO
-
-#undef CONFIG_BOOTCOMMAND
-#define CONFIG_BOOTCOMMAND	"if mmcinfo; then " \
-	"if fatload mmc 0 0x1900000 ${bootscript}; then source 0x1900000; " \
-	"fi; fi; run $modeboot"
 
 #endif /* __CONFIG_TOPIC_MIAMI_H */

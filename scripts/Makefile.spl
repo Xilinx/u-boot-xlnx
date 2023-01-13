@@ -27,8 +27,16 @@ UBOOTINCLUDE := -I$(obj)/include $(UBOOTINCLUDE)
 KBUILD_CPPFLAGS += -DCONFIG_SPL_BUILD
 ifeq ($(CONFIG_TPL_BUILD),y)
 KBUILD_CPPFLAGS += -DCONFIG_TPL_BUILD
+else
+ifeq ($(CONFIG_VPL_BUILD),y)
+KBUILD_CPPFLAGS += -DCONFIG_VPL_BUILD
+endif
 endif
 
+ifeq ($(CONFIG_VPL_BUILD),y)
+SPL_BIN := u-boot-vpl
+SPL_NAME := vpl
+else
 ifeq ($(CONFIG_TPL_BUILD),y)
 SPL_BIN := u-boot-tpl
 SPL_NAME := tpl
@@ -36,15 +44,20 @@ else
 SPL_BIN := u-boot-spl
 SPL_NAME := spl
 endif
+endif
 
 export SPL_NAME
 
 ifdef CONFIG_SPL_BUILD
 SPL_ := SPL_
+ifeq ($(CONFIG_VPL_BUILD),y)
+SPL_TPL_ := VPL_
+else
 ifeq ($(CONFIG_TPL_BUILD),y)
 SPL_TPL_ := TPL_
 else
 SPL_TPL_ := SPL_
+endif
 endif
 else
 SPL_ :=
@@ -56,6 +69,9 @@ $(error You cannot build SPL without enabling CONFIG_SUPPORT_SPL)
 endif
 ifeq ($(obj)$(CONFIG_SUPPORT_TPL),tpl)
 $(error You cannot build TPL without enabling CONFIG_SUPPORT_TPL)
+endif
+ifeq ($(obj)$(CONFIG_SUPPORT_VPL),vpl)
+$(error You cannot build VPL without enabling CONFIG_SUPPORT_VPL)
 endif
 
 include $(srctree)/config.mk
@@ -90,26 +106,22 @@ libs-$(CONFIG_SPL_FRAMEWORK) += common/spl/
 endif
 libs-y += common/init/
 
-# Special handling for a few options which support SPL/TPL
-ifeq ($(CONFIG_TPL_BUILD),y)
-libs-$(CONFIG_TPL_LIBCOMMON_SUPPORT) += boot/ common/ cmd/ env/
-libs-$(CONFIG_TPL_LIBGENERIC_SUPPORT) += lib/
-else
-libs-$(CONFIG_SPL_LIBCOMMON_SUPPORT) += boot/ common/ cmd/ env/
-libs-$(CONFIG_SPL_LIBGENERIC_SUPPORT) += lib/
+# Special handling for a few options which support SPL/TPL/VPL
+libs-$(CONFIG_$(SPL_TPL_)LIBCOMMON_SUPPORT) += boot/ common/ cmd/ env/
+libs-$(CONFIG_$(SPL_TPL_)LIBGENERIC_SUPPORT) += lib/
 ifdef CONFIG_SPL_FRAMEWORK
 libs-$(CONFIG_PARTITIONS) += disk/
 endif
-endif
 
 libs-y += drivers/
+libs-$(CONFIG_SPL_MEMORY) += drivers/memory/
 libs-$(CONFIG_SPL_USB_GADGET) += drivers/usb/dwc3/
 libs-$(CONFIG_SPL_USB_GADGET) += drivers/usb/cdns3/
 libs-y += dts/
 libs-y += fs/
 libs-$(CONFIG_SPL_POST_MEM_SUPPORT) += post/drivers/
 libs-$(CONFIG_SPL_NET) += net/
-libs-$(CONFIG_SPL_UNIT_TEST) += test/
+libs-$(CONFIG_$(SPL_TPL_)UNIT_TEST) += test/
 
 head-y		:= $(addprefix $(obj)/,$(head-y))
 libs-y		:= $(addprefix $(obj)/,$(libs-y))
@@ -182,8 +194,8 @@ LDPPFLAGS += \
 	  sed -ne 's/GNU ld version \([0-9][0-9]*\)\.\([0-9][0-9]*\).*/-DLD_MAJOR=\1 -DLD_MINOR=\2/p')
 
 # Turn various CONFIG symbols into IMAGE symbols for easy reuse of
-# the scripts between SPL and TPL.
-ifneq ($(CONFIG_$(SPL_TPL_)MAX_SIZE),)
+# the scripts between SPL, TPL and VPL.
+ifneq ($(CONFIG_$(SPL_TPL_)MAX_SIZE),0x0)
 LDPPFLAGS += -DIMAGE_MAX_SIZE=$(CONFIG_$(SPL_TPL_)MAX_SIZE)
 endif
 ifneq ($(CONFIG_$(SPL_TPL_)TEXT_BASE),)
@@ -242,7 +254,7 @@ endif
 
 INPUTS-y	+= $(obj)/$(SPL_BIN).bin $(obj)/$(SPL_BIN).sym
 
-ifdef CONFIG_SAMSUNG
+ifneq ($(CONFIG_ARCH_EXYNOS)$(CONFIG_ARCH_S5PC1XX),)
 INPUTS-y	+= $(obj)/$(BOARD)-spl.bin
 endif
 
@@ -264,12 +276,14 @@ ifeq ($(CONFIG_SYS_SOC),"at91")
 INPUTS-y	+= $(obj)/boot.bin
 endif
 
+ifndef CONFIG_VPL_BUILD
 ifdef CONFIG_TPL_BUILD
 INPUTS-$(CONFIG_TPL_X86_16BIT_INIT) += $(obj)/u-boot-x86-start16-tpl.bin \
 	$(obj)/u-boot-x86-reset16-tpl.bin
 else
 INPUTS-$(CONFIG_SPL_X86_16BIT_INIT) += $(obj)/u-boot-x86-start16-spl.bin \
 	$(obj)/u-boot-x86-reset16-spl.bin
+endif
 endif
 
 INPUTS-$(CONFIG_ARCH_ZYNQ)		+= $(obj)/boot.bin
@@ -307,7 +321,7 @@ endif
 
 ifneq ($(build_dtb),)
 $(obj)/$(SPL_BIN)-dtb.bin: $(obj)/$(SPL_BIN)-nodtb.bin \
-		$(if $(CONFIG_SPL_SEPARATE_BSS),,$(obj)/$(SPL_BIN)-pad.bin) \
+		$(if $(CONFIG_$(SPL_TPL_)SEPARATE_BSS),,$(obj)/$(SPL_BIN)-pad.bin) \
 		$(FINAL_DTB_CONTAINER)  FORCE
 	$(call if_changed,cat)
 
@@ -345,17 +359,18 @@ $(obj)/dts/dt-%.o: $(obj)/dts/dt-%.c $(platdata-hdr)
 	$(call if_changed,plat)
 
 # Don't use dts_dir here, since it forces running this expensive rule every time
-$(platdata-hdr) $(u-boot-spl-platdata_c) &: $(obj)/$(SPL_BIN).dtb
+$(platdata-hdr) $(u-boot-spl-platdata_c) &: $(obj)/$(SPL_BIN).dtb FORCE
 	@[ -d $(obj)/dts ] || mkdir -p $(obj)/dts
 	@# Remove old files since which ones we generate depends on the setting
 	@# of OF_PLATDATA_INST and this might change between builds. Leaving old
 	@# ones around is confusing and it is possible that switching the
 	@# setting again will use the old one instead of regenerating it.
-	@rm -f $(u-boot-spl-all-platdata_c) $(u-boot-spl-all-platdata)
+	@rm -f $(u-boot-spl-old-platdata_c) $(u-boot-spl-platdata_c) \
+		$(u-boot-spl-old-platdata)
 	$(call if_changed,dtoc)
 
-ifdef CONFIG_SAMSUNG
-ifdef CONFIG_VAR_SIZE_SPL
+ifneq ($(CONFIG_ARCH_EXYNOS)$(CONFIG_ARCH_S5PC1XX),)
+ifeq ($(CONFIG_EXYNOS5420),y)
 VAR_SIZE_PARAM = --vs
 else
 VAR_SIZE_PARAM =
@@ -398,7 +413,7 @@ LDFLAGS_$(SPL_BIN) += $(call ld-option, --no-dynamic-linker)
 
 LDFLAGS_$(SPL_BIN) += --build-id=none
 
-# Pick the best-match (i.e. SPL_TEXT_BASE for SPL, TPL_TEXT_BASE for TPL)
+# Pick the best match (e.g. SPL_TEXT_BASE for SPL, TPL_TEXT_BASE for TPL)
 ifneq ($(CONFIG_$(SPL_TPL_)TEXT_BASE),)
 LDFLAGS_$(SPL_BIN) += -Ttext $(CONFIG_$(SPL_TPL_)TEXT_BASE)
 endif
@@ -411,7 +426,10 @@ endif
 $(obj)/$(SPL_BIN).sfp: $(obj)/$(SPL_BIN).bin FORCE
 	$(call if_changed,mkimage)
 
-MKIMAGEFLAGS_sunxi-spl.bin = -T sunxi_egon \
+MKIMAGEFLAGS_sunxi-spl.bin = \
+	-A $(ARCH) \
+	-T $(CONFIG_SPL_IMAGE_TYPE) \
+	-a $(CONFIG_SPL_TEXT_BASE) \
 	-n $(CONFIG_DEFAULT_DEVICE_TREE)
 
 OBJCOPYFLAGS_u-boot-spl-dtb.hex := -I binary -O ihex --change-address=$(CONFIG_SPL_TEXT_BASE)
@@ -472,7 +490,7 @@ endif
 
 # Rule to link u-boot-spl
 # May be overridden by arch/$(ARCH)/config.mk
-ifdef CONFIG_LTO
+ifeq ($(LTO_ENABLE),y)
 quiet_cmd_u-boot-spl ?= LTO     $@
       cmd_u-boot-spl ?= \
 	(									\

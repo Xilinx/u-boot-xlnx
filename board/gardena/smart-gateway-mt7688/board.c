@@ -7,7 +7,6 @@
 #include <command.h>
 #include <env.h>
 #include <env_internal.h>
-#include <flash.h>
 #include <init.h>
 #include <led.h>
 #include <log.h>
@@ -183,9 +182,6 @@ err_free:
 
 int board_late_init(void)
 {
-	if (IS_ENABLED(CONFIG_LED))
-		led_default_state();
-
 	factory_data_env_config();
 
 	return 0;

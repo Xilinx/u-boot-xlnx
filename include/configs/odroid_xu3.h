@@ -10,18 +10,11 @@
 #include <configs/exynos5420-common.h>
 #include <configs/exynos5-common.h>
 
-#define CONFIG_BOARD_COMMON
-
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
 
 #define TZPC_BASE_OFFSET		0x10000
 
 #define SDRAM_BANK_SIZE			(256UL << 20UL)	/* 256 MB */
-
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_LOAD_ADDR - 0x1000000)
-
-/* USB */
-#define CONFIG_USB_EHCI_EXYNOS
 
 /* DFU */
 #define DFU_DEFAULT_POLL_TIMEOUT	300
@@ -34,9 +27,6 @@
 /* UMS */
 #define CONFIG_G_DNL_UMS_VENDOR_NUM	0x0525
 #define CONFIG_G_DNL_UMS_PRODUCT_NUM	0xA4A5
-
-/* FIXME: MUST BE REMOVED AFTER TMU IS TURNED ON */
-#undef CONFIG_EXYNOS_TMU
 
 #define CONFIG_DFU_ALT_SYSTEM               \
 	"uImage fat 0 1;"                   \
@@ -77,8 +67,6 @@
  * Need to override existing one (smdk5420) with odroid so set_board_info will
  * use proper prefix when creating full board_name (SYS_BOARD + type)
  */
-#undef CONFIG_SYS_BOARD
-#define CONFIG_SYS_BOARD		"odroid"
 
 /* Define new extra env settings, including DFU settings */
 #undef CONFIG_EXTRA_ENV_SETTINGS
@@ -90,6 +78,7 @@
 	"rootfstype=ext4\0" \
 	"console=console=ttySAC2,115200n8\0" \
 	"fdtfile=exynos5422-odroidxu3.dtb\0" \
+	"board=odroid\0" \
 	"board_name=odroidxu3\0" \
 	"mmcbootdev=0\0" \
 	"mmcrootdev=0\0" \

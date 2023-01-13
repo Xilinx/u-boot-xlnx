@@ -38,7 +38,7 @@ struct __packed fsp_upd_header {
  *	from scatch since we will lose its contents
  * @use_spi_flash: true to use the fast SPI driver to read FSP, otherwise use
  *	mapped SPI
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int fsp_memory_init(bool s3wake, bool use_spi_flash);
 
@@ -54,10 +54,18 @@ typedef asmlinkage int (*fsp_memory_init_func)(struct fspm_upd *params,
  *	from scatch since we will lose its contents
  * @use_spi_flash: true to use the fast SPI driver to read FSP, otherwise use
  *	mapped SPI
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int fsp_silicon_init(bool s3wake, bool use_spi_flash);
 
 typedef asmlinkage int (*fsp_silicon_init_func)(struct fsps_upd *params);
+
+/**
+ *  fsp_setup_pinctrl() - Set up the pinctrl for FSP
+ *
+ * @ctx: Event context (not used)
+ * @event: Event information (not used)
+ */
+int fsp_setup_pinctrl(void *ctx, struct event *event);
 
 #endif

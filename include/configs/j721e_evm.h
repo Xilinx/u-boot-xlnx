@@ -17,55 +17,28 @@
 
 /* DDR Configuration */
 #define CONFIG_SYS_SDRAM_BASE1		0x880000000
+/* FLASH Configuration */
+#define CONFIG_SYS_FLASH_BASE		0x000000000
 
 /* SPL Loader Configuration */
 #if defined(CONFIG_TARGET_J721E_A72_EVM) || defined(CONFIG_TARGET_J7200_A72_EVM)
-#define CONFIG_SYS_INIT_SP_ADDR         (CONFIG_SPL_TEXT_BASE +	\
-					 CONFIG_SYS_K3_NON_SECURE_MSRAM_SIZE)
 #define CONFIG_SYS_UBOOT_BASE		0x50280000
 /* Image load address in RAM for DFU boot*/
 #else
 #define CONFIG_SYS_UBOOT_BASE		0x50080000
-/*
- * Maximum size in memory allocated to the SPL BSS. Keep it as tight as
- * possible (to allow the build to go through), as this directly affects
- * our memory footprint. The less we use for BSS the more we have available
- * for everything else.
- */
-#define CONFIG_SPL_BSS_MAX_SIZE		0xA000
-/*
- * Link BSS to be within SPL in a dedicated region located near the top of
- * the MCU SRAM, this way making it available also before relocation. Note
- * that we are not using the actual top of the MCU SRAM as there is a memory
- * location filled in by the boot ROM that we want to read out without any
- * interference from the C context.
- */
-#define CONFIG_SPL_BSS_START_ADDR	(CONFIG_SYS_K3_BOOT_PARAM_TABLE_INDEX -\
-					 CONFIG_SPL_BSS_MAX_SIZE)
-/* Set the stack right below the SPL BSS section */
-#define CONFIG_SYS_INIT_SP_ADDR         CONFIG_SPL_BSS_START_ADDR
-/* Configure R5 SPL post-relocation malloc pool in DDR */
-#define CONFIG_SYS_SPL_MALLOC_START	0x84000000
-#define CONFIG_SYS_SPL_MALLOC_SIZE	SZ_16M
-/* Image load address in RAM for DFU boot*/
 #endif
-
-#ifdef CONFIG_SYS_K3_SPL_ATF
-#define CONFIG_SPL_FS_LOAD_PAYLOAD_NAME	"tispl.bin"
-#endif
-
-#define CONFIG_SPL_MAX_SIZE		CONFIG_SYS_K3_MAX_DOWNLODABLE_IMAGE_SIZE
-
-#define CONFIG_SYS_BOOTM_LEN		SZ_64M
 
 /* HyperFlash related configuration */
-#define CONFIG_SYS_MAX_FLASH_BANKS_DETECT 1
 
 /* U-Boot general configuration */
 #define EXTRA_ENV_J721E_BOARD_SETTINGS					\
 	"default_device_tree=" CONFIG_DEFAULT_DEVICE_TREE ".dtb\0"	\
 	"findfdt="							\
 		"setenv name_fdt ${default_device_tree};"		\
+		"if test $board_name = j721e; then "			\
+			"setenv name_fdt k3-j721e-common-proc-board.dtb; fi;" \
+		"if test $board_name = j721e-eaik || test $board_name = j721e-sk; then "		\
+			"setenv name_fdt k3-j721e-sk.dtb; fi;"	\
 		"setenv fdtfile ${name_fdt}\0"				\
 	"name_kern=Image\0"						\
 	"console=ttyS2,115200n8\0"					\
@@ -118,7 +91,32 @@
 	"partitions=" PARTS_DEFAULT
 
 /* Set the default list of remote processors to boot */
-#if defined(CONFIG_TARGET_J721E_A72_EVM) || defined(CONFIG_TARGET_J7200_A72_EVM)
+#if defined(CONFIG_TARGET_J7200_A72_EVM)
+#define EXTRA_ENV_CONFIG_MAIN_CPSW0_QSGMII_PHY				\
+	"do_main_cpsw0_qsgmii_phyinit=1\0"				\
+	"init_main_cpsw0_qsgmii_phy=gpio set gpio@22_17;"		\
+		 "gpio clear gpio@22_16\0"				\
+	"main_cpsw0_qsgmii_phyinit="					\
+	"if test ${do_main_cpsw0_qsgmii_phyinit} -eq 1 && test ${dorprocboot} -eq 1 && " \
+			"test ${boot} = mmc; then "			\
+		"run init_main_cpsw0_qsgmii_phy;"			\
+	"fi;\0"
+#ifdef DEFAULT_RPROCS
+#undef DEFAULT_RPROCS
+#endif
+#elif defined(CONFIG_TARGET_J721E_A72_EVM)
+#define EXTRA_ENV_CONFIG_MAIN_CPSW0_QSGMII_PHY				\
+	"init_main_cpsw0_qsgmii_phy=gpio set gpio@22_17;"		\
+		 "gpio clear gpio@22_16\0"				\
+	"main_cpsw0_qsgmii_phyinit="					\
+	"if test $board_name = J721EX-PM1-SOM || test $board_name = J721EX-PM2-SOM " \
+	"|| test $board_name = j721e; then " \
+	"do_main_cpsw0_qsgmii_phyinit=1; else "			\
+	"do_main_cpsw0_qsgmii_phyinit=0; fi;"			\
+	"if test ${do_main_cpsw0_qsgmii_phyinit} -eq 1 && test ${dorprocboot} -eq 1 && " \
+			"test ${boot} = mmc; then "			\
+		"run init_main_cpsw0_qsgmii_phy;"			\
+	"fi;\0"
 #ifdef DEFAULT_RPROCS
 #undef DEFAULT_RPROCS
 #endif
@@ -136,15 +134,6 @@
 #endif /* CONFIG_TARGET_J721E_A72_EVM */
 
 #ifdef CONFIG_TARGET_J7200_A72_EVM
-#define EXTRA_ENV_CONFIG_MAIN_CPSW0_QSGMII_PHY				\
-	"do_main_cpsw0_qsgmii_phyinit=1\0"				\
-	"init_main_cpsw0_qsgmii_phy=gpio set gpio@22_17;"		\
-		 "gpio clear gpio@22_16\0"				\
-	"main_cpsw0_qsgmii_phyinit="					\
-	"if test ${do_main_cpsw0_qsgmii_phyinit} -eq 1 && test ${dorprocboot} -eq 1 && " \
-			"test ${boot} = mmc; then "			\
-		"run init_main_cpsw0_qsgmii_phy;"			\
-	"fi;\0"
 #define DEFAULT_RPROCS ""						\
 		"2 /lib/firmware/j7200-main-r5f0_0-fw "			\
 		"3 /lib/firmware/j7200-main-r5f0_1-fw "
@@ -159,14 +148,6 @@
 	DFU_ALT_INFO_EMMC \
 	DFU_ALT_INFO_RAM \
 	DFU_ALT_INFO_OSPI
-
-#if defined(CONFIG_TARGET_J721E_A72_EVM) || defined(CONFIG_TARGET_J7200_A72_EVM)
-#define EXTRA_ENV_J721E_BOARD_SETTINGS_MTD				\
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"				\
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"
-#else
-#define EXTRA_ENV_J721E_BOARD_SETTINGS_MTD
-#endif
 
 #if CONFIG_IS_ENABLED(CMD_PXE)
 # define BOOT_TARGET_PXE(func) func(PXE, pxe, na)
@@ -198,7 +179,6 @@
 	EXTRA_ENV_RPROC_SETTINGS					\
 	EXTRA_ENV_DFUARGS						\
 	DEFAULT_UFS_TI_ARGS						\
-	EXTRA_ENV_J721E_BOARD_SETTINGS_MTD				\
 	EXTRA_ENV_CONFIG_MAIN_CPSW0_QSGMII_PHY				\
 	BOOTENV
 

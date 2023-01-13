@@ -17,7 +17,7 @@
  * @pei_data:	Platform-specific data required by the MRC
  * @use_asm_linkage: true if the call to MRC requires asmlinkage, false if it
  * uses normal U-Boot calling
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int mrc_common_init(struct udevice *dev, void *pei_data, bool use_asm_linkage);
 
@@ -47,7 +47,7 @@ int mrc_add_memory_area(struct memory_info *info, uint64_t start,
  * the relocation address, and how far U-Boot is moved by relocation are
  * set in the global data structure.
  */
-ulong mrc_common_board_get_usable_ram_top(ulong total_size);
+phys_size_t mrc_common_board_get_usable_ram_top(phys_size_t total_size);
 
 void mrc_common_dram_init_banksize(void);
 

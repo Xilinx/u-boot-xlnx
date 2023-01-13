@@ -8,29 +8,12 @@
 
 #include "rockchip-common.h"
 
-#define CONFIG_SYS_CBSIZE		1024
-
-#define COUNTER_FREQUENCY               24000000
-#define CONFIG_ROCKCHIP_STIMER_BASE	0xff8680a0
-
 #define CONFIG_IRAM_BASE		0xff8c0000
 
-#define CONFIG_SYS_INIT_SP_ADDR		0x00300000
-
 #if defined(CONFIG_SPL_BUILD) && defined(CONFIG_TPL_BOOTROM_SUPPORT)
-#define CONFIG_SPL_STACK		0x00400000
-#define CONFIG_SPL_MAX_SIZE             0x40000
-#define CONFIG_SPL_BSS_START_ADDR	0x00400000
-#define CONFIG_SPL_BSS_MAX_SIZE         0x2000
 #else
-#define CONFIG_SPL_STACK		0xff8effff
-#define CONFIG_SPL_MAX_SIZE		0x30000 - 0x2000
 /*  BSS setup */
-#define CONFIG_SPL_BSS_START_ADDR       0xff8e0000
-#define CONFIG_SPL_BSS_MAX_SIZE         0x10000
 #endif
-
-#define CONFIG_SYS_BOOTM_LEN	(64 << 20)	/* 64M */
 
 /* MMC/SD IP block */
 #define CONFIG_ROCKCHIP_SDHCI_MAX_FREQ	200000000
@@ -40,6 +23,22 @@
 /* FAT sd card locations. */
 #define CONFIG_SYS_SDRAM_BASE		0
 #define SDRAM_MAX_SIZE			0xf8000000
+
+#define ROCKPI_4B_IDBLOADER_IMAGE_GUID \
+	EFI_GUID(0x02f4d760, 0xcfd5, 0x43bd, 0x8e, 0x2d, \
+		 0xa4, 0x2a, 0xcb, 0x33, 0xc6, 0x60)
+
+#define ROCKPI_4B_UBOOT_IMAGE_GUID \
+	EFI_GUID(0x4ce292da, 0x1dd8, 0x428d, 0xa1, 0xc2, \
+		 0x77, 0x74, 0x3e, 0xf8, 0xb9, 0x6e)
+
+#define ROCKPI_4C_IDBLOADER_IMAGE_GUID \
+	EFI_GUID(0xfd68510c, 0x12d3, 0x4f0a, 0xb8, 0xd3, \
+		 0xd8, 0x79, 0xe1, 0xd3, 0xa5, 0x40)
+
+#define ROCKPI_4C_UBOOT_IMAGE_GUID \
+	EFI_GUID(0xb81fb4ae, 0xe4f3, 0x471b, 0x99, 0xb4, \
+		 0x0b, 0x3d, 0xa5, 0x49, 0xce, 0x13)
 
 #ifndef CONFIG_SPL_BUILD
 

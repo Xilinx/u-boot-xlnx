@@ -8,9 +8,11 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <getopt.h>
 #include <setjmp.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,7 +28,9 @@
 #include <linux/compiler_attributes.h>
 #include <linux/types.h>
 
+#include <asm/fuzzing_engine.h>
 #include <asm/getopt.h>
+#include <asm/main.h>
 #include <asm/sections.h>
 #include <asm/state.h>
 #include <os.h>
@@ -49,6 +53,18 @@ ssize_t os_read(int fd, void *buf, size_t count)
 ssize_t os_write(int fd, const void *buf, size_t count)
 {
 	return write(fd, buf, count);
+}
+
+int os_printf(const char *fmt, ...)
+{
+	va_list args;
+	int i;
+
+	va_start(args, fmt);
+	i = vfprintf(stdout, fmt, args);
+	va_end(args);
+
+	return i;
 }
 
 off_t os_lseek(int fd, off_t offset, int whence)
@@ -112,6 +128,23 @@ int os_unlink(const char *pathname)
 void os_exit(int exit_code)
 {
 	exit(exit_code);
+}
+
+unsigned int os_alarm(unsigned int seconds)
+{
+	return alarm(seconds);
+}
+
+void os_set_alarm_handler(void (*handler)(int))
+{
+	if (!handler)
+		handler = SIG_DFL;
+	signal(SIGALRM, handler);
+}
+
+void os_raise_sigalrm(void)
+{
+	raise(SIGALRM);
 }
 
 int os_write_file(const char *fname, const void *buf, int size)
@@ -207,6 +240,16 @@ int os_map_file(const char *pathname, int os_flags, void **bufp, int *sizep)
 
 	*bufp = ptr;
 	*sizep = size;
+
+	return 0;
+}
+
+int os_unmap(void *buf, int size)
+{
+	if (munmap(buf, size)) {
+		printf("Can't unmap %p %x\n", buf, size);
+		return -EIO;
+	}
 
 	return 0;
 }
@@ -614,7 +657,13 @@ const char *os_dirent_get_typename(enum os_dirent_t type)
 	return os_dirent_typename[OS_FILET_UNKNOWN];
 }
 
-int os_get_filesize(const char *fname, loff_t *size)
+/*
+ * For compatibility reasons avoid loff_t here.
+ * U-Boot defines loff_t as long long.
+ * But /usr/include/linux/types.h may not define it at all.
+ * Alpine Linux being one example.
+ */
+int os_get_filesize(const char *fname, long long *size)
 {
 	struct stat buf;
 	int ret;
@@ -628,13 +677,18 @@ int os_get_filesize(const char *fname, loff_t *size)
 
 void os_putc(int ch)
 {
-	putchar(ch);
+	os_write(1, &ch, 1);
 }
 
 void os_puts(const char *str)
 {
 	while (*str)
 		os_putc(*str++);
+}
+
+void os_flush(void)
+{
+	fflush(stdout);
 }
 
 int os_write_ram_buf(const char *fname)
@@ -657,7 +711,7 @@ int os_read_ram_buf(const char *fname)
 {
 	struct sandbox_state *state = state_get_current();
 	int fd, ret;
-	loff_t size;
+	long long size;
 
 	ret = os_get_filesize(fname, &size);
 	if (ret < 0)
@@ -702,7 +756,7 @@ static int make_exec(char *fname, const void *data, int size)
  * @argvp:  Returns newly allocated args list
  * @add_args: Arguments to add, each a string
  * @count: Number of arguments in @add_args
- * @return 0 if OK, -ENOMEM if out of memory
+ * Return: 0 if OK, -ENOMEM if out of memory
  */
 static int add_args(char ***argvp, char *add_args[], int count)
 {
@@ -748,7 +802,7 @@ static int add_args(char ***argvp, char *add_args[], int count)
  * execs it.
  *
  * @fname: Filename to exec
- * @return does not return on success, any return value is an error
+ * Return: does not return on success, any return value is an error
  */
 static int os_jump_to_file(const char *fname, bool delete_it)
 {
@@ -980,8 +1034,97 @@ void *os_find_text_base(void)
 	return base;
 }
 
+/**
+ * os_unblock_signals() - unblock all signals
+ *
+ * If we are relaunching the sandbox in a signal handler, we have to unblock
+ * the respective signal before calling execv(). See signal(7) man-page.
+ */
+static void os_unblock_signals(void)
+{
+	sigset_t sigs;
+
+	sigfillset(&sigs);
+	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
+}
+
 void os_relaunch(char *argv[])
 {
+	os_unblock_signals();
+
 	execv(argv[0], argv);
 	os_exit(1);
 }
+
+
+#ifdef CONFIG_FUZZ
+static void *fuzzer_thread(void * ptr)
+{
+	char cmd[64];
+	char *argv[5] = {"./u-boot", "-T", "-c", cmd, NULL};
+	const char *fuzz_test;
+
+	/* Find which test to run from an environment variable. */
+	fuzz_test = getenv("UBOOT_SB_FUZZ_TEST");
+	if (!fuzz_test)
+		os_abort();
+
+	snprintf(cmd, sizeof(cmd), "fuzz %s", fuzz_test);
+
+	sandbox_main(4, argv);
+	os_abort();
+	return NULL;
+}
+
+static bool fuzzer_initialized = false;
+static pthread_mutex_t fuzzer_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t fuzzer_cond = PTHREAD_COND_INITIALIZER;
+static const uint8_t *fuzzer_data;
+static size_t fuzzer_size;
+
+int sandbox_fuzzing_engine_get_input(const uint8_t **data, size_t *size)
+{
+	if (!fuzzer_initialized)
+		return -ENOSYS;
+
+	/* Tell the main thread we need new inputs then wait for them. */
+	pthread_mutex_lock(&fuzzer_mutex);
+	pthread_cond_signal(&fuzzer_cond);
+	pthread_cond_wait(&fuzzer_cond, &fuzzer_mutex);
+	*data = fuzzer_data;
+	*size = fuzzer_size;
+	pthread_mutex_unlock(&fuzzer_mutex);
+	return 0;
+}
+
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+	static pthread_t tid;
+
+	pthread_mutex_lock(&fuzzer_mutex);
+
+	/* Initialize the sandbox on another thread. */
+	if (!fuzzer_initialized) {
+		fuzzer_initialized = true;
+		if (pthread_create(&tid, NULL, fuzzer_thread, NULL))
+			os_abort();
+		pthread_cond_wait(&fuzzer_cond, &fuzzer_mutex);
+	}
+
+	/* Hand over the input. */
+	fuzzer_data = data;
+	fuzzer_size = size;
+	pthread_cond_signal(&fuzzer_cond);
+
+	/* Wait for the inputs to be finished with. */
+	pthread_cond_wait(&fuzzer_cond, &fuzzer_mutex);
+	pthread_mutex_unlock(&fuzzer_mutex);
+
+	return 0;
+}
+#else
+int main(int argc, char *argv[])
+{
+	return sandbox_main(argc, argv);
+}
+#endif

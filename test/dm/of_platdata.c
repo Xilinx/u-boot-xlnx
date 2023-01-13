@@ -103,7 +103,7 @@ DM_TEST(dm_test_of_plat_props, UT_TESTF_SCAN_PDATA);
  * @uts: Test state
  * @parent: Parent to search
  * @found: bool array to update
- * @return 0 if OK, non-zero on error
+ * Return: 0 if OK, non-zero on error
  */
 static int find_driver_info(struct unit_test_state *uts, struct udevice *parent,
 			    bool found[])
@@ -150,7 +150,7 @@ static int dm_test_of_plat_dev(struct unit_test_state *uts)
 
 	/* Skip this test if there is no platform data */
 	if (!CONFIG_IS_ENABLED(OF_PLATDATA_DRIVER_RT))
-		return 0;
+		return -EAGAIN;
 
 	/* Record the indexes that are found */
 	memset(found, '\0', sizeof(found));

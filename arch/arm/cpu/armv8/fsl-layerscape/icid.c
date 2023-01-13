@@ -27,7 +27,7 @@ static void set_icid(struct icid_id_table *tbl, int size)
 void set_fman_icids(struct fman_icid_id_table *tbl, int size)
 {
 	int i;
-	ccsr_fman_t *fm = (void *)CONFIG_SYS_FSL_FM1_ADDR;
+	ccsr_fman_t *fm = (void *)CFG_SYS_FSL_FM1_ADDR;
 
 	for (i = 0; i < size; i++) {
 		out_be32(&fm->fm_bmi_common.fmbm_ppid[tbl[i].port_id - 1],
@@ -46,6 +46,7 @@ void set_icids(void)
 #endif
 }
 
+#ifndef CONFIG_SPL_BUILD
 int fdt_set_iommu_prop(void *blob, int off, int smmu_ph, u32 *ids, int num_ids)
 {
 	int i, ret;
@@ -116,8 +117,7 @@ void fdt_fixup_fman_port_icid_by_compat(void *blob, int smmu_ph,
 	int noff, len, icid;
 	const u32 *prop;
 
-	noff = fdt_node_offset_by_compatible(blob, -1, compat);
-	while (noff > 0) {
+	fdt_for_each_node_by_compatible(noff, blob, -1, compat) {
 		prop = fdt_getprop(blob, noff, "cell-index", &len);
 		if (!prop) {
 			printf("WARNING missing cell-index for fman port\n");
@@ -137,8 +137,6 @@ void fdt_fixup_fman_port_icid_by_compat(void *blob, int smmu_ph,
 		}
 
 		fdt_set_iommu_prop(blob, noff, smmu_ph, (u32 *)&icid, 1);
-
-		noff = fdt_node_offset_by_compatible(blob, noff, compat);
 	}
 }
 
@@ -193,3 +191,4 @@ void fdt_fixup_icid(void *blob)
 	fdt_fixup_fman_icids(blob, smmu_ph);
 #endif
 }
+#endif

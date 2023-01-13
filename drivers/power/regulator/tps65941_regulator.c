@@ -10,7 +10,6 @@
 #include <fdtdec.h>
 #include <errno.h>
 #include <dm.h>
-#include <i2c.h>
 #include <log.h>
 #include <linux/delay.h>
 #include <power/pmic.h>
@@ -299,6 +298,8 @@ static int tps65941_buck_probe(struct udevice *dev)
 		idx = 1;
 	} else if (idx == 34) {
 		idx = 3;
+	} else if (idx == 123) {
+		idx = 1;
 	} else if (idx == 1234) {
 		idx = 1;
 	} else {

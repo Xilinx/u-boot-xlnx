@@ -94,11 +94,15 @@ int hws_board_topology_load(struct serdes_map **serdes_map_array, u8 *count)
 	return 0;
 }
 
-void board_pex_config(void)
+void spl_board_init(void)
 {
 #ifdef CONFIG_SPL_BUILD
 	uint k;
 	struct gpio_desc gpio = {};
+
+	/* Enable PCIe link 2 */
+	setbits_32(MVEBU_REGISTER(0x18204), BIT(2));
+	mdelay(10);
 
 	if (!request_gpio_by_name(&gpio, "pca9698@22", 31, "fpga-program-gpio")) {
 		/* prepare FPGA reconfiguration */
@@ -190,11 +194,12 @@ void init_host_phys(struct mii_dev *bus)
 	for (k = 0; k < 2; ++k) {
 		struct phy_device *phydev;
 
-		phydev = phy_find_by_mask(bus, 1 << k,
-					  PHY_INTERFACE_MODE_SGMII);
+		phydev = phy_find_by_mask(bus, 1 << k);
 
-		if (phydev)
+		if (phydev) {
+			phydev->interface = PHY_INTERFACE_MODE_SGMII;
 			phy_config(phydev);
+		}
 	}
 }
 

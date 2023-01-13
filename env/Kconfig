@@ -3,6 +3,24 @@ menu "Environment"
 config ENV_SUPPORT
 	def_bool y
 
+config ENV_SOURCE_FILE
+	string "Environment file to use"
+	default ""
+	help
+	  This sets the basename to use to generate the default environment.
+	  This a text file as described in doc/usage/environment.rst
+
+	  The file must be in the board directory and have a .env extension, so
+	  the resulting filename is typically
+	  board/<vendor>/<board>/<CONFIG_ENV_SOURCE_FILE>.env
+
+	  If the file is not present, an error is produced.
+
+	  If this CONFIG is empty, U-Boot uses CONFIG SYS_BOARD as a default, if
+	  the file board/<vendor>/<board>/<SYS_BOARD>.env exists. Otherwise the
+	  environment is assumed to come from the ad-hoc
+	  CONFIG_EXTRA_ENV_SETTINGS #define
+
 config SAVEENV
 	def_bool y if CMD_SAVEENV
 
@@ -11,6 +29,22 @@ config ENV_OVERWRITE
 	help
 	  Use this to permit overriding of certain environmental variables
 	  like Ethernet and Serial
+
+config ENV_MIN_ENTRIES
+	int "Minimum number of entries in the environment hashtable"
+	default 64
+	help
+	  Minimum number of entries in the hash table that is used internally
+	  to store the environment settings.
+
+config ENV_MAX_ENTRIES
+	int "Maximumm number of entries in the environment hashtable"
+	default 512
+	help
+	  Maximum number of entries in the hash table that is used internally
+	  to store the environment settings. The default setting is supposed to
+	  be generous and should work in most cases. This setting can be used
+	  to tune behaviour; see lib/hashtable.c for details.
 
 config ENV_IS_NOWHERE
 	bool "Environment is not stored"
@@ -230,14 +264,6 @@ config ENV_IS_IN_NAND
 	  during a "saveenv" operation.	 CONFIG_ENV_OFFSET_REDUND must be
 	  aligned to an erase block boundary.
 
-	  - CONFIG_ENV_RANGE (optional):
-
-	  Specifies the length of the region in which the environment
-	  can be written.  This should be a multiple of the NAND device's
-	  block size.  Specifying a range with more erase blocks than
-	  are needed to hold CONFIG_ENV_SIZE allows bad blocks within
-	  the range to be avoided.
-
 	  - CONFIG_ENV_OFFSET_OOB (optional):
 
 	  Enables support for dynamically retrieving the offset of the
@@ -245,6 +271,16 @@ config ENV_IS_IN_NAND
 	  "nand env.oob" command can be used to record this offset.
 	  Currently, CONFIG_ENV_OFFSET_REDUND is not supported when
 	  using CONFIG_ENV_OFFSET_OOB.
+
+config ENV_RANGE
+	hex "Length of the region in which the environment can be written"
+	depends on ENV_IS_IN_NAND
+	range ENV_SIZE 0x7fffffff
+	default ENV_SIZE
+	help
+	  This should be a multiple of the NAND device's block size.
+	  Specifying a range with more erase blocks than are needed to hold
+	  CONFIG_ENV_SIZE allows bad blocks within the range to be avoided.
 
 config ENV_IS_IN_NVRAM
 	bool "Environment in a non-volatile RAM"
@@ -302,6 +338,7 @@ config ENV_IS_IN_SPI_FLASH
 	default y if NORTHBRIDGE_INTEL_IVYBRIDGE
 	default y if INTEL_QUARK
 	default y if INTEL_QUEENSBAY
+	default y if ARCH_SUNXI
 	help
 	  Define this if you have a SPI Flash memory device which you
 	  want to use for the environment.
@@ -339,54 +376,31 @@ config ENV_SECT_SIZE_AUTO
 	  different sector sizes, and CONFIG_ENV_SECT_SIZE should be
 	  set to that value.
 
-config USE_ENV_SPI_BUS
-	bool "SPI flash bus for environment"
-	depends on ENV_IS_IN_SPI_FLASH
-	help
-	  Force the SPI bus for environment.
-	  If not defined, use CONFIG_SF_DEFAULT_BUS.
-
 config ENV_SPI_BUS
 	int "Value of SPI flash bus for environment"
-	depends on USE_ENV_SPI_BUS
+	depends on ENV_IS_IN_SPI_FLASH
+	default SF_DEFAULT_BUS
 	help
 	  Value the SPI bus and chip select for environment.
 
-config USE_ENV_SPI_CS
-	bool "SPI flash chip select for environment"
-	depends on ENV_IS_IN_SPI_FLASH
-	help
-	  Force the SPI chip select for environment.
-	  If not defined, use CONFIG_SF_DEFAULT_CS.
-
 config ENV_SPI_CS
 	int "Value of SPI flash chip select for environment"
-	depends on USE_ENV_SPI_CS
+	depends on ENV_IS_IN_SPI_FLASH
+	default SF_DEFAULT_CS
 	help
 	  Value of the SPI chip select for environment.
 
-config USE_ENV_SPI_MAX_HZ
-	bool "SPI flash max frequency for environment"
-	depends on ENV_IS_IN_SPI_FLASH
-	help
-	  Force the SPI max work clock for environment.
-	  If not defined, use CONFIG_SF_DEFAULT_SPEED.
-
 config ENV_SPI_MAX_HZ
 	int "Value of SPI flash max frequency for environment"
-	depends on USE_ENV_SPI_MAX_HZ
+	depends on ENV_IS_IN_SPI_FLASH
+	default SF_DEFAULT_SPEED
 	help
 	  Value of the SPI max work clock for environment.
 
-config USE_ENV_SPI_MODE
-	bool "SPI flash mode for environment"
-	depends on ENV_IS_IN_SPI_FLASH
-	help
-	  Force the SPI work mode for environment.
-
 config ENV_SPI_MODE
 	hex "Value of SPI flash work mode for environment"
-	depends on USE_ENV_SPI_MODE
+	depends on ENV_IS_IN_SPI_FLASH
+	default SF_DEFAULT_MODE
 	help
 	  Value of the SPI work mode for environment.
 	  See include/spi.h for value.
@@ -541,7 +555,7 @@ config ENV_OFFSET
 		    ENV_IS_IN_SPI_FLASH
 	default 0x3f8000 if ARCH_ROCKCHIP && ENV_IS_IN_MMC
 	default 0x140000 if ARCH_ROCKCHIP && ENV_IS_IN_SPI_FLASH
-	default 0x88000 if ARCH_SUNXI
+	default 0xF0000 if ARCH_SUNXI
 	default 0xE0000 if ARCH_ZYNQ
 	default 0x1E00000 if ARCH_ZYNQMP
 	default 0x7F40000 if ARCH_VERSAL || ARCH_VERSAL_NET
@@ -565,7 +579,8 @@ config ENV_OFFSET_REDUND
 config ENV_SIZE
 	hex "Environment Size"
 	default 0x40000 if ENV_IS_IN_SPI_FLASH && ARCH_ZYNQMP
-	default 0x20000 if ARCH_SUNXI || ARCH_ZYNQ || ARCH_OMAP2PLUS || ARCH_AT91
+	default 0x20000 if ARCH_ZYNQ || ARCH_OMAP2PLUS || ARCH_AT91
+	default 0x10000 if ARCH_SUNXI
 	default 0x8000 if ARCH_ROCKCHIP && ENV_IS_IN_MMC
 	default 0x2000 if ARCH_ROCKCHIP && ENV_IS_IN_SPI_FLASH
 	default 0x8000 if ARCH_ZYNQMP || ARCH_VERSAL || ARCH_VERSAL_NET
@@ -581,6 +596,7 @@ config ENV_SECT_SIZE
 	default 0x40000 if ARCH_ZYNQMP || ARCH_VERSAL || ARCH_VERSAL_NET
 	default 0x20000 if ARCH_ZYNQ || ARCH_OMAP2PLUS || ARCH_AT91
 	default 0x20000 if MICROBLAZE && ENV_IS_IN_SPI_FLASH
+	default 0x10000 if ARCH_SUNXI && ENV_IS_IN_SPI_FLASH
 	help
 	  Size of the sector containing the environment.
 
@@ -824,6 +840,31 @@ config TPL_ENV_IS_IN_FLASH
 	  Similar to ENV_IS_IN_FLASH, used for TPL environment.
 
 endif
+
+config USE_BOOTFILE
+	bool "Add a 'bootfile' environment variable"
+	help
+	  The "bootfile" variable is used in some cases to allow for
+	  controlling what file U-Boot will attempt to load and boot.  To set
+	  this, enable this option and set the value in the next question.
+
+config BOOTFILE
+	string "'bootfile' environment variable value"
+	depends on USE_BOOTFILE
+	help
+	  The value to set the "bootfile" variable to.
+
+config USE_ETHPRIME
+	bool "Add an 'ethprime' environment variable"
+	help
+	  The "ethprime" variable is used in some cases to control which
+	  network interface is used first.
+
+config ETHPRIME
+	string "'ethprime' environment variable value"
+	depends on USE_ETHPRIME
+	help
+	  The value to set the "ethprime" variable to.
 
 config VERSION_VARIABLE
 	bool "Add a 'ver' environment variable with the U-Boot version"

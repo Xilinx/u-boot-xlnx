@@ -28,9 +28,16 @@ config LED_BCM6358
 	  LED HW controller accessed via MMIO registers.
 	  HW has no blinking capabilities and up to 32 LEDs can be controlled.
 
+config LED_BCM6753
+	bool "LED Support for BCM6753"
+	depends on LED && BCM6855
+	help
+	  This option enables support for LEDs connected to the BCM6753
+	  HW has blinking and fading capabilities and up to 32 LEDs can be controlled.
+
 config LED_BCM6858
 	bool "LED Support for BCM6858"
-	depends on LED && (ARCH_BCM68360 || ARCH_BCM6858 || ARCH_BCM63158)
+	depends on LED && (BCM6856 || BCM6858 || BCM63158)
 	help
 	  This option enables support for LEDs connected to the BCM6858
 	  HW has blinking capabilities and up to 32 LEDs can be controlled.
@@ -42,6 +49,12 @@ config LED_CORTINA
 	  This option enables support for LEDs connected to the Cortina
 	  Access CAxxxx SOCs.
 
+config LED_PWM
+	bool "LED PWM"
+	depends on LED && DM_PWM
+	help
+	  Enable support for LEDs connected to PWM.
+	  Linux compatible ofdata.
 
 config LED_BLINK
 	bool "Support LED blinking"
@@ -54,7 +67,7 @@ config LED_BLINK
 
 config SPL_LED
 	bool "Enable LED support in SPL"
-	depends on SPL && SPL_DM
+	depends on SPL_DM
 	help
 	  The LED subsystem adds a small amount of overhead to the image.
 	  If this is acceptable and you have a need to use LEDs in SPL,
@@ -72,7 +85,7 @@ config LED_GPIO
 
 config SPL_LED_GPIO
 	bool "LED support for GPIO-connected LEDs in SPL"
-        depends on SPL_LED && DM_GPIO
+        depends on SPL_LED && SPL_DM_GPIO
 	help
 	  This option is an SPL-variant of the LED_GPIO option.
 	  See the help of LED_GPIO for details.

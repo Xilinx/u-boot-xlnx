@@ -30,7 +30,7 @@
 #include <linux/sizes.h>
 
 /*
- * Warning: changing CONFIG_SYS_TEXT_BASE requires adapting the initial boot
+ * Warning: changing CONFIG_TEXT_BASE requires adapting the initial boot
  * program. Since the linker has to swallow that define, we must use a pure
  * hex number here!
  */
@@ -40,17 +40,6 @@
 #define CONFIG_SYS_AT91_MAIN_CLOCK	18432000	/* 18.432MHz crystal */
 
 /* misc settings */
-
-/* We set the max number of command args high to avoid HUSH bugs. */
-#define CONFIG_SYS_MAXARGS    32
-
-/* setting board specific options */
-#define CONFIG_SYS_AUTOLOAD "yes"
-#define CONFIG_RESET_TO_RETRY
-
-/* The LED PINs */
-#define CONFIG_RED_LED			AT91_PIN_PA9
-#define CONFIG_GREEN_LED		AT91_PIN_PA6
 
 /*
  * SDRAM: 1 bank, 64 MB, base address 0x20000000
@@ -65,7 +54,6 @@
  */
 
 /* NAND flash settings */
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		ATMEL_BASE_CS3
 #define CONFIG_SYS_NAND_DBW_8
 #define CONFIG_SYS_NAND_MASK_ALE	(1 << 21)
@@ -73,39 +61,9 @@
 #define CONFIG_SYS_NAND_ENABLE_PIN	AT91_PIN_PC14
 #define CONFIG_SYS_NAND_READY_PIN	AT91_PIN_PC13
 
-/* general purpose I/O */
-#define CONFIG_ATMEL_LEGACY		/* required until (g)pio is fixed */
-#define CONFIG_AT91_GPIO_PULLUP	1	/* keep pullups on peripheral pins */
-
 /* serial console */
 #define CONFIG_USART_BASE		ATMEL_BASE_DBGU
 #define CONFIG_USART_ID			ATMEL_ID_SYS
-
-/*
- * Ethernet configuration
- *
- */
-#define CONFIG_RMII			/* use reduced MII inteface */
-#define CONFIG_NET_RETRY_COUNT	20      /* # of DHCP/BOOTP retries */
-#define CONFIG_AT91_WANTS_COMMON_PHY
-
-/* BOOTP and DHCP options */
-#define CONFIG_BOOTP_BOOTFILESIZE
-#define NFSBOOTCOMMAND						\
-	"setenv autoload yes; setenv autoboot yes; "			\
-	"setenv bootargs ${basicargs} ${mtdparts} "			\
-	"root=/dev/nfs ip=dhcp nfsroot=${serverip}:/srv/nfs/rootfs; "	\
-	"dhcp"
-
-#if !defined(CONFIG_SPL_BUILD)
-/* USB configuration */
-#define CONFIG_USB_ATMEL
-#define CONFIG_USB_ATMEL_CLK_SEL_PLLB
-#define CONFIG_USB_OHCI_NEW
-#define CONFIG_SYS_USB_OHCI_CPU_INIT
-#define CONFIG_SYS_USB_OHCI_REGS_BASE	ATMEL_UHP_BASE
-#define CONFIG_SYS_USB_OHCI_SLOT_NAME	"at91sam9260"
-#define CONFIG_SYS_USB_OHCI_MAX_ROOT_PORTS	2
 
 /* USB DFU support */
 
@@ -113,16 +71,8 @@
 
 /* DFU class support */
 #define DFU_MANIFEST_POLL_TIMEOUT	25000
-#endif
 
 /* General Boot Parameter */
-#define CONFIG_BOOTCOMMAND		"run flashboot"
-#define CONFIG_SYS_CBSIZE		512
-
-/*
- * The NAND Flash partitions:
- */
-#define CONFIG_ENV_RANGE		(SZ_512K)
 
 /*
  * Predefined environment variables.
@@ -132,36 +82,21 @@
 									\
 	"basicargs=console=ttyS0,115200\0"				\
 									\
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT"\0"
 
-#ifdef CONFIG_SPL_BUILD
-#define CONFIG_SYS_INIT_SP_ADDR		0x301000
-#else
 /*
  * Initial stack pointer: 4k - GENERATED_GBL_DATA_SIZE in internal SRAM,
  * leaving the correct space for initial global data structure above that
  * address while providing maximum stack area below.
  */
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(ATMEL_BASE_SRAM1 + 0x1000 - GENERATED_GBL_DATA_SIZE)
-#endif
+#define CONFIG_SYS_INIT_RAM_SIZE	0x1000
+#define CONFIG_SYS_INIT_RAM_ADDR	ATMEL_BASE_SRAM1
 
 /* Defines for SPL */
-#define CONFIG_SPL_MAX_SIZE		(SZ_4K)
-
-#define CONFIG_SPL_BSS_START_ADDR	CONFIG_SYS_SDRAM_BASE
-#define CONFIG_SPL_BSS_MAX_SIZE		(SZ_16K)
-#define CONFIG_SYS_SPL_MALLOC_START     (CONFIG_SPL_BSS_START_ADDR + \
-					CONFIG_SPL_BSS_MAX_SIZE)
-#define CONFIG_SYS_SPL_MALLOC_SIZE      CONFIG_SYS_MALLOC_LEN
 
 #define CONFIG_SYS_NAND_ENABLE_PIN_SPL	(2*32 + 14)
-#define CONFIG_SYS_USE_NANDFLASH	1
-#define CONFIG_SPL_NAND_RAW_ONLY
-#define CONFIG_SPL_NAND_SOFTECC
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	SZ_512K
-#define	CONFIG_SYS_NAND_U_BOOT_START	CONFIG_SYS_TEXT_BASE
-#define CONFIG_SYS_NAND_U_BOOT_DST	CONFIG_SYS_TEXT_BASE
+#define	CONFIG_SYS_NAND_U_BOOT_START	CONFIG_TEXT_BASE
+#define CONFIG_SYS_NAND_U_BOOT_DST	CONFIG_TEXT_BASE
 
 #define CONFIG_SYS_NAND_SIZE		(SZ_256M)
 #define CONFIG_SYS_NAND_ECCSIZE		256
@@ -170,15 +105,11 @@
 					  48, 49, 50, 51, 52, 53, 54, 55, \
 					  56, 57, 58, 59, 60, 61, 62, 63, }
 
-#define CONFIG_SPL_ATMEL_SIZE
 #define CONFIG_SYS_MASTER_CLOCK		(198656000/2)
 #define AT91_PLL_LOCK_TIMEOUT		1000000
 #define CONFIG_SYS_AT91_PLLA		0x2060bf09
 #define CONFIG_SYS_MCKR			0x100
 #define CONFIG_SYS_MCKR_CSS		(0x02 | CONFIG_SYS_MCKR)
 #define CONFIG_SYS_AT91_PLLB		0x10483f0e
-
-#define CONFIG_SPL_PAD_TO		CONFIG_SYS_NAND_U_BOOT_OFFS
-#define CONFIG_SYS_SPL_LEN		CONFIG_SPL_PAD_TO
 
 #endif /* __CONFIG_H */

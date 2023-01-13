@@ -11,8 +11,6 @@
 #ifndef __THEADORABLE_X86_COMMON_H
 #define __THEADORABLE_X86_COMMON_H
 
-#define CONFIG_SYS_MONITOR_LEN		(1 << 20)
-
 #define CONFIG_STD_DEVICES_SETTINGS     "stdin=serial\0" \
 					"stdout=serial\0" \
 					"stderr=serial\0"
@@ -22,7 +20,6 @@
 
 /* Environment settings */
 
-#undef CONFIG_BOOTCOMMAND
 #undef CONFIG_EXTRA_ENV_SETTINGS
 
 #define CONFIG_EXTRA_ENV_SETTINGS				\

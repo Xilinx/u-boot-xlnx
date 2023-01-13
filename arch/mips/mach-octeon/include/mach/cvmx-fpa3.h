@@ -206,7 +206,7 @@ static inline cvmx_fpa3_pool_t cvmx_fpa3_aura_to_pool(cvmx_fpa3_gaura_t aura)
  * Get a new block from the FPA pool
  *
  * @param aura  - aura number
- * @return pointer to the block or NULL on failure
+ * Return: pointer to the block or NULL on failure
  */
 static inline void *cvmx_fpa3_alloc(cvmx_fpa3_gaura_t aura)
 {
@@ -267,7 +267,7 @@ static inline void cvmx_fpa3_async_alloc(u64 scr_addr, cvmx_fpa3_gaura_t aura)
  * @param aura Global aura the block came from.  Must be the same value
  * passed to cvmx_fpa_async_alloc.
  *
- * @return Pointer to the block or NULL on failure
+ * Return: Pointer to the block or NULL on failure
  */
 static inline void *cvmx_fpa3_async_alloc_finish(u64 scr_addr, cvmx_fpa3_gaura_t aura)
 {
@@ -376,7 +376,7 @@ static inline int cvmx_fpa3_config_red_params(unsigned int node, int qos_avg_en,
  * Gets the buffer size of the specified pool,
  *
  * @param aura Global aura number
- * @return Returns size of the buffers in the specified pool.
+ * Return: Returns size of the buffers in the specified pool.
  */
 static inline int cvmx_fpa3_get_aura_buf_size(cvmx_fpa3_gaura_t aura)
 {
@@ -395,7 +395,7 @@ static inline int cvmx_fpa3_get_aura_buf_size(cvmx_fpa3_gaura_t aura)
  * Return the number of available buffers in an AURA
  *
  * @param aura to receive count for
- * @return available buffer count
+ * Return: available buffer count
  */
 static inline long long cvmx_fpa3_get_available(cvmx_fpa3_gaura_t aura)
 {
@@ -500,7 +500,7 @@ cvmx_fpa3_pool_t cvmx_fpa3_setup_fill_pool(int node, int desired_pool, const cha
  * @param block_size - size of buffers to use
  * @param num_blocks - number of blocks to allocate
  *
- * @return configured gaura on success, CVMX_FPA3_INVALID_GAURA on failure
+ * Return: configured gaura on success, CVMX_FPA3_INVALID_GAURA on failure
  */
 cvmx_fpa3_gaura_t cvmx_fpa3_set_aura_for_pool(cvmx_fpa3_pool_t pool, int desired_aura,
 					      const char *name, unsigned int block_size,
@@ -525,42 +525,5 @@ int cvmx_fpa3_shutdown_pool(cvmx_fpa3_pool_t pool);
 const char *cvmx_fpa3_get_pool_name(cvmx_fpa3_pool_t pool);
 int cvmx_fpa3_get_pool_buf_size(cvmx_fpa3_pool_t pool);
 const char *cvmx_fpa3_get_aura_name(cvmx_fpa3_gaura_t aura);
-
-/* FIXME: Need a different macro for stage2 of u-boot */
-
-static inline void cvmx_fpa3_stage2_init(int aura, int pool, u64 stack_paddr, int stacklen,
-					 int buffer_sz, int buf_cnt)
-{
-	cvmx_fpa_poolx_cfg_t pool_cfg;
-
-	/* Configure pool stack */
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_STACK_BASE(pool), stack_paddr);
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_STACK_ADDR(pool), stack_paddr);
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_STACK_END(pool), stack_paddr + stacklen);
-
-	/* Configure pool with buffer size */
-	pool_cfg.u64 = 0;
-	pool_cfg.cn78xx.nat_align = 1;
-	pool_cfg.cn78xx.buf_size = buffer_sz >> 7;
-	pool_cfg.cn78xx.l_type = 0x2;
-	pool_cfg.cn78xx.ena = 0;
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_CFG(pool), pool_cfg.u64);
-	/* Reset pool before starting */
-	pool_cfg.cn78xx.ena = 1;
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_CFG(pool), pool_cfg.u64);
-
-	cvmx_write_csr_node(0, CVMX_FPA_AURAX_CFG(aura), 0);
-	cvmx_write_csr_node(0, CVMX_FPA_AURAX_CNT_ADD(aura), buf_cnt);
-	cvmx_write_csr_node(0, CVMX_FPA_AURAX_POOL(aura), (u64)pool);
-}
-
-static inline void cvmx_fpa3_stage2_disable(int aura, int pool)
-{
-	cvmx_write_csr_node(0, CVMX_FPA_AURAX_POOL(aura), 0);
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_CFG(pool), 0);
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_STACK_BASE(pool), 0);
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_STACK_ADDR(pool), 0);
-	cvmx_write_csr_node(0, CVMX_FPA_POOLX_STACK_END(pool), 0);
-}
 
 #endif /* __CVMX_FPA3_H__ */

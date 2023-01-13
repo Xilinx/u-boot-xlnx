@@ -16,8 +16,6 @@
 #include <linux/compat.h>
 #include <linux/err.h>
 #include <video.h>		/* For struct video_uc_plat */
-#include <video_fb.h>
-#include <lcd.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/display.h>
@@ -482,62 +480,11 @@ err_setup:
 	return NULL;
 }
 
-#if defined CONFIG_LCD
-
-/* default lcd */
-struct vidinfo panel_info = {
-	.vl_col = 320, .vl_row = 240, .vl_bpix = 32,
-};
-
-void lcd_ctrl_init(void *lcdbase)
-{
-	vidinfo_t *pi = &panel_info;
-	struct nx_display_dev *dp;
-	int bpix;
-
-	dp = nx_display_setup();
-	if (!dp)
-		return NULL;
-
-	switch (dp->depth) {
-	case 2:
-		bpix = LCD_COLOR16;
-		break;
-	case 3:
-	case 4:
-		bpix = LCD_COLOR32;
-		break;
-	default:
-		printf("fail : not support LCD bit per pixel %d\n",
-		       dp->depth * 8);
-		return NULL;
-	}
-
-	dp->panel_info = pi;
-
-	/* set resolution with config */
-	pi->vl_bpix = bpix;
-	pi->vl_col = dp->fb_plane->width;
-	pi->vl_row = dp->fb_plane->height;
-	pi->priv = dp;
-	gd->fb_base = dp->fb_addr;
-}
-
-void lcd_setcolreg(ushort regno, ushort red, ushort green, ushort blue)
-{
-}
-
-__weak void lcd_enable(void)
-{
-}
-#endif
-
 static int nx_display_probe(struct udevice *dev)
 {
 	struct video_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct nx_display_plat *plat = dev_get_plat(dev);
-	static GraphicDevice *graphic_device;
 	char addr[64];
 
 	debug("%s()\n", __func__);
@@ -564,7 +511,6 @@ static int nx_display_probe(struct udevice *dev)
 	}
 
 	struct nx_display_dev *dp;
-	unsigned int pp_index = 0;
 
 	dp = nx_display_setup();
 	if (!dp) {
@@ -575,7 +521,6 @@ static int nx_display_probe(struct udevice *dev)
 
 	switch (dp->depth) {
 	case 2:
-		pp_index = GDF_16BIT_565RGB;
 		uc_priv->bpix = VIDEO_BPP16;
 		break;
 	case 3:
@@ -583,7 +528,6 @@ static int nx_display_probe(struct udevice *dev)
 		 * type video_log2_bpp
 		 */
 	case 4:
-		pp_index = GDF_32BIT_X888RGB;
 		uc_priv->bpix = VIDEO_BPP32;
 		break;
 	default:
@@ -596,19 +540,9 @@ static int nx_display_probe(struct udevice *dev)
 	uc_priv->ysize = dp->fb_plane->height;
 	uc_priv->rot = 0;
 
-	graphic_device = &dp->graphic_device;
-	graphic_device->frameAdrs = dp->fb_addr;
-	graphic_device->gdfIndex = pp_index;
-	graphic_device->gdfBytesPP = dp->depth;
-	graphic_device->winSizeX = dp->fb_plane->width;
-	graphic_device->winSizeY = dp->fb_plane->height;
-	graphic_device->plnSizeX =
-	    graphic_device->winSizeX * graphic_device->gdfBytesPP;
-
 	/*
 	 * set environment variable "fb_addr" (frame buffer address), required
-	 * for splash image. Because drv_video_init() in common/stdio.c is only
-	 * called when CONFIG_VIDEO is set (and not if CONFIG_DM_VIDEO is set).
+	 * for splash image, which is not set if CONFIG_VIDEO is enabled).
 	 */
 	sprintf(addr, "0x%x", dp->fb_addr);
 	debug("%s(): env_set(\"fb_addr\", %s) ...\n", __func__, addr);

@@ -69,24 +69,23 @@ int arch_fixup_memory_node(void *blob)
 #endif
 
 /* Subcommand: PREP */
-static int boot_prep_linux(bootm_headers_t *images)
+static int boot_prep_linux(struct bootm_headers *images)
 {
 	char *cmd_line_dest = NULL;
-	image_header_t *hdr;
+	struct legacy_img_hdr *hdr;
 	int is_zimage = 0;
 	void *data = NULL;
 	size_t len;
 	int ret;
 
-#ifdef CONFIG_OF_LIBFDT
-	if (images->ft_len) {
+	if (CONFIG_IS_ENABLED(OF_LIBFDT) && CONFIG_IS_ENABLED(LMB) && images->ft_len) {
 		debug("using: FDT\n");
 		if (image_setup_linux(images)) {
 			puts("FDT creation failed! hanging...");
 			hang();
 		}
 	}
-#endif
+
 	if (images->legacy_hdr_valid) {
 		hdr = images->legacy_hdr_os;
 		if (image_check_type(hdr, IH_TYPE_MULTI)) {
@@ -179,10 +178,14 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 		* U-Boot is setting them up that way for itself in
 		* arch/i386/cpu/cpu.c.
 		*
-		* Note that we cannot currently boot a kernel while running as
-		* an EFI application. Please use the payload option for that.
+		* Note: this is incomplete for EFI kernels!
+		*
+		* This can boot a kernel while running as an EFI application,
+		* but if the kernel requires EFI support then that support needs
+		* to be enabled first (see EFI_LOADER). Also the EFI information
+		* must enabled with setup_efi_info(). See setup_zimage() for
+		* how this is done with the stub.
 		*/
-#ifndef CONFIG_EFI_APP
 		__asm__ __volatile__ (
 		"movl $0, %%ebp\n"
 		"cli\n"
@@ -191,7 +194,6 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 		[boot_params] "S"(setup_base),
 		"b"(0), "D"(0)
 		);
-#endif
 	}
 
 	/* We can't get to here */
@@ -199,7 +201,7 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 }
 
 /* Subcommand: GO */
-static int boot_jump_linux(bootm_headers_t *images)
+static int boot_jump_linux(struct bootm_headers *images)
 {
 	debug("## Transferring control to Linux (at address %08lx, kernel %08lx) ...\n",
 	      images->ep, images->os.load);
@@ -209,7 +211,7 @@ static int boot_jump_linux(bootm_headers_t *images)
 }
 
 int do_bootm_linux(int flag, int argc, char *const argv[],
-		   bootm_headers_t *images)
+		   struct bootm_headers *images)
 {
 	/* No need for those on x86 */
 	if (flag & BOOTM_STATE_OS_BD_T || flag & BOOTM_STATE_OS_CMDLINE)

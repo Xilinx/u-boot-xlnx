@@ -13,7 +13,7 @@ obj-y	+= cache.o
 obj-$(CONFIG_SIFIVE_CACHE) += sifive_cache.o
 ifeq ($(CONFIG_$(SPL_)RISCV_MMODE),y)
 obj-$(CONFIG_$(SPL_)SIFIVE_CLINT) += sifive_clint.o
-obj-$(CONFIG_ANDES_PLIC) += andes_plic.o
+obj-$(CONFIG_ANDES_PLICSW) += andes_plicsw.o
 else
 obj-$(CONFIG_SBI) += sbi.o
 obj-$(CONFIG_SBI_IPI) += sbi_ipi.o
@@ -42,3 +42,5 @@ extra-$(CONFIG_EFI) += $(EFI_CRT0) $(EFI_RELOC)
 obj-$(CONFIG_$(SPL_TPL_)USE_ARCH_MEMSET) += memset.o
 obj-$(CONFIG_$(SPL_TPL_)USE_ARCH_MEMMOVE) += memmove.o
 obj-$(CONFIG_$(SPL_TPL_)USE_ARCH_MEMCPY) += memcpy.o
+
+obj-$(CONFIG_$(SPL_TPL_)SEMIHOSTING) += semihosting.o

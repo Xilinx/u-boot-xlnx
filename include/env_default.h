@@ -10,6 +10,10 @@
 #include <env_callback.h>
 #include <linux/stringify.h>
 
+#ifndef USE_HOSTCC
+#include <generated/environment.h>
+#endif
+
 #ifdef DEFAULT_ENV_INSTANCE_EMBEDDED
 env_t embedded_environment __UBOOT_ENV_SECTION__(environment) = {
 	ENV_CRC,	/* CRC Sum */
@@ -37,12 +41,6 @@ const char default_environment[] = {
 #ifdef	CONFIG_BOOTCOMMAND
 	"bootcmd="	CONFIG_BOOTCOMMAND		"\0"
 #endif
-#ifdef	CONFIG_RAMBOOTCOMMAND
-	"ramboot="	CONFIG_RAMBOOTCOMMAND		"\0"
-#endif
-#ifdef	CONFIG_NFSBOOTCOMMAND
-	"nfsboot="	CONFIG_NFSBOOTCOMMAND		"\0"
-#endif
 #if defined(CONFIG_BOOTDELAY)
 	"bootdelay="	__stringify(CONFIG_BOOTDELAY)	"\0"
 #endif
@@ -61,10 +59,10 @@ const char default_environment[] = {
 #ifdef	CONFIG_SERVERIP
 	"serverip="	__stringify(CONFIG_SERVERIP)	"\0"
 #endif
-#ifdef	CONFIG_SYS_AUTOLOAD
-	"autoload="	CONFIG_SYS_AUTOLOAD		"\0"
+#ifdef	CONFIG_SYS_DISABLE_AUTOLOAD
+	"autoload=0\0"
 #endif
-#ifdef	CONFIG_PREBOOT
+#ifdef	CONFIG_PREBOOT_DEFINED
 	"preboot="	CONFIG_PREBOOT			"\0"
 #endif
 #ifdef	CONFIG_ROOTPATH
@@ -79,7 +77,7 @@ const char default_environment[] = {
 #ifdef	CONFIG_HOSTNAME
 	"hostname="	CONFIG_HOSTNAME	"\0"
 #endif
-#ifdef	CONFIG_BOOTFILE
+#ifdef CONFIG_USE_BOOTFILE
 	"bootfile="	CONFIG_BOOTFILE			"\0"
 #endif
 #ifdef	CONFIG_SYS_LOAD_ADDR
@@ -109,6 +107,16 @@ const char default_environment[] = {
 #endif
 #if defined(CONFIG_BOOTCOUNT_BOOTLIMIT) && (CONFIG_BOOTCOUNT_BOOTLIMIT > 0)
 	"bootlimit="	__stringify(CONFIG_BOOTCOUNT_BOOTLIMIT)"\0"
+#endif
+#ifdef CONFIG_MTDIDS_DEFAULT
+	 "mtdids="	CONFIG_MTDIDS_DEFAULT		"\0"
+#endif
+#ifdef CONFIG_MTDPARTS_DEFAULT
+	"mtdparts="	CONFIG_MTDPARTS_DEFAULT		"\0"
+#endif
+#ifdef CONFIG_EXTRA_ENV_TEXT
+	/* This is created in the Makefile */
+	CONFIG_EXTRA_ENV_TEXT
 #endif
 #ifdef	CONFIG_EXTRA_ENV_SETTINGS
 	CONFIG_EXTRA_ENV_SETTINGS

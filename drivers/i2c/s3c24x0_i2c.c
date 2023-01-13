@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <dm.h>
 #include <fdtdec.h>
-#if (defined CONFIG_EXYNOS4 || defined CONFIG_EXYNOS5)
+#if defined(CONFIG_ARCH_EXYNOS4) || defined(CONFIG_ARCH_EXYNOS5)
 #include <log.h>
 #include <asm/arch/clk.h>
 #include <asm/arch/cpu.h>
@@ -27,7 +27,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * Wait til the byte transfer is completed.
  *
  * @param i2c- pointer to the appropriate i2c register bank.
- * @return I2C_OK, if transmission was ACKED
+ * Return: I2C_OK, if transmission was ACKED
  *         I2C_NACK, if transmission was NACKED
  *         I2C_NOK_TIMEOUT, if transaction did not complete in I2C_TIMEOUT_MS
  */
@@ -53,7 +53,7 @@ static void read_write_byte(struct s3c24x0_i2c *i2c)
 static void i2c_ch_init(struct s3c24x0_i2c *i2c, int speed, int slaveadd)
 {
 	ulong freq, pres = 16, div;
-#if (defined CONFIG_EXYNOS4 || defined CONFIG_EXYNOS5)
+#if defined(CONFIG_ARCH_EXYNOS4) || defined(CONFIG_ARCH_EXYNOS5)
 	freq = get_i2c_clk();
 #else
 	freq = get_PCLK();

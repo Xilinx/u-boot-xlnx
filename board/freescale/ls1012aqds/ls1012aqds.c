@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2016 Freescale Semiconductor, Inc.
+ * Copyright 2021 NXP
  */
 
 #include <common.h>
@@ -28,7 +29,6 @@
 #include <fsl_mmdc.h>
 #include <spl.h>
 #include <netdev.h>
-#include <fsl_sec.h>
 #include "../common/qixis.h"
 #include "ls1012aqds_qixis.h"
 #include "ls1012aqds_pfe.h"
@@ -150,10 +150,6 @@ int board_init(void)
 	erratum_a010315();
 #endif
 
-#ifdef CONFIG_FSL_CAAM
-	sec_init();
-#endif
-
 #ifdef CONFIG_FSL_LS_PPA
 	ppa_init();
 #endif
@@ -217,7 +213,7 @@ static void fdt_fsl_fixup_of_pfe(void *blob)
 	struct pfe_prop_val prop_val;
 	void *l_blob = blob;
 
-	struct ccsr_gur __iomem *gur = (void *)CONFIG_SYS_FSL_GUTS_ADDR;
+	struct ccsr_gur __iomem *gur = (void *)CFG_SYS_FSL_GUTS_ADDR;
 	unsigned int srds_s1 = in_be32(&gur->rcwsr[4]) &
 		FSL_CHASSIS2_RCWSR4_SRDS1_PRTCL_MASK;
 	srds_s1 >>= FSL_CHASSIS2_RCWSR4_SRDS1_PRTCL_SHIFT;

@@ -6,7 +6,6 @@
  */
 #include <common.h>
 #include <asm/bitops.h>
-#include <asm/cpm_85xx.h>
 #include <pci.h>
 #include <dm.h>
 #include <asm/fsl_law.h>
@@ -23,7 +22,7 @@ static int mpc85xx_pci_dm_read_config(const struct udevice *dev, pci_dev_t bdf,
 	struct mpc85xx_pci_priv *priv = dev_get_priv(dev);
 	u32 addr;
 
-	addr = bdf | (offset & 0xfc) | ((offset & 0xf00) << 16) | 0x80000000;
+	addr = PCI_CONF1_EXT_ADDRESS(PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf), offset);
 	out_be32(priv->cfg_addr, addr);
 	sync();
 	*value = pci_conv_32_to_size(in_le32(priv->cfg_data), offset, size);
@@ -38,7 +37,7 @@ static int mpc85xx_pci_dm_write_config(struct udevice *dev, pci_dev_t bdf,
 	struct mpc85xx_pci_priv *priv = dev_get_priv(dev);
 	u32 addr;
 
-	addr = bdf | (offset & 0xfc) | ((offset & 0xf00) << 16) | 0x80000000;
+	addr = PCI_CONF1_EXT_ADDRESS(PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf), offset);
 	out_be32(priv->cfg_addr, addr);
 	sync();
 	out_le32(priv->cfg_data, pci_conv_size_to_32(0, value, offset, size));

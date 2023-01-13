@@ -25,11 +25,6 @@
 #endif
 #define CONFIG_SYS_NS16550_CLK		48000000
 
-#ifndef CONFIG_SPL_BUILD
-/* Network defines. */
-#define CONFIG_NET_RETRY_COUNT         10
-#endif
-
 /*
  * SPL related defines.  The Public RAM memory map the ROM defines the
  * area between 0x402F0400 and 0x4030B800 as a download area and
@@ -37,8 +32,6 @@
  * supports X-MODEM loading via UART, and we leverage this and then use
  * Y-MODEM to load u-boot.img, when booted over UART.
  */
-#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
-					 (128 << 20))
 
 /* Enable the watchdog inside of SPL */
 

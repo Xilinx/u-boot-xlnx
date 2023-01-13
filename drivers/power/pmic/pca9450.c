@@ -7,9 +7,12 @@
 #include <fdtdec.h>
 #include <errno.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <i2c.h>
+#include <linux/err.h>
 #include <log.h>
 #include <asm/global_data.h>
+#include <asm-generic/gpio.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/pca9450.h>
@@ -19,9 +22,15 @@ DECLARE_GLOBAL_DATA_PTR;
 static const struct pmic_child_info pmic_children_info[] = {
 	/* buck */
 	{ .prefix = "b", .driver = PCA9450_REGULATOR_DRIVER},
+	{ .prefix = "B", .driver = PCA9450_REGULATOR_DRIVER},
 	/* ldo */
 	{ .prefix = "l", .driver = PCA9450_REGULATOR_DRIVER},
+	{ .prefix = "L", .driver = PCA9450_REGULATOR_DRIVER},
 	{ },
+};
+
+struct pca9450_priv {
+	struct gpio_desc *sd_vsel_gpio;
 };
 
 static int pca9450_reg_count(struct udevice *dev)
@@ -74,6 +83,24 @@ static int pca9450_bind(struct udevice *dev)
 	return 0;
 }
 
+static int pca9450_probe(struct udevice *dev)
+{
+	struct pca9450_priv *priv = dev_get_priv(dev);
+	int ret = 0;
+
+	if (CONFIG_IS_ENABLED(DM_GPIO) && CONFIG_IS_ENABLED(DM_REGULATOR_PCA9450)) {
+		priv->sd_vsel_gpio = devm_gpiod_get_optional(dev, "sd-vsel",
+							     GPIOD_IS_OUT |
+							     GPIOD_IS_OUT_ACTIVE);
+		if (IS_ERR(priv->sd_vsel_gpio)) {
+			ret = PTR_ERR(priv->sd_vsel_gpio);
+			dev_err(dev, "Failed to request SD_VSEL GPIO: %d\n", ret);
+		}
+	}
+
+	return ret;
+}
+
 static struct dm_pmic_ops pca9450_ops = {
 	.reg_count = pca9450_reg_count,
 	.read = pca9450_read,
@@ -81,8 +108,9 @@ static struct dm_pmic_ops pca9450_ops = {
 };
 
 static const struct udevice_id pca9450_ids[] = {
-	{ .compatible = "nxp,pca9450a", .data = 0x25, },
-	{ .compatible = "nxp,pca9450b", .data = 0x25, },
+	{ .compatible = "nxp,pca9450a", .data = NXP_CHIP_TYPE_PCA9450A, },
+	{ .compatible = "nxp,pca9450b", .data = NXP_CHIP_TYPE_PCA9450BC, },
+	{ .compatible = "nxp,pca9450c", .data = NXP_CHIP_TYPE_PCA9450BC, },
 	{ }
 };
 
@@ -91,5 +119,7 @@ U_BOOT_DRIVER(pmic_pca9450) = {
 	.id = UCLASS_PMIC,
 	.of_match = pca9450_ids,
 	.bind = pca9450_bind,
+	.probe = pca9450_probe,
 	.ops = &pca9450_ops,
+	.priv_auto = sizeof(struct pca9450_priv),
 };

@@ -86,7 +86,7 @@ int is_serdes_configured(enum srds_prtcl device)
 
 int serdes_get_first_lane(u32 sd, enum srds_prtcl device)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 cfg = 0;
 	int i;
 
@@ -134,7 +134,7 @@ int serdes_get_first_lane(u32 sd, enum srds_prtcl device)
 void serdes_init(u32 sd, u32 sd_addr, u32 rcwsr, u32 sd_prctl_mask,
 		 u32 sd_prctl_shift, u8 serdes_prtcl_map[SERDES_PRCTL_COUNT])
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 cfg;
 	int lane;
 
@@ -147,10 +147,14 @@ void serdes_init(u32 sd, u32 sd_addr, u32 rcwsr, u32 sd_prctl_mask,
 	cfg >>= sd_prctl_shift;
 
 	cfg = serdes_get_number(sd, cfg);
-	printf("Using SERDES%d Protocol: %d (0x%x)\n", sd + 1, cfg, cfg);
+	if (cfg == 0) {
+		printf("SERDES%d is disabled\n", sd + 1);
+	} else {
+		printf("Using SERDES%d Protocol: %d (0x%x)\n", sd + 1, cfg, cfg);
 
-	if (!is_serdes_prtcl_valid(sd, cfg))
-		printf("SERDES%d[PRTCL] = 0x%x is not valid\n", sd + 1, cfg);
+		if (!is_serdes_prtcl_valid(sd, cfg))
+			printf("SERDES%d[PRTCL] = 0x%x is not valid\n", sd + 1, cfg);
+	}
 
 	for (lane = 0; lane < SRDS_MAX_LANES; lane++) {
 		enum srds_prtcl lane_prtcl = serdes_get_prtcl(sd, cfg, lane);
@@ -395,18 +399,18 @@ static void do_pll_lock(u32 cfg,
 
 int setup_serdes_volt(u32 svdd)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	struct ccsr_serdes __iomem *serdes1_base =
-			(void *)CONFIG_SYS_FSL_LSCH3_SERDES_ADDR;
+			(void *)CFG_SYS_FSL_LSCH3_SERDES_ADDR;
 	u32 cfg_rcwsrds1 = gur_in32(&gur->rcwsr[FSL_CHASSIS3_SRDS1_REGSR - 1]);
 #ifdef CONFIG_SYS_FSL_SRDS_2
 	struct ccsr_serdes __iomem *serdes2_base =
-			(void *)(CONFIG_SYS_FSL_LSCH3_SERDES_ADDR + 0x10000);
+			(void *)(CFG_SYS_FSL_LSCH3_SERDES_ADDR + 0x10000);
 	u32 cfg_rcwsrds2 = gur_in32(&gur->rcwsr[FSL_CHASSIS3_SRDS2_REGSR - 1]);
 #endif
 #ifdef CONFIG_SYS_NXP_SRDS_3
 	struct ccsr_serdes __iomem *serdes3_base =
-			(void *)(CONFIG_SYS_FSL_LSCH3_SERDES_ADDR + 0x20000);
+			(void *)(CFG_SYS_FSL_LSCH3_SERDES_ADDR + 0x20000);
 	u32 cfg_rcwsrds3 = gur_in32(&gur->rcwsr[FSL_CHASSIS3_SRDS3_REGSR - 1]);
 #endif
 	u32 cfg_tmp;
@@ -581,7 +585,7 @@ void fsl_serdes_init(void)
 
 #ifdef CONFIG_SYS_FSL_SRDS_1
 	serdes_init(FSL_SRDS_1,
-		    CONFIG_SYS_FSL_LSCH3_SERDES_ADDR,
+		    CFG_SYS_FSL_LSCH3_SERDES_ADDR,
 		    FSL_CHASSIS3_SRDS1_REGSR,
 		    FSL_CHASSIS3_SRDS1_PRTCL_MASK,
 		    FSL_CHASSIS3_SRDS1_PRTCL_SHIFT,
@@ -589,7 +593,7 @@ void fsl_serdes_init(void)
 #endif
 #ifdef CONFIG_SYS_FSL_SRDS_2
 	serdes_init(FSL_SRDS_2,
-		    CONFIG_SYS_FSL_LSCH3_SERDES_ADDR + FSL_SRDS_2 * 0x10000,
+		    CFG_SYS_FSL_LSCH3_SERDES_ADDR + FSL_SRDS_2 * 0x10000,
 		    FSL_CHASSIS3_SRDS2_REGSR,
 		    FSL_CHASSIS3_SRDS2_PRTCL_MASK,
 		    FSL_CHASSIS3_SRDS2_PRTCL_SHIFT,
@@ -597,7 +601,7 @@ void fsl_serdes_init(void)
 #endif
 #ifdef CONFIG_SYS_NXP_SRDS_3
 	serdes_init(NXP_SRDS_3,
-		    CONFIG_SYS_FSL_LSCH3_SERDES_ADDR + NXP_SRDS_3 * 0x10000,
+		    CFG_SYS_FSL_LSCH3_SERDES_ADDR + NXP_SRDS_3 * 0x10000,
 		    FSL_CHASSIS3_SRDS3_REGSR,
 		    FSL_CHASSIS3_SRDS3_PRTCL_MASK,
 		    FSL_CHASSIS3_SRDS3_PRTCL_SHIFT,
@@ -607,7 +611,7 @@ void fsl_serdes_init(void)
 
 int serdes_set_env(int sd, int rcwsr, int sd_prctl_mask, int sd_prctl_shift)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	char scfg[16], snum[16];
 	int cfgr = 0;
 	u32 cfg;

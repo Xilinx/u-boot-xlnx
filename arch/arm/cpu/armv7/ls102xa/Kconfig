@@ -1,17 +1,19 @@
 config ARCH_LS1021A
 	bool
+	select FSL_IFC if !QSPI_BOOT && !SD_BOOT_QSPI
 	select SYS_FSL_DDR_BE if SYS_FSL_DDR
 	select SYS_FSL_DDR_VER_50 if SYS_FSL_DDR
+	select SYS_FSL_IFC_BE
 	select SYS_FSL_ERRATUM_A008378
 	select SYS_FSL_ERRATUM_A008407
-	select SYS_FSL_ERRATUM_A008850
+	select SYS_FSL_ERRATUM_A008850 if SYS_FSL_DDR
 	select SYS_FSL_ERRATUM_A008997 if USB
-	select SYS_FSL_ERRATUM_A009007 if USB
 	select SYS_FSL_ERRATUM_A009008 if USB
 	select SYS_FSL_ERRATUM_A009663
 	select SYS_FSL_ERRATUM_A009798 if USB
 	select SYS_FSL_ERRATUM_A009942
 	select SYS_FSL_ERRATUM_A010315
+	select SYS_FSL_ESDHC_BE
 	select SYS_FSL_HAS_CCI400
 	select SYS_FSL_HAS_DDR3 if SYS_FSL_DDR
 	select SYS_FSL_HAS_DDR4 if SYS_FSL_DDR
@@ -40,12 +42,6 @@ config MAX_CPUS
 	  ports. If some ports are reserved but higher ports are used for
 	  cores, count the reserved ports. This will allocate enough memory
 	  in spin table to properly handle all cores.
-
-config NXP_ESBC
-	bool	"NXP_ESBC"
-	help
-		Enable Freescale Secure Boot feature. Normally selected
-		by defconfig. If unsure, do not change.
 
 config SYS_CCI400_OFFSET
 	hex "Offset for CCI400 base"

@@ -9,29 +9,53 @@
 #include <asm/cache.h>
 #include <linux/dma-direction.h>
 
+/* Fix this to the maximum */
+#define SCSI_MAX_DEVICE \
+	(CONFIG_SYS_SCSI_MAX_SCSI_ID * CONFIG_SYS_SCSI_MAX_LUN)
+
 struct udevice;
 
+/**
+ * struct scsi_cmd - information about a SCSI command to be processed
+ *
+ * @cmd: command
+ * @sense_buf: for request sense
+ * @status: SCSI Status
+ * @target: Target ID
+ * @lun: Target LUN
+ * @cmdlen: command len
+ * @datalen: Total data length
+ * @pdata: pointer to data
+ * @msgout: Messge out buffer (NOT USED)
+ * @msgin: Message in buffer
+ * @sensecmdlen: Sense command len
+ * @sensedatalen: Sense data len
+ * @sensecmd: Sense command
+ * @contr_stat: Controller Status
+ * @trans_bytes: tranfered bytes
+ * @priv: Private value
+ * @dma_dir: Direction of data structure
+ */
 struct scsi_cmd {
-	unsigned char		cmd[16];					/* command				   */
-	/* for request sense */
-	unsigned char		sense_buf[64]
+	unsigned char cmd[16];
+	unsigned char sense_buf[64]
 		__attribute__((aligned(ARCH_DMA_MINALIGN)));
-	unsigned char		status;						/* SCSI Status			 */
-	unsigned char		target;						/* Target ID				 */
-	unsigned char		lun;							/* Target LUN        */
-	unsigned char		cmdlen;						/* command len				*/
-	unsigned long		datalen;					/* Total data length	*/
-	unsigned char	*	pdata;						/* pointer to data		*/
-	unsigned char		msgout[12];				/* Messge out buffer (NOT USED) */
-	unsigned char		msgin[12];				/* Message in buffer	*/
-	unsigned char		sensecmdlen;			/* Sense command len	*/
-	unsigned long		sensedatalen;			/* Sense data len			*/
-	unsigned char		sensecmd[6];			/* Sense command			*/
-	unsigned long		contr_stat;				/* Controller Status	*/
-	unsigned long		trans_bytes;			/* tranfered bytes		*/
+	unsigned char status;
+	unsigned char target;
+	unsigned char lun;
+	unsigned char cmdlen;
+	unsigned long datalen;
+	unsigned char *pdata;
+	unsigned char msgout[12];
+	unsigned char msgin[12];
+	unsigned char sensecmdlen;
+	unsigned long sensedatalen;
+	unsigned char sensecmd[6];
+	unsigned long contr_stat;
+	unsigned long trans_bytes;
 
-	unsigned int		priv;
-	enum dma_data_direction	dma_dir;
+	unsigned int priv;
+	enum dma_data_direction dma_dir;
 };
 
 /*-----------------------------------------------------------
@@ -164,6 +188,84 @@ struct scsi_cmd {
 #define SCSI_WRITE_SAME	0x41		/* Write Same (O) */
 
 /**
+ * enum scsi_cmd_phase - current phase of the SCSI protocol
+ *
+ * @SCSIPH_START: Start phase
+ * @SCSIPH_DATA: Data phase
+ * @SCSIPH_STATUS: Status phase
+ */
+enum scsi_cmd_phase {
+	SCSIPH_START,
+	SCSIPH_DATA,
+	SCSIPH_STATUS,
+};
+
+/**
+ * struct scsi_inquiry_resp - holds a SCSI inquiry command
+ *
+ * @type; command type
+ * @flags; command flags
+ * @version; command version
+ * @data_format; data format
+ * @additional_len; additional data length
+ * @spare[3]; spare bytes
+ * @vendor[8]; vendor information
+ * @product[16]; production information
+ * @revision[4]; revision information
+ */
+struct scsi_inquiry_resp {
+	u8 type;
+	u8 flags;
+	u8 version;
+	u8 data_format;
+	u8 additional_len;
+	u8 spare[3];
+	char vendor[8];
+	char product[16];
+	char revision[4];
+};
+
+/**
+ * struct scsi_read_capacity_resp - holds the response to a read-capacity cmd
+ *
+ * @last_block_addr: Logical block address of last block
+ * @block_len: Length of each block in bytes
+ */
+struct scsi_read_capacity_resp {
+	u32 last_block_addr;
+	u32 block_len;
+};
+
+/**
+ * struct scsi_read10_req - holds a SCSI READ10 request
+ *
+ * @cmd; command type
+ * @lun_flags; LUN flags
+ * @lba; Logical block address to start reading from
+ * @spare; spare bytes
+ * @xfer_len: number of blocks to read
+ * @spare2: more spare bytes
+ */
+struct __packed scsi_read10_req {
+	u8 cmd;
+	u8 lun_flags;
+	u32 lba;
+	u8 spare;
+	u16 xfer_len;
+	u8 spare2[3];
+};
+
+/** struct scsi_write10_req - data for the write10 command */
+struct __packed scsi_write10_req {
+	u8 cmd;
+	u8 lun_flags;
+	u32 lba;
+	u8 spare;
+	u16 xfer_len;
+	u8 spare2[3];
+};
+
+/**
  * struct scsi_plat - stores information about SCSI controller
  *
  * @base: Controller base address
@@ -207,7 +309,7 @@ extern struct scsi_ops scsi_ops;
  *
  * @dev:	SCSI bus
  * @cmd:	Command to execute
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int scsi_exec(struct udevice *dev, struct scsi_cmd *cmd);
 
@@ -215,7 +317,7 @@ int scsi_exec(struct udevice *dev, struct scsi_cmd *cmd);
  * scsi_bus_reset() - reset the bus
  *
  * @dev:	SCSI bus to reset
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int scsi_bus_reset(struct udevice *dev);
 

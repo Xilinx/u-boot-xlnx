@@ -1,7 +1,7 @@
 menu "Generic Driver Options"
 
 config DM
-	bool "Enable Driver Model"
+	def_bool y
 	help
 	  This config option enables Driver Model. This brings in the core
 	  support, including scanning of platform data on start-up. If
@@ -15,10 +15,10 @@ config SPL_DM
 	  Enable driver model in SPL. You will need to provide a
 	  suitable malloc() implementation. If you are not using the
 	  full malloc() enabled by CONFIG_SYS_SPL_MALLOC_START,
-	  consider using CONFIG_SYS_MALLOC_SIMPLE. In that case you
+	  consider using CONFIG_SPL_SYS_MALLOC_SIMPLE. In that case you
 	  must provide CONFIG_SPL_SYS_MALLOC_F_LEN to set the size.
 	  In most cases driver model will only allocate a few uclasses
-	  and devices in SPL, so 1KB should be enable. See
+	  and devices in SPL, so 1KB should be enough. See
 	  CONFIG_SPL_SYS_MALLOC_F_LEN for more details on how to enable it.
 
 config TPL_DM
@@ -28,12 +28,22 @@ config TPL_DM
 	  Enable driver model in TPL. You will need to provide a
 	  suitable malloc() implementation. If you are not using the
 	  full malloc() enabled by CONFIG_SYS_SPL_MALLOC_START,
-	  consider using CONFIG_SYS_MALLOC_SIMPLE. In that case you
+	  consider using CONFIG_TPL_SYS_MALLOC_SIMPLE. In that case you
 	  must provide CONFIG_SPL_SYS_MALLOC_F_LEN to set the size.
 	  In most cases driver model will only allocate a few uclasses
 	  and devices in SPL, so 1KB should be enough. See
 	  CONFIG_SPL_SYS_MALLOC_F_LEN for more details on how to enable it.
 	  Disable this for very small implementations.
+
+config VPL_DM
+	bool "Enable Driver Model for VPL"
+	depends on DM && VPL
+	default y if SPL_DM
+	help
+	  Enable driver model in VPL. You will need to provide a
+	  suitable malloc() implementation. If you are not using the
+	  full malloc() enabled by CONFIG_SYS_SPL_MALLOC_START,
+	  consider using CONFIG_SPL_SYS_MALLOC_SIMPLE.
 
 config DM_WARN
 	bool "Enable warnings in driver model"
@@ -65,6 +75,27 @@ config DM_DEBUG
 	help
 	  Say Y here if you want to compile in debug messages in DM core.
 
+config DM_STATS
+	bool "Collect and show driver model stats"
+	depends on DM
+	default y if SANDBOX
+	help
+	  Enable this to collect and display memory statistics about driver
+	  model. This can help to figure out where all the memory is going and
+	  to find optimisations.
+
+	  To display the memory stats, use the 'dm mem' command.
+
+config SPL_DM_STATS
+	bool "Collect and show driver model stats in SPL"
+	depends on DM_SPL
+	help
+	  Enable this to collect and display memory statistics about driver
+	  model. This can help to figure out where all the memory is going and
+	  to find optimisations.
+
+	  The stats are displayed just before SPL boots to the next phase.
+
 config DM_DEVICE_REMOVE
 	bool "Support device removal"
 	depends on DM
@@ -76,6 +107,15 @@ config DM_DEVICE_REMOVE
 	  Note that this may have undesirable results in the USB subsystem as
 	  it causes unplugged devices to linger around in the dm-tree, and it
 	  causes USB host controllers to not be stopped when booting the OS.
+
+config DM_EVENT
+	bool "Support events with driver model"
+	depends on DM && EVENT
+	default y if SANDBOX
+	help
+	  This enables support for generating events related to driver model
+	  operations, such as prbing or removing a device. Subsystems can
+	  register a 'spy' function that is called when the event occurs.
 
 config SPL_DM_DEVICE_REMOVE
 	bool "Support device removal in SPL"
@@ -110,6 +150,15 @@ config SPL_DM_SEQ_ALIAS
 	  Most boards will have a '/aliases' node containing the path to
 	  numbered devices (e.g. serial0 = &serial0). This feature can be
 	  disabled if it is not required, to save code space in SPL.
+
+config VPL_DM_SEQ_ALIAS
+	bool "Support numbered aliases in device tree in VPL"
+	depends on VPL_DM
+	default y
+	help
+	  Most boards will have a '/aliases' node containing the path to
+	  numbered devices (e.g. serial0 = &serial0). This feature can be
+	  disabled if it is not required, to save code space in VPL.
 
 config SPL_DM_INLINE_OFNODE
 	bool "Inline some ofnode functions which are seldom used in SPL"
@@ -166,6 +215,16 @@ config TPL_REGMAP
 	  support any bus type (I2C, SPI) but so far this only supports
 	  direct memory access.
 
+config VPL_REGMAP
+	bool "Support register maps in VPL"
+	depends on VPL_DM
+	help
+	  Hardware peripherals tend to have one or more sets of registers
+	  which can be accessed to control the hardware. A register map
+	  models this with a simple read/write interface. It can in principle
+	  support any bus type (I2C, SPI) but so far this only supports
+	  direct memory access.
+
 config SYSCON
 	bool "Support system controllers"
 	depends on REGMAP
@@ -187,6 +246,15 @@ config SPL_SYSCON
 config TPL_SYSCON
 	bool "Support system controllers in TPL"
 	depends on TPL_REGMAP
+	help
+	  Many SoCs have a number of system controllers which are dealt with
+	  as a group by a single driver. Some common functionality is provided
+	  by this uclass, including accessing registers via regmap and
+	  assigning a unique number to each.
+
+config VPL_SYSCON
+	bool "Support system controllers in VPL"
+	depends on VPL_REGMAP
 	help
 	  Many SoCs have a number of system controllers which are dealt with
 	  as a group by a single driver. Some common functionality is provided
@@ -282,6 +350,34 @@ config SPL_OF_TRANSLATE
 	  used for the address translation. This function is faster and
 	  smaller in size than fdt_translate_address().
 
+config TPL_OF_TRANSLATE
+	bool "Translate addresses using fdt_translate_address in TPL"
+	depends on TPL_DM && TPL_OF_CONTROL
+	help
+	  If this option is enabled, the reg property will be translated
+	  using the fdt_translate_address() function. This is necessary
+	  on some platforms (e.g. MVEBU) using complex "ranges"
+	  properties in many nodes. As this translation is not handled
+	  correctly in the default simple_bus_translate() function.
+
+	  If this option is not enabled, simple_bus_translate() will be
+	  used for the address translation. This function is faster and
+	  smaller in size than fdt_translate_address()
+
+config VPL_OF_TRANSLATE
+	bool "Translate addresses using fdt_translate_address in SPL"
+	depends on SPL_DM && VPL_OF_CONTROL
+	help
+	  If this option is enabled, the reg property will be translated
+	  using the fdt_translate_address() function. This is necessary
+	  on some platforms (e.g. MVEBU) using complex "ranges"
+	  properties in many nodes. As this translation is not handled
+	  correctly in the default simple_bus_translate() function.
+
+	  If this option is not enabled, simple_bus_translate() will be
+	  used for the address translation. This function is faster and
+	  smaller in size than fdt_translate_address().
+
 config TRANSLATION_OFFSET
 	bool "Platforms specific translation offset"
 	depends on DM && OF_CONTROL
@@ -317,6 +413,30 @@ config OF_ISA_BUS
 config DM_DEV_READ_INLINE
 	bool
 	default y if !OF_LIVE
+
+config OFNODE_MULTI_TREE
+	bool "Allow the ofnode interface to access any tree"
+	default y if EVENT && !DM_DEV_READ_INLINE && !DM_INLINE_OFNODE
+	help
+	  Normally U-Boot makes use of its control FDT, the one used to bind
+	  devices and provide options. In some cases, U-Boot must also process
+	  a separate FDT, e.g. one provided by the operating system, which
+	  needs additions to the /chosen node.
+
+	  This works fine with live tree (OF_LIVE), but with flat tree the
+	  offset provided in ofnode is only useful with the control FDT. This
+	  option adds a 'tree ID' to the offset, so that multiple trees can
+	  be used. Call oftree_from_fdt() to register a new tree.
+
+config OFNODE_MULTI_TREE_MAX
+	int "Maximum number of FDTs"
+	range 2 8
+	depends on OFNODE_MULTI_TREE
+	default 4
+	help
+	  Sets the maximum number of device trees which can be used with the
+	  ofnode interface when using flat trees (OF_LIVE). This is only
+	  available in U-Boot proper and only after relocation.
 
 config ACPIGEN
 	bool "Support ACPI table generation in driver model"

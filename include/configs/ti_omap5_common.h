@@ -19,19 +19,6 @@
 /* Use General purpose timer 1 */
 #define CONFIG_SYS_TIMERBASE		GPT2_BASE
 
-/*
- * For the DDR timing information we can either dynamically determine
- * the timings to use or use pre-determined timings (based on using the
- * dynamic method.  Default to the static timing infomation.
- */
-#define CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS
-#ifndef CONFIG_SYS_EMIF_PRECALCULATED_TIMING_REGS
-#define CONFIG_SYS_AUTOMATIC_SDRAM_DETECTION
-#define CONFIG_SYS_DEFAULT_LPDDR2_TIMINGS
-#endif
-
-#define CONFIG_PALMAS_POWER
-
 #include <linux/stringify.h>
 
 #include <asm/arch/cpu.h>
@@ -170,10 +157,6 @@
 		"exit; " \
 	"fi; " \
 
-#define FASTBOOT_CMD \
-	"echo Booting into fastboot ...; " \
-	"fastboot " __stringify(CONFIG_FASTBOOT_USB_DEV) "; "
-
 #define DEFAULT_COMMON_BOOT_TI_ARGS \
 	"console=" CONSOLEDEV ",115200n8\0" \
 	"fdtfile=undefined\0" \
@@ -195,7 +178,7 @@
 			"if bcb test command = bootonce-bootloader; then " \
 				"echo Android: Bootloader boot...; " \
 				"bcb clear command; bcb store; " \
-				FASTBOOT_CMD \
+				"fastboot 1; " \
 				"exit; " \
 			"elif bcb test command = boot-recovery; then " \
 				"echo Android: Recovery boot...; " \
@@ -260,21 +243,6 @@
 		"if test $fdtfile = undefined; then " \
 			"echo WARNING: Could not determine device tree to use; fi; \0"
 
-#define CONFIG_BOOTCOMMAND \
-	"if test ${dofastboot} -eq 1; then " \
-		"echo Boot fastboot requested, resetting dofastboot ...;" \
-		"setenv dofastboot 0; saveenv;" \
-		FASTBOOT_CMD \
-	"fi;" \
-	"if test ${boot_fit} -eq 1; then "	\
-		"run update_to_fit;"	\
-	"fi;"	\
-	"run findfdt; " \
-	"run finduuid; " \
-	"run distro_bootcmd;" \
-	"run emmc_android_boot; " \
-	""
-
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
 	func(MMC, mmc, 1) \
@@ -322,12 +290,6 @@
  * For all booting on GP parts, the flash loader image is
  * downloaded into internal RAM at address 0x40300000.
  */
-#endif
-
-#define CONFIG_SYS_SPL_ARGS_ADDR	(CONFIG_SYS_SDRAM_BASE + \
-					 (128 << 20))
-#ifdef CONFIG_SPL_BUILD
-#undef CONFIG_TIMER
 #endif
 
 #endif /* __CONFIG_TI_OMAP5_COMMON_H */

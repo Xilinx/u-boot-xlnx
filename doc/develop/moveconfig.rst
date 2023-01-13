@@ -1,7 +1,7 @@
 .. SPDX-License-Identifier: GPL-2.0+
 
-moveconfig
-==========
+moveconfig - Migrating and querying CONFIG options
+==================================================
 
 Since Kconfig was introduced to U-Boot, we have worked on moving
 config options from headers to Kconfig (defconfig).
@@ -20,10 +20,10 @@ First, you must edit the Kconfig to add the menu entries for the configs
 you are moving.
 
 Then run this tool giving CONFIG names you want to move.
-For example, if you want to move CONFIG_CMD_USB and CONFIG_SYS_TEXT_BASE,
+For example, if you want to move CONFIG_CMD_USB and CONFIG_TEXT_BASE,
 simply type as follows::
 
-  $ tools/moveconfig.py CONFIG_CMD_USB CONFIG_SYS_TEXT_BASE
+  $ tools/moveconfig.py CONFIG_CMD_USB CONFIG_TEXT_BASE
 
 The tool walks through all the defconfig files and move the given CONFIGs.
 
@@ -127,6 +127,24 @@ To process CONFIG_CMD_FPGAD only for a subset of configs based on path match::
 
    ls configs/{hrcon*,iocon*,strider*} | \
        ./tools/moveconfig.py -Cy CONFIG_CMD_FPGAD -d -
+
+
+Finding boards with particular CONFIG combinations
+--------------------------------------------------
+
+You can use `moveconfig.py` to figure out which boards have a CONFIG enabled, or
+which do not. To use it, first build a database::
+
+    ./tools/moveconfig.py -b
+
+Then you can run queries using the `-f` flag followed by a list of CONFIG terms.
+Each term is CONFIG name, with or without a tilde (~) prefix. The tool searches
+for boards which match the CONFIG name, or do not match if tilde is used. For
+example, to find boards which enabled CONFIG_SCSI but not CONFIG_BLK::
+
+    tools/moveconfig.py -f SCSI ~BLK
+    3 matches
+    pg_wcom_seli8_defconfig highbank_defconfig pg_wcom_expu1_defconfig
 
 
 Finding implied CONFIGs
@@ -235,6 +253,9 @@ Available options
   Specify a file containing a list of defconfigs to move.  The defconfig
   files can be given with shell-style wildcards. Use '-' to read from stdin.
 
+ -f, --find
+   Find boards with a given config combination
+
  -n, --dry-run
    Perform a trial run that does not make any changes.  It is useful to
    see what is going to happen before one actually runs it.
@@ -274,8 +295,7 @@ Available options
 
  -y, --yes
    Instead of prompting, automatically go ahead with all operations. This
-   includes cleaning up headers, CONFIG_SYS_EXTRA_OPTIONS, the config whitelist
-   and the README.
+   includes cleaning up headers, the config whitelist and the README.
 
 To see the complete list of supported options, run::
 

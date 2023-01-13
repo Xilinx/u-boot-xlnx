@@ -16,6 +16,7 @@
 		boolval;
 		maybe-empty-int = <>;
 		intval = <1>;
+		int64val = /bits/ 64 <0x123456789abcdef0>;
 		intarray = <2 3 4>;
 		byteval = [05];
 		bytearray = [06];
@@ -61,5 +62,8 @@
 
 	orig-node {
 		orig = <1 23 4>;
+		args = "-n first", "second", "-p", "123,456", "-x";
+		args2 = "a space", "there";
+		args3 = "-n first second -p 123,456 -x";
 	};
 };

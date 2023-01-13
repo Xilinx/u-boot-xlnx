@@ -31,6 +31,16 @@ config TPL_SYSRESET
 	  to effect a reset. The uclass will try all available drivers when
 	  reset_walk() is called.
 
+config VPL_SYSRESET
+	bool "Enable support for system reset drivers in VPL mode"
+	depends on SYSRESET && VPL_DM
+	default y if TPL_SYSRESET
+	help
+	  Enable system reset drivers which can be used to reset the CPU or
+	  board. Each driver can provide a reset method which will be called
+	  to effect a reset. The uclass will try all available drivers when
+	  reset_walk() is called.
+
 if SYSRESET
 
 config SYSRESET_CMD_RESET
@@ -77,6 +87,21 @@ config SYSRESET_OCTEON
 	  This enables the system reset driver support for Marvell Octeon
 	  SoCs.
 
+config SYSRESET_AT91
+	bool "Enable support for Microchip/Atmel reset driver"
+	depends on ARCH_AT91
+	select SYSRESET_SPL_AT91 if SPL && SPL_SYSRESET
+	help
+	  This enables the system reset driver support for Microchip/Atmel
+	  SoCs.
+
+config SYSRESET_SPL_AT91
+	bool "Enable support for Microchip/Atmel reset driver in SPL"
+	depends on ARCH_AT91
+	help
+	  This enables the system reset driver support for Microchip/Atmel
+	  SoCs in SPL.
+
 config SYSRESET_PSCI
 	bool "Enable support for PSCI System Reset"
 	depends on ARM_PSCI_FW
@@ -88,6 +113,7 @@ config SYSRESET_PSCI
 config SYSRESET_SBI
 	bool "Enable support for SBI System Reset"
 	depends on RISCV_SMODE && SBI_V02
+	default y
 	select SYSRESET_CMD_POWEROFF if CMD_POWEROFF
 	help
 	  Enable system reset and poweroff via the SBI system reset extension.

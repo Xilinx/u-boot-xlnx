@@ -16,13 +16,13 @@ import os
 import struct
 import unittest
 
-from dtb_platdata import Ftype
-from dtb_platdata import get_value
-from dtb_platdata import tab_to
 from dtoc import dtb_platdata
 from dtoc import fdt
 from dtoc import fdt_util
 from dtoc import src_scan
+from dtoc.dtb_platdata import Ftype
+from dtoc.dtb_platdata import get_value
+from dtoc.dtb_platdata import tab_to
 from dtoc.src_scan import conv_name_to_c
 from dtoc.src_scan import get_compat_name
 from patman import test_util
@@ -112,12 +112,12 @@ class TestDtoc(unittest.TestCase):
     """Tests for dtoc"""
     @classmethod
     def setUpClass(cls):
-        tools.PrepareOutputDir(None)
+        tools.prepare_output_dir(None)
         cls.maxDiff = None
 
     @classmethod
     def tearDownClass(cls):
-        tools.FinaliseOutputDir()
+        tools.finalise_output_dir()
 
     @staticmethod
     def _write_python_string(fname, data):
@@ -218,7 +218,7 @@ class TestDtoc(unittest.TestCase):
     def test_empty_file(self):
         """Test output from a device tree file with no nodes"""
         dtb_file = get_dtb_file('dtoc_test_empty.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
 
         # Run this one without saved_scan to complete test coverage
         dtb_platdata.run_steps(['struct'], dtb_file, False, output, [], None,
@@ -296,6 +296,7 @@ struct dtd_sandbox_spl_test {
 \tbool\t\tboolval;
 \tunsigned char\tbytearray[3];
 \tunsigned char\tbyteval;
+\tfdt32_t\t\tint64val[2];
 \tfdt32_t\t\tintarray[3];
 \tfdt32_t\t\tintval;
 \tunsigned char\tlongbytearray[9];
@@ -355,6 +356,7 @@ static struct dtd_sandbox_spl_test dtv_spl_test = {
 \t.boolval\t\t= true,
 \t.bytearray\t\t= {0x6, 0x0, 0x0},
 \t.byteval\t\t= 0x5,
+\t.int64val\t\t= {0x12345678, 0x9abcdef0},
 \t.intarray\t\t= {0x2, 0x3, 0x4},
 \t.intval\t\t\t= 0x1,
 \t.longbytearray\t\t= {0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x10,
@@ -614,8 +616,11 @@ struct dm_test_pdata __attribute__ ((section (".priv_data")))
 u8 _denx_u_boot_test_bus_priv_some_bus[sizeof(struct dm_test_priv)]
 \t__attribute__ ((section (".priv_data")));
 #include <dm/test.h>
-u8 _denx_u_boot_test_bus_ucplat_some_bus[sizeof(struct dm_test_uclass_priv)]
+u8 _denx_u_boot_test_bus_ucplat_some_bus[sizeof(struct dm_test_uclass_plat)]
 \t__attribute__ ((section (".priv_data")));
+#include <dm/test.h>
+u8 _denx_u_boot_test_bus_uc_priv_some_bus[sizeof(struct dm_test_uclass_priv)]
+	__attribute__ ((section (".priv_data")));
 #include <test.h>
 
 DM_DEVICE_INST(some_bus) = {
@@ -626,6 +631,7 @@ DM_DEVICE_INST(some_bus) = {
 \t.driver_data\t= DM_TEST_TYPE_FIRST,
 \t.priv_\t\t= _denx_u_boot_test_bus_priv_some_bus,
 \t.uclass\t\t= DM_UCLASS_REF(testbus),
+\t.uclass_priv_ = _denx_u_boot_test_bus_uc_priv_some_bus,
 \t.uclass_node\t= {
 \t\t.prev = &DM_UCLASS_REF(testbus)->dev_head,
 \t\t.next = &DM_UCLASS_REF(testbus)->dev_head,
@@ -799,7 +805,7 @@ DM_DEVICE_INST(test0) = {
     def test_simple(self):
         """Test output from some simple nodes with various types of data"""
         dtb_file = get_dtb_file('dtoc_test_simple.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -820,14 +826,14 @@ DM_DEVICE_INST(test0) = {
 
         # Try the 'all' command
         self.run_test(['all'], dtb_file, output)
-        data = tools.ReadFile(output, binary=False)
+        data = tools.read_file(output, binary=False)
         self._check_strings(
             self.decl_text + self.platdata_text + self.struct_text, data)
 
     def test_driver_alias(self):
         """Test output from a device tree file with a driver alias"""
         dtb_file = get_dtb_file('dtoc_test_driver_alias.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -873,7 +879,7 @@ U_BOOT_DRVINFO(gpios_at_0) = {
     def test_invalid_driver(self):
         """Test output from a device tree file with an invalid driver"""
         dtb_file = get_dtb_file('dtoc_test_invalid_driver.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with test_util.capture_sys_output() as _:
             dtb_platdata.run_steps(
                 ['struct'], dtb_file, False, output, [], None, False,
@@ -916,7 +922,7 @@ U_BOOT_DRVINFO(spl_test) = {
     def test_phandle(self):
         """Test output from a node containing a phandle reference"""
         dtb_file = get_dtb_file('dtoc_test_phandle.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1011,7 +1017,7 @@ U_BOOT_DRVINFO(phandle_target) = {
     def test_phandle_single(self):
         """Test output from a node containing a phandle reference"""
         dtb_file = get_dtb_file('dtoc_test_phandle_single.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1027,7 +1033,7 @@ struct dtd_target {
     def test_phandle_reorder(self):
         """Test that phandle targets are generated before their references"""
         dtb_file = get_dtb_file('dtoc_test_phandle_reorder.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['platdata'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1069,7 +1075,7 @@ U_BOOT_DRVINFO(phandle_target) = {
     def test_phandle_cd_gpio(self):
         """Test that phandle targets are generated when unsing cd-gpios"""
         dtb_file = get_dtb_file('dtoc_test_phandle_cd_gpios.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         dtb_platdata.run_steps(
             ['platdata'], dtb_file, False, output, [], None, False,
             warning_disabled=True, scan=copy_scan())
@@ -1155,7 +1161,7 @@ U_BOOT_DRVINFO(phandle_target) = {
         """Test a node containing an invalid phandle fails"""
         dtb_file = get_dtb_file('dtoc_test_phandle_bad.dts',
                                 capture_stderr=True)
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['struct'], dtb_file, output)
         self.assertIn("Cannot parse 'clocks' in node 'phandle-source'",
@@ -1165,7 +1171,7 @@ U_BOOT_DRVINFO(phandle_target) = {
         """Test a phandle target missing its #*-cells property"""
         dtb_file = get_dtb_file('dtoc_test_phandle_bad2.dts',
                                 capture_stderr=True)
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['struct'], dtb_file, output)
         self.assertIn("Node 'phandle-target' has no cells property",
@@ -1174,7 +1180,7 @@ U_BOOT_DRVINFO(phandle_target) = {
     def test_addresses64(self):
         """Test output from a node with a 'reg' property with na=2, ns=2"""
         dtb_file = get_dtb_file('dtoc_test_addr64.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1243,7 +1249,7 @@ U_BOOT_DRVINFO(test3) = {
     def test_addresses32(self):
         """Test output from a node with a 'reg' property with na=1, ns=1"""
         dtb_file = get_dtb_file('dtoc_test_addr32.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1297,7 +1303,7 @@ U_BOOT_DRVINFO(test2) = {
     def test_addresses64_32(self):
         """Test output from a node with a 'reg' property with na=2, ns=1"""
         dtb_file = get_dtb_file('dtoc_test_addr64_32.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1366,7 +1372,7 @@ U_BOOT_DRVINFO(test3) = {
     def test_addresses32_64(self):
         """Test output from a node with a 'reg' property with na=1, ns=2"""
         dtb_file = get_dtb_file('dtoc_test_addr32_64.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1436,7 +1442,7 @@ U_BOOT_DRVINFO(test3) = {
         """Test that a reg property with an invalid type generates an error"""
         # Capture stderr since dtc will emit warnings for this file
         dtb_file = get_dtb_file('dtoc_test_bad_reg.dts', capture_stderr=True)
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['struct'], dtb_file, output)
         self.assertIn("Node 'spl-test' reg property is not an int",
@@ -1446,7 +1452,7 @@ U_BOOT_DRVINFO(test3) = {
         """Test that a reg property with an invalid cell count is detected"""
         # Capture stderr since dtc will emit warnings for this file
         dtb_file = get_dtb_file('dtoc_test_bad_reg2.dts', capture_stderr=True)
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['struct'], dtb_file, output)
         self.assertIn(
@@ -1456,7 +1462,7 @@ U_BOOT_DRVINFO(test3) = {
     def test_add_prop(self):
         """Test that a subequent node can add a new property to a struct"""
         dtb_file = get_dtb_file('dtoc_test_add_prop.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
         with open(output) as infile:
             data = infile.read()
@@ -1521,9 +1527,9 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_multi_to_file(self):
         """Test output of multiple pieces to a single file"""
         dtb_file = get_dtb_file('dtoc_test_simple.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['all'], dtb_file, output)
-        data = tools.ReadFile(output, binary=False)
+        data = tools.read_file(output, binary=False)
         self._check_strings(
             self.decl_text + self.platdata_text + self.struct_text, data)
 
@@ -1537,7 +1543,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_bad_command(self):
         """Test running dtoc with an invalid command"""
         dtb_file = get_dtb_file('dtoc_test_simple.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['invalid-cmd'], dtb_file, output)
         self.assertIn(
@@ -1555,12 +1561,12 @@ U_BOOT_DRVINFO(spl_test2) = {
 
     def check_output_dirs(self, instantiate):
         # Remove the directory so that files from other tests are not there
-        tools._RemoveOutputDir()
-        tools.PrepareOutputDir(None)
+        tools._remove_output_dir()
+        tools.prepare_output_dir(None)
 
         # This should create the .dts and .dtb in the output directory
         dtb_file = get_dtb_file('dtoc_test_simple.dts')
-        outdir = tools.GetOutputDir()
+        outdir = tools.get_output_dir()
         fnames = glob.glob(outdir + '/*')
         self.assertEqual(2, len(fnames))
 
@@ -1604,7 +1610,7 @@ U_BOOT_DRVINFO(spl_test2) = {
                 Scanner: scanner to use
         """
         dtb_file = get_dtb_file('dtoc_test_simple.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
 
         # Take a copy before messing with it
         scan = copy_scan()
@@ -1692,7 +1698,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_alias_read(self):
         """Test obtaining aliases"""
         dtb_file = get_dtb_file('dtoc_test_inst.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         plat = self.run_test(['struct'], dtb_file, output)
 
         scan = plat._scan
@@ -1714,7 +1720,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_alias_read_bad(self):
         """Test invalid alias property name"""
         dtb_file = get_dtb_file('dtoc_test_alias_bad.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             plat = self.run_test(['struct'], dtb_file, output)
         self.assertIn("Cannot decode alias 'i2c4-'", str(exc.exception))
@@ -1726,7 +1732,7 @@ U_BOOT_DRVINFO(spl_test2) = {
         #    node (/does/not/exist)
         dtb_file = get_dtb_file('dtoc_test_alias_bad_path.dts', True)
 
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             plat = self.run_test(['struct'], dtb_file, output)
         self.assertIn("Alias 'i2c4' path '/does/not/exist' not found",
@@ -1735,7 +1741,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_alias_read_bad_uclass(self):
         """Test alias for a uclass that doesn't exist"""
         dtb_file = get_dtb_file('dtoc_test_alias_bad_uc.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with test_util.capture_sys_output() as (stdout, _):
             plat = self.run_test(['struct'], dtb_file, output)
         self.assertEqual("Could not find uclass for alias 'other1'",
@@ -1744,7 +1750,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_sequence(self):
         """Test assignment of sequence numnbers"""
         dtb_file = get_dtb_file('dtoc_test_inst.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         plat = self.run_test(['struct'], dtb_file, output)
 
         scan = plat._scan
@@ -1760,7 +1766,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_process_root(self):
         """Test assignment of sequence numnbers"""
         dtb_file = get_dtb_file('dtoc_test_simple.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
 
         # Take a copy before messing with it
         scan = copy_scan()
@@ -1779,7 +1785,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_simple_inst(self):
         """Test output from some simple nodes with instantiate enabled"""
         dtb_file = get_dtb_file('dtoc_test_inst.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
 
         self.run_test(['decl'], dtb_file, output, True)
         with open(output) as infile:
@@ -1802,7 +1808,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_inst_no_hdr(self):
         """Test dealing with a struct tsssshat has no header"""
         dtb_file = get_dtb_file('dtoc_test_inst.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
 
         # Run it once to set everything up
         plat = self.run_test(['decl'], dtb_file, output, True)
@@ -1822,7 +1828,7 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_missing_props(self):
         """Test detection of a parent node with no properties"""
         dtb_file = get_dtb_file('dtoc_test_noprops.dts', capture_stderr=True)
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['struct'], dtb_file, output)
         self.assertIn("Parent node '/i2c@0' has no properties - do you need",
@@ -1831,13 +1837,13 @@ U_BOOT_DRVINFO(spl_test2) = {
     def test_single_reg(self):
         """Test detection of a parent node with no properties"""
         dtb_file = get_dtb_file('dtoc_test_single_reg.dts')
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         self.run_test(['struct'], dtb_file, output)
 
     def test_missing_parent(self):
         """Test detection of a parent node with no properties"""
         dtb_file = get_dtb_file('dtoc_test_noparent.dts', capture_stderr=True)
-        output = tools.GetOutputFilename('output')
+        output = tools.get_output_filename('output')
         with self.assertRaises(ValueError) as exc:
             self.run_test(['device'], dtb_file, output, instantiate=True)
         self.assertIn("Node '/i2c@0/spl-test/pmic@9' requires parent node "

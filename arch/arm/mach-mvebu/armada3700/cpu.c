@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Stefan Roese <sr@denx.de>
- * Copyright (C) 2020 Marek Behun <marek.behun@nic.cz>
+ * Copyright (C) 2020 Marek Behún <kabel@kernel.org>
  */
 
 #include <common.h>
@@ -13,6 +13,7 @@
 #include <asm/global_data.h>
 #include <linux/bitops.h>
 #include <linux/libfdt.h>
+#include <linux/sizes.h>
 #include <asm/io.h>
 #include <asm/system.h>
 #include <asm/arch/cpu.h>
@@ -46,8 +47,10 @@
 #define MVEBU_CPU_DEC_WIN_REMAP(w)	(MVEBU_CPU_DEC_WIN_CTRL(w) + 0xc)
 #define MVEBU_CPU_DEC_WIN_GRANULARITY	16
 #define MVEBU_CPU_DEC_WINS		5
+#define MVEBU_CPU_DEC_CCI_BASE		(MVEBU_CPU_DEC_WIN_REG_BASE + 0xe0)
+#define MVEBU_CPU_DEC_ROM_BASE		(MVEBU_CPU_DEC_WIN_REG_BASE + 0xf4)
 
-#define MAX_MEM_MAP_REGIONS		(MVEBU_CPU_DEC_WINS + 2)
+#define MAX_MEM_MAP_REGIONS		(MVEBU_CPU_DEC_WINS + 4)
 
 #define A3700_PTE_BLOCK_NORMAL \
 	(PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_INNER_SHARE)
@@ -60,7 +63,7 @@ static struct mm_region mvebu_mem_map[MAX_MEM_MAP_REGIONS] = {
 	{
 		/*
 		 * SRAM, MMIO regions
-		 * Don't remove this, a3700_build_mem_map needs it.
+		 * Don't remove this, build_mem_map needs it.
 		 */
 		.phys = SOC_REGS_PHY_BASE,
 		.virt = SOC_REGS_PHY_BASE,
@@ -110,8 +113,26 @@ static int get_cpu_dec_win(int win, u32 *tgt, u32 *base, u32 *size)
 static void build_mem_map(void)
 {
 	int win, region;
+	u32 reg;
 
 	region = 1;
+
+	/* CCI-400 */
+	reg = readl(MVEBU_CPU_DEC_CCI_BASE);
+	mvebu_mem_map[region].phys = reg << 20;
+	mvebu_mem_map[region].virt = reg << 20;
+	mvebu_mem_map[region].size = SZ_64K;
+	mvebu_mem_map[region].attrs = A3700_PTE_BLOCK_DEVICE;
+	++region;
+
+	/* AP BootROM */
+	reg = readl(MVEBU_CPU_DEC_ROM_BASE);
+	mvebu_mem_map[region].phys = reg << 20;
+	mvebu_mem_map[region].virt = reg << 20;
+	mvebu_mem_map[region].size = SZ_1M;
+	mvebu_mem_map[region].attrs = A3700_PTE_BLOCK_NORMAL;
+	++region;
+
 	for (win = 0; win < MVEBU_CPU_DEC_WINS; ++win) {
 		u32 base, tgt, size;
 		u64 attrs;
@@ -142,8 +163,6 @@ static void build_mem_map(void)
 
 void enable_caches(void)
 {
-	build_mem_map();
-
 	icache_enable();
 	dcache_enable();
 }
@@ -151,6 +170,8 @@ void enable_caches(void)
 int a3700_dram_init(void)
 {
 	int win;
+
+	build_mem_map();
 
 	gd->ram_size = 0;
 	for (win = 0; win < MVEBU_CPU_DEC_WINS; ++win) {
@@ -295,8 +316,8 @@ static int fdt_setprop_inplace_u32_partial(void *blob, int node,
 
 int a3700_fdt_fix_pcie_regions(void *blob)
 {
-	int acells, pacells, scells;
-	u32 base, fix_offset;
+	u32 base, lowest_cpu_addr, fix_offset;
+	int pci_cells, cpu_cells, size_cells;
 	const u32 *ranges;
 	int node, pnode;
 	int ret, i, len;
@@ -310,51 +331,80 @@ int a3700_fdt_fix_pcie_regions(void *blob)
 		return node;
 
 	ranges = fdt_getprop(blob, node, "ranges", &len);
-	if (!ranges || len % sizeof(u32))
-		return -ENOENT;
+	if (!ranges || !len || len % sizeof(u32))
+		return -EINVAL;
 
 	/*
 	 * The "ranges" property is an array of
-	 * { <child address> <parent address> <size in child address space> }
+	 *   { <PCI address> <CPU address> <size in PCI address space> }
+	 * where number of PCI address cells and size cells is stored in the
+	 * "#address-cells" and "#size-cells" properties of the same node
+	 * containing the "ranges" property and number of CPU address cells
+	 * is stored in the parent's "#address-cells" property.
 	 *
-	 * All 3 elements can span a diffent number of cells. Fetch their sizes.
+	 * All 3 elements can span a diffent number of cells. Fetch them.
 	 */
 	pnode = fdt_parent_offset(blob, node);
-	acells = fdt_address_cells(blob, node);
-	pacells = fdt_address_cells(blob, pnode);
-	scells = fdt_size_cells(blob, node);
+	pci_cells = fdt_address_cells(blob, node);
+	cpu_cells = fdt_address_cells(blob, pnode);
+	size_cells = fdt_size_cells(blob, node);
 
-	/* Child PCI addresses always use 3 cells */
-	if (acells != 3)
-		return -ENOENT;
+	/* PCI addresses always use 3 cells */
+	if (pci_cells != 3)
+		return -EINVAL;
 
-	/* Calculate fixup offset from first child address (in last cell) */
-	fix_offset = base - fdt32_to_cpu(ranges[2]);
+	/* CPU addresses on Armada 37xx always use 2 cells */
+	if (cpu_cells != 2)
+		return -EINVAL;
 
-	/* If fixup offset is zero then there is nothing to fix */
+	for (i = 0; i < len / sizeof(u32);
+	     i += pci_cells + cpu_cells + size_cells) {
+		/*
+		 * Parent CPU addresses on Armada 37xx are always 32-bit, so
+		 * check that the high word is zero.
+		 */
+		if (fdt32_to_cpu(ranges[i + pci_cells]))
+			return -EINVAL;
+
+		if (i == 0 ||
+		    fdt32_to_cpu(ranges[i + pci_cells + 1]) < lowest_cpu_addr)
+			lowest_cpu_addr = fdt32_to_cpu(ranges[i + pci_cells + 1]);
+	}
+
+	/* Calculate fixup offset from the lowest (first) CPU address */
+	fix_offset = base - lowest_cpu_addr;
+
+	/* If fixup offset is zero there is nothing to fix */
 	if (!fix_offset)
 		return 0;
 
 	/*
-	 * Fix address (last cell) of each child address and each parent
-	 * address
+	 * Fix each CPU address and corresponding PCI address if PCI address
+	 * is not already remapped (has the same value)
 	 */
-	for (i = 0; i < len / sizeof(u32); i += acells + pacells + scells) {
+	for (i = 0; i < len / sizeof(u32);
+	     i += pci_cells + cpu_cells + size_cells) {
+		u32 cpu_addr;
+		u64 pci_addr;
 		int idx;
 
-		/* fix child address */
-		idx = i + acells - 1;
+		/* Fix CPU address */
+		idx = i + pci_cells + cpu_cells - 1;
+		cpu_addr = fdt32_to_cpu(ranges[idx]);
 		ret = fdt_setprop_inplace_u32_partial(blob, node, "ranges", idx,
-						      fdt32_to_cpu(ranges[idx]) +
-						      fix_offset);
+						      cpu_addr + fix_offset);
 		if (ret)
 			return ret;
 
-		/* fix parent address */
-		idx = i + acells + pacells - 1;
+		/* Fix PCI address only if it isn't remapped (is same as CPU) */
+		idx = i + pci_cells - 1;
+		pci_addr = ((u64)fdt32_to_cpu(ranges[idx - 1]) << 32) |
+			   fdt32_to_cpu(ranges[idx]);
+		if (cpu_addr != pci_addr)
+			continue;
+
 		ret = fdt_setprop_inplace_u32_partial(blob, node, "ranges", idx,
-						      fdt32_to_cpu(ranges[idx]) +
-						      fix_offset);
+						      cpu_addr + fix_offset);
 		if (ret)
 			return ret;
 	}

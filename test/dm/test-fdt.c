@@ -17,7 +17,6 @@
 #include <dm/devres.h>
 #include <dm/uclass-internal.h>
 #include <dm/util.h>
-#include <dm/lists.h>
 #include <dm/of_access.h>
 #include <linux/ioport.h>
 #include <test/test.h>
@@ -184,7 +183,7 @@ static int dm_test_alias_highest_id(struct unit_test_state *uts)
 	int ret;
 
 	ret = dev_read_alias_highest_id("ethernet");
-	ut_asserteq(5, ret);
+	ut_asserteq(8, ret);
 
 	ret = dev_read_alias_highest_id("gpio");
 	ut_asserteq(3, ret);
@@ -393,10 +392,10 @@ DM_TEST(dm_test_fdt_offset,
 	UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT | UT_TESTF_FLAT_TREE);
 
 /**
- * Test various error conditions with uclass_first_device() and
- * uclass_next_device()
+ * Test various error conditions with uclass_first_device(),
+ * uclass_next_device(), and uclass_probe_all()
  */
-static int dm_test_first_next_device(struct unit_test_state *uts)
+static int dm_test_first_next_device_probeall(struct unit_test_state *uts)
 {
 	struct dm_testprobe_pdata *pdata;
 	struct udevice *dev, *parent = NULL;
@@ -404,13 +403,12 @@ static int dm_test_first_next_device(struct unit_test_state *uts)
 	int ret;
 
 	/* There should be 4 devices */
-	for (ret = uclass_first_device(UCLASS_TEST_PROBE, &dev), count = 0;
+	for (uclass_first_device(UCLASS_TEST_PROBE, &dev), count = 0;
 	     dev;
-	     ret = uclass_next_device(&dev)) {
+	     uclass_next_device(&dev)) {
 		count++;
 		parent = dev_get_parent(dev);
 		}
-	ut_assertok(ret);
 	ut_asserteq(4, count);
 
 	/* Remove them and try again, with an error on the second one */
@@ -418,20 +416,45 @@ static int dm_test_first_next_device(struct unit_test_state *uts)
 	pdata = dev_get_plat(dev);
 	pdata->probe_err = -ENOMEM;
 	device_remove(parent, DM_REMOVE_NORMAL);
-	ut_assertok(uclass_first_device(UCLASS_TEST_PROBE, &dev));
-	ut_asserteq(-ENOMEM, uclass_next_device(&dev));
-	ut_asserteq_ptr(dev, NULL);
+	for (ret = uclass_first_device_check(UCLASS_TEST_PROBE, &dev),
+		count = 0;
+	     dev;
+	     ret = uclass_next_device_check(&dev)) {
+		if (!ret)
+			count++;
+		else
+			ut_asserteq(-ENOMEM, ret);
+		parent = dev_get_parent(dev);
+		}
+	ut_asserteq(3, count);
 
 	/* Now an error on the first one */
 	ut_assertok(uclass_get_device(UCLASS_TEST_PROBE, 0, &dev));
 	pdata = dev_get_plat(dev);
 	pdata->probe_err = -ENOENT;
 	device_remove(parent, DM_REMOVE_NORMAL);
-	ut_asserteq(-ENOENT, uclass_first_device(UCLASS_TEST_PROBE, &dev));
+	for (uclass_first_device(UCLASS_TEST_PROBE, &dev), count = 0;
+	     dev;
+	     uclass_next_device(&dev)) {
+		count++;
+		parent = dev_get_parent(dev);
+		}
+	ut_asserteq(2, count);
+
+	/* Now that broken devices are set up test probe_all */
+	device_remove(parent, DM_REMOVE_NORMAL);
+	/* There are broken devices so an error should be returned */
+	ut_assert(uclass_probe_all(UCLASS_TEST_PROBE) < 0);
+	/* but non-error device should be probed nonetheless */
+	ut_assertok(uclass_get_device(UCLASS_TEST_PROBE, 2, &dev));
+	ut_assert(dev_get_flags(dev) & DM_FLAG_ACTIVATED);
+	ut_assertok(uclass_get_device(UCLASS_TEST_PROBE, 3, &dev));
+	ut_assert(dev_get_flags(dev) & DM_FLAG_ACTIVATED);
 
 	return 0;
 }
-DM_TEST(dm_test_first_next_device, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_first_next_device_probeall,
+	UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test iteration through devices in a uclass */
 static int dm_test_uclass_foreach(struct unit_test_state *uts)
@@ -735,58 +758,6 @@ static int dm_test_fdt_remap_addr_name_live(struct unit_test_state *uts)
 DM_TEST(dm_test_fdt_remap_addr_name_live,
 	UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
-static int dm_test_fdt_livetree_writing(struct unit_test_state *uts)
-{
-	struct udevice *dev;
-	ofnode node;
-
-	if (!of_live_active()) {
-		printf("Live tree not active; ignore test\n");
-		return 0;
-	}
-
-	/* Test enabling devices */
-
-	node = ofnode_path("/usb@2");
-
-	ut_assert(!of_device_is_available(ofnode_to_np(node)));
-	ofnode_set_enabled(node, true);
-	ut_assert(of_device_is_available(ofnode_to_np(node)));
-
-	device_bind_driver_to_node(dm_root(), "usb_sandbox", "usb@2", node,
-				   &dev);
-	ut_assertok(uclass_find_device_by_seq(UCLASS_USB, 2, &dev));
-
-	/* Test string property setting */
-
-	ut_assert(device_is_compatible(dev, "sandbox,usb"));
-	ofnode_write_string(node, "compatible", "gdsys,super-usb");
-	ut_assert(device_is_compatible(dev, "gdsys,super-usb"));
-	ofnode_write_string(node, "compatible", "sandbox,usb");
-	ut_assert(device_is_compatible(dev, "sandbox,usb"));
-
-	/* Test setting generic properties */
-
-	/* Non-existent in DTB */
-	ut_asserteq(FDT_ADDR_T_NONE, dev_read_addr(dev));
-	/* reg = 0x42, size = 0x100 */
-	ut_assertok(ofnode_write_prop(node, "reg", 8,
-				      "\x00\x00\x00\x42\x00\x00\x01\x00"));
-	ut_asserteq(0x42, dev_read_addr(dev));
-
-	/* Test disabling devices */
-
-	device_remove(dev, DM_REMOVE_NORMAL);
-	device_unbind(dev);
-
-	ut_assert(of_device_is_available(ofnode_to_np(node)));
-	ofnode_set_enabled(node, false);
-	ut_assert(!of_device_is_available(ofnode_to_np(node)));
-
-	return 0;
-}
-DM_TEST(dm_test_fdt_livetree_writing, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
-
 static int dm_test_fdt_disable_enable_by_path(struct unit_test_state *uts)
 {
 	ofnode node;
@@ -868,6 +839,8 @@ DM_TEST(dm_test_first_child, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 static int dm_test_read_int(struct unit_test_state *uts)
 {
 	struct udevice *dev;
+	u8 val8;
+	u16 val16;
 	u32 val32;
 	s32 sval;
 	uint val;
@@ -875,6 +848,23 @@ static int dm_test_read_int(struct unit_test_state *uts)
 
 	ut_assertok(uclass_first_device_err(UCLASS_TEST_FDT, &dev));
 	ut_asserteq_str("a-test", dev->name);
+
+	ut_assertok(dev_read_u8(dev, "int8-value", &val8));
+	ut_asserteq(0x12, val8);
+
+	ut_asserteq(-EINVAL, dev_read_u8(dev, "missing", &val8));
+	ut_asserteq(6, dev_read_u8_default(dev, "missing", 6));
+
+	ut_asserteq(0x12, dev_read_u8_default(dev, "int8-value", 6));
+
+	ut_assertok(dev_read_u16(dev, "int16-value", &val16));
+	ut_asserteq(0x1234, val16);
+
+	ut_asserteq(-EINVAL, dev_read_u16(dev, "missing", &val16));
+	ut_asserteq(6, dev_read_u16_default(dev, "missing", 6));
+
+	ut_asserteq(0x1234, dev_read_u16_default(dev, "int16-value", 6));
+
 	ut_assertok(dev_read_u32(dev, "int-value", &val32));
 	ut_asserteq(1234, val32);
 

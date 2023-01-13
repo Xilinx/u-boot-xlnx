@@ -665,14 +665,14 @@ static int pvblock_blk_bind(struct udevice *udev)
 	struct blk_desc *desc = dev_get_uclass_plat(udev);
 	int devnum;
 
-	desc->if_type = IF_TYPE_PVBLOCK;
+	desc->uclass_id = UCLASS_PVBLOCK;
 	/*
 	 * Initialize the devnum to -ENODEV. This is to make sure that
 	 * blk_next_free_devnum() works as expected, since the default
 	 * value 0 is a valid devnum.
 	 */
 	desc->devnum = -ENODEV;
-	devnum = blk_next_free_devnum(IF_TYPE_PVBLOCK);
+	devnum = blk_next_free_devnum(UCLASS_PVBLOCK);
 	if (devnum < 0)
 		return devnum;
 	desc->devnum = devnum;
@@ -804,7 +804,7 @@ static void print_pvblock_devices(void)
 	const char *class_name;
 
 	class_name = uclass_get_name(UCLASS_PVBLOCK);
-	for (blk_first_device(IF_TYPE_PVBLOCK, &udev); udev;
+	for (blk_first_device(UCLASS_PVBLOCK, &udev); udev;
 	     blk_next_device(&udev), first = false) {
 		struct blk_desc *desc = dev_get_uclass_plat(udev);
 
@@ -818,8 +818,6 @@ static void print_pvblock_devices(void)
 void pvblock_init(void)
 {
 	struct driver_info info;
-	struct udevice *udev;
-	struct uclass *uc;
 	int ret;
 
 	/*
@@ -828,15 +826,12 @@ void pvblock_init(void)
 	 * virtual block devices.
 	 */
 	info.name = DRV_NAME;
-	ret = device_bind_by_name(gd->dm_root, false, &info, &udev);
+	ret = device_bind_by_name(gd->dm_root, false, &info, NULL);
 	if (ret < 0)
 		printf("Failed to bind " DRV_NAME ", ret: %d\n", ret);
 
 	/* Bootstrap virtual block devices class driver */
-	ret = uclass_get(UCLASS_PVBLOCK, &uc);
-	if (ret)
-		return;
-	uclass_foreach_dev_probe(UCLASS_PVBLOCK, udev);
+	uclass_probe_all(UCLASS_PVBLOCK);
 
 	print_pvblock_devices();
 }
@@ -852,10 +847,7 @@ static int pvblock_probe(struct udevice *udev)
 	ret = uclass_get(UCLASS_BLK, &uc);
 	if (ret)
 		return ret;
-	uclass_foreach_dev_probe(UCLASS_BLK, udev) {
-		if (_ret)
-			return _ret;
-	};
+	uclass_foreach_dev_probe(UCLASS_BLK, udev);
 	return 0;
 }
 

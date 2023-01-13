@@ -11,6 +11,7 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <dm.h>
 #include <env.h>
 #include <hang.h>
@@ -27,7 +28,9 @@
 #include <asm/arch/dram.h>
 #include <asm/arch/mmc.h>
 #include <asm/arch/prcm.h>
+#include <asm/arch/pmic_bus.h>
 #include <asm/arch/spl.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/global_data.h>
 #include <linux/delay.h>
 #include <u-boot/crc.h>
@@ -104,54 +107,6 @@ void i2c_init_board(void)
 #endif
 #endif
 
-#ifdef CONFIG_I2C2_ENABLE
-#if defined(CONFIG_MACH_SUN4I) || \
-    defined(CONFIG_MACH_SUN7I) || \
-    defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(20), SUN4I_GPB_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(21), SUN4I_GPB_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN5I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(17), SUN5I_GPB_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPB(18), SUN5I_GPB_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN6I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(18), SUN6I_GPH_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPH(19), SUN6I_GPH_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN8I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPE(12), SUN8I_GPE_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPE(13), SUN8I_GPE_TWI2);
-	clock_twi_onoff(2, 1);
-#elif defined(CONFIG_MACH_SUN50I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPE(14), SUN50I_GPE_TWI2);
-	sunxi_gpio_set_cfgpin(SUNXI_GPE(15), SUN50I_GPE_TWI2);
-	clock_twi_onoff(2, 1);
-#endif
-#endif
-
-#ifdef CONFIG_I2C3_ENABLE
-#if defined(CONFIG_MACH_SUN6I)
-	sunxi_gpio_set_cfgpin(SUNXI_GPG(10), SUN6I_GPG_TWI3);
-	sunxi_gpio_set_cfgpin(SUNXI_GPG(11), SUN6I_GPG_TWI3);
-	clock_twi_onoff(3, 1);
-#elif defined(CONFIG_MACH_SUN7I) || \
-      defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(0), SUN7I_GPI_TWI3);
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(1), SUN7I_GPI_TWI3);
-	clock_twi_onoff(3, 1);
-#endif
-#endif
-
-#ifdef CONFIG_I2C4_ENABLE
-#if defined(CONFIG_MACH_SUN7I) || \
-    defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(2), SUN7I_GPI_TWI4);
-	sunxi_gpio_set_cfgpin(SUNXI_GPI(3), SUN7I_GPI_TWI4);
-	clock_twi_onoff(4, 1);
-#endif
-#endif
-
 #ifdef CONFIG_R_I2C_ENABLE
 #ifdef CONFIG_MACH_SUN50I
 	clock_twi_onoff(5, 1);
@@ -169,25 +124,65 @@ void i2c_init_board(void)
 #endif
 }
 
-#if defined(CONFIG_ENV_IS_IN_MMC) && defined(CONFIG_ENV_IS_IN_FAT)
+/*
+ * Try to use the environment from the boot source first.
+ * For MMC, this means a FAT partition on the boot device (SD or eMMC).
+ * If the raw MMC environment is also enabled, this is tried next.
+ * When booting from NAND we try UBI first, then NAND directly.
+ * SPI flash falls back to FAT (on SD card).
+ */
 enum env_location env_get_location(enum env_operation op, int prio)
 {
-	switch (prio) {
-	case 0:
-		return ENVL_FAT;
-
-	case 1:
-		return ENVL_MMC;
-
-	default:
+	if (prio > 1)
 		return ENVL_UNKNOWN;
-	}
-}
-#endif
 
-#ifdef CONFIG_DM_MMC
-static void mmc_pinmux_setup(int sdc);
-#endif
+	/* NOWHERE is exclusive, no other option can be defined. */
+	if (IS_ENABLED(CONFIG_ENV_IS_NOWHERE))
+		return ENVL_NOWHERE;
+
+	switch (sunxi_get_boot_device()) {
+	case BOOT_DEVICE_MMC1:
+	case BOOT_DEVICE_MMC2:
+		if (prio == 0 && IS_ENABLED(CONFIG_ENV_IS_IN_FAT))
+			return ENVL_FAT;
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_MMC))
+			return ENVL_MMC;
+		break;
+	case BOOT_DEVICE_NAND:
+		if (prio == 0 && IS_ENABLED(CONFIG_ENV_IS_IN_UBI))
+			return ENVL_UBI;
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_NAND))
+			return ENVL_NAND;
+		break;
+	case BOOT_DEVICE_SPI:
+		if (prio == 0 && IS_ENABLED(CONFIG_ENV_IS_IN_SPI_FLASH))
+			return ENVL_SPI_FLASH;
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_FAT))
+			return ENVL_FAT;
+		break;
+	case BOOT_DEVICE_BOARD:
+		break;
+	default:
+		break;
+	}
+
+	/*
+	 * If we come here for the first time, we *must* return a valid
+	 * environment location other than ENVL_UNKNOWN, or the setup sequence
+	 * in board_f() will silently hang. This is arguably a bug in
+	 * env_init(), but for now pick one environment for which we know for
+	 * sure to have a driver for. For all defconfigs this is either FAT
+	 * or UBI, or NOWHERE, which is already handled above.
+	 */
+	if (prio == 0) {
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_FAT))
+			return ENVL_FAT;
+		if (IS_ENABLED(CONFIG_ENV_IS_IN_UBI))
+			return ENVL_UBI;
+	}
+
+	return ENVL_UNKNOWN;
+}
 
 /* add board specific code here */
 int board_init(void)
@@ -196,7 +191,7 @@ int board_init(void)
 
 	gd->bd->bi_boot_params = (PHYS_SDRAM_0 + 0x100);
 
-#ifndef CONFIG_ARM64
+#if !defined(CONFIG_ARM64) && !defined(CONFIG_MACH_SUNIV)
 	asm volatile("mrc p15, 0, %0, c0, c1, 1" : "=r"(id_pfr1));
 	debug("id_pfr1: 0x%08x\n", id_pfr1);
 	/* Generic Timer Extension available? */
@@ -212,18 +207,18 @@ int board_init(void)
 		 * we avoid the risk of writing to it.
 		 */
 		asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r"(freq));
-		if (freq != COUNTER_FREQUENCY) {
+		if (freq != CONFIG_COUNTER_FREQUENCY) {
 			debug("arch timer frequency is %d Hz, should be %d, fixing ...\n",
-			      freq, COUNTER_FREQUENCY);
+			      freq, CONFIG_COUNTER_FREQUENCY);
 #ifdef CONFIG_NON_SECURE
 			printf("arch timer frequency is wrong, but cannot adjust it\n");
 #else
 			asm volatile("mcr p15, 0, %0, c14, c0, 0"
-				     : : "r"(COUNTER_FREQUENCY));
+				     : : "r"(CONFIG_COUNTER_FREQUENCY));
 #endif
 		}
 	}
-#endif /* !CONFIG_ARM64 */
+#endif /* !CONFIG_ARM64 && !CONFIG_MACH_SUNIV */
 
 	ret = axp_gpio_init();
 	if (ret)
@@ -260,16 +255,7 @@ int board_init(void)
 	i2c_init_board();
 #endif
 
-#ifdef CONFIG_DM_MMC
-	/*
-	 * Temporary workaround for enabling MMC clocks until a sunxi DM
-	 * pinctrl driver lands.
-	 */
-	mmc_pinmux_setup(CONFIG_MMC_SUNXI_SLOT);
-#if CONFIG_MMC_SUNXI_SLOT_EXTRA != -1
-	mmc_pinmux_setup(CONFIG_MMC_SUNXI_SLOT_EXTRA);
-#endif
-#endif	/* CONFIG_DM_MMC */
+	eth_init_board();
 
 	return 0;
 }
@@ -365,7 +351,7 @@ void board_nand_init(void)
 	sunxi_nand_init();
 #endif
 }
-#endif
+#endif /* CONFIG_NAND_SUNXI */
 
 #ifdef CONFIG_MMC
 static void mmc_pinmux_setup(int sdc)
@@ -535,19 +521,22 @@ static void mmc_pinmux_setup(int sdc)
 
 int board_mmc_init(struct bd_info *bis)
 {
-	__maybe_unused struct mmc *mmc0, *mmc1;
+	/*
+	 * The BROM always accesses MMC port 0 (typically an SD card), and
+	 * most boards seem to have such a slot. The others haven't reported
+	 * any problem with unconditionally enabling this in the SPL.
+	 */
+	if (!IS_ENABLED(CONFIG_UART0_PORT_F)) {
+		mmc_pinmux_setup(0);
+		if (!sunxi_mmc_init(0))
+			return -1;
+	}
 
-	mmc_pinmux_setup(CONFIG_MMC_SUNXI_SLOT);
-	mmc0 = sunxi_mmc_init(CONFIG_MMC_SUNXI_SLOT);
-	if (!mmc0)
-		return -1;
-
-#if CONFIG_MMC_SUNXI_SLOT_EXTRA != -1
-	mmc_pinmux_setup(CONFIG_MMC_SUNXI_SLOT_EXTRA);
-	mmc1 = sunxi_mmc_init(CONFIG_MMC_SUNXI_SLOT_EXTRA);
-	if (!mmc1)
-		return -1;
-#endif
+	if (CONFIG_MMC_SUNXI_SLOT_EXTRA != -1) {
+		mmc_pinmux_setup(CONFIG_MMC_SUNXI_SLOT_EXTRA);
+		if (!sunxi_mmc_init(CONFIG_MMC_SUNXI_SLOT_EXTRA))
+			return -1;
+	}
 
 	return 0;
 }
@@ -565,7 +554,7 @@ int mmc_get_env_dev(void)
 	}
 }
 #endif
-#endif
+#endif /* CONFIG_MMC */
 
 #ifdef CONFIG_SPL_BUILD
 
@@ -600,6 +589,16 @@ void sunxi_board_init(void)
 	defined CONFIG_AXP221_POWER || defined CONFIG_AXP305_POWER || \
 	defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER
 	power_failed = axp_init();
+
+	if (IS_ENABLED(CONFIG_AXP_DISABLE_BOOT_ON_POWERON) && !power_failed) {
+		u8 boot_reason;
+
+		pmic_bus_read(AXP_POWER_STATUS, &boot_reason);
+		if (boot_reason & AXP_POWER_STATUS_ALDO_IN) {
+			printf("Power on by plug-in, shutting down.\n");
+			pmic_bus_write(0x32, BIT(7));
+		}
+	}
 
 #if defined CONFIG_AXP221_POWER || defined CONFIG_AXP809_POWER || \
 	defined CONFIG_AXP818_POWER
@@ -667,11 +666,11 @@ void sunxi_board_init(void)
 	 * assured it's being powered with suitable core voltage
 	 */
 	if (!power_failed)
-		clock_set_pll1(CONFIG_SYS_CLK_FREQ);
+		clock_set_pll1(get_board_sys_clk());
 	else
 		printf("Failed to set core voltage! Can't set CPU frequency\n");
 }
-#endif
+#endif /* CONFIG_SPL_BUILD */
 
 #ifdef CONFIG_USB_GADGET
 int g_dnl_board_usb_cable_connected(void)
@@ -700,7 +699,7 @@ int g_dnl_board_usb_cable_connected(void)
 
 	return sun4i_usb_phy_vbus_detect(&phy);
 }
-#endif
+#endif /* CONFIG_USB_GADGET */
 
 #ifdef CONFIG_SERIAL_TAG
 void get_board_serial(struct tag_serialnr *serialnr)
@@ -911,10 +910,12 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	int __maybe_unused r;
 
 	/*
-	 * Call setup_environment again in case the boot fdt has
-	 * ethernet aliases the u-boot copy does not have.
+	 * Call setup_environment and fdt_fixup_ethernet again
+	 * in case the boot fdt has ethernet aliases the u-boot
+	 * copy does not have.
 	 */
 	setup_environment(blob);
+	fdt_fixup_ethernet(blob);
 
 	bluetooth_dt_fixup(blob);
 
@@ -927,7 +928,6 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 }
 
 #ifdef CONFIG_SPL_LOAD_FIT
-
 static void set_spl_dt_name(const char *name)
 {
 	struct boot_file_head *spl = get_spl_header(SPL_ENV_HEADER_VERSION);
@@ -995,4 +995,4 @@ int board_fit_config_name_match(const char *name)
 
 	return ret;
 }
-#endif
+#endif /* CONFIG_SPL_LOAD_FIT */

@@ -9,18 +9,12 @@
 
 #include "ls2080a_common.h"
 
-#ifndef __ASSEMBLY__
-unsigned long get_board_sys_clk(void);
-#endif
-
 #ifdef CONFIG_FSL_QSPI
-#define CONFIG_QIXIS_I2C_ACCESS
 #define CONFIG_SYS_I2C_IFDR_DIV		0x7e
 #endif
 
 #define CONFIG_SYS_I2C_FPGA_ADDR	0x66
-#define CONFIG_SYS_CLK_FREQ		get_board_sys_clk()
-#define COUNTER_FREQUENCY_REAL		(CONFIG_SYS_CLK_FREQ/4)
+#define COUNTER_FREQUENCY_REAL		(get_board_sys_clk()/4)
 
 #define CONFIG_MEM_INIT_VALUE		0xdeadbeef
 #define SPD_EEPROM_ADDRESS1	0x51
@@ -30,23 +24,6 @@ unsigned long get_board_sys_clk(void);
 #define SPD_EEPROM_ADDRESS5	0x55
 #define SPD_EEPROM_ADDRESS6	0x56	/* dummy address */
 #define SPD_EEPROM_ADDRESS	SPD_EEPROM_ADDRESS1
-#define CONFIG_SYS_SPD_BUS_NUM	0	/* SPD on I2C bus 0 */
-#define CONFIG_DIMM_SLOTS_PER_CTLR		2
-#define CONFIG_CHIP_SELECTS_PER_CTRL		4
-#ifdef CONFIG_SYS_FSL_HAS_DP_DDR
-#define CONFIG_DP_DDR_DIMM_SLOTS_PER_CTLR	1
-#endif
-
-/* SATA */
-#define CONFIG_SCSI_AHCI_PLAT
-
-#define CONFIG_SYS_SATA1			AHCI_BASE_ADDR1
-#define CONFIG_SYS_SATA2			AHCI_BASE_ADDR2
-
-#define CONFIG_SYS_SCSI_MAX_SCSI_ID		1
-#define CONFIG_SYS_SCSI_MAX_LUN			1
-#define CONFIG_SYS_SCSI_MAX_DEVICE		(CONFIG_SYS_SCSI_MAX_SCSI_ID * \
-						CONFIG_SYS_SCSI_MAX_LUN)
 
 #define CONFIG_SYS_NOR0_CSPR_EXT	(0x0)
 #define CONFIG_SYS_NOR_AMASK		IFC_AMASK(128*1024*1024)
@@ -87,15 +64,8 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_IFC_CCR	0x01000000
 
 #ifdef CONFIG_MTD_NOR_FLASH
-#define CONFIG_SYS_FLASH_QUIET_TEST
 #define CONFIG_FLASH_SHOW_PROGRESS	45 /* count down from 45/5: 9..1 */
 
-#define CONFIG_SYS_MAX_FLASH_BANKS	2	/* number of banks */
-#define CONFIG_SYS_MAX_FLASH_SECT	1024	/* sectors per device */
-#define CONFIG_SYS_FLASH_ERASE_TOUT	60000	/* Flash Erase Timeout (ms) */
-#define CONFIG_SYS_FLASH_WRITE_TOUT	500	/* Flash Write Timeout (ms) */
-
-#define CONFIG_SYS_FLASH_EMPTY_INFO
 #define CONFIG_SYS_FLASH_BANKS_LIST	{ CONFIG_SYS_FLASH_BASE,\
 					 CONFIG_SYS_FLASH_BASE + 0x40000000}
 #endif
@@ -133,10 +103,8 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_NAND_FTIM3		0x0
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
 
-#define CONFIG_FSL_QIXIS	/* use common QIXIS code */
 #define QIXIS_LBMAP_SWITCH		0x06
 #define QIXIS_LBMAP_MASK		0x0f
 #define QIXIS_LBMAP_SHIFT		0
@@ -207,7 +175,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_CS0_FTIM2		CONFIG_SYS_NAND_FTIM2
 #define CONFIG_SYS_CS0_FTIM3		CONFIG_SYS_NAND_FTIM3
 
-#define CONFIG_SPL_PAD_TO		0x20000
 #define CONFIG_SYS_NAND_U_BOOT_SIZE	(640 * 1024)
 #endif
 #else
@@ -240,10 +207,6 @@ unsigned long get_board_sys_clk(void);
 #define CONFIG_SYS_CS2_FTIM3		CONFIG_SYS_NAND_FTIM3
 #endif
 
-/* Debug Server firmware */
-#define CONFIG_SYS_DEBUG_SERVER_FW_IN_NOR
-#define CONFIG_SYS_DEBUG_SERVER_FW_ADDR	0x580D00000ULL
-
 #define CONFIG_SYS_LS_MC_BOOT_TIMEOUT_MS 5000
 
 /*
@@ -256,15 +219,7 @@ unsigned long get_board_sys_clk(void);
 #define I2C_MUX_CH_DEFAULT      0x8
 
 /* SPI */
-#ifdef CONFIG_FSL_DSPI
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_SST
-#define CONFIG_SPI_FLASH_EON
-#endif
 
-#ifdef CONFIG_FSL_QSPI
-#define CONFIG_SPI_FLASH_SPANSION
-#endif
 /*
  * Verify QSPI when boot from NAND, QIXIS brdcfg9 need configure.
  * If boot from on-board NAND, ISO1 = 1, ISO2 = 0, IBOOT = 0
@@ -273,31 +228,11 @@ unsigned long get_board_sys_clk(void);
 #define FSL_QIXIS_BRDCFG9_QSPI		0x1
 
 /*
- * MMC
- */
-#ifdef CONFIG_MMC
-#define CONFIG_ESDHC_DETECT_QUIRK ((readb(QIXIS_BASE + QIXIS_STAT_PRES1) & \
-	QIXIS_SDID_MASK) != QIXIS_ESDHC_NO_ADAPTER)
-#endif
-
-/*
  * RTC configuration
  */
 #define RTC
 #define CONFIG_RTC_DS3231               1
-#define CONFIG_RTC_ENABLE_32KHZ_OUTPUT
 #define CONFIG_SYS_I2C_RTC_ADDR         0x68
-#define CONFIG_RTC_ENABLE_32KHZ_OUTPUT
-
-/* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM	0
-
-#define CONFIG_FSL_MEMAC
-
-#ifdef CONFIG_PCI
-#define CONFIG_PCI_SCAN_SHOW
-#endif
 
 /* Initial environment variables */
 #undef CONFIG_EXTRA_ENV_SETTINGS
@@ -442,8 +377,7 @@ unsigned long get_board_sys_clk(void);
 			"env exists secureboot && esbc_halt;"
 #endif
 
-#if defined(CONFIG_FSL_MC_ENET) && !defined(CONFIG_SPL_BUILD)
-#define CONFIG_FSL_MEMAC
+#if defined(CONFIG_FSL_MC_ENET)
 #define SGMII_CARD_PORT1_PHY_ADDR 0x1C
 #define SGMII_CARD_PORT2_PHY_ADDR 0x1d
 #define SGMII_CARD_PORT3_PHY_ADDR 0x1E
@@ -465,8 +399,6 @@ unsigned long get_board_sys_clk(void);
 #define XQSGMII_CARD_PHY4_PORT1_ADDR 0xd
 #define XQSGMII_CARD_PHY4_PORT2_ADDR 0xe
 #define XQSGMII_CARD_PHY4_PORT3_ADDR 0xf
-
-#define CONFIG_ETHPRIME		"DPMAC1@xgmii"
 
 #endif
 

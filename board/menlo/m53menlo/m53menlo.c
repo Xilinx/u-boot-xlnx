@@ -42,7 +42,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 static u32 mx53_dram_size[2];
 
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	/*
 	 * WARNING: We must override get_effective_memsize() function here
@@ -226,16 +226,21 @@ static const char *lvds_compat_string;
 
 static int detect_lvds(struct display_info_t const *dev)
 {
+	struct udevice *idev, *ibus;
 	u8 touchid[23];
 	u8 *touchptr = &touchid[0];
 	int ret;
 
-	ret = i2c_set_bus_num(0);
+	ret = uclass_get_device_by_seq(UCLASS_I2C, 0, &ibus);
+	if (ret)
+		return 0;
+
+	ret = dm_i2c_probe(ibus, 0x38, 0, &idev);
 	if (ret)
 		return 0;
 
 	/* Touchscreen is at address 0x38, ID register is 0xbb. */
-	ret = i2c_read(0x38, 0xbb, 1, touchid, sizeof(touchid));
+	ret = dm_i2c_read(idev, 0xbb, touchid, sizeof(touchid));
 	if (ret)
 		return 0;
 
@@ -353,7 +358,7 @@ int board_late_init(void)
 		return 0;
 
 	addr = hextoul(s, NULL);
-	dst = malloc(CONFIG_SYS_VIDEO_LOGO_MAX_SIZE);
+	dst = malloc(CONFIG_VIDEO_LOGO_MAX_SIZE);
 	if (!dst)
 		return -ENOMEM;
 
@@ -361,8 +366,8 @@ int board_late_init(void)
 	if (ret < 0)
 		goto splasherr;
 
-	len = CONFIG_SYS_VIDEO_LOGO_MAX_SIZE;
-	ret = gunzip(dst + 2, CONFIG_SYS_VIDEO_LOGO_MAX_SIZE - 2,
+	len = CONFIG_VIDEO_LOGO_MAX_SIZE;
+	ret = gunzip(dst + 2, CONFIG_VIDEO_LOGO_MAX_SIZE - 2,
 		     (uchar *)addr, &len);
 	if (ret) {
 		printf("Error: no valid bmp or bmp.gz image at %lx\n", addr);
@@ -383,23 +388,6 @@ splasherr:
 	free(dst);
 #endif
 	return 0;
-}
-
-#define I2C_PAD_CTRL	(PAD_CTL_SRE_FAST | PAD_CTL_DSE_HIGH | \
-			 PAD_CTL_PUS_100K_UP | PAD_CTL_ODE)
-
-static void setup_iomux_i2c(void)
-{
-	static const iomux_v3_cfg_t i2c_pads[] = {
-		/* I2C1 */
-		NEW_PAD_CTRL(MX53_PAD_EIM_D28__I2C1_SDA, I2C_PAD_CTRL),
-		NEW_PAD_CTRL(MX53_PAD_EIM_D21__I2C1_SCL, I2C_PAD_CTRL),
-		/* I2C2 */
-		NEW_PAD_CTRL(MX53_PAD_EIM_D16__I2C2_SDA, I2C_PAD_CTRL),
-		NEW_PAD_CTRL(MX53_PAD_EIM_EB2__I2C2_SCL, I2C_PAD_CTRL),
-	};
-
-	imx_iomux_v3_setup_multiple_pads(i2c_pads, ARRAY_SIZE(i2c_pads));
 }
 
 static void setup_iomux_video(void)
@@ -505,7 +493,6 @@ int board_early_init_f(void)
 {
 	setup_iomux_uart();
 	setup_iomux_fec();
-	setup_iomux_i2c();
 	setup_iomux_nand();
 	setup_iomux_video();
 

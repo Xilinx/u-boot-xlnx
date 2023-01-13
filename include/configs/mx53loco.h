@@ -11,13 +11,10 @@
 
 #include <asm/arch/imx-regs.h>
 
-#define CONFIG_SYS_FSL_CLK
-
 #define CONFIG_MXC_UART_BASE	UART1_BASE
 
 /* MMC Configs */
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
-#define CONFIG_SYS_FSL_ESDHC_NUM	2
+#define CFG_SYS_FSL_ESDHC_ADDR	0
 
 /* USB Configs */
 #define CONFIG_MXC_USB_PORT	1
@@ -25,16 +22,12 @@
 #define CONFIG_MXC_USB_FLAGS	0
 
 /* PMIC Controller */
-#define CONFIG_DIALOG_POWER
 #define CONFIG_POWER_FSL
 #define CONFIG_POWER_FSL_MC13892
 #define CONFIG_SYS_DIALOG_PMIC_I2C_ADDR	0x48
-#define CONFIG_SYS_FSL_PMIC_I2C_ADDR	0x8
+#define CFG_SYS_FSL_PMIC_I2C_ADDR	0x8
 
 /* Command definition */
-
-
-#define CONFIG_ETHPRIME		"FEC0"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"script=boot.scr\0" \
@@ -93,22 +86,7 @@
 			"bootz; " \
 		"fi;\0"
 
-#define CONFIG_BOOTCOMMAND \
-	"mmc dev ${mmcdev}; if mmc rescan; then " \
-		"if run loadbootscript; then " \
-			"run bootscript; " \
-		"else " \
-			"if run loadimage; then " \
-				"run mmcboot; " \
-			"else run netboot; " \
-			"fi; " \
-		"fi; " \
-	"else run netboot; fi"
-
-#define CONFIG_ARP_TIMEOUT	200UL
-
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_CBSIZE		512	/* Console I/O Buffer Size */
 
 /* Physical Memory Map */
 #define PHYS_SDRAM_1			CSD0_BASE_ADDR
@@ -121,31 +99,6 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	(IRAM_BASE_ADDR)
 #define CONFIG_SYS_INIT_RAM_SIZE	(IRAM_SIZE)
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
-/* Environment starts at 768k = 768 * 1024 = 786432 */
-/*
- * Detect overlap between U-Boot image and environment area in build-time
- *
- * CONFIG_BOARD_SIZE_LIMIT = CONFIG_ENV_OFFSET - u-boot.imx offset
- * CONFIG_BOARD_SIZE_LIMIT = 768k - 1k = 767k = 785408
- *
- * Currently CONFIG_BOARD_SIZE_LIMIT does not handle expressions, so
- * write the direct value here
- */
-#define CONFIG_BOARD_SIZE_LIMIT		785408
-
-#ifdef CONFIG_CMD_SATA
-	#define CONFIG_SYS_SATA_MAX_DEVICE      1
-	#define CONFIG_DWC_AHSATA_PORT_ID       0
-	#define CONFIG_DWC_AHSATA_BASE_ADDR     SATA_BASE_ADDR
-	#define CONFIG_LBA48
-#endif
-
 /* Framebuffer and LCD */
-#define CONFIG_VIDEO_LOGO
 
 #endif				/* __CONFIG_H */

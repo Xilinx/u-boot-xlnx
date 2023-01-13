@@ -37,10 +37,6 @@
 /* I2C Configs */
 #define CONFIG_I2C_MULTI_BUS
 
-/* I2C EEPROM (M24C64) */
-#define CONFIG_SYS_I2C_EEPROM_PAGE_WRITE_BITS		5 /* 32 Bytes */
-#define CONFIG_SYS_I2C_EEPROM_PAGE_WRITE_DELAY_MS	20
-
 #if !defined(CONFIG_DM_PMIC)
 #define CONFIG_POWER_PFUZE100
 #define CONFIG_POWER_PFUZE100_I2C_ADDR	0x08
@@ -48,16 +44,10 @@
 #endif
 
 /* MMC Configs */
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
+#define CFG_SYS_FSL_ESDHC_ADDR	0
 
 /* USB Configs */
 #define CONFIG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CONFIG_USB_MAX_CONTROLLER_COUNT	2
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET	/* For OTG port */
-
-#define IMX_FEC_BASE			ENET_BASE_ADDR
-
-#define CONFIG_ARP_TIMEOUT		200UL
 
 #if defined(CONFIG_TQMA6X_MMC_BOOT)
 
@@ -118,9 +108,6 @@
 			"fi; "                                                 \
 		"fi; fi; "                                                     \
 		"setenv filesize; setenv blkc \0"                              \
-
-#define CONFIG_BOOTCOMMAND \
-	"run mmcboot; run netboot; run panicboot"
 
 #elif defined(CONFIG_TQMA6X_SPI_BOOT)
 
@@ -205,11 +192,7 @@
 		"setexpr offset ${fdt_start} * "                               \
 			__stringify(TQMA6_SPI_FLASH_SECTOR_SIZE)"; "           \
 		"sf read ${fdt_addr} ${offset} ${size}; "                      \
-		"setenv size ; setenv offset\0"                                \
-
-#define CONFIG_BOOTCOMMAND                                                     \
-	"sf probe; run mmcboot; run netboot; run panicboot"                    \
-
+		"setenv size ; setenv offset\0"
 #else
 
 #error "need to define boot source"
@@ -295,11 +278,6 @@
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 /*
  * All the defines above are for the TQMa6 SoM

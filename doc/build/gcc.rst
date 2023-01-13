@@ -25,11 +25,13 @@ Depending on the build targets further packages maybe needed
 
     sudo apt-get install bc bison build-essential coccinelle \
       device-tree-compiler dfu-util efitools flex gdisk graphviz imagemagick \
-      liblz4-tool libguestfs-tools libncurses-dev libpython3-dev libsdl2-dev \
-      libssl-dev lz4 lzma lzma-alone openssl pkg-config python3 \
-      python3-coverage python3-pkg-resources python3-pycryptodome \
-      python3-pyelftools python3-pytest python3-sphinxcontrib.apidoc \
-      python3-sphinx-rtd-theme python3-virtualenv swig
+      liblz4-tool libgnutls28-dev libguestfs-tools libncurses-dev \
+      libpython3-dev libsdl2-dev libssl-dev lz4 lzma lzma-alone openssl \
+      pkg-config python3 python3-asteval python3-coverage python3-filelock \
+      python3-pkg-resources python3-pycryptodome python3-pyelftools \
+      python3-pytest python3-pytest-xdist python3-sphinxcontrib.apidoc \
+      python3-sphinx-rtd-theme python3-subunit python3-testtools \
+      python3-virtualenv swig uuid-dev
 
 SUSE based
 ~~~~~~~~~~
@@ -50,6 +52,16 @@ Depending on the build targets further packages maybe needed.
 
     zypper install bc bison flex gcc libopenssl-devel libSDL2-devel make \
       ncurses-devel python3-devel python3-pytest swig
+
+Alpine Linux
+~~~~~~~~~~~~
+
+For building U-Boot on Alpine Linux at least the following packages are needed:
+
+.. code-block:: bash
+
+    apk add alpine-sdk bc bison dtc flex linux-headers ncurses-dev \
+      openssl-dev perl python3 py3-setuptools python3-dev sdl2-dev
 
 Prerequisites
 -------------
@@ -140,6 +152,23 @@ of dtc is new enough. It also makes sure that pylibfdt is present, if needed
 
 Note that the :doc:`tools` are always built with the included version of libfdt
 so it is not possible to build U-Boot tools with a system libfdt, at present.
+
+Link-time optimisation (LTO)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+U-Boot supports link-time optimisation which can reduce the size of the final
+U-Boot binaries, particularly with SPL.
+
+At present this can be enabled by ARM boards by adding `CONFIG_LTO=y` into the
+defconfig file. Other architectures are not supported. LTO is enabled by default
+for sandbox.
+
+This does incur a link-time penalty of several seconds. For faster incremental
+builds during development, you can disable it by setting `NO_LTO` to `1`.
+
+.. code-block:: bash
+
+    NO_LTO=1 make
 
 Other build targets
 ~~~~~~~~~~~~~~~~~~~

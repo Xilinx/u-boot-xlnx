@@ -45,7 +45,7 @@ static void set_clocks_in_mhz (struct bd_info *kbd);
 #define CONFIG_SYS_LINUX_LOWMEM_MAX_SIZE	(768*1024*1024)
 #endif
 
-static void boot_jump_linux(bootm_headers_t *images)
+static void boot_jump_linux(struct bootm_headers *images)
 {
 	void	(*kernel)(struct bd_info *, ulong r4, ulong r5, ulong r6,
 			      ulong r7, ulong r8, ulong r9);
@@ -84,7 +84,7 @@ static void boot_jump_linux(bootm_headers_t *images)
 		 *   r9: 0
 		 */
 		debug("   Booting using OF flat tree...\n");
-		WATCHDOG_RESET ();
+		schedule();
 		(*kernel) ((struct bd_info *)of_flat_tree, 0, 0, EPAPR_MAGIC,
 			   env_get_bootm_mapsize(), 0, 0);
 		/* does not return */
@@ -108,12 +108,12 @@ static void boot_jump_linux(bootm_headers_t *images)
 		struct bd_info *kbd = images->kbd;
 
 		debug("   Booting using board info...\n");
-		WATCHDOG_RESET ();
+		schedule();
 		(*kernel) (kbd, initrd_start, initrd_end,
 			   cmd_start, cmd_end, 0, 0);
 		/* does not return */
 	}
-	return ;
+	return;
 }
 
 void arch_lmb_reserve(struct lmb *lmb)
@@ -137,7 +137,8 @@ void arch_lmb_reserve(struct lmb *lmb)
 
 	if (size < bootm_size) {
 		ulong base = bootmap_base + size;
-		printf("WARNING: adjusting available memory to %lx\n", size);
+		printf("WARNING: adjusting available memory from 0x%lx to 0x%llx\n",
+		       size, (unsigned long long)bootm_size);
 		lmb_reserve(lmb, base, bootm_size - size);
 	}
 
@@ -147,10 +148,10 @@ void arch_lmb_reserve(struct lmb *lmb)
 	cpu_mp_lmb_reserve(lmb);
 #endif
 
-	return ;
+	return;
 }
 
-static void boot_prep_linux(bootm_headers_t *images)
+static void boot_prep_linux(struct bootm_headers *images)
 {
 #ifdef CONFIG_MP
 	/*
@@ -162,7 +163,7 @@ static void boot_prep_linux(bootm_headers_t *images)
 #endif
 }
 
-static int boot_cmdline_linux(bootm_headers_t *images)
+static int boot_cmdline_linux(struct bootm_headers *images)
 {
 	ulong of_size = images->ft_len;
 	struct lmb *lmb = &images->lmb;
@@ -183,7 +184,7 @@ static int boot_cmdline_linux(bootm_headers_t *images)
 	return ret;
 }
 
-static int boot_bd_t_linux(bootm_headers_t *images)
+static int boot_bd_t_linux(struct bootm_headers *images)
 {
 	ulong of_size = images->ft_len;
 	struct lmb *lmb = &images->lmb;
@@ -204,7 +205,7 @@ static int boot_bd_t_linux(bootm_headers_t *images)
 	return ret;
 }
 
-static int boot_body_linux(bootm_headers_t *images)
+static int boot_body_linux(struct bootm_headers *images)
 {
 	int ret;
 
@@ -213,15 +214,17 @@ static int boot_body_linux(bootm_headers_t *images)
 	if (ret)
 		return ret;
 
-	ret = image_setup_linux(images);
-	if (ret)
-		return ret;
+	if (CONFIG_IS_ENABLED(LMB)) {
+		ret = image_setup_linux(images);
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
 
 noinline int do_bootm_linux(int flag, int argc, char *const argv[],
-			    bootm_headers_t *images)
+			    struct bootm_headers *images)
 {
 	int	ret;
 
@@ -266,17 +269,11 @@ static void set_clocks_in_mhz (struct bd_info *kbd)
 		/* convert all clock information to MHz */
 		kbd->bi_intfreq /= 1000000L;
 		kbd->bi_busfreq /= 1000000L;
-#if defined(CONFIG_CPM2)
-		kbd->bi_cpmfreq /= 1000000L;
-		kbd->bi_brgfreq /= 1000000L;
-		kbd->bi_sccfreq /= 1000000L;
-		kbd->bi_vco	/= 1000000L;
-#endif
 	}
 }
 
 #if defined(CONFIG_BOOTM_VXWORKS)
-void boot_prep_vxworks(bootm_headers_t *images)
+void boot_prep_vxworks(struct bootm_headers *images)
 {
 #if defined(CONFIG_OF_LIBFDT)
 	int off;
@@ -308,7 +305,7 @@ void boot_prep_vxworks(bootm_headers_t *images)
 #endif
 }
 
-void boot_jump_vxworks(bootm_headers_t *images)
+void boot_jump_vxworks(struct bootm_headers *images)
 {
 	/* PowerPC VxWorks boot interface conforms to the ePAPR standard
 	 * general purpuse registers:
@@ -322,7 +319,7 @@ void boot_jump_vxworks(bootm_headers_t *images)
 	 *	r9: 0
 	 *	TCR: WRC = 0, no watchdog timer reset will occur
 	 */
-	WATCHDOG_RESET();
+	schedule();
 
 	((void (*)(void *, ulong, ulong, ulong,
 		ulong, ulong, ulong))images->ep)(images->ft_addr,

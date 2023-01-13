@@ -65,7 +65,7 @@ extern phys_addr_t prior_stage_fdt_address;
  *	       :	[~500 KiB in size, stripped]
  *	 0xc000 0000	Top of RAM
  *
- * Setting gd->relocaddr to CONFIG_SYS_TEXT_BASE in dram_init_banksize
+ * Setting gd->relocaddr to CONFIG_TEXT_BASE in dram_init_banksize
  * prevents U-Boot from relocating itself when it is run as an ELF
  * program by the prior stage bootloader.
  *
@@ -83,28 +83,20 @@ extern phys_addr_t prior_stage_fdt_address;
  */
 #define CONFIG_SYS_SDRAM_BASE		0x00000000
 #define CONFIG_SYS_INIT_RAM_SIZE	0x100000
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_INIT_RAM_ADDR +	\
-					 CONFIG_SYS_INIT_RAM_SIZE -	\
-					 GENERATED_GBL_DATA_SIZE)
 
 /*
  * CONFIG_SYS_LOAD_ADDR - 1 MiB.
  */
-#define CONFIG_SYS_FDT_SAVE_ADDRESS	0x1f00000
-#define CONFIG_SYS_CBSIZE		512
-#define CONFIG_SYS_MAXARGS		32
 
 /*
  * Large kernel image bootm configuration.
  */
-#define CONFIG_SYS_BOOTM_LEN		SZ_64M
 
 /*
  * NS16550 configuration.
  */
 #define V_NS16550_CLK			81000000
 
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		V_NS16550_CLK
@@ -126,8 +118,6 @@ extern phys_addr_t prior_stage_fdt_address;
 /*
  * Flash configuration.
  */
-#define CONFIG_SPI_FLASH_STMICRO
-#define CONFIG_SPI_FLASH_MACRONIX
 
 /*
  * Filesystem configuration.

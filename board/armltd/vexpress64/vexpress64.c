@@ -15,9 +15,14 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/compiler.h>
+#include <linux/sizes.h>
 #include <dm/platform_data/serial_pl01x.h>
 #include "pcie.h"
 #include <asm/armv8/mmu.h>
+#ifdef CONFIG_VIRTIO_NET
+#include <virtio_types.h>
+#include <virtio.h>
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -34,16 +39,27 @@ U_BOOT_DRVINFO(vexpress_serials) = {
 
 static struct mm_region vexpress64_mem_map[] = {
 	{
-		.virt = 0x0UL,
-		.phys = 0x0UL,
-		.size = 0x80000000UL,
+		.virt = V2M_PA_BASE,
+		.phys = V2M_PA_BASE,
+		.size = SZ_2G,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
 	}, {
-		.virt = 0x80000000UL,
-		.phys = 0x80000000UL,
-		.size = 0xff80000000UL,
+		.virt = V2M_DRAM_BASE,
+		.phys = V2M_DRAM_BASE,
+		.size = SZ_2G,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+			 PTE_BLOCK_INNER_SHARE
+	}, {
+		/*
+		 * DRAM beyond 2 GiB is located high. Let's map just some
+		 * of it, although U-Boot won't realistically use it, and
+		 * the actual available amount might be smaller on the model.
+		 */
+		.virt = 0x880000000UL,		/* 32 + 2 GiB */
+		.phys = 0x880000000UL,
+		.size = 6UL * SZ_1G,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 			 PTE_BLOCK_INNER_SHARE
 	}, {
@@ -64,28 +80,31 @@ __weak void vexpress64_pcie_init(void)
 int board_init(void)
 {
 	vexpress64_pcie_init();
+#ifdef CONFIG_VIRTIO_NET
+	virtio_init();
+#endif
 	return 0;
 }
 
 int dram_init(void)
 {
-	gd->ram_size = PHYS_SDRAM_1_SIZE;
-	return 0;
+	return fdtdec_setup_mem_size_base();
 }
 
 int dram_init_banksize(void)
 {
-	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
-	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
-#ifdef PHYS_SDRAM_2
-	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
-	gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
-#endif
-
-	return 0;
+	return fdtdec_setup_memory_banksize();
 }
 
+/* Assigned in lowlevel_init.S
+ * Push the variable into the .data section so that it
+ * does not get cleared later.
+ */
+unsigned long __section(".data") prior_stage_fdt_address[2];
+
 #ifdef CONFIG_OF_BOARD
+
+#ifdef CONFIG_TARGET_VEXPRESS64_JUNO
 #define JUNO_FLASH_SEC_SIZE	(256 * 1024)
 static phys_addr_t find_dtb_in_nor_flash(const char *partname)
 {
@@ -130,9 +149,28 @@ static phys_addr_t find_dtb_in_nor_flash(const char *partname)
 
 	return ~0;
 }
+#endif
+
+/*
+ * Filter for a valid DTB, as TF-A happens to provide a pointer to some
+ * data structure using the DTB format, which we cannot use.
+ * The address of the DTB cannot be 0, in fact this is the reserved value
+ * for x1 in the kernel boot protocol.
+ * And while the nt_fw_config.dtb used by TF-A is a valid DTB structure, it
+ * does not contain the typical nodes and properties, which we test for by
+ * probing for the mandatory /memory node.
+ */
+static bool is_valid_dtb(uintptr_t dtb_ptr)
+{
+	if (dtb_ptr == 0 || fdt_magic(dtb_ptr) != FDT_MAGIC)
+		return false;
+
+	return fdt_subnode_offset((void *)dtb_ptr, 0, "memory") >= 0;
+}
 
 void *board_fdt_blob_setup(int *err)
 {
+#ifdef CONFIG_TARGET_VEXPRESS64_JUNO
 	phys_addr_t fdt_rom_addr = find_dtb_in_nor_flash(CONFIG_JUNO_DTB_PART);
 
 	*err = 0;
@@ -142,6 +180,30 @@ void *board_fdt_blob_setup(int *err)
 	}
 
 	return (void *)fdt_rom_addr;
+#endif
+
+#ifdef VEXPRESS_FDT_ADDR
+	if (fdt_magic(VEXPRESS_FDT_ADDR) == FDT_MAGIC) {
+		*err = 0;
+		return (void *)VEXPRESS_FDT_ADDR;
+	}
+#endif
+
+	if (is_valid_dtb(prior_stage_fdt_address[1])) {
+		*err = 0;
+		return (void *)prior_stage_fdt_address[1];
+	} else if (is_valid_dtb(prior_stage_fdt_address[0])) {
+		*err = 0;
+		return (void *)prior_stage_fdt_address[0];
+	}
+
+	if (fdt_magic(gd->fdt_blob) == FDT_MAGIC) {
+		*err = 0;
+		return (void *)gd->fdt_blob;
+	}
+
+	*err = -ENXIO;
+	return NULL;
 }
 #endif
 
@@ -157,9 +219,6 @@ int board_eth_init(struct bd_info *bis)
 {
 	int rc = 0;
 #ifndef CONFIG_DM_ETH
-#ifdef CONFIG_SMC91111
-	rc = smc91111_initialize(0, CONFIG_SMC91111_BASE);
-#endif
 #ifdef CONFIG_SMC911X
 	rc = smc911x_initialize(0, CONFIG_SMC911X_BASE);
 #endif

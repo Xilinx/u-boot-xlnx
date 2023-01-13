@@ -214,7 +214,7 @@ static void set_csn_config(int dimm_number, int i, fsl_ddr_cfg_regs_t *ddr,
 		odt_rd_cfg = popts->cs_local_opts[i].odt_rd_cfg;
 		odt_wr_cfg = popts->cs_local_opts[i].odt_wr_cfg;
 #ifdef CONFIG_SYS_FSL_DDR4
-		ba_bits_cs_n = dimm_params[dimm_number].bank_addr_bits;
+		ba_bits_cs_n = dimm_params[dimm_number].bank_addr_bits - 2;
 		bg_bits_cs_n = dimm_params[dimm_number].bank_group_bits;
 #else
 		n_banks_per_sdram_device
@@ -2590,7 +2590,7 @@ compute_fsl_memctl_config_regs(const unsigned int ctrl_num,
 void erratum_a009942_check_cpo(void)
 {
 	struct ccsr_ddr __iomem *ddr =
-		(struct ccsr_ddr __iomem *)(CONFIG_SYS_FSL_DDR_ADDR);
+		(struct ccsr_ddr __iomem *)(CFG_SYS_FSL_DDR_ADDR);
 	u32 cpo, cpo_e, cpo_o, cpo_target, cpo_optimal;
 	u32 cpo_min = ddr_in32(&ddr->debug[9]) >> 24;
 	u32 cpo_max = cpo_min;

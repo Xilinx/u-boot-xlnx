@@ -6,19 +6,24 @@
 
 #include <common.h>
 #include <command.h>
+#include <dm.h>
 #include <env.h>
 #include <image.h>
 #include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
-#include <lcd.h>
 #include <net.h>
 #include <fdt_support.h>
+#include <video.h>
 #include <linux/libfdt.h>
 #include <linux/string.h>
 #include <linux/ctype.h>
 #include <errno.h>
 #include <linux/list.h>
+
+#ifdef CONFIG_DM_RNG
+#include <rng.h>
+#endif
 
 #include <splash.h>
 #include <asm/io.h>
@@ -56,7 +61,7 @@ int pxe_get_file_size(ulong *sizep)
  *
  * @outbuf: Buffer to write string to
  * @outbuf_len: length of buffer
- * @return 1 if OK, -ENOSPC if buffer is too small, -ENOENT is there is no
+ * Return: 1 if OK, -ENOSPC if buffer is too small, -ENOENT is there is no
  *	current ethernet device
  */
 int format_mac_pxe(char *outbuf, size_t outbuf_len)
@@ -311,8 +316,70 @@ static int label_localboot(struct pxe_label *label)
 	return run_command_list(localcmd, strlen(localcmd), 0);
 }
 
+/*
+ * label_boot_kaslrseed generate kaslrseed from hw rng
+ */
+
+static void label_boot_kaslrseed(void)
+{
+#ifdef CONFIG_DM_RNG
+	ulong fdt_addr;
+	struct fdt_header *working_fdt;
+	size_t n = 0x8;
+	struct udevice *dev;
+	u64 *buf;
+	int nodeoffset;
+	int err;
+
+	/* Get the main fdt and map it */
+	fdt_addr = hextoul(env_get("fdt_addr_r"), NULL);
+	working_fdt = map_sysmem(fdt_addr, 0);
+	err = fdt_check_header(working_fdt);
+	if (err)
+		return;
+
+	/* add extra size for holding kaslr-seed */
+	/* err is new fdt size, 0 or negtive */
+	err = fdt_shrink_to_minimum(working_fdt, 512);
+	if (err <= 0)
+		return;
+
+	if (uclass_get_device(UCLASS_RNG, 0, &dev) || !dev) {
+		printf("No RNG device\n");
+		return;
+	}
+
+	nodeoffset = fdt_find_or_add_subnode(working_fdt, 0, "chosen");
+	if (nodeoffset < 0) {
+		printf("Reading chosen node failed\n");
+		return;
+	}
+
+	buf = malloc(n);
+	if (!buf) {
+		printf("Out of memory\n");
+		return;
+	}
+
+	if (dm_rng_read(dev, buf, n)) {
+		printf("Reading RNG failed\n");
+		goto err;
+	}
+
+	err = fdt_setprop(working_fdt, nodeoffset, "kaslr-seed", buf, sizeof(buf));
+	if (err < 0) {
+		printf("Unable to set kaslr-seed on chosen node: %s\n", fdt_strerror(err));
+		goto err;
+	}
+err:
+	free(buf);
+#endif
+	return;
+}
+
 /**
  * label_boot_fdtoverlay() - Loads fdt overlays specified in 'fdtoverlays'
+ * or 'devicetree-overlay'
  *
  * @ctx: PXE context
  * @label: Label to process
@@ -465,11 +532,10 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 		}
 
 		initrd_addr_str = env_get("ramdisk_addr_r");
-		strcpy(initrd_filesize, simple_xtoa(size));
-
-		strncpy(initrd_str, initrd_addr_str, 18);
-		strcat(initrd_str, ":");
-		strncat(initrd_str, initrd_filesize, 9);
+		size = snprintf(initrd_str, sizeof(initrd_str), "%s:%lx",
+				initrd_addr_str, size);
+		if (size >= sizeof(initrd_str))
+			return 1;
 	}
 
 	if (get_relfile_envaddr(ctx, label->kernel, "kernel_addr_r",
@@ -550,7 +616,10 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 	 * Scenario 2: If there is an fdt_addr specified, pass it along to
 	 * bootm, and adjust argc appropriately.
 	 *
-	 * Scenario 3: fdt blob is not available.
+	 * Scenario 3: If there is an fdtcontroladdr specified, pass it along to
+	 * bootm, and adjust argc appropriately, unless the image type is fitImage.
+	 *
+	 * Scenario 4: fdt blob is not available.
 	 */
 	bootm_argv[3] = env_get("fdt_addr_r");
 
@@ -628,6 +697,9 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 				}
 			}
 
+		if (label->kaslrseed)
+			label_boot_kaslrseed();
+
 #ifdef CONFIG_OF_LIBFDT_OVERLAY
 			if (label->fdtoverlays)
 				label_boot_fdtoverlay(ctx, label);
@@ -652,16 +724,21 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 	if (!bootm_argv[3])
 		bootm_argv[3] = env_get("fdt_addr");
 
+	kernel_addr_r = genimg_get_kernel_addr(kernel_addr);
+	buf = map_sysmem(kernel_addr_r, 0);
+
+	if (!bootm_argv[3] && genimg_get_format(buf) != IMAGE_FORMAT_FIT)
+		bootm_argv[3] = env_get("fdtcontroladdr");
+
 	if (bootm_argv[3]) {
 		if (!bootm_argv[2])
 			bootm_argv[2] = "-";
 		bootm_argc = 4;
 	}
 
-	kernel_addr_r = genimg_get_kernel_addr(kernel_addr);
-	buf = map_sysmem(kernel_addr_r, 0);
 	/* Try bootm for legacy and FIT format image */
-	if (genimg_get_format(buf) != IMAGE_FORMAT_INVALID)
+	if (genimg_get_format(buf) != IMAGE_FORMAT_INVALID &&
+            IS_ENABLED(CONFIG_CMD_BOOTM))
 		do_bootm(ctx->cmdtp, 0, bootm_argc, bootm_argv);
 	/* Try booting an AArch64 Linux kernel image */
 	else if (IS_ENABLED(CONFIG_CMD_BOOTI))
@@ -704,6 +781,7 @@ enum token_type {
 	T_ONTIMEOUT,
 	T_IPAPPEND,
 	T_BACKGROUND,
+	T_KASLRSEED,
 	T_INVALID
 };
 
@@ -732,9 +810,11 @@ static const struct token keywords[] = {
 	{"devicetreedir", T_FDTDIR},
 	{"fdtdir", T_FDTDIR},
 	{"fdtoverlays", T_FDTOVERLAYS},
+	{"devicetree-overlay", T_FDTOVERLAYS},
 	{"ontimeout", T_ONTIMEOUT,},
 	{"ipappend", T_IPAPPEND,},
 	{"background", T_BACKGROUND,},
+	{"kaslrseed", T_KASLRSEED,},
 	{NULL, T_INVALID}
 };
 
@@ -1188,6 +1268,10 @@ static int parse_label(char **c, struct pxe_menu *cfg)
 			err = parse_integer(c, &label->ipappend);
 			break;
 
+		case T_KASLRSEED:
+			label->kaslrseed = 1;
+			break;
+
 		case T_EOL:
 			break;
 
@@ -1349,9 +1433,11 @@ static struct menu *pxe_menu_to_menu(struct pxe_menu *cfg)
 	struct pxe_label *label;
 	struct list_head *pos;
 	struct menu *m;
+	char *label_override;
 	int err;
 	int i = 1;
 	char *default_num = NULL;
+	char *override_num = NULL;
 
 	/*
 	 * Create a menu and add items for all the labels.
@@ -1360,6 +1446,8 @@ static struct menu *pxe_menu_to_menu(struct pxe_menu *cfg)
 			cfg->prompt, NULL, label_print, NULL, NULL);
 	if (!m)
 		return NULL;
+
+	label_override = env_get("pxe_label_override");
 
 	list_for_each(pos, &cfg->labels) {
 		label = list_entry(pos, struct pxe_label, list);
@@ -1372,6 +1460,17 @@ static struct menu *pxe_menu_to_menu(struct pxe_menu *cfg)
 		if (cfg->default_label &&
 		    (strcmp(label->name, cfg->default_label) == 0))
 			default_num = label->num;
+		if (label_override && !strcmp(label->name, label_override))
+			override_num = label->num;
+	}
+
+
+	if (label_override) {
+		if (override_num)
+			default_num = override_num;
+		else
+			printf("Missing override pxe label: %s\n",
+			      label_override);
 	}
 
 	/*
@@ -1420,8 +1519,13 @@ void handle_pxe_menu(struct pxe_context *ctx, struct pxe_menu *cfg)
 		/* display BMP if available */
 		if (cfg->bmp) {
 			if (get_relfile(ctx, cfg->bmp, image_load_addr, NULL)) {
-				if (CONFIG_IS_ENABLED(CMD_CLS))
-					run_command("cls", 0);
+#if defined(CONFIG_VIDEO)
+				struct udevice *dev;
+
+				err = uclass_first_device_err(UCLASS_VIDEO, &dev);
+				if (!err)
+					video_clear(dev);
+#endif
 				bmp_display(image_load_addr,
 					    BMP_ALIGN_CENTER, BMP_ALIGN_CENTER);
 			} else {

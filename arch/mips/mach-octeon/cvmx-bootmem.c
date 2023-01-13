@@ -107,7 +107,7 @@ static u64 cvmx_bootmem_desc_addr;
  *               accessed.
  * @param size   Size of the structure member.
  *
- * @return Value of the structure member promoted into a u64.
+ * Return: Value of the structure member promoted into a u64.
  */
 static inline u64 __cvmx_bootmem_desc_get(u64 base, int offset,
 					  int size)
@@ -153,7 +153,7 @@ static inline void __cvmx_bootmem_desc_set(u64 base, int offset, int size,
 /**
  * This function returns the address of the bootmem descriptor lock.
  *
- * @return 64-bit address in KSEG0 of the bootmem descriptor block
+ * Return: 64-bit address in KSEG0 of the bootmem descriptor block
  */
 static inline u64 __cvmx_bootmem_get_lock_addr(void)
 {
@@ -275,7 +275,7 @@ static u64 cvmx_bootmem_phy_get_next(u64 addr)
  *               Exact major version to check against. A zero means
  *               check that the version supports named blocks.
  *
- * @return Zero if the version is correct. Negative if the version is
+ * Return: Zero if the version is correct. Negative if the version is
  *         incorrect. Failures also cause a message to be displayed.
  */
 static int __cvmx_bootmem_check_version(int exact_match)
@@ -525,7 +525,7 @@ int cvmx_bootmem_free_named(const char *name)
  *
  * @param name is the block name
  * @param flags indicates the need to use locking during search
- * @return pointer to named block descriptor
+ * Return: pointer to named block descriptor
  *
  * Note: this function returns a pointer to a static structure,
  * and is therefore not re-entrant.
@@ -1189,7 +1189,7 @@ s64 cvmx_bootmem_phy_mem_list_init(u64 mem_size,
 	if (mem_size > OCTEON_DDR1_SIZE) {
 		__cvmx_bootmem_phy_free(OCTEON_DDR1_BASE, OCTEON_DDR1_SIZE, 0);
 		__cvmx_bootmem_phy_free(OCTEON_DDR2_BASE,
-					mem_size - OCTEON_DDR1_SIZE, 0);
+					mem_size - OCTEON_DDR2_BASE, 0);
 	} else {
 		__cvmx_bootmem_phy_free(OCTEON_DDR1_BASE, mem_size, 0);
 	}
@@ -1349,7 +1349,6 @@ s64 cvmx_bootmem_phy_mem_list_init_multi(u8 node_mask,
 		addr += sizeof(struct cvmx_bootmem_named_block_desc);
 	}
 
-	// test-only: DEBUG ifdef???
 	cvmx_bootmem_phy_list_print();
 
 	return 1;

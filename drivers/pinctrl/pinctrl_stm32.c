@@ -42,13 +42,12 @@ struct stm32_gpio_bank {
 #ifndef CONFIG_SPL_BUILD
 
 static char pin_name[PINNAME_SIZE];
-#define PINMUX_MODE_COUNT		5
-static const char * const pinmux_mode[PINMUX_MODE_COUNT] = {
-	"gpio input",
-	"gpio output",
-	"analog",
-	"unknown",
-	"alt function",
+static const char * const pinmux_mode[GPIOF_COUNT] = {
+	[GPIOF_INPUT] = "gpio input",
+	[GPIOF_OUTPUT] = "gpio output",
+	[GPIOF_UNUSED] = "analog",
+	[GPIOF_UNKNOWN] = "unknown",
+	[GPIOF_FUNC] = "alt function",
 };
 
 static const char * const pinmux_bias[] = {
@@ -158,10 +157,7 @@ static struct udevice *stm32_pinctrl_get_gpio_dev(struct udevice *dev,
 			 * we found the bank, convert pin selector to
 			 * gpio bank index
 			 */
-			*idx = stm32_offset_to_index(gpio_bank->gpio_dev,
-						     selector - pin_count);
-			if (IS_ERR_VALUE(*idx))
-				return NULL;
+			*idx = selector - pin_count;
 
 			return gpio_bank->gpio_dev;
 		}
@@ -221,8 +217,6 @@ static int stm32_pinctrl_get_pin_muxing(struct udevice *dev,
 
 	switch (mode) {
 	case GPIOF_UNKNOWN:
-		/* should never happen */
-		return -EINVAL;
 	case GPIOF_UNUSED:
 		snprintf(buf, size, "%s", pinmux_mode[mode]);
 		break;
@@ -263,10 +257,12 @@ static int stm32_pinctrl_probe(struct udevice *dev)
 	return 0;
 }
 
-static int stm32_gpio_config(struct gpio_desc *desc,
+static int stm32_gpio_config(ofnode node,
+			     struct gpio_desc *desc,
 			     const struct stm32_gpio_ctl *ctl)
 {
 	struct stm32_gpio_priv *priv = dev_get_priv(desc->dev);
+	struct gpio_dev_priv *uc_priv = dev_get_uclass_priv(desc->dev);
 	struct stm32_gpio_regs *regs = priv->regs;
 	struct stm32_pinctrl_priv *ctrl_priv;
 	int ret;
@@ -296,6 +292,8 @@ static int stm32_gpio_config(struct gpio_desc *desc,
 
 	index = desc->offset;
 	clrsetbits_le32(&regs->otyper, OTYPE_MSK << index, ctl->otype << index);
+
+	uc_priv->name[desc->offset] = strdup(ofnode_get_name(node));
 
 	hwspinlock_unlock(&ctrl_priv->hws);
 
@@ -391,7 +389,7 @@ static int stm32_pinctrl_config(ofnode node)
 			if (rv)
 				return rv;
 			desc.offset = gpio_dsc.pin;
-			rv = stm32_gpio_config(&desc, &gpio_ctl);
+			rv = stm32_gpio_config(node, &desc, &gpio_ctl);
 			log_debug("rv = %d\n\n", rv);
 			if (rv)
 				return rv;
@@ -494,6 +492,7 @@ static const struct udevice_id stm32_pinctrl_ids[] = {
 	{ .compatible = "st,stm32h743-pinctrl" },
 	{ .compatible = "st,stm32mp157-pinctrl" },
 	{ .compatible = "st,stm32mp157-z-pinctrl" },
+	{ .compatible = "st,stm32mp135-pinctrl" },
 	{ }
 };
 

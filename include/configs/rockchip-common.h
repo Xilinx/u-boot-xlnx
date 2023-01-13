@@ -10,7 +10,6 @@
 #define CONFIG_SYS_NS16550_MEM32
 
 /* ((CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR - 64) * 512) */
-#define CONFIG_SPL_PAD_TO		8355840
 
 #ifndef CONFIG_SPL_BUILD
 
@@ -27,6 +26,12 @@
 	#define BOOT_TARGET_NVME(func) func(NVME, nvme, 0)
 #else
 	#define BOOT_TARGET_NVME(func)
+#endif
+
+#if CONFIG_IS_ENABLED(CMD_SCSI)
+	#define BOOT_TARGET_SCSI(func) func(SCSI, scsi, 0)
+#else
+	#define BOOT_TARGET_SCSI(func)
 #endif
 
 #if CONFIG_IS_ENABLED(CMD_USB)
@@ -57,6 +62,7 @@
 #define BOOT_TARGET_DEVICES(func) \
 	BOOT_TARGET_MMC(func) \
 	BOOT_TARGET_NVME(func) \
+	BOOT_TARGET_SCSI(func) \
 	BOOT_TARGET_USB(func) \
 	BOOT_TARGET_PXE(func) \
 	BOOT_TARGET_DHCP(func) \

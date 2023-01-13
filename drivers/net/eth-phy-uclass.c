@@ -103,7 +103,7 @@ struct mii_dev *eth_phy_get_mdio_bus(struct udevice *eth_dev)
 			return uc_priv->mdio_bus;
 		}
 	} else {
-		log_notice("FEC: can't find phy-handle\n");
+		log_debug("Can't find phy-handle for %s\n", eth_dev->name);
 	}
 
 	return NULL;
@@ -137,7 +137,7 @@ static int eth_phy_of_to_plat(struct udevice *dev)
 	/* search "reset-gpios" in phy node */
 	ret = gpio_request_by_name(dev, "reset-gpios", 0,
 				   &uc_priv->reset_gpio,
-				   GPIOD_IS_OUT);
+				   GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE);
 	if (ret && ret != -ENOENT)
 		return ret;
 

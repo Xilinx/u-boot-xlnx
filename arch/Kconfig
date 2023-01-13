@@ -1,3 +1,7 @@
+config ARCH_MAP_SYSMEM
+	depends on SANDBOX
+	def_bool y
+
 config CREATE_ARCH_SYMLINK
 	bool
 
@@ -49,12 +53,15 @@ config ARC
 	select SUPPORT_OF_CONTROL
 	select SYS_CACHE_SHIFT_7
 	select TIMER
+	select SYS_BIG_ENDIAN if CPU_BIG_ENDIAN
+	select SYS_LITTLE_ENDIAN if !CPU_BIG_ENDIAN
 
 config ARM
 	bool "ARM architecture"
 	select ARCH_SUPPORTS_LTO
 	select CREATE_ARCH_SYMLINK
 	select HAVE_PRIVATE_LIBGCC if !ARM64
+	select SUPPORT_ACPI
 	select SUPPORT_OF_CONTROL
 
 config M68K
@@ -69,22 +76,24 @@ config M68K
 config MICROBLAZE
 	bool "MicroBlaze architecture"
 	select SUPPORT_OF_CONTROL
-	imply CMD_IRQ
+	imply CMD_TIMER
+	imply SPL_REGMAP if SPL
+	imply SPL_TIMER if SPL
+	imply TIMER
+	imply XILINX_TIMER
 
 config MIPS
 	bool "MIPS architecture"
 	select HAVE_ARCH_IOREMAP
 	select HAVE_PRIVATE_LIBGCC
 	select SUPPORT_OF_CONTROL
-
-config NDS32
-	bool "NDS32 architecture"
-	select SUPPORT_OF_CONTROL
+	select SPL_SEPARATE_BSS if SPL
 
 config NIOS2
 	bool "Nios II architecture"
 	select CPU
 	select DM
+	imply DM_EVENT
 	select OF_CONTROL
 	select SUPPORT_OF_CONTROL
 	imply CMD_DM
@@ -102,8 +111,10 @@ config RISCV
 	select SUPPORT_OF_CONTROL
 	select OF_CONTROL
 	select DM
+	imply SPL_SEPARATE_BSS if SPL
 	imply DM_SERIAL
 	imply DM_ETH
+	imply DM_EVENT
 	imply DM_MMC
 	imply DM_SPI
 	imply DM_SPI_FLASH
@@ -126,6 +137,7 @@ config SANDBOX
 	select BZIP2
 	select CMD_POWEROFF
 	select DM
+	select DM_FUZZING_ENGINE
 	select DM_GPIO
 	select DM_I2C
 	select DM_KEYBOARD
@@ -134,7 +146,6 @@ config SANDBOX
 	select DM_SPI
 	select DM_SPI_FLASH
 	select GZIP_COMPRESSED
-	select HAVE_BLOCK_DEVICE
 	select LZO
 	select OF_BOARD_SETUP
 	select PCI_ENDPOINT
@@ -144,6 +155,7 @@ config SANDBOX
 	select SYS_CACHE_SHIFT_4
 	select IRQ
 	select SUPPORT_EXTENSION_SCAN
+	select SUPPORT_ACPI
 	imply BITREVERSE
 	select BLOBLIST
 	imply LTO
@@ -154,19 +166,19 @@ config SANDBOX
 	imply CMD_IO
 	imply CMD_IOTRACE
 	imply CMD_LZMADEC
-	imply CMD_SATA
 	imply CMD_SF
 	imply CMD_SF_TEST
 	imply CRC32_VERIFY
 	imply FAT_WRITE
 	imply FIRMWARE
+	imply FUZZING_ENGINE_SANDBOX
 	imply HASH_VERIFY
 	imply LZMA
-	imply SCSI
 	imply TEE
 	imply AVB_VERIFY
 	imply LIBAVB
 	imply CMD_AVB
+	imply PARTITION_TYPE_GUID
 	imply SCP03
 	imply CMD_SCP03
 	imply UDP_FUNCTION_FASTBOOT
@@ -190,6 +202,10 @@ config SANDBOX
 	imply PHY_FIXED
 	imply DM_DSA
 	imply CMD_EXTENSION
+	imply KEYBOARD
+	imply PHYSMEM
+	imply GENERATE_ACPI_TABLE
+	imply BINMAN
 
 config SH
 	bool "SuperH architecture"
@@ -206,6 +222,7 @@ config X86
 	select HAVE_PRIVATE_LIBGCC
 	select OF_CONTROL
 	select PCI
+	select SUPPORT_ACPI
 	select SUPPORT_OF_CONTROL
 	select SYS_CACHE_SHIFT_6
 	select TIMER
@@ -224,6 +241,7 @@ config X86
 	imply CMD_SF_TEST
 	imply CMD_ZBOOT
 	imply DM_ETH
+	imply DM_EVENT
 	imply DM_GPIO
 	imply DM_KEYBOARD
 	imply DM_MMC
@@ -233,7 +251,7 @@ config X86
 	imply DM_SPI
 	imply DM_SPI_FLASH
 	imply DM_USB
-	imply DM_VIDEO
+	imply VIDEO
 	imply SYSRESET
 	imply SPL_SYSRESET
 	imply SYSRESET_X86
@@ -241,10 +259,12 @@ config X86
 	imply USB_ETHER_SMSC95XX
 	imply USB_HOST_ETHER
 	imply PCH
+	imply PHYSMEM
 	imply RTC_MC146818
-	imply ACPIGEN if !QEMU
+	imply ACPIGEN if !QEMU && !EFI_APP
 	imply SYSINFO if GENERATE_SMBIOS_TABLE
 	imply SYSINFO_SMBIOS if GENERATE_SMBIOS_TABLE
+	imply TIMESTAMP
 
 	# Thing to enable for when SPL/TPL are enabled: SPL
 	imply SPL_DM
@@ -346,9 +366,24 @@ config SYS_DISABLE_DCACHE_OPS
 	 Note that, its up to the individual architectures to implement
 	 this functionality.
 
+config SYS_IMMR
+	hex "Address for the Internal Memory-Mapped Registers (IMMR) window"
+	depends on PPC || FSL_LSCH2 || FSL_LSCH3 || ARCH_LS1021A
+	default 0xFF000000 if MPC8xx
+	default 0xF0000000 if ARCH_MPC8313
+	default 0xE0000000 if MPC83xx && !ARCH_MPC8313
+	default 0x01000000 if ARCH_LS1021A || FSL_LSCH2 || FSL_LSCH3
+	default 0xFFE00000 if ARCH_P1010 || ARCH_P1011 || ARCH_P1020 || \
+			      ARCH_P1021 || ARCH_P1024 || ARCH_P1025 || \
+			      ARCH_P2020
+	default SYS_CCSRBAR_DEFAULT
+	help
+	  Address for the Internal Memory-Mapped Registers (IMMR) window used
+	  to configure the features of many Freescale / NXP SoCs.
+
 config SKIP_LOWLEVEL_INIT
 	bool "Skip the calls to certain low level initialization functions"
-	depends on ARM || NDS32 || MIPS || RISCV
+	depends on ARM || MIPS || RISCV
 	help
 	  If enabled, then certain low level initializations (like setting up
 	  the memory controller) are omitted and/or U-Boot does not relocate
@@ -359,7 +394,7 @@ config SKIP_LOWLEVEL_INIT
 
 config SPL_SKIP_LOWLEVEL_INIT
 	bool "Skip the calls to certain low level initialization functions"
-	depends on SPL && (ARM || NDS32 || MIPS || RISCV)
+	depends on SPL && (ARM || MIPS || RISCV)
 	help
 	  If enabled, then certain low level initializations (like setting up
 	  the memory controller) are omitted and/or U-Boot does not relocate
@@ -403,12 +438,35 @@ config TPL_SKIP_LOWLEVEL_INIT_ONLY
 	  normal CP15 init (such as enabling the instruction cache) is still
 	  performed.
 
+config SYS_HAS_NONCACHED_MEMORY
+	bool "Enable reserving a non-cached memory area for drivers"
+	depends on (ARM || MIPS) && (RTL8169 || MEDIATEK_ETH)
+	help
+	  This is useful for drivers that would otherwise require a lot of
+	  explicit cache maintenance. For some drivers it's also impossible to
+	  properly maintain the cache. For example if the regions that need to
+	  be flushed are not a multiple of the cache-line size, *and* padding
+	  cannot be allocated between the regions to align them (i.e.  if the
+	  HW requires a contiguous array of regions, and the size of each
+	  region is not cache-aligned), then a flush of one region may result
+	  in overwriting data that hardware has written to another region in
+	  the same cache-line. This can happen for example in network drivers
+	  where descriptors for buffers are typically smaller than the CPU
+	  cache-line (e.g.  16 bytes vs. 32 or 64 bytes).
+
+config SYS_NONCACHED_MEMORY
+	hex "Size in bytes of the non-cached memory area"
+	depends on SYS_HAS_NONCACHED_MEMORY
+	default 0x100000
+	help
+	  Size of non-cached memory area. This area of memory will be typically
+	  located right below the malloc() area and mapped uncached in the MMU.
+
 source "arch/arc/Kconfig"
 source "arch/arm/Kconfig"
 source "arch/m68k/Kconfig"
 source "arch/microblaze/Kconfig"
 source "arch/mips/Kconfig"
-source "arch/nds32/Kconfig"
 source "arch/nios2/Kconfig"
 source "arch/powerpc/Kconfig"
 source "arch/sandbox/Kconfig"
@@ -416,6 +474,14 @@ source "arch/sh/Kconfig"
 source "arch/x86/Kconfig"
 source "arch/xtensa/Kconfig"
 source "arch/riscv/Kconfig"
+
+if ARM || M68K || PPC
+
+source "arch/Kconfig.nxp"
+
+endif
+
+source "board/keymile/Kconfig"
 
 if MIPS || MICROBLAZE
 

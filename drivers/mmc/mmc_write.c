@@ -85,7 +85,7 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 	if (!mmc)
 		return -1;
 
-	err = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_num,
+	err = blk_select_hwpart_devnum(UCLASS_MMC, dev_num,
 				       block_dev->hwpart);
 	if (err < 0)
 		return -1;
@@ -102,7 +102,7 @@ ulong mmc_berase(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt)
 		       "The erase range would be change to "
 		       "0x" LBAF "~0x" LBAF "\n\n",
 		       mmc->erase_grp_size, start & ~(mmc->erase_grp_size - 1),
-		       ((start + blkcnt + mmc->erase_grp_size)
+		       ((start + blkcnt + mmc->erase_grp_size - 1)
 		       & ~(mmc->erase_grp_size - 1)) - 1);
 
 	while (blk < blkcnt) {
@@ -203,7 +203,7 @@ ulong mmc_bwrite(struct blk_desc *block_dev, lbaint_t start, lbaint_t blkcnt,
 	if (!mmc)
 		return 0;
 
-	err = blk_select_hwpart_devnum(IF_TYPE_MMC, dev_num, block_dev->hwpart);
+	err = blk_select_hwpart_devnum(UCLASS_MMC, dev_num, block_dev->hwpart);
 	if (err < 0)
 		return 0;
 

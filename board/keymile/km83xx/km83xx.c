@@ -102,8 +102,10 @@ int misc_init_r(void)
 int last_stage_init(void)
 {
 #if defined(CONFIG_TARGET_KMCOGE5NE)
-	struct bfticu_iomap *base =
-		(struct bfticu_iomap *)CONFIG_SYS_BFTIC3_BASE;
+	/*
+	 * BFTIC3 on the local bus CS4
+	 */
+	struct bfticu_iomap *base = (struct bfticu_iomap *)0xB0000000;
 	u8 dip_switch = in_8((u8 *)&(base->mswitch)) & BFTICU_DIPSWITCH_MASK;
 
 	if (dip_switch != 0) {
@@ -139,12 +141,11 @@ static int fixed_sdram(void)
 	udelay(200);
 	setbits_be32(&im->ddr.sdram_cfg, SDRAM_CFG_MEM_EN);
 
-	msize = CONFIG_SYS_DDR_SIZE << 20;
 	disable_addr_trans();
-	msize = get_ram_size(CONFIG_SYS_SDRAM_BASE, msize);
+	msize = get_ram_size(CONFIG_SYS_SDRAM_BASE, CONFIG_SYS_SDRAM_SIZE);
 	enable_addr_trans();
 	msize /= (1024 * 1024);
-	if (CONFIG_SYS_DDR_SIZE != msize) {
+	if (CONFIG_SYS_SDRAM_SIZE >> 20 != msize) {
 		for (ddr_size = msize << 20, ddr_size_log2 = 0;
 			(ddr_size > 1);
 			ddr_size = ddr_size >> 1, ddr_size_log2++)

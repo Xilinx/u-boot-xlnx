@@ -25,11 +25,6 @@
 /* SPI */
 #define CONFIG_SPI_FLASH_SIZE		(4 << 20)
 
-#include "tegra-common-usb-gadget.h"
 #include "tegra-common-post.h"
-
-/* Reserve top 1M for secure RAM */
-#define CONFIG_ARMV7_SECURE_BASE		0xfff00000
-#define CONFIG_ARMV7_SECURE_RESERVE_SIZE	0x00100000
 
 #endif /* __CONFIG_H */

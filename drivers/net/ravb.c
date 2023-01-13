@@ -52,6 +52,7 @@
 #define CSR_OPS			0x0000000F
 #define CSR_OPS_CONFIG		BIT(1)
 
+#define APSR_RDM		BIT(13)
 #define APSR_TDM		BIT(14)
 
 #define TCCR_TSRQ0		BIT(0)
@@ -318,11 +319,11 @@ static int ravb_phy_config(struct udevice *dev)
 		mdelay(1);
 	}
 
-	phydev = phy_find_by_mask(eth->bus, mask, pdata->phy_interface);
+	phydev = phy_find_by_mask(eth->bus, mask);
 	if (!phydev)
 		return -ENODEV;
 
-	phy_connect_dev(phydev, dev);
+	phy_connect_dev(phydev, dev, pdata->phy_interface);
 
 	eth->phydev = phydev;
 
@@ -376,6 +377,9 @@ static int ravb_dmac_init(struct udevice *dev)
 	struct ravb_priv *eth = dev_get_priv(dev);
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	int ret = 0;
+	int mode = 0;
+	unsigned int delay;
+	bool explicit_delay = false;
 
 	/* Set CONFIG mode */
 	ret = ravb_reset(dev);
@@ -402,9 +406,33 @@ static int ravb_dmac_init(struct udevice *dev)
 	    (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77995))
 		return 0;
 
-	if ((pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_ID) ||
-	    (pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_TXID))
-		writel(APSR_TDM, eth->iobase + RAVB_REG_APSR);
+	if (!dev_read_u32(dev, "rx-internal-delay-ps", &delay)) {
+		/* Valid values are 0 and 1800, according to DT bindings */
+		if (delay) {
+			mode |= APSR_RDM;
+			explicit_delay = true;
+		}
+	}
+
+	if (!dev_read_u32(dev, "tx-internal-delay-ps", &delay)) {
+		/* Valid values are 0 and 2000, according to DT bindings */
+		if (delay) {
+			mode |= APSR_TDM;
+			explicit_delay = true;
+		}
+	}
+
+	if (!explicit_delay) {
+		if (pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_ID ||
+		    pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_RXID)
+			mode |= APSR_RDM;
+
+		if (pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_ID ||
+		    pdata->phy_interface == PHY_INTERFACE_MODE_RGMII_TXID)
+			mode |= APSR_TDM;
+	}
+
+	writel(mode, eth->iobase + RAVB_REG_APSR);
 
 	return 0;
 }
@@ -646,20 +674,13 @@ static const struct eth_ops ravb_ops = {
 int ravb_of_to_plat(struct udevice *dev)
 {
 	struct eth_pdata *pdata = dev_get_plat(dev);
-	const char *phy_mode;
 	const fdt32_t *cell;
-	int ret = 0;
 
 	pdata->iobase = dev_read_addr(dev);
-	pdata->phy_interface = -1;
-	phy_mode = fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "phy-mode",
-			       NULL);
-	if (phy_mode)
-		pdata->phy_interface = phy_get_interface_by_name(phy_mode);
-	if (pdata->phy_interface == -1) {
-		debug("%s: Invalid PHY interface '%s'\n", __func__, phy_mode);
+
+	pdata->phy_interface = dev_read_phy_mode(dev);
+	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA)
 		return -EINVAL;
-	}
 
 	pdata->max_speed = 1000;
 	cell = fdt_getprop(gd->fdt_blob, dev_of_offset(dev), "max-speed", NULL);
@@ -668,7 +689,7 @@ int ravb_of_to_plat(struct udevice *dev)
 
 	sprintf(bb_miiphy_buses[0].name, dev->name);
 
-	return ret;
+	return 0;
 }
 
 static const struct udevice_id ravb_ids[] = {

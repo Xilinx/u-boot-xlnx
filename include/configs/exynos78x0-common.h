@@ -11,35 +11,17 @@
 #ifndef __CONFIG_EXYNOS78x0_COMMON_H
 #define __CONFIG_EXYNOS78x0_COMMON_H
 
-/* High Level Configuration Options */
-#define CONFIG_SAMSUNG			/* in a SAMSUNG core */
-#define CONFIG_S5P
-
 #include <asm/arch/cpu.h>		/* get chip and board defs */
 #include <linux/sizes.h>
 
 /* Miscellaneous configurable options */
-#define CONFIG_SYS_CBSIZE		1024	/* Console I/O Buffer Size */
-#define CONFIG_SYS_PBSIZE		1024	/* Print Buffer Size */
-
-/* Boot Argument Buffer Size */
-#define CONFIG_SYS_BARGSIZE		CONFIG_SYS_CBSIZE
-
-/* Timer input clock frequency */
-#define COUNTER_FREQUENCY		26000000
-
-/* Device Tree */
-#define CONFIG_DEVICE_TREE_LIST "EXYNOS78x0-a5y17lte"
 
 #define CPU_RELEASE_ADDR		secondary_boot_addr
 
 #define CONFIG_SYS_BAUDRATE_TABLE \
 	{9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600}
 
-#define CONFIG_BOARD_COMMON
-
 #define CONFIG_SYS_SDRAM_BASE		0x40000000
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_TEXT_BASE + SZ_2M - GENERATED_GBL_DATA_SIZE)
 /* DRAM Memory Banks */
 #define SDRAM_BANK_SIZE		(256UL << 20UL)	/* 256 MB */
 #define PHYS_SDRAM_1		CONFIG_SYS_SDRAM_BASE
@@ -67,23 +49,6 @@
 #define PHYS_SDRAM_12		(CONFIG_SYS_SDRAM_BASE + (11 * SDRAM_BANK_SIZE))
 #define PHYS_SDRAM_12_SIZE	SDRAM_BANK_SIZE
 
-#define CONFIG_DEBUG_UART_CLOCK	132710400
-
-#define CONFIG_PREBOOT \
-"echo Read pressed buttons status;" \
-"KEY_VOLUMEUP=gpa20;" \
-"KEY_HOME=gpa17;" \
-"KEY_VOLUMEDOWN=gpa21;" \
-"KEY_POWER=gpa00;" \
-"PRESSED=0;" \
-"RELEASED=1;" \
-"if gpio input $KEY_VOLUMEUP; then setenv VOLUME_UP $PRESSED; " \
-"else setenv VOLUME_UP $RELEASED; fi;" \
-"if gpio input $KEY_VOLUMEDOWN; then setenv VOLUME_DOWN $PRESSED; " \
-"else setenv VOLUME_DOWN $RELEASED; fi;" \
-"if gpio input $KEY_HOME; then setenv HOME $PRESSED; else setenv HOME $RELEASED; fi;" \
-"if gpio input $KEY_POWER; then setenv POWER $PRESSED; else setenv POWER $RELEASED; fi;"
-
 #ifndef MEM_LAYOUT_ENV_SETTINGS
 #define MEM_LAYOUT_ENV_SETTINGS \
 	"bootm_size=0x10000000\0" \
@@ -101,7 +66,10 @@
 #define EXYNOS_FDTFILE_SETTING
 #endif
 
+/* Cannot use bootdelay > 0, because timer is not working */
 #define EXTRA_ENV_SETTINGS \
+	"bootdelay=0\0" \
+	"bootcmd=source $prevbl_initrd_start_addr:bootscript\0"	\
 	EXYNOS_DEVICE_SETTINGS \
 	EXYNOS_FDTFILE_SETTING \
 	MEM_LAYOUT_ENV_SETTINGS

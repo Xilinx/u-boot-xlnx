@@ -33,6 +33,7 @@
  * initrd - path to the initrd to use for this label.
  * attempted - 0 if we haven't tried to boot this label, 1 if we have.
  * localboot - 1 if this label specified 'localboot', 0 otherwise.
+ * kaslrseed - 1 if generate kaslrseed from hw_rng
  * list - lets these form a list, which a pxe_menu struct will hold.
  */
 struct pxe_label {
@@ -50,6 +51,7 @@ struct pxe_label {
 	int attempted;
 	int localboot;
 	int localboot_val;
+	int kaslrseed;
 	struct list_head list;
 };
 
@@ -205,7 +207,7 @@ int format_mac_pxe(char *outbuf, size_t outbuf_len);
  * @allow_abs_path: true to allow absolute paths
  * @bootfile: Bootfile whose directory loaded files are relative to, NULL if
  *	none
- * @return 0 if OK, -ENOMEM if out of memory, -E2BIG if bootfile is larger than
+ * Return: 0 if OK, -ENOMEM if out of memory, -E2BIG if bootfile is larger than
  *	MAX_TFTP_PATH_LEN bytes
  */
 int pxe_setup_ctx(struct pxe_context *ctx, struct cmd_tbl *cmdtp,
@@ -232,7 +234,7 @@ int pxe_process(struct pxe_context *ctx, ulong pxefile_addr_r, bool prompt);
  * pxe_get_file_size() - Read the value of the 'filesize' environment variable
  *
  * @sizep: Place to put the value
- * @return 0 if OK, -ENOENT if no such variable, -EINVAL if format is invalid
+ * Return: 0 if OK, -ENOENT if no such variable, -EINVAL if format is invalid
  */
 int pxe_get_file_size(ulong *sizep);
 

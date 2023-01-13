@@ -20,6 +20,8 @@
  */
 
 #ifndef __ASSEMBLY__
+#include <cyclic.h>
+#include <event_internal.h>
 #include <fdtdec.h>
 #include <membuff.h>
 #include <linux/list.h>
@@ -66,7 +68,7 @@ struct global_data {
 	 * @mem_clk: memory clock rate in Hz
 	 */
 	unsigned long mem_clk;
-#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO) || defined(CONFIG_DM_VIDEO)
+#if defined(CONFIG_VIDEO)
 	/**
 	 * @fb_base: base address of frame buffer memory
 	 */
@@ -114,10 +116,14 @@ struct global_data {
 	/**
 	 * @precon_buf_idx: pre-console buffer index
 	 *
-	 * @precon_buf_idx indicates the current position of the buffer used to
-	 * collect output before the console becomes available
+	 * @precon_buf_idx indicates the current position of the
+	 * buffer used to collect output before the console becomes
+	 * available. When negative, the pre-console buffer is
+	 * temporarily disabled (used when the pre-console buffer is
+	 * being written out, to prevent adding its contents to
+	 * itself).
 	 */
-	unsigned long precon_buf_idx;
+	long precon_buf_idx;
 #endif
 	/**
 	 * @env_addr: address of environment structure
@@ -244,6 +250,10 @@ struct global_data {
 	 * @fdt_size: space reserved for relocated device space
 	 */
 	unsigned long fdt_size;
+	/**
+	 * @fdt_src: Source of FDT
+	 */
+	enum fdt_source_t fdt_src;
 #if CONFIG_IS_ENABLED(OF_LIVE)
 	/**
 	 * @of_root: root node of the live tree
@@ -349,7 +359,7 @@ struct global_data {
 	 */
 	struct membuff console_in;
 #endif
-#ifdef CONFIG_DM_VIDEO
+#ifdef CONFIG_VIDEO
 	/**
 	 * @video_top: top of video frame buffer area
 	 */
@@ -452,6 +462,10 @@ struct global_data {
 	 * @acpi_ctx: ACPI context pointer
 	 */
 	struct acpi_ctx *acpi_ctx;
+	/**
+	 * @acpi_start: Start address of ACPI tables
+	 */
+	ulong acpi_start;
 #endif
 #if CONFIG_IS_ENABLED(GENERATE_SMBIOS_TABLE)
 	/**
@@ -459,6 +473,22 @@ struct global_data {
 	 */
 	char *smbios_version;
 #endif
+#if CONFIG_IS_ENABLED(EVENT)
+	/**
+	 * @event_state: Points to the current state of events
+	 */
+	struct event_state event_state;
+#endif
+#ifdef CONFIG_CYCLIC
+	/**
+	 * @cyclic_list: list of registered cyclic functions
+	 */
+	struct hlist_head cyclic_list;
+#endif
+	/**
+	 * @dmtag_list: List of DM tags
+	 */
+	struct list_head dmtag_list;
 };
 #ifndef DO_DEPS_ONLY
 static_assert(sizeof(struct global_data) == GD_SIZE);
@@ -508,8 +538,26 @@ static_assert(sizeof(struct global_data) == GD_SIZE);
 
 #ifdef CONFIG_GENERATE_ACPI_TABLE
 #define gd_acpi_ctx()		gd->acpi_ctx
+#define gd_acpi_start()		gd->acpi_start
+#define gd_set_acpi_start(addr)	gd->acpi_start = addr
 #else
 #define gd_acpi_ctx()		NULL
+#define gd_acpi_start()		0UL
+#define gd_set_acpi_start(addr)
+#endif
+
+#if CONFIG_IS_ENABLED(MULTI_DTB_FIT)
+#define gd_multi_dtb_fit()	gd->multi_dtb_fit
+#define gd_set_multi_dtb_fit(_dtb)	gd->multi_dtb_fit = _dtb
+#else
+#define gd_multi_dtb_fit()	NULL
+#define gd_set_multi_dtb_fit(_dtb)
+#endif
+
+#if CONFIG_IS_ENABLED(EVENT_DYNAMIC)
+#define gd_event_state()	((struct event_state *)&gd->event_state)
+#else
+#define gd_event_state()	NULL
 #endif
 
 /**
@@ -587,9 +635,9 @@ enum gd_flags {
 	 */
 	GD_FLG_LOG_READY = 0x10000,
 	/**
-	 * @GD_FLG_WDT_READY: watchdog is ready for use
+	 * @GD_FLG_CYCLIC_RUNNING: cyclic_run is in progress
 	 */
-	GD_FLG_WDT_READY = 0x20000,
+	GD_FLG_CYCLIC_RUNNING = 0x20000,
 	/**
 	 * @GD_FLG_SKIP_LL_INIT: don't perform low-level initialization
 	 */
@@ -598,6 +646,10 @@ enum gd_flags {
 	 * @GD_FLG_SMP_READY: SMP initialization is complete
 	 */
 	GD_FLG_SMP_READY = 0x80000,
+	/**
+	 * @GD_FLG_FDT_CHANGED: Device tree change has been detected by tests
+	 */
+	GD_FLG_FDT_CHANGED = 0x100000,
 };
 
 #endif /* __ASSEMBLY__ */

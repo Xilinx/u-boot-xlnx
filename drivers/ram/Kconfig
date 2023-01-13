@@ -19,7 +19,7 @@ config SPL_RAM
 
 config TPL_RAM
 	bool "Enable RAM support in TPL"
-	depends on RAM
+	depends on RAM && TPL
 	help
 	  The RAM subsystem adds a small amount of overhead to the image.
 	  If this is acceptable and you have a need to use RAM drivers in
@@ -45,7 +45,7 @@ config MPC83XX_SDRAM
 
 config K3_AM654_DDRSS
 	bool "Enable AM654 DDRSS support"
-	depends on RAM && SOC_K3_AM6
+	depends on RAM && SOC_K3_AM654
 	help
 	  K3 based AM654 devices has DDR memory subsystem that comprises
 	  Synopys DDR controller, Synopsis DDR phy and wrapper logic to
@@ -62,8 +62,9 @@ choice
 	depends on K3_DDRSS
 	prompt "K3 DDRSS Arch Support"
 
-	default K3_J721E_DDRSS if SOC_K3_J721E
+	default K3_J721E_DDRSS if SOC_K3_J721E || SOC_K3_J721S2
 	default K3_AM64_DDRSS if SOC_K3_AM642
+	default K3_AM64_DDRSS if SOC_K3_AM625
 
 config K3_J721E_DDRSS
 	bool "Enable J721E DDRSS support"

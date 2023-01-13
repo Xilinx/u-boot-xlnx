@@ -8,24 +8,11 @@
 #include <asm/arch-rockchip/hardware.h>
 #include "rockchip-common.h"
 
-#define CONFIG_SYS_CBSIZE		1024
-
-#define CONFIG_ROCKCHIP_STIMER_BASE	0x200440a0
-#define COUNTER_FREQUENCY		24000000
-#define CONFIG_SYS_ARCH_TIMER
 #define CONFIG_SYS_HZ_CLOCK		24000000
-
-#define CONFIG_SYS_INIT_SP_ADDR		0x60100000
-#define CONFIG_SPL_STACK		0x10081fff
-
-#define CONFIG_ROCKCHIP_MAX_INIT_SIZE	(4 << 10)
-#define CONFIG_ROCKCHIP_CHIP_TAG	"RK30"
 
 #define CONFIG_SYS_SDRAM_BASE		0x60000000
 #define SDRAM_BANK_SIZE			(512UL << 20UL)
 #define SDRAM_MAX_SIZE                  (CONFIG_NR_DRAM_BANKS * SDRAM_BANK_SIZE)
-
-#ifndef CONFIG_SPL_BUILD
 
 #define ENV_MEM_LAYOUT_SETTINGS \
 	"scriptaddr=0x60000000\0" \
@@ -44,6 +31,5 @@
 	"partitions=" PARTS_DEFAULT \
 	ENV_MEM_LAYOUT_SETTINGS \
 	BOOTENV
-#endif
 
 #endif

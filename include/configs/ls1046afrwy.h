@@ -8,17 +8,8 @@
 
 #include "ls1046a_common.h"
 
-#define CONFIG_SYS_CLK_FREQ		100000000
-
-#define CONFIG_LAYERSCAPE_NS_ACCESS
-
-#define CONFIG_DIMM_SLOTS_PER_CTLR     1
-#define CONFIG_CHIP_SELECTS_PER_CTRL   4
-
 #define CONFIG_SYS_UBOOT_BASE		0x40100000
 
-/* IFC */
-#define CONFIG_FSL_IFC
 /*
  * NAND Flash Definitions
  */
@@ -54,7 +45,6 @@
 #define CONFIG_SYS_NAND_FTIM3		0x0
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
 
 /* IFC Timing Params */
@@ -68,8 +58,6 @@
 #define CONFIG_SYS_CS0_FTIM3		CONFIG_SYS_NAND_FTIM3
 
 /* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM		0
 #define I2C_RETIMER_ADDR			0x18
 
 /* I2C bus multiplexer */
@@ -85,15 +73,13 @@
 /*
  * Environment
  */
-#define CONFIG_SYS_FSL_QSPI_BASE	0x40000000
+#define CFG_SYS_FSL_QSPI_BASE	0x40000000
 
-#ifndef CONFIG_SPL_BUILD
 #undef BOOT_TARGET_DEVICES
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 0) \
 	func(USB, usb, 0) \
 	func(DHCP, dhcp, na)
-#endif
 
 /* FMan */
 #ifdef CONFIG_SYS_DPAA_FMAN
@@ -105,11 +91,8 @@
 
 #define FDT_SEQ_MACADDR_FROM_ENV
 
-#define CONFIG_ETHPRIME			"FM1@DTSEC3"
-
 #endif
 
-#undef CONFIG_BOOTCOMMAND
 #define QSPI_NOR_BOOTCOMMAND "run distro_bootcmd; run qspi_bootcmd; "	\
 			   "env exists secureboot && esbc_halt;;"
 #define SD_BOOTCOMMAND "run distro_bootcmd;run sd_bootcmd; "	\

@@ -47,6 +47,17 @@ config SPL_DM_I2C
 	  device (bus child) info is kept as parent platdata. The interface
 	  is defined in include/i2c.h.
 
+config VPL_DM_I2C
+	bool "Enable Driver Model for I2C drivers in VPL"
+	depends on VPL_DM && DM_I2C
+	default y
+	help
+	  Enable driver model for I2C. The I2C uclass interface: probe, read,
+	  write and speed, is implemented with the bus drivers operations,
+	  which provide methods for bus setting and data transfer. Each chip
+	  device (bus child) info is kept as parent platdata. The interface
+	  is defined in include/i2c.h.
+
 config SYS_I2C_LEGACY
 	bool "Enable legacy I2C subsystem and drivers"
 	depends on !DM_I2C
@@ -250,6 +261,15 @@ config SYS_I2C_MESON
 	  internal buffer holding up to 8 bytes for transfers and supports
 	  both 7-bit and 10-bit addresses.
 
+config SYS_I2C_MTK
+	bool "MediaTek I2C driver"
+	help
+	  This selects the MediaTek Integrated Inter Circuit bus driver.
+	  The I2C bus adapter is the base for some other I2C client,
+	  eg: touch, sensors.
+	  If you want to use MediaTek I2C interface, say Y here.
+	  If unsure, say N.
+
 config SYS_I2C_MICROCHIP
 	bool "Microchip I2C driver"
 	help
@@ -435,6 +455,11 @@ config SYS_I2C_NEXELL
 	  Nexell parts such as S5Pxx18 series SoCs. All chips
 	  have several I2C ports and all are provided, controlled by the
 	  device tree.
+
+config SYS_I2C_NPCM
+	bool "Nuvoton NPCM I2C driver"
+	help
+	  Support for Nuvoton I2C controller driver.
 
 config SYS_I2C_OCORES
 	bool "ocores I2C driver"
@@ -676,9 +701,9 @@ config SYS_I2C_SPEED
 
 config SYS_I2C_BUS_MAX
 	int "Max I2C busses"
-	depends on ARCH_KEYSTONE || ARCH_OMAP2PLUS || ARCH_SOCFPGA
+	depends on ARCH_OMAP2PLUS || ARCH_SOCFPGA
 	default 2 if TI816X
-	default 3 if OMAP34XX || AM33XX || AM43XX || ARCH_KEYSTONE
+	default 3 if OMAP34XX || AM33XX || AM43XX
 	default 4 if ARCH_SOCFPGA || OMAP44XX || TI814X
 	default 5 if OMAP54XX
 	help

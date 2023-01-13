@@ -25,13 +25,14 @@ enum {
 	BOOT_DEVICE_DFU,
 	BOOT_DEVICE_XIP,
 	BOOT_DEVICE_BOOTROM,
+	BOOT_DEVICE_SMH,
 	BOOT_DEVICE_NONE
 };
 
 /**
  * spl_board_init_f() - initialize board in the SPL phase
  *
- * @return 0 if succeeded, -ve on error
+ * Return: 0 if succeeded, -ve on error
  */
 int spl_board_init_f(void);
 

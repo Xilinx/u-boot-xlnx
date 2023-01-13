@@ -16,8 +16,15 @@
 #include <vsprintf.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
+#include <display_options.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+void bdinfo_print_size(const char *name, uint64_t size)
+{
+	printf("%-12s= ", name);
+	print_size(size, "\n");
+}
 
 void bdinfo_print_num_l(const char *name, ulong value)
 {
@@ -115,11 +122,8 @@ int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	bdinfo_print_num_l("fdt_blob", (ulong)gd->fdt_blob);
 	bdinfo_print_num_l("new_fdt", (ulong)gd->new_fdt);
 	bdinfo_print_num_l("fdt_size", (ulong)gd->fdt_size);
-	if (IS_ENABLED(CONFIG_DM_VIDEO))
+	if (IS_ENABLED(CONFIG_VIDEO))
 		show_video_info();
-#if defined(CONFIG_LCD) || defined(CONFIG_VIDEO)
-	bdinfo_print_num_l("FB base  ", gd->fb_base);
-#endif
 #if CONFIG_IS_ENABLED(MULTI_DTB_FIT)
 	bdinfo_print_num_l("multi_dtb_fit", (ulong)gd->multi_dtb_fit);
 #endif
@@ -128,6 +132,8 @@ int do_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 
 		lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
 		lmb_dump_all_force(&lmb);
+		if (IS_ENABLED(CONFIG_OF_REAL))
+			printf("devicetree  = %s\n", fdtdec_get_srcname());
 	}
 
 	arch_print_bdinfo();

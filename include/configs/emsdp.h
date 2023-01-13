@@ -8,17 +8,12 @@
 
 #include <linux/sizes.h>
 
-#define CONFIG_SYS_MONITOR_BASE		CONFIG_SYS_TEXT_BASE
-
 #define CONFIG_SYS_SDRAM_BASE		0x10000000
 #define CONFIG_SYS_SDRAM_SIZE		SZ_16M
-
-#define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_SDRAM_BASE + SZ_1M)
 
 /*
  * Environment
  */
-#define CONFIG_BOOTFILE			"app.bin"
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"upgrade_image=u-boot.bin\0" \

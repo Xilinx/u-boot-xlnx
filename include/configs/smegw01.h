@@ -15,8 +15,7 @@
 #define PHYS_SDRAM_SIZE		SZ_512M
 
 /* MMC Config*/
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
-#define CONFIG_SYS_MMC_IMG_LOAD_PART	1
+#define CFG_SYS_FSL_ESDHC_ADDR	0
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"image=zImage\0" \
@@ -36,21 +35,11 @@
 			"bootz ${loadaddr} - ${fdt_addr}; " \
 		"fi;\0" \
 
-#define CONFIG_BOOTCOMMAND \
-	"if run loadimage; then " \
-		"run mmcboot; " \
-	"fi; " \
-
 /* Physical Memory Map */
 #define PHYS_SDRAM			MMDC0_ARB_BASE_ADDR
 
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
-
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
 
 #endif

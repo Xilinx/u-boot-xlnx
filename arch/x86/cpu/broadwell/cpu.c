@@ -8,6 +8,7 @@
 #include <common.h>
 #include <dm.h>
 #include <cpu.h>
+#include <event.h>
 #include <init.h>
 #include <log.h>
 #include <asm/cpu.h>
@@ -24,23 +25,22 @@
 #include <asm/arch/pch.h>
 #include <asm/arch/rcb.h>
 
-int arch_cpu_init_dm(void)
+static int broadwell_init_cpu(void *ctx, struct event *event)
 {
 	struct udevice *dev;
 	int ret;
 
 	/* Start up the LPC so we have serial */
-	ret = uclass_first_device(UCLASS_LPC, &dev);
+	ret = uclass_first_device_err(UCLASS_LPC, &dev);
 	if (ret)
 		return ret;
-	if (!dev)
-		return -ENODEV;
 	ret = cpu_set_flex_ratio_to_tdp_nominal();
 	if (ret)
 		return ret;
 
 	return 0;
 }
+EVENT_SPY(EVT_DM_POST_INIT, broadwell_init_cpu);
 
 void set_max_freq(void)
 {

@@ -17,7 +17,6 @@
 #include <memalign.h>
 #include <spi.h>
 #include <spi-mem.h>
-#include <spi_flash.h>
 #include <ubi_uboot.h>
 #include <wait_bit.h>
 #include <dm/device_compat.h>
@@ -107,7 +106,8 @@
 #define TAP_DLY_BYPASS_LQSPI_RX_VALUE	0x1
 #define TAP_DLY_BYPASS_LQSPI_RX_SHIFT	2
 #define GQSPI_DATA_DLY_ADJ_OFST		0x000001F8
-#define IOU_TAPDLY_BYPASS_OFST !(IS_ENABLED(CONFIG_ARCH_VERSAL) || IS_ENABLED(CONFIG_ARCH_VERSAL_NET)) ? \
+#define IOU_TAPDLY_BYPASS_OFST !(IS_ENABLED(CONFIG_ARCH_VERSAL) || \
+				 IS_ENABLED(CONFIG_ARCH_VERSAL_NET)) ? \
 				0xFF180390 : 0xF103003C
 #define GQSPI_LPBK_DLY_ADJ_LPBK_MASK	0x00000020
 #define GQSPI_FREQ_37_5MHZ		37500000
@@ -180,15 +180,15 @@ struct zynqmp_qspi_priv {
 	const void *tx_buf;
 	void *rx_buf;
 	unsigned int len;
+	unsigned int io_mode;
 	int bytes_to_transfer;
 	int bytes_to_receive;
+	const struct spi_mem_op *op;
 	unsigned int is_dual;
 	unsigned int u_page;
 	unsigned int bus;
 	unsigned int stripe;
-	unsigned int io_mode;
 	unsigned int flags;
-	const struct spi_mem_op *op;
 	u32 max_hz;
 };
 
@@ -235,7 +235,8 @@ static void zynqmp_qspi_init_hw(struct zynqmp_qspi_priv *priv)
 	writel(~GQSPI_ENABLE_ENABLE_MASK, &regs->enbr);
 
 	config_reg = readl(&regs->confr);
-	config_reg &= ~(GQSPI_CONFIG_MODE_EN_MASK);
+	config_reg &= ~(GQSPI_GFIFO_STRT_MODE_MASK |
+			GQSPI_CONFIG_MODE_EN_MASK);
 	config_reg |= GQSPI_GFIFO_WP_HOLD | GQSPI_DFLT_BAUD_RATE_DIV;
 	config_reg |= GQSPI_GFIFO_STRT_MODE_MASK;
 	if (!priv->io_mode)
@@ -337,7 +338,7 @@ static void zynqmp_qspi_chipselect(struct zynqmp_qspi_priv *priv, int is_on)
 	zynqmp_qspi_fill_gen_fifo(priv, gqspi_fifo_reg);
 }
 
-void zynqmp_qspi_set_tapdelay(struct udevice *bus, u32 baudrateval)
+static void zynqmp_qspi_set_tapdelay(struct udevice *bus, u32 baudrateval)
 {
 	struct zynqmp_qspi_plat *plat = dev_get_plat(bus);
 	struct zynqmp_qspi_priv *priv = dev_get_priv(bus);
@@ -481,7 +482,7 @@ static int zynqmp_qspi_probe(struct udevice *bus)
 		return ret;
 	}
 	plat->frequency = clock;
-	plat->speed_hz = plat->frequency;
+	plat->speed_hz = plat->frequency / 2;
 
 	/* init the zynq spi hw */
 	zynqmp_qspi_init_hw(priv);

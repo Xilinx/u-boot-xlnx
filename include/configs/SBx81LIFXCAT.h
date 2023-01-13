@@ -6,25 +6,12 @@
 #ifndef _CONFIG_SBX81LIFXCAT_H
 #define _CONFIG_SBX81LIFXCAT_H
 
-/*
- * High Level Configuration Options (easy to change)
- */
-#define CONFIG_FEROCEON_88FR131	1	/* CPU Core subversion */
-#define CONFIG_KW88F6281	1	/* SOC Name */
-#define CONFIG_SYS_KWD_CONFIG	$(CONFIG_BOARDDIR)/kwbimage.cfg
-
 /* additions for new ARM relocation support */
 #define CONFIG_SYS_SDRAM_BASE	0x00000000
-
-#define CONFIG_KIRKWOOD_EGIGA_INIT	/* Enable GbePort0/1 for kernel */
-#define CONFIG_KIRKWOOD_PCIE_INIT	/* Enable PCIE Port0 */
-#define CONFIG_KIRKWOOD_RGMII_PAD_1V8	/* Set RGMII Pad voltage to 1.8V */
-#define CONFIG_KIRKWOOD_GPIO	1
 
 /*
  * NS16550 Configuration
  */
-#define CONFIG_SYS_NS16550
 #define CONFIG_SYS_NS16550_SERIAL
 #define CONFIG_SYS_NS16550_REG_SIZE	(-4)
 #define CONFIG_SYS_NS16550_CLK		CONFIG_SYS_TCLK
@@ -47,8 +34,6 @@
  * U-Boot bootcode configuration
  */
 
-#define CONFIG_SYS_MONITOR_LEN		(256 << 10)	/* Reserve 256 kB for monitor */
-
 /*
  * For booting Linux, the board info and command line data
  * have to be in the first 8 MB of memory, since this is
@@ -60,13 +45,11 @@
 
 #include <asm/arch/config.h>
 /* There is no PHY directly connected so don't ask it for link status */
-#undef CONFIG_SYS_FAULT_ECHO_LINK_DOWN
 
 /*
  * Ethernet Driver configuration
  */
 #ifdef CONFIG_CMD_NET
-#define CONFIG_MVGBE	/* Enable kirkwood Gbe Controller Driver */
 #define CONFIG_MVGBE_PORTS	{1, 0}	/* enable a single port */
 #define CONFIG_PHY_BASE_ADR	0x01
 #endif /* CONFIG_CMD_NET */

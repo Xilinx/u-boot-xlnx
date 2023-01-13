@@ -20,6 +20,7 @@
 #include <spi_flash.h>
 #include <splash.h>
 #include <usb.h>
+#include <virtio.h>
 #include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -64,6 +65,30 @@ static int splash_nand_read_raw(u32 bmp_load_addr, int offset, size_t read_size)
 }
 #endif
 
+static int splash_mmc_read_raw(u32 bmp_load_addr, struct splash_location *location,
+			       size_t read_size)
+{
+	struct disk_partition partition;
+	struct blk_desc *desc;
+	lbaint_t blkcnt;
+	int ret, n;
+
+	if (!IS_ENABLED(CONFIG_CMD_MMC)) {
+		debug("%s: mmc support not available\n", __func__);
+		return -ENOSYS;
+	}
+
+	ret = part_get_info_by_dev_and_name_or_num("mmc", location->devpart, &desc,
+						   &partition, 1);
+	if (ret < 0)
+		return ret;
+
+	blkcnt = DIV_ROUND_UP(read_size, partition.blksz);
+	n = blk_dread(desc, partition.start, blkcnt, (void *)(uintptr_t)bmp_load_addr);
+
+	return (n == blkcnt) ? 0 : -EIO;
+}
+
 static int splash_storage_read_raw(struct splash_location *location,
 			       u32 bmp_load_addr, size_t read_size)
 {
@@ -74,6 +99,8 @@ static int splash_storage_read_raw(struct splash_location *location,
 
 	offset = location->offset;
 	switch (location->storage) {
+	case SPLASH_STORAGE_MMC:
+		return splash_mmc_read_raw(bmp_load_addr, location, read_size);
 	case SPLASH_STORAGE_NAND:
 		return splash_nand_read_raw(bmp_load_addr, offset, read_size);
 	case SPLASH_STORAGE_SF:
@@ -179,6 +206,16 @@ static inline int splash_init_sata(void)
 }
 #endif
 
+static int splash_init_virtio(void)
+{
+	if (!IS_ENABLED(CONFIG_VIRTIO)) {
+		printf("Cannot load splash image: no virtio support\n");
+		return -ENOSYS;
+	} else {
+		return virtio_init();
+	}
+}
+
 #ifdef CONFIG_CMD_UBIFS
 static int splash_mount_ubifs(struct splash_location *location)
 {
@@ -232,6 +269,9 @@ static int splash_load_fs(struct splash_location *location, u32 bmp_load_addr)
 
 	if (location->storage == SPLASH_STORAGE_SATA)
 		res = splash_init_sata();
+
+	if (location->storage == SPLASH_STORAGE_VIRTIO)
+		res = splash_init_virtio();
 
 	if (location->ubivol != NULL)
 		res = splash_mount_ubifs(location);
@@ -313,17 +353,17 @@ static int splash_load_fit(struct splash_location *location, u32 bmp_load_addr)
 	int external_splash_addr;
 	int external_splash_size;
 	bool is_splash_external = false;
-	struct image_header *img_header;
+	struct legacy_img_hdr *img_header;
 	const u32 *fit_header;
 	u32 fit_size;
-	const size_t header_size = sizeof(struct image_header);
+	const size_t header_size = sizeof(struct legacy_img_hdr);
 
 	/* Read in image header */
 	res = splash_storage_read_raw(location, bmp_load_addr, header_size);
 	if (res < 0)
 		return res;
 
-	img_header = (struct image_header *)bmp_load_addr;
+	img_header = (struct legacy_img_hdr *)bmp_load_addr;
 	if (image_get_magic(img_header) != FDT_MAGIC) {
 		printf("Could not find FDT magic\n");
 		return -EINVAL;
@@ -408,6 +448,7 @@ int splash_source_load(struct splash_location *locations, uint size)
 {
 	struct splash_location *splash_location;
 	char *env_splashimage_value;
+	char *devpart;
 	u32 bmp_load_addr;
 
 	env_splashimage_value = env_get("splashimage");
@@ -423,6 +464,10 @@ int splash_source_load(struct splash_location *locations, uint size)
 	splash_location = select_splash_location(locations, size);
 	if (!splash_location)
 		return -EINVAL;
+
+	devpart = env_get("splashdevpart");
+	if (devpart)
+		splash_location->devpart = devpart;
 
 	if (splash_location->flags == SPLASH_STORAGE_RAW)
 		return splash_load_raw(splash_location, bmp_load_addr);

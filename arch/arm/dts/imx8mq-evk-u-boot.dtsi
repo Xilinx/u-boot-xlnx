@@ -2,6 +2,10 @@
 
 #include "imx8mq-u-boot.dtsi"
 
+&pinctrl_uart1 {
+	u-boot,dm-spl;
+};
+
 &usdhc1 {
 	mmc-hs400-1_8v;
 };
@@ -9,4 +13,8 @@
 &usdhc2 {
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
+};
+
+&uart1 {
+	u-boot,dm-spl;
 };

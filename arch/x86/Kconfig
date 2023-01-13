@@ -703,7 +703,7 @@ config VBT_ADDR
 
 config VIDEO_FSP
 	bool "Enable FSP framebuffer driver support"
-	depends on HAVE_VBT && DM_VIDEO
+	depends on HAVE_VBT && VIDEO
 	help
 	  Turn on this option to enable a framebuffer driver when U-Boot is
 	  using Video BIOS Table (VBT) image for FSP firmware to initialize
@@ -769,15 +769,6 @@ config GENERATE_MP_TABLE
 	  provides a way for the operating system to support for symmetric
 	  multiprocessing as well as symmetric I/O interrupt handling with
 	  the local APIC and I/O APIC.
-
-config GENERATE_ACPI_TABLE
-	bool "Generate an ACPI (Advanced Configuration and Power Interface) table"
-	select QFW if QEMU
-	help
-	  The Advanced Configuration and Power Interface (ACPI) specification
-	  provides an open standard for device configuration and management
-	  by the operating system. It defines platform-independent interfaces
-	  for configuration and power management monitoring.
 
 config ACPI_GNVS_EXTERNAL
 	bool
@@ -933,8 +924,8 @@ config CACHE_QOS_SIZE_PER_BIT
 
 config X86_OFFSET_U_BOOT
 	hex "Offset of U-Boot in ROM image"
-	depends on HAVE_SYS_TEXT_BASE
-	default SYS_TEXT_BASE
+	depends on HAVE_TEXT_BASE
+	default TEXT_BASE
 
 config X86_OFFSET_SPL
 	hex "Offset of SPL in ROM image"
@@ -954,6 +945,7 @@ config ACPI_GPE
 
 config SPL_ACPI_GPE
 	bool "Support ACPI general-purpose events in SPL"
+	depends on SPL
 	help
 	  Enable a driver for ACPI GPEs to allow peripherals to send interrupts
 	  via ACPI to the OS. In U-Boot this is only used when U-Boot itself
@@ -965,6 +957,7 @@ config SPL_ACPI_GPE
 
 config TPL_ACPI_GPE
 	bool "Support ACPI general-purpose events in TPL"
+	depends on TPL
 	help
 	  Enable a driver for ACPI GPEs to allow peripherals to send interrupts
 	  via ACPI to the OS. In U-Boot this is only used when U-Boot itself

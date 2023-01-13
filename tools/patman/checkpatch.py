@@ -20,8 +20,8 @@ RE_FILE = re.compile(r'#(\d+): (FILE: ([^:]*):(\d+):)?')
 RE_NOTE = re.compile(r'NOTE: (.*)')
 
 
-def FindCheckPatch():
-    top_level = gitutil.GetTopLevel()
+def find_check_patch():
+    top_level = gitutil.get_top_level()
     try_list = [
         os.getcwd(),
         os.path.join(os.getcwd(), '..', '..'),
@@ -47,7 +47,7 @@ def FindCheckPatch():
              '~/bin directory or use --no-check')
 
 
-def CheckPatchParseOneMessage(message):
+def check_patch_parse_one_message(message):
     """Parse one checkpatch message
 
     Args:
@@ -114,7 +114,7 @@ def CheckPatchParseOneMessage(message):
     return item
 
 
-def CheckPatchParse(checkpatch_output, verbose=False):
+def check_patch_parse(checkpatch_output, verbose=False):
     """Parse checkpatch.pl output
 
     Args:
@@ -125,7 +125,7 @@ def CheckPatchParse(checkpatch_output, verbose=False):
     Returns:
         namedtuple containing:
             ok: False=failure, True=ok
-            problems: List of problems, each a dict:
+            problems (list of problems): each a dict:
                 'type'; error or warning
                 'msg': text message
                 'file' : filename
@@ -179,14 +179,14 @@ def CheckPatchParse(checkpatch_output, verbose=False):
         elif re_bad.match(message):
             result.ok = False
         else:
-            problem = CheckPatchParseOneMessage(message)
+            problem = check_patch_parse_one_message(message)
             if problem:
                 result.problems.append(problem)
 
     return result
 
 
-def CheckPatch(fname, verbose=False, show_types=False):
+def check_patch(fname, verbose=False, show_types=False, use_tree=False):
     """Run checkpatch.pl on a file and parse the results.
 
     Args:
@@ -194,6 +194,7 @@ def CheckPatch(fname, verbose=False, show_types=False):
         verbose: True to print out every line of the checkpatch output as it is
             parsed
         show_types: Tell checkpatch to show the type (number) of each message
+        use_tree (bool): If False we'll pass '--no-tree' to checkpatch.
 
     Returns:
         namedtuple containing:
@@ -209,16 +210,18 @@ def CheckPatch(fname, verbose=False, show_types=False):
             lines: Number of lines
             stdout: Full output of checkpatch
     """
-    chk = FindCheckPatch()
-    args = [chk, '--no-tree']
+    chk = find_check_patch()
+    args = [chk]
+    if not use_tree:
+        args.append('--no-tree')
     if show_types:
         args.append('--show-types')
-    output = command.Output(*args, fname, raise_on_error=False)
+    output = command.output(*args, fname, raise_on_error=False)
 
-    return CheckPatchParse(output, verbose)
+    return check_patch_parse(output, verbose)
 
 
-def GetWarningMsg(col, msg_type, fname, line, msg):
+def get_warning_msg(col, msg_type, fname, line, msg):
     '''Create a message for a given file/line
 
     Args:
@@ -228,33 +231,35 @@ def GetWarningMsg(col, msg_type, fname, line, msg):
         msg: Message to report
     '''
     if msg_type == 'warning':
-        msg_type = col.Color(col.YELLOW, msg_type)
+        msg_type = col.build(col.YELLOW, msg_type)
     elif msg_type == 'error':
-        msg_type = col.Color(col.RED, msg_type)
+        msg_type = col.build(col.RED, msg_type)
     elif msg_type == 'check':
-        msg_type = col.Color(col.MAGENTA, msg_type)
+        msg_type = col.build(col.MAGENTA, msg_type)
     line_str = '' if line is None else '%d' % line
     return '%s:%s: %s: %s\n' % (fname, line_str, msg_type, msg)
 
-def CheckPatches(verbose, args):
+def check_patches(verbose, args, use_tree):
     '''Run the checkpatch.pl script on each patch'''
     error_count, warning_count, check_count = 0, 0, 0
     col = terminal.Color()
 
     for fname in args:
-        result = CheckPatch(fname, verbose)
+        result = check_patch(fname, verbose, use_tree=use_tree)
         if not result.ok:
             error_count += result.errors
             warning_count += result.warnings
             check_count += result.checks
             print('%d errors, %d warnings, %d checks for %s:' % (result.errors,
-                    result.warnings, result.checks, col.Color(col.BLUE, fname)))
+                    result.warnings, result.checks, col.build(col.BLUE, fname)))
             if (len(result.problems) != result.errors + result.warnings +
                     result.checks):
                 print("Internal error: some problems lost")
+            # Python seems to get confused by this
+            # pylint: disable=E1133
             for item in result.problems:
                 sys.stderr.write(
-                    GetWarningMsg(col, item.get('type', '<unknown>'),
+                    get_warning_msg(col, item.get('type', '<unknown>'),
                         item.get('file', '<unknown>'),
                         item.get('line', 0), item.get('msg', 'message')))
             print
@@ -266,6 +271,6 @@ def CheckPatches(verbose, args):
             color = col.YELLOW
         if error_count:
             color = col.RED
-        print(col.Color(color, str % (error_count, warning_count, check_count)))
+        print(col.build(color, str % (error_count, warning_count, check_count)))
         return False
     return True

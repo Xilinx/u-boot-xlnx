@@ -35,13 +35,7 @@ struct udevice;
  *	alignment in memory.
  *
  */
-
-#ifdef CONFIG_SYS_RX_ETH_BUFFER
-# define PKTBUFSRX	CONFIG_SYS_RX_ETH_BUFFER
-#else
-# define PKTBUFSRX	4
-#endif
-
+#define PKTBUFSRX	CONFIG_SYS_RX_ETH_BUFFER
 #define PKTALIGN	ARCH_DMA_MINALIGN
 
 /* Number of packets processed together */
@@ -67,7 +61,7 @@ struct in_addr {
  * @flag: Command flags (CMD_FLAG_...)
  * @argc: Number of arguments
  * @argv: List of arguments
- * @return result (see enum command_ret_t)
+ * Return: result (see enum command_ret_t)
  */
 int do_tftpb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
 
@@ -274,7 +268,7 @@ int eth_get_dev_index(void);		/* get the device index */
  * @base_name:  Base name for variable, typically "eth"
  * @index:      Index of interface being updated (>=0)
  * @enetaddr:   Pointer to MAC address to put into the variable
- * @return 0 if OK, other value on error
+ * Return: 0 if OK, other value on error
  */
 int eth_env_set_enetaddr_by_index(const char *base_name, int index,
 				 uchar *enetaddr);
@@ -371,6 +365,7 @@ struct vlan_ethernet_hdr {
 #define PROT_NCSI	0x88f8		/* NC-SI control packets        */
 
 #define IPPROTO_ICMP	 1	/* Internet Control Message Protocol	*/
+#define IPPROTO_TCP	6	/* Transmission Control Protocol	*/
 #define IPPROTO_UDP	17	/* User Datagram Protocol		*/
 
 /*
@@ -396,6 +391,8 @@ struct ip_hdr {
 #define IP_FLAGS_MFRAG	0x2000 /* more fragments */
 
 #define IP_HDR_SIZE		(sizeof(struct ip_hdr))
+
+#define IP_MIN_FRAG_DATAGRAM_SIZE	(IP_HDR_SIZE + 8)
 
 /*
  *	Internet Protocol (IP) + UDP header.
@@ -540,7 +537,9 @@ extern struct in_addr net_dns_server2;
 #endif
 extern char	net_nis_domain[32];	/* Our IS domain */
 extern char	net_hostname[32];	/* Our hostname */
-extern char	net_root_path[64];	/* Our root path */
+#ifdef CONFIG_NET
+extern char	net_root_path[CONFIG_BOOTP_MAX_ROOT_PATH_LEN];	/* Our root path */
+#endif
 /** END OF BOOTP EXTENTIONS **/
 extern u8		net_ethaddr[ARP_HLEN];		/* Our ethernet address */
 extern u8		net_server_ethaddr[ARP_HLEN];	/* Boot server enet address */
@@ -561,8 +560,8 @@ extern ushort		net_native_vlan;	/* Our Native VLAN */
 extern int		net_restart_wrap;	/* Tried all network devices */
 
 enum proto_t {
-	BOOTP, RARP, ARP, TFTPGET, DHCP, PING, DNS, NFS, CDP, NETCONS, SNTP,
-	TFTPSRV, TFTPPUT, LINKLOCAL, FASTBOOT, WOL, UDP
+	BOOTP, RARP, ARP, TFTPGET, DHCP, PING, PING6, DNS, NFS, CDP, NETCONS,
+	SNTP, TFTPSRV, TFTPPUT, LINKLOCAL, FASTBOOT, WOL, UDP, NCSI, WGET
 };
 
 extern char	net_boot_file_name[1024];/* Boot File name */
@@ -628,7 +627,7 @@ void net_set_udp_header(uchar *pkt, struct in_addr dest, int dport,
  *
  * @addr:	Address to check (must be 16-bit aligned)
  * @nbytes:	Number of bytes to check (normally a multiple of 2)
- * @return 16-bit IP checksum
+ * Return: 16-bit IP checksum
  */
 unsigned compute_ip_checksum(const void *addr, unsigned nbytes);
 
@@ -638,7 +637,7 @@ unsigned compute_ip_checksum(const void *addr, unsigned nbytes);
  * @offset:	Offset of first sum (if odd we do a byte-swap)
  * @sum:	First checksum
  * @new_sum:	New checksum to add
- * @return updated 16-bit IP checksum
+ * Return: updated 16-bit IP checksum
  */
 unsigned add_ip_checksums(unsigned offset, unsigned sum, unsigned new_sum);
 
@@ -649,7 +648,7 @@ unsigned add_ip_checksums(unsigned offset, unsigned sum, unsigned new_sum);
  *
  * @addr:	Address to check (must be 16-bit aligned)
  * @nbytes:	Number of bytes to check (normally a multiple of 2)
- * @return true if the checksum matches, false if not
+ * Return: true if the checksum matches, false if not
  */
 int ip_checksum_ok(const void *addr, unsigned nbytes);
 
@@ -692,19 +691,36 @@ static inline void net_send_packet(uchar *pkt, int len)
 	(void) eth_send(pkt, len);
 }
 
-/*
- * Transmit "net_tx_packet" as UDP packet, performing ARP request if needed
- *  (ether will be populated)
+/**
+ * net_send_ip_packet() - Transmit "net_tx_packet" as UDP or TCP packet,
+ *                        send ARP request if needed (ether will be populated)
+ * @ether: Raw packet buffer
+ * @dest: IP address to send the datagram to
+ * @dport: Destination UDP port
+ * @sport: Source UDP port
+ * @payload_len: Length of data after the UDP header
+ * @action: TCP action to be performed
+ * @tcp_seq_num: TCP sequence number of this transmission
+ * @tcp_ack_num: TCP stream acknolegement number
  *
- * @param ether Raw packet buffer
- * @param dest IP address to send the datagram to
- * @param dport Destination UDP port
- * @param sport Source UDP port
- * @param payload_len Length of data after the UDP header
+ * Return: 0 on success, other value on failure
  */
 int net_send_ip_packet(uchar *ether, struct in_addr dest, int dport, int sport,
 		       int payload_len, int proto, u8 action, u32 tcp_seq_num,
 		       u32 tcp_ack_num);
+/**
+ * net_send_tcp_packet() - Transmit TCP packet.
+ * @payload_len: length of payload
+ * @dport: Destination TCP port
+ * @sport: Source TCP port
+ * @action: TCP action to be performed
+ * @tcp_seq_num: TCP sequence number of this transmission
+ * @tcp_ack_num: TCP stream acknolegement number
+ *
+ * Return: 0 on success, other value on failure
+ */
+int net_send_tcp_packet(int payload_len, int dport, int sport, u8 action,
+			u32 tcp_seq_num, u32 tcp_ack_num);
 int net_send_udp_packet(uchar *ether, struct in_addr dest, int dport,
 			int sport, int payload_len);
 
@@ -917,7 +933,7 @@ int net_parse_bootfile(struct in_addr *ipaddr, char *filename, int max_len);
  * @param interface - the DFU medium name - e.g. "mmc"
  * @param devstring - the DFU medium number - e.g. "1"
  *
- * @return - 0 on success, other value on failure
+ * Return: - 0 on success, other value on failure
  */
 int update_tftp(ulong addr, char *interface, char *devstring);
 
@@ -927,7 +943,7 @@ int update_tftp(ulong addr, char *interface, char *devstring);
  * @var: Environment variable to convert. The value of this variable must be
  *	in the format format a.b.c.d, where each value is a decimal number from
  *	0 to 255
- * @return IP address, or 0 if invalid
+ * Return: IP address, or 0 if invalid
  */
 static inline struct in_addr env_get_ip(char *var)
 {

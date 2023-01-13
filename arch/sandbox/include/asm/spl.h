@@ -6,10 +6,12 @@
 #ifndef __asm_spl_h
 #define __asm_spl_h
 
-#define CONFIG_SPL_BOARD_LOAD_IMAGE
-
 enum {
+	BOOT_DEVICE_MMC1,
+	BOOT_DEVICE_MMC2,
+	BOOT_DEVICE_MMC2_2,
 	BOOT_DEVICE_BOARD,
+	BOOT_DEVICE_VBE,
 };
 
 /**

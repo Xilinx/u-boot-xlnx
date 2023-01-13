@@ -4,6 +4,7 @@
  */
 
 #include <common.h>
+#include <clock_legacy.h>
 #include <init.h>
 #include <ns16550.h>
 #include <asm/io.h>
@@ -18,7 +19,7 @@ DECLARE_GLOBAL_DATA_PTR;
 void board_init_f(ulong bootflag)
 {
 	u32 plat_ratio;
-	ccsr_gur_t *gur = (void *)CONFIG_SYS_MPC85xx_GUTS_ADDR;
+	ccsr_gur_t *gur = (void *)CFG_SYS_MPC85xx_GUTS_ADDR;
 
 #if defined(CONFIG_SYS_NAND_BR_PRELIM) && defined(CONFIG_SYS_NAND_OR_PRELIM)
 	set_lbc_br(0, CONFIG_SYS_NAND_BR_PRELIM);
@@ -28,7 +29,7 @@ void board_init_f(ulong bootflag)
 	/* initialize selected port with appropriate baud rate */
 	plat_ratio = in_be32(&gur->porpllsr) & MPC85xx_PORPLLSR_PLAT_RATIO;
 	plat_ratio >>= 1;
-	gd->bus_clk = CONFIG_SYS_CLK_FREQ * plat_ratio;
+	gd->bus_clk = get_board_sys_clk() * plat_ratio;
 
 	ns16550_init((struct ns16550 *)CONFIG_SYS_NS16550_COM1,
 		     gd->bus_clk / 16 / CONFIG_BAUDRATE);

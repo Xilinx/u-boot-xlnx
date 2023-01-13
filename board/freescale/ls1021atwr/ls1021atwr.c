@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2019 NXP
+ * Copyright 2019, 2021-2022 NXP
  */
 
 #include <common.h>
@@ -26,7 +26,6 @@
 #include <netdev.h>
 #include <fsl_mdio.h>
 #include <tsec.h>
-#include <fsl_sec.h>
 #include <fsl_devdis.h>
 #include <spl.h>
 #include <linux/delay.h>
@@ -35,7 +34,7 @@
 #include <fsl_qe.h>
 #endif
 #include <fsl_validate.h>
-
+#include <dm/uclass.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -107,7 +106,7 @@ static void cpld_show(void)
 	       in_8(&cpld_data->pcba_ver) & VERSION_MASK,
 	       in_8(&cpld_data->vbank) & BANK_MASK);
 
-#ifdef CONFIG_DEBUG
+#ifdef DEBUG
 	printf("soft_mux_on =%x\n",
 	       in_8(&cpld_data->soft_mux_on));
 	printf("cfg_rcw_src1 =%x\n",
@@ -144,7 +143,7 @@ int checkboard(void)
 
 void ddrmc_init(void)
 {
-	struct ccsr_ddr *ddr = (struct ccsr_ddr *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_ddr *ddr = (struct ccsr_ddr *)CFG_SYS_FSL_DDR_ADDR;
 	u32 temp_sdram_cfg, tmp;
 
 	out_be32(&ddr->sdram_cfg, DDR_SDRAM_CFG);
@@ -289,7 +288,7 @@ static void convert_serdes_mux(int type, int need_reset)
 
 int config_serdes_mux(void)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	u32 protocol = in_be32(&gur->rcwsr[4]) & RCWSR4_SRDS1_PRTCL_MASK;
 
 	protocol >>= RCWSR4_SRDS1_PRTCL_SHIFT;
@@ -384,7 +383,7 @@ conflict:
 
 int board_early_init_f(void)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 
 #ifdef CONFIG_TSEC_ENET
 	/* clear BD & FR bits for BE BD's and frame data */
@@ -440,7 +439,7 @@ void board_init_f(ulong dummy)
 	 * in last boot.
 	 */
 	if (is_warm_boot()) {
-		second_uboot = (void (*)(void))CONFIG_SYS_TEXT_BASE;
+		second_uboot = (void (*)(void))CONFIG_TEXT_BASE;
 		second_uboot();
 	}
 
@@ -531,6 +530,15 @@ int board_init(void)
 #if defined(CONFIG_SPL_BUILD)
 void spl_board_init(void)
 {
+	if (IS_ENABLED(CONFIG_FSL_CAAM)) {
+		struct udevice *dev;
+		int ret;
+
+		ret = uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(caam_jr), &dev);
+		if (ret)
+			printf("Failed to initialize caam_jr: %d\n", ret);
+	}
+
 	ls102xa_smmu_stream_id_init();
 }
 #endif
@@ -555,10 +563,7 @@ int misc_init_r(void)
 #if !defined(CONFIG_QSPI_BOOT) && !defined(CONFIG_SD_BOOT_QSPI)
 	config_board_mux();
 #endif
-
-#ifdef CONFIG_FSL_CAAM
-	return sec_init();
-#endif
+	return 0;
 }
 #endif
 

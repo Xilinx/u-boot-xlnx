@@ -71,7 +71,8 @@ struct sandbox_state {
 	const char *parse_err;		/* Error to report from parsing */
 	int argc;			/* Program arguments */
 	char **argv;			/* Command line arguments */
-	const char *jumped_fname;	/* Jumped from previous U_Boot */
+	const char *jumped_fname;	/* Jumped from previous U-Boot */
+	const char *prog_fname;		/* U-Boot executable filename */
 	uint8_t *ram_buf;		/* Emulated RAM buffer */
 	unsigned long ram_size;		/* Size of RAM buffer */
 	const char *ram_buf_fname;	/* Filename to use for RAM buffer */
@@ -108,6 +109,9 @@ struct sandbox_state {
 	bool hwspinlock;		/* Hardware Spinlock status */
 	bool allow_memio;		/* Allow readl() etc. to work */
 
+	void *other_fdt_buf;		/* 'other' FDT blob used by tests */
+	int other_size;			/* size of other FDT blob */
+
 	/*
 	 * This struct is getting large.
 	 *
@@ -134,7 +138,7 @@ struct sandbox_state {
  *	data set for start-of-day.
  *	@param blob: Pointer to device tree blob, or NULL if no data to read
  *	@param node: Node offset to read from
- *	@return 0 if OK, -ve on error
+ *	Return: 0 if OK, -ve on error
  *
  * @write: Function to write state to FDT
  *	The caller will ensure that there is a node ready for the state. The
@@ -186,7 +190,7 @@ struct sandbox_state_io {
 /**
  * Gets a pointer to the current state.
  *
- * @return pointer to state
+ * Return: pointer to state
  */
 struct sandbox_state *state_get_current(void);
 
@@ -198,7 +202,7 @@ struct sandbox_state *state_get_current(void);
  *
  * @param state		Sandbox state to update
  * @param fname		Filename of device tree file to read from
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int sandbox_read_state(struct sandbox_state *state, const char *fname);
 
@@ -212,7 +216,7 @@ int sandbox_read_state(struct sandbox_state *state, const char *fname);
  *
  * @param state		Sandbox state to update
  * @param fname		Filename of device tree file to write to
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int sandbox_write_state(struct sandbox_state *state, const char *fname);
 
@@ -247,7 +251,7 @@ void state_set_skip_delays(bool skip_delays);
 /**
  * See if delays should be skipped
  *
- * @return true if delays should be skipped, false if they should be honoured
+ * Return: true if delays should be skipped, false if they should be honoured
  */
 bool state_get_skip_delays(void);
 
@@ -266,6 +270,33 @@ void state_reset_for_test(struct sandbox_state *state);
 void state_show(struct sandbox_state *state);
 
 /**
+ * state_get_rel_filename() - Get a filename relative to the executable
+ *
+ * This uses argv[0] to obtain a filename path
+ *
+ * @rel_path: Relative path to build, e.g. "arch/sandbox/dts/test.dtb". Must not
+ * have a trailing /
+ * @buf: Buffer to use to return the filename
+ * @size: Size of buffer
+ * @return length of filename (including terminator), -ENOSPC if @size is too
+ * small
+ */
+int state_get_rel_filename(const char *rel_path, char *buf, int size);
+
+/**
+ * state_load_other_fdt() - load the 'other' FDT into a buffer
+ *
+ * This loads the other.dtb file into a buffer. This is typically used in tests.
+ *
+ * @bufp: Place to put allocated buffer pointer. The buffer is read using
+ * os_read_file() which calls os_malloc(), so does affect U-Boot's own malloc()
+ * space
+ * @sizep: Returns the size of the buffer
+ * @return 0 if OK, -ve on error
+ */
+int state_load_other_fdt(const char **bufp, int *sizep);
+
+/**
  * Initialize the test system state
  */
 int state_init(void);
@@ -274,7 +305,7 @@ int state_init(void);
  * Uninitialize the test system state, writing out state if configured to
  * do so.
  *
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int state_uninit(void);
 

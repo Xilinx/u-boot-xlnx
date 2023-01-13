@@ -178,7 +178,7 @@ static int do_fpga_load(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (ret)
 		return ret;
 
-	return fpga_load(dev, (void *)fpga_data, data_size, BIT_FULL);
+	return fpga_load(dev, (void *)fpga_data, data_size, BIT_FULL, 0);
 }
 
 static int do_fpga_loadb(struct cmd_tbl *cmdtp, int flag, int argc,
@@ -209,7 +209,7 @@ static int do_fpga_loadp(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (ret)
 		return ret;
 
-	return fpga_load(dev, (void *)fpga_data, data_size, BIT_PARTIAL);
+	return fpga_load(dev, (void *)fpga_data, data_size, BIT_PARTIAL, 0);
 }
 #endif
 
@@ -288,7 +288,7 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 #if defined(CONFIG_LEGACY_IMAGE_FORMAT)
 	case IMAGE_FORMAT_LEGACY:
 	{
-		image_header_t *hdr = (image_header_t *)fpga_data;
+		struct legacy_img_hdr *hdr = (struct legacy_img_hdr *)fpga_data;
 		ulong data;
 		u8 comp;
 
@@ -315,14 +315,14 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 			data_size = image_get_data_size(hdr);
 		}
 		return fpga_load(dev, (void *)data, data_size,
-				  BIT_FULL);
+				  BIT_FULL, 0);
 	}
 #endif
 #if defined(CONFIG_FIT)
 	case IMAGE_FORMAT_FIT:
 	{
 		const void *fit_hdr = (const void *)fpga_data;
-		int noffset;
+		int err;
 		const void *fit_data;
 
 		if (!fit_uname) {
@@ -335,27 +335,15 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 			return CMD_RET_FAILURE;
 		}
 
-		/* get fpga component image node offset */
-		noffset = fit_image_get_node(fit_hdr, fit_uname);
-		if (noffset < 0) {
-			printf("Can't find '%s' FIT subimage\n", fit_uname);
+		err = fit_get_data_node(fit_hdr, fit_uname, &fit_data,
+					&data_size);
+		if (err) {
+			printf("Could not load '%s' subimage (err %d)\n",
+			       fit_uname, err);
 			return CMD_RET_FAILURE;
 		}
 
-		/* verify integrity */
-		if (!fit_image_verify(fit_hdr, noffset)) {
-			puts("Bad Data Hash\n");
-			return CMD_RET_FAILURE;
-		}
-
-		/* get fpga subimage/external data address and length */
-		if (fit_image_get_data_and_size(fit_hdr, noffset,
-					       &fit_data, &data_size)) {
-			puts("Fpga subimage data not found\n");
-			return CMD_RET_FAILURE;
-		}
-
-		return fpga_load(dev, fit_data, data_size, BIT_FULL);
+		return fpga_load(dev, fit_data, data_size, BIT_FULL, 0);
 	}
 #endif
 	default:

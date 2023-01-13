@@ -211,9 +211,53 @@ using it in new code.
 Modifying the livetree
 ----------------------
 
-This is not currently supported. Once implemented it should provide a much
-more efficient implementation for modification of the device tree than using
-the flat tree.
+This is supported in a limited way, with ofnode_write_prop() and related
+functions.
+
+The unflattening algorithm results in a single block of memory being
+allocated for the whole tree. When writing new properties, these are
+allocated new memory outside that block. When the block is freed, the
+allocated properties remain. This can result in a memory leak.
+
+The solution to this leak would be to add a flag for properties (and nodes when
+support is provided for adding those) that indicates that they should be
+freed. Then the tree can be scanned for these 'separately allocated' nodes and
+properties before freeing the memory block.
+
+The ofnode_write\_...() functions also support writing to the flat tree. Care
+should be taken however, since this can change the position of node names and
+properties in the flat tree, thus affecting the live tree. Generally this does
+not matter, since when we fire up the live tree we don't ever use the flat tree
+again. But in the case of tests, this can cause a problem.
+
+The sandbox tests typically run with OF_LIVE enabled but with the actual live
+tree either present or absent. This is to make sure that the flat tree functions
+work correctly even with OF_LIVE is enabled. But if a test modifies the flat
+device tree, then the live tree can become invalid. Any live tree tests that run
+after that point will use a corrupted tree, e.g. with an incorrect property name
+or worse. To deal with this we take a copy of the device tree and restore it
+after any test that modifies it. Note that this copy is not made on other
+boards, only sandbox.
+
+
+Multiple livetrees
+------------------
+
+The livetree implementation was originally designed for use with the control
+FDT. This means that the FDT fix-ups (ft_board_setup() and the like, must use
+a flat tree.
+
+It would be helpful to use livetree for fixups, since adding a lot of nodes and
+properties would involve less memory copying and be more efficient. As a step
+towards this, an `oftree` type has been introduced. It is normally set to
+oftree_default() but can be set to other values using oftree_from_fdt().
+So long as OF_LIVE is disabled, it is possible to do fixups using the ofnode
+interface. The OF_LIVE support required addition of the flattening step at the
+end.
+
+See dm_test_ofnode_root() for some examples. The oftree_from_fdt() function
+causes a flat device tree to be 'registered' such that it can be used by the
+ofnode interface.
 
 
 Internal implementation
@@ -277,10 +321,9 @@ Adding a new function for device-tree access involves the following steps:
 Future work
 -----------
 
-Live tree support was introduced in U-Boot 2017.07. There is still quite a bit
-of work to do to flesh this out:
+Live tree support was introduced in U-Boot 2017.07. Some possible enhancements
+are:
 
-- tests for all access functions
-- support for livetree modification
-- addition of more access functions as needed
 - support for livetree in SPL and before relocation (if desired)
+- freeing leaked memory caused by writing new nodes / property values to the
+  livetree (ofnode_write_prop())

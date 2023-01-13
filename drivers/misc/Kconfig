@@ -16,6 +16,7 @@ config MISC
 config SPL_MISC
 	bool "Enable Driver Model for Misc drivers in SPL"
 	depends on SPL_DM
+	default MISC
 	help
 	  Enable driver model for miscellaneous devices. This class is
 	  used only for those do not fit other more general classes. A
@@ -25,11 +26,38 @@ config SPL_MISC
 config TPL_MISC
 	bool "Enable Driver Model for Misc drivers in TPL"
 	depends on TPL_DM
+	default MISC
 	help
 	  Enable driver model for miscellaneous devices. This class is
 	  used only for those do not fit other more general classes. A
 	  set of generic read, write and ioctl methods may be used to
 	  access the device.
+
+config VPL_MISC
+	bool "Enable Driver Model for Misc drivers in VPL"
+	depends on VPL_DM
+	default MISC
+	help
+	  Enable driver model for miscellaneous devices. This class is
+	  used only for those do not fit other more general classes. A
+	  set of generic read, write and ioctl methods may be used to
+	  access the device.
+
+config NVMEM
+	bool "NVMEM support"
+	help
+	  This adds support for a common interface to different types of
+	  non-volatile memory. Consumers can use nvmem-cells properties to look
+	  up hardware configuration data such as MAC addresses and calibration
+	  settings.
+
+config SPL_NVMEM
+	bool "NVMEM support in SPL"
+	help
+	  This adds support for a common interface to different types of
+	  non-volatile memory. Consumers can use nvmem-cells properties to look
+	  up hardware configuration data such as MAC addresses and calibration
+	  settings.
 
 config ALTERA_SYSID
 	bool "Altera Sysid support"
@@ -40,11 +68,20 @@ config ALTERA_SYSID
 
 config ATSHA204A
 	bool "Support for Atmel ATSHA204A module"
+	select BITREVERSE
 	depends on MISC
 	help
 	   Enable support for I2C connected Atmel's ATSHA204A
 	   CryptoAuthentication module found for example on the Turris Omnia
 	   board.
+
+config GATEWORKS_SC
+	bool "Gateworks System Controller Support"
+	depends on MISC
+	help
+	  Enable access for the Gateworks System Controller used on Gateworks
+	  boards to provide a boot watchdog, power control, temperature monitor,
+	  voltage ADCs, and EEPROM.
 
 config ROCKCHIP_EFUSE
         bool "Rockchip e-fuse support"
@@ -104,7 +141,7 @@ config CROS_EC
 
 config SPL_CROS_EC
 	bool "Enable Chrome OS EC in SPL"
-	depends on SPL
+	depends on SPL_MISC
 	help
 	  Enable access to the Chrome OS EC in SPL. This is a separate
 	  microcontroller typically available on a SPI bus on Chromebooks. It
@@ -114,9 +151,19 @@ config SPL_CROS_EC
 
 config TPL_CROS_EC
 	bool "Enable Chrome OS EC in TPL"
-	depends on TPL
+	depends on TPL_MISC
 	help
 	  Enable access to the Chrome OS EC in TPL. This is a separate
+	  microcontroller typically available on a SPI bus on Chromebooks. It
+	  provides access to the keyboard, some internal storage and may
+	  control access to the battery and main PMIC depending on the
+	  device. You can use the 'crosec' command to access it.
+
+config VPL_CROS_EC
+	bool "Enable Chrome OS EC in VPL"
+	depends on VPL_MISC
+	help
+	  Enable access to the Chrome OS EC in VPL. This is a separate
 	  microcontroller typically available on a SPI bus on Chromebooks. It
 	  provides access to the keyboard, some internal storage and may
 	  control access to the battery and main PMIC depending on the
@@ -142,7 +189,7 @@ config CROS_EC_LPC
 
 config SPL_CROS_EC_LPC
 	bool "Enable Chrome OS EC LPC driver in SPL"
-	depends on CROS_EC
+	depends on CROS_EC && SPL_MISC
 	help
 	  Enable I2C access to the Chrome OS EC. This is used on x86
 	  Chromebooks such as link and falco. The keyboard is provided
@@ -151,7 +198,16 @@ config SPL_CROS_EC_LPC
 
 config TPL_CROS_EC_LPC
 	bool "Enable Chrome OS EC LPC driver in TPL"
-	depends on CROS_EC
+	depends on CROS_EC && TPL_MISC
+	help
+	  Enable I2C access to the Chrome OS EC. This is used on x86
+	  Chromebooks such as link and falco. The keyboard is provided
+	  through a legacy port interface, so on x86 machines the main
+	  function of the EC is power and thermal management.
+
+config VPL_CROS_EC_LPC
+	bool "Enable Chrome OS EC LPC driver in VPL"
+	depends on CROS_EC && VPL_MISC
 	help
 	  Enable I2C access to the Chrome OS EC. This is used on x86
 	  Chromebooks such as link and falco. The keyboard is provided
@@ -185,6 +241,15 @@ config TPL_CROS_EC_SANDBOX
 	  EC flash read/write/erase support and a few other things. It is
 	  enough to perform a Chrome OS verified boot on sandbox.
 
+config VPL_CROS_EC_SANDBOX
+	bool "Enable Chrome OS EC sandbox driver in VPL"
+	depends on VPL_CROS_EC && SANDBOX
+	help
+	  Enable a sandbox emulation of the Chrome OS EC in VPL. This supports
+	  keyboard (use the -l flag to enable the LCD), verified boot context,
+	  EC flash read/write/erase support and a few other things. It is
+	  enough to perform a Chrome OS verified boot on sandbox.
+
 config CROS_EC_SPI
 	bool "Enable Chrome OS EC SPI driver"
 	depends on CROS_EC
@@ -210,6 +275,20 @@ config FSL_SEC_MON
 	  Security Monitor can be transitioned on any security failures,
 	  like software violations or hardware security violations.
 
+choice
+	prompt "Security monitor interaction endianess"
+	depends on FSL_SEC_MON
+	default SYS_FSL_SEC_MON_BE if PPC
+	default SYS_FSL_SEC_MON_LE
+
+config SYS_FSL_SEC_MON_LE
+	bool "Security monitor interactions are little endian"
+
+config SYS_FSL_SEC_MON_BE
+	bool "Security monitor interactions are big endian"
+
+endchoice
+
 config IRQ
 	bool "Interrupt controller"
 	help
@@ -224,6 +303,20 @@ config JZ4780_EFUSE
 	help
 	  This selects support for the eFUSE on Ingenic JZ4780 SoCs.
 
+config LS2_SFP
+	bool "Layerscape Security Fuse Processor"
+	depends on FSL_LSCH2 || ARCH_LS1021A
+	depends on MISC
+	imply DM_REGULATOR
+	help
+	  This adds support for the Security Fuse Processor found on Layerscape
+	  SoCs. It contains various fuses related to secure boot, including the
+	  Super Root Key hash, One-Time-Programmable Master Key, Debug
+	  Challenge/Response values, and others. Fuses are numbered according
+	  to their four-byte offset from the start of the bank.
+
+	  If you don't need to read/program fuses, say 'n'.
+
 config MXC_OCOTP
 	bool "Enable MXC OCOTP Driver"
 	depends on ARCH_IMX8M || ARCH_MX6 || ARCH_MX7 || ARCH_MX7ULP || ARCH_VF610
@@ -233,14 +326,36 @@ config MXC_OCOTP
 	  Programmable memory pages that are stored on the some
 	  Freescale i.MX processors.
 
+config NPCM_HOST
+	bool "Enable support espi or LPC for Host"
+	depends on REGMAP && SYSCON
+	help
+	  Enable NPCM BMC espi or LPC support for Host reading and writing.
+
 config SPL_MXC_OCOTP
 	bool "Enable MXC OCOTP driver in SPL"
-	depends on SPL && (ARCH_IMX8M || ARCH_MX6 || ARCH_MX7 || ARCH_MX7ULP || ARCH_VF610)
+	depends on SPL_MISC && (ARCH_IMX8M || ARCH_MX6 || ARCH_MX7 || ARCH_MX7ULP || ARCH_VF610)
 	default y
 	help
 	  If you say Y here, you will get support for the One Time
 	  Programmable memory pages, that are stored on some
 	  Freescale i.MX processors, in SPL.
+
+config NPCM_OTP
+	bool "Nnvoton NPCM BMC On-Chip OTP Memory Support"
+	depends on (ARM && ARCH_NPCM)
+	default n
+	help
+	  Support NPCM BMC OTP memory (fuse).
+	  To compile this driver as a module, choose M here: the module
+	  will be called npcm_otp.
+
+config IMX_SENTINEL
+	bool "Enable i.MX Sentinel MU driver and API"
+	depends on MISC && (ARCH_IMX9 || ARCH_IMX8ULP)
+	help
+	  If you say Y here to enable Message Unit driver to work with
+	  Sentinel core on some NXP i.MX processors.
 
 config NUVOTON_NCT6102D
 	bool "Enable Nuvoton NCT6102D Super I/O driver"
@@ -265,7 +380,7 @@ config P2SB
 
 config SPL_P2SB
 	bool "Intel Primary to Sideband Bridge in SPL"
-	depends on SPL && (X86 || SANDBOX)
+	depends on SPL_MISC && (X86 || SANDBOX)
 	help
 	  The Primary to Sideband Bridge is used to access various peripherals
 	  through memory-mapped I/O in a large chunk of PCI space. The space is
@@ -275,7 +390,7 @@ config SPL_P2SB
 
 config TPL_P2SB
 	bool "Intel Primary to Sideband Bridge in TPL"
-	depends on TPL && (X86 || SANDBOX)
+	depends on TPL_MISC && (X86 || SANDBOX)
 	help
 	  The Primary to Sideband Bridge is used to access various peripherals
 	  through memory-mapped I/O in a large chunk of PCI space. The space is
@@ -294,7 +409,7 @@ config PWRSEQ
 
 config SPL_PWRSEQ
 	bool "Enable power-sequencing drivers for SPL"
-	depends on PWRSEQ
+	depends on SPL_MISC && PWRSEQ
 	help
 	  Power-sequencing drivers provide support for controlling power for
 	  devices. They are typically referenced by a phandle from another
@@ -360,6 +475,15 @@ config TEST_DRV
 	  model. This should only be enabled for testing as it is not useful for
 	  anything else.
 
+config USB_HUB_USB251XB
+	tristate "USB251XB Hub Controller Configuration Driver"
+	depends on I2C
+	help
+	  This option enables support for configuration via SMBus of the
+	  Microchip USB251x/xBi USB 2.0 Hub Controller series. Configuration
+	  parameters may be set in devicetree or platform data.
+	  Say Y or M here if you need to configure such a device via SMBus.
+
 config TWL4030_LED
 	bool "Enable TWL4030 LED controller"
 	help
@@ -402,7 +526,7 @@ config I2C_EEPROM
 
 config SPL_I2C_EEPROM
 	bool "Enable driver for generic I2C-attached EEPROMs for SPL"
-	depends on MISC && SPL && SPL_DM
+	depends on SPL_MISC
 	help
 	  This option is an SPL-variant of the I2C_EEPROM option.
 	  See the help of I2C_EEPROM for details.
@@ -416,7 +540,7 @@ if I2C_EEPROM
 
 config SYS_I2C_EEPROM_ADDR_OVERFLOW
 	hex "EEPROM Address Overflow"
-	default 0
+	default 0x0
 	help
 	  EEPROM chips that implement "address overflow" are ones
 	  like Catalyst 24WC04/08/16 which has 9/10/11 bits of
@@ -446,6 +570,16 @@ config MPC83XX_SERDES
 
 config FS_LOADER
 	bool "Enable loader driver for file system"
+	help
+	  This is file system generic loader which can be used to load
+	  the file image from the storage into target such as memory.
+
+	  The consumer driver would then use this loader to program whatever,
+	  ie. the FPGA device.
+
+config SPL_FS_LOADER
+	bool "Enable loader driver for file system"
+	depends on SPL
 	help
 	  This is file system generic loader which can be used to load
 	  the file image from the storage into target such as memory.
@@ -499,6 +633,17 @@ config ESM_PMIC
 	help
 	  Support ESM (Error Signal Monitor) on PMIC devices. ESM is used
 	  typically to reboot the board in error condition.
+
+config FSL_IFC
+	bool
+
+config SL28CPLD
+	bool "Enable Kontron sl28cpld multi-function driver"
+	depends on DM_I2C
+	help
+	  Support for the Kontron sl28cpld management controller. This is
+	  the base driver which provides common access methods for the
+	  sub-drivers.
 
 config USB5744
 	bool "Microchip USB5744 usb hub"

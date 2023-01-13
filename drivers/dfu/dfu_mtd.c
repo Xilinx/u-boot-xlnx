@@ -12,10 +12,25 @@
 #include <mtd.h>
 #include <jffs2/load_kernel.h>
 #include <linux/err.h>
+#include <linux/ctype.h>
 
 static bool mtd_is_aligned_with_block_size(struct mtd_info *mtd, u64 size)
 {
 	return !do_div(size, mtd->erasesize);
+}
+
+/* Logic taken from cmd/mtd.c:mtd_oob_write_is_empty() */
+static bool mtd_page_is_empty(struct mtd_oob_ops *op)
+{
+	int i;
+
+	for (i = 0; i < op->len; i++)
+		if (op->datbuf[i] != 0xff)
+			return false;
+
+	/* oob is not used, with MTD_OPS_AUTO_OOB & ooblen=0 */
+
+	return true;
 }
 
 static int mtd_block_op(enum dfu_op op, struct dfu_entity *dfu,
@@ -129,8 +144,14 @@ static int mtd_block_op(enum dfu_op op, struct dfu_entity *dfu,
 
 		if (op == DFU_OP_READ)
 			ret = mtd_read_oob(mtd, off, &io_op);
-		else
+		else if (has_pages && dfu->data.mtd.ubi && mtd_page_is_empty(&io_op)) {
+			/* in case of ubi partition, do not write an empty page, only skip it */
+			ret = 0;
+			io_op.retlen = mtd->writesize;
+			io_op.oobretlen = mtd->oobsize;
+		} else {
 			ret = mtd_write_oob(mtd, off, &io_op);
+		}
 
 		if (ret) {
 			printf("Failure while %s at offset 0x%llx\n",
@@ -250,9 +271,9 @@ static unsigned int dfu_polltimeout_mtd(struct dfu_entity *dfu)
 	return DFU_DEFAULT_POLL_TIMEOUT;
 }
 
-int dfu_fill_entity_mtd(struct dfu_entity *dfu, char *devstr, char *s)
+int dfu_fill_entity_mtd(struct dfu_entity *dfu, char *devstr, char **argv, int argc)
 {
-	char *st;
+	char *s;
 	struct mtd_info *mtd;
 	int ret, part;
 
@@ -264,22 +285,33 @@ int dfu_fill_entity_mtd(struct dfu_entity *dfu, char *devstr, char *s)
 	dfu->dev_type = DFU_DEV_MTD;
 	dfu->data.mtd.info = mtd;
 	dfu->max_buf_size = mtd->erasesize;
+	if (argc < 1)
+		return -EINVAL;
 
-	st = strsep(&s, " ");
-	if (!strcmp(st, "raw")) {
+	if (!strcmp(argv[0], "raw")) {
+		if (argc != 3)
+			return -EINVAL;
 		dfu->layout = DFU_RAW_ADDR;
-		dfu->data.mtd.start = hextoul(s, &s);
-		s++;
-		dfu->data.mtd.size = hextoul(s, &s);
-	} else if ((!strcmp(st, "part")) || (!strcmp(st, "partubi"))) {
+		dfu->data.mtd.start = hextoul(argv[1], &s);
+		if (*s)
+			return -EINVAL;
+		dfu->data.mtd.size = hextoul(argv[2], &s);
+		if (*s)
+			return -EINVAL;
+	} else if ((!strcmp(argv[0], "part")) || (!strcmp(argv[0], "partubi"))) {
 		char mtd_id[32];
 		struct mtd_device *mtd_dev;
 		u8 part_num;
 		struct part_info *pi;
 
+		if (argc != 2)
+			return -EINVAL;
+
 		dfu->layout = DFU_RAW_ADDR;
 
-		part = dectoul(s, &s);
+		part = dectoul(argv[1], &s);
+		if (*s)
+			return -EINVAL;
 
 		sprintf(mtd_id, "%s,%d", devstr, part - 1);
 		printf("using id '%s'\n", mtd_id);
@@ -294,10 +326,10 @@ int dfu_fill_entity_mtd(struct dfu_entity *dfu, char *devstr, char *s)
 
 		dfu->data.mtd.start = pi->offset;
 		dfu->data.mtd.size = pi->size;
-		if (!strcmp(st, "partubi"))
+		if (!strcmp(argv[0], "partubi"))
 			dfu->data.mtd.ubi = 1;
 	} else {
-		printf("%s: Memory layout (%s) not supported!\n", __func__, st);
+		printf("%s: Memory layout (%s) not supported!\n", __func__, argv[0]);
 		return -1;
 	}
 

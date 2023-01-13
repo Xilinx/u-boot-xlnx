@@ -32,6 +32,15 @@ config TPL_DM_RTC
 	  drivers to perform the actual functions. See rtc.h for a
 	  description of the API.
 
+config VPL_DM_RTC
+	bool "Enable Driver Model for RTC drivers in VPL"
+	depends on VPL_DM
+	help
+	  Enable drver model for real-time-clock drivers. The RTC uclass
+	  then provides the rtc_get()/rtc_set() interface, delegating to
+	  drivers to perform the actual functions. See rtc.h for a
+	  description of the API.
+
 config RTC_ENABLE_32KHZ_OUTPUT
 	bool "Enable RTC 32Khz output"
 	help
@@ -167,6 +176,14 @@ config RTC_MC146818
 	  and now available from NXP. It includes a battery-backed real-time
 	  clock with a wide array of features and 50 bytes of general-purpose,
 	  battery-backed RAM. The driver supports access to the clock and RAM.
+
+config MCFRTC
+	bool "Use common CF RTC driver"
+	depends on M68K
+
+config SYS_MCFRTC_BASE
+	hex "Base address for RTC in immap.h"
+	depends on MCFRTC
 
 config RTC_M41T62
 	bool "Enable M41T62 driver"

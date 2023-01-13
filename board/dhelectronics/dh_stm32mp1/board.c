@@ -9,7 +9,6 @@
 #include <net.h>
 #include <asm/arch/stm32.h>
 #include <asm/arch/sys_proto.h>
-#include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <bootm.h>
@@ -43,6 +42,7 @@
 #include <usb/dwc2_udc.h>
 #include <watchdog.h>
 #include <dm/ofnode.h>
+#include "../common/dh_common.h"
 #include "../../st/common/stpmic1.h"
 
 /* SYSCFG registers */
@@ -78,11 +78,6 @@
 #define SYSCFG_PMCSETR_ETH_SEL_RGMII	BIT(21)
 #define SYSCFG_PMCSETR_ETH_SEL_RMII	BIT(23)
 
-/*
- * Get a global data pointer
- */
-DECLARE_GLOBAL_DATA_PTR;
-
 #define KS_CCR		0x08
 #define KS_CCR_EEPROM	BIT(9)
 #define KS_BE0		BIT(12)
@@ -90,35 +85,17 @@ DECLARE_GLOBAL_DATA_PTR;
 #define KS_CIDER	0xC0
 #define CIDER_ID	0x8870
 
-int setup_mac_address(void)
+static bool dh_stm32_mac_is_in_ks8851(void)
 {
-	unsigned char enetaddr[6];
-	bool skip_eth0 = false;
-	bool skip_eth1 = false;
-	struct udevice *dev;
-	int off, ret;
+	ofnode node;
+	u32 reg, cider, ccr;
 
-	ret = eth_env_get_enetaddr("ethaddr", enetaddr);
-	if (ret)	/* ethaddr is already set */
-		skip_eth0 = true;
+	node = ofnode_path("ethernet1");
+	if (!ofnode_valid(node))
+		return false;
 
-	off = fdt_path_offset(gd->fdt_blob, "ethernet1");
-	if (off < 0) {
-		/* ethernet1 is not present in the system */
-		skip_eth1 = true;
-		goto out_set_ethaddr;
-	}
-
-	ret = eth_env_get_enetaddr("eth1addr", enetaddr);
-	if (ret) {
-		/* eth1addr is already set */
-		skip_eth1 = true;
-		goto out_set_ethaddr;
-	}
-
-	ret = fdt_node_check_compatible(gd->fdt_blob, off, "micrel,ks8851-mll");
-	if (ret)
-		goto out_set_ethaddr;
+	if (ofnode_device_is_compatible(node, "micrel,ks8851-mll"))
+		return false;
 
 	/*
 	 * KS8851 with EEPROM may use custom MAC from EEPROM, read
@@ -126,55 +103,61 @@ int setup_mac_address(void)
 	 * is present. If EEPROM is present, it must contain valid
 	 * MAC address.
 	 */
-	u32 reg, cider, ccr;
-	reg = fdt_get_base_address(gd->fdt_blob, off);
+	reg = ofnode_get_addr(node);
 	if (!reg)
-		goto out_set_ethaddr;
+		return false;
 
 	writew(KS_BE0 | KS_BE1 | KS_CIDER, reg + 2);
 	cider = readw(reg);
-	if ((cider & 0xfff0) != CIDER_ID) {
-		skip_eth1 = true;
-		goto out_set_ethaddr;
-	}
+	if ((cider & 0xfff0) != CIDER_ID)
+		return true;
 
 	writew(KS_BE0 | KS_BE1 | KS_CCR, reg + 2);
 	ccr = readw(reg);
-	if (ccr & KS_CCR_EEPROM) {
-		skip_eth1 = true;
-		goto out_set_ethaddr;
-	}
+	if (ccr & KS_CCR_EEPROM)
+		return true;
 
-out_set_ethaddr:
-	if (skip_eth0 && skip_eth1)
+	return false;
+}
+
+static int dh_stm32_setup_ethaddr(void)
+{
+	unsigned char enetaddr[6];
+
+	if (dh_mac_is_in_env("ethaddr"))
 		return 0;
 
-	off = fdt_path_offset(gd->fdt_blob, "eeprom0");
-	if (off < 0) {
-		printf("%s: No eeprom0 path offset\n", __func__);
-		return off;
-	}
+	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom0"))
+		return eth_env_set_enetaddr("ethaddr", enetaddr);
 
-	ret = uclass_get_device_by_of_offset(UCLASS_I2C_EEPROM, off, &dev);
-	if (ret) {
-		printf("Cannot find EEPROM!\n");
-		return ret;
-	}
+	return -ENXIO;
+}
 
-	ret = i2c_eeprom_read(dev, 0xfa, enetaddr, 0x6);
-	if (ret) {
-		printf("Error reading configuration EEPROM!\n");
-		return ret;
-	}
+static int dh_stm32_setup_eth1addr(void)
+{
+	unsigned char enetaddr[6];
 
-	if (is_valid_ethaddr(enetaddr)) {
-		if (!skip_eth0)
-			eth_env_set_enetaddr("ethaddr", enetaddr);
+	if (dh_mac_is_in_env("eth1addr"))
+		return 0;
 
+	if (dh_stm32_mac_is_in_ks8851())
+		return 0;
+
+	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom0")) {
 		enetaddr[5]++;
-		if (!skip_eth1)
-			eth_env_set_enetaddr("eth1addr", enetaddr);
+		return eth_env_set_enetaddr("eth1addr", enetaddr);
 	}
+
+	return -ENXIO;
+}
+
+int setup_mac_address(void)
+{
+	if (dh_stm32_setup_ethaddr())
+		log_err("%s: Unable to setup ethaddr!\n", __func__);
+
+	if (dh_stm32_setup_eth1addr())
+		log_err("%s: Unable to setup eth1addr!\n", __func__);
 
 	return 0;
 }
@@ -191,8 +174,8 @@ int checkboard(void)
 		mode = "basic";
 
 	printf("Board: stm32mp1 in %s mode", mode);
-	fdt_compat = fdt_getprop(gd->fdt_blob, 0, "compatible",
-				 &fdt_compat_len);
+	fdt_compat = ofnode_get_property(ofnode_root(), "compatible",
+					 &fdt_compat_len);
 	if (fdt_compat && fdt_compat_len)
 		printf(" (%s)", fdt_compat);
 	puts("\n");
@@ -289,7 +272,7 @@ int board_fit_config_name_match(const char *name)
 	const char *compat;
 	char test[128];
 
-	compat = fdt_getprop(gd->fdt_blob, 0, "compatible", NULL);
+	compat = ofnode_get_property(ofnode_root(), "compatible", NULL);
 
 	snprintf(test, sizeof(test), "%s_somrev%d_boardrev%d",
 		compat, somcode, brdcode);
@@ -440,7 +423,7 @@ static void __maybe_unused led_error_blink(u32 nb_blink)
 		for (i = 0; i < 2 * nb_blink; i++) {
 			led_set_state(led, LEDST_TOGGLE);
 			mdelay(125);
-			WATCHDOG_RESET();
+			schedule();
 		}
 	}
 #endif
@@ -544,71 +527,114 @@ static void sysconf_init(void)
 #endif
 }
 
-static void board_init_fmc2(void)
+#ifdef CONFIG_DM_REGULATOR
+#define STPMIC_NVM_BUCKS_VOUT_SHR			0xfc
+#define STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_1V2		0
+#define STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_1V8		1
+#define STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_3V0		2
+#define STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_3V3		3
+#define STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_MASK		GENMASK(1, 0)
+#define STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_OFFSET(n)	((((n) - 1) & 3) * 2)
+static int board_get_regulator_buck3_nvm_uv_av96(int *uv)
 {
-#define STM32_FMC2_BCR1			0x0
-#define STM32_FMC2_BTR1			0x4
-#define STM32_FMC2_BWTR1		0x104
-#define STM32_FMC2_BCR(x)		((x) * 0x8 + STM32_FMC2_BCR1)
-#define STM32_FMC2_BCRx_FMCEN		BIT(31)
-#define STM32_FMC2_BCRx_WREN		BIT(12)
-#define STM32_FMC2_BCRx_RSVD		BIT(7)
-#define STM32_FMC2_BCRx_FACCEN		BIT(6)
-#define STM32_FMC2_BCRx_MWID(n)		((n) << 4)
-#define STM32_FMC2_BCRx_MTYP(n)		((n) << 2)
-#define STM32_FMC2_BCRx_MUXEN		BIT(1)
-#define STM32_FMC2_BCRx_MBKEN		BIT(0)
-#define STM32_FMC2_BTR(x)		((x) * 0x8 + STM32_FMC2_BTR1)
-#define STM32_FMC2_BTRx_DATAHLD(n)	((n) << 30)
-#define STM32_FMC2_BTRx_BUSTURN(n)	((n) << 16)
-#define STM32_FMC2_BTRx_DATAST(n)	((n) << 8)
-#define STM32_FMC2_BTRx_ADDHLD(n)	((n) << 4)
-#define STM32_FMC2_BTRx_ADDSET(n)	((n) << 0)
+	struct udevice *dev;
+	u8 bucks_vout = 0;
+	const char *prop;
+	int len, ret;
 
-#define RCC_MP_AHB6RSTCLRR		0x218
-#define RCC_MP_AHB6RSTCLRR_FMCRST	BIT(12)
-#define RCC_MP_AHB6ENSETR		0x19c
-#define RCC_MP_AHB6ENSETR_FMCEN		BIT(12)
+	/* Check whether this is Avenger96 board. */
+	prop = ofnode_get_property(ofnode_root(), "compatible", &len);
+	if (!prop || !len)
+		return -ENODEV;
 
-	const u32 bcr = STM32_FMC2_BCRx_WREN |STM32_FMC2_BCRx_RSVD |
-			STM32_FMC2_BCRx_FACCEN | STM32_FMC2_BCRx_MWID(1) |
-			STM32_FMC2_BCRx_MTYP(2) | STM32_FMC2_BCRx_MUXEN |
-			STM32_FMC2_BCRx_MBKEN;
-	const u32 btr = STM32_FMC2_BTRx_DATAHLD(3) |
-			STM32_FMC2_BTRx_BUSTURN(2) |
-			STM32_FMC2_BTRx_DATAST(0x22) |
-			STM32_FMC2_BTRx_ADDHLD(2) |
-			STM32_FMC2_BTRx_ADDSET(2);
+	if (!strstr(prop, "avenger96") && !strstr(prop, "dhcor-testbench"))
+		return -EINVAL;
 
-	/* Set up FMC2 bus for KS8851-16MLL and X11 SRAM */
-	writel(RCC_MP_AHB6RSTCLRR_FMCRST, STM32_RCC_BASE + RCC_MP_AHB6RSTCLRR);
-	writel(RCC_MP_AHB6ENSETR_FMCEN, STM32_RCC_BASE + RCC_MP_AHB6ENSETR);
+	/* Read out STPMIC1 NVM and determine default Buck3 voltage. */
+	ret = uclass_get_device_by_driver(UCLASS_MISC,
+					  DM_DRIVER_GET(stpmic1_nvm),
+					  &dev);
+	if (ret)
+		return ret;
 
-	/* KS8851-16MLL -- Muxed mode */
-	writel(bcr, STM32_FMC2_BASE + STM32_FMC2_BCR(1));
-	writel(btr, STM32_FMC2_BASE + STM32_FMC2_BTR(1));
-	/* AS7C34098 SRAM on X11 -- Muxed mode */
-	writel(bcr, STM32_FMC2_BASE + STM32_FMC2_BCR(3));
-	writel(btr, STM32_FMC2_BASE + STM32_FMC2_BTR(3));
+	ret = misc_read(dev, STPMIC_NVM_BUCKS_VOUT_SHR, &bucks_vout, 1);
+	if (ret != 1)
+		return -EINVAL;
 
-	setbits_le32(STM32_FMC2_BASE + STM32_FMC2_BCR1, STM32_FMC2_BCRx_FMCEN);
+	bucks_vout >>= STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_OFFSET(3);
+	bucks_vout &= STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_MASK;
+
+	if (strstr(prop, "avenger96")) {
+		/*
+		 * Avenger96 board comes in multiple regulator configurations:
+		 * - rev.100 or rev.200 have Buck3 preconfigured to
+		 *   3V3 operation on boot and contains extra Enpirion
+		 *   EP53A8LQI DCDC converter which supplies the IO.
+		 *   Reduce Buck3 voltage to 2V9 to not waste power.
+		 * - rev.200L have Buck3 preconfigured to 1V8 operation
+		 *   and have no Enpirion EP53A8LQI DCDC anymore, the
+		 *   IO is supplied from Buck3.
+		 */
+		if (bucks_vout == STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_3V3)
+			*uv = 2900000;
+		else
+			*uv = 1800000;
+	} else {
+		/* Testbench always respects Buck3 NVM settings */
+		if (bucks_vout == STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_3V3)
+			*uv = 3300000;
+		else if (bucks_vout == STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_3V0)
+			*uv = 3000000;
+		else if (bucks_vout == STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_1V8)
+			*uv = 1800000;
+		else	/* STPMIC_NVM_BUCKS_VOUT_SHR_BUCK_1V2 */
+			*uv = 1200000;
+	}
+
+	return 0;
 }
+
+static void board_init_regulator_av96(void)
+{
+	struct udevice *rdev;
+	int ret, uv;
+
+	ret = board_get_regulator_buck3_nvm_uv_av96(&uv);
+	if (ret)	/* Not Avenger96 board. */
+		return;
+
+	ret = regulator_get_by_devname("buck3", &rdev);
+	if (ret)
+		return;
+
+	/* Adjust Buck3 per preconfigured PMIC voltage from NVM. */
+	regulator_set_value(rdev, uv);
+	regulator_set_enable(rdev, true);
+}
+
+static void board_init_regulator(void)
+{
+	board_init_regulator_av96();
+
+	regulators_enable_boot_on(_DEBUG);
+}
+#else
+static inline int board_get_regulator_buck3_nvm_uv_av96(int *uv)
+{
+	return -EINVAL;
+}
+
+static inline void board_init_regulator(void) {}
+#endif
 
 /* board dependent setup after realloc */
 int board_init(void)
 {
 	board_key_check();
 
-#ifdef CONFIG_DM_REGULATOR
-	regulators_enable_boot_on(_DEBUG);
-#endif
+	board_init_regulator();
 
 	sysconf_init();
-
-	board_init_fmc2();
-
-	if (CONFIG_IS_ENABLED(LED))
-		led_default_state();
 
 	return 0;
 }
@@ -620,8 +646,8 @@ int board_late_init(void)
 	const void *fdt_compat;
 	int fdt_compat_len;
 
-	fdt_compat = fdt_getprop(gd->fdt_blob, 0, "compatible",
-				 &fdt_compat_len);
+	fdt_compat = ofnode_get_property(ofnode_root(), "compatible",
+					 &fdt_compat_len);
 	if (fdt_compat && fdt_compat_len) {
 		if (strncmp(fdt_compat, "st,", 3) != 0)
 			env_set("board_name", fdt_compat);
@@ -724,6 +750,25 @@ int board_interface_eth_init(struct udevice *dev,
 #if defined(CONFIG_OF_BOARD_SETUP)
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
+	const char *buck3path = "/soc/i2c@5c002000/stpmic@33/regulators/buck3";
+	int buck3off, ret, uv;
+
+	ret = board_get_regulator_buck3_nvm_uv_av96(&uv);
+	if (ret)	/* Not Avenger96 board, do not patch Buck3 in DT. */
+		return 0;
+
+	buck3off = fdt_path_offset(blob, buck3path);
+	if (buck3off < 0)	/* No Buck3 regulator found. */
+		return 0;
+
+	ret = fdt_setprop_u32(blob, buck3off, "regulator-min-microvolt", uv);
+	if (ret < 0)
+		return ret;
+
+	ret = fdt_setprop_u32(blob, buck3off, "regulator-max-microvolt", uv);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 #endif

@@ -32,7 +32,7 @@ int is_serdes_configured(enum srds_prtcl prtcl)
 
 void fsl_serdes_init(void)
 {
-	ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	u32 pordevsr = in_be32(&gur->pordevsr);
 	u32 srds1_cfg = (pordevsr & MPC85xx_PORDEVSR_IO_SEL) >>
 				MPC85xx_PORDEVSR_IO_SEL_SHIFT;
@@ -45,7 +45,7 @@ void fsl_serdes_init(void)
 
 	if (srds1_cfg >= ARRAY_SIZE(serdes1_cfg_tbl)) {
 		printf("Invalid PORDEVSR[IO_SEL] = %d\n", srds1_cfg);
-		return ;
+		return;
 	}
 
 	for (lane = 0; lane < SRDS1_MAX_LANES; lane++) {

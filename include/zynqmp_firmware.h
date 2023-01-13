@@ -160,6 +160,12 @@ enum dll_reset_type {
 	PM_DLL_RESET_PULSE = 2,
 };
 
+enum ospi_mux_select_type {
+	PM_OSPI_MUX_SEL_DMA,
+	PM_OSPI_MUX_SEL_LINEAR,
+	PM_OSPI_MUX_GET_MODE,
+};
+
 enum pm_query_id {
 	PM_QID_INVALID = 0,
 	PM_QID_CLOCK_GET_NAME = 1,
@@ -401,12 +407,6 @@ enum pm_ioctl_id {
 	IOCTL_GET_QOS = 34,
 };
 
-enum ospi_mux_select_type {
-	PM_OSPI_MUX_SEL_DMA,
-	PM_OSPI_MUX_SEL_LINEAR,
-	PM_OSPI_MUX_GET_MODE,
-};
-
 enum pm_sd_config_type {
 	SD_CONFIG_EMMC_SEL = 1,	/* To set SD_EMMC_SEL in CTRL_REG_SD */
 	SD_CONFIG_BASECLK = 2,	/* To set SD_BASECLK in SD_CONFIG_REG1 */
@@ -433,7 +433,6 @@ enum pm_gem_config_type {
 #define ZYNQMP_PM_VERSION_INVALID	~0
 
 #define PMUFW_V1_0	((1 << ZYNQMP_PM_VERSION_MAJOR_SHIFT) | 0)
-
 #define PMIO_NODE_ID_BASE		0x1410801B
 
 /*

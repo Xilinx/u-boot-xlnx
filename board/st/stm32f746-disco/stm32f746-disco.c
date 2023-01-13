@@ -7,7 +7,6 @@
 #include <common.h>
 #include <dm.h>
 #include <init.h>
-#include <lcd.h>
 #include <log.h>
 #include <miiphy.h>
 #include <phy_interface.h>
@@ -29,7 +28,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 int dram_init(void)
 {
-#ifndef CONFIG_SUPPORT_SPL
+#ifndef CONFIG_SPL_BUILD
 	int rv;
 	struct udevice *dev;
 	rv = uclass_get_device(UCLASS_RAM, 0, &dev);
@@ -117,16 +116,13 @@ int board_late_init(void)
 int board_init(void)
 {
 #ifdef CONFIG_ETH_DESIGNWARE
-	const char *phy_mode;
-	int node;
+	ofnode node;
 
-	node = fdt_node_offset_by_compatible(gd->fdt_blob, 0, "st,stm32-dwmac");
-	if (node < 0)
+	node = ofnode_by_compatible(ofnode_null(), "st,stm32-dwmac");
+	if (!ofnode_valid(node))
 		return -1;
 
-	phy_mode = fdt_getprop(gd->fdt_blob, node, "phy-mode", NULL);
-
-	switch (phy_get_interface_by_name(phy_mode)) {
+	switch (ofnode_read_phy_mode(node)) {
 	case PHY_INTERFACE_MODE_RMII:
 		STM32_SYSCFG->pmc |= SYSCFG_PMC_MII_RMII_SEL;
 		break;
@@ -134,7 +130,7 @@ int board_init(void)
 		STM32_SYSCFG->pmc &= ~SYSCFG_PMC_MII_RMII_SEL;
 		break;
 	default:
-		printf("PHY interface %s not supported !\n", phy_mode);
+		printf("Unsupported PHY interface!\n");
 	}
 #endif
 

@@ -52,7 +52,7 @@ void ut_failf(struct unit_test_state *uts, const char *fname, int line,
  *
  * @uts: Test state
  * @fmt: printf() format string for the error, followed by args
- * @return 0 if OK, other value on error
+ * Return: 0 if OK, other value on error
  */
 int ut_check_console_line(struct unit_test_state *uts, const char *fmt, ...)
 			__attribute__ ((format (__printf__, 2, 3)));
@@ -69,7 +69,7 @@ int ut_check_console_line(struct unit_test_state *uts, const char *fmt, ...)
  *
  * @uts: Test state
  * @fmt: printf() format string for the error, followed by args
- * @return 0 if OK, other value on error
+ * Return: 0 if OK, other value on error
  */
 int ut_check_console_linen(struct unit_test_state *uts, const char *fmt, ...)
 			__attribute__ ((format (__printf__, 2, 3)));
@@ -78,7 +78,7 @@ int ut_check_console_linen(struct unit_test_state *uts, const char *fmt, ...)
  * ut_check_skipline() - Check that the next console line exists and skip it
  *
  * @uts: Test state
- * @return 0 if OK, other value on error
+ * Return: 0 if OK, other value on error
  */
 int ut_check_skipline(struct unit_test_state *uts);
 
@@ -93,7 +93,7 @@ int ut_check_skipline(struct unit_test_state *uts);
  *
  * @uts: Test state
  * @fmt: printf() format string to look for, followed by args
- * @return 0 if OK, -ENOENT if not found, other value on error
+ * Return: 0 if OK, -ENOENT if not found, other value on error
  */
 int ut_check_skip_to_line(struct unit_test_state *uts, const char *fmt, ...);
 
@@ -104,7 +104,7 @@ int ut_check_skip_to_line(struct unit_test_state *uts, const char *fmt, ...);
  * from the console
  *
  * @uts: Test state
- * @return 0 if OK (console has no output), other value on error
+ * Return: 0 if OK (console has no output), other value on error
  */
 int ut_check_console_end(struct unit_test_state *uts);
 
@@ -114,10 +114,15 @@ int ut_check_console_end(struct unit_test_state *uts);
  * This only supports a byte dump.
  *
  * @total_bytes: Size of the expected dump in bytes`
- * @return 0 if OK (looks like a dump and the length matches), other value on
+ * Return: 0 if OK (looks like a dump and the length matches), other value on
  *	error
  */
 int ut_check_console_dump(struct unit_test_state *uts, int total_bytes);
+
+/* Report a failure, with printf() string */
+#define ut_reportf(fmt, args...)					\
+	ut_failf(uts, __FILE__, __LINE__, __func__, "report",		\
+		 fmt, ##args)
 
 /* Assert that a condition is non-zero */
 #define ut_assert(cond)							\
@@ -332,7 +337,7 @@ int ut_check_console_dump(struct unit_test_state *uts, int total_bytes);
 /**
  * ut_check_free() - Return the number of bytes free in the malloc() pool
  *
- * @return bytes free
+ * Return: bytes free
  */
 ulong ut_check_free(void);
 
@@ -340,7 +345,7 @@ ulong ut_check_free(void);
  * ut_check_delta() - Return the number of bytes allocated/freed
  *
  * @last: Last value from ut_check_free
- * @return free memory delta from @last; positive means more memory has been
+ * Return: free memory delta from @last; positive means more memory has been
  *	allocated, negative means less has been allocated (i.e. some is freed)
  */
 long ut_check_delta(ulong last);
@@ -377,7 +382,7 @@ void ut_set_skip_delays(struct unit_test_state *uts, bool skip_delays);
 /**
  * test_get_state() - Get the active test state
  *
- * @return the currently active test state, or NULL if none
+ * Return: the currently active test state, or NULL if none
  */
 struct unit_test_state *test_get_state(void);
 
@@ -403,9 +408,17 @@ void test_set_state(struct unit_test_state *uts);
  * @count: Number of tests to run
  * @select_name: Name of a single test to run (from the list provided). If NULL
  *	then all tests are run
- * @return 0 if all tests passed, -1 if any failed
+ * @runs_per_test: Number of times to run each test (typically 1)
+ * @force_run: Run tests that are marked as manual-only (UT_TESTF_MANUAL)
+ * @test_insert: String describing a test to run after n other tests run, in the
+ * format n:name where n is the number of tests to run before this one and
+ * name is the name of the test to run. This is used to find which test causes
+ * another test to fail. If the one test fails, testing stops immediately.
+ * Pass NULL to disable this
+ * Return: 0 if all tests passed, -1 if any failed
  */
 int ut_run_list(const char *name, const char *prefix, struct unit_test *tests,
-		int count, const char *select_name);
+		int count, const char *select_name, int runs_per_test,
+		bool force_run, const char *test_insert);
 
 #endif

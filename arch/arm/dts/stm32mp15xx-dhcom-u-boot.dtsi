@@ -18,40 +18,39 @@
 		mmc1 = &sdmmc2;
 		spi0 = &qspi;
 		usb0 = &usbotg_hs;
-		ethernet1 = &ksz8851;
+		eeprom0 = &eeprom0;
 	};
 
 	config {
 		u-boot,boot-led = "heartbeat";
 		u-boot,error-led = "error";
-		st,fastboot-gpios = <&gpioa 13 GPIO_ACTIVE_LOW>;
-		st,stm32prog-gpios = <&gpioa 14 GPIO_ACTIVE_LOW>;
 		dh,som-coding-gpios = <&gpiof 12 0>, <&gpiof 13 0>, <&gpiof 15 0>;
 		dh,ddr3-coding-gpios = <&gpioz 6 0>, <&gpioz 7 0>;
 	};
+};
 
-	led {
-		red {
-			label = "error";
-			gpios = <&gpioa 13 GPIO_ACTIVE_LOW>;
-			default-state = "off";
-			status = "okay";
-		};
+&ethernet0 {
+	phy-reset-gpios = <&gpioh 3 GPIO_ACTIVE_LOW>;
+	/delete-property/ st,eth-ref-clk-sel;
+};
 
-		blue {
-			default-state = "on";
-		};
-	};
-
-	/* This is actually on FMC2, but we do not have bus driver for that */
-	ksz8851: ks8851mll@64000000 {
-		compatible = "micrel,ks8851-mll";
-		reg = <0x64000000 0x20000>;
+&ethernet0_rmii_pins_a {
+	pins1 {
+		pinmux = <STM32_PINMUX('G', 13, AF11)>, /* ETH1_RMII_TXD0 */
+			 <STM32_PINMUX('G', 14, AF11)>, /* ETH1_RMII_TXD1 */
+			 <STM32_PINMUX('B', 11, AF11)>, /* ETH1_RMII_TX_EN */
+			 <STM32_PINMUX('A', 1, AF11)>,  /* ETH1_RMII_REF_CLK */
+			 <STM32_PINMUX('A', 2, AF11)>,  /* ETH1_MDIO */
+			 <STM32_PINMUX('C', 1, AF11)>;  /* ETH1_MDC */
 	};
 };
 
 &i2c4 {
 	u-boot,dm-pre-reloc;
+	u-boot,dm-spl;
+
+	eeprom0: eeprom@50 {
+	};
 };
 
 &i2c4_pins_a {
@@ -61,12 +60,11 @@
 	};
 };
 
-&pinctrl {
-	/* These should bound to FMC2 bus driver, but we do not have one */
-	pinctrl-0 = <&fmc_pins_b &mco2_pins_a>;
-	pinctrl-1 = <&fmc_sleep_pins_b &mco2_sleep_pins_a>;
-	pinctrl-names = "default", "sleep";
+&phy0 {
+	/delete-property/ reset-gpios;
+};
 
+&pinctrl {
 	mco2_pins_a: mco2-0 {
 		pins {
 			pinmux = <STM32_PINMUX('G', 2, AF1)>; /* MCO2 */
@@ -85,6 +83,11 @@
 
 &pmic {
 	u-boot,dm-pre-reloc;
+	u-boot,dm-spl;
+
+	regulators {
+		u-boot,dm-spl;
+	};
 };
 
 &flash0 {
@@ -187,6 +190,21 @@
 		CLK_LPTIM45_LSE
 	>;
 
+	/*
+	 * cfg = < DIVM1 DIVN P Q R PQR(p,q,r) >;
+	 * frac = < f >;
+	 *
+	 * PRQ(p,q,r) ... for p,q,r: 0-output disabled / 1-output enabled
+	 * DIVN ... actually multiplier, but RCC_PLL1CFGR1 calls the field DIVN
+	 * m ... for PLL1,2: m=2 ; for PLL3,4: m=1
+	 * XTAL = 24 MHz
+	 *
+	 * VCO = ( XTAL / (DIVM1 + 1) ) * m * ( DIVN + 1 + ( f / 8192 ) )
+	 *   P = VCO / (P + 1)
+	 *   Q = VCO / (Q + 1)
+	 *   R = VCO / (R + 1)
+	 */
+
 	/* VCO = 1066.0 MHz => P = 266 (AXI), Q = 533 (GPU), R = 533 (DDR) */
 	pll2: st,pll@1 {
 		compatible = "st,stm32mp1-pll";
@@ -205,7 +223,7 @@
 		u-boot,dm-pre-reloc;
 	};
 
-	/* VCO = 600.0 MHz => P = 50, Q = 50, R = 50 */
+	/* VCO = 600.0 MHz => P = 100, Q = 50, R = 50 */
 	pll4: st,pll@3 {
 		compatible = "st,stm32mp1-pll";
 		reg = <3>;
@@ -216,6 +234,10 @@
 
 &sdmmc1 {
 	u-boot,dm-spl;
+	st,use-ckin;
+	st,cmd-gpios = <&gpiod 2 0>;
+	st,ck-gpios = <&gpioc 12 0>;
+	st,ckin-gpios = <&gpioe 4 0>;
 };
 
 &sdmmc1_b4_pins_a {
@@ -270,4 +292,40 @@
 		/* pull-up on rx to avoid floating level */
 		bias-pull-up;
 	};
+};
+
+&reg11 {
+	u-boot,dm-spl;
+};
+
+&reg18 {
+	u-boot,dm-spl;
+};
+
+&usb33 {
+	u-boot,dm-spl;
+};
+
+&usbotg_hs_pins_a {
+	u-boot,dm-spl;
+};
+
+&usbotg_hs {
+	u-boot,dm-spl;
+};
+
+&usbphyc {
+	u-boot,dm-spl;
+};
+
+&usbphyc_port0 {
+	u-boot,dm-spl;
+};
+
+&usbphyc_port1 {
+	u-boot,dm-spl;
+};
+
+&vdd_usb {
+	u-boot,dm-spl;
 };

@@ -15,56 +15,6 @@
 
 #include "clk.h"
 
-#define PLL_1416X_RATE(_rate, _m, _p, _s)		\
-	{						\
-		.rate	=	(_rate),		\
-		.mdiv	=	(_m),			\
-		.pdiv	=	(_p),			\
-		.sdiv	=	(_s),			\
-	}
-
-#define PLL_1443X_RATE(_rate, _m, _p, _s, _k)		\
-	{						\
-		.rate	=	(_rate),		\
-		.mdiv	=	(_m),			\
-		.pdiv	=	(_p),			\
-		.sdiv	=	(_s),			\
-		.kdiv	=	(_k),			\
-	}
-
-static const struct imx_pll14xx_rate_table imx8mm_pll1416x_tbl[] = {
-	PLL_1416X_RATE(1800000000U, 225, 3, 0),
-	PLL_1416X_RATE(1600000000U, 200, 3, 0),
-	PLL_1416X_RATE(1200000000U, 300, 3, 1),
-	PLL_1416X_RATE(1000000000U, 250, 3, 1),
-	PLL_1416X_RATE(800000000U,  200, 3, 1),
-	PLL_1416X_RATE(750000000U,  250, 2, 2),
-	PLL_1416X_RATE(700000000U,  350, 3, 2),
-	PLL_1416X_RATE(600000000U,  300, 3, 2),
-};
-
-static const struct imx_pll14xx_rate_table imx8mm_drampll_tbl[] = {
-	PLL_1443X_RATE(650000000U, 325, 3, 2, 0),
-};
-
-static struct imx_pll14xx_clk imx8mm_dram_pll __initdata = {
-		.type = PLL_1443X,
-		.rate_table = imx8mm_drampll_tbl,
-		.rate_count = ARRAY_SIZE(imx8mm_drampll_tbl),
-};
-
-static struct imx_pll14xx_clk imx8mm_arm_pll __initdata = {
-		.type = PLL_1416X,
-		.rate_table = imx8mm_pll1416x_tbl,
-		.rate_count = ARRAY_SIZE(imx8mm_pll1416x_tbl),
-};
-
-static struct imx_pll14xx_clk imx8mm_sys_pll __initdata = {
-		.type = PLL_1416X,
-		.rate_table = imx8mm_pll1416x_tbl,
-		.rate_count = ARRAY_SIZE(imx8mm_pll1416x_tbl),
-};
-
 static const char *pll_ref_sels[] = { "clock-osc-24m", "dummy", "dummy", "dummy", };
 static const char *dram_pll_bypass_sels[] = {"dram_pll", "dram_pll_ref_sel", };
 static const char *arm_pll_bypass_sels[] = {"arm_pll", "arm_pll_ref_sel", };
@@ -78,10 +28,10 @@ static const char *imx8mm_a53_sels[] = {"clock-osc-24m", "arm_pll_out", "sys_pll
 static const char *imx8mm_ahb_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_800m", "sys_pll1_400m",
 					"sys_pll2_125m", "sys_pll3_out", "audio_pll1_out", "video_pll1_out", };
 
+#ifndef CONFIG_SPL_BUILD
 static const char *imx8mm_enet_axi_sels[] = {"clock-osc-24m", "sys_pll1_266m", "sys_pll1_800m", "sys_pll2_250m",
 					     "sys_pll2_200m", "audio_pll1_out", "video_pll1_out", "sys_pll3_out", };
 
-#ifndef CONFIG_SPL_BUILD
 static const char *imx8mm_enet_ref_sels[] = {"clock-osc-24m", "sys_pll2_125m", "sys_pll2_50m", "sys_pll2_100m",
 					     "sys_pll1_160m", "audio_pll1_out", "video_pll1_out", "clk_ext4", };
 
@@ -116,14 +66,30 @@ static const char *imx8mm_i2c3_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_
 static const char *imx8mm_i2c4_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m", "sys_pll3_out", "audio_pll1_out",
 					 "video_pll1_out", "audio_pll2_out", "sys_pll1_133m", };
 
+#ifndef CONFIG_SPL_BUILD
+static const char *imx8mm_pwm1_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
+					 "sys_pll3_out", "clk_ext1", "sys_pll1_80m", "video_pll1_out", };
+
+static const char *imx8mm_pwm2_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
+					 "sys_pll3_out", "clk_ext1", "sys_pll1_80m", "video_pll1_out", };
+
+static const char *imx8mm_pwm3_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
+					 "sys_pll3_out", "clk_ext2", "sys_pll1_80m", "video_pll1_out", };
+
+static const char *imx8mm_pwm4_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
+					 "sys_pll3_out", "clk_ext2", "sys_pll1_80m", "video_pll1_out", };
+#endif
+
 static const char *imx8mm_wdog_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_160m", "vpu_pll_out",
 					 "sys_pll2_125m", "sys_pll3_out", "sys_pll1_80m", "sys_pll2_166m", };
 
 static const char *imx8mm_usdhc3_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m", "sys_pll2_500m",
 					   "sys_pll3_out", "sys_pll1_266m", "audio_pll2_clk", "sys_pll1_100m", };
 
+#if CONFIG_IS_ENABLED(NXP_FSPI)
 static const char *imx8mm_qspi_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll2_333m", "sys_pll2_500m",
 					   "audio_pll2_out", "sys_pll1_266m", "sys_pll3_out", "sys_pll1_100m", };
+#endif
 
 static const char *imx8mm_usb_core_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m", "sys_pll2_100m",
 					     "sys_pll2_200m", "clk_ext2", "clk_ext3", "audio_pll2_out", };
@@ -131,6 +97,7 @@ static const char *imx8mm_usb_core_sels[] = {"clock-osc-24m", "sys_pll1_100m", "
 static const char *imx8mm_usb_phy_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m", "sys_pll2_100m",
 					     "sys_pll2_200m", "clk_ext2", "clk_ext3", "audio_pll2_out", };
 
+#if CONFIG_IS_ENABLED(DM_SPI)
 static const char *imx8mm_ecspi1_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m", "sys_pll1_160m",
 					   "sys_pll1_800m", "sys_pll3_out", "sys_pll2_250m", "audio_pll2_out", };
 
@@ -139,92 +106,7 @@ static const char *imx8mm_ecspi2_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sy
 
 static const char *imx8mm_ecspi3_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m", "sys_pll1_160m",
 					   "sys_pll1_800m", "sys_pll3_out", "sys_pll2_250m", "audio_pll2_out", };
-
-static ulong imx8mm_clk_get_rate(struct clk *clk)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu)\n", __func__, clk->id);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	return clk_get_rate(c);
-}
-
-static ulong imx8mm_clk_set_rate(struct clk *clk, unsigned long rate)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu), rate: %lu\n", __func__, clk->id, rate);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	return clk_set_rate(c, rate);
-}
-
-static int __imx8mm_clk_enable(struct clk *clk, bool enable)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu) en: %d\n", __func__, clk->id, enable);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	if (enable)
-		ret = clk_enable(c);
-	else
-		ret = clk_disable(c);
-
-	return ret;
-}
-
-static int imx8mm_clk_disable(struct clk *clk)
-{
-	return __imx8mm_clk_enable(clk, 0);
-}
-
-static int imx8mm_clk_enable(struct clk *clk)
-{
-	return __imx8mm_clk_enable(clk, 1);
-}
-
-static int imx8mm_clk_set_parent(struct clk *clk, struct clk *parent)
-{
-	struct clk *c, *cp;
-	int ret;
-
-	debug("%s(#%lu), parent: %lu\n", __func__, clk->id, parent->id);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	ret = clk_get_by_id(parent->id, &cp);
-	if (ret)
-		return ret;
-
-	ret = clk_set_parent(c, cp);
-	c->dev->parent = cp->dev;
-
-	return ret;
-}
-
-static struct clk_ops imx8mm_clk_ops = {
-	.set_rate = imx8mm_clk_set_rate,
-	.get_rate = imx8mm_clk_get_rate,
-	.enable = imx8mm_clk_enable,
-	.disable = imx8mm_clk_disable,
-	.set_parent = imx8mm_clk_set_parent,
-};
+#endif
 
 static int imx8mm_clk_probe(struct udevice *dev)
 {
@@ -250,19 +132,19 @@ static int imx8mm_clk_probe(struct udevice *dev)
 
 	clk_dm(IMX8MM_DRAM_PLL,
 	       imx_clk_pll14xx("dram_pll", "dram_pll_ref_sel",
-			       base + 0x50, &imx8mm_dram_pll));
+			       base + 0x50, &imx_1443x_dram_pll));
 	clk_dm(IMX8MM_ARM_PLL,
 	       imx_clk_pll14xx("arm_pll", "arm_pll_ref_sel",
-			       base + 0x84, &imx8mm_arm_pll));
+			       base + 0x84, &imx_1416x_pll));
 	clk_dm(IMX8MM_SYS_PLL1,
 	       imx_clk_pll14xx("sys_pll1", "sys_pll1_ref_sel",
-			       base + 0x94, &imx8mm_sys_pll));
+			       base + 0x94, &imx_1416x_pll));
 	clk_dm(IMX8MM_SYS_PLL2,
 	       imx_clk_pll14xx("sys_pll2", "sys_pll2_ref_sel",
-			       base + 0x104, &imx8mm_sys_pll));
+			       base + 0x104, &imx_1416x_pll));
 	clk_dm(IMX8MM_SYS_PLL3,
 	       imx_clk_pll14xx("sys_pll3", "sys_pll3_ref_sel",
-			       base + 0x114, &imx8mm_sys_pll));
+			       base + 0x114, &imx_1416x_pll));
 
 	/* PLL bypass out */
 	clk_dm(IMX8MM_DRAM_PLL_BYPASS,
@@ -366,9 +248,6 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	clk_dm(IMX8MM_CLK_IPG_ROOT,
 	       imx_clk_divider2("ipg_root", "ahb", base + 0x9080, 0, 1));
 
-	clk_dm(IMX8MM_CLK_ENET_AXI,
-	       imx8m_clk_composite("enet_axi", imx8mm_enet_axi_sels,
-				   base + 0x8880));
 	clk_dm(IMX8MM_CLK_NAND_USDHC_BUS,
 	       imx8m_clk_composite_critical("nand_usdhc_bus",
 					    imx8mm_nand_usdhc_sels,
@@ -396,25 +275,10 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	clk_dm(IMX8MM_CLK_USDHC3,
 	       imx8m_clk_composite("usdhc3", imx8mm_usdhc3_sels,
 				   base + 0xbc80));
-	clk_dm(IMX8MM_CLK_QSPI,
-	       imx8m_clk_composite("qspi", imx8mm_qspi_sels, base + 0xab80));
 	clk_dm(IMX8MM_CLK_USB_CORE_REF,
 		imx8m_clk_composite("usb_core_ref", imx8mm_usb_core_sels, base + 0xb100));
 	clk_dm(IMX8MM_CLK_USB_PHY_REF,
 		imx8m_clk_composite("usb_phy_ref", imx8mm_usb_phy_sels, base + 0xb180));
-	clk_dm(IMX8MM_CLK_ECSPI1,
-	       imx8m_clk_composite("ecspi1", imx8mm_ecspi1_sels, base + 0xb280));
-	clk_dm(IMX8MM_CLK_ECSPI2,
-	       imx8m_clk_composite("ecspi2", imx8mm_ecspi2_sels, base + 0xb300));
-	clk_dm(IMX8MM_CLK_ECSPI3,
-	       imx8m_clk_composite("ecspi3", imx8mm_ecspi3_sels, base + 0xc180));
-
-	clk_dm(IMX8MM_CLK_ECSPI1_ROOT,
-	       imx_clk_gate4("ecspi1_root_clk", "ecspi1", base + 0x4070, 0));
-	clk_dm(IMX8MM_CLK_ECSPI2_ROOT,
-	       imx_clk_gate4("ecspi2_root_clk", "ecspi2", base + 0x4080, 0));
-	clk_dm(IMX8MM_CLK_ECSPI3_ROOT,
-	       imx_clk_gate4("ecspi3_root_clk", "ecspi3", base + 0x4090, 0));
 	clk_dm(IMX8MM_CLK_I2C1_ROOT,
 	       imx_clk_gate4("i2c1_root_clk", "i2c1", base + 0x4170, 0));
 	clk_dm(IMX8MM_CLK_I2C2_ROOT,
@@ -437,13 +301,14 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	       imx_clk_gate4("wdog3_root_clk", "wdog", base + 0x4550, 0));
 	clk_dm(IMX8MM_CLK_USDHC3_ROOT,
 	       imx_clk_gate4("usdhc3_root_clk", "usdhc3", base + 0x45e0, 0));
-	clk_dm(IMX8MM_CLK_QSPI_ROOT,
-	       imx_clk_gate4("qspi_root_clk", "qspi", base + 0x42f0, 0));
 	clk_dm(IMX8MM_CLK_USB1_CTRL_ROOT,
 		imx_clk_gate4("usb1_ctrl_root_clk", "usb_bus", base + 0x44d0, 0));
 
 	/* clks not needed in SPL stage */
 #ifndef CONFIG_SPL_BUILD
+	clk_dm(IMX8MM_CLK_ENET_AXI,
+	       imx8m_clk_composite("enet_axi", imx8mm_enet_axi_sels,
+				   base + 0x8880));
 	clk_dm(IMX8MM_CLK_ENET_REF,
 	       imx8m_clk_composite("enet_ref", imx8mm_enet_ref_sels,
 	       base + 0xa980));
@@ -456,6 +321,45 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	clk_dm(IMX8MM_CLK_ENET1_ROOT,
 	       imx_clk_gate4("enet1_root_clk", "enet_axi",
 	       base + 0x40a0, 0));
+	clk_dm(IMX8MM_CLK_PWM1,
+	       imx8m_clk_composite("pwm1", imx8mm_pwm1_sels, base + 0xb380));
+	clk_dm(IMX8MM_CLK_PWM2,
+	       imx8m_clk_composite("pwm2", imx8mm_pwm2_sels, base + 0xb400));
+	clk_dm(IMX8MM_CLK_PWM3,
+	       imx8m_clk_composite("pwm3", imx8mm_pwm3_sels, base + 0xb480));
+	clk_dm(IMX8MM_CLK_PWM4,
+	       imx8m_clk_composite("pwm4", imx8mm_pwm4_sels, base + 0xb500));
+	clk_dm(IMX8MM_CLK_PWM1_ROOT,
+	       imx_clk_gate4("pwm1_root_clk", "pwm1", base + 0x4280, 0));
+	clk_dm(IMX8MM_CLK_PWM2_ROOT,
+	       imx_clk_gate4("pwm2_root_clk", "pwm2", base + 0x4290, 0));
+	clk_dm(IMX8MM_CLK_PWM3_ROOT,
+	       imx_clk_gate4("pwm3_root_clk", "pwm3", base + 0x42a0, 0));
+	clk_dm(IMX8MM_CLK_PWM4_ROOT,
+	       imx_clk_gate4("pwm4_root_clk", "pwm4", base + 0x42b0, 0));
+#endif
+
+#if CONFIG_IS_ENABLED(DM_SPI)
+	clk_dm(IMX8MM_CLK_ECSPI1,
+	       imx8m_clk_composite("ecspi1", imx8mm_ecspi1_sels, base + 0xb280));
+	clk_dm(IMX8MM_CLK_ECSPI2,
+	       imx8m_clk_composite("ecspi2", imx8mm_ecspi2_sels, base + 0xb300));
+	clk_dm(IMX8MM_CLK_ECSPI3,
+	       imx8m_clk_composite("ecspi3", imx8mm_ecspi3_sels, base + 0xc180));
+
+	clk_dm(IMX8MM_CLK_ECSPI1_ROOT,
+	       imx_clk_gate4("ecspi1_root_clk", "ecspi1", base + 0x4070, 0));
+	clk_dm(IMX8MM_CLK_ECSPI2_ROOT,
+	       imx_clk_gate4("ecspi2_root_clk", "ecspi2", base + 0x4080, 0));
+	clk_dm(IMX8MM_CLK_ECSPI3_ROOT,
+	       imx_clk_gate4("ecspi3_root_clk", "ecspi3", base + 0x4090, 0));
+#endif
+
+#if CONFIG_IS_ENABLED(NXP_FSPI)
+	clk_dm(IMX8MM_CLK_QSPI,
+	       imx8m_clk_composite("qspi", imx8mm_qspi_sels, base + 0xab80));
+	clk_dm(IMX8MM_CLK_QSPI_ROOT,
+	       imx_clk_gate4("qspi_root_clk", "qspi", base + 0x42f0, 0));
 #endif
 
 	return 0;
@@ -470,7 +374,7 @@ U_BOOT_DRIVER(imx8mm_clk) = {
 	.name = "clk_imx8mm",
 	.id = UCLASS_CLK,
 	.of_match = imx8mm_clk_ids,
-	.ops = &imx8mm_clk_ops,
+	.ops = &ccf_clk_ops,
 	.probe = imx8mm_clk_probe,
 	.flags = DM_FLAG_PRE_RELOC,
 };

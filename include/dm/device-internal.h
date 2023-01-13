@@ -10,10 +10,12 @@
 #ifndef _DM_DEVICE_INTERNAL_H
 #define _DM_DEVICE_INTERNAL_H
 
+#include <event.h>
 #include <linker_lists.h>
 #include <dm/ofnode.h>
 
 struct device_node;
+struct driver_info;
 struct udevice;
 
 /*
@@ -109,7 +111,7 @@ struct udevice;
  * @ofnode: Devicetree node for this device. This is ofnode_null() for
  * devices which don't use devicetree or don't have a node.
  * @devp: if non-NULL, returns a pointer to the bound device
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int device_bind(struct udevice *parent, const struct driver *drv,
 		const char *name, void *plat, ofnode node,
@@ -132,7 +134,7 @@ int device_bind(struct udevice *parent, const struct driver *drv,
  * @node: Device tree node for this device. This is invalid for devices which
  * don't use device tree.
  * @devp: if non-NULL, returns a pointer to the bound device
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int device_bind_with_driver_data(struct udevice *parent,
 				 const struct driver *drv, const char *name,
@@ -149,7 +151,7 @@ int device_bind_with_driver_data(struct udevice *parent,
  * is set. If false bind the driver always.
  * @info: Name and plat for this device
  * @devp: if non-NULL, returns a pointer to the bound device
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
 			const struct driver_info *info, struct udevice **devp);
@@ -159,7 +161,7 @@ int device_bind_by_name(struct udevice *parent, bool pre_reloc_only,
  *
  * @dev: pointer to device to be reparented
  * @new_parent: pointer to new parent device
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int device_reparent(struct udevice *dev, struct udevice *new_parent);
 
@@ -175,18 +177,18 @@ int device_reparent(struct udevice *dev, struct udevice *new_parent);
  * All private data associated with the device is allocated.
  *
  * @dev: Pointer to device to process
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int device_of_to_plat(struct udevice *dev);
 
 /**
  * device_probe() - Probe a device, activating it
  *
- * Activate a device so that it is ready for use. All its parents are probed
- * first.
+ * Activate a device (if not yet activated) so that it is ready for use.
+ * All its parents are probed first.
  *
  * @dev: Pointer to device to probe
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 int device_probe(struct udevice *dev);
 
@@ -198,7 +200,7 @@ int device_probe(struct udevice *dev);
  *
  * @dev: Pointer to device to remove
  * @flags: Flags for selective device removal (DM_REMOVE_...)
- * @return 0 if OK, -EKEYREJECTED if not removed due to flags, -EPROBE_DEFER if
+ * Return: 0 if OK, -EKEYREJECTED if not removed due to flags, -EPROBE_DEFER if
  *	this is a vital device and flags is DM_REMOVE_NON_VITAL, other -ve on
  *	error (such an error here is normally a very bad thing)
  */
@@ -214,7 +216,7 @@ static inline int device_remove(struct udevice *dev, uint flags) { return 0; }
  * Unbind a device and remove all memory used by it
  *
  * @dev: Pointer to device to unbind
- * @return 0 if OK, -ve on error
+ * Return: 0 if OK, -ve on error
  */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
 int device_unbind(struct udevice *dev);
@@ -237,7 +239,7 @@ static inline void device_free(struct udevice *dev) {}
  *
  * @dev:	The device that is to be stripped of its children
  * @drv:	The targeted driver
- * @return 0 on success, -ve on error
+ * Return: 0 on success, -ve on error
  */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
 int device_chld_unbind(struct udevice *dev, struct driver *drv);
@@ -261,7 +263,7 @@ static inline int device_chld_unbind(struct udevice *dev, struct driver *drv)
  * @dev:	The device whose children are to be removed
  * @drv:	The targeted driver
  * @flags:	Flag, if this functions is called in the pre-OS stage
- * @return 0 on success, -EPROBE_DEFER if any child failed to remove, other
+ * Return: 0 on success, -EPROBE_DEFER if any child failed to remove, other
  *	-ve on error
  */
 #if CONFIG_IS_ENABLED(DM_DEVICE_REMOVE)
@@ -385,7 +387,7 @@ void dev_set_uclass_plat(struct udevice *dev, void *uclass_plat);
  *
  * @dev:	Simple bus device (parent of target device)
  * @addr:	Address to translate
- * @return new address
+ * Return: new address
  */
 fdt_addr_t simple_bus_translate(struct udevice *dev, fdt_addr_t addr);
 
@@ -395,7 +397,7 @@ fdt_addr_t simple_bus_translate(struct udevice *dev, fdt_addr_t addr);
 #define DM_UCLASS_ROOT_S_NON_CONST	(((gd_t *)gd)->uclass_root_s)
 
 /* device resource management */
-#ifdef CONFIG_DEVRES
+#if CONFIG_IS_ENABLED(DEVRES)
 
 /**
  * devres_release_probe - Release managed resources allocated after probing
@@ -415,7 +417,7 @@ void devres_release_probe(struct udevice *dev);
  */
 void devres_release_all(struct udevice *dev);
 
-#else /* ! CONFIG_DEVRES */
+#else /* ! DEVRES */
 
 static inline void devres_release_probe(struct udevice *dev)
 {
@@ -425,5 +427,14 @@ static inline void devres_release_all(struct udevice *dev)
 {
 }
 
-#endif /* ! CONFIG_DEVRES */
+#endif /* DEVRES */
+
+static inline int device_notify(const struct udevice *dev, enum event_t type)
+{
+#if CONFIG_IS_ENABLED(DM_EVENT)
+	return event_notify(type, &dev, sizeof(dev));
+#else
+	return 0;
+#endif
+}
 #endif

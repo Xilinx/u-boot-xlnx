@@ -39,40 +39,6 @@ static const struct {
 	{EFI_VARIABLE_READ_ONLY, "RO"},
 };
 
-static const struct {
-	efi_guid_t guid;
-	char *text;
-} efi_guid_text[] = {
-	/* signature database */
-	{EFI_GLOBAL_VARIABLE_GUID, "EFI_GLOBAL_VARIABLE_GUID"},
-	{EFI_IMAGE_SECURITY_DATABASE_GUID, "EFI_IMAGE_SECURITY_DATABASE_GUID"},
-	/* certificate type */
-	{EFI_CERT_SHA256_GUID, "EFI_CERT_SHA256_GUID"},
-	{EFI_CERT_X509_GUID, "EFI_CERT_X509_GUID"},
-	{EFI_CERT_TYPE_PKCS7_GUID, "EFI_CERT_TYPE_PKCS7_GUID"},
-};
-
-static const char unknown_guid[] = "";
-
-/**
- * efi_guid_to_str() - convert guid to readable name
- *
- * @guid:	GUID
- * Return:	string for GUID
- *
- * convert guid to readable name
- */
-static const char *efi_guid_to_str(const efi_guid_t *guid)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(efi_guid_text); i++)
-		if (!guidcmp(guid, &efi_guid_text[i].guid))
-			return efi_guid_text[i].text;
-
-	return unknown_guid;
-}
-
 /**
  * efi_dump_single_var() - show information about a UEFI variable
  *
@@ -111,7 +77,7 @@ static void efi_dump_single_var(u16 *name, const efi_guid_t *guid, bool verbose)
 		goto out;
 
 	rtc_to_tm(time, &tm);
-	printf("%ls:\n    %pUl %s\n", name, guid, efi_guid_to_str(guid));
+	printf("%ls:\n    %pUl (%pUs)\n", name, guid, guid);
 	if (attributes & EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS)
 		printf("    %04d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year,
 		       tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -216,8 +182,10 @@ static int efi_dump_var_all(int argc,  char *const argv[],
 	}
 	free(var_name16);
 
-	if (!match && argc == 1)
+	if (!match && argc == 1) {
 		printf("Error: \"%s\" not defined\n", argv[0]);
+		return CMD_RET_FAILURE;
+	}
 
 	return CMD_RET_SUCCESS;
 }
@@ -414,8 +382,7 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 	efi_guid_t guid;
 	u32 attributes;
 	bool default_guid, verbose, value_on_memory;
-	u16 *var_name16 = NULL, *p;
-	size_t len;
+	u16 *var_name16;
 	efi_status_t ret;
 
 	if (argc == 1)
@@ -497,8 +464,7 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 
 	if (verbose) {
-		printf("GUID: %pUl %s\n", &guid,
-		       efi_guid_to_str((const efi_guid_t *)&guid));
+		printf("GUID: %pUl (%pUs)\n", &guid, &guid);
 		printf("Attributes: 0x%x\n", attributes);
 	}
 
@@ -520,18 +486,15 @@ int do_env_set_efi(struct cmd_tbl *cmdtp, int flag, int argc,
 			       16, 1, value, size, true);
 	}
 
-	len = utf8_utf16_strnlen(var_name, strlen(var_name));
-	var_name16 = malloc((len + 1) * 2);
+	var_name16 = efi_convert_string(var_name);
 	if (!var_name16) {
 		printf("## Out of memory\n");
 		ret = CMD_RET_FAILURE;
 		goto out;
 	}
-	p = var_name16;
-	utf8_utf16_strncpy(&p, var_name, len + 1);
-
 	ret = efi_set_variable_int(var_name16, &guid, attributes, size, value,
 				   true);
+	free(var_name16);
 	unmap_sysmem(value);
 	if (ret == EFI_SUCCESS) {
 		ret = CMD_RET_SUCCESS;
@@ -566,7 +529,6 @@ out:
 		unmap_sysmem(value);
 	else
 		free(value);
-	free(var_name16);
 
 	return ret;
 }

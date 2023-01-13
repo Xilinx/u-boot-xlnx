@@ -10,7 +10,7 @@
 #include <gzip.h>
 #include <image.h>
 #include <log.h>
-#include <malloc.h>
+#include <memalign.h>
 #include <mapmem.h>
 #include <spl.h>
 #include <sysinfo.h>
@@ -286,6 +286,13 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
 		if (fit_image_get_data_size(fit, node, &len))
 			return -ENOENT;
 
+		/* Dont bother to copy 0 byte data, but warn, though */
+		if (!len) {
+			log_warning("%s: Skip load '%s': image size is 0!\n",
+				    __func__, fit_get_name(fit, node, NULL));
+			return 0;
+		}
+
 		src_ptr = map_sysmem(ALIGN(load_addr, ARCH_DMA_MINALIGN), len);
 		length = len;
 
@@ -314,7 +321,8 @@ static int spl_load_fit_image(struct spl_load_info *info, ulong sector,
 	if (CONFIG_IS_ENABLED(FIT_SIGNATURE)) {
 		printf("## Checking hash(es) for Image %s ... ",
 		       fit_get_name(fit, node, NULL));
-		if (!fit_image_verify_with_data(fit, node, src, length))
+		if (!fit_image_verify_with_data(fit, node, gd_fdt_blob(), src,
+						length))
 			return -EPERM;
 		puts("OK\n");
 	}
@@ -421,7 +429,9 @@ static int spl_fit_append_fdt(struct spl_image_info *spl_image,
 				 * depending on how the overlay is stored, so
 				 * don't fail yet if the allocation failed.
 				 */
-				tmpbuffer = malloc(CONFIG_SPL_LOAD_FIT_APPLY_OVERLAY_BUF_SZ);
+				size_t size = CONFIG_SPL_LOAD_FIT_APPLY_OVERLAY_BUF_SZ;
+
+				tmpbuffer = malloc_cache_aligned(size);
 				if (!tmpbuffer)
 					debug("%s: unable to allocate space for overlays\n",
 					      __func__);
@@ -529,7 +539,7 @@ static void *spl_get_fit_load_buffer(size_t size)
 {
 	void *buf;
 
-	buf = malloc(size);
+	buf = malloc_cache_aligned(size);
 	if (!buf) {
 		pr_err("Could not get FIT buffer of %lu bytes\n", (ulong)size);
 		pr_err("\tcheck CONFIG_SYS_SPL_MALLOC_SIZE\n");
@@ -573,18 +583,25 @@ static int spl_fit_upload_fpga(struct spl_fit_info *ctx, int node,
 {
 	const char *compatible;
 	int ret;
+	int devnum = 0;
+	int flags = 0;
 
 	debug("FPGA bitstream at: %x, size: %x\n",
 	      (u32)fpga_image->load_addr, fpga_image->size);
 
 	compatible = fdt_getprop(ctx->fit, node, "compatible", NULL);
-	if (!compatible)
+	if (!compatible) {
 		warn_deprecated("'fpga' image without 'compatible' property");
-	else if (strcmp(compatible, "u-boot,fpga-legacy"))
-		printf("Ignoring compatible = %s property\n", compatible);
+	} else {
+		if (CONFIG_IS_ENABLED(FPGA_LOAD_SECURE))
+			flags = fpga_compatible2flag(devnum, compatible);
+		if (strcmp(compatible, "u-boot,fpga-legacy"))
+			debug("Ignoring compatible = %s property\n",
+			      compatible);
+	}
 
-	ret = fpga_load(0, (void *)fpga_image->load_addr, fpga_image->size,
-			BIT_FULL);
+	ret = fpga_load(devnum, (void *)fpga_image->load_addr,
+			fpga_image->size, BIT_FULL, flags);
 	if (ret) {
 		printf("%s: Cannot load the image to the FPGA\n", __func__);
 		return ret;

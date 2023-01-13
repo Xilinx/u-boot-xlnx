@@ -10,7 +10,7 @@
 	};
 };
 
-&{/soc@0} {
+&soc {
 	u-boot,dm-pre-reloc;
 	u-boot,dm-spl;
 };
@@ -61,24 +61,28 @@
 			align-end = <4>;
 		};
 
-		blob_1: blob-ext@1 {
+		ddr-1d-imem-fw {
 			filename = "lpddr4_pmu_train_1d_imem_202006.bin";
-			size = <0x8000>;
+			type = "blob-ext";
+			align-end = <4>;
 		};
 
-		blob_2: blob-ext@2 {
+		ddr-1d-dmem-fw {
 			filename = "lpddr4_pmu_train_1d_dmem_202006.bin";
-			size = <0x4000>;
+			type = "blob-ext";
+			align-end = <4>;
 		};
 
-		blob_3: blob-ext@3 {
+		ddr-2d-imem-fw {
 			filename = "lpddr4_pmu_train_2d_imem_202006.bin";
-			size = <0x8000>;
+			type = "blob-ext";
+			align-end = <4>;
 		};
 
-		blob_4: blob-ext@4 {
+		ddr-2d-dmem-fw {
 			filename = "lpddr4_pmu_train_2d_dmem_202006.bin";
-			size = <0x4000>;
+			type = "blob-ext";
+			align-end = <4>;
 		};
 	};
 
@@ -99,8 +103,9 @@
 
 		fit {
 			description = "Configuration to load ATF before U-Boot";
-			#address-cells = <1>;
 			fit,external-offset = <CONFIG_FIT_EXTERNAL_OFFSET>;
+			fit,fdt-list = "of-list";
+			#address-cells = <1>;
 
 			images {
 				uboot {
@@ -108,7 +113,7 @@
 					type = "standalone";
 					arch = "arm64";
 					compression = "none";
-					load = <CONFIG_SYS_TEXT_BASE>;
+					load = <CONFIG_TEXT_BASE>;
 
 					uboot_blob: blob-ext {
 						filename = "u-boot-nodtb.bin";
@@ -123,12 +128,13 @@
 					load = <0x970000>;
 					entry = <0x970000>;
 
-					atf_blob: blob-ext {
+					atf_blob: atf-blob {
 						filename = "bl31.bin";
+						type = "atf-bl31";
 					};
 				};
 
-				fdt {
+				@fdt-SEQ {
 					description = "NAME";
 					type = "flat_dt";
 					compression = "none";
@@ -140,13 +146,13 @@
 			};
 
 			configurations {
-				default = "conf";
+				default = "@config-DEFAULT-SEQ";
 
-				conf {
+				@config-SEQ {
 					description = "NAME";
+					fdt = "fdt-SEQ";
 					firmware = "uboot";
 					loadables = "atf";
-					fdt = "fdt";
 				};
 			};
 		};

@@ -184,7 +184,7 @@ __weak struct bl_params *bl2_plat_get_bl31_params_v2(uintptr_t bl32_entry,
 
 static inline void raw_write_daif(unsigned int daif)
 {
-	__asm__ __volatile__("msr DAIF, %0\n\t" : : "r" (daif) : "memory");
+	__asm__ __volatile__("msr DAIF, %x0\n\t" : : "r" (daif) : "memory");
 }
 
 typedef void (*atf_entry_t)(struct bl31_params *params, void *plat_params);
@@ -254,7 +254,7 @@ uintptr_t spl_fit_images_get_entry(void *blob, int node)
 void spl_invoke_atf(struct spl_image_info *spl_image)
 {
 	uintptr_t  bl32_entry = 0;
-	uintptr_t  bl33_entry = CONFIG_SYS_TEXT_BASE;
+	uintptr_t  bl33_entry = CONFIG_TEXT_BASE;
 	void *blob = spl_image->fdt_addr;
 	uintptr_t platform_param = (uintptr_t)blob;
 	int node;

@@ -12,7 +12,6 @@
 #  If we did not have Tegra SoCs, build system would be much simpler...)
 PLATFORM_RELFLAGS :=
 PLATFORM_CPPFLAGS :=
-KBUILD_LDFLAGS :=
 LDFLAGS_FINAL :=
 LDFLAGS_STANDALONE :=
 OBJCOPYFLAGS :=
@@ -50,8 +49,10 @@ endif
 ifneq ($(BOARD),)
 ifdef	VENDOR
 BOARDDIR = $(VENDOR)/$(BOARD)
+ENVDIR=${vendor}/env
 else
 BOARDDIR = $(BOARD)
+ENVDIR=${board}/env
 endif
 endif
 ifdef	BOARD

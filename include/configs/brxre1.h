@@ -14,21 +14,14 @@
 #include <configs/bur_cfg_common.h>
 #include <configs/bur_am335x_common.h>
 #include <linux/stringify.h>
-/* ------------------------------------------------------------------------- */
-#define LCD_BPP				LCD_COLOR32
-
-/* memory */
 
 /* Clock Defines */
 #define V_OSCK				26000000  /* Clock output from T2 */
 #define V_SCLK				(V_OSCK)
 
-#ifndef CONFIG_SPL_BUILD
-
 /* Default environment */
 #define CONFIG_EXTRA_ENV_SETTINGS	\
 BUR_COMMON_ENV \
-"autoload=0\0" \
 "scradr=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
 "bootaddr=0x80001100\0" \
 "bootdev=cpsw(0,0)\0" \
@@ -51,9 +44,6 @@ BUR_COMMON_ENV \
 "b_usb0=usb start && load usb 0 ${scradr} usbscript.img && source ${scradr}\0" \
 "b_default=run b_deftgts; for target in ${b_tgts};"\
 " do run b_${target}; if test ${b_break} = 1; then; exit; fi; done\0"
-#endif /* !CONFIG_SPL_BUILD*/
-
-#define CONFIG_BOOTCOMMAND		"mmc dev 1; run b_default"
 
 /* Environment */
 

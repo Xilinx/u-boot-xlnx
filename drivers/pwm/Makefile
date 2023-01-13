@@ -10,11 +10,12 @@
 
 obj-$(CONFIG_DM_PWM)		+= pwm-uclass.o
 
+obj-$(CONFIG_PWM_ASPEED)	+= pwm-aspeed.o
 obj-$(CONFIG_PWM_AT91)		+= pwm-at91.o
 obj-$(CONFIG_PWM_CADENCE_TTC)	+= pwm-cadence-ttc.o
 obj-$(CONFIG_PWM_CROS_EC)	+= cros_ec_pwm.o
 obj-$(CONFIG_PWM_EXYNOS)	+= exynos_pwm.o
-obj-$(CONFIG_PWM_IMX)		+= pwm-imx.o pwm-imx-util.o
+obj-$(CONFIG_PWM_IMX)		+= pwm-imx.o
 obj-$(CONFIG_PWM_MESON)		+= pwm-meson.o
 obj-$(CONFIG_PWM_MTK)		+= pwm-mtk.o
 obj-$(CONFIG_PWM_ROCKCHIP)	+= rk_pwm.o

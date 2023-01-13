@@ -32,20 +32,6 @@
 	#define CONSOLE_DEV "ttyO5"
 #endif
 
-#define CONFIG_BOOTCOMMAND \
-	"run eval_boot_device;" \
-	"part uuid mmc ${mmc_boot}:${root_fs_partition} root_fs_partuuid;" \
-	"setenv bootargs console=${console} " \
-	"vt.global_cursor_default=0 " \
-	"root=PARTUUID=${root_fs_partuuid} " \
-	"rootfstype=ext4 " \
-	"rootwait " \
-	"rootdelay=1;" \
-	"fatload mmc ${mmc_boot} ${fdtaddr} ${fdtfile};" \
-	"fatload mmc ${mmc_boot} ${loadaddr} ${bootfile};" \
-	"bootz ${loadaddr} - ${fdtaddr}"
-
-#ifndef CONFIG_SPL_BUILD
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	"fdtfile=am335x-pdu001.dtb\0" \
@@ -62,7 +48,6 @@
 			"reset;" \
 		"fi;" \
 	"\0"
-#endif
 
 /* NS16550 Configuration */
 #define CONFIG_SYS_NS16550_COM1	UART0_BASE

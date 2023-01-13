@@ -38,23 +38,6 @@
 #include <malloc.h>
 #include "cadence_qspi.h"
 
-__weak int spi_nor_wait_till_ready(struct spi_nor *nor)
-{
-	return 0;
-}
-
-__weak int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
-				     unsigned int n_rx, u8 *rxbuf)
-{
-	return 0;
-}
-
-__weak
-int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_priv *priv)
-{
-	return 0;
-}
-
 __weak void cadence_qspi_apb_enable_linear_mode(bool enable)
 {
 	return;
@@ -313,6 +296,10 @@ void cadence_qspi_apb_delay(void *reg_base,
 		tshsl_ns -= sclk_ns + ref_clk_ns;
 	if (tchsh_ns >= sclk_ns + 3 * ref_clk_ns)
 		tchsh_ns -= sclk_ns + 3 * ref_clk_ns;
+
+	if (tshsl_ns < sclk_ns)
+		tshsl_ns = sclk_ns;
+
 	tshsl = DIV_ROUND_UP(tshsl_ns, ref_clk_ns);
 	tchsh = DIV_ROUND_UP(tchsh_ns, ref_clk_ns);
 	tslch = DIV_ROUND_UP(tslch_ns, ref_clk_ns);
@@ -365,6 +352,14 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_priv *priv)
 	/* Indirect mode configurations */
 	writel(priv->fifo_depth / 2, priv->regbase + CQSPI_REG_SRAMPARTITION);
 
+	/* Program read watermark -- 1/2 of the FIFO. */
+	writel(priv->fifo_depth * priv->fifo_width / 2,
+	       priv->regbase + CQSPI_REG_INDIRECTRDWATERMARK);
+
+	/* Program write watermark -- 1/8 of the FIFO. */
+	writel(priv->fifo_depth * priv->fifo_width / 8,
+	       priv->regbase + CQSPI_REG_INDIRECTWRWATERMARK);
+
 	/* Disable all interrupts */
 	writel(0, priv->regbase + CQSPI_REG_IRQMASK);
 
@@ -376,6 +371,10 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_priv *priv)
 			<< CQSPI_REG_CONFIG_CHIPSELECT_LSB);
 
 	writel(reg, priv->regbase + CQSPI_REG_CONFIG);
+
+	if (IS_ENABLED(CONFIG_ARCH_VERSAL) &&
+	    priv->ref_clk_hz >= TAP_GRAN_SEL_MIN_FREQ)
+		writel(1, priv->regbase + CQSPI_REG_ECO);
 
 	cadence_qspi_apb_controller_enable(priv->regbase);
 }
@@ -594,7 +593,7 @@ int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 	}
 
 	reg = cadence_qspi_calc_rdreg(priv);
-	writel(reg, reg_base + CQSPI_REG_WR_INSTR);
+	writel(reg, reg_base + CQSPI_REG_RD_INSTR);
 
 	if (priv->dtr)
 		opcode = op->cmd.opcode >> 8;
@@ -787,6 +786,7 @@ int cadence_qspi_apb_read_execute(struct cadence_spi_priv *priv,
 	size_t len = op->data.nbytes;
 
 	cadence_qspi_apb_enable_linear_mode(true);
+
 	if (priv->use_dac_mode && (from + len < priv->ahbsize)) {
 		if (len < 256 ||
 		    dma_memcpy(buf, priv->ahbbase + from, len) < 0) {
@@ -900,10 +900,12 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 	while (remaining > 0) {
 		write_bytes = remaining > page_size ? page_size : remaining;
 		writesl(priv->ahbbase, bb_txbuf, write_bytes >> 2);
-		if (write_bytes % 4)
-			writesb(priv->ahbbase,
-				bb_txbuf + rounddown(write_bytes, 4),
-				write_bytes % 4);
+		if (write_bytes % 4) {
+			unsigned int temp = 0xffffffff;
+
+			memcpy(&temp, bb_txbuf + rounddown(write_bytes, 4), write_bytes % 4);
+			writel(temp, priv->ahbbase);
+		}
 
 		ret = wait_for_bit_le32(priv->regbase + CQSPI_REG_SDRAMLEVEL,
 					CQSPI_REG_SDRAMLEVEL_WR_MASK <<

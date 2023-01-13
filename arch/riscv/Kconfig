@@ -152,6 +152,21 @@ config RISCV_ISA_C
 	  when building U-Boot, which results in compressed instructions in the
 	  U-Boot binary.
 
+config RISCV_ISA_F
+	bool "Standard extension for Single-Precision Floating Point"
+	default y
+	help
+	  Adds "F" to the ISA string passed to the compiler.
+
+config RISCV_ISA_D
+	bool "Standard extension for Double-Precision Floating Point"
+	depends on RISCV_ISA_F
+	default y
+	help
+	  Adds "D" to the ISA string passed to the compiler and changes the
+	  riscv32 ABI from ilp32 to ilp32d and the riscv64 ABI from lp64 to
+	  lp64d.
+
 config RISCV_ISA_A
 	def_bool y
 
@@ -184,7 +199,7 @@ config SIFIVE_CACHE
 	help
 	  This enables the operations to configure SiFive cache
 
-config ANDES_PLIC
+config ANDES_PLICSW
 	bool
 	depends on RISCV_MMODE || SPL_RISCV_MMODE
 	select REGMAP
@@ -192,11 +207,8 @@ config ANDES_PLIC
 	select SPL_REGMAP if SPL
 	select SPL_SYSCON if SPL
 	help
-	  The Andes PLIC block holds memory-mapped claim and pending registers
-	  associated with software interrupt.
-
-config SYS_MALLOC_F_LEN
-	default 0x1000
+	  The Andes PLICSW block holds memory-mapped claim and pending
+	  registers associated with software interrupt.
 
 config SMP
 	bool "Symmetric Multi-Processing"
@@ -245,16 +257,16 @@ config SBI_V01
 	  deprecated in future once legacy M-mode software are no longer in use.
 
 config SBI_V02
-	bool "SBI v0.2 support"
+	bool "SBI v0.2 or later support"
 	depends on SBI
 	help
-	  This config allows kernel to use SBI v0.2 APIs. SBI v0.2 is more
-	  scalable and extendable to handle future needs for RISC-V supervisor
-	  interfaces. For example, with SBI v0.2 HSM extension, only a single
-	  hart need to boot and enter operating system. The booting hart can
-	  bring up secondary harts one by one afterwards.
+	  The SBI specification introduced the concept of extensions in version
+	  v0.2. With this configuration option U-Boot can detect and use SBI
+	  extensions. With the HSM extension introduced in SBI 0.2, only a
+	  single hart needs to boot and enter the operating system. The booting
+	  hart can bring up secondary harts one by one afterwards.
 
-	  Choose this option if OpenSBI v0.7 or above release is used together
+	  Choose this option if OpenSBI release v0.7 or above is used together
 	  with U-Boot.
 
 endchoice
@@ -271,6 +283,20 @@ config XIP
 	  XIP (eXecute In Place) is a method for executing code directly
 	  from a NOR flash memory without copying the code to ram.
 	  Say yes here if U-Boot boots from flash directly.
+
+config SPL_XIP
+	bool "Enable XIP mode for SPL"
+	help
+	  If SPL starts in read-only memory (XIP for example) then we shouldn't
+	  rely on lock variables (for example hart_lottery and available_harts_lock),
+	  this affects only SPL, other stages should proceed as non-XIP.
+
+config AVAILABLE_HARTS
+	bool "Send IPI by available harts"
+	default y
+	help
+	  By default, IPI sending mechanism will depend on available_harts.
+	  If disable this, it will send IPI by CPUs node numbers of device tree.
 
 config SHOW_REGS
 	bool "Show registers on unhandled exception"

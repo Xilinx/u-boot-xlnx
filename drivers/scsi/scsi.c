@@ -46,7 +46,7 @@ static int scsi_max_devs; /* number of highest available scsi device */
 
 static int scsi_curr_dev; /* current device */
 
-static struct blk_desc scsi_dev_desc[CONFIG_SYS_SCSI_MAX_DEVICE];
+static struct blk_desc scsi_dev_desc[SCSI_MAX_DEVICE];
 #endif
 
 /* almost the maximum amount of the scsi_ext command.. */
@@ -456,7 +456,7 @@ static void scsi_init_dev_desc(struct blk_desc *dev_desc, int devnum)
 {
 	dev_desc->lba = 0;
 	dev_desc->blksz = 0;
-	dev_desc->if_type = IF_TYPE_SCSI;
+	dev_desc->uclass_id = UCLASS_SCSI;
 	dev_desc->devnum = devnum;
 	dev_desc->part_type = PART_TYPE_UNKNOWN;
 
@@ -574,8 +574,8 @@ static int do_scsi_scan_one(struct udevice *dev, int id, int lun, bool verbose)
 	* block devices created
 	*/
 	snprintf(str, sizeof(str), "id%dlun%d", id, lun);
-	ret = blk_create_devicef(dev, "scsi_blk", str, IF_TYPE_SCSI, -1,
-			bd.blksz, bd.lba, &bdev);
+	ret = blk_create_devicef(dev, "scsi_blk", str, UCLASS_SCSI, -1,
+				 bd.blksz, bd.lba, &bdev);
 	if (ret) {
 		debug("Can't create device\n");
 		return ret;
@@ -594,6 +594,11 @@ static int do_scsi_scan_one(struct udevice *dev, int id, int lun, bool verbose)
 		ata_swap_buf_le16((u16 *)&bdesc->product, sizeof(bd.product) / 2);
 		ata_swap_buf_le16((u16 *)&bdesc->revision, sizeof(bd.revision) / 2);
 	}
+
+	ret = blk_probe_or_unbind(bdev);
+	if (ret < 0)
+		/* TODO: undo create */
+		return ret;
 
 	if (verbose) {
 		printf("  Device %d: ", bdesc->devnum);
@@ -633,7 +638,7 @@ int scsi_scan(bool verbose)
 	if (verbose)
 		printf("scanning bus for devices...\n");
 
-	blk_unbind_all(IF_TYPE_SCSI);
+	blk_unbind_all(UCLASS_SCSI);
 
 	ret = uclass_get(UCLASS_SCSI, &uc);
 	if (ret)
@@ -655,7 +660,7 @@ int scsi_scan(bool verbose)
 
 	if (verbose)
 		printf("scanning bus for devices...\n");
-	for (i = 0; i < CONFIG_SYS_SCSI_MAX_DEVICE; i++)
+	for (i = 0; i < SCSI_MAX_DEVICE; i++)
 		scsi_init_dev_desc(&scsi_dev_desc[i], i);
 
 	scsi_max_devs = 0;
@@ -701,9 +706,9 @@ U_BOOT_DRIVER(scsi_blk) = {
 };
 #else
 U_BOOT_LEGACY_BLK(scsi) = {
-	.if_typename	= "scsi",
-	.if_type	= IF_TYPE_SCSI,
-	.max_devs	= CONFIG_SYS_SCSI_MAX_DEVICE,
+	.uclass_idname	= "scsi",
+	.uclass_id	= UCLASS_SCSI,
+	.max_devs	= SCSI_MAX_DEVICE,
 	.desc		= scsi_dev_desc,
 };
 #endif

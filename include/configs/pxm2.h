@@ -18,21 +18,12 @@
 #define DDR_IOCTRL_VAL		0x18b
 #define DDR_PLL_FREQ		266
 
-#define BOARD_DFU_BUTTON_GPIO	59
-#define BOARD_LCD_POWER		111
-#define BOARD_BACK_LIGHT	112
-#define BOARD_TOUCH_POWER	57
-
 #define CONFIG_ENV_SETTINGS_BUTTONS_AND_LEDS \
 	"button_dfu0=59\0" \
 	"led0=117,0,1\0" \
 
  /* Physical Memory Map */
 #define CONFIG_MAX_RAM_BANK_SIZE	(512 << 20)	/* 1GB */
-
-#define CONFIG_FACTORYSET
-
-#ifndef CONFIG_SPL_BUILD
 
 /* Use common default */
 
@@ -68,51 +59,5 @@
 		"run mmc_load_uimage; " \
 		"bootm ${kloadaddr}\0" \
 	""
-
-#ifndef CONFIG_RESTORE_FLASH
-/* set to negative value for no autoboot */
-
-#define CONFIG_BOOTCOMMAND \
-	"if dfubutton; then " \
-		"run dfu_start; " \
-		"reset; " \
-	"fi; " \
-	"if mmc rescan; then " \
-		"echo SD/MMC found on device ${mmc_dev};" \
-		"if run loadbootenv; then " \
-			"echo Loaded environment from ${bootenv};" \
-			"run importbootenv;" \
-		"fi;" \
-		"if test -n $uenvcmd; then " \
-			"echo Running uenvcmd ...;" \
-			"run uenvcmd;" \
-		"fi;" \
-		"if run mmc_load_uimage; then " \
-			"run mmc_args;" \
-			"bootm ${kloadaddr};" \
-		"fi;" \
-	"fi;" \
-	"run nand_boot;" \
-	"reset;"
-
-#else
-
-#define CONFIG_BOOTCOMMAND			\
-	"setenv autoload no; "			\
-	"dhcp; "				\
-	"if tftp 80000000 debrick.scr; then "	\
-		"source 80000000; "		\
-	"fi"
-#endif
-#endif	/* CONFIG_SPL_BUILD */
-
-#if defined(CONFIG_VIDEO)
-#define CONFIG_VIDEO_DA8XX
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_VIDEO_BMP_LOGO
-#define DA8XX_LCD_CNTL_BASE	LCD_CNTL_BASE
-#define PWM_TICKS	0x1388
-#define PWM_DUTY	0x200
-#endif
 
 #endif	/* ! __CONFIG_PXM2_H */

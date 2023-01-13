@@ -6,220 +6,13 @@
  * Author: Weijie Gao <weijie.gao@mediatek.com>
  */
 
+#include <time.h>
 #include <image.h>
+#include <u-boot/crc.h>
 #include <u-boot/sha256.h>
 #include "imagetool.h"
 #include "mtk_image.h"
-
-/* NAND header for SPI-NAND with 2KB page + 64B spare */
-static const union nand_boot_header snand_hdr_2k_64_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x03, 0x00, 0x40, 0x00,
-		0x40, 0x00, 0x00, 0x08, 0x10, 0x00, 0x16, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x7B, 0xC4, 0x17, 0x9D,
-		0xCA, 0x42, 0x90, 0xD0, 0x98, 0xD0, 0xE0, 0xF7,
-		0xDB, 0xCD, 0x16, 0xF6, 0x03, 0x73, 0xD2, 0xB8,
-		0x93, 0xB2, 0x56, 0x5A, 0x84, 0x6E, 0x00, 0x00
-	}
-};
-
-/* NAND header for SPI-NAND with 2KB page + 120B/128B spare */
-static const union nand_boot_header snand_hdr_2k_128_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x05, 0x00, 0x70, 0x00,
-		0x40, 0x00, 0x00, 0x08, 0x10, 0x00, 0x16, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x90, 0x28, 0xED, 0x13,
-		0x7F, 0x12, 0x22, 0xCD, 0x3D, 0x06, 0xF1, 0xB3,
-		0x6F, 0x2E, 0xD9, 0xA0, 0x9D, 0x7A, 0xBD, 0xD7,
-		0xB3, 0x28, 0x3C, 0x13, 0xDB, 0x4E, 0x00, 0x00
-	}
-};
-
-/* NAND header for SPI-NAND with 4KB page + 256B spare */
-static const union nand_boot_header snand_hdr_4k_256_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x10, 0x05, 0x00, 0xE0, 0x00,
-		0x40, 0x00, 0x00, 0x08, 0x10, 0x00, 0x16, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x47, 0xED, 0x0E, 0xC3,
-		0x83, 0xBF, 0x41, 0xD2, 0x85, 0x21, 0x97, 0x57,
-		0xC4, 0x2E, 0x6B, 0x7A, 0x40, 0xE0, 0xCF, 0x8F,
-		0x37, 0xBD, 0x17, 0xB6, 0xC7, 0xFE, 0x00, 0x00
-	}
-};
-
-/* NAND header for Parallel NAND 1Gb with 2KB page + 64B spare */
-static const union nand_boot_header nand_hdr_1gb_2k_64_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x05, 0x00, 0x40, 0x00,
-		0x40, 0x00, 0x00, 0x04, 0x0B, 0x00, 0x11, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x12, 0x28, 0x1C, 0x12,
-		0x8F, 0xFD, 0xF8, 0x32, 0x6F, 0x6D, 0xCF, 0x6C,
-		0xDA, 0x21, 0x70, 0x8C, 0xDA, 0x0A, 0x22, 0x82,
-		0xAA, 0x59, 0xFA, 0x7C, 0x42, 0x2D, 0x00, 0x00
-	}
-};
-
-/* NAND header for Parallel NAND 2Gb with 2KB page + 64B spare */
-static const union nand_boot_header nand_hdr_2gb_2k_64_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x05, 0x00, 0x40, 0x00,
-		0x40, 0x00, 0x00, 0x08, 0x0B, 0x00, 0x11, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x20, 0x9C, 0x3D, 0x2D,
-		0x7B, 0x68, 0x63, 0x52, 0x2E, 0x04, 0x63, 0xF1,
-		0x35, 0x4E, 0x44, 0x3E, 0xF8, 0xAC, 0x9B, 0x95,
-		0xAB, 0xFE, 0xE4, 0xE1, 0xD5, 0xF9, 0x00, 0x00
-	}
-};
-
-/* NAND header for Parallel NAND 4Gb with 2KB page + 64B spare */
-static const union nand_boot_header nand_hdr_4gb_2k_64_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x05, 0x00, 0x40, 0x00,
-		0x40, 0x00, 0x00, 0x10, 0x0B, 0x00, 0x11, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0xE3, 0x0F, 0x86, 0x32,
-		0x68, 0x05, 0xD9, 0xC8, 0x13, 0xDF, 0xC5, 0x0B,
-		0x35, 0x3A, 0x68, 0xA5, 0x3C, 0x0C, 0x73, 0x87,
-		0x63, 0xB0, 0xBE, 0xCC, 0x84, 0x47, 0x00, 0x00
-	}
-};
-
-/* NAND header for Parallel NAND 2Gb with 2KB page + 128B spare */
-static const union nand_boot_header nand_hdr_2gb_2k_128_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x05, 0x00, 0x70, 0x00,
-		0x40, 0x00, 0x00, 0x08, 0x0B, 0x00, 0x11, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x01, 0xA5, 0xE9, 0x5A,
-		0xDF, 0x58, 0x62, 0x41, 0xD6, 0x26, 0x77, 0xBC,
-		0x76, 0x1F, 0x27, 0x4E, 0x4F, 0x6C, 0xC3, 0xF0,
-		0x36, 0xDE, 0xD9, 0xB3, 0xFF, 0x93, 0x00, 0x00
-	}
-};
-
-/* NAND header for Parallel NAND 4Gb with 2KB page + 128B spare */
-static const union nand_boot_header nand_hdr_4gb_2k_128_data = {
-	.data = {
-		0x42, 0x4F, 0x4F, 0x54, 0x4C, 0x4F, 0x41, 0x44,
-		0x45, 0x52, 0x21, 0x00, 0x56, 0x30, 0x30, 0x36,
-		0x4E, 0x46, 0x49, 0x49, 0x4E, 0x46, 0x4F, 0x00,
-		0x00, 0x00, 0x00, 0x08, 0x05, 0x00, 0x70, 0x00,
-		0x40, 0x00, 0x00, 0x10, 0x0B, 0x00, 0x11, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0xC2, 0x36, 0x52, 0x45,
-		0xCC, 0x35, 0xD8, 0xDB, 0xEB, 0xFD, 0xD1, 0x46,
-		0x76, 0x6B, 0x0B, 0xD5, 0x8B, 0xCC, 0x2B, 0xE2,
-		0xFE, 0x90, 0x83, 0x9E, 0xAE, 0x2D, 0x00, 0x00
-	}
-};
-
-static const struct nand_header_type {
-	const char *name;
-	const union nand_boot_header *data;
-} nand_headers[] = {
-	{
-		.name = "2k+64",
-		.data = &snand_hdr_2k_64_data
-	}, {
-		.name = "2k+120",
-		.data = &snand_hdr_2k_128_data
-	}, {
-		.name = "2k+128",
-		.data = &snand_hdr_2k_128_data
-	}, {
-		.name = "4k+256",
-		.data = &snand_hdr_4k_256_data
-	}, {
-		.name = "1g:2k+64",
-		.data = &nand_hdr_1gb_2k_64_data
-	}, {
-		.name = "2g:2k+64",
-		.data = &nand_hdr_2gb_2k_64_data
-	}, {
-		.name = "4g:2k+64",
-		.data = &nand_hdr_4gb_2k_64_data
-	}, {
-		.name = "2g:2k+128",
-		.data = &nand_hdr_2gb_2k_128_data
-	}, {
-		.name = "4g:2k+128",
-		.data = &nand_hdr_4gb_2k_128_data
-	}
-};
+#include "mtk_nand_headers.h"
 
 static const struct brom_img_type {
 	const char *name;
@@ -240,6 +33,9 @@ static const struct brom_img_type {
 	}, {
 		.name = "snand",
 		.type = BRLYT_TYPE_SNAND
+	}, {
+		.name = "spim-nand",
+		.type = BRLYT_TYPE_SNAND
 	}
 };
 
@@ -251,16 +47,45 @@ static uint32_t img_size;
 static enum brlyt_img_type hdr_media;
 static uint32_t hdr_offset;
 static int use_lk_hdr;
+static int use_mt7621_hdr;
 static bool is_arm64_image;
 
 /* LK image name */
 static char lk_name[32] = "U-Boot";
 
+/* CRC32 normal table required by MT7621 image */
+static uint32_t crc32tbl[256];
+
 /* NAND header selected by user */
-static const union nand_boot_header *hdr_nand;
+static const struct nand_header_type *hdr_nand;
+static uint32_t hdr_nand_size;
 
 /* GFH header + 2 * 4KB pages of NAND */
 static char hdr_tmp[sizeof(struct gfh_header) + 0x2000];
+
+static uint32_t crc32_normal_cal(uint32_t crc, const void *data, size_t length,
+				 const uint32_t *crc32c_table)
+{
+	const uint8_t *p = data;
+
+	while (length--)
+		crc = crc32c_table[(uint8_t)((crc >> 24) ^ *p++)] ^ (crc << 8);
+
+	return crc;
+}
+
+static void crc32_normal_init(uint32_t *crc32c_table, uint32_t poly)
+{
+	uint32_t v, i, j;
+
+	for (i = 0; i < 256; i++) {
+		v = i << 24;
+		for (j = 0; j < 8; j++)
+			v = (v << 1) ^ ((v & (1 << 31)) ? poly : 0);
+
+		crc32c_table[i] = v;
+	}
+}
 
 static int mtk_image_check_image_types(uint8_t type)
 {
@@ -283,6 +108,7 @@ static int mtk_brom_parse_imagename(const char *imagename)
 	static const char *hdr_offs = "";
 	static const char *nandinfo = "";
 	static const char *lk = "";
+	static const char *mt7621 = "";
 	static const char *arm64_param = "";
 
 	key = buf;
@@ -332,6 +158,9 @@ static int mtk_brom_parse_imagename(const char *imagename)
 			if (!strcmp(key, "lk"))
 				lk = val;
 
+			if (!strcmp(key, "mt7621"))
+				mt7621 = val;
+
 			if (!strcmp(key, "lkname"))
 				snprintf(lk_name, sizeof(lk_name), "%s", val);
 
@@ -352,6 +181,13 @@ static int mtk_brom_parse_imagename(const char *imagename)
 		return 0;
 	}
 
+	/* if user specified MT7621 image header, skip following checks */
+	if (mt7621 && mt7621[0] == '1') {
+		use_mt7621_hdr = 1;
+		free(buf);
+		return 0;
+	}
+
 	/* parse media type */
 	for (i = 0; i < ARRAY_SIZE(brom_images); i++) {
 		if (!strcmp(brom_images[i].name, media)) {
@@ -361,12 +197,7 @@ static int mtk_brom_parse_imagename(const char *imagename)
 	}
 
 	/* parse nand header type */
-	for (i = 0; i < ARRAY_SIZE(nand_headers); i++) {
-		if (!strcmp(nand_headers[i].name, nandinfo)) {
-			hdr_nand = nand_headers[i].data;
-			break;
-		}
-	}
+	hdr_nand = mtk_nand_header_find(nandinfo);
 
 	/* parse device header offset */
 	if (hdr_offs && hdr_offs[0])
@@ -390,6 +221,9 @@ static int mtk_brom_parse_imagename(const char *imagename)
 				"nandinfo=<info>\"\n", media);
 		return -EINVAL;
 	}
+
+	if (hdr_media == BRLYT_TYPE_NAND || hdr_media == BRLYT_TYPE_SNAND)
+		hdr_nand_size = mtk_nand_header_size(hdr_nand);
 
 	return 0;
 }
@@ -419,8 +253,15 @@ static int mtk_image_vrec_header(struct image_tool_params *params,
 		return 0;
 	}
 
+	if (use_mt7621_hdr) {
+		tparams->header_size = image_get_header_size();
+		tparams->hdr = &hdr_tmp;
+		memset(&hdr_tmp, 0, tparams->header_size);
+		return 0;
+	}
+
 	if (hdr_media == BRLYT_TYPE_NAND || hdr_media == BRLYT_TYPE_SNAND)
-		tparams->header_size = 2 * le16_to_cpu(hdr_nand->pagesize);
+		tparams->header_size = hdr_nand_size;
 	else
 		tparams->header_size = sizeof(struct gen_device_header);
 
@@ -430,6 +271,25 @@ static int mtk_image_vrec_header(struct image_tool_params *params,
 	memset(&hdr_tmp, 0xff, tparams->header_size);
 
 	return SHA256_SUM_LEN;
+}
+
+static int mtk_image_verify_gfh(struct gfh_header *gfh, uint32_t type, int print)
+{
+	if (strcmp(gfh->file_info.name, GFH_FILE_INFO_NAME))
+		return -1;
+
+	if (le32_to_cpu(gfh->file_info.flash_type) != type)
+		return -1;
+
+	if (print)
+		printf("Load Address: %08x\n",
+		       le32_to_cpu(gfh->file_info.load_addr) +
+		       le32_to_cpu(gfh->file_info.jump_offset));
+
+	if (print)
+		printf("Architecture: %s\n", is_arm64_image ? "ARM64" : "ARM");
+
+	return 0;
 }
 
 static int mtk_image_verify_gen_header(const uint8_t *ptr, int print)
@@ -494,87 +354,135 @@ static int mtk_image_verify_gen_header(const uint8_t *ptr, int print)
 
 	gfh = (struct gfh_header *)(ptr + gfh_offset);
 
-	if (strcmp(gfh->file_info.name, GFH_FILE_INFO_NAME))
-		return -1;
-
-	if (le32_to_cpu(gfh->file_info.flash_type) != GFH_FLASH_TYPE_GEN)
-		return -1;
-
-	if (print)
-		printf("Load Address: %08x\n",
-		       le32_to_cpu(gfh->file_info.load_addr) +
-		       le32_to_cpu(gfh->file_info.jump_offset));
-
-	if (print)
-		printf("Architecture: %s\n", is_arm64_image ? "ARM64" : "ARM");
-
-	return 0;
+	return mtk_image_verify_gfh(gfh, GFH_FLASH_TYPE_GEN, print);
 }
 
 static int mtk_image_verify_nand_header(const uint8_t *ptr, int print)
 {
-	union nand_boot_header *nh = (union nand_boot_header *)ptr;
 	struct brom_layout_header *bh;
+	struct nand_header_info info;
 	struct gfh_header *gfh;
 	const char *bootmedia;
+	int ret;
 
-	if (strncmp(nh->version, NAND_BOOT_VERSION, sizeof(nh->version)) ||
-	    strcmp(nh->id, NAND_BOOT_ID))
-		return -1;
+	ret = mtk_nand_header_info(ptr, &info);
+	if (ret < 0)
+		return ret;
 
-	bh = (struct brom_layout_header *)(ptr + le16_to_cpu(nh->pagesize));
+	if (!ret) {
+		bh = (struct brom_layout_header *)(ptr + info.page_size);
 
-	if (strcmp(bh->name, BRLYT_NAME))
-		return -1;
+		if (strcmp(bh->name, BRLYT_NAME))
+			return -1;
 
-	if (le32_to_cpu(bh->magic) != BRLYT_MAGIC) {
-		return -1;
-	} else {
+		if (le32_to_cpu(bh->magic) != BRLYT_MAGIC)
+			return -1;
+
 		if (le32_to_cpu(bh->type) == BRLYT_TYPE_NAND)
 			bootmedia = "Parallel NAND";
 		else if (le32_to_cpu(bh->type) == BRLYT_TYPE_SNAND)
-			bootmedia = "Serial NAND";
+			bootmedia = "Serial NAND (SNFI/AP)";
 		else
 			return -1;
+	} else {
+		if (info.snfi)
+			bootmedia = "Serial NAND (SNFI/HSM)";
+		else
+			bootmedia = "Serial NAND (SPIM)";
 	}
 
 	if (print) {
-		printf("Boot Media: %s\n", bootmedia);
+		printf("Boot Media:   %s\n", bootmedia);
 
-		if (le32_to_cpu(bh->type) == BRLYT_TYPE_NAND) {
-			uint64_t capacity =
-				(uint64_t)le16_to_cpu(nh->numblocks) *
-				(uint64_t)le16_to_cpu(nh->pages_of_block) *
-				(uint64_t)le16_to_cpu(nh->pagesize) * 8;
-			printf("Capacity:     %dGb\n",
-			       (uint32_t)(capacity >> 30));
-		}
-
-		if (le16_to_cpu(nh->pagesize) >= 1024)
-			printf("Page Size:    %dKB\n",
-			       le16_to_cpu(nh->pagesize) >> 10);
+		if (info.page_size >= 1024)
+			printf("Page Size:    %dKB\n", info.page_size >> 10);
 		else
-			printf("Page Size:    %dB\n",
-			       le16_to_cpu(nh->pagesize));
+			printf("Page Size:    %dB\n", info.page_size);
 
-		printf("Spare Size:   %dB\n", le16_to_cpu(nh->oobsize));
+		printf("Spare Size:   %dB\n", info.spare_size);
 	}
 
-	gfh = (struct gfh_header *)(ptr + 2 * le16_to_cpu(nh->pagesize));
+	gfh = (struct gfh_header *)(ptr + info.gfh_offset);
 
-	if (strcmp(gfh->file_info.name, GFH_FILE_INFO_NAME))
+	return mtk_image_verify_gfh(gfh, GFH_FLASH_TYPE_NAND, print);
+}
+
+static uint32_t crc32be_cal(const void *data, size_t length)
+{
+	uint32_t crc = 0;
+	uint8_t c;
+
+	if (crc32tbl[1] != MT7621_IH_CRC_POLYNOMIAL)
+		crc32_normal_init(crc32tbl, MT7621_IH_CRC_POLYNOMIAL);
+
+	crc = crc32_normal_cal(crc, data, length, crc32tbl);
+
+	for (; length; length >>= 8) {
+		c = length & 0xff;
+		crc = crc32_normal_cal(crc, &c, 1, crc32tbl);
+	}
+
+	return ~crc;
+}
+
+static int mtk_image_verify_mt7621_header(const uint8_t *ptr, int print)
+{
+	const struct legacy_img_hdr *hdr = (const struct legacy_img_hdr *)ptr;
+	struct mt7621_nand_header *nhdr;
+	uint32_t spl_size, crcval;
+	struct legacy_img_hdr header;
+	int ret;
+
+	spl_size = image_get_size(hdr);
+
+	if (spl_size > img_size) {
+		if (print)
+			printf("Incomplete SPL image\n");
 		return -1;
+	}
 
-	if (le32_to_cpu(gfh->file_info.flash_type) != GFH_FLASH_TYPE_NAND)
+	ret = image_check_hcrc(hdr);
+	if (!ret) {
+		if (print)
+			printf("Bad header CRC\n");
 		return -1;
+	}
 
-	if (print)
-		printf("Load Address: %08x\n",
-		       le32_to_cpu(gfh->file_info.load_addr) +
-		       le32_to_cpu(gfh->file_info.jump_offset));
+	ret = image_check_dcrc(hdr);
+	if (!ret) {
+		if (print)
+			printf("Bad data CRC\n");
+		return -1;
+	}
 
-	if (print)
-		printf("Architecture: %s\n", is_arm64_image ? "ARM64" : "ARM");
+	/* Copy header so we can blank CRC field for re-calculation */
+	memmove(&header, hdr, image_get_header_size());
+	image_set_hcrc(&header, 0);
+
+	nhdr = (struct mt7621_nand_header *)header.ih_name;
+	crcval = be32_to_cpu(nhdr->crc);
+	nhdr->crc = 0;
+
+	if (crcval != crc32be_cal(&header, image_get_header_size())) {
+		if (print)
+			printf("Bad NAND header CRC\n");
+		return -1;
+	}
+
+	if (print) {
+		printf("Load Address: %08x\n", image_get_load(hdr));
+
+		printf("Image Name:   %.*s\n", MT7621_IH_NMLEN,
+		       image_get_name(hdr));
+
+		if (IMAGE_ENABLE_TIMESTAMP) {
+			printf("Created:      ");
+			genimg_print_time((time_t)image_get_time(hdr));
+		}
+
+		printf("Data Size:    ");
+		genimg_print_size(image_get_data_size(hdr));
+	}
 
 	return 0;
 }
@@ -582,6 +490,7 @@ static int mtk_image_verify_nand_header(const uint8_t *ptr, int print)
 static int mtk_image_verify_header(unsigned char *ptr, int image_size,
 				   struct image_tool_params *params)
 {
+	struct legacy_img_hdr *hdr = (struct legacy_img_hdr *)ptr;
 	union lk_hdr *lk = (union lk_hdr *)ptr;
 
 	/* nothing to verify for LK image header */
@@ -590,7 +499,10 @@ static int mtk_image_verify_header(unsigned char *ptr, int image_size,
 
 	img_size = image_size;
 
-	if (!strcmp((char *)ptr, NAND_BOOT_NAME))
+	if (image_get_magic(hdr) == IH_MAGIC)
+		return mtk_image_verify_mt7621_header(ptr, 0);
+
+	if (is_mtk_nand_header(ptr))
 		return mtk_image_verify_nand_header(ptr, 0);
 	else
 		return mtk_image_verify_gen_header(ptr, 0);
@@ -600,6 +512,7 @@ static int mtk_image_verify_header(unsigned char *ptr, int image_size,
 
 static void mtk_image_print_header(const void *ptr)
 {
+	struct legacy_img_hdr *hdr = (struct legacy_img_hdr *)ptr;
 	union lk_hdr *lk = (union lk_hdr *)ptr;
 
 	if (le32_to_cpu(lk->magic) == LK_PART_MAGIC) {
@@ -610,7 +523,12 @@ static void mtk_image_print_header(const void *ptr)
 
 	printf("Image Type:   MediaTek BootROM Loadable Image\n");
 
-	if (!strcmp((char *)ptr, NAND_BOOT_NAME))
+	if (image_get_magic(hdr) == IH_MAGIC) {
+		mtk_image_verify_mt7621_header(ptr, 1);
+		return;
+	}
+
+	if (is_mtk_nand_header(ptr))
 		mtk_image_verify_nand_header(ptr, 1);
 	else
 		mtk_image_verify_gen_header(ptr, 1);
@@ -741,36 +659,72 @@ static void mtk_image_set_gen_header(void *ptr, off_t filesize,
 static void mtk_image_set_nand_header(void *ptr, off_t filesize,
 				      uint32_t loadaddr)
 {
-	union nand_boot_header *nh = (union nand_boot_header *)ptr;
 	struct brom_layout_header *brlyt;
 	struct gfh_header *gfh;
-	uint32_t payload_pages;
-	int i;
+	uint32_t payload_pages, nand_page_size;
 
-	/* NAND device header, repeat 4 times */
-	for (i = 0; i < 4; i++)
-		memcpy(nh + i, hdr_nand, sizeof(union nand_boot_header));
+	/* NAND header */
+	nand_page_size = mtk_nand_header_put(hdr_nand, ptr);
 
-	/* BRLYT header */
-	payload_pages = (filesize + le16_to_cpu(hdr_nand->pagesize) - 1) /
-			le16_to_cpu(hdr_nand->pagesize);
-	brlyt = (struct brom_layout_header *)
-		(ptr + le16_to_cpu(hdr_nand->pagesize));
-	put_brom_layout_header(brlyt, hdr_media);
-	brlyt->header_size = cpu_to_le32(2);
-	brlyt->total_size = cpu_to_le32(payload_pages);
-	brlyt->header_size_2 = brlyt->header_size;
-	brlyt->total_size_2 = brlyt->total_size;
-	brlyt->unused = cpu_to_le32(1);
+	if (nand_page_size) {
+		/* BRLYT header */
+		payload_pages = (filesize + nand_page_size - 1) /
+				nand_page_size;
+		brlyt = (struct brom_layout_header *)(ptr + nand_page_size);
+		put_brom_layout_header(brlyt, hdr_media);
+		brlyt->header_size = cpu_to_le32(2);
+		brlyt->total_size = cpu_to_le32(payload_pages);
+		brlyt->header_size_2 = brlyt->header_size;
+		brlyt->total_size_2 = brlyt->total_size;
+		brlyt->unused = cpu_to_le32(1);
+	}
 
 	/* GFH header */
-	gfh = (struct gfh_header *)(ptr + 2 * le16_to_cpu(hdr_nand->pagesize));
-	put_ghf_header(gfh, filesize, 2 * le16_to_cpu(hdr_nand->pagesize),
-		       loadaddr, GFH_FLASH_TYPE_NAND);
+	gfh = (struct gfh_header *)(ptr + hdr_nand_size);
+	put_ghf_header(gfh, filesize, hdr_nand_size, loadaddr,
+		       GFH_FLASH_TYPE_NAND);
 
 	/* Generate SHA256 hash */
-	put_hash((uint8_t *)gfh,
-		 filesize - 2 * le16_to_cpu(hdr_nand->pagesize) - SHA256_SUM_LEN);
+	put_hash((uint8_t *)gfh, filesize - hdr_nand_size - SHA256_SUM_LEN);
+}
+
+static void mtk_image_set_mt7621_header(void *ptr, off_t filesize,
+					uint32_t loadaddr)
+{
+	struct legacy_img_hdr *hdr = (struct legacy_img_hdr *)ptr;
+	struct mt7621_stage1_header *shdr;
+	struct mt7621_nand_header *nhdr;
+	uint32_t datasize, crcval;
+
+	datasize = filesize - image_get_header_size();
+	nhdr = (struct mt7621_nand_header *)hdr->ih_name;
+	shdr = (struct mt7621_stage1_header *)(ptr + image_get_header_size());
+
+	shdr->ep = cpu_to_be32(loadaddr);
+	shdr->stage_size = cpu_to_be32(datasize);
+
+	image_set_magic(hdr, IH_MAGIC);
+	image_set_time(hdr, time(NULL));
+	image_set_size(hdr, datasize);
+	image_set_load(hdr, loadaddr);
+	image_set_ep(hdr, loadaddr);
+	image_set_os(hdr, IH_OS_U_BOOT);
+	image_set_arch(hdr, IH_ARCH_MIPS);
+	image_set_type(hdr, IH_TYPE_STANDALONE);
+	image_set_comp(hdr, IH_COMP_NONE);
+
+	crcval = crc32(0, (uint8_t *)shdr, datasize);
+	image_set_dcrc(hdr, crcval);
+
+	strncpy(nhdr->ih_name, "MT7621 NAND", MT7621_IH_NMLEN);
+
+	nhdr->ih_stage_offset = cpu_to_be32(image_get_header_size());
+
+	crcval = crc32be_cal(hdr, image_get_header_size());
+	nhdr->crc = cpu_to_be32(crcval);
+
+	crcval = crc32(0, (uint8_t *)hdr, image_get_header_size());
+	image_set_hcrc(hdr, crcval);
 }
 
 static void mtk_image_set_header(void *ptr, struct stat *sbuf, int ifd,
@@ -790,6 +744,11 @@ static void mtk_image_set_header(void *ptr, struct stat *sbuf, int ifd,
 
 	img_gen = true;
 	img_size = sbuf->st_size;
+
+	if (use_mt7621_hdr) {
+		mtk_image_set_mt7621_header(ptr, sbuf->st_size, params->addr);
+		return;
+	}
 
 	if (hdr_media == BRLYT_TYPE_NAND || hdr_media == BRLYT_TYPE_SNAND)
 		mtk_image_set_nand_header(ptr, sbuf->st_size, params->addr);

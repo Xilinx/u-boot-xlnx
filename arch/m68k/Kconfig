@@ -56,12 +56,6 @@ config MCF5441x
         select DM_SERIAL
 	bool
 
-config MCF5227x
-	select OF_CONTROL
-	select DM
-        select DM_SERIAL
-	bool
-
 # processor type
 config M5208
 	bool
@@ -116,6 +110,10 @@ config M54418
 	bool
 	select MCF5441x
 
+# peripherals
+config CF_DSPI
+	bool
+
 choice
 	prompt "Target select"
 	optional
@@ -131,6 +129,7 @@ config TARGET_COBRA5272
 config TARGET_EB_CPU5282
 	bool "Support eb_cpu5282"
 	select M5282
+	select HW_WATCHDOG
 
 config TARGET_M5208EVBE
 	bool "Support M5208EVBE"
@@ -178,6 +177,7 @@ config TARGET_AMCORE
 
 config TARGET_STMARK2
         bool "Support stmark2"
+        select CF_DSPI
         select M54418
 
 endchoice
@@ -197,5 +197,8 @@ source "board/freescale/m5329evb/Kconfig"
 source "board/freescale/m5373evb/Kconfig"
 source "board/sysam/amcore/Kconfig"
 source "board/sysam/stmark2/Kconfig"
+
+config MCFTMR
+	bool "Use DMA timer"
 
 endmenu

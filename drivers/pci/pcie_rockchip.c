@@ -101,15 +101,6 @@ struct rockchip_pcie {
 	struct phy pcie_phy;
 };
 
-static int rockchip_pcie_off_conf(pci_dev_t bdf, uint offset)
-{
-	unsigned int bus = PCI_BUS(bdf);
-	unsigned int dev = PCI_DEV(bdf);
-	unsigned int func = PCI_FUNC(bdf);
-
-	return (bus << 20) | (dev << 15) | (func << 12) | (offset & ~0x3);
-}
-
 static int rockchip_pcie_rd_conf(const struct udevice *udev, pci_dev_t bdf,
 				 uint offset, ulong *valuep,
 				 enum pci_size_t size)
@@ -117,7 +108,7 @@ static int rockchip_pcie_rd_conf(const struct udevice *udev, pci_dev_t bdf,
 	struct rockchip_pcie *priv = dev_get_priv(udev);
 	unsigned int bus = PCI_BUS(bdf);
 	unsigned int dev = PCI_DEV(bdf);
-	int where = rockchip_pcie_off_conf(bdf, offset);
+	int where = PCIE_ECAM_OFFSET(PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf), offset & ~0x3);
 	ulong value;
 
 	if (bus == priv->first_busno && dev == 0) {
@@ -144,7 +135,7 @@ static int rockchip_pcie_wr_conf(struct udevice *udev, pci_dev_t bdf,
 	struct rockchip_pcie *priv = dev_get_priv(udev);
 	unsigned int bus = PCI_BUS(bdf);
 	unsigned int dev = PCI_DEV(bdf);
-	int where = rockchip_pcie_off_conf(bdf, offset);
+	int where = PCIE_ECAM_OFFSET(PCI_BUS(bdf), PCI_DEV(bdf), PCI_FUNC(bdf), offset & ~0x3);
 	ulong old;
 
 	if (bus == priv->first_busno && dev == 0) {
@@ -360,7 +351,7 @@ static int rockchip_pcie_init_port(struct udevice *dev)
 
 	/* Initialize Root Complex registers. */
 	writel(PCIE_LM_VENDOR_ROCKCHIP, priv->apb_base + PCIE_LM_VENDOR_ID);
-	writel(PCI_CLASS_BRIDGE_PCI << 16,
+	writel(PCI_CLASS_BRIDGE_PCI_NORMAL << 8,
 	       priv->apb_base + PCIE_RC_BASE + PCI_CLASS_REVISION);
 	writel(PCIE_LM_RCBARPIE | PCIE_LM_RCBARPIS,
 	       priv->apb_base + PCIE_LM_RCBAR);

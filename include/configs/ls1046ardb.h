@@ -9,30 +9,14 @@
 
 #include "ls1046a_common.h"
 
-#define CONFIG_SYS_CLK_FREQ		100000000
-
-#define CONFIG_LAYERSCAPE_NS_ACCESS
-
-#define CONFIG_DIMM_SLOTS_PER_CTLR	1
 /* Physical Memory Map */
-#define CONFIG_CHIP_SELECTS_PER_CTRL	4
 
 #define SPD_EEPROM_ADDRESS		0x51
-#define CONFIG_SYS_SPD_BUS_NUM		0
 
 #define CONFIG_MEM_INIT_VALUE           0xdeadbeef
 
 #if defined(CONFIG_QSPI_BOOT)
 #define CONFIG_SYS_UBOOT_BASE		0x40100000
-#define CONFIG_SYS_SPL_ARGS_ADDR	0x90000000
-#endif
-
-#ifndef SPL_NO_IFC
-/* IFC */
-#define CONFIG_FSL_IFC
-/*
- * NAND Flash Definitions
- */
 #endif
 
 #define CONFIG_SYS_NAND_BASE		0x7e800000
@@ -66,7 +50,6 @@
 #define CONFIG_SYS_NAND_FTIM3		0x0
 
 #define CONFIG_SYS_NAND_BASE_LIST	{ CONFIG_SYS_NAND_BASE }
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_MTD_NAND_VERIFY_WRITE
 
 /*
@@ -114,8 +97,6 @@
 #define CONFIG_SYS_CS2_FTIM3		CONFIG_SYS_CPLD_FTIM3
 
 /* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM		0
 #define I2C_RETIMER_ADDR			0x18
 
 /* PMIC */
@@ -123,7 +104,7 @@
 /*
  * Environment
  */
-#define CONFIG_SYS_FSL_QSPI_BASE        0x40000000
+#define CFG_SYS_FSL_QSPI_BASE        0x40000000
 
 #define AQR105_IRQ_MASK			0x80000000
 /* FMan */
@@ -138,27 +119,16 @@
 #define FM1_10GEC1_PHY_ADDR		0x0
 
 #define FDT_SEQ_MACADDR_FROM_ENV
-
-#define CONFIG_ETHPRIME			"FM1@DTSEC3"
 #endif
 
 #endif
 
 #ifndef SPL_NO_MISC
-#undef CONFIG_BOOTCOMMAND
 #ifdef CONFIG_TFABOOT
 #define QSPI_NOR_BOOTCOMMAND "run distro_bootcmd; run qspi_bootcmd; "	\
 			   "env exists secureboot && esbc_halt;;"
 #define SD_BOOTCOMMAND "run distro_bootcmd;run sd_bootcmd; "	\
 			   "env exists secureboot && esbc_halt;"
-#else
-#if defined(CONFIG_QSPI_BOOT)
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd; run qspi_bootcmd; "	\
-			   "env exists secureboot && esbc_halt;;"
-#elif defined(CONFIG_SD_BOOT)
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd;run sd_bootcmd; "	\
-			   "env exists secureboot && esbc_halt;"
-#endif
 #endif
 #endif
 

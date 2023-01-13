@@ -65,7 +65,7 @@ static struct mm_region sunxi_mem_map[] = {
 };
 struct mm_region *mem_map = sunxi_mem_map;
 
-ulong board_get_usable_ram_top(ulong total_size)
+phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	/* Some devices (like the EMAC) have a 32-bit DMA limit. */
 	if (gd->ram_top > (1ULL << 32))
@@ -73,8 +73,9 @@ ulong board_get_usable_ram_top(ulong total_size)
 
 	return gd->ram_top;
 }
-#endif
+#endif /* CONFIG_ARM64 */
 
+#ifdef CONFIG_SPL_BUILD
 static int gpio_init(void)
 {
 	__maybe_unused uint val;
@@ -86,14 +87,20 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(22), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(23), SUNXI_GPIO_INPUT);
 #endif
-#if defined(CONFIG_MACH_SUN8I) && !defined(CONFIG_MACH_SUN8I_R40)
-	sunxi_gpio_set_cfgpin(SUNXI_GPF(2), SUN8I_GPF_UART0);
-	sunxi_gpio_set_cfgpin(SUNXI_GPF(4), SUN8I_GPF_UART0);
-#else
+#if defined(CONFIG_MACH_SUN4I) || defined(CONFIG_MACH_SUN5I) || \
+    defined(CONFIG_MACH_SUN7I) || defined(CONFIG_MACH_SUN8I_R40) || \
+    defined(CONFIG_MACH_SUN9I)
 	sunxi_gpio_set_cfgpin(SUNXI_GPF(2), SUNXI_GPF_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPF(4), SUNXI_GPF_UART0);
+#else
+	sunxi_gpio_set_cfgpin(SUNXI_GPF(2), SUN8I_GPF_UART0);
+	sunxi_gpio_set_cfgpin(SUNXI_GPF(4), SUN8I_GPF_UART0);
 #endif
-	sunxi_gpio_set_pull(SUNXI_GPF(4), 1);
+	sunxi_gpio_set_pull(SUNXI_GPF(4), SUNXI_GPIO_PULL_UP);
+#elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUNIV)
+	sunxi_gpio_set_cfgpin(SUNXI_GPE(0), SUNIV_GPE_UART0);
+	sunxi_gpio_set_cfgpin(SUNXI_GPE(1), SUNIV_GPE_UART0);
+	sunxi_gpio_set_pull(SUNXI_GPE(1), SUNXI_GPIO_PULL_UP);
 #elif CONFIG_CONS_INDEX == 1 && (defined(CONFIG_MACH_SUN4I) || \
 				 defined(CONFIG_MACH_SUN7I) || \
 				 defined(CONFIG_MACH_SUN8I_R40))
@@ -140,10 +147,18 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(12), SUN9I_GPH_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(13), SUN9I_GPH_UART0);
 	sunxi_gpio_set_pull(SUNXI_GPH(13), SUNXI_GPIO_PULL_UP);
+#elif CONFIG_CONS_INDEX == 2 && defined(CONFIG_MACH_SUNIV)
+	sunxi_gpio_set_cfgpin(SUNXI_GPA(2), SUNIV_GPE_UART0);
+	sunxi_gpio_set_cfgpin(SUNXI_GPA(3), SUNIV_GPE_UART0);
+	sunxi_gpio_set_pull(SUNXI_GPA(3), SUNXI_GPIO_PULL_UP);
 #elif CONFIG_CONS_INDEX == 2 && defined(CONFIG_MACH_SUN5I)
 	sunxi_gpio_set_cfgpin(SUNXI_GPG(3), SUN5I_GPG_UART1);
 	sunxi_gpio_set_cfgpin(SUNXI_GPG(4), SUN5I_GPG_UART1);
 	sunxi_gpio_set_pull(SUNXI_GPG(4), SUNXI_GPIO_PULL_UP);
+#elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I_H3)
+	sunxi_gpio_set_cfgpin(SUNXI_GPA(0), SUN8I_H3_GPA_UART2);
+	sunxi_gpio_set_cfgpin(SUNXI_GPA(1), SUN8I_H3_GPA_UART2);
+	sunxi_gpio_set_pull(SUNXI_GPA(1), SUNXI_GPIO_PULL_UP);
 #elif CONFIG_CONS_INDEX == 3 && defined(CONFIG_MACH_SUN8I)
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_GPB_UART2);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_GPB_UART2);
@@ -172,7 +187,6 @@ static int gpio_init(void)
 	return 0;
 }
 
-#if defined(CONFIG_SPL_BOARD_LOAD_IMAGE) && defined(CONFIG_SPL_BUILD)
 static int spl_board_load_image(struct spl_image_info *spl_image,
 				struct spl_boot_device *bootdev)
 {
@@ -182,73 +196,67 @@ static int spl_board_load_image(struct spl_image_info *spl_image,
 	return 0;
 }
 SPL_LOAD_IMAGE_METHOD("FEL", 0, BOOT_DEVICE_BOARD, spl_board_load_image);
-#endif
-
-void s_init(void)
-{
-	/*
-	 * Undocumented magic taken from boot0, without this DRAM
-	 * access gets messed up (seems cache related).
-	 * The boot0 sources describe this as: "config ema for cache sram"
-	 */
-#if defined CONFIG_MACH_SUN6I
-	setbits_le32(SUNXI_SRAMC_BASE + 0x44, 0x1800);
-#elif defined CONFIG_MACH_SUN8I
-	__maybe_unused uint version;
-
-	/* Unlock sram version info reg, read it, relock */
-	setbits_le32(SUNXI_SRAMC_BASE + 0x24, (1 << 15));
-	version = readl(SUNXI_SRAMC_BASE + 0x24) >> 16;
-	clrbits_le32(SUNXI_SRAMC_BASE + 0x24, (1 << 15));
-
-	/*
-	 * Ideally this would be a switch case, but we do not know exactly
-	 * which versions there are and which version needs which settings,
-	 * so reproduce the per SoC code from the BSP.
-	 */
-#if defined CONFIG_MACH_SUN8I_A23
-	if (version == 0x1650)
-		setbits_le32(SUNXI_SRAMC_BASE + 0x44, 0x1800);
-	else /* 0x1661 ? */
-		setbits_le32(SUNXI_SRAMC_BASE + 0x44, 0xc0);
-#elif defined CONFIG_MACH_SUN8I_A33
-	if (version != 0x1667)
-		setbits_le32(SUNXI_SRAMC_BASE + 0x44, 0xc0);
-#endif
-	/* A83T BSP never modifies SUNXI_SRAMC_BASE + 0x44 */
-	/* No H3 BSP, boot0 seems to not modify SUNXI_SRAMC_BASE + 0x44 */
-#endif
-
-#if !defined(CONFIG_ARM_CORTEX_CPU_IS_UP) && !defined(CONFIG_ARM64)
-	/* Enable SMP mode for CPU0, by setting bit 6 of Auxiliary Ctl reg */
-	asm volatile(
-		"mrc p15, 0, r0, c1, c0, 1\n"
-		"orr r0, r0, #1 << 6\n"
-		"mcr p15, 0, r0, c1, c0, 1\n"
-		::: "r0");
-#endif
-#if defined CONFIG_MACH_SUN6I || defined CONFIG_MACH_SUN8I_H3
-	/* Enable non-secure access to some peripherals */
-	tzpc_init();
-#endif
-
-	clock_init();
-	timer_init();
-	gpio_init();
-#if !CONFIG_IS_ENABLED(DM_I2C)
-	i2c_init_board();
-#endif
-	eth_init_board();
-}
+#endif /* CONFIG_SPL_BUILD */
 
 #define SUNXI_INVALID_BOOT_SOURCE	-1
 
+static int suniv_get_boot_source(void)
+{
+	/* Get the last function call from BootROM's stack. */
+	u32 brom_call = *(u32 *)(uintptr_t)(fel_stash.sp - 4);
+
+	/* translate SUNIV BootROM stack to standard SUNXI boot sources */
+	switch (brom_call) {
+	case SUNIV_BOOTED_FROM_MMC0:
+		return SUNXI_BOOTED_FROM_MMC0;
+	case SUNIV_BOOTED_FROM_SPI:
+		return SUNXI_BOOTED_FROM_SPI;
+	case SUNIV_BOOTED_FROM_MMC1:
+		return SUNXI_BOOTED_FROM_MMC2;
+	/* SPI NAND is not supported yet. */
+	case SUNIV_BOOTED_FROM_NAND:
+		return SUNXI_INVALID_BOOT_SOURCE;
+	}
+	/* If we get here something went wrong try to boot from FEL.*/
+	printf("Unknown boot source from BROM: 0x%x\n", brom_call);
+	return SUNXI_INVALID_BOOT_SOURCE;
+}
+
+static int sunxi_egon_valid(struct boot_file_head *egon_head)
+{
+	return !memcmp(egon_head->magic, BOOT0_MAGIC, 8); /* eGON.BT0 */
+}
+
+static int sunxi_toc0_valid(struct toc0_main_info *toc0_info)
+{
+	return !memcmp(toc0_info->name, TOC0_MAIN_INFO_NAME, 8); /* TOC0.GLH */
+}
+
 static int sunxi_get_boot_source(void)
 {
-	if (!is_boot0_magic(SPL_ADDR + 4)) /* eGON.BT0 */
-		return SUNXI_INVALID_BOOT_SOURCE;
+	struct boot_file_head *egon_head = (void *)SPL_ADDR;
+	struct toc0_main_info *toc0_info = (void *)SPL_ADDR;
 
-	return readb(SPL_ADDR + 0x28);
+	/*
+	 * On the ARMv5 SoCs, the SPL header in SRAM is overwritten by the
+	 * exception vectors in U-Boot proper, so we won't find any
+	 * information there. Also the FEL stash is only valid in the SPL,
+	 * so we can't use that either. So if this is called from U-Boot
+	 * proper, just return MMC0 as a placeholder, for now.
+	 */
+	if (IS_ENABLED(CONFIG_MACH_SUNIV) &&
+	    !IS_ENABLED(CONFIG_SPL_BUILD))
+		return SUNXI_BOOTED_FROM_MMC0;
+
+	if (IS_ENABLED(CONFIG_MACH_SUNIV))
+		return suniv_get_boot_source();
+	if (sunxi_egon_valid(egon_head))
+		return readb(&egon_head->boot_media);
+	if (sunxi_toc0_valid(toc0_info))
+		return readb(&toc0_info->platform[0]);
+
+	/* Not a valid image, so we must have been booted via FEL. */
+	return SUNXI_INVALID_BOOT_SOURCE;
 }
 
 /* The sunxi internal brom will try to loader external bootloader
@@ -294,12 +302,18 @@ uint32_t sunxi_get_boot_device(void)
 }
 
 #ifdef CONFIG_SPL_BUILD
-static u32 sunxi_get_spl_size(void)
+uint32_t sunxi_get_spl_size(void)
 {
-	if (!is_boot0_magic(SPL_ADDR + 4)) /* eGON.BT0 */
-		return 0;
+	struct boot_file_head *egon_head = (void *)SPL_ADDR;
+	struct toc0_main_info *toc0_info = (void *)SPL_ADDR;
 
-	return readl(SPL_ADDR + 0x10);
+	if (sunxi_egon_valid(egon_head))
+		return readl(&egon_head->length);
+	if (sunxi_toc0_valid(toc0_info))
+		return readl(&toc0_info->length);
+
+	/* Not a valid image, so use the default U-Boot offset. */
+	return 0;
 }
 
 /*
@@ -333,18 +347,117 @@ u32 spl_boot_device(void)
 	return sunxi_get_boot_device();
 }
 
+__weak void sunxi_sram_init(void)
+{
+}
+
+/*
+ * When booting from an eMMC boot partition, the SPL puts the same boot
+ * source code into SRAM A1 as when loading the SPL from the normal
+ * eMMC user data partition: 0x2. So to know where we have been loaded
+ * from, we repeat the BROM algorithm here: checking for a valid eGON boot
+ * image at offset 0 of a (potentially) selected boot partition.
+ * If any of the conditions is not met, it must have been the eMMC user
+ * data partition.
+ */
+static bool sunxi_valid_emmc_boot(struct mmc *mmc)
+{
+	struct blk_desc *bd = mmc_get_blk_desc(mmc);
+	u32 *buffer = (void *)(uintptr_t)CONFIG_TEXT_BASE;
+	struct boot_file_head *egon_head = (void *)buffer;
+	int bootpart = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
+	uint32_t spl_size, emmc_checksum, chksum = 0;
+	ulong count;
+
+	/* The BROM requires BOOT_ACK to be enabled. */
+	if (!EXT_CSD_EXTRACT_BOOT_ACK(mmc->part_config))
+		return false;
+
+	/*
+	 * The BOOT_BUS_CONDITION register must be 4-bit SDR, with (0x09)
+	 * or without (0x01) high speed timings.
+	 */
+	if ((mmc->ext_csd[EXT_CSD_BOOT_BUS_WIDTH] & 0x1b) != 0x01 &&
+	    (mmc->ext_csd[EXT_CSD_BOOT_BUS_WIDTH] & 0x1b) != 0x09)
+		return false;
+
+	/* Partition 0 is the user data partition, bootpart must be 1 or 2. */
+	if (bootpart != 1 && bootpart != 2)
+		return false;
+
+	/* Failure to switch to the boot partition is fatal. */
+	if (mmc_switch_part(mmc, bootpart))
+		return false;
+
+	/* Read the first block to do some sanity checks on the eGON header. */
+	count = blk_dread(bd, 0, 1, buffer);
+	if (count != 1 || !sunxi_egon_valid(egon_head))
+		return false;
+
+	/* Read the rest of the SPL now we know it's halfway sane. */
+	spl_size = buffer[4];
+	count = blk_dread(bd, 1, DIV_ROUND_UP(spl_size, bd->blksz) - 1,
+			  buffer + bd->blksz / 4);
+
+	/* Save the checksum and replace it with the "stamp value". */
+	emmc_checksum = buffer[3];
+	buffer[3] = 0x5f0a6c39;
+
+	/* The checksum is a simple ignore-carry addition of all words. */
+	for (count = 0; count < spl_size / 4; count++)
+		chksum += buffer[count];
+
+	debug("eMMC boot part SPL checksum: stored: 0x%08x, computed: 0x%08x\n",
+	       emmc_checksum, chksum);
+
+	return emmc_checksum == chksum;
+}
+
+u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
+{
+	static u32 result = ~0;
+
+	if (result != ~0)
+		return result;
+
+	result = MMCSD_MODE_RAW;
+	if (!IS_SD(mmc) && IS_ENABLED(CONFIG_SUPPORT_EMMC_BOOT)) {
+		if (sunxi_valid_emmc_boot(mmc))
+			result = MMCSD_MODE_EMMCBOOT;
+		else
+			mmc_switch_part(mmc, 0);
+	}
+
+	debug("%s(): %s part\n", __func__,
+	      result == MMCSD_MODE_RAW ? "user" : "boot");
+
+	return result;
+}
+
 void board_init_f(ulong dummy)
 {
+	sunxi_sram_init();
+
+#if defined CONFIG_MACH_SUN6I || defined CONFIG_MACH_SUN8I_H3
+	/* Enable non-secure access to some peripherals */
+	tzpc_init();
+#endif
+
+	clock_init();
+	timer_init();
+	gpio_init();
+
 	spl_init();
 	preloader_console_init();
 
 #if CONFIG_IS_ENABLED(I2C) && CONFIG_IS_ENABLED(SYS_I2C_LEGACY)
 	/* Needed early by sunxi_board_init if PMU is enabled */
+	i2c_init_board();
 	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
 #endif
 	sunxi_board_init();
 }
-#endif
+#endif /* CONFIG_SPL_BUILD */
 
 #if !CONFIG_IS_ENABLED(SYSRESET)
 void reset_cpu(void)
@@ -377,9 +490,9 @@ void reset_cpu(void)
 	while (1) { }
 #endif
 }
-#endif
+#endif /* CONFIG_SYSRESET */
 
-#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) && !defined(CONFIG_ARM64)
+#if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) && defined(CONFIG_CPU_V7A)
 void enable_caches(void)
 {
 	/* Enable D-cache. I-cache is already enabled in start.S */

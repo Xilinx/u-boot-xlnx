@@ -24,7 +24,6 @@ see doc/driver-model/of-plat.rst
 from argparse import ArgumentParser
 import os
 import sys
-import unittest
 
 # Bring in the patman libraries
 our_path = os.path.dirname(os.path.realpath(__file__))
@@ -49,23 +48,23 @@ def run_tests(processes, args):
     from dtoc import test_src_scan
     from dtoc import test_dtoc
 
-    result = unittest.TestResult()
     sys.argv = [sys.argv[0]]
     test_name = args.files and args.files[0] or None
 
     test_dtoc.setup()
 
-    test_util.RunTestSuites(
-        result, debug=True, verbosity=1, test_preserve_dirs=False,
+    result = test_util.run_test_suites(
+        toolname='dtoc', debug=True, verbosity=1, test_preserve_dirs=False,
         processes=processes, test_name=test_name, toolpath=[],
-        test_class_list=[test_dtoc.TestDtoc,test_src_scan.TestSrcScan])
+        class_and_module_list=[test_dtoc.TestDtoc,test_src_scan.TestSrcScan])
 
-    return test_util.ReportResult('binman', test_name, result)
+    return (0 if result.wasSuccessful() else 1)
+
 
 def RunTestCoverage():
     """Run the tests and check that we get 100% coverage"""
     sys.argv = [sys.argv[0]]
-    test_util.RunTestCoverage('tools/dtoc/dtoc', '/main.py',
+    test_util.run_test_coverage('tools/dtoc/dtoc', '/main.py',
             ['tools/patman/*.py', '*/fdt*', '*test*'], args.build_dir)
 
 

@@ -98,6 +98,8 @@ enum log_category_t {
 	LOGC_ACPI,
 	/** @LOGC_BOOT: Related to boot process / boot image processing */
 	LOGC_BOOT,
+	/** @LOGC_EVENT: Related to event and event handling */
+	LOGC_EVENT,
 	/** @LOGC_COUNT: Number of log categories */
 	LOGC_COUNT,
 	/** @LOGC_END: Sentinel value for lists of log categories */
@@ -127,18 +129,6 @@ static inline int log_uc_cat(enum uclass_id id)
 int _log(enum log_category_t cat, enum log_level_t level, const char *file,
 	 int line, const char *func, const char *fmt, ...)
 		__attribute__ ((format (__printf__, 6, 7)));
-
-static inline int _log_nop(enum log_category_t cat, enum log_level_t level,
-			   const char *file, int line, const char *func,
-			   const char *fmt, ...)
-		__attribute__ ((format (__printf__, 6, 7)));
-
-static inline int _log_nop(enum log_category_t cat, enum log_level_t level,
-			   const char *file, int line, const char *func,
-			   const char *fmt, ...)
-{
-	return 0;
-}
 
 /**
  * _log_buffer - Internal function to print data buffer in hex and ascii form
@@ -192,6 +182,9 @@ int _log_buffer(enum log_category_t cat, enum log_level_t level,
 
 #ifdef LOG_DEBUG
 #define _LOG_DEBUG	LOGL_FORCE_DEBUG
+#ifndef DEBUG
+#define DEBUG
+#endif
 #else
 #define _LOG_DEBUG	0
 #endif
@@ -234,12 +227,6 @@ int _log_buffer(enum log_category_t cat, enum log_level_t level,
 		print_buffer(_addr, _data, _width, _count, _linelen); \
 	})
 #endif
-
-#define log_nop(_cat, _level, _fmt, _args...) ({ \
-	int _l = _level; \
-	_log_nop((enum log_category_t)(_cat), _l, __FILE__, __LINE__, \
-		      __func__, pr_fmt(_fmt), ##_args); \
-})
 
 #ifdef DEBUG
 #define _DEBUG	1
@@ -335,7 +322,10 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line,
  *
  * or:
  *
- *	return log_msg_ret("fred failed", fred_call());
+ *	return log_msg_ret("get", fred_call());
+ *
+ * It is recommended to use <= 3 characters for the name since this will only
+ * use 4 bytes in rodata
  */
 #define log_ret(_ret) ({ \
 	int __ret = (_ret); \
@@ -660,7 +650,7 @@ int log_remove_filter(const char *drv_name, int filter_num);
  *
  * @drv: Driver of device to enable
  * @enable: true to enable, false to disable
- * @return 0 if OK, -ENOENT if the driver was not found
+ * Return: 0 if OK, -ENOENT if the driver was not found
  */
 int log_device_set_enable(struct log_driver *drv, bool enable);
 

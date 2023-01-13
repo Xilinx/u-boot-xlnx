@@ -23,8 +23,6 @@
 #include "part_dos.h"
 #include <part.h>
 
-#ifdef CONFIG_HAVE_BLOCK_DEVICE
-
 #define DOS_PART_DEFAULT_SECTOR 512
 
 /* should this be configurable? It looks like it's not very common at all
@@ -459,10 +457,12 @@ int layout_mbr_partitions(struct disk_partition *p, int count,
 			ext = &p[i];
 	}
 
-	if (i >= 4 && !ext) {
-		printf("%s: extended partition is needed for more than 4 partitions\n",
-		        __func__);
-		return -1;
+	if (count < 4)
+		return 0;
+
+	if (!ext) {
+		log_err("extended partition is needed for more than 4 partitions\n");
+		return -EINVAL;
 	}
 
 	/* calculate extended volumes start and size if needed */
@@ -516,5 +516,3 @@ U_BOOT_PART_TYPE(dos) = {
 	.print		= part_print_ptr(part_print_dos),
 	.test		= part_test_dos,
 };
-
-#endif

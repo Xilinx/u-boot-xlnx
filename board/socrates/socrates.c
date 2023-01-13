@@ -26,19 +26,16 @@
 #include <fdt_support.h>
 #include <asm/io.h>
 #include <i2c.h>
-#include <video_fb.h>
 #include "upm_table.h"
 
 DECLARE_GLOBAL_DATA_PTR;
-
-extern flash_info_t flash_info[];	/* FLASH chips info */
 
 void local_bus_init (void);
 ulong flash_get_size (ulong base, int banknum);
 
 int checkboard (void)
 {
-	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	volatile ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 	char buf[64];
 	int f;
 	int i = env_get_f("serial#", buf, sizeof(buf));
@@ -57,10 +54,11 @@ int checkboard (void)
 	/* Check the PCI_clk sel bit */
 	if (in_be32(&gur->porpllsr) & (1<<15)) {
 		src = "SYSCLK";
-		f = CONFIG_SYS_CLK_FREQ;
+		f = get_board_sys_clk();
 	} else {
 		src = "PCI_CLK";
-		f = CONFIG_PCI_CLK_FREQ;
+		/* PCI is clocked by the external source at 33 MHz */
+		f = 33000000;
 	}
 	printf ("PCI1:  32 bit, %d MHz (%s)\n",	f/1000000, src);
 #else
@@ -141,7 +139,7 @@ int misc_init_r (void)
 void local_bus_init (void)
 {
 	volatile fsl_lbc_t *lbc = LBC_BASE_ADDR;
-	volatile ccsr_local_ecm_t *ecm = (void *)(CONFIG_SYS_MPC85xx_ECM_ADDR);
+	volatile ccsr_local_ecm_t *ecm = (void *)(CFG_SYS_MPC85xx_ECM_ADDR);
 	sys_info_t sysinfo;
 	uint clkdiv;
 	uint lbc_mhz;
@@ -177,7 +175,7 @@ void local_bus_init (void)
 #ifdef CONFIG_BOARD_EARLY_INIT_R
 int board_early_init_r (void)
 {
-	volatile ccsr_gur_t *gur = (void *)(CONFIG_SYS_MPC85xx_GUTS_ADDR);
+	volatile ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
 
 	/* set and reset the GPIO pin 2 which will reset the W83782G chip */
 	out_8((unsigned char*)&gur->gpoutdr, 0x3F );
@@ -225,7 +223,7 @@ void *board_fdt_blob_setup(int *err)
 	void *fw_dtb;
 
 	*err = 0;
-	fw_dtb = (void *)(CONFIG_SYS_TEXT_BASE - CONFIG_ENV_SECT_SIZE);
+	fw_dtb = (void *)(CONFIG_TEXT_BASE - CONFIG_ENV_SECT_SIZE);
 	if (fdt_magic(fw_dtb) != FDT_MAGIC) {
 		printf("DTB is not passed via %x\n", (u32)fw_dtb);
 		*err = -ENXIO;

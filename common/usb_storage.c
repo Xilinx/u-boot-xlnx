@@ -34,6 +34,7 @@
 
 #include <common.h>
 #include <blk.h>
+#include <bootdev.h>
 #include <command.h>
 #include <dm.h>
 #include <errno.h>
@@ -143,7 +144,7 @@ int usb_stor_info(void)
 #if CONFIG_IS_ENABLED(BLK)
 	struct udevice *dev;
 
-	for (blk_first_device(IF_TYPE_USB, &dev);
+	for (blk_first_device(UCLASS_USB, &dev);
 	     dev;
 	     blk_next_device(&dev)) {
 		struct blk_desc *desc = dev_get_uclass_plat(dev);
@@ -218,7 +219,7 @@ static int usb_stor_probe_device(struct usb_device *udev)
 
 		snprintf(str, sizeof(str), "lun%d", lun);
 		ret = blk_create_devicef(udev->dev, "usb_storage_blk", str,
-					 IF_TYPE_USB, usb_max_devs, 512, 0,
+					 UCLASS_USB, usb_max_devs, 512, 0,
 					 &dev);
 		if (ret) {
 			debug("Cannot bind driver\n");
@@ -238,6 +239,21 @@ static int usb_stor_probe_device(struct usb_device *udev)
 			ret = device_unbind(dev);
 			if (ret)
 				return ret;
+			continue;
+		}
+
+		ret = blk_probe_or_unbind(dev);
+		if (ret)
+			return ret;
+
+		ret = bootdev_setup_sibling_blk(dev, "usb_bootdev");
+		if (ret) {
+			int ret2;
+
+			ret2 = device_unbind(dev);
+			if (ret2)
+				return log_msg_ret("bootdev", ret2);
+			return log_msg_ret("bootdev", ret);
 		}
 	}
 #else
@@ -264,7 +280,7 @@ static int usb_stor_probe_device(struct usb_device *udev)
 
 		blkdev = &usb_dev_desc[usb_max_devs];
 		memset(blkdev, '\0', sizeof(struct blk_desc));
-		blkdev->if_type = IF_TYPE_USB;
+		blkdev->uclass_id = UCLASS_USB;
 		blkdev->devnum = usb_max_devs;
 		blkdev->part_type = PART_TYPE_UNKNOWN;
 		blkdev->target = 0xff;
@@ -1562,8 +1578,8 @@ U_BOOT_DRIVER(usb_storage_blk) = {
 };
 #else
 U_BOOT_LEGACY_BLK(usb) = {
-	.if_typename	= "usb",
-	.if_type	= IF_TYPE_USB,
+	.uclass_idname	= "usb",
+	.uclass_id	= UCLASS_USB,
 	.max_devs	= USB_MAX_STOR_DEV,
 	.desc		= usb_dev_desc,
 };

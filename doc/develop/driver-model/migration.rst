@@ -57,7 +57,7 @@ In concert with maintainers migrating their block device usage to the
 appropriate DM driver, CONFIG_BLK needs to be set as well.  The final deadline
 here coincides with the final deadline for migration of the various block
 subsystems.  At this point we will be able to audit and correct the logic in
-Kconfig around using CONFIG_PARTITIONS and CONFIG_HAVE_BLOCK_DEVICE and make
+Kconfig around using CONFIG_PARTITIONS and CONFIG_SPL_LEGACY_BLOCK and make
 use of CONFIG_BLK / CONFIG_SPL_BLK as needed.
 
 CONFIG_DM_SPI / CONFIG_DM_SPI_FLASH
@@ -80,7 +80,7 @@ CONFIG_DM_VIDEO
 Deadline: 2019.07
 
 The video subsystem has supported driver model since early 2016. Maintainers
-should submit patches switching over to using CONFIG_DM_VIDEO and other base
+should submit patches switching over to using CONFIG_VIDEO and other base
 driver model options in time for inclusion in the 2019.07 release.
 
 CONFIG_DM_ETH
@@ -98,3 +98,23 @@ Deadline: 2021.10
 The I2C subsystem has supported the driver model since early 2015.
 Maintainers should submit patches switching over to using CONFIG_DM_I2C and
 other base driver model options in time for inclusion in the 2021.10 release.
+
+CONFIG_SYS_TIMER_RATE and CONFIG_SYS_TIMER_COUNTER
+--------------------------------------------------
+Deadline: 2023.01
+
+These are legacy options which have been replaced by driver model.
+Maintainers should submit patches switching over to using CONFIG_TIMER and
+other base driver model options in time for inclusion in the 2022.10 release.
+
+There is only one method to implement, unless you want to support bootstage,
+in which case you need an early timer also. For example drivers, see
+sandbox_timer.c and rockchip_timer.c
+
+CONFIG_DM_SERIAL
+----------------
+Deadline: 2023.04
+
+The serial subsystem has supported the driver model since late 2014.
+Maintainers should submit patches switching over to using CONFIG_DM_SERIAL and
+other base driver model options in time for inclusion in the 2022.10 release.

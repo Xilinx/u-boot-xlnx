@@ -73,19 +73,6 @@
 			"bootz; " \
 		"fi;\0"
 
-#define CONFIG_BOOTCOMMAND \
-	   "mmc dev ${mmcdev};" \
-	   "mmc dev ${mmcdev}; if mmc rescan; then " \
-		   "if run loadbootscript; then " \
-			   "run bootscript; " \
-		   "else " \
-			   "if run loadimage; then " \
-				   "run mmcboot; " \
-			   "else run netboot; " \
-			   "fi; " \
-		   "fi; " \
-	   "else run netboot; fi"
-
 /* Miscellaneous configurable options */
 
 /* Physical Memory Map */
@@ -95,16 +82,10 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	IRAM_BASE_ADDR
 #define CONFIG_SYS_INIT_RAM_SIZE	IRAM_SIZE
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /* MMC Configuration */
-#define CONFIG_SYS_FSL_ESDHC_ADDR	USDHC3_BASE_ADDR
+#define CFG_SYS_FSL_ESDHC_ADDR	USDHC3_BASE_ADDR
 
 /* NAND stuff */
-#define CONFIG_SYS_MAX_NAND_DEVICE     1
 #define CONFIG_SYS_NAND_BASE           0x40000000
 
 /* DMA stuff, needed for GPMI/MXS NAND support */
@@ -114,16 +95,11 @@
 #define IMX_FEC_BASE			ENET2_BASE_ADDR
 #define CONFIG_FEC_MXC_PHYADDR          0x0
 
-#define CONFIG_FEC_XCV_TYPE             RGMII
-#define CONFIG_ETHPRIME                 "FEC"
-
 #ifdef CONFIG_CMD_USB
-#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
 #define CONFIG_MXC_USB_PORTSC  (PORT_PTS_UTMI | PORT_PTS_PTW)
 #define CONFIG_MXC_USB_FLAGS   0
-#define CONFIG_USB_MAX_CONTROLLER_COUNT 2
 #endif
 
-#define CONFIG_SYS_FSL_USDHC_NUM	2
+#define CFG_SYS_FSL_USDHC_NUM	2
 
 #endif				/* __CONFIG_H */

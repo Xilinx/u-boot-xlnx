@@ -6,11 +6,11 @@ ifneq ($(TI_SECURE_DEV_PKG),)
 ifneq ($(wildcard $(TI_SECURE_DEV_PKG)/scripts/create-boot-image.sh),)
 ifneq ($(CONFIG_SPL_BUILD),)
 cmd_mkomapsecimg = $(TI_SECURE_DEV_PKG)/scripts/create-boot-image.sh \
-	$(patsubst u-boot-spl_HS_%,%,$(@F)) $< $@ $(CONFIG_ISW_ENTRY_ADDR) \
+	$(patsubst u-boot-spl_HS_%,%,$(@F)) $< $@ $(CONFIG_SPL_TEXT_BASE) \
 	$(if $(KBUILD_VERBOSE:1=), >/dev/null)
 else
 cmd_mkomapsecimg = $(TI_SECURE_DEV_PKG)/scripts/create-boot-image.sh \
-	$(patsubst u-boot_HS_%,%,$(@F)) $< $@ $(CONFIG_ISW_ENTRY_ADDR) \
+	$(patsubst u-boot_HS_%,%,$(@F)) $< $@ $(CONFIG_TEXT_BASE) \
 	$(if $(KBUILD_VERBOSE:1=), >/dev/null)
 endif
 else
@@ -102,7 +102,7 @@ u-boot_HS_XIP_X-LOADER: $(obj)/u-boot.bin FORCE
 ifdef CONFIG_SPL_LOAD_FIT
 
 MKIMAGEFLAGS_u-boot_HS.img = -f auto -A $(ARCH) -T firmware -C none -O u-boot \
-	-a $(CONFIG_SYS_TEXT_BASE) -e $(CONFIG_SYS_UBOOT_START) \
+	-a $(CONFIG_TEXT_BASE) -e $(CONFIG_SYS_UBOOT_START) \
 	-n "U-Boot $(UBOOTRELEASE) for $(BOARD) board" -E \
 	$(patsubst %,-b arch/$(ARCH)/dts/%.dtb_HS,$(subst ",,$(CONFIG_OF_LIST)))
 

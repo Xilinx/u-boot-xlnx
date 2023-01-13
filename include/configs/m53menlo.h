@@ -11,10 +11,6 @@
 
 #include <asm/arch/imx-regs.h>
 
-#define CONFIG_SYS_FSL_CLK
-
-#define CONFIG_TIMESTAMP		/* Print image info with timestamp */
-
 /*
  * Memory configurations
  */
@@ -28,18 +24,9 @@
 #define CONFIG_SYS_INIT_RAM_ADDR	(IRAM_BASE_ADDR)
 #define CONFIG_SYS_INIT_RAM_SIZE	(IRAM_SIZE)
 
-#define CONFIG_SYS_INIT_SP_OFFSET \
-	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
-#define CONFIG_SYS_INIT_SP_ADDR \
-	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
-
 /*
  * U-Boot general configurations
  */
-#define CONFIG_SYS_CBSIZE	1024		/* Console I/O buffer size */
-#define CONFIG_SYS_MAXARGS	32		/* Max number of command args */
-#define CONFIG_SYS_BARGSIZE	CONFIG_SYS_CBSIZE
-						/* Boot argument buffer size */
 
 /*
  * Serial Driver
@@ -50,34 +37,25 @@
  * MMC Driver
  */
 #ifdef CONFIG_CMD_MMC
-#define CONFIG_SYS_FSL_ESDHC_ADDR	0
-#define CONFIG_SYS_FSL_ESDHC_NUM	1
+#define CFG_SYS_FSL_ESDHC_ADDR	0
 #endif
 
 /*
  * NAND
  */
 #ifdef CONFIG_CMD_NAND
-#define CONFIG_SYS_MAX_NAND_DEVICE	1
 #define CONFIG_SYS_NAND_BASE		NFC_BASE_ADDR_AXI
 #define CONFIG_MXC_NAND_REGS_BASE	NFC_BASE_ADDR_AXI
 #define CONFIG_MXC_NAND_IP_REGS_BASE	NFC_BASE_ADDR
 #define CONFIG_SYS_NAND_LARGEPAGE
 #define CONFIG_MXC_NAND_HWECC
-
-/* Environment is in NAND */
-#define CONFIG_ENV_RANGE		(0x00080000) /* 512 KiB */
 #endif
 
 /*
  * Ethernet on SOC (FEC)
  */
 #ifdef CONFIG_CMD_NET
-#define IMX_FEC_BASE			FEC_BASE_ADDR
 #define CONFIG_FEC_MXC_PHYADDR		0x0
-#define CONFIG_DISCOVER_PHY
-#define CONFIG_FEC_XCV_TYPE		RMII
-#define CONFIG_ETHPRIME			"FEC0"
 #endif
 
 #define CONFIG_SYS_RTC_BUS_NUM		1 /* I2C2 */
@@ -87,7 +65,6 @@
  */
 #ifdef CONFIG_CMD_DATE
 #define CONFIG_SYS_I2C_RTC_ADDR		0x68
-#define CONFIG_SYS_M41T11_BASE_YEAR	2000
 #endif
 
 /*
@@ -99,22 +76,6 @@
 #define CONFIG_MXC_USB_FLAGS		0
 #endif
 
-/*
- * SATA
- */
-#ifdef CONFIG_CMD_SATA
-#define CONFIG_SYS_SATA_MAX_DEVICE	1
-#define CONFIG_DWC_AHSATA_PORT_ID	0
-#define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_BASE_ADDR
-#define CONFIG_LBA48
-#endif
-
-/*
- * LCD
- */
-#define CONFIG_VIDEO_LOGO
-#define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(2 << 20)
-
 /* LVDS display */
 #define CONFIG_SYS_LDB_CLOCK			33260000
 #define CONFIG_IMX_VIDEO_SKIP
@@ -125,17 +86,8 @@
 /* Watchdog */
 
 /*
- * Boot Linux
- */
-#define CONFIG_BOOTFILE		"boot/fitImage"
-#define CONFIG_BOOTCOMMAND	"run mmc_mmc"
-
-/*
  * NAND SPL
  */
-#define CONFIG_SPL_TARGET		"u-boot-with-nand-spl.imx"
-#define CONFIG_SPL_PAD_TO		0x8000
-#define CONFIG_SPL_STACK		0x70004000
 
 #define CONFIG_SYS_NAND_SIZE		(256 * 1024 * 1024)
 
@@ -152,8 +104,6 @@
 	"mmcpart=1\0"							\
 	"rootpath=/srv/\0"						\
 	"kernel_addr_r=0x72000000\0"					\
-	"mtdids=" CONFIG_MTDIDS_DEFAULT "\0"				\
-	"mtdparts=" CONFIG_MTDPARTS_DEFAULT "\0"			\
 	"netdev=eth0\0"							\
 	"splashsource=mmc_fs\0"						\
 	"splashfile=boot/usplash.bmp.gz\0"				\
@@ -204,10 +154,5 @@
 			"source ${kernel_addr_r} ; "			\
 		"fi ; "							\
 		"fi\0"
-
-#if defined(CONFIG_SPL_BUILD)
-#undef CONFIG_WATCHDOG
-#define CONFIG_HW_WATCHDOG
-#endif
 
 #endif	/* __M53MENLO_CONFIG_H__ */

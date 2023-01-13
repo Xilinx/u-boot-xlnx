@@ -25,7 +25,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-	. = CONFIG_SYS_TEXT_BASE;
+	. = CONFIG_TEXT_BASE;
 	reloc_dst = .;
 
 	PROVIDE (_ftext = .);
@@ -70,8 +70,8 @@ SECTIONS
 	} >ram
 	PROVIDE (_egot = .);
 
-	.u_boot_list : {
-		KEEP(*(SORT(.u_boot_list*)));
+	__u_boot_list : {
+		KEEP(*(SORT(__u_boot_list*)));
 	} >ram
 
 	PROVIDE (__init_end = .);

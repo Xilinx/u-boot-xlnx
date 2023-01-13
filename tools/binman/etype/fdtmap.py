@@ -15,6 +15,11 @@ from patman import tout
 FDTMAP_MAGIC   = b'_FDTMAP_'
 FDTMAP_HDR_LEN = 16
 
+# These is imported if needed
+Fdt = None
+libfdt = None
+state = None
+
 def LocateFdtmap(data):
     """Search an image for an fdt map
 
@@ -74,6 +79,10 @@ class Entry_fdtmap(Entry):
 
     If allow-repack is used then 'orig-offset' and 'orig-size' properties are
     added as necessary. See the binman README.
+
+    When extracting files, an alternative 'fdt' format is available for fdtmaps.
+    Use `binman extract -F fdt ...` to use this. It will export a devicetree,
+    without the fdtmap header, so it can be viewed with `fdtdump`.
     """
     def __init__(self, section, etype, node):
         # Put these here to allow entry-docs and help to work without libfdt
@@ -86,6 +95,10 @@ class Entry_fdtmap(Entry):
         from dtoc.fdt import Fdt
 
         super().__init__(section, etype, node)
+        self.alt_formats = ['fdt']
+
+    def CheckAltFormats(self, alt_formats):
+        alt_formats['fdt'] = self, 'Extract the devicetree blob from the fdtmap'
 
     def _GetFdtmap(self):
         """Build an FDT map from the entries in the current image
@@ -132,7 +145,7 @@ class Entry_fdtmap(Entry):
             fdt.pack()
             outfdt = Fdt.FromData(fdt.as_bytearray())
             data = outfdt.GetContents()
-        data = FDTMAP_MAGIC + tools.GetBytes(0, 8) + data
+        data = FDTMAP_MAGIC + tools.get_bytes(0, 8) + data
         return data
 
     def ObtainContents(self):
@@ -147,3 +160,7 @@ class Entry_fdtmap(Entry):
         processing, e.g. the image-pos properties.
         """
         return self.ProcessContentsUpdate(self._GetFdtmap())
+
+    def GetAltFormat(self, data, alt_format):
+        if alt_format == 'fdt':
+            return data[FDTMAP_HDR_LEN:]

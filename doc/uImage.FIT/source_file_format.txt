@@ -23,7 +23,7 @@ in the system memory and passed to bootm as a arguments. Some of them may be
 missing: FDT is not present for legacy platforms, ramdisk is always optional.
 Additionally, old uImage format has been extended to support multi sub-images
 but the support is limited by simple format of the legacy uImage structure.
-Single binary header 'struct image_header' is not flexible enough to cover all
+Single binary header 'struct legacy_img_hdr' is not flexible enough to cover all
 possible scenarios.
 
 All those factors combined clearly show that there is a need for new, more
@@ -184,7 +184,15 @@ the '/images' node should have the following layout:
     Mandatory for types: "firmware", and "kernel".
   - compatible : compatible method for loading image.
     Mandatory for types: "fpga", and images that do not specify a load address.
-    To use the generic fpga loading routine, use "u-boot,fpga-legacy".
+    Supported compatible methods:
+    "u-boot,fpga-legacy" - the generic fpga loading routine.
+    "u-boot,zynqmp-fpga-ddrauth" - signed non-encrypted FPGA bitstream for
+    Xilinx Zynq UltraScale+ (ZymqMP) device.
+    "u-boot,zynqmp-fpga-enc" - encrypted FPGA bitstream for Xilinx Zynq
+    UltraScale+ (ZynqMP) device.
+  - phase : U-Boot phase for which the image is intended.
+    "spl" - image is an SPL image
+    "u-boot" - image is a U-Boot image
 
   Optional nodes:
   - hash-1 : Each hash sub-node represents separate hash or checksum

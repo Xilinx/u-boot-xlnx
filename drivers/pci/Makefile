@@ -3,7 +3,7 @@
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
-obj-$(CONFIG_DM_VIDEO) += pci_rom.o
+obj-$(CONFIG_VIDEO) += pci_rom.o
 obj-$(CONFIG_PCI) += pci-uclass.o pci_auto.o
 obj-$(CONFIG_DM_PCI_COMPAT) += pci_compat.o
 obj-$(CONFIG_PCI_SANDBOX) += pci_sandbox.o
@@ -13,7 +13,6 @@ obj-$(CONFIG_PCI) += pci_auto_common.o pci_common.o
 
 obj-$(CONFIG_PCIE_ECAM_GENERIC) += pcie_ecam_generic.o
 obj-$(CONFIG_PCIE_ECAM_SYNQUACER) += pcie_ecam_synquacer.o
-obj-$(CONFIG_FSL_PCI_INIT) += fsl_pci_init.o
 obj-$(CONFIG_PCI_GT64120) += pci_gt64120.o
 obj-$(CONFIG_PCI_MPC85XX) += pci_mpc85xx.o
 obj-$(CONFIG_PCI_MSC01) += pci_msc01.o
@@ -21,7 +20,6 @@ obj-$(CONFIG_PCIE_IMX) += pcie_imx.o
 obj-$(CONFIG_PCI_MVEBU) += pci_mvebu.o
 obj-$(CONFIG_PCI_RCAR_GEN2) += pci-rcar-gen2.o
 obj-$(CONFIG_PCI_RCAR_GEN3) += pci-rcar-gen3.o
-obj-$(CONFIG_SH4_PCI) += pci_sh4.o
 obj-$(CONFIG_SH7751_PCI) +=pci_sh7751.o
 obj-$(CONFIG_SH7780_PCI) +=pci_sh7780.o
 obj-$(CONFIG_PCI_TEGRA) += pci_tegra.o

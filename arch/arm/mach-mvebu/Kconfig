@@ -14,11 +14,10 @@ config ARMADA_32BIT
 	select SPL_SKIP_LOWLEVEL_INIT if SPL
 	select SPL_SIMPLE_BUS if SPL
 	select SUPPORT_SPL
+	select SYS_L2_PL310 if !SYS_L2CACHE_OFF
 	select TRANSLATION_OFFSET
-
-config ARMADA_64BIT
-	bool
-	select ARM64
+	select SPL_SYS_NO_VECTOR_TABLE if SPL
+	select ARCH_VERY_EARLY_INIT
 
 # ARMv7 SoCs...
 config ARMADA_375
@@ -44,9 +43,14 @@ config ARMADA_XP
 config ARMADA_3700
 	bool
 	select ARM64
+	select HAVE_MVEBU_EFUSE
 
 # Armada 7K and 8K are very similar - use only one Kconfig symbol for both
 config ARMADA_8K
+	bool
+	select ARM64
+
+config ALLEYCAT_5
 	bool
 	select ARM64
 
@@ -90,8 +94,11 @@ config 88F6820
 	bool
 	select ARMADA_38X
 
+config CUSTOMER_BOARD_SUPPORT
+	bool
+
 choice
-	prompt "Armada XP/375/38x/3700/7K/8K board select"
+	prompt "Armada XP/375/38x/3700/7K/8K/Alleycat-5 board select"
 	optional
 
 config TARGET_CLEARFOG
@@ -143,6 +150,10 @@ config TARGET_MVEBU_ARMADA_8K
 	select BOARD_LATE_INIT
 	imply SCSI
 
+config TARGET_MVEBU_ALLEYCAT5
+	bool "Support AlleyCat 5 platforms"
+	select ALLEYCAT_5
+
 config TARGET_OCTEONTX2_CN913x
 	bool "Support CN913x platforms"
 	select ARMADA_8K
@@ -152,6 +163,7 @@ config TARGET_OCTEONTX2_CN913x
 
 config TARGET_DB_MV784MP_GP
 	bool "Support db-mv784mp-gp"
+	select BOARD_ECC_SUPPORT
 	select MV78460
 
 config TARGET_DS414
@@ -160,6 +172,7 @@ config TARGET_DS414
 
 config TARGET_MAXBCM
 	bool "Support maxbcm"
+	select BOARD_ECC_SUPPORT
 	select MV78460
 
 config TARGET_THEADORABLE
@@ -171,6 +184,7 @@ config TARGET_THEADORABLE
 config TARGET_CONTROLCENTERDC
 	bool "Support CONTROLCENTERDC"
 	select 88F6820
+	select CUSTOMER_BOARD_SUPPORT
 
 config TARGET_X530
 	bool "Support Allied Telesis x530"
@@ -213,6 +227,22 @@ config DDR_LOG_LEVEL
 	  At level 3, rovides the windows margin of each DQ as a results of
 	  DQS centeralization.
 
+config DDR_RESET_ON_TRAINING_FAILURE
+	bool "Reset the board on DDR training failure instead of hanging"
+	depends on ARMADA_38X || ARMADA_XP
+	help
+	  If DDR training fails in SPL, reset the board instead of hanging.
+	  Some boards are known to fail DDR training occasionally and an
+	  immediate reset may be preferable to waiting until the board is
+	  reset by watchdog (if there even is one).
+
+	  Note that if booting via UART and the DDR training fails, the
+	  device will still hang - it doesn't make sense to reset the board
+	  in such a case.
+
+config BOARD_ECC_SUPPORT
+	bool
+
 config SYS_BOARD
 	default "clearfog" if TARGET_CLEARFOG
 	default "helios4" if TARGET_HELIOS4
@@ -232,6 +262,7 @@ config SYS_BOARD
 	default "x530" if TARGET_X530
 	default "db-xc3-24g4xg" if TARGET_DB_XC3_24G4XG
 	default "crs3xx-98dx3236" if TARGET_CRS3XX_98DX3236
+	default "mvebu_alleycat-5" if TARGET_MVEBU_ALLEYCAT5
 
 config SYS_CONFIG_NAME
 	default "clearfog" if TARGET_CLEARFOG
@@ -252,6 +283,7 @@ config SYS_CONFIG_NAME
 	default "x530" if TARGET_X530
 	default "db-xc3-24g4xg" if TARGET_DB_XC3_24G4XG
 	default "crs3xx-98dx3236" if TARGET_CRS3XX_98DX3236
+	default "mvebu_alleycat-5" if TARGET_MVEBU_ALLEYCAT5
 
 config SYS_VENDOR
 	default "Marvell" if TARGET_DB_MV784MP_GP
@@ -271,6 +303,7 @@ config SYS_VENDOR
 	default "gdsys" if TARGET_CONTROLCENTERDC
 	default "alliedtelesis" if TARGET_X530
 	default "mikrotik" if TARGET_CRS3XX_98DX3236
+	default "Marvell" if TARGET_MVEBU_ALLEYCAT5
 
 config SYS_SOC
 	default "mvebu"
@@ -325,6 +358,21 @@ config MVEBU_EFUSE_FAKE
 	  Instead the eFuse accesses are emulated by writing to and reading
 	  from a memory block.
 	  This is can be used for testing prog scripts.
+
+config MVEBU_EFUSE_VHV_GPIO
+	string "VHV_Enable GPIO name for eFuse programming"
+	depends on MVEBU_EFUSE && !ARMADA_3700
+	help
+	  The eFuse programing (burning) phase requires supplying 1.8V to the
+	  device on the VHV power pin, while for normal operation the VHV power
+	  rail must be left unconnected. See Marvell AN-389: ARMADA VHV Power
+	  document (Doc. No. MV-S302545-00 Rev. C, August 2, 2016) for details.
+	  .
+	  This specify VHV_Enable GPIO name used in U-Boot for enabling VHV power.
+
+config MVEBU_EFUSE_VHV_GPIO_ACTIVE_LOW
+	bool "VHV_Enable GPIO is Active Low"
+	depends on MVEBU_EFUSE_VHV_GPIO != ""
 
 config SECURED_MODE_IMAGE
 	bool "Build image for trusted boot"

@@ -14,68 +14,11 @@
 
 #include "clk.h"
 
-static ulong imxrt1020_clk_get_rate(struct clk *clk)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu)\n", __func__, clk->id);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	return clk_get_rate(c);
-}
-
-static ulong imxrt1020_clk_set_rate(struct clk *clk, unsigned long rate)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu), rate: %lu\n", __func__, clk->id, rate);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	return clk_set_rate(c, rate);
-}
-
-static int __imxrt1020_clk_enable(struct clk *clk, bool enable)
-{
-	struct clk *c;
-	int ret;
-
-	debug("%s(#%lu) en: %d\n", __func__, clk->id, enable);
-
-	ret = clk_get_by_id(clk->id, &c);
-	if (ret)
-		return ret;
-
-	if (enable)
-		ret = clk_enable(c);
-	else
-		ret = clk_disable(c);
-
-	return ret;
-}
-
-static int imxrt1020_clk_disable(struct clk *clk)
-{
-	return __imxrt1020_clk_enable(clk, 0);
-}
-
-static int imxrt1020_clk_enable(struct clk *clk)
-{
-	return __imxrt1020_clk_enable(clk, 1);
-}
-
 static struct clk_ops imxrt1020_clk_ops = {
-	.set_rate = imxrt1020_clk_set_rate,
-	.get_rate = imxrt1020_clk_get_rate,
-	.enable = imxrt1020_clk_enable,
-	.disable = imxrt1020_clk_disable,
+	.set_rate = ccf_clk_set_rate,
+	.get_rate = ccf_clk_get_rate,
+	.enable = ccf_clk_enable,
+	.disable = ccf_clk_disable,
 };
 
 static const char * const pll2_bypass_sels[] = {"pll2_sys", "osc", };
@@ -93,7 +36,7 @@ static int imxrt1020_clk_probe(struct udevice *dev)
 	void *base;
 
 	/* Anatop clocks */
-	base = (void *)ANATOP_BASE_ADDR;
+	base = (void *)ofnode_get_addr(ofnode_by_compatible(ofnode_null(), "fsl,imxrt-anatop"));
 
 	clk_dm(IMXRT1020_CLK_PLL2_SYS,
 	       imx_clk_pllv3(IMX_PLLV3_GENERIC, "pll2_sys", "osc",

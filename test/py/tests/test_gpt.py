@@ -13,6 +13,9 @@ These tests rely on a 4 MB disk image, which is automatically created by
 the test.
 """
 
+# Mark all tests here as slow
+pytestmark = pytest.mark.slow
+
 class GptTestDiskImage(object):
     """Disk Image used by the GPT tests."""
 
@@ -97,6 +100,16 @@ def test_gpt_verify(state_disk_image, u_boot_console):
     u_boot_console.run_command('host bind 0 ' + state_disk_image.path)
     output = u_boot_console.run_command('gpt verify host 0')
     assert 'Verify GPT: success!' in output
+
+@pytest.mark.boardspec('sandbox')
+@pytest.mark.buildconfigspec('cmd_gpt')
+@pytest.mark.requiredtool('sgdisk')
+def test_gpt_repair(state_disk_image, u_boot_console):
+    """Test the gpt repair command."""
+
+    u_boot_console.run_command('host bind 0 ' + state_disk_image.path)
+    output = u_boot_console.run_command('gpt repair host 0')
+    assert 'Repairing GPT: success!' in output
 
 @pytest.mark.boardspec('sandbox')
 @pytest.mark.buildconfigspec('cmd_gpt')

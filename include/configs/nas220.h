@@ -11,12 +11,6 @@
 #ifndef _CONFIG_NAS220_H
 #define _CONFIG_NAS220_H
 
-/*
- * High Level Configuration Options (easy to change)
- */
-#define CONFIG_FEROCEON_88FR131		/* #define CPU Core subversion */
-#define CONFIG_KW88F6192		/* SOC Name */
-
 /* power-on led, regulator, sata0, sata1 */
 #define NAS220_GE_OE_VAL_LOW ((1 << 12)|(1 << 14)|(1 << 24)|(1 << 28))
 #define NAS220_GE_OE_VAL_HIGH (0)
@@ -40,17 +34,10 @@
 /*
  * Default environment variables
  */
-#define CONFIG_BOOTCOMMAND ""
 
 #define CONFIG_EXTRA_ENV_SETTINGS \
 	"bootargs=console=ttyS0,115200\0" \
-	"mtdparts=mtdparts=orion_nand:0xa0000@0x0(uboot),"\
-	"0x010000@0xa0000(env),"\
-	"0x500000@0xc0000(uimage),"\
-	"0x1a40000@0x5c0000(rootfs)\0" \
-	"mtdids=nand0=orion_nand\0"\
-	"autostart=no\0"\
-	"autoload=no\0"
+	"autostart=no\0"
 
 /*
  * Ethernet Driver configuration
@@ -61,15 +48,7 @@
 #endif /* CONFIG_CMD_NET */
 
 /*
- * File system
- */
-#define CONFIG_JFFS2_NAND
-#define CONFIG_JFFS2_LZO
-
-/*
  * EFI partition
  */
-
-#define CONFIG_KIRKWOOD_GPIO
 
 #endif /* _CONFIG_NAS220_H */

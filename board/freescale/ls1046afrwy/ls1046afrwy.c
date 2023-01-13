@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2019 NXP
+ * Copyright 2019, 2021 NXP
  */
 
 #include <common.h>
@@ -20,7 +20,6 @@
 #include <fm_eth.h>
 #include <fsl_csu.h>
 #include <fsl_esdhc.h>
-#include <fsl_sec.h>
 #include <fsl_dspi.h>
 #include "../common/i2c_mux.h"
 
@@ -135,10 +134,6 @@ val = (in_le32(SMMU_SCR0) | SCR0_CLIENTPD_MASK) & ~(SCR0_USFCFG_MASK);
 	out_le32(SMMU_NSCR0, val);
 #endif
 
-#ifdef CONFIG_FSL_CAAM
-	sec_init();
-#endif
-
 	select_i2c_ch_pca9547(I2C_MUX_CH_DEFAULT, 0);
 	return 0;
 }
@@ -151,7 +146,7 @@ int board_setup_core_volt(u32 vdd)
 void config_board_mux(void)
 {
 #ifdef CONFIG_HAS_FSL_XHCI_USB
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 	u32 usb_pwrfault;
 	/*
 	 * USB2 is used, configure mux to USB2_DRVVBUS/USB2_PWRFAULT

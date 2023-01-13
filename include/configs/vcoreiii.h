@@ -12,13 +12,6 @@
 
 #define CONFIG_SYS_INIT_SP_OFFSET       0x400000
 
-#if defined(CONFIG_SOC_LUTON) || defined(CONFIG_SOC_SERVAL)
-#define CPU_CLOCK_RATE			416666666 /* Clock for the MIPS core */
-#define CONFIG_SYS_MIPS_TIMER_FREQ	208333333
-#else
-#define CPU_CLOCK_RATE			500000000 /* Clock for the MIPS core */
-#define CONFIG_SYS_MIPS_TIMER_FREQ	(CPU_CLOCK_RATE / 2)
-#endif
 #define CONFIG_SYS_NS16550_CLK		CONFIG_SYS_MIPS_TIMER_FREQ
 
 #define CONFIG_SYS_SDRAM_BASE		0x80000000
@@ -32,20 +25,7 @@
 #error Unknown DDR size - please add!
 #endif
 
-#define CONFIG_SYS_MONITOR_BASE         CONFIG_SYS_TEXT_BASE
-
-#if defined(CONFIG_MTDIDS_DEFAULT) && defined(CONFIG_MTDPARTS_DEFAULT)
-#define VCOREIII_DEFAULT_MTD_ENV		    \
-	"mtdparts="CONFIG_MTDPARTS_DEFAULT"\0"	    \
-	"mtdids="CONFIG_MTDIDS_DEFAULT"\0"
-#else
-#define VCOREIII_DEFAULT_MTD_ENV    /* Go away */
-#endif
-
-#define CONFIG_SYS_BOOTM_LEN      (16 << 20)      /* Increase max gunzip size */
-
 #define CONFIG_EXTRA_ENV_SETTINGS					\
-	VCOREIII_DEFAULT_MTD_ENV					\
 	"loadaddr=0x81000000\0"						\
 	"spi_image_off=0x00100000\0"					\
 	"console=ttyS0,115200\0"					\

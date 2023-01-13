@@ -26,6 +26,12 @@ struct image_type_params *imagetool_get_type(int type)
 	return NULL;
 }
 
+static int imagetool_verify_print_header_by_type(
+	void *ptr,
+	struct stat *sbuf,
+	struct image_type_params *tparams,
+	struct image_tool_params *params);
+
 int imagetool_verify_print_header(
 	void *ptr,
 	struct stat *sbuf,
@@ -38,6 +44,9 @@ int imagetool_verify_print_header(
 
 	struct image_type_params **start = __start_image_type;
 	struct image_type_params **end = __stop_image_type;
+
+	if (tparams)
+		return imagetool_verify_print_header_by_type(ptr, sbuf, tparams, params);
 
 	for (curr = start; curr != end; curr++) {
 		if ((*curr)->verify_header) {
@@ -65,33 +74,39 @@ int imagetool_verify_print_header(
 	return retval;
 }
 
-int imagetool_verify_print_header_by_type(
+static int imagetool_verify_print_header_by_type(
 	void *ptr,
 	struct stat *sbuf,
 	struct image_type_params *tparams,
 	struct image_tool_params *params)
 {
-	int retval;
+	int retval = -1;
 
-	retval = tparams->verify_header((unsigned char *)ptr, sbuf->st_size,
-			params);
+	if (tparams->verify_header) {
+		retval = tparams->verify_header((unsigned char *)ptr,
+						sbuf->st_size, params);
 
-	if (retval == 0) {
-		/*
-		 * Print the image information if verify is successful
-		 */
-		if (tparams->print_header) {
-			if (!params->quiet)
-				tparams->print_header(ptr);
+		if (retval == 0) {
+			/*
+			 * Print the image information if verify is successful
+			 */
+			if (tparams->print_header) {
+				if (!params->quiet)
+					tparams->print_header(ptr);
+			} else {
+				fprintf(stderr,
+					"%s: print_header undefined for %s\n",
+					params->cmdname, tparams->name);
+			}
 		} else {
 			fprintf(stderr,
-				"%s: print_header undefined for %s\n",
-				params->cmdname, tparams->name);
+				"%s: verify_header failed for %s with exit code %d\n",
+				params->cmdname, tparams->name, retval);
 		}
+
 	} else {
-		fprintf(stderr,
-			"%s: verify_header failed for %s with exit code %d\n",
-			params->cmdname, tparams->name, retval);
+		fprintf(stderr, "%s: print_header undefined for %s\n",
+			params->cmdname, tparams->name);
 	}
 
 	return retval;

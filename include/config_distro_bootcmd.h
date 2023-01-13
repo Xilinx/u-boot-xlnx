@@ -70,18 +70,25 @@
 #ifdef CONFIG_CMD_UBIFS
 #define BOOTENV_SHARED_UBIFS \
 	"ubifs_boot=" \
-		"env exists bootubipart || " \
-			"env set bootubipart UBI; " \
-		"env exists bootubivol || " \
-			"env set bootubivol boot; " \
-		"if ubi part ${bootubipart} && " \
-			"ubifsmount ubi${devnum}:${bootubivol}; " \
+		"if ubi part ${bootubipart} ${bootubioff} && " \
+			"ubifsmount ubi0:${bootubivol}; " \
 		"then " \
 			"devtype=ubi; " \
+			"devnum=ubi0; " \
+			"bootfstype=ubifs; " \
+			"distro_bootpart=${bootubivol}; " \
 			"run scan_dev_for_boot; " \
+			"ubifsumount; " \
 		"fi\0"
-#define BOOTENV_DEV_UBIFS	BOOTENV_DEV_BLKDEV
-#define BOOTENV_DEV_NAME_UBIFS	BOOTENV_DEV_NAME_BLKDEV
+#define BOOTENV_DEV_UBIFS_BOOTUBIOFF(off) #off /* type check, throw error when called with more args */
+#define BOOTENV_DEV_UBIFS(devtypeu, devtypel, instance, bootubipart, bootubivol, ...) \
+	"bootcmd_ubifs" #instance "=" \
+		"bootubipart=" #bootubipart "; " \
+		"bootubivol=" #bootubivol "; " \
+		"bootubioff=" BOOTENV_DEV_UBIFS_BOOTUBIOFF(__VA_ARGS__) "; " \
+		"run ubifs_boot\0"
+#define BOOTENV_DEV_NAME_UBIFS(devtypeu, devtypel, instance, ...) \
+	#devtypel #instance " "
 #else
 #define BOOTENV_SHARED_UBIFS
 #define BOOTENV_DEV_UBIFS \
@@ -126,7 +133,7 @@
 #ifdef CONFIG_CMD_BOOTEFI_BOOTMGR
 #define BOOTENV_EFI_BOOTMGR                                               \
 	"boot_efi_bootmgr="                                               \
-		"if fdt addr ${fdt_addr_r}; then "                        \
+		"if fdt addr -q ${fdt_addr_r}; then "                     \
 			"bootefi bootmgr ${fdt_addr_r};"                  \
 		"else "                                                   \
 			"bootefi bootmgr;"                                \
@@ -141,7 +148,7 @@
 	"boot_efi_binary="                                                \
 		"load ${devtype} ${devnum}:${distro_bootpart} "           \
 			"${kernel_addr_r} efi/boot/"BOOTEFI_NAME"; "      \
-		"if fdt addr ${fdt_addr_r}; then "                        \
+		"if fdt addr -q ${fdt_addr_r}; then "                     \
 			"bootefi ${kernel_addr_r} ${fdt_addr_r};"         \
 		"else "                                                   \
 			"bootefi ${kernel_addr_r} ${fdtcontroladdr};"     \
@@ -155,11 +162,13 @@
 	"scan_dev_for_efi="                                               \
 		"setenv efi_fdtfile ${fdtfile}; "                         \
 		BOOTENV_EFI_SET_FDTFILE_FALLBACK                          \
+		BOOTENV_RUN_EXTENSION_INIT                                \
 		"for prefix in ${efi_dtb_prefixes}; do "                  \
 			"if test -e ${devtype} "                          \
 					"${devnum}:${distro_bootpart} "   \
 					"${prefix}${efi_fdtfile}; then "  \
 				"run load_efi_dtb; "                      \
+				BOOTENV_RUN_EXTENSION_APPLY               \
 			"fi;"                                             \
 		"done;"                                                   \
 		"run boot_efi_bootmgr;"                                   \
@@ -360,7 +369,7 @@
 	"setenv bootp_arch " BOOTENV_EFI_PXE_ARCH ";"                     \
 	"if dhcp ${kernel_addr_r}; then "                                 \
 		"tftpboot ${fdt_addr_r} dtb/${efi_fdtfile};"              \
-		"if fdt addr ${fdt_addr_r}; then "                        \
+		"if fdt addr -q ${fdt_addr_r}; then "                     \
 			"bootefi ${kernel_addr_r} ${fdt_addr_r}; "        \
 		"else "                                                   \
 			"bootefi ${kernel_addr_r} ${fdtcontroladdr};"     \
@@ -411,13 +420,41 @@
 	BOOT_TARGET_DEVICES_references_PXE_without_CONFIG_CMD_DHCP_or_PXE
 #endif
 
-#define BOOTENV_DEV_NAME(devtypeu, devtypel, instance) \
-	BOOTENV_DEV_NAME_##devtypeu(devtypeu, devtypel, instance)
+#if defined(CONFIG_CMD_EXTENSION)
+#define BOOTENV_RUN_EXTENSION_INIT "run extension_init; "
+#define BOOTENV_RUN_EXTENSION_APPLY "run extension_apply; "
+#define BOOTENV_SET_EXTENSION_NEED_INIT \
+	"extension_need_init=; " \
+	"setenv extension_overlay_addr ${fdtoverlay_addr_r}; "
+#define BOOTENV_SHARED_EXTENSION \
+	"extension_init=" \
+		"echo Extension init...; " \
+		"if ${extension_need_init}; then " \
+			"extension_need_init=false; " \
+			"extension scan; " \
+		"fi\0" \
+	\
+	"extension_overlay_cmd=" \
+		"load ${devtype} ${devnum}:${distro_bootpart} " \
+			"${extension_overlay_addr} ${prefix}${extension_overlay_name}\0" \
+	"extension_apply=" \
+		"if fdt addr -q ${fdt_addr_r}; then " \
+			"extension apply all; " \
+		"fi\0"
+#else
+#define BOOTENV_RUN_EXTENSION_INIT
+#define BOOTENV_RUN_EXTENSION_APPLY
+#define BOOTENV_SET_EXTENSION_NEED_INIT
+#define BOOTENV_SHARED_EXTENSION
+#endif
+
+#define BOOTENV_DEV_NAME(devtypeu, devtypel, instance, ...) \
+	BOOTENV_DEV_NAME_##devtypeu(devtypeu, devtypel, instance, ## __VA_ARGS__)
 #define BOOTENV_BOOT_TARGETS \
 	"boot_targets=" BOOT_TARGET_DEVICES(BOOTENV_DEV_NAME) "\0"
 
-#define BOOTENV_DEV(devtypeu, devtypel, instance) \
-	BOOTENV_DEV_##devtypeu(devtypeu, devtypel, instance)
+#define BOOTENV_DEV(devtypeu, devtypel, instance, ...) \
+	BOOTENV_DEV_##devtypeu(devtypeu, devtypel, instance, ## __VA_ARGS__)
 #define BOOTENV \
 	BOOTENV_SHARED_HOST \
 	BOOTENV_SHARED_MMC \
@@ -430,6 +467,7 @@
 	BOOTENV_SHARED_UBIFS \
 	BOOTENV_SHARED_EFI \
 	BOOTENV_SHARED_VIRTIO \
+	BOOTENV_SHARED_EXTENSION \
 	"boot_prefixes=/ /boot/\0" \
 	"boot_scripts=boot.scr.uimg boot.scr\0" \
 	"boot_script_dhcp=boot.scr.uimg\0" \
@@ -446,7 +484,7 @@
 				"${prefix}${boot_syslinux_conf}; then "   \
 			"echo Found ${prefix}${boot_syslinux_conf}; "     \
 			"run boot_extlinux; "                             \
-			"echo SCRIPT FAILED: continuing...; "             \
+			"echo EXTLINUX FAILED: continuing...; "           \
 		"fi\0"                                                    \
 	\
 	"boot_a_script="                                                  \
@@ -494,12 +532,9 @@
 		BOOTENV_SET_NVME_NEED_INIT                                \
 		BOOTENV_SET_IDE_NEED_INIT                                 \
 		BOOTENV_SET_VIRTIO_NEED_INIT                              \
+		BOOTENV_SET_EXTENSION_NEED_INIT                           \
 		"for target in ${boot_targets}; do "                      \
 			"run bootcmd_${target}; "                         \
 		"done\0"
-
-#ifndef CONFIG_BOOTCOMMAND
-#define CONFIG_BOOTCOMMAND "run distro_bootcmd"
-#endif
 
 #endif  /* _CONFIG_CMD_DISTRO_BOOTCMD_H */

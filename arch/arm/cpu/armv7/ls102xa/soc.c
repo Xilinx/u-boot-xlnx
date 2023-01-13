@@ -12,7 +12,9 @@
 #include <asm/arch/ls102xa_soc.h>
 #include <asm/arch/ls102xa_stream_id.h>
 #include <fsl_csu.h>
+#ifdef CONFIG_SYS_FSL_ERRATUM_A008850
 #include <fsl_ddr_sdram.h>
+#endif
 
 struct liodn_id_table sec_liodn_tbl[] = {
 	SET_SEC_JR_LIODN_ENTRY(0, 0x10, 0x10),
@@ -52,7 +54,7 @@ struct smmu_stream_id dev_stream_id[] = {
 
 unsigned int get_soc_major_rev(void)
 {
-	struct ccsr_gur __iomem *gur = (void *)(CONFIG_SYS_FSL_GUTS_ADDR);
+	struct ccsr_gur __iomem *gur = (void *)(CFG_SYS_FSL_GUTS_ADDR);
 	unsigned int svr, major;
 
 	svr = in_be32(&gur->svr);
@@ -111,7 +113,7 @@ static void erratum_a008850_early(void)
 	/* part 1 of 2 */
 	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
 						CONFIG_SYS_CCI400_OFFSET);
-	struct ccsr_ddr __iomem *ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_ddr __iomem *ddr = (void *)CFG_SYS_FSL_DDR_ADDR;
 
 	/* disables propagation of barrier transactions to DDRC from CCI400 */
 	out_le32(&cci->ctrl_ord, CCI400_CTRLORD_TERM_BARRIER);
@@ -127,7 +129,7 @@ void erratum_a008850_post(void)
 	/* part 2 of 2 */
 	struct ccsr_cci400 __iomem *cci = (void *)(CONFIG_SYS_IMMR +
 						CONFIG_SYS_CCI400_OFFSET);
-	struct ccsr_ddr __iomem *ddr = (void *)CONFIG_SYS_FSL_DDR_ADDR;
+	struct ccsr_ddr __iomem *ddr = (void *)CFG_SYS_FSL_DDR_ADDR;
 	u32 tmp;
 
 	/* enable propagation of barrier transactions to DDRC from CCI400 */
@@ -159,7 +161,7 @@ void erratum_a010315(void)
 
 int arch_soc_init(void)
 {
-	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CONFIG_SYS_FSL_SCFG_ADDR;
+	struct ccsr_scfg *scfg = (struct ccsr_scfg *)CFG_SYS_FSL_SCFG_ADDR;
 	struct ccsr_cci400 *cci = (struct ccsr_cci400 *)(CONFIG_SYS_IMMR +
 					CONFIG_SYS_CCI400_OFFSET);
 	unsigned int major;
@@ -170,10 +172,6 @@ int arch_soc_init(void)
 
 #ifdef CONFIG_FSL_QSPI
 	out_be32(&scfg->qspi_cfg, SCFG_QSPI_CLKSEL);
-#endif
-
-#ifdef CONFIG_VIDEO_FSL_DCU_FB
-	out_be32(&scfg->pixclkcr, SCFG_PIXCLKCR_PXCKEN);
 #endif
 
 	/* Configure Little endian for SAI, ASRC and SPDIF */

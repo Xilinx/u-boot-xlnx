@@ -6,8 +6,10 @@
 MINIMAL=
 
 ifdef CONFIG_SPL_BUILD
+ifndef CONFIG_TPL_BUILD
 ifdef CONFIG_SPL_INIT_MINIMAL
 MINIMAL=y
+endif
 endif
 endif
 
@@ -33,26 +35,21 @@ obj-$(CONFIG_FSL_NGPIXIS)	+= ngpixis.o
 endif
 obj-$(I2C_COMMON)		+= i2c_common.o
 obj-$(CONFIG_FSL_USE_PCA9547_MUX)		+= i2c_mux.o
-obj-$(CONFIG_VID)		+= vid.o
+obj-$(CONFIG_$(SPL_)VID)	+= vid.o
 obj-$(CONFIG_FSL_QIXIS)	+= qixis.o
 obj-$(CONFIG_PQ_MDS_PIB)	+= pq-mds-pib.o
 ifndef CONFIG_SPL_BUILD
 obj-$(CONFIG_ID_EEPROM)	+= sys_eeprom.o
 endif
-obj-$(CONFIG_FSL_SGMII_RISER)	+= sgmii_riser.o
 ifndef CONFIG_RAMBOOT_PBL
 obj-$(CONFIG_FSL_FIXED_MMC_LOCATION)	+= sdhc_boot.o
 endif
-
-obj-$(CONFIG_FSL_DIU_CH7301)	+= diu_ch7301.o
 
 ifdef CONFIG_ARM
 obj-$(CONFIG_DEEP_SLEEP)		+= arm_sleep.o
 else
 obj-$(CONFIG_DEEP_SLEEP)		+= mpc85xx_sleep.o
 endif
-
-obj-$(CONFIG_FSL_DCU_SII9022A)    += dcu_sii9022a.o
 
 obj-$(CONFIG_TARGET_MPC8548CDS)	+= cds_pci_ft.o
 
@@ -67,6 +64,9 @@ obj-$(CONFIG_ZM7300)		+= zm7300.o
 obj-$(CONFIG_POWER_PFUZE100)	+= pfuze.o
 obj-$(CONFIG_DM_PMIC_PFUZE100)	+= pfuze.o
 obj-$(CONFIG_POWER_MC34VR500)	+= mc34vr500.o
+ifneq (,$(filter $(SOC), imx8ulp imx9))
+obj-y				+= mmc.o
+endif
 
 obj-$(CONFIG_LS102XA_STREAM_ID)	+= ls102xa_stream_id.o
 

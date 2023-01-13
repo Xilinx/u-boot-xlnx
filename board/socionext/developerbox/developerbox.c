@@ -10,9 +10,42 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <common.h>
+#include <efi.h>
+#include <efi_loader.h>
 #include <env_internal.h>
 #include <fdt_support.h>
 #include <log.h>
+
+#include <linux/kernel.h>
+
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+struct efi_fw_image fw_images[] = {
+	{
+		.image_type_id = DEVELOPERBOX_UBOOT_IMAGE_GUID,
+		.fw_name = u"DEVELOPERBOX-UBOOT",
+		.image_index = 1,
+	},
+	{
+		.image_type_id = DEVELOPERBOX_FIP_IMAGE_GUID,
+		.fw_name = u"DEVELOPERBOX-FIP",
+		.image_index = 2,
+	},
+	{
+		.image_type_id = DEVELOPERBOX_OPTEE_IMAGE_GUID,
+		.fw_name = u"DEVELOPERBOX-OPTEE",
+		.image_index = 3,
+	},
+};
+
+struct efi_capsule_update_info update_info = {
+	.dfu_string = "mtd nor1=u-boot.bin raw 200000 100000;"
+			"fip.bin raw 180000 78000;"
+			"optee.bin raw 500000 100000",
+	.images = fw_images,
+};
+
+u8 num_image_type_guids = ARRAY_SIZE(fw_images);
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 static struct mm_region sc2a11_mem_map[] = {
 	{
@@ -55,8 +88,6 @@ struct draminfo {
 	u32	reserved;
 	struct draminfo_entry	entry[3];
 };
-
-struct draminfo *synquacer_draminfo = (void *)SQ_DRAMINFO_BASE;
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -104,42 +135,18 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 
 int dram_init(void)
 {
+	struct draminfo *synquacer_draminfo = (void *)SQ_DRAMINFO_BASE;
 	struct draminfo_entry *ent = synquacer_draminfo->entry;
-	struct mm_region *mr;
-	int i, ri;
 
-	if (synquacer_draminfo->nr_regions < 1) {
-		log_err("Failed to get correct DRAM information\n");
-		return -1;
-	}
-
-	/*
-	 * U-Boot RAM size must be under the first DRAM region so that it doesn't
-	 * access secure memory which is at the end of the first DRAM region.
-	 */
 	gd->ram_size = ent[0].size;
-
-	/* Update memory region maps */
-	for (i = 0; i < synquacer_draminfo->nr_regions; i++) {
-		if (i >= MAX_DDR_REGIONS)
-			break;
-
-		ri = DDR_REGION_INDEX(i);
-		mem_map[ri].phys = ent[i].base;
-		mem_map[ri].size = ent[i].size;
-		if (i == 0)
-			continue;
-
-		mr = &mem_map[DDR_REGION_INDEX(0)];
-		mem_map[ri].virt = mr->virt + mr->size;
-		mem_map[ri].attrs = mr->attrs;
-	}
+	gd->ram_base = ent[0].base;
 
 	return 0;
 }
 
 int dram_init_banksize(void)
 {
+	struct draminfo *synquacer_draminfo = (void *)SQ_DRAMINFO_BASE;
 	struct draminfo_entry *ent = synquacer_draminfo->entry;
 	int i;
 
@@ -152,6 +159,43 @@ int dram_init_banksize(void)
 	}
 
 	return 0;
+}
+
+void build_mem_map(void)
+{
+	struct draminfo *synquacer_draminfo = (void *)SQ_DRAMINFO_BASE;
+	struct draminfo_entry *ent = synquacer_draminfo->entry;
+	struct mm_region *mr;
+	int i, ri;
+
+	if (synquacer_draminfo->nr_regions < 1) {
+		log_err("Failed to get correct DRAM information\n");
+		return;
+	}
+
+	/* Update memory region maps */
+	for (i = 0; i < synquacer_draminfo->nr_regions; i++) {
+		if (i >= MAX_DDR_REGIONS)
+			break;
+
+		ri = DDR_REGION_INDEX(i);
+		mem_map[ri].phys = ent[i].base;
+		mem_map[ri].size = ent[i].size;
+		mem_map[ri].virt = mem_map[ri].phys;
+		if (i == 0)
+			continue;
+
+		mr = &mem_map[DDR_REGION_INDEX(0)];
+		mem_map[ri].attrs = mr->attrs;
+	}
+}
+
+void enable_caches(void)
+{
+	build_mem_map();
+
+	icache_enable();
+	dcache_enable();
 }
 
 int print_cpuinfo(void)

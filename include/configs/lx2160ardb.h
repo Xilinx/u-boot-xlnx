@@ -8,29 +8,14 @@
 
 #include "lx2160a_common.h"
 
-/* VID */
-#define CONFIG_VID_FLS_ENV		"lx2160ardb_vdd_mv"
-#define CONFIG_VID
-#define CONFIG_VOL_MONITOR_LTC3882_SET
-#define CONFIG_VOL_MONITOR_LTC3882_READ
-
 /* RTC */
 #define CONFIG_SYS_RTC_BUS_NUM		4
-
-/* MAC/PHY configuration */
-#if defined(CONFIG_FSL_MC_ENET)
-#define CONFIG_ETHPRIME		"DPMAC1@xgmii"
-#endif
 
 /* EMC2305 */
 #define I2C_MUX_CH_EMC2305		0x09
 #define I2C_EMC2305_ADDR		0x4D
 #define I2C_EMC2305_CMD		0x40
 #define I2C_EMC2305_PWM		0x80
-
-/* EEPROM */
-#define CONFIG_SYS_I2C_EEPROM_NXID
-#define CONFIG_SYS_EEPROM_BUS_NUM	           0
 
 /* Initial environment variables */
 #define CONFIG_EXTRA_ENV_SETTINGS		\
