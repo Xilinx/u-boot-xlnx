@@ -8,7 +8,6 @@
  */
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/pinctrl-zynqmp.h>
 #include "versal.dtsi"
 #include "versal-clk.dtsi"
 
@@ -70,8 +69,6 @@
 	status = "okay";
 	xlnx,mio-bank = <1>;
 	no-1-8-v;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_sdhci1_default>;
 };
 
 &serial0 { /* PMC_MIO42/43 */
@@ -170,21 +167,4 @@
 
 &lpd_dma_chan7 {
 	status = "okay";
-};
-
-&pinctrl0 {
-	status = "okay";
-	pinctrl_sdhci1_default: sdhci1-default {
-		mux-pc {
-			groups = "sd1_pc_1_grp";
-			function = "sd1_pc";
-		};
-
-		conf-pc {
-			groups = "sd1_pc_1_grp";
-			bias-pull-up;
-			slew-rate = <SLEW_RATE_SLOW>;
-			power-source = <IO_STANDARD_LVCMOS18>;
-		};
-	};
 };
