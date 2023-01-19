@@ -2645,20 +2645,6 @@ efi_install_multiple_protocol_interfaces_int(efi_handle_t *handle,
 		if (!protocol)
 			break;
 		protocol_interface = efi_va_arg(argptr, void*);
-		/* Check that a device path has not been installed before */
-		if (!guidcmp(protocol, &efi_guid_device_path)) {
-			struct efi_device_path *dp = protocol_interface;
-
-			ret = EFI_CALL(efi_locate_device_path(protocol, &dp,
-							      &old_handle));
-			if (ret == EFI_SUCCESS &&
-			    dp->type == DEVICE_PATH_TYPE_END) {
-				EFI_PRINT("Path %pD already installed\n",
-					  protocol_interface);
-				ret = EFI_ALREADY_STARTED;
-				break;
-			}
-		}
 		ret = EFI_CALL(efi_install_protocol_interface(handle, protocol,
 							      EFI_NATIVE_INTERFACE,
 							      protocol_interface));
