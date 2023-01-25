@@ -2631,7 +2631,6 @@ efi_install_multiple_protocol_interfaces_int(efi_handle_t *handle,
 {
 	const efi_guid_t *protocol;
 	void *protocol_interface;
-	efi_handle_t old_handle;
 	efi_status_t ret = EFI_SUCCESS;
 	int i = 0;
 	efi_va_list argptr_copy;
