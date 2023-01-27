@@ -188,7 +188,6 @@ int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
 	return 0;
 }
 
-#if !defined(CONFIG_ARCH_VERSAL_NET)
 #if defined(CONFIG_DM_GPIO)
 int cadence_qspi_versal_flash_reset(struct udevice *dev)
 {
@@ -273,7 +272,6 @@ int cadence_qspi_versal_flash_reset(struct udevice *dev)
 
 	return 0;
 }
-#endif
 #endif
 
 void cadence_qspi_apb_enable_linear_mode(bool enable)
