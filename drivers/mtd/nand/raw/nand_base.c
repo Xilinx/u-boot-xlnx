@@ -4482,6 +4482,9 @@ static int nand_dt_init(struct mtd_info *mtd, struct nand_chip *chip, ofnode nod
 
 	str = ofnode_read_string(node, "nand-ecc-mode");
 	if (str) {
+		if (strcmp(str, "hw"))
+			printf("%s ecc is not supported, switching to hw ecc\n", str);
+
 		if (!strcmp(str, "none"))
 			ecc_mode = NAND_ECC_NONE;
 		else if (!strcmp(str, "soft"))
