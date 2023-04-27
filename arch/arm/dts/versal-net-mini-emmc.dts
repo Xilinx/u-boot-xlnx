@@ -50,7 +50,7 @@
 		ranges;
 
 		sdhci1: sdhci@f1050000 {
-			compatible = "xlnx,versal-net-5.1-emmc", "arasan,sdhci-8.9a";
+			compatible = "xlnx,versal-net-emmc";
 			status = "okay";
 			non-removable;
 			disable-wp;
