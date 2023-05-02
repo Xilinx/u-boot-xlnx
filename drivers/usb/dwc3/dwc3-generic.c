@@ -68,12 +68,14 @@ static int dwc3_generic_probe(struct udevice *dev,
 #if CONFIG_IS_ENABLED(OF_CONTROL)
 	dwc3_of_parse(dwc3);
 
-	node = dev_ofnode(dev->parent);
-	index = ofnode_stringlist_search(node, "clock-names", "ref");
-	if (index < 0)
-		index = ofnode_stringlist_search(node, "clock-names", "ref_clk");
-	if (index >= 0)
-		dwc3->ref_clk = &glue->clks.clks[index];
+	if (!IS_ENABLED(CONFIG_ARCH_VERSAL)) {
+		node = dev_ofnode(dev->parent);
+		index = ofnode_stringlist_search(node, "clock-names", "ref");
+		if (index < 0)
+			index = ofnode_stringlist_search(node, "clock-names", "ref_clk");
+		if (index >= 0)
+			dwc3->ref_clk = &glue->clks.clks[index];
+	}
 #endif
 
 	/*
