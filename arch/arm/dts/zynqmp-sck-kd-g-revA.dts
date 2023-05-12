@@ -306,6 +306,12 @@
 	};
 };
 
+&uart0 {
+	status = "okay";
+	xlnx,phy-ctrl-gpios = <&gpio 72 GPIO_ACTIVE_LOW>;
+	linux,rs485-enabled-at-boot-time;
+};
+
 &uart1 {
 	status = "okay";
 	pinctrl-names = "default";
