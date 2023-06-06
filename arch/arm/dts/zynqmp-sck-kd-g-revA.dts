@@ -308,7 +308,7 @@
 
 &uart0 {
 	status = "okay";
-	xlnx,phy-ctrl-gpios = <&gpio 72 GPIO_ACTIVE_LOW>;
+	xlnx,phy-ctrl-gpios = <&gpio 72 GPIO_ACTIVE_HIGH>;
 	linux,rs485-enabled-at-boot-time;
 };
 
