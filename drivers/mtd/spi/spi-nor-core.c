@@ -4062,6 +4062,7 @@ static int spi_nor_init(struct spi_nor *nor)
 		spi_nor_wait_till_ready(nor);
 
 		if (JEDEC_MFR(nor->info) == SNOR_MFR_WINBOND) {
+			write_enable(nor);
 			sr2 = 0;
 			err = nor->write_reg(nor,
 					     SPINOR_OP_WIN_WRSR2, &sr2, 1);
