@@ -36,8 +36,6 @@
  */
 void xhci_flush_cache(uintptr_t addr, u32 len)
 {
-	BUG_ON((void *)addr == NULL || len == 0);
-
 	flush_dcache_range(addr & ~(CACHELINE_SIZE - 1),
 				ALIGN(addr + len, CACHELINE_SIZE));
 }
@@ -51,8 +49,6 @@ void xhci_flush_cache(uintptr_t addr, u32 len)
  */
 void xhci_inval_cache(uintptr_t addr, u32 len)
 {
-	BUG_ON((void *)addr == NULL || len == 0);
-
 	invalidate_dcache_range(addr & ~(CACHELINE_SIZE - 1),
 				ALIGN(addr + len, CACHELINE_SIZE));
 }
@@ -82,8 +78,6 @@ static void xhci_ring_free(struct xhci_ring *ring)
 {
 	struct xhci_segment *seg;
 	struct xhci_segment *first_seg;
-
-	BUG_ON(!ring);
 
 	first_seg = ring->first_seg;
 	seg = first_seg->next;
@@ -195,7 +189,6 @@ static void *xhci_malloc(unsigned int size)
 	size_t cacheline_size = max(XHCI_ALIGNMENT, CACHELINE_SIZE);
 
 	ptr = memalign(cacheline_size, ALIGN(size, cacheline_size));
-	BUG_ON(!ptr);
 	memset(ptr, '\0', size);
 
 	xhci_flush_cache((uintptr_t)ptr, size);
@@ -278,7 +271,6 @@ static struct xhci_segment *xhci_segment_alloc(void)
 	struct xhci_segment *seg;
 
 	seg = malloc(sizeof(struct xhci_segment));
-	BUG_ON(!seg);
 
 	seg->trbs = xhci_malloc(SEGMENT_SIZE);
 
@@ -309,13 +301,11 @@ struct xhci_ring *xhci_ring_alloc(struct xhci_ctrl *ctrl, unsigned int num_segs,
 	struct xhci_segment *prev;
 
 	ring = malloc(sizeof(struct xhci_ring));
-	BUG_ON(!ring);
 
 	if (num_segs == 0)
 		return ring;
 
 	ring->first_seg = xhci_segment_alloc();
-	BUG_ON(!ring->first_seg);
 
 	num_segs--;
 
@@ -324,7 +314,6 @@ struct xhci_ring *xhci_ring_alloc(struct xhci_ctrl *ctrl, unsigned int num_segs,
 		struct xhci_segment *next;
 
 		next = xhci_segment_alloc();
-		BUG_ON(!next);
 
 		xhci_link_segments(ctrl, prev, next, link_trbs);
 
@@ -384,7 +373,6 @@ static int xhci_scratchpad_alloc(struct xhci_ctrl *ctrl)
 			break;
 		page_size = page_size >> 1;
 	}
-	BUG_ON(i == 16);
 
 	page_size = 1 << (i + 12);
 	buf = memalign(page_size, num_sp * page_size);
@@ -427,9 +415,7 @@ static struct xhci_container_ctx
 	struct xhci_container_ctx *ctx;
 
 	ctx = malloc(sizeof(struct xhci_container_ctx));
-	BUG_ON(!ctx);
 
-	BUG_ON((type != XHCI_CTX_TYPE_DEVICE) && (type != XHCI_CTX_TYPE_INPUT));
 	ctx->type = type;
 	ctx->size = (MAX_EP_CTX_NUM + 1) *
 			CTX_SIZE(xhci_readl(&ctrl->hccr->cr_hccparams));
@@ -616,7 +602,6 @@ int xhci_mem_init(struct xhci_ctrl *ctrl, struct xhci_hccr *hccr,
 struct xhci_input_control_ctx
 		*xhci_get_input_control_ctx(struct xhci_container_ctx *ctx)
 {
-	BUG_ON(ctx->type != XHCI_CTX_TYPE_INPUT);
 	return (struct xhci_input_control_ctx *)ctx->bytes;
 }
 
@@ -737,8 +722,6 @@ void xhci_setup_addressable_virt_dev(struct xhci_ctrl *ctrl,
 #endif
 
 	virt_dev = ctrl->devs[slot_id];
-
-	BUG_ON(!virt_dev);
 
 	/* Extract the EP0 and Slot Ctrl */
 	ep0_ctx = xhci_get_ep_ctx(ctrl, virt_dev->in_ctx, 0);
