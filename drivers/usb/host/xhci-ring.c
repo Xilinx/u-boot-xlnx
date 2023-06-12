@@ -228,6 +228,7 @@ static int prepare_ring(struct xhci_ctrl *ctrl, struct xhci_ring *ep_ring,
 		return -EINVAL;
 	case EP_STATE_HALTED:
 		puts("WARN halted endpoint, queueing URB anyway.\n");
+		return -EPIPE;
 	case EP_STATE_STOPPED:
 	case EP_STATE_RUNNING:
 		debug("EP STATE RUNNING.\n");
@@ -271,13 +272,16 @@ static int prepare_ring(struct xhci_ctrl *ctrl, struct xhci_ring *ep_ring,
  * @param cmd		Command type to enqueue
  * Return: none
  */
-void xhci_queue_command(struct xhci_ctrl *ctrl, u8 *ptr, u32 slot_id,
-			u32 ep_index, trb_type cmd)
+int xhci_queue_command(struct xhci_ctrl *ctrl, u8 *ptr, u32 slot_id,
+		       u32 ep_index, trb_type cmd)
 {
 	u32 fields[4];
 	u64 val_64 = 0;
+	int ret;
 
-	BUG_ON(prepare_ring(ctrl, ctrl->cmd_ring, EP_STATE_RUNNING));
+	ret = prepare_ring(ctrl, ctrl->cmd_ring, EP_STATE_RUNNING);
+	if (ret < 0)
+		return ret;
 
 	if (ptr)
 		val_64 = xhci_virt_to_bus(ctrl, ptr);
@@ -299,6 +303,8 @@ void xhci_queue_command(struct xhci_ctrl *ctrl, u8 *ptr, u32 slot_id,
 
 	/* Ring the command ring doorbell */
 	xhci_writel(&ctrl->dba->doorbell[0], DB_VALUE_HOST);
+
+	return 0;
 }
 
 /*
@@ -478,7 +484,6 @@ union xhci_trb *xhci_wait_for_event(struct xhci_ctrl *ctrl, trb_type expected)
 		return NULL;
 
 	printf("XHCI timeout on event type %d... cannot recover.\n", expected);
-	BUG();
 }
 
 /*
@@ -496,15 +501,11 @@ static void reset_ep(struct usb_device *udev, int ep_index)
 	xhci_queue_command(ctrl, NULL, udev->slot_id, ep_index, TRB_RESET_EP);
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
 	field = le32_to_cpu(event->trans_event.flags);
-	BUG_ON(TRB_TO_SLOT_ID(field) != udev->slot_id);
 	xhci_acknowledge_event(ctrl);
 
 	xhci_queue_command(ctrl, (void *)((uintptr_t)ring->enqueue |
 		ring->cycle_state), udev->slot_id, ep_index, TRB_SET_DEQ);
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
-	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags))
-		!= udev->slot_id || GET_COMP_CODE(le32_to_cpu(
-		event->event_cmd.status)) != COMP_SUCCESS);
 	xhci_acknowledge_event(ctrl);
 }
 
@@ -527,25 +528,14 @@ static void abort_td(struct usb_device *udev, int ep_index)
 
 	event = xhci_wait_for_event(ctrl, TRB_TRANSFER);
 	field = le32_to_cpu(event->trans_event.flags);
-	BUG_ON(TRB_TO_SLOT_ID(field) != udev->slot_id);
-	BUG_ON(TRB_TO_EP_INDEX(field) != ep_index);
-	BUG_ON(GET_COMP_CODE(le32_to_cpu(event->trans_event.transfer_len
-		!= COMP_STOP)));
 	xhci_acknowledge_event(ctrl);
 
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
-	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags))
-		!= udev->slot_id || GET_COMP_CODE(le32_to_cpu(
-		event->event_cmd.status)) != COMP_SUCCESS);
 	xhci_acknowledge_event(ctrl);
 
 	xhci_queue_command(ctrl, (void *)((uintptr_t)ring->enqueue |
 		ring->cycle_state), udev->slot_id, ep_index, TRB_SET_DEQ);
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
-	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags))
-		!= udev->slot_id || GET_COMP_CODE(le32_to_cpu(
-		event->event_cmd.status)) != COMP_SUCCESS);
-	xhci_acknowledge_event(ctrl);
 }
 
 static void record_transfer_result(struct usb_device *udev,
@@ -762,8 +752,6 @@ again:
 	}
 
 	field = le32_to_cpu(event->trans_event.flags);
-	BUG_ON(TRB_TO_SLOT_ID(field) != slot_id);
-	BUG_ON(TRB_TO_EP_INDEX(field) != ep_index);
 
 	record_transfer_result(udev, event, available_length);
 	xhci_acknowledge_event(ctrl);
@@ -950,9 +938,6 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 		goto abort;
 	field = le32_to_cpu(event->trans_event.flags);
 
-	BUG_ON(TRB_TO_SLOT_ID(field) != slot_id);
-	BUG_ON(TRB_TO_EP_INDEX(field) != ep_index);
-
 	record_transfer_result(udev, event, length);
 	xhci_acknowledge_event(ctrl);
 	if (udev->status == USB_ST_STALLED) {
@@ -970,8 +955,6 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 		event = xhci_wait_for_event(ctrl, TRB_TRANSFER);
 		if (!event)
 			goto abort;
-		BUG_ON(TRB_TO_SLOT_ID(field) != slot_id);
-		BUG_ON(TRB_TO_EP_INDEX(field) != ep_index);
 		xhci_acknowledge_event(ctrl);
 	}
 
