@@ -496,3 +496,93 @@ def test_qspi_lock_unlock(u_boot_console):
         qspi_lock_unlock(u_boot_console, lock_addr, lock_size)
 
         i = i + 1
+
+@pytest.mark.buildconfigspec("cmd_bdi")
+@pytest.mark.buildconfigspec("cmd_sf")
+@pytest.mark.buildconfigspec("cmd_memory")
+def test_qspi_negative(u_boot_console):
+    expected_erase = "Erased: OK"
+    expected_write = "Written: OK"
+    expected_read = "Read: OK"
+    qspi_find_freq_range(u_boot_console)
+    qspi_pre_commands(u_boot_console, random.randint(min_f, max_f))
+    addr = u_boot_utils.find_ram_base(u_boot_console)
+    i = 0
+    while i < loop:
+        # Erase negative test
+        start = random.randint(0, total_size)
+        esize = erase_size
+
+        # If erasesize is not multiple of flash's erase size
+        while esize % erase_size == 0:
+            esize = random.randint(0, total_size - start)
+
+        error_msg = "Erased: ERROR"
+        flash_ops(
+            u_boot_console, "erase", start, esize, 0, 1, error_msg, expected_erase
+        )
+
+        # If eraseoffset exceeds beyond flash size
+        eoffset = random.randint(total_size, (total_size + int(0x1000000)))
+        error_msg = "Offset exceeds device limit"
+        flash_ops(
+            u_boot_console, "erase", eoffset, esize, 0, 1, error_msg, expected_erase
+        )
+
+        # If erasesize exceeds beyond flash size
+        esize = random.randint((total_size - start), (total_size + int(0x1000000)))
+        error_msg = "ERROR: attempting erase past flash size"
+        flash_ops(
+            u_boot_console, "erase", start, esize, 0, 1, error_msg, expected_erase
+        )
+
+        # If erase size is 0
+        esize = 0
+        error_msg = "ERROR: Invalid size 0"
+        flash_ops(
+            u_boot_console, "erase", start, esize, 0, 1, error_msg, expected_erase
+        )
+
+        # If erasesize is less than flash's page size
+        esize = random.randint(0, page_size)
+        start = random.randint(0, (total_size - page_size))
+        error_msg = "Erased: ERROR"
+        flash_ops(
+            u_boot_console, "erase", start, esize, 0, 1, error_msg, expected_erase
+        )
+
+        # Write/Read negative test
+        # if Write/Read size exceeds beyond flash size
+        offset = random.randint(0, total_size)
+        size = random.randint((total_size - offset), (total_size + int(0x1000000)))
+        error_msg = "Size exceeds partition or device limit"
+        flash_ops(
+            u_boot_console, "write", offset, size, addr, 1, error_msg, expected_write
+        )
+        flash_ops(
+            u_boot_console, "read", offset, size, addr, 1, error_msg, expected_read
+        )
+
+        # if Write/Read offset exceeds beyond flash size
+        offset = random.randint(total_size, (total_size + int(0x1000000)))
+        size = random.randint(0, total_size)
+        error_msg = "Offset exceeds device limit"
+        flash_ops(
+            u_boot_console, "write", offset, size, addr, 1, error_msg, expected_write
+        )
+        flash_ops(
+            u_boot_console, "read", offset, size, addr, 1, error_msg, expected_read
+        )
+
+        # if Write/Read size is 0
+        offset = random.randint(0, 2)
+        size = 0
+        error_msg = "ERROR: Invalid size 0"
+        flash_ops(
+            u_boot_console, "write", offset, size, addr, 1, error_msg, expected_write
+        )
+        flash_ops(
+            u_boot_console, "read", offset, size, addr, 1, error_msg, expected_read
+        )
+
+        i = i + 1
