@@ -519,6 +519,7 @@ config CMD_SPL_WRITE_SIZE
 
 config CMD_THOR_DOWNLOAD
 	bool "thor - TIZEN 'thor' download"
+	depends on CMD_USB
 	select DFU
 	help
 	  Implements the 'thor' download protocol. This is a way of
