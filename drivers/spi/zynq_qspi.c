@@ -47,6 +47,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ZYNQ_QSPI_FR_QOUT_CODE		0x6B	/* read instruction code */
 #define ZYNQ_QSPI_FR_DUALIO_CODE	0xBB
 
+#define QSPI_SELECT_LOWER_CS		BIT(0)
+#define QSPI_SELECT_UPPER_CS		BIT(1)
+
 /*
  * QSPI Linear Configuration Register
  *
@@ -100,7 +103,6 @@ struct zynq_qspi_plat {
 	struct zynq_qspi_regs *regs;
 	u32 frequency;          /* input frequency */
 	u32 speed_hz;
-	u32 is_dual;
 };
 
 /* zynq qspi priv */
@@ -117,7 +119,8 @@ struct zynq_qspi_priv {
 	int bytes_to_transfer;
 	int bytes_to_receive;
 	unsigned int is_inst;
-	unsigned int is_dual;
+	unsigned int is_parallel;
+	unsigned int is_stacked;
 	unsigned int is_dio;
 	unsigned int u_page;
 	unsigned cs_change:1;
@@ -129,23 +132,9 @@ static int zynq_qspi_of_to_plat(struct udevice *bus)
 	struct zynq_qspi_plat *plat = dev_get_plat(bus);
 	const void *blob = gd->fdt_blob;
 	int node = dev_of_offset(bus);
-	int is_dual;
 
 	plat->regs = (struct zynq_qspi_regs *)fdtdec_get_addr(blob,
 							      node, "reg");
-
-	is_dual = fdtdec_get_int(blob, node, "is-dual", -1);
-	if (is_dual < 0)
-		plat->is_dual = SF_SINGLE_FLASH;
-	else if (is_dual == 1)
-		plat->is_dual = SF_DUAL_PARALLEL_FLASH;
-	else
-		if (fdtdec_get_int(blob, node,
-				   "is-stacked", -1) < 0)
-			plat->is_dual = SF_SINGLE_FLASH;
-		else
-			plat->is_dual = SF_DUAL_STACKED_FLASH;
-
 	return 0;
 }
 
@@ -201,12 +190,12 @@ static void zynq_qspi_init_hw(struct zynq_qspi_priv *priv)
 		ZYNQ_QSPI_CR_PCS_MASK | ZYNQ_QSPI_CR_FW_MASK |
 		ZYNQ_QSPI_CR_MSTREN_MASK;
 
-	if (priv->is_dual == SF_DUAL_STACKED_FLASH)
+	if (priv->is_stacked)
 		confr |= 0x10;
 
 	writel(confr, &regs->cr);
 
-	if (priv->is_dual == SF_DUAL_PARALLEL_FLASH) {
+	if (priv->is_parallel) {
 		if (priv->is_dio == SF_DUALIO_FLASH)
 			/* Enable two memories on separate buses */
 			writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
@@ -221,7 +210,7 @@ static void zynq_qspi_init_hw(struct zynq_qspi_priv *priv)
 				(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
 				ZYNQ_QSPI_FR_QOUT_CODE),
 				&regs->lqspicfg);
-	} else if (priv->is_dual == SF_DUAL_STACKED_FLASH) {
+	} else if (priv->is_stacked) {
 		if (priv->is_dio == SF_DUALIO_FLASH)
 			/* Configure two memories on shared bus
 			 * by enabling lower mem
@@ -249,7 +238,7 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 	struct spi_slave *slave = dev_get_parent_priv(bus);
 	struct zynq_qspi_priv *priv = dev_get_priv(bus->parent);
 
-	slave->option = priv->is_dual;
+	slave->multi_cs_cap = true;
 	slave->dio = priv->is_dio;
 	priv->max_hz = slave->max_hz;
 
@@ -266,13 +255,6 @@ static int zynq_qspi_probe(struct udevice *bus)
 
 	priv->regs = plat->regs;
 	priv->fifo_depth = ZYNQ_QSPI_FIFO_DEPTH;
-	priv->is_dual = plat->is_dual;
-
-	if (priv->is_dual == -1) {
-		debug("%s: No QSPI device detected based on MIO settings\n",
-		      __func__);
-		return -1;
-	}
 
 	ret = clk_get_by_name(bus, "ref_clk", &clk);
 	if (ret < 0) {
@@ -464,7 +446,8 @@ static void zynq_qspi_fill_tx_fifo(struct zynq_qspi_priv *priv, u32 size)
 				return;
 			len = priv->bytes_to_transfer;
 			zynq_qspi_write_data(priv, &data, len);
-			if (priv->is_dual && !priv->is_inst && (len % 2))
+			if ((priv->is_parallel || priv->is_stacked) &&
+			    !priv->is_inst && (len % 2))
 				len++;
 			offset = (priv->rx_buf) ?
 				  offsets[3] : offsets[len - 1];
@@ -582,8 +565,7 @@ static int zynq_qspi_start_transfer(struct zynq_qspi_priv *priv)
 	priv->bytes_to_transfer = priv->len;
 	priv->bytes_to_receive = priv->len;
 
-	if (priv->is_inst && (priv->is_dual == SF_DUAL_STACKED_FLASH) &&
-	    (current_u_page != priv->u_page)) {
+	if (priv->is_inst && priv->is_stacked && current_u_page != priv->u_page) {
 		if (priv->u_page) {
 			if (priv->is_dio == SF_DUALIO_FLASH)
 				writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
@@ -818,6 +800,12 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	unsigned int flag = 0;
 	const u8 *tx_buf = NULL;
 	u8 *rx_buf = NULL;
+
+	if ((slave->flags & QSPI_SELECT_LOWER_CS) &&
+	    (slave->flags & QSPI_SELECT_UPPER_CS))
+		priv->is_parallel = true;
+	if (slave->flags & SPI_XFER_STACKED)
+		priv->is_stacked = true;
 
 	if (op->data.nbytes) {
 		if (op->data.dir == SPI_MEM_DATA_IN)
