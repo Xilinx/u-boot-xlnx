@@ -471,7 +471,7 @@ static int read_sr(struct spi_nor *nor)
 	if (spi_nor_protocol_is_dtr(nor->reg_proto))
 		op.data.nbytes = 2;
 
-	if (nor->isparallel) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
 		op.data.nbytes = 2;
 		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
@@ -525,7 +525,7 @@ static int read_fsr(struct spi_nor *nor)
 	if (spi_nor_protocol_is_dtr(nor->reg_proto))
 		op.data.nbytes = 2;
 
-	if (nor->isparallel) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
 		op.data.nbytes = 2;
 		ret = spi_nor_read_write_reg(nor, &op, &val[0]);
 		if (ret < 0) {
@@ -666,7 +666,7 @@ static void spi_nor_set_4byte_opcodes(struct spi_nor *nor,
 {
 	bool shift = 0;
 
-	if (nor->isparallel)
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
 		shift = 1;
 
 	/* Do some manufacturer fixups first */
@@ -900,9 +900,11 @@ static int write_bar(struct spi_nor *nor, u32 offset)
 	if (spi_nor_wait_till_ready(nor))
 		return 1;
 
-	if (mtd->size <= (SZ_16M << nor->shift))
+	if (nor->flags & (SNOR_F_HAS_PARALLEL | SNOR_F_HAS_STACKED) &&
+	    mtd->size <= SZ_32M)
 		return 0;
-	if (nor->isstacked && mtd->size <= SZ_32M)
+
+	if (mtd->size <= SZ_16M)
 		return 0;
 
 	offset = offset % (u32)mtd->size;
@@ -910,7 +912,7 @@ static int write_bar(struct spi_nor *nor, u32 offset)
 
 	upage_curr = nor->spi->flags & SPI_XFER_U_PAGE;
 
-	if (!nor->isstacked && bank_sel == nor->bank_curr)
+	if (!(nor->flags & SNOR_F_HAS_STACKED) && bank_sel == nor->bank_curr)
 		return 0;
 	else if (upage_curr == nor->upage_prev && bank_sel == nor->bank_curr)
 		return 0;
@@ -950,7 +952,7 @@ static int read_bar(struct spi_nor *nor, const struct flash_info *info)
 		nor->bank_write_cmd = SPINOR_OP_WREAR;
 	}
 
-	if (nor->isparallel)
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
 		nor->spi->flags |= SPI_XFER_LOWER;
 
 	ret = nor->read_reg(nor, nor->bank_read_cmd,
@@ -962,7 +964,7 @@ static int read_bar(struct spi_nor *nor, const struct flash_info *info)
 	nor->bank_curr = curr_bank;
 
 	// Make sure both chips use the same BAR
-	if (nor->isparallel) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
 		write_enable(nor);
 		ret = nor->write_reg(nor, nor->bank_write_cmd, &curr_bank, 1);
 		if (ret)
@@ -1041,10 +1043,10 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		}
 
 		offset = addr;
-		if (nor->isparallel)
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
 			offset /= 2;
 
-		if (nor->isstacked) {
+		if (nor->flags & SNOR_F_HAS_STACKED) {
 			if (offset >= (mtd->size / 2)) {
 				offset = offset - (mtd->size / 2);
 				nor->spi->flags |= SPI_XFER_U_PAGE;
@@ -1458,7 +1460,7 @@ static const struct flash_info *spi_nor_read_id(struct spi_nor *nor)
 	u8			id[SPI_NOR_MAX_ID_LEN];
 	const struct flash_info	*info;
 
-	if (nor->isparallel)
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
 		nor->spi->flags |= SPI_XFER_LOWER;
 
 	tmp = nor->read_reg(nor, SPINOR_OP_RDID, id, SPI_NOR_MAX_ID_LEN);
@@ -1497,7 +1499,7 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 
 	dev_dbg(nor->dev, "from 0x%08x, len %zd\n", (u32)from, len);
 
-	if (nor->isparallel && (offset & 1)) {
+	if ((nor->flags & SNOR_F_HAS_PARALLEL) && (offset & 1)) {
 	    /* We can hit this case when we use file system like ubifs */
 		from = (loff_t)(from - 1);
 		len = (size_t)(len + 1);
@@ -1506,13 +1508,18 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 
 	while (len) {
 		if (nor->addr_width == 3) {
-			bank = (u32)from / (SZ_16M << nor->shift);
-			rem_bank_len = ((SZ_16M << nor->shift) *
+			if (nor->flags & SNOR_F_HAS_PARALLEL) {
+				bank = (u32)from / (SZ_16M << 0x01);
+				rem_bank_len = ((SZ_16M << 0x01) *
 					(bank + 1)) - from;
+			} else {
+				bank = (u32)from / SZ_16M;
+				rem_bank_len = (SZ_16M * (bank + 1)) - from;
+			}
 		}
 		offset = from;
 
-		if (nor->isstacked) {
+		if (nor->flags & SNOR_F_HAS_STACKED) {
 			stack_shift = 1;
 			if (offset >= (mtd->size / 2)) {
 				offset = offset - (mtd->size / 2);
@@ -1537,7 +1544,9 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 			 * parallel mode.
 			 */
 			if (nor->spi && nor->spi->multi_die) {
-				bank_size = (SZ_16M << nor->shift);
+				bank_size = SZ_16M;
+				if (nor->flags & SNOR_F_HAS_PARALLEL)
+					bank_size <<= 1;
 				cur_bank = offset / bank_size;
 				nxt_bank = (offset + len) / bank_size;
 				if (cur_bank != nxt_bank)
@@ -1554,7 +1563,7 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 			}
 		}
 
-		if (nor->isparallel)
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
 			offset /= 2;
 
 		if (nor->addr_width == 3) {
@@ -1905,7 +1914,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 	 * Cannot write to odd offset in parallel mode,
 	 * so write 2 bytes first
 	 */
-	if (nor->isparallel && (to & 1)) {
+	if ((nor->flags & SNOR_F_HAS_PARALLEL) && (to & 1)) {
 		u8 two[2] = {0xff, buf[0]};
 		size_t local_retlen;
 
@@ -1938,10 +1947,10 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 		}
 
 		offset = (to + i);
-		if (nor->isparallel)
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
 			offset /= 2;
 
-		if (nor->isstacked) {
+		if (nor->flags & SNOR_F_HAS_STACKED) {
 			if (offset >= (mtd->size / 2)) {
 				offset = offset - (mtd->size / 2);
 				nor->spi->flags |= SPI_XFER_U_PAGE;
@@ -2312,7 +2321,7 @@ static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
 
 	while (len) {
 		/* Both chips are identical, so should be the SFDP data */
-		if (nor->isparallel)
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
 			nor->spi->flags |= SPI_XFER_LOWER;
 
 		ret = nor->read(nor, addr, len, (u8 *)buf);
@@ -2979,6 +2988,11 @@ static int spi_nor_init_params(struct spi_nor *nor,
 			       const struct flash_info *info,
 			       struct spi_nor_flash_parameter *params)
 {
+	struct udevice *dev = nor->spi->dev;
+	u64 flash_size[SNOR_FLASH_CNT_MAX] = {0};
+	u32 idx = 0, i = 0;
+	int rc;
+
 	/* Set legacy flash parameters as default. */
 	memset(params, 0, sizeof(*params));
 
@@ -3106,13 +3120,59 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		}
 	}
 
-	if (nor->isparallel) {
-		nor->mtd.erasesize <<= nor->shift;
-		params->page_size <<= nor->shift;
+	/*
+	 * The flashes that are connected in stacked mode should be of same make.
+	 * Except the flash size all other properties are identical for all the
+	 * flashes connected in stacked mode.
+	 * The flashes that are connected in parallel mode should be identical.
+	 */
+	while (i < SNOR_FLASH_CNT_MAX) {
+		rc = ofnode_read_u64_index(dev_ofnode(dev), "stacked-memories",
+					   idx, &flash_size[i]);
+		if (rc == -EINVAL) {
+			break;
+		} else if (rc == -EOVERFLOW) {
+			idx++;
+		} else {
+			idx++;
+			i++;
+			if (!(nor->flags & SNOR_F_HAS_STACKED))
+				nor->flags |= SNOR_F_HAS_STACKED;
+			if (!(nor->spi->flags & SPI_XFER_STACKED))
+				nor->spi->flags |= SPI_XFER_STACKED;
+		}
 	}
 
-	if (nor->isparallel || nor->isstacked)
-		params->size <<= nor->shift;
+	i = 0;
+	idx = 0;
+	while (i < SNOR_FLASH_CNT_MAX) {
+		rc = ofnode_read_u64_index(dev_ofnode(dev), "parallel-memories",
+					   idx, &flash_size[i]);
+		if (rc == -EINVAL) {
+			break;
+		} else if (rc == -EOVERFLOW) {
+			idx++;
+		} else {
+			idx++;
+			i++;
+			if (!(nor->flags & SNOR_F_HAS_PARALLEL))
+				nor->flags |= SNOR_F_HAS_PARALLEL;
+		}
+	}
+
+	if (nor->flags & (SNOR_F_HAS_STACKED | SNOR_F_HAS_PARALLEL))
+		for (idx = 1; idx < SNOR_FLASH_CNT_MAX; idx++)
+			params->size += flash_size[idx];
+
+	/*
+	 * In parallel-memories the erase operation is
+	 * performed on both the flashes simultaneously
+	 * so, double the erasesize.
+	 */
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
+		nor->mtd.erasesize <<= 1;
+		params->page_size <<= 1;
+	}
 
 	spi_nor_post_sfdp_fixups(nor, params);
 
@@ -3428,20 +3488,52 @@ static int spi_nor_select_erase(struct spi_nor *nor,
 	/* prefer "small sector" erase if possible */
 	if (info->flags & SECT_4K) {
 		nor->erase_opcode = SPINOR_OP_BE_4K;
-		mtd->erasesize = 4096 << nor->shift;
+		/*
+		 * In parallel-memories the erase operation is
+		 * performed on both the flashes simultaneously
+		 * so, double the erasesize.
+		 */
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
+			mtd->erasesize = 4096 * 2;
+		else
+			mtd->erasesize = 4096;
 	} else if (info->flags & SECT_4K_PMC) {
 		nor->erase_opcode = SPINOR_OP_BE_4K_PMC;
-		mtd->erasesize = 4096 << nor->shift;
+		/*
+		 * In parallel-memories the erase operation is
+		 * performed on both the flashes simultaneously
+		 * so, double the erasesize.
+		 */
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
+			mtd->erasesize = 4096 * 2;
+		else
+			mtd->erasesize = 4096;
 	} else
 #endif
 	{
 		nor->erase_opcode = SPINOR_OP_SE;
-		mtd->erasesize = info->sector_size << nor->shift;
+		/*
+		 * In parallel-memories the erase operation is
+		 * performed on both the flashes simultaneously
+		 * so, double the erasesize.
+		 */
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
+			mtd->erasesize = info->sector_size * 2;
+		else
+			mtd->erasesize = info->sector_size;
 	}
 
 	if ((JEDEC_MFR(info) == SNOR_MFR_SST) && info->flags & SECT_4K) {
 		nor->erase_opcode = SPINOR_OP_BE_4K;
-		mtd->erasesize = 4096 << nor->shift;
+		/*
+		 * In parallel-memories the erase operation is
+		 * performed on both the flashes simultaneously
+		 * so, double the erasesize.
+		 */
+		if (nor->flags & SNOR_F_HAS_PARALLEL)
+			mtd->erasesize = 4096 * 2;
+		else
+			mtd->erasesize = 4096;
 	}
 
 	return 0;
@@ -4039,8 +4131,8 @@ static int spi_nor_init(struct spi_nor *nor)
 	u8 sr2;
 	int err;
 
-	if (nor->isparallel)
-		nor->spi->flags |= SPI_XFER_STRIPE;
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		nor->spi->flags |= SPI_NOR_ENABLE_MULTI_CS;
 
 	err = spi_nor_octal_dtr_enable(nor);
 	if (err) {
@@ -4125,9 +4217,15 @@ static inline uint32_t get_protected_area_start(struct spi_nor *nor,
 	u32 flash_size;
 	int ret;
 
-	sector_size = nor->sector_size >> nor->shift;
-	n_sectors = (nor->size >> nor->shift) / sector_size;
-	flash_size = nor->size >> nor->shift;
+	sector_size = nor->sector_size;
+
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
+		n_sectors = (nor->size >> 0x01) / sector_size;
+		flash_size = nor->size >> 0x01;
+	} else {
+		n_sectors = nor->size / sector_size;
+		flash_size = nor->size;
+	}
 
 	if (!is_bottom)
 		ret = flash_size - ((1 << (lock_bits - 1)) * sector_size *
@@ -4195,7 +4293,7 @@ static int write_sr_modify_protection(struct spi_nor *nor, u8 status,
 	if (ret)
 		return ret;
 
-	if (nor->isparallel) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL) { //to check Ashok
 		nor->spi->flags |= SPI_XFER_UPPER;
 		ret = write_sr(nor, status_new);
 		if (ret)
@@ -4211,6 +4309,10 @@ static void micron_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	u8 mask = SR_BP2 | SR_BP1 | SR_BP0;
 	int shift = ffs(mask) - 1;
 	int pow;
+	u64 norsize = nor->size;
+
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		norsize /= 2;
 
 	if (!(sr & (mask | SR_BP3))) {
 		/* No protection */
@@ -4223,12 +4325,12 @@ static void micron_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 		if (pow)
 			pow--;
 
-		*len = (nor->sector_size >> nor->shift) << pow;
-		if (*len >= (nor->size >> nor->shift))
-			*len = nor->size >> nor->shift;
+		*len = nor->sector_size << pow;
+		if (*len >= norsize)
+			*len = norsize;
 
 		if (!(sr & SR_TB))
-			*ofs = (nor->size >> nor->shift) - *len;
+			*ofs = norsize - *len;
 		else
 			*ofs = 0;
 
@@ -4246,10 +4348,12 @@ static int micron_is_unlocked_sr(struct spi_nor *nor, loff_t ofs, uint64_t len,
 	bool locked_value = false;
 	bool offset_value = false;
 
-	ofs >>= nor->shift;
-	/* Avoid shifting of data length for size 1 */
-	if (len != 1)
-		len >>= nor->shift;
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		ofs /= 2;
+
+	/* Avoid dividing by 2 of data length for size 1 */
+	if (nor->flags & SNOR_F_HAS_PARALLEL && len != 1)
+		len /= 2;
 
 	debug("%s, ofs:0x%lx, len:0x%lx\n", __func__,
 	      (unsigned long)ofs,
@@ -4279,14 +4383,14 @@ static int micron_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	loff_t lock_len;
 	bool is_bottom = false; /* Use TOP protection by default */
 
-	if (nor->isparallel)
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
 		nor->spi->flags |= SPI_XFER_LOWER;
 
 	status_old = read_sr(nor);
 	if (status_old < 0)
 		return status_old;
 
-	if (nor->isparallel) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
 		nor->spi->flags |= SPI_XFER_UPPER;
 		status_old_up = read_sr(nor);
 		if (status_old_up < 0)
@@ -4303,8 +4407,11 @@ static int micron_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 
 	debug("Status in both flashes lo:0x%x, up:0x%x\n",
 	      status_old, status_old_up);
-	ofs >>= nor->shift;
-	len >>= nor->shift;
+
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
+		ofs /= 2;
+		len /= 2;
+	}
 
 	if (!is_bottom)
 		lock_len = ofs;
@@ -4458,6 +4565,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	struct spi_slave *spi = nor->spi;
 	int ret;
 	int cfi_mtd_nb = 0;
+	bool shift = 0;
 
 #ifdef CONFIG_FLASH_CFI_MTD
 	cfi_mtd_nb = CFI_FLASH_BANKS;
@@ -4501,10 +4609,6 @@ int spi_nor_scan(struct spi_nor *nor)
 	spi_nor_soft_reset(nor);
 #endif /* CONFIG_SPI_FLASH_SOFT_RESET_ON_BOOT */
 
-	nor->isparallel = (spi->option == SF_DUAL_PARALLEL_FLASH) ? 1 : 0;
-	nor->isstacked = (spi->option == SF_DUAL_STACKED_FLASH) ? 1 : 0;
-	nor->shift = nor->isparallel;
-
 	info = spi_nor_read_id(nor);
 	if (IS_ERR_OR_NULL(info))
 		return -ENOENT;
@@ -4528,7 +4632,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	mtd->type = MTD_NORFLASH;
 	mtd->writesize = 1;
 	mtd->flags = MTD_CAP_NORFLASH;
-	mtd->size = params.size << nor->isstacked;
+	mtd->size = params.size;
 	mtd->_erase = spi_nor_erase;
 	mtd->_read = spi_nor_read;
 	mtd->_write = spi_nor_write;
@@ -4609,8 +4713,9 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->addr_width = 3;
 	}
 
-	if (nor->addr_width == 3 && (mtd->size >>
-	   (nor->isparallel || nor->isstacked)) > SZ_16M) {
+	if (nor->flags & (SNOR_F_HAS_PARALLEL | SNOR_F_HAS_STACKED))
+		shift = 1;
+	if (nor->addr_width == 3 && (mtd->size >> shift) > SZ_16M) {
 #ifndef CONFIG_SPI_FLASH_BAR
 		/* enable 4-byte addressing if the device exceeds 16MiB */
 		nor->addr_width = 4;
@@ -4638,7 +4743,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	if (nor->isstacked) {
+	if (nor->flags & SNOR_F_HAS_STACKED) {
 		nor->spi->flags |= SPI_XFER_U_PAGE;
 		ret = spi_nor_init(nor);
 		if (ret)

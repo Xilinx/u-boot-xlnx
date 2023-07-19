@@ -43,6 +43,9 @@
 #define SPI_XFER_LOWER	(1 << 8)
 #define SPI_XFER_UPPER	(2 << 8)
 
+/* Max no. of CS supported per spi device */
+#define SPI_CS_CNT_MAX	2
+
 /* Header byte that marks the start of the message */
 #define SPI_PREAMBLE_END_BYTE	0xec
 
@@ -169,12 +172,19 @@ struct spi_slave {
 #define SPI_XFER_MMAP_END	BIT(3)	/* Memory Mapped End */
 #define SPI_XFER_U_PAGE		BIT(4)
 #define SPI_XFER_SET_DDR	BIT(5)
+#define SPI_XFER_STACKED	BIT(6)
 
 	u8 option;
 	u8 dio;
 	u32 bytemode;
 	u8 dummy_bytes;
 	bool multi_die;			/* flash with multiple dies */
+	/*
+	 * Flag indicating that the spi-controller has multi chip select
+	 * capability and can assert/de-assert more than one chip select
+	 * at once.
+	 */
+	bool multi_cs_cap;
 };
 
 /**
