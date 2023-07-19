@@ -88,6 +88,9 @@
 #define SPI_XFER_ON_LOWER		1
 #define SPI_XFER_ON_UPPER		2
 
+#define GQSPI_SELECT_LOWER_CS		BIT(0)
+#define GQSPI_SELECT_UPPER_CS		BIT(1)
+
 #define GQSPI_DMA_ALIGN			0x4
 #define GQSPI_MAX_BAUD_RATE_VAL		7
 #define GQSPI_DFLT_BAUD_RATE_VAL	2
@@ -170,7 +173,6 @@ struct zynqmp_qspi_plat {
 	struct zynqmp_qspi_dma_regs *dma_regs;
 	u32 frequency;
 	u32 speed_hz;
-	unsigned int is_dual;
 	unsigned int io_mode;
 };
 
@@ -184,7 +186,7 @@ struct zynqmp_qspi_priv {
 	int bytes_to_transfer;
 	int bytes_to_receive;
 	const struct spi_mem_op *op;
-	unsigned int is_dual;
+	unsigned int is_parallel;
 	unsigned int u_page;
 	unsigned int bus;
 	unsigned int stripe;
@@ -195,7 +197,6 @@ struct zynqmp_qspi_priv {
 static int zynqmp_qspi_of_to_plat(struct udevice *bus)
 {
 	struct zynqmp_qspi_plat *plat = dev_get_plat(bus);
-	int is_dual;
 
 	debug("%s\n", __func__);
 
@@ -203,18 +204,6 @@ static int zynqmp_qspi_of_to_plat(struct udevice *bus)
 						 GQSPI_REG_OFFSET);
 	plat->dma_regs = (struct zynqmp_qspi_dma_regs *)
 			  (dev_read_addr(bus) + GQSPI_DMA_REG_OFFSET);
-
-	is_dual = fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus), "is-dual", -1);
-	if (is_dual < 0)
-		plat->is_dual = SF_SINGLE_FLASH;
-	else if (is_dual == 1)
-		plat->is_dual = SF_DUAL_PARALLEL_FLASH;
-	else
-		if (fdtdec_get_int(gd->fdt_blob, dev_of_offset(bus),
-				   "is-stacked", -1) < 0)
-			plat->is_dual = SF_SINGLE_FLASH;
-		else
-			plat->is_dual = SF_DUAL_STACKED_FLASH;
 
 	plat->io_mode = dev_read_bool(bus, "has-io-mode");
 
@@ -251,7 +240,7 @@ static u32 zynqmp_qspi_bus_select(struct zynqmp_qspi_priv *priv)
 {
 	u32 gqspi_fifo_reg = 0;
 
-	if (priv->is_dual == SF_DUAL_PARALLEL_FLASH) {
+	if (priv->is_parallel) {
 		if (priv->bus == SPI_XFER_ON_BOTH)
 			gqspi_fifo_reg = GQSPI_GFIFO_LOW_BUS |
 					 GQSPI_GFIFO_UP_BUS |
@@ -328,7 +317,7 @@ static void zynqmp_qspi_chipselect(struct zynqmp_qspi_priv *priv, int is_on)
 		gqspi_fifo_reg |= GQSPI_SPI_MODE_SPI |
 				  GQSPI_IMD_DATA_CS_ASSERT;
 	} else {
-		if (priv->is_dual == SF_DUAL_PARALLEL_FLASH)
+		if (priv->is_parallel)
 			gqspi_fifo_reg = GQSPI_GFIFO_UP_BUS |
 					 GQSPI_GFIFO_LOW_BUS;
 		else if (priv->u_page)
@@ -441,7 +430,7 @@ static int zynqmp_qspi_child_pre_probe(struct udevice *bus)
 	struct spi_slave *slave = dev_get_parent_priv(bus);
 	struct zynqmp_qspi_priv *priv = dev_get_priv(bus->parent);
 
-	slave->option = priv->is_dual;
+	slave->multi_cs_cap = true;
 	slave->bytemode = SPI_4BYTE_MODE;
 	priv->max_hz = slave->max_hz;
 
@@ -460,14 +449,8 @@ static int zynqmp_qspi_probe(struct udevice *bus)
 
 	priv->regs = plat->regs;
 	priv->dma_regs = plat->dma_regs;
-	priv->is_dual = plat->is_dual;
 	priv->io_mode = plat->io_mode;
 
-	if (priv->is_dual == -1) {
-		debug("%s: No QSPI device detected based on MIO settings\n",
-		      __func__);
-		return -1;
-	}
 	ret = clk_get_by_index(bus, 0, &clk);
 	if (ret < 0) {
 		dev_err(bus, "failed to get clock\n");
@@ -893,13 +876,17 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 	else
 		priv->u_page = 0;
 
+	if ((slave->flags & GQSPI_SELECT_LOWER_CS) &&
+	    (slave->flags & GQSPI_SELECT_UPPER_CS))
+		priv->is_parallel = true;
+
 	priv->stripe = 0;
 	priv->bus = 0;
 
-	if (priv->is_dual == SF_DUAL_PARALLEL_FLASH) {
+	if (priv->is_parallel) {
 		if (slave->flags & SPI_XFER_MASK)
 			priv->bus = (slave->flags & SPI_XFER_MASK) >> 8;
-		if (slave->flags & SPI_XFER_STRIPE && zynqmp_qspi_update_stripe(op))
+		if (zynqmp_qspi_update_stripe(op))
 			priv->stripe = 1;
 	}
 
