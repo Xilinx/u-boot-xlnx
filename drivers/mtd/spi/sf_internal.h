@@ -78,6 +78,12 @@ struct flash_info {
 #define SPI_NOR_OCTAL_DTR_READ	BIT(17)	/* Flash supports Octal DTR Read */
 #define SPI_NOR_OCTAL_DTR_PP	BIT(18) /* Flash supports Octal DTR page program */
 #define SPI_NOR_MULTI_DIE	BIT(19) /* Flash has multi dies & need split reads*/
+#define SPI_NOR_HAS_BP3		BIT(20) /* Flash SR has block protect bits
+					 * for lock/unlock purpose, few support
+					 * BP0-BP2 while few support BP0-BP3.
+					 * This flag identifies devices that
+					 * support BP3 bit.
+					 */
 };
 
 extern const struct flash_info spi_nor_ids[];
