@@ -548,8 +548,8 @@ int spi_slave_of_to_plat(struct udevice *dev, struct dm_spi_slave_plat *plat)
 	int value;
 	int ret;
 
-	ret = dev_read_u32_array(dev, "reg", plat->cs, 2);
-	if (ret) {
+	ret = dev_read_u32_array(dev, "reg", plat->cs, SPI_CS_CNT_MAX);
+	if (ret && ret != -EOVERFLOW) {
 		dev_err(dev, "has no valid 'reg' property (%d)\n", ret);
 		return ret;
 	}
