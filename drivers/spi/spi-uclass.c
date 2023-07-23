@@ -479,6 +479,11 @@ int _spi_get_bus_and_cs(int busnum, int cs, int speed, int mode,
 	slave = dev_get_parent_priv(dev);
 	bus_data = dev_get_uclass_priv(bus);
 
+	if ((dev_read_bool(dev, "parallel-memories")) && !slave->multi_cs_cap) {
+		dev_err(dev, "controller doesn't support multi CS\n");
+		return -EINVAL;
+	}
+
 	/*
 	 * In case the operation speed is not yet established by
 	 * dm_spi_claim_bus() ensure the bus is configured properly.
@@ -539,7 +544,6 @@ void spi_free_slave(struct spi_slave *slave)
 
 int spi_slave_of_to_plat(struct udevice *dev, struct dm_spi_slave_plat *plat)
 {
-	struct spi_slave *slave = dev_get_parent_priv(dev);
 	int mode = 0;
 	int value;
 	int ret;
@@ -548,9 +552,6 @@ int spi_slave_of_to_plat(struct udevice *dev, struct dm_spi_slave_plat *plat)
 	if (ret) {
 		dev_err(dev, "has no valid 'reg' property (%d)\n", ret);
 		return ret;
-	} else if ((dev_read_bool(dev, "parallel-memories")) && !slave->multi_cs_cap) {
-		dev_err(dev, "controller doesn't support multi CS\n");
-		return -EINVAL;
 	}
 
 	plat->max_hz = dev_read_u32_default(dev, "spi-max-frequency",
