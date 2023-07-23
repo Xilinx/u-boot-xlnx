@@ -326,7 +326,6 @@ int ofnode_read_u64_index(ofnode node, const char *propname, int index,
 	int len;
 
 	assert(ofnode_valid(node));
-	printf("%s: %s: ", __func__, propname);
 
 	if (ofnode_is_np(node))
 		return of_read_u64_index(ofnode_to_np(node), propname, index,
@@ -335,12 +334,12 @@ int ofnode_read_u64_index(ofnode node, const char *propname, int index,
 	cell = fdt_getprop(ofnode_to_fdt(node), ofnode_to_offset(node),
 			   propname, &len);
 	if (!cell) {
-		printf("(not found)\n");
+		debug("(not found)\n");
 		return -EINVAL;
 	}
 
 	if (len < (sizeof(int) * (index + 1))) {
-		printf("(not large enough)\n");
+		debug("(not large enough)\n");
 		return -EOVERFLOW;
 	}
 
