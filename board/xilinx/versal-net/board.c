@@ -94,7 +94,6 @@ bool soc_detection(void)
 
 	if (platform_id == VERSAL_NET_SPP ||
 	    platform_id == VERSAL_NET_EMU) {
-
 		if (ps_version == PS_VERSION_PRODUCTION) {
 			/*
 			 * ES1 version ends at 1.9 version where there was +9
