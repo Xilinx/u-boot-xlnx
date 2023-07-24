@@ -491,6 +491,7 @@ static int zynq_gem_init(struct udevice *dev)
 
 	nwconfig = gem_mdc_clk_div(priv);
 	nwconfig |= ZYNQ_GEM_NWCFG_INIT;
+
 	/*
 	 * Set SGMII enable PCS selection only if internal PCS/PMA
 	 * core is used and interface is SGMII.
