@@ -413,9 +413,25 @@ int board_late_init_xilinx(void)
 
 	if (!CONFIG_IS_ENABLED(MICROBLAZE)) {
 		ulong scriptaddr;
+		u64 bootscr_address;
+		u64 bootscr_offset;
 
-		scriptaddr = env_get_hex("scriptaddr", 0);
-		ret |= env_set_hex("scriptaddr", gd->ram_base + scriptaddr);
+		/* Fetch bootscr_address/bootscr_offset from DT and update */
+		if (!ofnode_read_bootscript_address(&bootscr_address,
+						    &bootscr_offset)) {
+			if (bootscr_offset)
+				ret |= env_set_hex("scriptaddr",
+						   gd->ram_base +
+						   bootscr_offset);
+			else
+				ret |= env_set_hex("scriptaddr",
+						   bootscr_address);
+		} else {
+			/* Update scriptaddr(bootscr offset) from env */
+			scriptaddr = env_get_hex("scriptaddr", 0);
+			ret |= env_set_hex("scriptaddr",
+					   gd->ram_base + scriptaddr);
+		}
 	}
 
 	if (CONFIG_IS_ENABLED(ARCH_ZYNQ) || CONFIG_IS_ENABLED(MICROBLAZE))
