@@ -761,8 +761,7 @@ static int zynqmp_qspi_start_dma(struct zynqmp_qspi_priv *priv,
 			return -ETIMEDOUT;
 		}
 
-		if (IS_ENABLED(CONFIG_ARCH_VERSAL_NET))
-			invalidate_dcache_range(addr, addr + size);
+		invalidate_dcache_range(addr, addr + size);
 
 		writel(GQSPI_DMA_DST_I_STS_DONE, &dma_regs->dmaisr);
 
