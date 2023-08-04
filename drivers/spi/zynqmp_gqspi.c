@@ -902,6 +902,7 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 
 	zynqmp_qspi_chipselect(priv, 0);
 
+	priv->is_parallel = false;
 	slave->flags &= ~SPI_XFER_MASK;
 
 	return ret;
