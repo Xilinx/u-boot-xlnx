@@ -1162,6 +1162,7 @@ static int spansion_erase_non_uniform(struct spi_nor *nor, u32 addr,
 }
 #endif
 
+#if defined(CONFIG_SPI_FLASH_LOCK)
 #if defined(CONFIG_SPI_FLASH_STMICRO) || defined(CONFIG_SPI_FLASH_SST)
 /* Write status register and ensure bits in mask match written values */
 static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask)
@@ -1453,6 +1454,7 @@ static int stm_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	return stm_is_unlocked_sr(nor, ofs, len, status);
 }
 #endif /* CONFIG_SPI_FLASH_STMICRO */
+#endif
 
 static const struct flash_info *spi_nor_read_id(struct spi_nor *nor)
 {
@@ -1613,6 +1615,7 @@ read_err:
 	return ret;
 }
 
+#if defined(CONFIG_SPI_FLASH_LOCK)
 #ifdef CONFIG_SPI_FLASH_SST
 /*
  * sst26 flash series has its own block protection implementation:
@@ -1886,6 +1889,8 @@ sst_write_err:
 	return ret;
 }
 #endif
+#endif
+
 /*
  * Write an address range to the nor chip.  Data must be written in
  * FLASH_PAGESIZE chunks.  The address range may be any size provided
@@ -4197,6 +4202,7 @@ static int spi_nor_init(struct spi_nor *nor)
 	return 0;
 }
 
+#if defined(CONFIG_SPI_FLASH_LOCK)
 #if defined(CONFIG_SPI_FLASH_STMICRO)
 static inline uint16_t min_lockable_sectors(struct spi_nor *nor,
 					    uint16_t n_sectors)
@@ -5665,6 +5671,7 @@ static int spansion_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	return 0;
 }
 #endif
+#endif
 
 #ifdef CONFIG_SPI_FLASH_SOFT_RESET
 /**
@@ -5858,6 +5865,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	mtd->_read = spi_nor_read;
 	mtd->_write = spi_nor_write;
 
+#if defined(CONFIG_SPI_FLASH_LOCK)
 #if defined(CONFIG_SPI_FLASH_STMICRO) || defined(CONFIG_SPI_FLASH_SST)
 	/* NOR protection support for STmicro/Micron chips and similar */
 	if (JEDEC_MFR(info) == SNOR_MFR_ST ||
@@ -5920,6 +5928,7 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_unlock = sst26_unlock;
 		nor->flash_is_unlocked = sst26_is_unlocked;
 	}
+#endif
 #endif
 
 	if (info->flags & USE_FSR)
