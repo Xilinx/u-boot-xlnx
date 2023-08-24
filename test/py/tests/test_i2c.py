@@ -4,6 +4,7 @@
 
 import pytest
 import random
+import re
 
 """
 Note: This test doesn't rely on boardenv_* configuration value but they can
@@ -59,3 +60,21 @@ def test_i2c_eeprom(u_boot_console):
     response = u_boot_console.run_command("i2c md %x 0 5" % addr)
     expected_response = "0000: " + val + " " + val + " " + val + " " + val + " " + val + " "
     assert(expected_response in response)
+
+@pytest.mark.buildconfigspec("cmd_i2c")
+def test_i2c_probe_all_buses(u_boot_console):
+    expected_response = "Bus"
+    response = u_boot_console.run_command("i2c bus")
+    assert expected_response in response
+
+    # Get all the bus list
+    buses = re.findall("Bus (.+?):", response)
+    bus_list = [int(x) for x in buses]
+
+    for dev in bus_list:
+        expected_response = f"Setting bus to {dev}"
+        response = u_boot_console.run_command(f"i2c dev {dev}")
+        assert expected_response in response
+        expected_response = "Valid chip addresses:"
+        response = u_boot_console.run_command("i2c probe")
+        assert expected_response in response
