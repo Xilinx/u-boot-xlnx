@@ -5026,6 +5026,11 @@ static void giga_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	int shift = 0;
 	int pow;
 	u8 mask = SR_BP3_GIGA | SR_BP2 | SR_BP1 | SR_BP0;
+	u32 sector_size;
+
+	sector_size = nor->sector_size;
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		sector_size >>= 1;
 
 	shift = ffs(mask) - 1;
 
@@ -5034,8 +5039,10 @@ static void giga_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 		*ofs = 0;
 		*len = 0;
 	} else {
-		pow = ((sr & mask) ^ mask) >> shift;
-		*len = mtd->size >> pow;
+		pow = ((sr & mask) >> shift) - 1;
+		*len = sector_size << pow;
+		if (*len > mtd->size)
+			*len = mtd->size;
 		/* GIGA device's have top/bottom select bit in status reg */
 		if (nor->flags & SNOR_F_HAS_SR_TB && sr & SR_TB_GIGA)
 			*ofs = 0;
