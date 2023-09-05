@@ -4729,17 +4729,24 @@ static void issi_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	struct mtd_info *mtd = &nor->mtd;
 	u8 mask = 0, fr = 0;
 	int pow, shift;
+	u32 sector_size;
 
 	mask = SR_BP3_ISSI | SR_BP2 | SR_BP1 | SR_BP0;
 	shift = ffs(mask) - 1;
+	sector_size = nor->sector_size;
+
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		sector_size >>= 1;
 
 	if (!(sr & mask)) {
 		/* No protection */
 		*ofs = 0;
 		*len = 0;
 	} else {
-		pow = ((sr & mask) ^ mask) >> shift;
-		*len = mtd->size >> pow;
+		pow = ((sr & mask) >> shift) - 1;
+		*len = sector_size << pow;
+		if (*len > mtd->size)
+			*len = mtd->size;
 		/* ISSI device's have top/bottom select bit in function reg */
 		fr = spi_nor_read_fr(nor);
 		if (fr & FR_TB)
