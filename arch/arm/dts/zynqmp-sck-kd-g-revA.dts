@@ -340,6 +340,7 @@
 	linux,rs485-enabled-at-boot-time;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart0_default>;
+	resets = <&zynqmp_reset ZYNQMP_RESET_UART0>;
 };
 
 &uart1 {
