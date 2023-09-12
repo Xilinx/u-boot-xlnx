@@ -529,3 +529,113 @@ def test_mmc_save(u_boot_console):
 
     if not part_detect:
         pytest.skip("No partition detected")
+
+@pytest.mark.buildconfigspec("cmd_mmc")
+@pytest.mark.buildconfigspec("cmd_fat")
+@pytest.mark.buildconfigspec("cmd_memory")
+def test_mmc_fat_read_write_files(u_boot_console):
+    test_mmc_list(u_boot_console)
+    test_mmc_dev(u_boot_console)
+    test_mmcinfo(u_boot_console)
+    test_mmc_part(u_boot_console)
+    if not mmc_set_up:
+        pytest.skip("No SD/MMC/eMMC controller available")
+
+    if not devices:
+        pytest.skip("No devices detected")
+
+    part_detect = 0
+    fs = "fat"
+
+    # Number of files to be written/read in MMC card
+    num_files = 100
+
+    for x in range(0, controllers):
+        if devices[x]["detected"] == "yes":
+            u_boot_console.run_command("mmc dev %d" % x)
+            try:
+                partitions = devices[x][fs]
+            except:
+                print("No %s table on this device" % fs.upper())
+                continue
+
+            for part in partitions:
+                part_detect = 1
+                addr = u_boot_utils.find_ram_base(u_boot_console)
+                count_f = 0
+                addr_l = []
+                size_l = []
+                file_l = []
+                crc32_l = []
+                offset_l = []
+                addr_l.append(addr)
+
+                while count_f < num_files:
+                    size_l.append(random.randint(4, 1 * 1024 * 1024))
+
+                    # CRC32 count
+                    output = u_boot_console.run_command(
+                        "crc32 %x %x" % (addr_l[count_f], size_l[count_f])
+                    )
+                    m = re.search("==> (.+?)", output)
+                    if not m:
+                        pytest.fail("CRC32 failed")
+                    crc32_l.append(m.group(1))
+
+                    # Write operation
+                    file_l.append("%s_%d_%d" % ("uboot_test", count_f, size_l[count_f]))
+                    output = u_boot_console.run_command(
+                        "%swrite mmc %d:%s %x %s %x"
+                        % (
+                            fs,
+                            x,
+                            part,
+                            addr_l[count_f],
+                            file_l[count_f],
+                            size_l[count_f],
+                        )
+                    )
+                    assert "Unable to write" not in output
+                    assert "Error" not in output
+                    assert "overflow" not in output
+                    expected_text = "%d bytes written" % size_l[count_f]
+                    assert expected_text in output
+
+                    addr_l.append(addr_l[count_f] + size_l[count_f] + 1048576)
+                    count_f += 1
+
+                count_f = 0
+                while count_f < num_files:
+                    alignment = int(
+                        u_boot_console.config.buildconfig.get(
+                            "config_sys_cacheline_size", 128
+                        )
+                    )
+                    offset_l.append(random.randrange(alignment, 1024, alignment))
+
+                    # Read operation
+                    output = u_boot_console.run_command(
+                        "%sload mmc %d:%s %x %s"
+                        % (
+                            fs,
+                            x,
+                            part,
+                            addr_l[count_f] + offset_l[count_f],
+                            file_l[count_f],
+                        )
+                    )
+                    assert "Invalid FAT entry" not in output
+                    assert "Unable to read file" not in output
+                    assert "Misaligned buffer address" not in output
+                    expected_text = "%d bytes read" % size_l[count_f]
+                    assert expected_text in output
+
+                    output = u_boot_console.run_command(
+                        "crc32 %x $filesize" % (addr_l[count_f] + offset_l[count_f])
+                    )
+                    assert crc32_l[count_f] in output
+
+                    count_f += 1
+
+    if not part_detect:
+        pytest.skip("No %s partition detected" % fs.upper())
