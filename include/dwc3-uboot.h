@@ -39,6 +39,7 @@ struct dwc3_device {
 	unsigned dis_u2_freeclk_exists_quirk;
 	unsigned tx_de_emphasis_quirk;
 	unsigned tx_de_emphasis;
+	unsigned ulpi_ext_vbus_drv;
 	int index;
 };
 
