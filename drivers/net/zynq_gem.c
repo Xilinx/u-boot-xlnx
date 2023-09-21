@@ -383,7 +383,7 @@ static u32 gem_mdc_clk_div(struct zynq_gem_priv *priv)
 
 static int zynq_gem_init(struct udevice *dev)
 {
-	u32 i, nwconfig;
+	u32 i, nwconfig, nwcfg;
 	int ret;
 	unsigned long clk_rate = 0;
 	struct zynq_gem_priv *priv = dev_get_priv(dev);
@@ -489,8 +489,7 @@ static int zynq_gem_init(struct udevice *dev)
 		return -1;
 	}
 
-	nwconfig = gem_mdc_clk_div(priv);
-	nwconfig |= ZYNQ_GEM_NWCFG_INIT;
+	nwconfig = ZYNQ_GEM_NWCFG_INIT;
 
 	/*
 	 * Set SGMII enable PCS selection only if internal PCS/PMA
@@ -504,19 +503,21 @@ static int zynq_gem_init(struct udevice *dev)
 
 	switch (priv->phydev->speed) {
 	case SPEED_1000:
-		writel(nwconfig | ZYNQ_GEM_NWCFG_SPEED1000,
-		       &regs->nwcfg);
+		nwconfig |= ZYNQ_GEM_NWCFG_SPEED1000;
 		clk_rate = ZYNQ_GEM_FREQUENCY_1000;
 		break;
 	case SPEED_100:
-		writel(nwconfig | ZYNQ_GEM_NWCFG_SPEED100,
-		       &regs->nwcfg);
+		nwconfig |= ZYNQ_GEM_NWCFG_SPEED100;
 		clk_rate = ZYNQ_GEM_FREQUENCY_100;
 		break;
 	case SPEED_10:
 		clk_rate = ZYNQ_GEM_FREQUENCY_10;
 		break;
 	}
+	nwcfg = readl(&regs->nwcfg);
+	nwcfg |= nwconfig;
+	if (nwcfg)
+		writel(nwcfg, &regs->nwcfg);
 
 #ifdef CONFIG_ARM64
 	if (priv->interface == PHY_INTERFACE_MODE_SGMII &&
@@ -776,7 +777,8 @@ static int zynq_gem_probe(struct udevice *dev)
 {
 	void *bd_space;
 	struct zynq_gem_priv *priv = dev_get_priv(dev);
-	int ret;
+	struct zynq_gem_regs *regs = priv->iobase;
+	int ret, val;
 	struct phy phy;
 
 	if (priv->interface == PHY_INTERFACE_MODE_SGMII) {
@@ -855,6 +857,10 @@ static int zynq_gem_probe(struct udevice *dev)
 
 	if (IS_ENABLED(CONFIG_DM_ETH_PHY))
 		eth_phy_set_mdio_bus(dev, priv->bus);
+
+	val = gem_mdc_clk_div(priv);
+	if (val)
+		writel(val, &regs->nwcfg);
 
 	ret = zynq_phy_init(dev);
 	if (ret)
