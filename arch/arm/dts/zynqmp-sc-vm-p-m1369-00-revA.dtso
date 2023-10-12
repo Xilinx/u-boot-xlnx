@@ -16,6 +16,32 @@
 	compatible = "xlnx,zynqmp-sc-vm-p-m1369-revA",
 		     "xlnx,zynqmp-sc-vm-p-m1369", "xlnx,zynqmp";
 
+	sys_clk_0 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&qsfp56g_0_clk 0>;
+	};
+	sys_clk_1 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&qsfp56g_1_clk 0>;
+	};
+	sys_clk_2 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&ch2_lpddr5_refclk 0>;
+	};
+	sys_clk_3 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&ddr5_dimm1_refclk 0>;
+	};
+	sys_clk_4 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&ps_refclk 0>;
+	};
+
 	ina226-u19 {
 		compatible = "iio-hwmon";
 		io-channels = <&vcc_soc_ina 0>, <&vcc_soc_ina 1>, <&vcc_soc_ina 2>;
