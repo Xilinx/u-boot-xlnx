@@ -385,10 +385,8 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-sck-kr-g-revA.dtbo		\
 	zynqmp-sck-kd-g-revA.dtbo		\
 	zynqmp-sck-kr-g-revB.dtbo		\
-	zynqmp-sck-kv-g-dp.dtbo			\
 	zynqmp-sck-kv-g-revA.dtbo		\
 	zynqmp-sck-kv-g-revB.dtbo		\
-	zynqmp-sck-kv-g-revA-pl.dtbo		\
 	zynqmp-topic-miamimp-xilinx-xdp-v1r1.dtb	\
 	zynqmp-vpk120-revA.dtb			\
 	zynqmp-vp-x-a2785-00-revA.dtb		\
