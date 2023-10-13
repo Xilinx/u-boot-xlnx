@@ -453,9 +453,6 @@ static int xhci_configure_endpoints(struct usb_device *udev, bool ctx_change)
 	if (!event)
 		return -ETIMEDOUT;
 
-	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags))
-		!= udev->slot_id);
-
 	switch (GET_COMP_CODE(le32_to_cpu(event->event_cmd.status))) {
 	case COMP_SUCCESS:
 		debug("Successful %s command\n",
@@ -686,8 +683,6 @@ static int xhci_address_device(struct usb_device *udev, int root_portnr)
 	if (!event)
 		return -ETIMEDOUT;
 
-	BUG_ON(TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags)) != slot_id);
-
 	switch (GET_COMP_CODE(le32_to_cpu(event->event_cmd.status))) {
 	case COMP_CTX_STATE:
 	case COMP_EBADSLT:
@@ -763,9 +758,6 @@ static int _xhci_alloc_device(struct usb_device *udev)
 	event = xhci_wait_for_event(ctrl, TRB_COMPLETION);
 	if (!event)
 		return -ETIMEDOUT;
-
-	BUG_ON(GET_COMP_CODE(le32_to_cpu(event->event_cmd.status))
-		!= COMP_SUCCESS);
 
 	udev->slot_id = TRB_TO_SLOT_ID(le32_to_cpu(event->event_cmd.flags));
 
@@ -1367,7 +1359,6 @@ static int xhci_update_hub_device(struct udevice *dev, struct usb_device *udev)
 		return 0;
 
 	virt_dev = ctrl->devs[slot_id];
-	BUG_ON(!virt_dev);
 
 	out_ctx = virt_dev->out_ctx;
 	in_ctx = virt_dev->in_ctx;
