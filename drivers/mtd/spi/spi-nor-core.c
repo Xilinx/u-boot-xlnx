@@ -4590,6 +4590,8 @@ static int mx_lock_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len, bool lo
 	if (cr < 0)
 		return cr;
 
+	log_debug("SPI Protection: %s\n", (cr & CR_TB_MX) ? "bottom" : "top");
+
 	/* CR_TB is OTP, so we can't use 'top' protection if that is already set. */
 	can_be_top = !(cr & CR_TB_MX);
 	can_be_bottom = true;
@@ -4948,8 +4950,7 @@ static int issi_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	}
 
 	fr = spi_nor_read_fr(nor);
-	if (fr & FR_TB)
-		dev_info(nor->dev, "TB OTP: BOTTOM PROTECTION IS SET BY DEFAULT..\n");
+	log_debug("SPI Protection: %s\n", (fr & FR_TB) ? "bottom" : "top");
 
 	ret = spi_nor_select_zone(nor, ofs, len, status_old, &use_top, 1);
 	/* Older protected blocks include the new requested block's */
@@ -5248,6 +5249,8 @@ static int giga_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 			"SR is write protected, can't update BP bits...\n");
 		return -EINVAL;
 	}
+
+	log_debug("SPI Protection: %s\n", (status_old & SR_TB_GIGA) ? "bottom" : "top");
 
 	ret = giga_nor_select_zone(nor, ofs, len, status_old, &use_top, 1);
 	/* Older protected blocks include the new requested block's */
@@ -5599,6 +5602,8 @@ static int spansion_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	cr = spansion_read_cr(nor);
 	if (cr < 0)
 		return cr;
+
+	log_debug("SPI Protection: %s\n", (cr & CR_TB_SPAN) ? "bottom" : "top");
 
 	/* CR_TB is OTP, so we can't use 'top' protection if that is already set. */
 	can_be_top = !(cr & CR_TB_SPAN);
