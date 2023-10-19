@@ -11,7 +11,7 @@
 	model = "ZynqMP MINI QSPI STACKED";
 };
 
-&qspi {
-	is-dual = <0>;
-	is-stacked = <1>;
+&flash0 {
+	reg = <0>, <1>;
+	stacked-memories = /bits/ 64 <0x10000000 0x10000000>; /* 256MB */
 };

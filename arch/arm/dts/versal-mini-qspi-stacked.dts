@@ -11,11 +11,8 @@
 	model = "Xilinx Versal MINI QSPI STACKED";
 };
 
-&qspi {
-	is-dual = <0>;
-	is-stacked = <1>;
-};
-
 &flash0 {
+	reg = <0>, <1>;
+	stacked-memories = /bits/ 64 <0x8000000 0x8000000>; /* 128MB */
 	spi-rx-bus-width = <4>;
 };

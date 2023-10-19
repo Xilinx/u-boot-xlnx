@@ -11,10 +11,8 @@
 	model = "Zynq CSE QSPI PARALLEL Board";
 };
 
-&qspi {
-	is-dual = <1>;
-};
-
 &flash0 {
+	reg = <0>, <1>;
+	parallel-memories = /bits/ 64 <0x1000000 0x1000000>; /* 16MB */
 	spi-rx-bus-width = <4>;
 };

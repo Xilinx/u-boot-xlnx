@@ -11,10 +11,8 @@
 	model = "Xilinx Versal MINI QSPI PARALLEL";
 };
 
-&qspi {
-	is-dual = <1>;
-};
-
 &flash0 {
+	reg = <0>, <1>;
+	parallel-memories = /bits/ 64 <0x8000000 0x8000000>; /* 128MB */
 	spi-rx-bus-width = <4>;
 };

@@ -11,11 +11,8 @@
 	model = "Zynq CSE QSPI X2 STACKED Board";
 };
 
-&qspi {
-	is-dual = <0>;
-	is-stacked = <1>;
-};
-
 &flash0 {
+	reg = <0>, <1>;
+	stacked-memories = /bits/ 64 <0x1000000 0x1000000>; /* 16MB */
 	spi-rx-bus-width = <2>;
 };
