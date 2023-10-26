@@ -203,10 +203,8 @@ static int cadence_spi_set_speed(struct udevice *bus, uint hz)
 static int cadence_spi_child_pre_probe(struct udevice *bus)
 {
 	struct spi_slave *slave = dev_get_parent_priv(bus);
-	struct cadence_spi_priv *priv = dev_get_priv(bus->parent);
 
 	slave->bytemode = SPI_4BYTE_MODE;
-	slave->option = priv->is_dual;
 
 	return 0;
 }
@@ -225,7 +223,6 @@ static int cadence_spi_probe(struct udevice *bus)
 
 	priv->regbase		= plat->regbase;
 	priv->ahbbase		= plat->ahbbase;
-	priv->is_dual		= plat->is_dual;
 	priv->is_dma		= plat->is_dma;
 	priv->is_decoded_cs	= plat->is_decoded_cs;
 	priv->fifo_depth	= plat->fifo_depth;
@@ -782,11 +779,6 @@ static int cadence_spi_of_to_plat(struct udevice *bus)
 	/* Use 500 KHz as a suitable default */
 	plat->max_hz = ofnode_read_u32_default(subnode, "spi-max-frequency",
 					       500000);
-
-	if (dev_read_u32_default(bus, "is-stacked", -1) == 1)
-		plat->is_dual = CQSPI_DUAL_STACKED_FLASH;
-	else
-		plat->is_dual = CQSPI_SINGLE_FLASH;
 
 	/* Read other parameters from DT */
 	plat->page_size = ofnode_read_u32_default(subnode, "page-size", 256);
