@@ -11,6 +11,10 @@
 	model = "Zynq CSE QSPI X1 STACKED Board";
 };
 
+&qspi {
+	num-cs = <2>;
+};
+
 &flash0 {
 	reg = <0>, <1>;
 	stacked-memories = /bits/ 64 <0x1000000 0x1000000>; /* 16MB */
