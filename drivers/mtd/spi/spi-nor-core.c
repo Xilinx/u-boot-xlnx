@@ -4933,6 +4933,9 @@ static int spi_nor_select_zone(struct spi_nor *nor, loff_t ofs, uint64_t len,
  */
 static int issi_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
+	u32 sector_size;
+	u16 n_sectors;
+	unsigned int bp_slots, bp_slots_needed;
 	int status_old, status_new, blk_prot, fr, shift;
 	loff_t lock_len;
 	u8 pow, ret;
@@ -4963,13 +4966,17 @@ static int issi_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	else
 		lock_len = ofs + len;
 
-	pow = order_base_2(lock_len);
-	blk_prot = mask & (((pow + 1) & 0xf) << shift);
-	if (lock_len <= 0) {
-		dev_err(nor->dev, "invalid Length to protect");
-		return -EINVAL;
-	}
+	sector_size = nor->sector_size;
+	n_sectors = (nor->size) / sector_size;
 
+	bp_slots = (1 << hweight8(mask)) - 2;
+	bp_slots_needed = ilog2(n_sectors);
+
+	if (bp_slots_needed > bp_slots)
+		sector_size <<= (bp_slots_needed - bp_slots);
+
+	pow = ilog2(lock_len) - ilog2(sector_size) + 1;
+	blk_prot = pow << shift;
 	status_new = status_old | blk_prot;
 	if (status_old == status_new)
 		return 0;
