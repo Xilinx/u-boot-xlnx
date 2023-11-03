@@ -5898,7 +5898,7 @@ int spi_nor_scan(struct spi_nor *nor)
 #endif
 
 #if defined(CONFIG_SPI_FLASH_STMICRO)
-	if (JEDEC_MFR(info) == SNOR_MFR_ST) {
+	if (JEDEC_MFR(info) == SNOR_MFR_ST || JEDEC_MFR(info) == SNOR_MFR_MICRON) {
 		nor->flash_lock = micron_flash_lock;
 		nor->flash_unlock = micron_flash_unlock;
 		nor->flash_is_unlocked = micron_is_unlocked;
