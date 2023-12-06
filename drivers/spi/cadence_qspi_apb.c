@@ -31,6 +31,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
+#include <linux/iopoll.h>
 #include <wait_bit.h>
 #include <spi.h>
 #include <spi-mem.h>
@@ -856,7 +857,7 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 	const u8 *bb_txbuf = txbuf;
 	void *bounce_buf = NULL;
 	unsigned int write_bytes;
-	int ret;
+	int ret, cr;
 
 	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && (n_tx % 2) != 0)
 		n_tx++;
@@ -874,8 +875,14 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 		bb_txbuf = bounce_buf;
 	}
 
-	/* Configure the indirect read transfer bytes */
+	/* Configure the indirect write transfer bytes */
 	writel(n_tx, priv->regbase + CQSPI_REG_INDIRECTWRBYTES);
+
+	/* Clear all interrupts */
+	writel(CQSPI_IRQ_STATUS_MASK, priv->regbase + CQSPI_REG_IRQSTATUS);
+
+	/* Enable interrupt for corresponding interrupt status register bit's */
+	writel(CQSPI_IRQ_MASK_WR, priv->regbase + CQSPI_REG_IRQMASK);
 
 	/* Start the indirect write transfer */
 	writel(CQSPI_REG_INDIRECTWR_START,
@@ -895,9 +902,10 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 				bb_txbuf + rounddown(write_bytes, 4),
 				write_bytes % 4);
 
-		ret = wait_for_bit_le32(priv->regbase + CQSPI_REG_SDRAMLEVEL,
-					CQSPI_REG_SDRAMLEVEL_WR_MASK <<
-					CQSPI_REG_SDRAMLEVEL_WR_LSB, 0, 10, 0);
+		/* Wait up to Indirect Operation Complete bit to set */
+		ret = readl_poll_timeout(priv->regbase + CQSPI_REG_IRQSTATUS, cr,
+					 cr & CQSPI_REG_IRQ_IND_COMP, 10);
+
 		if (ret) {
 			printf("Indirect write timed out (%i)\n", ret);
 			goto failwr;
@@ -914,6 +922,9 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 		printf("Indirect write completion error (%i)\n", ret);
 		goto failwr;
 	}
+
+	/* Disable interrupt. */
+	writel(0, priv->regbase + CQSPI_REG_IRQMASK);
 
 	/* Clear indirect completion status */
 	writel(CQSPI_REG_INDIRECTWR_DONE,
@@ -932,6 +943,9 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 	return 0;
 
 failwr:
+	/* Disable interrupt. */
+	writel(0, priv->regbase + CQSPI_REG_IRQMASK);
+
 	/* Cancel the indirect write */
 	writel(CQSPI_REG_INDIRECTWR_CANCEL,
 	       priv->regbase + CQSPI_REG_INDIRECTWR);
