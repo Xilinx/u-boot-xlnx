@@ -1078,7 +1078,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
 		/* Update Extended Address Register */
-			ret = write_bar(nor, addr);
+			ret = write_bar(nor, offset);
 			if (ret < 0)
 				goto erase_err;
 #endif
@@ -1092,7 +1092,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
 			ret = spi_nor_erase_chip(nor);
 		} else {
-			ret = spi_nor_erase_sector(nor, addr);
+			ret = spi_nor_erase_sector(nor, offset);
 		}
 		if (ret < 0)
 			goto erase_err;
