@@ -212,6 +212,13 @@ config SPI_FLASH_MT35XU
 	 because the fixup hooks for this flash add extra size overhead. Boards
 	 that don't use the flash can disable this to save space.
 
+config SPI_FLASH_DTR_ENABLE
+	bool "Enable Flash DTR support"
+	help
+	  Select this config to enable DTR mode by spi-nor framework.
+	  This config provides an option to explicitly enable/disable the DTR
+	  support even though the flash id flags specify flash supports DTR mode.
+
 config SPI_FLASH_SST
 	bool "SST SPI flash support"
 	help
