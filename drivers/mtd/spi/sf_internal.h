@@ -70,6 +70,7 @@ struct flash_info {
 #define SPI_NOR_OCTAL_READ	BIT(16)	/* Flash supports Octal Read */
 #define SPI_NOR_OCTAL_DTR_READ	BIT(17)	/* Flash supports Octal DTR Read */
 #define SPI_NOR_OCTAL_DTR_PP	BIT(18) /* Flash supports Octal DTR page program */
+#define SPI_NOR_MULTI_DIE	BIT(19) /* Flash has multi dies & need split reads*/
 };
 
 extern const struct flash_info spi_nor_ids[];
