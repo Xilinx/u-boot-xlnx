@@ -4601,6 +4601,257 @@ static int micron_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	return micron_is_unlocked_sr(nor, ofs, len, status);
 }
 #endif /* CONFIG_SPI_FLASH_STMICRO */
+
+#if defined(CONFIG_SPI_FLASH_MACRONIX)
+/**
+ * mx_write_sr_cr() - write status and configuration register
+ * @nor: pointer to a 'struct spi_nor'
+ * @sr_cr: pointer status and configuration register
+ *
+ * Write status Register and configuration register with 2 bytes
+ * The first byte will be written to the status register, while the
+ * second byte will be written to the configuration register.
+ *
+ * Return: 0 on success, -errno if error occurred.
+ */
+static int mx_write_sr_cr(struct spi_nor *nor, u8 *sr_cr)
+{
+	int ret;
+
+	write_enable(nor);
+
+	ret = nor->write_reg(nor, SPINOR_OP_WRSR, sr_cr, 2);
+	if (ret < 0) {
+		dev_dbg(nor->dev,
+			"error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_dbg(nor->dev,
+			"timeout while writing configuration register\n");
+		return ret;
+	}
+
+	ret = write_disable(nor);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int mx_read_cr(struct spi_nor *nor)
+{
+	int ret;
+	u8 val;
+
+	ret = nor->read_reg(nor, SPINOR_OP_RDCR_MX, &val, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error %d reading CR\n", ret);
+		return ret;
+	}
+
+	return val;
+}
+
+/**
+ * mx_get_locked_range() - get the locked range
+ * @nor: pointer to a 'struct spi_nor'
+ * @sr:  status register
+ * @cr:  configuration register
+ * @ofs: flash offset
+ * @len: length to be locked
+ *
+ * Macronix flashes do not work by locking some 1/2^k fraction of the
+ * flash - instead, the BP{0,1,2,3} bits define a number of protected
+ * 64K blocks.
+ */
+static void mx_get_locked_range(struct spi_nor *nor, u8 sr, u8 cr,
+				loff_t *ofs, uint64_t *len)
+{
+	struct mtd_info *mtd = &nor->mtd;
+	int pow, shift;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_MX;
+
+	shift = ffs(mask) - 1;
+
+	pow = ((sr & mask) >> shift) - 1;
+	if (pow < 0) {
+		/* No protection */
+		*ofs = 0;
+		*len = 0;
+	} else {
+		*len = (uint64_t)SZ_64K << pow;
+		if (*len > mtd->size)
+			*len = mtd->size;
+		if (cr & CR_TB_MX)
+			*ofs = 0;
+		else
+			*ofs = mtd->size - *len;
+	}
+}
+
+/**
+ * mx_check_lock_status() - check the locked status
+ * @nor: pointer to a 'struct spi_nor'
+ * @ofs: flash offset
+ * @len: length to be locked
+ * @sr:  status register
+ * @cr:  configuration register
+ * @locked: locked:1 unlocked:0 value
+ *
+ * Return: 1 if the entire region is locked (if @locked is true) or unlocked (if
+ * @locked is false); 0 otherwise.
+ */
+static int mx_check_lock_status(struct spi_nor *nor, loff_t ofs, u64 len,
+				u8 sr, u8 cr, bool locked)
+{
+	loff_t lock_offs;
+	u64 lock_len;
+
+	if (!len)
+		return 1;
+
+	mx_get_locked_range(nor, sr, cr, &lock_offs, &lock_len);
+
+	if (locked)
+		/* Requested range is a sub-range of locked range */
+		return (ofs + len <= lock_offs + lock_len) && (ofs >= lock_offs);
+
+	/* Requested range does not overlap with locked range */
+	return (ofs >= lock_offs + lock_len) || (ofs + len <= lock_offs);
+}
+
+static int mx_lock_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len, bool lock)
+{
+	struct mtd_info *mtd = &nor->mtd;
+	int sr, cr, ret, val;
+	loff_t lock_len, blocks;
+	bool can_be_top, can_be_bottom, use_top;
+	u8 sr_cr[2], shift;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_MX;
+
+	shift = ffs(mask) - 1;
+
+	sr = read_sr(nor);
+	if (sr < 0)
+		return sr;
+
+	cr = mx_read_cr(nor);
+	if (cr < 0)
+		return cr;
+
+	log_debug("SPI Protection: %s\n", (cr & CR_TB_MX) ? "bottom" : "top");
+
+	/* CR_TB is OTP, so we can't use 'top' protection if that is already set. */
+	can_be_top = !(cr & CR_TB_MX);
+	can_be_bottom = true;
+
+	/* If the whole range is already locked (unlocked), we don't need to do anything */
+	if (mx_check_lock_status(nor, ofs, len, sr, cr, lock))
+		return 0;
+
+	/* To use 'bottom' ('top') protection, everything below us must be locked (unlocked). */
+	if (!mx_check_lock_status(nor, 0, ofs, sr, cr, lock)) {
+		if (lock)
+			can_be_bottom = false;
+		else
+			can_be_top = false;
+	}
+
+	/* To use 'top' ('bottom') protection, everything above us must be locked (unlocked). */
+	if (!mx_check_lock_status(nor, ofs + len, mtd->size - (ofs + len), sr, cr, lock)) {
+		if (lock)
+			can_be_top = false;
+		else
+			can_be_bottom = false;
+	}
+
+	if (!can_be_bottom && !can_be_top)
+		return -EINVAL;
+
+	/* Prefer top, if both are valid */
+	use_top = can_be_top;
+
+	/* lock_len: length of region that should end up locked */
+	if (lock)
+		lock_len = use_top ? mtd->size - ofs : ofs + len;
+	else
+		lock_len = use_top ? mtd->size - (ofs + len) : ofs;
+
+	/* lock_len must be a power-of-2 (2^0 .. 2^14) multiple of 64K, or 0 */
+	if (lock_len & (SZ_64K - 1))
+		return -EINVAL;
+
+	blocks = lock_len / SZ_64K;
+	if ((blocks != 0 && !is_power_of_2(blocks)) || blocks > 1 << 14)
+		return -EINVAL;
+
+	/* Compute new values of sr/cr */
+	val = blocks ? ilog2(blocks) + 1 : 0;
+	sr_cr[0] = sr & ~mask;
+	sr_cr[0] |= val << shift;
+	/*
+	 * Disallow further writes if WP pin is asserted, but remove
+	 * that bit if we unlocked the whole chip.
+	 */
+	if (lock_len)
+		sr_cr[0] |= SR_SRWD;
+	else
+		sr_cr[0] &= ~SR_SRWD;
+
+	sr_cr[1] = cr | (use_top ? 0 : CR_TB_MX);
+
+	/* Don't bother if they're the same */
+	if (sr == sr_cr[0] && cr == sr_cr[1])
+		return 0;
+
+	ret = mx_write_sr_cr(nor, sr_cr);
+	if (ret)
+		return ret;
+
+	/* Check that the bits got written as expected */
+	sr = read_sr(nor);
+	if (sr < 0)
+		return sr;
+
+	cr = mx_read_cr(nor);
+	if (cr < 0)
+		return cr;
+
+	if ((sr & mask) != (sr_cr[0] & mask) ||
+	    (cr & CR_TB_MX) != (sr_cr[1] & CR_TB_MX))
+		return -EIO;
+
+	return 0;
+}
+
+static int mx_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
+{
+	return mx_lock_unlock(nor, ofs, len, true);
+}
+
+static int mx_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
+{
+	return mx_lock_unlock(nor, ofs, len, false);
+}
+
+static int mx_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
+{
+	int sr, cr;
+
+	sr = read_sr(nor);
+	if (sr < 0)
+		return sr;
+
+	cr = mx_read_cr(nor);
+	if (cr < 0)
+		return cr;
+
+	return mx_check_lock_status(nor, ofs, len, sr, cr, false);
+}
+#endif /* CONFIG_SPI_FLASH_MACRONIX */
 #endif /* CONFIG_SPI_FLASH_LOCK */
 
 #ifdef CONFIG_SPI_FLASH_SOFT_RESET
@@ -4818,6 +5069,14 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_lock = micron_flash_lock;
 		nor->flash_unlock = micron_flash_unlock;
 		nor->flash_is_unlocked = micron_is_unlocked;
+	}
+#endif
+
+#if defined(CONFIG_SPI_FLASH_MACRONIX)
+	if (JEDEC_MFR(info) == SNOR_MFR_MACRONIX) {
+		nor->flash_lock = mx_lock;
+		nor->flash_unlock = mx_unlock;
+		nor->flash_is_unlocked = mx_is_unlocked;
 	}
 #endif
 
