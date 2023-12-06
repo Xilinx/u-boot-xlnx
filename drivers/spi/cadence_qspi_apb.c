@@ -380,6 +380,10 @@ void cadence_qspi_apb_controller_init(struct cadence_spi_priv *priv)
 
 	writel(reg, priv->regbase + CQSPI_REG_CONFIG);
 
+	if (IS_ENABLED(CONFIG_ARCH_VERSAL) &&
+	    priv->ref_clk_hz >= TAP_GRAN_SEL_MIN_FREQ)
+		writel(1, priv->regbase + CQSPI_REG_ECO);
+
 	cadence_qspi_apb_controller_enable(priv->regbase);
 }
 
