@@ -4271,8 +4271,9 @@ static int spi_nor_octal_dtr_enable(struct spi_nor *nor)
 	      nor->write_proto == SNOR_PROTO_8_8_8_DTR))
 		return 0;
 
-	if (!(nor->flags & SNOR_F_IO_MODE_EN_VOLATILE))
-		return 0;
+	if (CONFIG_IS_ENABLED(SPI_FLASH_SFDP_SUPPORT))
+		if (!(nor->flags & SNOR_F_IO_MODE_EN_VOLATILE))
+			return 0;
 
 	ret = nor->octal_dtr_enable(nor);
 	if (ret)
