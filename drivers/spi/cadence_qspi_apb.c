@@ -599,9 +599,6 @@ int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 	void *reg_base = priv->regbase;
 	u8 opcode;
 
-	reg = cadence_qspi_calc_rdreg(priv);
-	writel(reg, reg_base + CQSPI_REG_RD_INSTR);
-
 	if (priv->dtr)
 		opcode = op->cmd.opcode >> 8;
 	else
