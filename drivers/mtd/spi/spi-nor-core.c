@@ -45,6 +45,12 @@
 
 #define DEFAULT_READY_WAIT_JIFFIES		(40UL * HZ)
 
+/*
+ * For full-chip erase, calibrated to a 2MB flash (M25P16); should be scaled up
+ * for larger flash
+ */
+#define CHIP_ERASE_2MB_READY_WAIT_JIFFIES      (40UL * HZ)
+
 #define ROUND_UP_TO(x, y)	(((x) + (y) - 1) / (y) * (y))
 
 struct sfdp_parameter_header {
@@ -859,6 +865,20 @@ static int spi_nor_wait_till_ready(struct spi_nor *nor)
 						    DEFAULT_READY_WAIT_JIFFIES);
 }
 
+static int spi_nor_erase_chip_wait_till_ready(struct spi_nor *nor, unsigned long size)
+{
+	/*
+	 * Scale the timeout linearly with the size of the flash, with
+	 * a minimum calibrated to an old 2MB flash. We could try to
+	 * pull these from CFI/SFDP, but these values should be good
+	 * enough for now.
+	 */
+	unsigned long timeout = max(CHIP_ERASE_2MB_READY_WAIT_JIFFIES,
+				    CHIP_ERASE_2MB_READY_WAIT_JIFFIES *
+				    (unsigned long)(size / SZ_2M));
+	return spi_nor_wait_till_ready_with_timeout(nor, timeout);
+}
+
 #ifdef CONFIG_SPI_FLASH_BAR
 /*
  * This "clean_bar" is necessary in a situation when one was accessing
@@ -1036,7 +1056,7 @@ static int spi_nor_erase_sector(struct spi_nor *nor, u32 addr)
 static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
-	u32 addr, len, rem, offset;
+	u32 addr, len, rem, offset, max_size;
 	bool addr_known = false;
 	int ret, err;
 
@@ -1051,6 +1071,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	addr = instr->addr;
 	len = instr->len;
+	max_size = instr->len;
 
 	instr->state = MTD_ERASING;
 	addr_known = true;
@@ -1100,7 +1121,13 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		addr += ret;
 		len -= ret;
 
-		ret = spi_nor_wait_till_ready(nor);
+		if (max_size == mtd->size &&
+		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
+			ret = spi_nor_erase_chip_wait_till_ready(nor, mtd->size);
+		} else {
+			ret = spi_nor_wait_till_ready(nor);
+		}
+
 		if (ret)
 			goto erase_err;
 	}
