@@ -11,7 +11,7 @@ packaging==19.2
 pbr==5.4.3
 pluggy==0.13.0
 py==1.10.0
-pycryptodomex==3.9.8
+pycryptodomex==3.19.1
 pyelftools==0.27
 pygit2==1.9.2
 pyparsing==2.4.2
