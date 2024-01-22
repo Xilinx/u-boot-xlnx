@@ -714,7 +714,7 @@ efi_status_t efi_free_pool(void *buffer)
 	/* Check that this memory was allocated by efi_allocate_pool() */
 	if (((uintptr_t)alloc & EFI_PAGE_MASK) ||
 	    alloc->checksum != checksum(alloc)) {
-		printf("%s: illegal free 0x%p\n", __func__, buffer);
+		debug("%s: illegal free 0x%p\n", __func__, buffer);
 		return EFI_INVALID_PARAMETER;
 	}
 	/* Avoid double free */
