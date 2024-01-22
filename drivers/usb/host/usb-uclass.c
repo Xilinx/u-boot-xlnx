@@ -9,6 +9,7 @@
 #define LOG_CATEGORY UCLASS_USB
 
 #include <common.h>
+#include <bootdev.h>
 #include <dm.h>
 #include <errno.h>
 #include <log.h>
@@ -18,7 +19,6 @@
 #include <dm/lists.h>
 #include <dm/uclass-internal.h>
 
-extern bool usb_started; /* flag for the started/stopped USB status */
 static bool asynch_allowed;
 
 struct usb_uclass_priv {
@@ -209,6 +209,13 @@ int usb_stop(void)
 #ifdef CONFIG_USB_STORAGE
 	usb_stor_reset();
 #endif
+	if (CONFIG_IS_ENABLED(BOOTSTD)) {
+		int ret;
+
+		ret = bootdev_unhunt(UCLASS_USB);
+		if (IS_ENABLED(CONFIG_BOOTSTD_FULL) && ret && ret != -EALREADY)
+			printf("failed to unhunt USB (err=%dE)\n", ret);
+	}
 	uc_priv->companion_device_count = 0;
 	usb_started = 0;
 
@@ -250,6 +257,37 @@ static void remove_inactive_children(struct uclass *uc, struct udevice *bus)
 	}
 }
 
+static int usb_probe_companion(struct udevice *bus)
+{
+	struct udevice *companion_dev;
+	int ret;
+
+	/*
+	 * Enforce optional companion controller is marked as such in order to
+	 * 1st scan the primary controller, before the companion controller
+	 * (ownership is given to companion when low or full speed devices
+	 * have been detected).
+	 */
+	ret = uclass_get_device_by_phandle(UCLASS_USB, bus, "companion", &companion_dev);
+	if (!ret) {
+		struct usb_bus_priv *companion_bus_priv;
+
+		debug("%s is the companion of %s\n", companion_dev->name, bus->name);
+		companion_bus_priv = dev_get_uclass_priv(companion_dev);
+		companion_bus_priv->companion = true;
+	} else if (ret && ret != -ENOENT && ret != -ENODEV) {
+		/*
+		 * Treat everything else than no companion or disabled
+		 * companion as an error. (It may not be enabled on boards
+		 * that have a High-Speed HUB to handle FS and LS traffic).
+		 */
+		printf("Failed to get companion (ret=%d)\n", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 int usb_init(void)
 {
 	int controllers_initialized = 0;
@@ -271,19 +309,23 @@ int usb_init(void)
 		/* init low_level USB */
 		printf("Bus %s: ", bus->name);
 
-#ifdef CONFIG_SANDBOX
 		/*
 		 * For Sandbox, we need scan the device tree each time when we
 		 * start the USB stack, in order to re-create the emulated USB
 		 * devices and bind drivers for them before we actually do the
 		 * driver probe.
+		 *
+		 * For USB onboard HUB, we need to do some non-trivial init
+		 * like enabling a power regulator, before enumeration.
 		 */
-		ret = dm_scan_fdt_dev(bus);
-		if (ret) {
-			printf("Sandbox USB device scan failed (%d)\n", ret);
-			continue;
+		if (IS_ENABLED(CONFIG_SANDBOX) ||
+		    IS_ENABLED(CONFIG_USB_ONBOARD_HUB)) {
+			ret = dm_scan_fdt_dev(bus);
+			if (ret) {
+				printf("USB device scan from fdt failed (%d)", ret);
+				continue;
+			}
 		}
-#endif
 
 		ret = device_probe(bus);
 		if (ret == -ENODEV) {	/* No such device. */
@@ -296,6 +338,11 @@ int usb_init(void)
 			printf("probe failed, error %d\n", ret);
 			continue;
 		}
+
+		ret = usb_probe_companion(bus);
+		if (ret)
+			continue;
+
 		controllers_initialized++;
 		usb_started = true;
 	}
@@ -343,51 +390,8 @@ int usb_init(void)
 	if (controllers_initialized == 0)
 		printf("No working controllers found\n");
 
-	return usb_started ? 0 : -1;
+	return usb_started ? 0 : -ENOENT;
 }
-
-/*
- * TODO(sjg@chromium.org): Remove this legacy function. At present it is needed
- * to support boards which use driver model for USB but not Ethernet, and want
- * to use USB Ethernet.
- *
- * The #if clause is here to ensure that remains the only case.
- */
-#if !defined(CONFIG_DM_ETH) && defined(CONFIG_USB_HOST_ETHER)
-static struct usb_device *find_child_devnum(struct udevice *parent, int devnum)
-{
-	struct usb_device *udev;
-	struct udevice *dev;
-
-	if (!device_active(parent))
-		return NULL;
-	udev = dev_get_parent_priv(parent);
-	if (udev->devnum == devnum)
-		return udev;
-
-	for (device_find_first_child(parent, &dev);
-	     dev;
-	     device_find_next_child(&dev)) {
-		udev = find_child_devnum(dev, devnum);
-		if (udev)
-			return udev;
-	}
-
-	return NULL;
-}
-
-struct usb_device *usb_get_dev_index(struct udevice *bus, int index)
-{
-	struct udevice *dev;
-	int devnum = index + 1; /* Addresses are allocated from 1 on USB */
-
-	device_find_first_child(bus, &dev);
-	if (!dev)
-		return NULL;
-
-	return find_child_devnum(dev, devnum);
-}
-#endif
 
 int usb_setup_ehci_gadget(struct ehci_ctrl **ctlrp)
 {
@@ -602,6 +606,8 @@ static int usb_find_and_bind_driver(struct udevice *parent,
 	if (!str)
 		return -ENOMEM;
 	ret = device_bind_driver(parent, "usb_dev_generic_drv", str, devp);
+	if (!ret)
+		device_set_name_alloced(*devp);
 
 error:
 	debug("%s: No match found: %d\n", __func__, ret);

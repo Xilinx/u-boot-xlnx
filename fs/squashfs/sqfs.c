@@ -87,7 +87,7 @@ static int sqfs_calc_n_blks(__le64 start, __le64 end, u64 *offset)
 	u64 start_, table_size;
 
 	table_size = le64_to_cpu(end) - le64_to_cpu(start);
-	start_ = le64_to_cpu(start) / ctxt.cur_dev->blksz;
+	start_ = lldiv(le64_to_cpu(start), ctxt.cur_dev->blksz);
 	*offset = le64_to_cpu(start) - (start_ * ctxt.cur_dev->blksz);
 
 	return DIV_ROUND_UP(table_size + *offset, ctxt.cur_dev->blksz);
@@ -100,7 +100,7 @@ static int sqfs_calc_n_blks(__le64 start, __le64 end, u64 *offset)
 static int sqfs_frag_lookup(u32 inode_fragment_index,
 			    struct squashfs_fragment_block_entry *e)
 {
-	u64 start, n_blks, src_len, table_offset, start_block;
+	u64 start, end, exp_tbl, n_blks, src_len, table_offset, start_block;
 	unsigned char *metadata_buffer, *metadata, *table;
 	struct squashfs_fragment_block_entry *entries;
 	struct squashfs_super_block *sblk = ctxt.sblk;
@@ -115,11 +115,17 @@ static int sqfs_frag_lookup(u32 inode_fragment_index,
 	if (inode_fragment_index >= get_unaligned_le32(&sblk->fragments))
 		return -EINVAL;
 
-	start = get_unaligned_le64(&sblk->fragment_table_start) /
-		ctxt.cur_dev->blksz;
+	start = get_unaligned_le64(&sblk->fragment_table_start);
+	end = get_unaligned_le64(&sblk->id_table_start);
+	exp_tbl = get_unaligned_le64(&sblk->export_table_start);
+
+	if (exp_tbl > start && exp_tbl < end)
+		end = exp_tbl;
+
 	n_blks = sqfs_calc_n_blks(sblk->fragment_table_start,
-				  sblk->export_table_start,
-				  &table_offset);
+				  cpu_to_le64(end), &table_offset);
+
+	start /= ctxt.cur_dev->blksz;
 
 	/* Allocate a proper sized buffer to store the fragment index table */
 	table = malloc_cache_aligned(n_blks * ctxt.cur_dev->blksz);

@@ -19,6 +19,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
+#include <linux/printk.h>
 #include <phys2bus.h>
 #include <power/regulator.h>
 
@@ -70,7 +71,7 @@ static void sdhci_transfer_pio(struct sdhci_host *host, struct mmc_data *data)
 	}
 }
 
-#if (defined(CONFIG_MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
+#if (CONFIG_IS_ENABLED(MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
 static void sdhci_prepare_dma(struct sdhci_host *host, struct mmc_data *data,
 			      int *is_aligned, int trans_bytes)
 {
@@ -177,7 +178,7 @@ static int sdhci_transfer_data(struct sdhci_host *host, struct mmc_data *data)
 		}
 	} while (!(stat & SDHCI_INT_DATA_END));
 
-#if (defined(CONFIG_MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
+#if (CONFIG_IS_ENABLED(MMC_SDHCI_SDMA) || CONFIG_IS_ENABLED(MMC_SDHCI_ADMA))
 	dma_unmap_single(host->start_addr, data->blocks * data->blocksize,
 			 mmc_get_dma_dir(data));
 #endif
@@ -305,14 +306,19 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		if (stat & SDHCI_INT_ERROR)
 			break;
 
-		if (get_timer(start) >= SDHCI_READ_STATUS_TIMEOUT) {
-			if (host->quirks & SDHCI_QUIRK_BROKEN_R1B) {
+		if (host->quirks & SDHCI_QUIRK_BROKEN_R1B &&
+		    cmd->resp_type & MMC_RSP_BUSY && !data) {
+			unsigned int state =
+				sdhci_readl(host, SDHCI_PRESENT_STATE);
+
+			if (!(state & SDHCI_DAT_ACTIVE))
 				return 0;
-			} else {
-				printf("%s: Timeout for status update!\n",
-				       __func__);
-				return -ETIMEDOUT;
-			}
+		}
+
+		if (get_timer(start) >= SDHCI_READ_STATUS_TIMEOUT) {
+			printf("%s: Timeout for status update: %08x %08x\n",
+			       __func__, stat, mask);
+			return -ETIMEDOUT;
 		}
 	} while ((stat & mask) != mask);
 
@@ -518,6 +524,10 @@ void sdhci_set_uhs_timing(struct sdhci_host *host)
 	reg &= ~SDHCI_CTRL_UHS_MASK;
 
 	switch (mmc->selected_mode) {
+	case UHS_SDR25:
+	case MMC_HS:
+		reg |= SDHCI_CTRL_UHS_SDR25;
+		break;
 	case UHS_SDR50:
 	case MMC_HS_52:
 		reg |= SDHCI_CTRL_UHS_SDR50;
@@ -682,6 +692,7 @@ static int sdhci_set_ios(struct mmc *mmc)
 	if (!no_hispd_bit) {
 		if (mmc->selected_mode == MMC_HS ||
 		    mmc->selected_mode == SD_HS ||
+		    mmc->selected_mode == MMC_HS_52 ||
 		    mmc->selected_mode == MMC_DDR_52 ||
 		    mmc->selected_mode == MMC_HS_200 ||
 		    mmc->selected_mode == MMC_HS_400 ||
@@ -872,7 +883,7 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 #endif
 	debug("%s, caps: 0x%x\n", __func__, caps);
 
-#ifdef CONFIG_MMC_SDHCI_SDMA
+#if CONFIG_IS_ENABLED(MMC_SDHCI_SDMA)
 	if ((caps & SDHCI_CAN_DO_SDMA)) {
 		host->flags |= USE_SDMA;
 	} else {
@@ -882,7 +893,7 @@ int sdhci_setup_cfg(struct mmc_config *cfg, struct sdhci_host *host,
 #endif
 #if CONFIG_IS_ENABLED(MMC_SDHCI_ADMA)
 	if (!(caps & SDHCI_CAN_DO_ADMA2)) {
-		printf("%s: Your controller doesn't support SDMA!!\n",
+		printf("%s: Your controller doesn't support ADMA!!\n",
 		       __func__);
 		return -EINVAL;
 	}

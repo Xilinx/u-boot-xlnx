@@ -13,20 +13,17 @@
 /*
  * Configuration of the external SRAM memory used by U-Boot
  */
-#define CONFIG_SYS_SDRAM_BASE			STM32_DDR_BASE
+#define CFG_SYS_SDRAM_BASE			STM32_DDR_BASE
 
 /*
  * For booting Linux, use the first 256 MB of memory, since this is
  * the maximum mapped by the Linux kernel during initialization.
  */
-#define CONFIG_SYS_BOOTMAPSZ		SZ_256M
+#define CFG_SYS_BOOTMAPSZ		SZ_256M
 
 /* NAND support */
 
 /* Ethernet need */
-#ifdef CONFIG_DWC_ETH_QOS
-#define CONFIG_SERVERIP                 192.168.1.1
-#endif
 
 #define STM32MP_FIP_IMAGE_GUID \
 	EFI_GUID(0x19d5df83, 0x11b0, 0x457b, 0xbe, 0x2c, \
@@ -95,19 +92,6 @@
 		"run distro_bootcmd;" \
 	"fi;\0"
 
-#ifdef CONFIG_FASTBOOT_CMD_OEM_FORMAT
-/* eMMC default partitions for fastboot command: oem format */
-#define STM32MP_PARTS_DEFAULT \
-	"partitions=" \
-	"name=ssbl,size=2M;" \
-	"name=bootfs,size=64MB,bootable;" \
-	"name=vendorfs,size=16M;" \
-	"name=rootfs,size=746M;" \
-	"name=userfs,size=-\0"
-#else
-#define STM32MP_PARTS_DEFAULT
-#endif
-
 #define STM32MP_EXTRA \
 	"env_check=if env info -p -d -q; then env save; fi\0" \
 	"boot_net_usb_start=true\0"
@@ -138,10 +122,9 @@
 	"fdtoverlay_addr_r=" __FDTOVERLAY_ADDR_R "\0" \
 	"ramdisk_addr_r=" __RAMDISK_ADDR_R "\0"
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	STM32MP_MEM_LAYOUT \
 	STM32MP_BOOTCMD \
-	STM32MP_PARTS_DEFAULT \
 	BOOTENV \
 	STM32MP_EXTRA \
 	STM32MP_BOARD_EXTRA_ENV

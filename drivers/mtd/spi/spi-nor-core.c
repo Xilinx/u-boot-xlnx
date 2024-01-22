@@ -21,6 +21,7 @@
 #include <linux/errno.h>
 #include <linux/log2.h>
 #include <linux/math64.h>
+#include <linux/printk.h>
 #include <linux/sizes.h>
 #include <linux/bitfield.h>
 #include <linux/delay.h>
@@ -43,6 +44,12 @@
 #define HZ					CONFIG_SYS_HZ
 
 #define DEFAULT_READY_WAIT_JIFFIES		(40UL * HZ)
+
+/*
+ * For full-chip erase, calibrated to a 2MB flash (M25P16); should be scaled up
+ * for larger flash
+ */
+#define CHIP_ERASE_2MB_READY_WAIT_JIFFIES      (40UL * HZ)
 
 #define ROUND_UP_TO(x, y)	(((x) + (y) - 1) / (y) * (y))
 
@@ -566,11 +573,7 @@ static int read_cr(struct spi_nor *nor)
 #endif
 
 /*
- * Write status register 1 byte. If the flash is parallel (and
- * striped) then the write_reg function will notice that this is
- * a WRSR and MIRROR (instead of STRIPE) the data to the register.
- * So we don't have to worry about that here.
- *
+ * Write status register 1 byte
  * Returns negative if error occurred.
  */
 static int write_sr(struct spi_nor *nor, u8 val)
@@ -700,6 +703,7 @@ static int set_4byte(struct spi_nor *nor, const struct flash_info *info,
 	case SNOR_MFR_MICRON:
 		/* Some Micron need WREN command; all will accept it */
 		need_wren = true;
+		fallthrough;
 	case SNOR_MFR_ISSI:
 	case SNOR_MFR_MACRONIX:
 	case SNOR_MFR_WINBOND:
@@ -861,6 +865,20 @@ static int spi_nor_wait_till_ready(struct spi_nor *nor)
 						    DEFAULT_READY_WAIT_JIFFIES);
 }
 
+static int spi_nor_erase_chip_wait_till_ready(struct spi_nor *nor, unsigned long size)
+{
+	/*
+	 * Scale the timeout linearly with the size of the flash, with
+	 * a minimum calibrated to an old 2MB flash. We could try to
+	 * pull these from CFI/SFDP, but these values should be good
+	 * enough for now.
+	 */
+	unsigned long timeout = max(CHIP_ERASE_2MB_READY_WAIT_JIFFIES,
+				    CHIP_ERASE_2MB_READY_WAIT_JIFFIES *
+				    (unsigned long)(size / SZ_2M));
+	return spi_nor_wait_till_ready_with_timeout(nor, timeout);
+}
+
 #ifdef CONFIG_SPI_FLASH_BAR
 /*
  * This "clean_bar" is necessary in a situation when one was accessing
@@ -916,11 +934,10 @@ static int write_bar(struct spi_nor *nor, u32 offset)
 		return 0;
 	else if (upage_curr == nor->upage_prev && bank_sel == nor->bank_curr)
 		return 0;
-	else
-		nor->upage_prev = upage_curr;
+
+	nor->upage_prev = upage_curr;
 
 	cmd = nor->bank_write_cmd;
-
 	write_enable(nor);
 	ret = nor->write_reg(nor, cmd, &bank_sel, 1);
 	if (ret < 0) {
@@ -979,6 +996,30 @@ static int read_bar(struct spi_nor *nor, const struct flash_info *info)
 }
 #endif
 
+/**
+ * spi_nor_erase_chip() - Erase the entire flash memory.
+ * @nor:	pointer to 'struct spi_nor'.
+ *
+ * Return: 0 on success, -errno otherwise.
+ */
+static int spi_nor_erase_chip(struct spi_nor *nor)
+{
+	struct spi_mem_op op =
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_CHIP_ERASE, 0),
+			   SPI_MEM_OP_NO_ADDR,
+			   SPI_MEM_OP_NO_DUMMY,
+			   SPI_MEM_OP_NO_DATA);
+	int ret;
+
+	spi_nor_setup_op(nor, &op, nor->write_proto);
+
+	ret = spi_mem_exec_op(nor->spi, &op);
+	if (ret)
+		return ret;
+
+	return nor->mtd.size;
+}
+
 /*
  * Initiate the erasure of a single sector. Returns the number of bytes erased
  * on success, a negative error code on error.
@@ -1015,7 +1056,7 @@ static int spi_nor_erase_sector(struct spi_nor *nor, u32 addr)
 static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
-	u32 addr, len, rem, offset;
+	u32 addr, len, rem, offset, max_size;
 	bool addr_known = false;
 	int ret, err;
 
@@ -1030,6 +1071,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	addr = instr->addr;
 	len = instr->len;
+	max_size = instr->len;
 
 	instr->state = MTD_ERASING;
 	addr_known = true;
@@ -1056,9 +1098,9 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		}
 		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
-			/* Update Extended Address Register */
+		/* Update Extended Address Register */
 			ret = write_bar(nor, offset);
-			if (ret)
+			if (ret < 0)
 				goto erase_err;
 #endif
 		}
@@ -1067,14 +1109,25 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		if (ret < 0)
 			goto erase_err;
 
-		ret = spi_nor_erase_sector(nor, offset);
+		if (len == mtd->size &&
+		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
+			ret = spi_nor_erase_chip(nor);
+		} else {
+			ret = spi_nor_erase_sector(nor, offset);
+		}
 		if (ret < 0)
 			goto erase_err;
 
 		addr += ret;
 		len -= ret;
 
-		ret = spi_nor_wait_till_ready(nor);
+		if (max_size == mtd->size &&
+		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
+			ret = spi_nor_erase_chip_wait_till_ready(nor, mtd->size);
+		} else {
+			ret = spi_nor_wait_till_ready(nor);
+		}
+
 		if (ret)
 			goto erase_err;
 	}
@@ -1490,14 +1543,8 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
 	int ret;
 	u32 offset = from;
-	u32 stack_shift = 0;
-	u32 read_len = 0;
-	u32 rem_bank_len = 0;
-	u8 bank;
-	u8 is_ofst_odd = 0;
-	u8 cur_bank;
-	u8 nxt_bank;
-	u32 bank_size;
+	u32 bank_size, stack_shift = 0, read_len = 0, rem_bank_len = 0;
+	u8 bank, cur_bank, nxt_bank, is_ofst_odd = 0;
 
 	dev_dbg(nor->dev, "from 0x%08x, len %zd\n", (u32)from, len);
 
@@ -1901,7 +1948,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 {
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
 	size_t page_offset, page_remain, i;
-	ssize_t ret = -EIO;
+	ssize_t ret;
 	u32 offset;
 
 #ifdef CONFIG_SPI_FLASH_SST
@@ -1995,13 +2042,6 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 
 		*retlen += written;
 		i += written;
-		if (written != page_remain) {
-			dev_err(nor->dev,
-				"While writing %zu bytes written %zd bytes\n",
-				page_remain, written);
-			ret = -EIO;
-			goto write_err;
-		}
 	}
 
 write_err:
@@ -2145,7 +2185,6 @@ static int write_sr_cr(struct spi_nor *nor, u8 *sr_cr)
  *
  * Return: 0 on success, -errno otherwise.
  */
-
 static int winbond_quad_enable(struct spi_nor *nor)
 {
 	int ret;
@@ -2993,10 +3032,12 @@ static int spi_nor_init_params(struct spi_nor *nor,
 			       const struct flash_info *info,
 			       struct spi_nor_flash_parameter *params)
 {
+#if CONFIG_IS_ENABLED(DM_SPI)
 	struct udevice *dev = nor->spi->dev;
 	u64 flash_size[SNOR_FLASH_CNT_MAX] = {0};
 	u32 idx = 0, i = 0;
 	int rc;
+#endif
 
 	/* Set legacy flash parameters as default. */
 	memset(params, 0, sizeof(*params));
@@ -3125,6 +3166,7 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		}
 	}
 
+#if CONFIG_IS_ENABLED(DM_SPI)
 	/*
 	 * The flashes that are connected in stacked mode should be of same make.
 	 * Except the flash size all other properties are identical for all the
@@ -3165,10 +3207,11 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		}
 	}
 
-	if (nor->flags & (SNOR_F_HAS_STACKED | SNOR_F_HAS_PARALLEL))
-		for (idx = 1; idx < SNOR_FLASH_CNT_MAX; idx++)
+	if (nor->flags & (SNOR_F_HAS_STACKED | SNOR_F_HAS_PARALLEL)) {
+		params->size = 0;
+		for (idx = 0; idx < SNOR_FLASH_CNT_MAX; idx++)
 			params->size += flash_size[idx];
-
+	}
 	/*
 	 * In parallel-memories the erase operation is
 	 * performed on both the flashes simultaneously
@@ -3178,7 +3221,7 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		nor->mtd.erasesize <<= 1;
 		params->page_size <<= 1;
 	}
-
+#endif
 	spi_nor_post_sfdp_fixups(nor, params);
 
 	return 0;
@@ -3599,7 +3642,92 @@ static int spi_nor_setup(struct spi_nor *nor, const struct flash_info *info,
 }
 
 #ifdef CONFIG_SPI_FLASH_SPANSION
-static int s25hx_t_mdp_ready(struct spi_nor *nor)
+
+/* Use ID byte 4 to distinguish S25FS256T and S25Hx-T */
+#define S25FS256T_ID4	(0x08)
+
+/* Number of dummy cycle for Read Any Register (RDAR) op. */
+#define S25FS_S_RDAR_DUMMY	8
+
+static int s25fs_s_quad_enable(struct spi_nor *nor)
+{
+	return spansion_quad_enable_volatile(nor, 0, S25FS_S_RDAR_DUMMY);
+}
+
+static int s25fs_s_erase_non_uniform(struct spi_nor *nor, loff_t addr)
+{
+	/* Support 8 x 4KB sectors at bottom */
+	return spansion_erase_non_uniform(nor, addr, SPINOR_OP_BE_4K_4B, 0, SZ_32K);
+}
+
+static int s25fs_s_setup(struct spi_nor *nor, const struct flash_info *info,
+			 const struct spi_nor_flash_parameter *params)
+{
+	int ret;
+	u8 cfr3v;
+
+	/* Bank Address Register is not supported */
+	if (CONFIG_IS_ENABLED(SPI_FLASH_BAR))
+		return -EOPNOTSUPP;
+
+	/*
+	 * Read CR3V to check if uniform sector is selected. If not, assign an
+	 * erase hook that supports non-uniform erase.
+	 */
+	ret = spansion_read_any_reg(nor, SPINOR_REG_ADDR_CFR3V,
+				    S25FS_S_RDAR_DUMMY, &cfr3v);
+	if (ret)
+		return ret;
+	if (!(cfr3v & CFR3V_UNHYSA))
+		nor->erase = s25fs_s_erase_non_uniform;
+
+	return spi_nor_default_setup(nor, info, params);
+}
+
+static void s25fs_s_default_init(struct spi_nor *nor)
+{
+	nor->setup = s25fs_s_setup;
+}
+
+static int s25fs_s_post_bfpt_fixup(struct spi_nor *nor,
+				   const struct sfdp_parameter_header *header,
+				   const struct sfdp_bfpt *bfpt,
+				   struct spi_nor_flash_parameter *params)
+{
+	/* The erase size is set to 4K from BFPT, but it's wrong. Fix it. */
+	nor->erase_opcode = SPINOR_OP_SE;
+	nor->mtd.erasesize = nor->info->sector_size;
+
+	/* The S25FS-S chip family reports 512-byte pages in BFPT but
+	 * in reality the write buffer still wraps at the safe default
+	 * of 256 bytes.  Overwrite the page size advertised by BFPT
+	 * to get the writes working.
+	 */
+	params->page_size = 256;
+
+	return 0;
+}
+
+static void s25fs_s_post_sfdp_fixup(struct spi_nor *nor,
+				    struct spi_nor_flash_parameter *params)
+{
+	/* READ_1_1_2 is not supported */
+	params->hwcaps.mask &= ~SNOR_HWCAPS_READ_1_1_2;
+	/* READ_1_1_4 is not supported */
+	params->hwcaps.mask &= ~SNOR_HWCAPS_READ_1_1_4;
+	/* PP_1_1_4 is not supported */
+	params->hwcaps.mask &= ~SNOR_HWCAPS_PP_1_1_4;
+	/* Use volatile register to enable quad */
+	params->quad_enable = s25fs_s_quad_enable;
+}
+
+static struct spi_nor_fixups s25fs_s_fixups = {
+	.default_init = s25fs_s_default_init,
+	.post_bfpt = s25fs_s_post_bfpt_fixup,
+	.post_sfdp = s25fs_s_post_sfdp_fixup,
+};
+
+static int s25_mdp_ready(struct spi_nor *nor)
 {
 	u32 addr;
 	int ret;
@@ -3613,7 +3741,7 @@ static int s25hx_t_mdp_ready(struct spi_nor *nor)
 	return 1;
 }
 
-static int s25hx_t_quad_enable(struct spi_nor *nor)
+static int s25_quad_enable(struct spi_nor *nor)
 {
 	u32 addr;
 	int ret;
@@ -3627,51 +3755,67 @@ static int s25hx_t_quad_enable(struct spi_nor *nor)
 	return 0;
 }
 
-static int s25hx_t_erase_non_uniform(struct spi_nor *nor, loff_t addr)
+static int s25_erase_non_uniform(struct spi_nor *nor, loff_t addr)
 {
 	/* Support 32 x 4KB sectors at bottom */
 	return spansion_erase_non_uniform(nor, addr, SPINOR_OP_BE_4K_4B, 0,
 					  SZ_128K);
 }
 
-static int s25hx_t_setup(struct spi_nor *nor, const struct flash_info *info,
-			 const struct spi_nor_flash_parameter *params)
+static int s25_setup(struct spi_nor *nor, const struct flash_info *info,
+		     const struct spi_nor_flash_parameter *params)
 {
 	int ret;
-	u8 cfr3v;
+	u8 cr;
 
 #ifdef CONFIG_SPI_FLASH_BAR
 	return -ENOTSUPP; /* Bank Address Register is not supported */
 #endif
 	/*
+	 * S25FS256T has multiple sector architecture options, with selection of
+	 * count and location of 128KB and 64KB sectors. This driver supports
+	 * uniform 128KB only due to complexity of non-uniform layout.
+	 */
+	if (nor->info->id[4] == S25FS256T_ID4) {
+		ret = spansion_read_any_reg(nor, SPINOR_REG_ADDR_ARCFN, 8, &cr);
+		if (ret)
+			return ret;
+
+		if (cr) /* Option 0 (ARCFN[7:0] == 0x00) is uniform */
+			return -EOPNOTSUPP;
+
+		return spi_nor_default_setup(nor, info, params);
+	}
+
+	/*
 	 * Read CFR3V to check if uniform sector is selected. If not, assign an
 	 * erase hook that supports non-uniform erase.
 	 */
-	ret = spansion_read_any_reg(nor, SPINOR_REG_ADDR_CFR3V, 0, &cfr3v);
+	ret = spansion_read_any_reg(nor, SPINOR_REG_ADDR_CFR3V, 0, &cr);
 	if (ret)
 		return ret;
-	if (!(cfr3v & CFR3V_UNHYSA))
-		nor->erase = s25hx_t_erase_non_uniform;
+	if (!(cr & CFR3V_UNHYSA))
+		nor->erase = s25_erase_non_uniform;
 
 	/*
 	 * For the multi-die package parts, the ready() hook is needed to check
 	 * all dies' status via read any register.
 	 */
 	if (nor->mtd.size > SZ_128M)
-		nor->ready = s25hx_t_mdp_ready;
+		nor->ready = s25_mdp_ready;
 
 	return spi_nor_default_setup(nor, info, params);
 }
 
-static void s25hx_t_default_init(struct spi_nor *nor)
+static void s25_default_init(struct spi_nor *nor)
 {
-	nor->setup = s25hx_t_setup;
+	nor->setup = s25_setup;
 }
 
-static int s25hx_t_post_bfpt_fixup(struct spi_nor *nor,
-				   const struct sfdp_parameter_header *header,
-				   const struct sfdp_bfpt *bfpt,
-				   struct spi_nor_flash_parameter *params)
+static int s25_post_bfpt_fixup(struct spi_nor *nor,
+			       const struct sfdp_parameter_header *header,
+			       const struct sfdp_bfpt *bfpt,
+			       struct spi_nor_flash_parameter *params)
 {
 	int ret;
 	u32 addr;
@@ -3700,6 +3844,10 @@ static int s25hx_t_post_bfpt_fixup(struct spi_nor *nor,
 		nor->addr_mode_nbytes = 4;
 	}
 
+	/* The default address mode in S25FS256T is 4. */
+	if (nor->info->id[4] == S25FS256T_ID4)
+		nor->addr_mode_nbytes = 4;
+
 	/*
 	 * The page_size is set to 512B from BFPT, but it actually depends on
 	 * the configuration register. Look up the CFR3V and determine the
@@ -3722,21 +3870,26 @@ static int s25hx_t_post_bfpt_fixup(struct spi_nor *nor,
 	return 0;
 }
 
-static void s25hx_t_post_sfdp_fixup(struct spi_nor *nor,
-				    struct spi_nor_flash_parameter *params)
+static void s25_post_sfdp_fixup(struct spi_nor *nor,
+				struct spi_nor_flash_parameter *params)
 {
-	/* READ_FAST_4B (0Ch) requires mode cycles*/
-	params->reads[SNOR_CMD_READ_FAST].num_mode_clocks = 8;
-	/* PP_1_1_4 is not supported */
-	params->hwcaps.mask &= ~SNOR_HWCAPS_PP_1_1_4;
-	/* Use volatile register to enable quad */
-	params->quad_enable = s25hx_t_quad_enable;
+	if (nor->info->id[4] == S25FS256T_ID4) {
+		/* PP_1_1_4 is supported */
+		params->hwcaps.mask |= SNOR_HWCAPS_PP_1_1_4;
+	} else {
+		/* READ_FAST_4B (0Ch) requires mode cycles*/
+		params->reads[SNOR_CMD_READ_FAST].num_mode_clocks = 8;
+		/* PP_1_1_4 is not supported */
+		params->hwcaps.mask &= ~SNOR_HWCAPS_PP_1_1_4;
+		/* Use volatile register to enable quad */
+		params->quad_enable = s25_quad_enable;
+	}
 }
 
-static struct spi_nor_fixups s25hx_t_fixups = {
-	.default_init = s25hx_t_default_init,
-	.post_bfpt = s25hx_t_post_bfpt_fixup,
-	.post_sfdp = s25hx_t_post_sfdp_fixup,
+static struct spi_nor_fixups s25_fixups = {
+	.default_init = s25_default_init,
+	.post_bfpt = s25_post_bfpt_fixup,
+	.post_sfdp = s25_post_sfdp_fixup,
 };
 
 static int s25fl256l_setup(struct spi_nor *nor, const struct flash_info *info,
@@ -3777,7 +3930,7 @@ static int spi_nor_cypress_octal_dtr_enable(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	buf = SPINOR_REG_CYPRESS_CFR2V_MEMLAT_11_24;
+	buf = SPINOR_REG_CYPRESS_CFR2_MEMLAT_11_24;
 	op = (struct spi_mem_op)SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WR_ANY_REG, 1),
 			SPI_MEM_OP_ADDR(addr_width, SPINOR_REG_CYPRESS_CFR2V, 1),
 			SPI_MEM_OP_NO_DUMMY,
@@ -3800,7 +3953,7 @@ static int spi_nor_cypress_octal_dtr_enable(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	buf = SPINOR_REG_CYPRESS_CFR5V_OCT_DTR_EN;
+	buf = SPINOR_REG_CYPRESS_CFR5_OCT_DTR_EN;
 	op = (struct spi_mem_op)SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WR_ANY_REG, 1),
 			SPI_MEM_OP_ADDR(addr_width, SPINOR_REG_CYPRESS_CFR5V, 1),
 			SPI_MEM_OP_NO_DUMMY,
@@ -3848,7 +4001,7 @@ static int s28hx_t_setup(struct spi_nor *nor, const struct flash_info *info,
 	if (ret)
 		return ret;
 
-	if (!(buf & SPINOR_REG_CYPRESS_CFR3V_UNISECT))
+	if (!(buf & SPINOR_REG_CYPRESS_CFR3_UNISECT))
 		nor->erase = s28hx_t_erase_non_uniform;
 
 	return spi_nor_default_setup(nor, info, params);
@@ -3915,7 +4068,7 @@ static int s28hx_t_post_bfpt_fixup(struct spi_nor *nor,
 	if (ret)
 		return ret;
 
-	if (buf & SPINOR_REG_CYPRESS_CFR3V_PGSZ)
+	if (buf & SPINOR_REG_CYPRESS_CFR3_PGSZ)
 		params->page_size = 512;
 	else
 		params->page_size = 256;
@@ -4207,11 +4360,8 @@ static int spi_nor_init(struct spi_nor *nor)
 static inline uint16_t min_lockable_sectors(struct spi_nor *nor,
 					    uint16_t n_sectors)
 {
-	u16 lock_granularity;
-
-	lock_granularity = 1;
-
-	return lock_granularity;
+	/* lock granularity */
+	return 1;
 }
 
 static inline uint32_t get_protected_area_start(struct spi_nor *nor,
@@ -4219,8 +4369,7 @@ static inline uint32_t get_protected_area_start(struct spi_nor *nor,
 						bool is_bottom)
 {
 	u16 n_sectors;
-	u32 sector_size;
-	u32 flash_size;
+	u32 sector_size, flash_size;
 	int ret;
 
 	sector_size = nor->sector_size;
@@ -4299,7 +4448,7 @@ static int write_sr_modify_protection(struct spi_nor *nor, u8 status,
 	if (ret)
 		return ret;
 
-	if (nor->flags & SNOR_F_HAS_PARALLEL) { //to check Ashok
+	if (nor->flags & SNOR_F_HAS_PARALLEL) {
 		nor->spi->flags |= SPI_XFER_UPPER;
 		ret = write_sr(nor, status_new);
 		if (ret)
@@ -4312,7 +4461,7 @@ static int write_sr_modify_protection(struct spi_nor *nor, u8 status,
 static void micron_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 				    uint64_t *len)
 {
-	u8 mask = SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2;
 	int shift = ffs(mask) - 1;
 	int pow;
 	u64 norsize = nor->size;
@@ -4346,7 +4495,7 @@ static void micron_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 }
 
 static int micron_is_unlocked_sr(struct spi_nor *nor, loff_t ofs, uint64_t len,
-			       u8 sr)
+				 u8 sr)
 {
 	loff_t lock_offs;
 	u64 lock_len;
@@ -4387,6 +4536,7 @@ static int micron_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	u8 status_old, status_old_up;
 	u8 lock_bits;
 	loff_t lock_len;
+	int ret = 0;
 	bool is_bottom = false; /* Use TOP protection by default */
 
 	if (nor->flags & SNOR_F_HAS_PARALLEL)
@@ -4423,20 +4573,20 @@ static int micron_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 		lock_len = ofs;
 	else
 		lock_len = ofs + len;
+
 	lock_bits = min_protected_area_including_offset(nor, lock_len,
 							is_bottom);
 
 	if (lock_bits > ((status_old & (BP_MASK << BP_SHIFT)) >> 2))
-		write_sr_modify_protection(nor, status_old, lock_bits,
-					   is_bottom);
+		ret = write_sr_modify_protection(nor, status_old, lock_bits,
+						 is_bottom);
 
-	return 0;
+	return ret;
 }
 
 static int micron_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
-	write_sr_modify_protection(nor, 0, 0, 0);
-	return 0;
+	return write_sr_modify_protection(nor, 0, 0, 0);
 }
 
 static int micron_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
@@ -4482,6 +4632,7 @@ static int mx_write_sr_cr(struct spi_nor *nor, u8 *sr_cr)
 			"timeout while writing configuration register\n");
 		return ret;
 	}
+
 	ret = write_disable(nor);
 	if (ret)
 		return ret;
@@ -4520,7 +4671,7 @@ static void mx_get_locked_range(struct spi_nor *nor, u8 sr, u8 cr,
 {
 	struct mtd_info *mtd = &nor->mtd;
 	int pow, shift;
-	u8 mask = SR_BP3_MX | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_MX;
 
 	shift = ffs(mask) - 1;
 
@@ -4578,7 +4729,7 @@ static int mx_lock_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len, bool lo
 	loff_t lock_len, blocks;
 	bool can_be_top, can_be_bottom, use_top;
 	u8 sr_cr[2], shift;
-	u8 mask = SR_BP3_MX | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_MX;
 
 	shift = ffs(mask) - 1;
 
@@ -4640,7 +4791,7 @@ static int mx_lock_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len, bool lo
 	val = blocks ? ilog2(blocks) + 1 : 0;
 	sr_cr[0] = sr & ~mask;
 	sr_cr[0] |= val << shift;
-	/**
+	/*
 	 * Disallow further writes if WP pin is asserted, but remove
 	 * that bit if we unlocked the whole chip.
 	 */
@@ -4699,7 +4850,7 @@ static int mx_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 
 	return mx_check_lock_status(nor, ofs, len, sr, cr, false);
 }
-#endif
+#endif /* CONFIG_SPI_FLASH_MACRONIX */
 
 #if defined(CONFIG_SPI_FLASH_ISSI)
 /**
@@ -4733,7 +4884,7 @@ static void issi_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	int pow, shift;
 	u32 sector_size;
 
-	mask = SR_BP3_ISSI | SR_BP2 | SR_BP1 | SR_BP0;
+	mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_ISSI;
 	shift = ffs(mask) - 1;
 	sector_size = nor->sector_size;
 
@@ -4940,7 +5091,7 @@ static int issi_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	loff_t lock_len;
 	u8 pow, ret;
 	bool use_top = false;
-	u8 mask = SR_BP3_ISSI | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_ISSI;
 
 	shift = ffs(mask) - 1;
 
@@ -4999,7 +5150,7 @@ static int issi_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 static int issi_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
 	int ret, val;
-	u8 mask = SR_BP3_ISSI | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_ISSI;
 
 	val = read_sr(nor);
 	if (val < 0)
@@ -5031,7 +5182,7 @@ static int issi_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	}
 	return ret;
 }
-#endif
+#endif /* CONFIG_SPI_FLASH_ISSI */
 
 #if defined(CONFIG_SPI_FLASH_GIGADEVICE)
 static void giga_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
@@ -5040,7 +5191,7 @@ static void giga_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	struct mtd_info *mtd = &nor->mtd;
 	int shift = 0;
 	int pow;
-	u8 mask = SR_BP3_GIGA | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_GIGA;
 	u32 sector_size;
 
 	sector_size = nor->sector_size;
@@ -5245,7 +5396,7 @@ static int giga_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	loff_t lock_len;
 	u8 pow, ret, shift;
 	bool use_top = false;
-	u8 mask = SR_BP3_GIGA | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_GIGA;
 
 	shift = ffs(mask) - 1;
 
@@ -5303,7 +5454,7 @@ static int giga_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 static int giga_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
 	int ret, val;
-	u8 mask = SR_BP3_GIGA | SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2 | SR_BP3_GIGA;
 
 	val = read_sr(nor);
 	if (val < 0)
@@ -5332,7 +5483,7 @@ static int giga_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	}
 	return ret;
 }
-#endif
+#endif /* CONFIG_SPI_FLASH_GIGADEVICE */
 
 #if defined(CONFIG_SPI_FLASH_SPANSION)
 /**
@@ -5365,7 +5516,7 @@ static void spansion_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 	struct mtd_info *mtd = &nor->mtd;
 	int pow, cr;
 	int shift = 0;
-	u8 mask =  SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask =  SR_BP0 | SR_BP1 | SR_BP2;
 
 	shift = ffs(mask) - 1;
 
@@ -5594,7 +5745,7 @@ static int spansion_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	int cr, can_be_top, val, status_old;
 	u8 pow, ret, shift, sr_cr[2];
 	bool use_top = false;
-	u8 mask = SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2;
 
 	shift = ffs(mask) - 1;
 
@@ -5673,7 +5824,7 @@ static int spansion_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 static int spansion_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 {
 	int ret, val;
-	u8 mask = SR_BP2 | SR_BP1 | SR_BP0;
+	u8 mask = SR_BP0 | SR_BP1 | SR_BP2;
 
 	val = read_sr(nor);
 	if (val < 0)
@@ -5696,8 +5847,8 @@ static int spansion_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 
 	return 0;
 }
-#endif
-#endif
+#endif /* CONFIG_SPI_FLASH_SPANSION */
+#endif /* CONFIG_SPI_FLASH_LOCK */
 
 #ifdef CONFIG_SPI_FLASH_SOFT_RESET
 /**
@@ -5776,7 +5927,7 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 		switch (nor->info->id[1]) {
 		case 0x2a: /* S25HL (QSPI, 3.3V) */
 		case 0x2b: /* S25HS (QSPI, 1.8V) */
-			nor->fixups = &s25hx_t_fixups;
+			nor->fixups = &s25_fixups;
 			break;
 
 #ifdef CONFIG_SPI_FLASH_S28HX_T
@@ -5794,6 +5945,10 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 	if (CONFIG_IS_ENABLED(SPI_FLASH_BAR) &&
 	    !strcmp(nor->info->name, "s25fl256l"))
 		nor->fixups = &s25fl256l_fixups;
+
+	/* For FS-S (family ID = 0x81)  */
+	if (JEDEC_MFR(nor->info) == SNOR_MFR_SPANSION && nor->info->id[5] == 0x81)
+		nor->fixups = &s25fs_s_fixups;
 #endif
 
 #ifdef CONFIG_SPI_FLASH_MT35XU
@@ -5956,7 +6111,6 @@ int spi_nor_scan(struct spi_nor *nor)
 	}
 #endif
 #endif
-
 	if (info->flags & USE_FSR)
 		nor->flags |= SNOR_F_USE_FSR;
 	if (info->flags & SPI_NOR_HAS_TB)

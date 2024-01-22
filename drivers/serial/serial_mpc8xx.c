@@ -83,15 +83,18 @@ static int serial_mpc8xx_probe(struct udevice *dev)
 	immap_t __iomem *im = (immap_t __iomem *)CONFIG_SYS_IMMR;
 	smc_t __iomem *sp;
 	smc_uart_t __iomem *up;
+	u16 smc_rpbase;
 	cpm8xx_t __iomem *cp = &(im->im_cpm);
 	struct serialbuffer __iomem *rtx;
 
 	/* initialize pointers to SMC */
 
 	sp = cp->cp_smc + SMC_INDEX;
-	up = (smc_uart_t __iomem *)&cp->cp_dparam[PROFF_SMC];
-	/* Disable relocation */
-	out_be16(&up->smc_rpbase, 0);
+	up = (smc_uart_t __iomem *)&cp->cp_dpmem[PROFF_SMC];
+
+	smc_rpbase = in_be16(&up->smc_rpbase);
+	if (smc_rpbase)
+		up = (smc_uart_t __iomem *)&cp->cp_dpmem[smc_rpbase];
 
 	/* Disable transmitter/receiver. */
 	clrbits_be16(&sp->smc_smcmr, SMCMR_REN | SMCMR_TEN);
@@ -154,15 +157,12 @@ static int serial_mpc8xx_probe(struct udevice *dev)
 	out_be16(&up->smc_maxidl, CONFIG_SYS_MAXIDLE);
 	out_be32(&rtx->rxindex, 0);
 
-	/* Initialize Tx/Rx parameters.	*/
-	while (in_be16(&cp->cp_cpcr) & CPM_CR_FLG)	/* wait if cp is busy */
-		;
-
-	out_be16(&cp->cp_cpcr,
-		 mk_cr_cmd(CPM_CR_CH_SMC, CPM_CR_INIT_TRX) | CPM_CR_FLG);
-
-	while (in_be16(&cp->cp_cpcr) & CPM_CR_FLG)	/* wait if cp is busy */
-		;
+	out_be32(&up->smc_rstate, 0);
+	out_be32(&up->smc_tstate, 0);
+	out_be16(&up->smc_rbptr, CPM_SERIAL_BASE);
+	out_be16(&up->smc_tbptr, CPM_SERIAL_BASE + sizeof(cbd_t));
+	out_be16(&up->smc_brkcr, 1);
+	out_be16(&up->smc_brkec, 0);
 
 	/* Enable transmitter/receiver.	*/
 	setbits_be16(&sp->smc_smcmr, SMCMR_REN | SMCMR_TEN);
@@ -176,18 +176,14 @@ static int serial_mpc8xx_putc(struct udevice *dev, const char c)
 	cpm8xx_t	__iomem *cpmp = &(im->im_cpm);
 	struct serialbuffer	__iomem *rtx;
 
-	if (c == '\n')
-		serial_mpc8xx_putc(dev, '\r');
-
 	rtx = (struct serialbuffer __iomem *)&cpmp->cp_dpmem[CPM_SERIAL_BASE];
 
-	/* Wait for last character to go. */
+	if (in_be16(&rtx->txbd.cbd_sc) & BD_SC_READY)
+		return -EAGAIN;
+
 	out_8(&rtx->txbuf, c);
 	out_be16(&rtx->txbd.cbd_datlen, 1);
 	setbits_be16(&rtx->txbd.cbd_sc, BD_SC_READY);
-
-	while (in_be16(&rtx->txbd.cbd_sc) & BD_SC_READY)
-		schedule();
 
 	return 0;
 }
@@ -202,9 +198,8 @@ static int serial_mpc8xx_getc(struct udevice *dev)
 
 	rtx = (struct serialbuffer __iomem *)&cpmp->cp_dpmem[CPM_SERIAL_BASE];
 
-	/* Wait for character to show up. */
-	while (in_be16(&rtx->rxbd.cbd_sc) & BD_SC_EMPTY)
-		schedule();
+	if (in_be16(&rtx->rxbd.cbd_sc) & BD_SC_EMPTY)
+		return -EAGAIN;
 
 	/* the characters are read one by one,
 	 * use the rxindex to know the next char to deliver

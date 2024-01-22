@@ -81,6 +81,12 @@ Example::
         echo CONFIG_SYS_BOARD boot failed - please check your image
         echo Load address is CONFIG_SYS_LOAD_ADDR
 
+Settings which are common to a group of boards can use #include to bring in
+a common file in the `include/env` directory, containing environment
+settings. For example::
+
+   #include <env/ti/mmc.env>
+
 If CONFIG_ENV_SOURCE_FILE is empty and the default filename is not present, then
 the old-style C environment is used instead. See below.
 
@@ -89,12 +95,12 @@ Old-style C environment
 
 Traditionally, the default environment is created in `include/env_default.h`,
 and can be augmented by various `CONFIG` defines. See that file for details. In
-particular you can define `CONFIG_EXTRA_ENV_SETTINGS` in your board file
+particular you can define `CFG_EXTRA_ENV_SETTINGS` in your board file
 to add environment variables.
 
 Board maintainers are encouraged to migrate to the text-based environment as it
 is easier to maintain. The distro-board script still requires the old-style
-environment but work is underway to address this.
+environments, so use :doc:`../develop/bootstd` instead.
 
 
 List of environment variables
@@ -162,7 +168,7 @@ bootm_low
     for use by the bootm command. See also "bootm_size"
     environment variable. Address defined by "bootm_low" is
     also the base of the initial memory mapping for the Linux
-    kernel -- see the description of CONFIG_SYS_BOOTMAPSZ and
+    kernel -- see the description of CFG_SYS_BOOTMAPSZ and
     bootm_mapsize.
 
 bootm_mapsize
@@ -170,7 +176,7 @@ bootm_mapsize
     This variable is given as a hexadecimal number and it
     defines the size of the memory region starting at base
     address bootm_low that is accessible by the Linux kernel
-    during early boot.  If unset, CONFIG_SYS_BOOTMAPSZ is used
+    during early boot.  If unset, CFG_SYS_BOOTMAPSZ is used
     as the default value if it is defined, and bootm_size is
     used otherwise.
 
@@ -210,7 +216,7 @@ fdt_high
     0xffffffffffffffff (64-bit machines) then
     the fdt will not be copied at all on boot.  For this
     to work it must reside in writable memory, have
-    sufficient padding on the end of it for u-boot to
+    sufficient padding on the end of it for U-Boot to
     add the information it needs into it, and the memory
     must be accessible by the kernel. This usage is strongly discouraged
     however as it also stops U-Boot from ensuring the device tree starting
@@ -228,7 +234,7 @@ initrd_high
     is usually what you want since it allows for
     maximum initrd size. If for some reason you want to
     make sure that the initrd image is loaded below the
-    CONFIG_SYS_BOOTMAPSZ limit, you can set this environment
+    CFG_SYS_BOOTMAPSZ limit, you can set this environment
     variable to a value of "no" or "off" or "0".
     Alternatively, you can set it to a maximum upper
     address to use (U-Boot will still check that it
@@ -299,6 +305,10 @@ ethrotate
     It just stays at the currently selected interface. When unset or set to
     anything other than "no", U-Boot does go through all
     available network interfaces.
+
+httpdstp
+    If this is set, the value is used for HTTP's TCP
+    destination port instead of the default port 80.
 
 netretry
     When set to "no" each network operation will

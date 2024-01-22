@@ -54,7 +54,7 @@ struct arch_global_data {
 	unsigned long tlb_emerg;
 #endif
 #endif
-#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
+#ifdef CFG_SYS_MEM_RESERVE_SECURE
 #define MEM_RESERVE_SECURE_SECURED	0x1
 #define MEM_RESERVE_SECURE_MAINTAINED	0x2
 #define MEM_RESERVE_SECURE_ADDR_MASK	(~0x3)
@@ -90,13 +90,19 @@ struct arch_global_data {
 	struct udevice *scu_dev;
 #endif
 
-#ifdef CONFIG_IMX_SENTINEL
-	struct udevice *s400_dev;
+#ifdef CONFIG_IMX_ELE
+	struct udevice *ele_dev;
 	u32 soc_rev;
 	u32 lifecycle;
 	u32 uid[4];
 #endif
 
+#ifdef CONFIG_ARCH_IMX8ULP
+	bool m33_handshake_done;
+#endif
+#ifdef CONFIG_SMBIOS
+	ulong smbios_start;		/* Start address of SMBIOS table */
+#endif
 };
 
 #include <asm-generic/global_data.h>

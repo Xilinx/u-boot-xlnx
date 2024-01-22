@@ -9,11 +9,20 @@
 #include <spl.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/sysfw-loader.h>
+#include "sysfw-loader.h"
 #include "common.h"
 #include <dm.h>
 #include <dm/uclass-internal.h>
 #include <dm/pinctrl.h>
+
+#define RTC_BASE_ADDRESS		0x2b1f0000
+#define REG_K3RTC_S_CNT_LSW		(RTC_BASE_ADDRESS + 0x18)
+#define REG_K3RTC_KICK0			(RTC_BASE_ADDRESS + 0x70)
+#define REG_K3RTC_KICK1			(RTC_BASE_ADDRESS + 0x74)
+
+/* Magic values for lock/unlock */
+#define K3RTC_KICK0_UNLOCK_VALUE	0x83e70b13
+#define K3RTC_KICK1_UNLOCK_VALUE	0x95a4f1e0
 
 /*
  * This uninitialized global variable would normal end up in the .bss section,
@@ -71,14 +80,47 @@ static __maybe_unused void enable_mcu_esm_reset(void)
 	writel(stat, CTRLMMR_MCU_RST_CTRL);
 }
 
+/*
+ * RTC Erratum i2327 Workaround for Silicon Revision 1
+ *
+ * Due to a bug in initial synchronization out of cold power on,
+ * IRQ status can get locked infinitely if we do not unlock RTC
+ *
+ * This workaround *must* be applied within 1 second of power on,
+ * So, this is closest point to be able to guarantee the max
+ * timing.
+ *
+ * https://www.ti.com/lit/er/sprz487c/sprz487c.pdf
+ */
+static __maybe_unused void rtc_erratumi2327_init(void)
+{
+	u32 counter;
+
+	/*
+	 * If counter has gone past 1, nothing we can do, leave
+	 * system locked! This is the only way we know if RTC
+	 * can be used for all practical purposes.
+	 */
+	counter = readl(REG_K3RTC_S_CNT_LSW);
+	if (counter > 1)
+		return;
+	/*
+	 * Need to set this up at the very start
+	 * MUST BE DONE under 1 second of boot.
+	 */
+	writel(K3RTC_KICK0_UNLOCK_VALUE, REG_K3RTC_KICK0);
+	writel(K3RTC_KICK1_UNLOCK_VALUE, REG_K3RTC_KICK1);
+}
+
 void board_init_f(ulong dummy)
 {
 	struct udevice *dev;
 	int ret;
 
-#if defined(CONFIG_CPU_V7R)
-	setup_k3_mpu_regions();
-#endif
+	if (IS_ENABLED(CONFIG_CPU_V7R)) {
+		setup_k3_mpu_regions();
+		rtc_erratumi2327_init();
+	}
 
 	/*
 	 * Cannot delay this further as there is a chance that
@@ -110,29 +152,28 @@ void board_init_f(ulong dummy)
 
 	preloader_console_init();
 
-#ifdef CONFIG_K3_EARLY_CONS
 	/*
 	 * Allow establishing an early console as required for example when
 	 * doing a UART-based boot. Note that this console may not "survive"
 	 * through a SYSFW PM-init step and will need a re-init in some way
 	 * due to changing module clock frequencies.
 	 */
-	early_console_init();
-#endif
+	if (IS_ENABLED(CONFIG_K3_EARLY_CONS))
+		early_console_init();
 
-#if defined(CONFIG_K3_LOAD_SYSFW)
 	/*
 	 * Configure and start up system controller firmware. Provide
 	 * the U-Boot console init function to the SYSFW post-PM configuration
 	 * callback hook, effectively switching on (or over) the console
 	 * output.
 	 */
-	ret = is_rom_loaded_sysfw(&bootdata);
-	if (!ret)
-		panic("ROM has not loaded TIFS firmware\n");
+	if (IS_ENABLED(CONFIG_K3_LOAD_SYSFW)) {
+		ret = is_rom_loaded_sysfw(&bootdata);
+		if (!ret)
+			panic("ROM has not loaded TIFS firmware\n");
 
-	k3_sysfw_loader(true, NULL, NULL);
-#endif
+		k3_sysfw_loader(true, NULL, NULL);
+	}
 
 	/*
 	 * Force probe of clk_k3 driver here to ensure basic default clock
@@ -163,31 +204,37 @@ void board_init_f(ulong dummy)
 		enable_mcu_esm_reset();
 	}
 
-#if defined(CONFIG_K3_AM64_DDRSS)
-	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
-	if (ret)
-		panic("DRAM init failed: %d\n", ret);
-#endif
+	if (IS_ENABLED(CONFIG_K3_AM64_DDRSS)) {
+		ret = uclass_get_device(UCLASS_RAM, 0, &dev);
+		if (ret)
+			panic("DRAM init failed: %d\n", ret);
+	}
+	spl_enable_dcache();
 }
 
 u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 {
 	u32 devstat = readl(CTRLMMR_MAIN_DEVSTAT);
+	u32 bootmode = (devstat & MAIN_DEVSTAT_PRIMARY_BOOTMODE_MASK) >>
+				MAIN_DEVSTAT_PRIMARY_BOOTMODE_SHIFT;
 	u32 bootmode_cfg = (devstat & MAIN_DEVSTAT_PRIMARY_BOOTMODE_CFG_MASK) >>
 			    MAIN_DEVSTAT_PRIMARY_BOOTMODE_CFG_SHIFT;
 
-	switch (boot_device) {
-	case BOOT_DEVICE_MMC1:
-		if ((bootmode_cfg & MAIN_DEVSTAT_PRIMARY_MMC_FS_RAW_MASK) >>
-		     MAIN_DEVSTAT_PRIMARY_MMC_FS_RAW_SHIFT)
-			return MMCSD_MODE_EMMCBOOT;
-		return MMCSD_MODE_FS;
-
-	case BOOT_DEVICE_MMC2:
-		return MMCSD_MODE_FS;
-
+	switch (bootmode) {
+	case BOOT_DEVICE_EMMC:
+		if (IS_ENABLED(CONFIG_SUPPORT_EMMC_BOOT)) {
+			if (spl_mmc_emmc_boot_partition(mmc))
+				return MMCSD_MODE_EMMCBOOT;
+			return MMCSD_MODE_FS;
+		}
+		if (IS_ENABLED(CONFIG_SPL_FS_FAT) || IS_ENABLED(CONFIG_SPL_FS_EXT4))
+			return MMCSD_MODE_FS;
+		return MMCSD_MODE_EMMCBOOT;
+	case BOOT_DEVICE_MMC:
+		if (bootmode_cfg & MAIN_DEVSTAT_PRIMARY_MMC_FS_RAW_MASK)
+			return MMCSD_MODE_RAW;
 	default:
-		return MMCSD_MODE_RAW;
+		return MMCSD_MODE_FS;
 	}
 }
 

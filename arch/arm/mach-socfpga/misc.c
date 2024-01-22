@@ -25,6 +25,7 @@
 #include <asm/arch/nic301.h>
 #include <asm/arch/scu.h>
 #include <asm/pl310.h>
+#include <linux/printk.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -34,7 +35,7 @@ phys_addr_t socfpga_sysmgr_base __section(".data");
 
 #ifdef CONFIG_SYS_L2_PL310
 static const struct pl310_regs *const pl310 =
-	(struct pl310_regs *)CONFIG_SYS_PL310_BASE;
+	(struct pl310_regs *)CFG_SYS_PL310_BASE;
 #endif
 
 struct bsel bsel_str[] = {

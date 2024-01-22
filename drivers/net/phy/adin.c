@@ -155,6 +155,18 @@ static int adin_ext_write(struct phy_device *phydev, const u32 regnum, const u16
 	return phy_write(phydev, MDIO_DEVAD_NONE, ADIN1300_EXT_REG_DATA, val);
 }
 
+static int adin_extread(struct phy_device *phydev, int addr, int devaddr,
+			int regnum)
+{
+	return adin_ext_read(phydev, regnum);
+}
+
+static int adin_extwrite(struct phy_device *phydev, int addr,
+			 int devaddr, int regnum, u16 val)
+{
+	return adin_ext_write(phydev, regnum, val);
+}
+
 static int adin_config_clk_out(struct phy_device *phydev)
 {
 	ofnode node = phy_get_ofnode(phydev);
@@ -252,7 +264,7 @@ static int adin1300_config(struct phy_device *phydev)
 	return genphy_config(phydev);
 }
 
-static struct phy_driver ADIN1300_driver =  {
+U_BOOT_PHY_DRIVER(ADIN1300) = {
 	.name = "ADIN1300",
 	.uid = PHY_ID_ADIN1300,
 	.mask = 0xffffffff,
@@ -260,11 +272,6 @@ static struct phy_driver ADIN1300_driver =  {
 	.config = adin1300_config,
 	.startup = genphy_startup,
 	.shutdown = genphy_shutdown,
+	.readext = adin_extread,
+	.writeext = adin_extwrite,
 };
-
-int phy_adin_init(void)
-{
-	phy_register(&ADIN1300_driver);
-
-	return 0;
-}

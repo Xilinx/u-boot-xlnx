@@ -104,7 +104,7 @@ static void setup_fman_liodn_base(enum fsl_dpaa_dev dev,
 		fm = (void *)CFG_SYS_FSL_FM1_ADDR;
 		break;
 
-#if (CONFIG_SYS_NUM_FMAN == 2)
+#if (CFG_SYS_NUM_FMAN == 2)
 	case FSL_HW_PORTAL_FMAN2:
 		fm = (void *)CFG_SYS_FSL_FM2_ADDR;
 		break;
@@ -201,7 +201,7 @@ void set_liodns(void)
 	setup_fman_liodn_base(FSL_HW_PORTAL_FMAN1, fman1_liodn_tbl,
 				fman1_liodn_tbl_sz);
 
-#if (CONFIG_SYS_NUM_FMAN == 2)
+#if (CFG_SYS_NUM_FMAN == 2)
 	set_fman_liodn(fman2_liodn_tbl, fman2_liodn_tbl_sz);
 	setup_fman_liodn_base(FSL_HW_PORTAL_FMAN2, fman2_liodn_tbl,
 				fman2_liodn_tbl_sz);
@@ -255,14 +255,14 @@ static void fdt_fixup_srio_liodn(void *blob, struct srio_liodn_id_table *tbl)
 }
 #endif
 
-#define CONFIG_SYS_MAX_PCI_EPS		8
+#define CFG_SYS_MAX_PCI_EPS		8
 
 static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat,
 					int ep_liodn_start)
 {
 	int off, pci_idx = 0, pci_cnt = 0, i, rc;
 	const uint32_t *base_liodn;
-	uint32_t liodn_offs[CONFIG_SYS_MAX_PCI_EPS + 1] = { 0 };
+	uint32_t liodn_offs[CFG_SYS_MAX_PCI_EPS + 1] = { 0 };
 
 	/*
 	 * Count the number of pci nodes.
@@ -282,7 +282,7 @@ static void fdt_fixup_pci_liodn_offsets(void *fdt, const char *compat,
 			       path, fdt_strerror(rc));
 			continue;
 		}
-		for (i = 0; i < CONFIG_SYS_MAX_PCI_EPS; i++)
+		for (i = 0; i < CFG_SYS_MAX_PCI_EPS; i++)
 			liodn_offs[i + 1] = ep_liodn_start +
 					i * pci_cnt + pci_idx - *base_liodn;
 		rc = fdt_setprop(fdt, off, "fsl,liodn-offset-list",
@@ -337,9 +337,6 @@ static void fdt_fixup_liodn_tbl_fman(void *blob,
 	for (i = 0; i < sz; i++) {
 		int off;
 
-		if (tbl[i].compat == NULL)
-			continue;
-
 		/* Try the new compatible first.
 		 * If the node is missing, try the old.
 		 */
@@ -373,7 +370,7 @@ void fdt_fixup_liodn(void *blob)
 	fdt_fixup_liodn_tbl(blob, liodn_tbl, liodn_tbl_sz);
 #ifdef CONFIG_SYS_DPAA_FMAN
 	fdt_fixup_liodn_tbl_fman(blob, fman1_liodn_tbl, fman1_liodn_tbl_sz);
-#if (CONFIG_SYS_NUM_FMAN == 2)
+#if (CFG_SYS_NUM_FMAN == 2)
 	fdt_fixup_liodn_tbl_fman(blob, fman2_liodn_tbl, fman2_liodn_tbl_sz);
 #endif
 #endif
@@ -387,7 +384,7 @@ void fdt_fixup_liodn(void *blob)
 	fdt_fixup_liodn_tbl(blob, rman_liodn_tbl, rman_liodn_tbl_sz);
 #endif
 
-	ccsr_pcix_t *pcix = (ccsr_pcix_t *)CONFIG_SYS_PCIE1_ADDR;
+	ccsr_pcix_t *pcix = (ccsr_pcix_t *)CFG_SYS_PCIE1_ADDR;
 	int pci_ver = pcix->ipver1 & 0xffff, liodn_base = 0;
 
 	if (pci_ver >= 0x0204) {

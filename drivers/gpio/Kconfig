@@ -169,6 +169,10 @@ config FXL6408_GPIO
 	  This driver supports the Fairchild FXL6408 device. FXL6408 is a
 	  fully configurable 8-bit I2C-controlled GPIO expander.
 
+config HIKEY_GPIO
+	bool "HI6220 GPIO driver"
+	depends on DM_GPIO
+
 config INTEL_BROADWELL_GPIO
 	bool "Intel Broadwell GPIO driver"
 	depends on DM
@@ -368,14 +372,26 @@ config SUNXI_GPIO
 	help
 	  Support the GPIO device in Allwinner SoCs.
 
+config SUNXI_NEW_PINCTRL
+	bool
+	depends on SUNXI_GPIO
+	---help---
+	The Allwinner D1 and other new SoCs use a different register map
+	for the GPIO block, which we need to know about in the SPL.
+
 config XILINX_GPIO
 	bool "Xilinx GPIO driver"
 	depends on DM_GPIO
 	help
 	  This config enable the Xilinx GPIO driver for Microblaze.
 
+config TCA642X
+	bool "TCA642x legacy GPIO driver"
+
 config CMD_TCA642X
 	bool "tca642x - Command to access tca642x state"
+	depends on TCA642X
+	default y
 	help
 	  DEPRECATED - This needs conversion to driver model
 
@@ -511,6 +527,10 @@ config SPL_DM_PCA953X
 	  Now, max 24 bits chips and PCA953X compatible chips are
 	  supported
 
+config PCA953X
+	bool "NXP's PCA953X series I2C GPIO (legacy driver)"
+	depends on !DM_PCA953X
+
 config MPC8XXX_GPIO
 	bool "Freescale MPC8XXX GPIO driver"
 	depends on DM_GPIO
@@ -533,6 +553,31 @@ config MPC8XXX_GPIO
 	  Aside from the standard functions of input/output mode, and output
 	  value setting, the open-drain feature, which can configure individual
 	  GPIOs to work as open-drain outputs, is supported.
+
+config QE_GPIO
+	bool "Freescale QUICC ENGINE GPIO driver"
+	depends on DM_GPIO
+	depends on QE
+	help
+	  This driver supports the QUICC Engine GPIOs of MPC83XX CPUs.
+	  Each GPIO bank is identified by its own entry in the device tree,
+	  i.e.
+
+	  qe_pio_a: gpio-controller@1400 {
+		compatible = "fsl,mpc8323-qe-pario-bank";
+		reg = <0x1400 0x18>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	  };
+
+	  Each bank has 32 GPIOs.
+
+config MPC8XX_GPIO
+	bool "Freescale MPC8XX GPIO driver"
+	depends on DM_GPIO
+	help
+	  This driver supports parallel IO ports from MPC8XX CPUs.
+	  Each GPIO bank is identified by its own entry in the device tree.
 
 config MPC83XX_SPISEL_BOOT
 	bool "Freescale MPC83XX SPISEL_BOOT driver"
@@ -583,6 +628,11 @@ config ZYNQMP_GPIO_MODEPIN
 	  are accessed using xilinx firmware. In modepin register, [3:0] bits
 	  set direction, [7:4] bits read IO, [11:8] bits set/clear IO.
 
+config SH_GPIO_PFC
+	bool "Pinmuxed GPIO support for SuperH"
+	depends on RCAR_GEN2 && !PINCTRL_PFC
+	default y
+
 config SL28CPLD_GPIO
 	bool "Kontron sl28cpld GPIO driver"
 	depends on DM_GPIO && SL28CPLD
@@ -615,5 +665,12 @@ config ADP5585_GPIO
 	depends on DM_GPIO && DM_I2C
 	help
 	  Support ADP5585 GPIO expander.
+
+config RZG2L_GPIO
+	bool "Renesas RZ/G2L family GPIO driver"
+	depends on DM_GPIO && PINCTRL_RZG2L
+	help
+	  Support the gpio functionality of the pin function controller (PFC)
+	  on the Renesas RZ/G2L SoC family.
 
 endif

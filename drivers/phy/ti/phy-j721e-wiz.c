@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2017-2018 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2017-2018 Texas Instruments Incorporated - https://www.ti.com/
  * Jean-Jacques Hiblot <jjhiblot@ti.com>
  */
 
@@ -39,6 +39,7 @@
 #define WIZ_DIV_NUM_CLOCKS_10G	1
 
 #define WIZ_SERDES_TYPEC_LN10_SWAP	BIT(30)
+#define WIZ_SERDES_TYPEC_LN23_SWAP	BIT(31)
 
 enum wiz_lane_standard_mode {
 	LANE_MODE_GEN1,
@@ -63,6 +64,14 @@ enum wiz_clock_input {
 	WIZ_EXT_REFCLK,
 	WIZ_CORE_REFCLK1,
 	WIZ_EXT_REFCLK1,
+};
+
+/*
+ * List of master lanes used for lane swapping
+ */
+enum wiz_typec_master_lane {
+	LANE0 = 0,
+	LANE2 = 2,
 };
 
 static const struct reg_field por_en = REG_FIELD(WIZ_SERDES_CTRL, 31, 31);
@@ -247,6 +256,7 @@ enum wiz_type {
 	J721E_WIZ_10G,
 	AM64_WIZ_10G,
 	J784S4_WIZ_10G,
+	J721S2_WIZ_10G,
 };
 
 struct wiz_data {
@@ -298,6 +308,15 @@ static struct wiz_data j784s4_wiz_10g = {
 	.clk_div_sel_num = WIZ_DIV_NUM_CLOCKS_10G,
 };
 
+static struct wiz_data j721s2_10g_data = {
+	.type = J721S2_WIZ_10G,
+	.pll0_refclk_mux_sel = &pll0_refclk_mux_sel,
+	.pll1_refclk_mux_sel = &pll1_refclk_mux_sel,
+	.refclk_dig_sel = &refclk_dig_sel_10g,
+	.clk_mux_sel = clk_mux_sel_10g,
+	.clk_div_sel_num = WIZ_DIV_NUM_CLOCKS_10G,
+};
+
 #define WIZ_TYPEC_DIR_DEBOUNCE_MIN	100	/* ms */
 #define WIZ_TYPEC_DIR_DEBOUNCE_MAX	1000
 
@@ -329,6 +348,7 @@ struct wiz {
 	u32			num_lanes;
 	struct gpio_desc	*gpio_typec_dir;
 	u32			lane_phy_type[WIZ_MAX_LANES];
+	u32			master_lane_num[WIZ_MAX_LANES];
 	struct clk		*input_clks[WIZ_MAX_INPUT_CLOCKS];
 	unsigned int		id;
 	const struct wiz_data	*data;
@@ -565,12 +585,20 @@ static int wiz_reset_assert(struct reset_ctl *reset_ctl)
 
 static int wiz_phy_fullrt_div(struct wiz *wiz, int lane)
 {
-	if (wiz->type != AM64_WIZ_10G)
+	switch (wiz->type) {
+	case AM64_WIZ_10G:
+		if (wiz->lane_phy_type[lane] == PHY_TYPE_PCIE)
+			return regmap_field_write(wiz->p0_fullrt_div[lane], 0x1);
+		break;
+
+	case J721E_WIZ_16G:
+	case J721E_WIZ_10G:
+		if (wiz->lane_phy_type[lane] == PHY_TYPE_SGMII)
+			return regmap_field_write(wiz->p0_fullrt_div[lane], 0x2);
+		break;
+	default:
 		return 0;
-
-	if (wiz->lane_phy_type[lane] == PHY_TYPE_PCIE)
-		return regmap_field_write(wiz->p0_fullrt_div[lane], 0x1);
-
+	}
 	return 0;
 }
 
@@ -586,14 +614,42 @@ static int wiz_reset_deassert(struct reset_ctl *reset_ctl)
 		return ret;
 
 	/* if typec-dir gpio was specified, set LN10 SWAP bit based on that */
-	if (id == 0 && wiz->gpio_typec_dir) {
-		if (dm_gpio_get_value(wiz->gpio_typec_dir)) {
-			regmap_update_bits(wiz->regmap, WIZ_SERDES_TYPEC,
-					   WIZ_SERDES_TYPEC_LN10_SWAP,
-					   WIZ_SERDES_TYPEC_LN10_SWAP);
-		} else {
-			regmap_update_bits(wiz->regmap, WIZ_SERDES_TYPEC,
-					   WIZ_SERDES_TYPEC_LN10_SWAP, 0);
+	if (id == 0) {
+		if (wiz->gpio_typec_dir) {
+			if (dm_gpio_get_value(wiz->gpio_typec_dir)) {
+				regmap_update_bits(wiz->regmap, WIZ_SERDES_TYPEC,
+						WIZ_SERDES_TYPEC_LN10_SWAP,
+						WIZ_SERDES_TYPEC_LN10_SWAP);
+			} else {
+				regmap_update_bits(wiz->regmap, WIZ_SERDES_TYPEC,
+						WIZ_SERDES_TYPEC_LN10_SWAP, 0);
+			}
+		}
+	} else {
+		/* if no typec-dir gpio was specified and PHY type is
+		 * USB3 with master lane number is '0', set LN10 SWAP
+		 * bit to '1'
+		 */
+		u32 num_lanes = wiz->num_lanes;
+		int i;
+
+		for (i = 0; i < num_lanes; i++) {
+			if (wiz->lane_phy_type[i] == PHY_TYPE_USB3) {
+				switch (wiz->master_lane_num[i]) {
+				case LANE0:
+					regmap_update_bits(wiz->regmap, WIZ_SERDES_TYPEC,
+							WIZ_SERDES_TYPEC_LN10_SWAP,
+							WIZ_SERDES_TYPEC_LN10_SWAP);
+					break;
+				case LANE2:
+					 regmap_update_bits(wiz->regmap, WIZ_SERDES_TYPEC,
+							WIZ_SERDES_TYPEC_LN23_SWAP,
+							WIZ_SERDES_TYPEC_LN23_SWAP);
+					break;
+				default:
+					break;
+				}
+			}
 		}
 	}
 
@@ -658,7 +714,8 @@ static int wiz_p_mac_div_sel(struct wiz *wiz)
 	int i;
 
 	for (i = 0; i < num_lanes; i++) {
-		if (wiz->lane_phy_type[i] == PHY_TYPE_QSGMII) {
+		if (wiz->lane_phy_type[i] == PHY_TYPE_SGMII ||
+		    wiz->lane_phy_type[i] == PHY_TYPE_QSGMII) {
 			ret = regmap_field_write(wiz->p_mac_div_sel0[i], 1);
 			if (ret)
 				return ret;
@@ -999,8 +1056,14 @@ static int j721e_wiz_bind_of_clocks(struct wiz *wiz)
 	ofnode node;
 	int i, rc;
 
-	if (type == AM64_WIZ_10G || type == J784S4_WIZ_10G)
+	switch (type) {
+	case AM64_WIZ_10G:
+	case J784S4_WIZ_10G:
+	case J721S2_WIZ_10G:
 		return j721e_wiz_bind_clocks(wiz);
+	default:
+		break;
+	};
 
 	div_clk_drv = lists_driver_lookup_name("wiz_div_clk");
 	if (!div_clk_drv) {
@@ -1100,8 +1163,10 @@ static int wiz_get_lane_phy_types(struct udevice *dev, struct wiz *wiz)
 		dev_dbg(dev, "%s: Lanes %u-%u have phy-type %u\n", __func__,
 			reg, reg + num_lanes - 1, phy_type);
 
-		for (i = reg; i < reg + num_lanes; i++)
+		for (i = reg; i < reg + num_lanes; i++) {
 			wiz->lane_phy_type[i] = phy_type;
+			wiz->master_lane_num[i] = reg;
+		}
 	}
 
 	return 0;
@@ -1241,6 +1306,9 @@ static const struct udevice_id j721e_wiz_ids[] = {
 	},
 	{
 		.compatible = "ti,j784s4-wiz-10g", .data = (ulong)&j784s4_wiz_10g,
+	},
+	{
+		.compatible = "ti,j721s2-wiz-10g", .data = (ulong)&j721s2_10g_data,
 	},
 	{}
 };

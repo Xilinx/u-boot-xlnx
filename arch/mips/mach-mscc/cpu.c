@@ -3,7 +3,6 @@
  * Copyright (c) 2018 Microsemi Corporation
  */
 
-#include <common.h>
 #include <init.h>
 #include <asm/global_data.h>
 #include <linux/bitops.h>
@@ -17,16 +16,16 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if CONFIG_SYS_SDRAM_SIZE <= SZ_64M
+#if CFG_SYS_SDRAM_SIZE <= SZ_64M
 #define MSCC_RAM_TLB_SIZE   SZ_64M
 #define MSCC_ATTRIB2   MMU_REGIO_INVAL
-#elif CONFIG_SYS_SDRAM_SIZE <= SZ_128M
+#elif CFG_SYS_SDRAM_SIZE <= SZ_128M
 #define MSCC_RAM_TLB_SIZE   SZ_64M
 #define MSCC_ATTRIB2   MMU_REGIO_RW
-#elif CONFIG_SYS_SDRAM_SIZE <= SZ_256M
+#elif CFG_SYS_SDRAM_SIZE <= SZ_256M
 #define MSCC_RAM_TLB_SIZE   SZ_256M
 #define MSCC_ATTRIB2   MMU_REGIO_INVAL
-#elif CONFIG_SYS_SDRAM_SIZE <= SZ_512M
+#elif CFG_SYS_SDRAM_SIZE <= SZ_512M
 #define MSCC_RAM_TLB_SIZE   SZ_256M
 #define MSCC_ATTRIB2   MMU_REGIO_RW
 #else

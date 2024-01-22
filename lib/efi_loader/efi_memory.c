@@ -5,9 +5,12 @@
  *  Copyright (c) 2016 Alexander Graf
  */
 
+#define LOG_CATEGORY LOGC_EFI
+
 #include <common.h>
 #include <efi_loader.h>
 #include <init.h>
+#include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <watchdog.h>
@@ -31,9 +34,10 @@ struct efi_mem_list {
 #define EFI_CARVE_NO_OVERLAP		-1
 #define EFI_CARVE_LOOP_AGAIN		-2
 #define EFI_CARVE_OVERLAPS_NONRAM	-3
+#define EFI_CARVE_OUT_OF_RESOURCES	-4
 
 /* This list contains all memory map items */
-LIST_HEAD(efi_mem);
+static LIST_HEAD(efi_mem);
 
 #ifdef CONFIG_EFI_LOADER_BOUNCE_BUFFER
 void *efi_bounce_buffer;
@@ -78,12 +82,19 @@ static u64 checksum(struct efi_pool_allocation *alloc)
 	return ret;
 }
 
-/*
+/**
+ * efi_mem_cmp() - comparator function for sorting memory map
+ *
  * Sorts the memory list from highest address to lowest address
  *
  * When allocating memory we should always start from the highest
  * address chunk, so sort the memory list such that the first list
  * iterator gets the highest address and goes lower from there.
+ *
+ * @priv:	unused
+ * @a:		first memory area
+ * @b:		second memory area
+ * Return:	1 if @a is before @b, -1 if @b is before @a, 0 if equal
  */
 static int efi_mem_cmp(void *priv, struct list_head *a, struct list_head *b)
 {
@@ -98,11 +109,22 @@ static int efi_mem_cmp(void *priv, struct list_head *a, struct list_head *b)
 		return -1;
 }
 
+/**
+ * desc_get_end() - get end address of memory area
+ *
+ * @desc:	memory descriptor
+ * Return:	end address + 1
+ */
 static uint64_t desc_get_end(struct efi_mem_desc *desc)
 {
 	return desc->physical_start + (desc->num_pages << EFI_PAGE_SHIFT);
 }
 
+/**
+ * efi_mem_sort() - sort memory map
+ *
+ * Sort the memory map and then try to merge adjacent memory areas.
+ */
 static void efi_mem_sort(void)
 {
 	struct list_head *lhandle;
@@ -148,12 +170,13 @@ static void efi_mem_sort(void)
 	}
 }
 
-/** efi_mem_carve_out - unmap memory region
+/**
+ * efi_mem_carve_out() - unmap memory region
  *
  * @map:		memory map
  * @carve_desc:		memory region to unmap
  * @overlap_only_ram:	the carved out region may only overlap RAM
- * Return Value:	the number of overlapping pages which have been
+ * Return:		the number of overlapping pages which have been
  *			removed from the map,
  *			EFI_CARVE_NO_OVERLAP, if the regions don't overlap,
  *			EFI_CARVE_OVERLAPS_NONRAM, if the carve and map overlap,
@@ -217,6 +240,8 @@ static s64 efi_mem_carve_out(struct efi_mem_list *map,
 
 	/* Create a new map from [ carve_start ... map_end ] */
 	newmap = calloc(1, sizeof(*newmap));
+	if (!newmap)
+		return EFI_CARVE_OUT_OF_RESOURCES;
 	newmap->desc = map->desc;
 	newmap->desc.physical_start = carve_start;
 	newmap->desc.virtual_start = carve_start;
@@ -260,6 +285,8 @@ static efi_status_t efi_add_memory_map_pg(u64 start, u64 pages,
 
 	++efi_memory_map_key;
 	newlist = calloc(1, sizeof(*newlist));
+	if (!newlist)
+		return EFI_OUT_OF_RESOURCES;
 	newlist->desc.type = memory_type;
 	newlist->desc.physical_start = start;
 	newlist->desc.virtual_start = start;
@@ -289,11 +316,15 @@ static efi_status_t efi_add_memory_map_pg(u64 start, u64 pages,
 			r = efi_mem_carve_out(lmem, &newlist->desc,
 					      overlap_only_ram);
 			switch (r) {
+			case EFI_CARVE_OUT_OF_RESOURCES:
+				free(newlist);
+				return EFI_OUT_OF_RESOURCES;
 			case EFI_CARVE_OVERLAPS_NONRAM:
 				/*
 				 * The user requested to only have RAM overlaps,
 				 * but we hit a non-RAM region. Error out.
 				 */
+				free(newlist);
 				return EFI_NO_MAPPING;
 			case EFI_CARVE_NO_OVERLAP:
 				/* Just ignore this list entry */
@@ -324,6 +355,7 @@ static efi_status_t efi_add_memory_map_pg(u64 start, u64 pages,
 		 * The payload wanted to have RAM overlaps, but we overlapped
 		 * with an unallocated region. Error out.
 		 */
+		free(newlist);
 		return EFI_NO_MAPPING;
 	}
 
@@ -403,6 +435,13 @@ static efi_status_t efi_check_allocated(u64 addr, bool must_be_allocated)
 	return EFI_NOT_FOUND;
 }
 
+/**
+ * efi_find_free_memory() - find free memory pages
+ *
+ * @len:	size of memory area needed
+ * @max_addr:	highest address to allocate
+ * Return:	pointer to free memory area or 0
+ */
 static uint64_t efi_find_free_memory(uint64_t len, uint64_t max_addr)
 {
 	struct list_head *lhandle;
@@ -445,20 +484,20 @@ static uint64_t efi_find_free_memory(uint64_t len, uint64_t max_addr)
 	return 0;
 }
 
-/*
- * Allocate memory pages.
+/**
+ * efi_allocate_pages - allocate memory pages
  *
- * @type		type of allocation to be performed
- * @memory_type		usage type of the allocated memory
- * @pages		number of pages to be allocated
- * @memory		allocated memory
+ * @type:		type of allocation to be performed
+ * @memory_type:	usage type of the allocated memory
+ * @pages:		number of pages to be allocated
+ * @memory:		allocated memory
  * Return:		status code
  */
 efi_status_t efi_allocate_pages(enum efi_allocate_type type,
 				enum efi_memory_type memory_type,
 				efi_uintn_t pages, uint64_t *memory)
 {
-	u64 len = pages << EFI_PAGE_SHIFT;
+	u64 len;
 	efi_status_t ret;
 	uint64_t addr;
 
@@ -468,6 +507,11 @@ efi_status_t efi_allocate_pages(enum efi_allocate_type type,
 		return EFI_INVALID_PARAMETER;
 	if (!memory)
 		return EFI_INVALID_PARAMETER;
+	len = (u64)pages << EFI_PAGE_SHIFT;
+	/* Catch possible overflow on 64bit systems */
+	if (sizeof(efi_uintn_t) == sizeof(u64) &&
+	    (len >> EFI_PAGE_SHIFT) != (u64)pages)
+		return EFI_OUT_OF_RESOURCES;
 
 	switch (type) {
 	case EFI_ALLOCATE_ANY_PAGES:
@@ -507,20 +551,6 @@ efi_status_t efi_allocate_pages(enum efi_allocate_type type,
 	return EFI_SUCCESS;
 }
 
-void *efi_alloc(uint64_t len, int memory_type)
-{
-	uint64_t ret = 0;
-	uint64_t pages = efi_size_in_pages(len);
-	efi_status_t r;
-
-	r = efi_allocate_pages(EFI_ALLOCATE_ANY_PAGES, memory_type, pages,
-			       &ret);
-	if (r == EFI_SUCCESS)
-		return (void*)(uintptr_t)ret;
-
-	return NULL;
-}
-
 /**
  * efi_free_pages() - free memory pages
  *
@@ -552,7 +582,7 @@ efi_status_t efi_free_pages(uint64_t memory, efi_uintn_t pages)
 }
 
 /**
- * efi_alloc_aligned_pages - allocate
+ * efi_alloc_aligned_pages() - allocate aligned memory pages
  *
  * @len:		len in bytes
  * @memory_type:	usage type of the allocated memory
@@ -640,6 +670,28 @@ efi_status_t efi_allocate_pool(enum efi_memory_type pool_type, efi_uintn_t size,
 }
 
 /**
+ * efi_alloc() - allocate boot services data pool memory
+ *
+ * Allocate memory from pool and zero it out.
+ *
+ * @size:	number of bytes to allocate
+ * Return:	pointer to allocated memory or NULL
+ */
+void *efi_alloc(size_t size)
+{
+	void *buf;
+
+	if (efi_allocate_pool(EFI_BOOT_SERVICES_DATA, size, &buf) !=
+	    EFI_SUCCESS) {
+		log_err("out of memory");
+		return NULL;
+	}
+	memset(buf, 0, size);
+
+	return buf;
+}
+
+/**
  * efi_free_pool() - free memory from pool
  *
  * @buffer:	start of memory to be freed
@@ -673,15 +725,15 @@ efi_status_t efi_free_pool(void *buffer)
 	return ret;
 }
 
-/*
- * Get map describing memory usage.
+/**
+ * efi_get_memory_map() - get map describing memory usage.
  *
- * @memory_map_size	on entry the size, in bytes, of the memory map buffer,
+ * @memory_map_size:	on entry the size, in bytes, of the memory map buffer,
  *			on exit the size of the copied memory map
- * @memory_map		buffer to which the memory map is written
- * @map_key		key for the memory map
- * @descriptor_size	size of an individual memory descriptor
- * @descriptor_version	version number of the memory descriptor structure
+ * @memory_map:		buffer to which the memory map is written
+ * @map_key:		key for the memory map
+ * @descriptor_size:	size of an individual memory descriptor
+ * @descriptor_version:	version number of the memory descriptor structure
  * Return:		status code
  */
 efi_status_t efi_get_memory_map(efi_uintn_t *memory_map_size,
@@ -741,8 +793,8 @@ efi_status_t efi_get_memory_map(efi_uintn_t *memory_map_size,
  *
  * The caller is responsible for calling FreePool() if the call succeeds.
  *
- * @memory_map		buffer to which the memory map is written
- * @map_size		size of the memory map
+ * @map_size:		size of the memory map
+ * @memory_map:		buffer to which the memory map is written
  * Return:		status code
  */
 efi_status_t efi_get_memory_map_alloc(efi_uintn_t *map_size,
@@ -818,9 +870,14 @@ efi_status_t efi_add_conventional_memory_map(u64 ram_start, u64 ram_end,
 	return EFI_SUCCESS;
 }
 
+/**
+ * efi_add_known_memory() - add memory banks to map
+ *
+ * This function may be overridden for specific architectures.
+ */
 __weak void efi_add_known_memory(void)
 {
-	u64 ram_top = board_get_usable_ram_top(0) & ~EFI_PAGE_MASK;
+	u64 ram_top = gd->ram_top & ~EFI_PAGE_MASK;
 	int i;
 
 	/*
@@ -844,7 +901,11 @@ __weak void efi_add_known_memory(void)
 	}
 }
 
-/* Add memory regions for U-Boot's memory and for the runtime services code */
+/**
+ * add_u_boot_and_runtime() - add U-Boot code to memory map
+ *
+ * Add memory regions for U-Boot's memory and for the runtime services code.
+ */
 static void add_u_boot_and_runtime(void)
 {
 	unsigned long runtime_start, runtime_end, runtime_pages;

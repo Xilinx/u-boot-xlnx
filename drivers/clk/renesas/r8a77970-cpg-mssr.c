@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0
 /*
- * Renesas R8A77970 CPG MSSR driver
+ * r8a77970 Clock Pulse Generator / Module Standby and Software Reset
  *
- * Copyright (C) 2017-2018 Marek Vasut <marek.vasut@gmail.com>
+ * Copyright (C) 2017-2018 Cogent Embedded Inc.
  *
- * Based on the following driver from Linux kernel:
- * r8a7796 Clock Pulse Generator / Module Standby and Software Reset
+ * Based on r8a7795-cpg-mssr.c
  *
- * Copyright (C) 2016 Glider bvba
+ * Copyright (C) 2015 Glider bvba
  */
 
 #include <common.h>
@@ -21,11 +20,6 @@
 #include "rcar-gen3-cpg.h"
 
 #define CPG_SD0CKCR		0x0074
-
-enum r8a77970_clk_types {
-	CLK_TYPE_R8A77970_SD0H = CLK_TYPE_GEN3_SOC_BASE,
-	CLK_TYPE_R8A77970_SD0,
-};
 
 enum clk_ids {
 	/* Core Clock Outputs exported to DT */
@@ -47,7 +41,7 @@ enum clk_ids {
 	MOD_CLK_BASE
 };
 
-static const struct cpg_core_clk r8a77970_core_clks[] = {
+static const struct cpg_core_clk r8a77970_core_clks[] __initconst = {
 	/* External Clock Inputs */
 	DEF_INPUT("extal",	CLK_EXTAL),
 	DEF_INPUT("extalr",	CLK_EXTALR),
@@ -62,6 +56,7 @@ static const struct cpg_core_clk r8a77970_core_clks[] = {
 	DEF_FIXED(".pll1_div4",	CLK_PLL1_DIV4,	CLK_PLL1_DIV2,	2, 1),
 
 	/* Core Clock Outputs */
+	DEF_FIXED("z2",		R8A77970_CLK_Z2,    CLK_PLL1_DIV4,  1, 1),
 	DEF_FIXED("ztr",	R8A77970_CLK_ZTR,   CLK_PLL1_DIV2,  6, 1),
 	DEF_FIXED("ztrd2",	R8A77970_CLK_ZTRD2, CLK_PLL1_DIV2, 12, 1),
 	DEF_FIXED("zt",		R8A77970_CLK_ZT,    CLK_PLL1_DIV2,  4, 1),
@@ -92,7 +87,7 @@ static const struct cpg_core_clk r8a77970_core_clks[] = {
 	DEF_FIXED("r",		R8A77970_CLK_R,	    CLK_EXTALR,	   1, 1),
 };
 
-static const struct mssr_mod_clk r8a77970_mod_clks[] = {
+static const struct mssr_mod_clk r8a77970_mod_clks[] __initconst = {
 	DEF_MOD("tmu4",			 121,	R8A77970_CLK_S2D2),
 	DEF_MOD("tmu3",			 122,	R8A77970_CLK_S2D2),
 	DEF_MOD("tmu2",			 123,	R8A77970_CLK_S2D2),
@@ -171,7 +166,7 @@ static const struct mssr_mod_clk r8a77970_mod_clks[] = {
 					 (((md) & BIT(13)) >> 12) | \
 					 (((md) & BIT(19)) >> 19))
 
-static const struct rcar_gen3_cpg_pll_config cpg_pll_configs[8] = {
+static const struct rcar_gen3_cpg_pll_config cpg_pll_configs[8] __initconst = {
 	/* EXTAL div	PLL1 mult/div	PLL3 mult/div */
 	{ 1,		192,	1,	96,	1,	},
 	{ 1,		192,	1,	80,	1,	},
@@ -219,7 +214,7 @@ static const struct cpg_mssr_info r8a77970_cpg_mssr_info = {
 	.get_pll_config		= r8a77970_get_pll_config,
 };
 
-static const struct udevice_id r8a77970_clk_ids[] = {
+static const struct udevice_id r8a77970_cpg_ids[] = {
 	{
 		.compatible	= "renesas,r8a77970-cpg-mssr",
 		.data		= (ulong)&r8a77970_cpg_mssr_info
@@ -227,12 +222,9 @@ static const struct udevice_id r8a77970_clk_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(clk_r8a77970) = {
-	.name		= "clk_r8a77970",
-	.id		= UCLASS_CLK,
-	.of_match	= r8a77970_clk_ids,
-	.priv_auto	= sizeof(struct gen3_clk_priv),
-	.ops		= &gen3_clk_ops,
-	.probe		= gen3_clk_probe,
-	.remove		= gen3_clk_remove,
+U_BOOT_DRIVER(cpg_r8a77970) = {
+	.name		= "cpg_r8a77970",
+	.id		= UCLASS_NOP,
+	.of_match	= r8a77970_cpg_ids,
+	.bind		= gen3_cpg_bind,
 };

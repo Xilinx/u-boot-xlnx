@@ -22,6 +22,7 @@
 #include <env.h>
 #include <log.h>
 #include <malloc.h>
+#include <linux/printk.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -33,6 +34,7 @@
 #include <spl.h>
 #include <image.h>
 #include <imximage.h>
+#include <imx_container.h>
 #include <watchdog.h>
 
 #define HID_REPORT_ID_MASK	0x000000ff
@@ -702,7 +704,7 @@ static int sdp_bind_config(struct usb_configuration *c)
 	return status;
 }
 
-int sdp_init(int controller_index)
+int sdp_init(struct udevice *udc)
 {
 	printf("SDP: initialize...\n");
 	while (!sdp_func->configuration_done) {
@@ -712,7 +714,7 @@ int sdp_init(int controller_index)
 		}
 
 		schedule();
-		usb_gadget_handle_interrupts(controller_index);
+		dm_usb_gadget_handle_interrupts(udc);
 	}
 
 	return 0;
@@ -851,7 +853,8 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
 				return SDP_EXIT;
 			}
 #endif
-			if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
+			if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER) &&
+			    valid_container_hdr((void *)header)) {
 				struct spl_load_info load;
 
 				load.dev = header;
@@ -865,10 +868,11 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
 			struct spl_image_info spl_image = {};
 			struct spl_boot_device bootdev = {};
 			spl_parse_image_header(&spl_image, &bootdev, header);
+			spl_board_prepare_for_boot();
 			jump_to_image_no_args(&spl_image);
 #else
 			/* In U-Boot, allow jumps to scripts */
-			image_source_script(sdp_func->jmp_address, "script@1");
+			cmd_source_script(sdp_func->jmp_address, NULL, NULL);
 #endif
 		}
 
@@ -910,9 +914,9 @@ static void sdp_handle_out_ep(void)
 }
 
 #ifndef CONFIG_SPL_BUILD
-int sdp_handle(int controller_index)
+int sdp_handle(struct udevice *udc)
 #else
-int spl_sdp_handle(int controller_index, struct spl_image_info *spl_image,
+int spl_sdp_handle(struct udevice *udc, struct spl_image_info *spl_image,
 		   struct spl_boot_device *bootdev)
 #endif
 {
@@ -928,7 +932,7 @@ int spl_sdp_handle(int controller_index, struct spl_image_info *spl_image,
 			return 0;
 
 		schedule();
-		usb_gadget_handle_interrupts(controller_index);
+		dm_usb_gadget_handle_interrupts(udc);
 
 #ifdef CONFIG_SPL_BUILD
 		flag = sdp_handle_in_ep(spl_image, bootdev);

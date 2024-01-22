@@ -8,65 +8,87 @@
 		multiple-images;
 	};
 
+#ifdef CONFIG_OPTEE
 	firmware {
 		optee {
 			compatible = "linaro,optee-tz";
 			method = "smc";
 		};
 	};
+#endif
 
 	wdt-reboot {
 		compatible = "wdt-reboot";
 		wdt = <&wdog1>;
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &{/soc@0} {
-	u-boot,dm-pre-reloc;
-	u-boot,dm-spl;
+	bootph-all;
+	bootph-pre-ram;
 };
 
 &aips1 {
-	u-boot,dm-spl;
-	u-boot,dm-pre-reloc;
+	bootph-pre-ram;
+	bootph-all;
 };
 
 &aips2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &aips3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &aips4 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &clk {
-	u-boot,dm-spl;
-	u-boot,dm-pre-reloc;
+	bootph-pre-ram;
+	bootph-all;
 	/delete-property/ assigned-clocks;
 	/delete-property/ assigned-clock-parents;
 	/delete-property/ assigned-clock-rates;
 };
 
+#ifdef CONFIG_FSL_CAAM
+&crypto {
+	bootph-pre-ram;
+};
+#endif
+
 &iomuxc {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &osc_24m {
-	u-boot,dm-spl;
-	u-boot,dm-pre-reloc;
+	bootph-pre-ram;
+	bootph-all;
 };
 
+#ifdef CONFIG_FSL_CAAM
+&sec_jr0 {
+	bootph-pre-ram;
+};
+
+&sec_jr1 {
+	bootph-pre-ram;
+};
+
+&sec_jr2 {
+	bootph-pre-ram;
+};
+#endif
+
 &spba1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &wdog1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &binman {
@@ -85,7 +107,7 @@
 #ifdef CONFIG_IMX8M_LPDDR4
 			filename = "lpddr4_pmu_train_1d_imem.bin";
 #elif CONFIG_IMX8M_DDR4
-			filename = "ddr4_imem_1d.bin";
+			filename = "ddr4_imem_1d_201810.bin";
 #else
 			filename = "ddr3_imem_1d.bin";
 #endif
@@ -97,7 +119,7 @@
 #ifdef CONFIG_IMX8M_LPDDR4
 			filename = "lpddr4_pmu_train_1d_dmem.bin";
 #elif CONFIG_IMX8M_DDR4
-			filename = "ddr4_dmem_1d.bin";
+			filename = "ddr4_dmem_1d_201810.bin";
 #else
 			filename = "ddr3_dmem_1d.bin";
 #endif
@@ -105,11 +127,12 @@
 			align-end = <4>;
 		};
 
+#if defined(CONFIG_IMX8M_LPDDR4) || defined(CONFIG_IMX8M_DDR4)
 		ddr-2d-imem-fw {
 #ifdef CONFIG_IMX8M_LPDDR4
 			filename = "lpddr4_pmu_train_2d_imem.bin";
-#elif CONFIG_IMX8M_DDR4
-			filename = "ddr4_imem_2d.bin";
+#else
+			filename = "ddr4_imem_2d_201810.bin";
 #endif
 			type = "blob-ext";
 			align-end = <4>;
@@ -118,12 +141,13 @@
 		ddr-2d-dmem-fw {
 #ifdef CONFIG_IMX8M_LPDDR4
 			filename = "lpddr4_pmu_train_2d_dmem.bin";
-#elif CONFIG_IMX8M_DDR4
-			filename = "ddr4_dmem_2d.bin";
+#else
+			filename = "ddr4_dmem_2d_201810.bin";
 #endif
 			type = "blob-ext";
 			align-end = <4>;
 		};
+#endif
 	};
 
 	spl {
@@ -143,7 +167,9 @@
 
 		fit {
 			description = "Configuration to load ATF before U-Boot";
+#ifndef CONFIG_IMX_HAB
 			fit,external-offset = <CONFIG_FIT_EXTERNAL_OFFSET>;
+#endif
 			fit,fdt-list = "of-list";
 			#address-cells = <1>;
 
@@ -161,6 +187,7 @@
 					};
 				};
 
+#ifndef CONFIG_ARMV8_PSCI
 				atf {
 					arch = "arm64";
 					compression = "none";
@@ -174,6 +201,7 @@
 						type = "atf-bl31";
 					};
 				};
+#endif
 
 				binman_fip: fip {
 					arch = "arm64";
@@ -198,11 +226,13 @@
 			configurations {
 				default = "@config-DEFAULT-SEQ";
 
-				binman_configuration: @config-SEQ {
+				@config-SEQ {
 					description = "NAME";
 					fdt = "fdt-SEQ";
 					firmware = "uboot";
+#ifndef CONFIG_ARMV8_PSCI
 					loadables = "atf";
+#endif
 				};
 			};
 		};

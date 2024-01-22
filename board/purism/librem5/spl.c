@@ -26,6 +26,7 @@
 #include <usb.h>
 #include <dwc3-uboot.h>
 #include <linux/delay.h>
+#include <linux/usb/gadget.h>
 #include "librem5.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -322,6 +323,8 @@ void disable_charger_bq25895(void)
 }
 
 #define I2C_PMIC	0
+#define POWER_BD71837_I2C_BUS	0
+#define POWER_BD71837_I2C_ADDR	0x4B
 
 int power_bd71837_init(unsigned char bus)
 {
@@ -336,7 +339,7 @@ int power_bd71837_init(unsigned char bus)
 	p->name = name;
 	p->interface = I2C_PMIC;
 	p->number_of_regs = BD718XX_MAX_REGISTER;
-	p->hw.i2c.addr = CONFIG_POWER_BD71837_I2C_ADDR;
+	p->hw.i2c.addr = POWER_BD71837_I2C_ADDR;
 	p->hw.i2c.tx_num = 1;
 	p->bus = bus;
 
@@ -357,10 +360,10 @@ int power_init_board(void)
 	/*
 	 * Init PMIC
 	 */
-	rv = power_bd71837_init(CONFIG_POWER_BD71837_I2C_BUS);
+	rv = power_bd71837_init(POWER_BD71837_I2C_BUS);
 	if (rv) {
 		log_err("%s: power_bd71837_init(%d) error %d\n", __func__,
-			CONFIG_POWER_BD71837_I2C_BUS, rv);
+			POWER_BD71837_I2C_BUS, rv);
 		goto out;
 	}
 
@@ -415,9 +418,9 @@ out:
 	return rv;
 }
 
-int usb_gadget_handle_interrupts(void)
+int dm_usb_gadget_handle_interrupts(struct udevice *dev)
 {
-	dwc3_uboot_handle_interrupt(0);
+	dwc3_uboot_handle_interrupt(dev);
 	return 0;
 }
 

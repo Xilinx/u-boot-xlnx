@@ -12,6 +12,7 @@
 #include <log.h>
 #include <malloc.h>
 #include <asm/global_data.h>
+#include <linux/printk.h>
 #include <linux/usb/otg.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
@@ -88,7 +89,7 @@ static int ti_musb_of_to_plat(struct udevice *dev)
 	int usb_index;
 	struct musb_hdrc_config *musb_config;
 
-	plat->base = (void *)devfdt_get_addr_index(dev, 1);
+	plat->base = devfdt_get_addr_index_ptr(dev, 1);
 
 	phys = fdtdec_lookup_phandle(fdt, node, "phys");
 	ctrl_mod = fdtdec_lookup_phandle(fdt, phys, "ti,ctrl_mod");

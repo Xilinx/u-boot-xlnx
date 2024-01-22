@@ -40,11 +40,16 @@
 #define SRC_MIX_SLICE_FUNC_STAT_ISO_STAT BIT(4)
 #define SRC_MIX_SLICE_FUNC_STAT_MEM_STAT BIT(12)
 
+#define IMG_CONTAINER_BASE             (0x80000000UL)
+
 #define BCTRL_GPR_ENET_QOS_INTF_MODE_MASK        GENMASK(3, 1)
 #define BCTRL_GPR_ENET_QOS_INTF_SEL_MII          (0x0 << 1)
 #define BCTRL_GPR_ENET_QOS_INTF_SEL_RMII         (0x4 << 1)
 #define BCTRL_GPR_ENET_QOS_INTF_SEL_RGMII        (0x1 << 1)
 #define BCTRL_GPR_ENET_QOS_CLK_GEN_EN            (0x1 << 0)
+
+#define MARKETING_GRADING_MASK	GENMASK(5, 4)
+#define SPEED_GRADING_MASK	GENMASK(11, 6)
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
 #include <asm/types.h>

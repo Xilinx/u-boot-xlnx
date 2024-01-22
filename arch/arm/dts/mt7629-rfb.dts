@@ -25,24 +25,24 @@
 &eth {
 	status = "okay";
 	mediatek,gmac-id = <0>;
-	phy-mode = "sgmii";
+	phy-mode = "2500base-x";
 	mediatek,switch = "mt7531";
 	reset-gpios = <&gpio 28 GPIO_ACTIVE_HIGH>;
 
 	fixed-link {
-		speed = <1000>;
+		speed = <2500>;
 		full-duplex;
 	};
 };
 
 &pinctrl {
 	state_default: pinmux_conf {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 
 		mux {
 			function = "jtag";
 			groups = "ephy_leds_jtag";
-			u-boot,dm-pre-reloc;
+			bootph-all;
 		};
 	};
 
@@ -84,7 +84,7 @@
 	spi-flash@0{
 		compatible = "jedec,spi-nor";
 		reg = <0>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 
@@ -98,7 +98,7 @@
 		reg = <0>;
 		spi-tx-bus-width = <1>;
 		spi-rx-bus-width = <4>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 

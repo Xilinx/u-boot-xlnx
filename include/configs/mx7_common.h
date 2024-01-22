@@ -14,22 +14,6 @@
 #include <asm/mach-imx/gpio.h>
 
 /* Timer settings */
-#define CONFIG_MXC_GPT_HCLK
-#define CONFIG_SC_TIMER_CLK 8000000 /* 8Mhz */
-
-/* Enable iomux-lpsr support */
-#define CONFIG_IOMUX_LPSR
-
-/* Miscellaneous configurable options */
-
-/* UART */
-
-/* MMC */
-
-/*
- * If we have defined the OPTEE ram size and not OPTEE it means that we were
- * launched by OPTEE, because of that we shall skip all the low level
- * initialization since it was already done by ATF or OPTEE
- */
+#define CFG_SC_TIMER_CLK 8000000 /* 8Mhz */
 
 #endif

@@ -29,6 +29,7 @@ config ARCH_LS1028A
 	select ESBC_HDR_LS if CHAIN_OF_TRUST
 	select FSL_LAYERSCAPE
 	select FSL_LSCH3
+	select FSL_TZASC_400
 	select GICV3
 	select NXP_LSCH3_2
 	select SYS_FSL_HAS_CCI400
@@ -69,6 +70,7 @@ config ARCH_LS1043A
 	select GICV2
 	select HAS_FSL_XHCI_USB if USB_HOST
 	select SKIP_LOWLEVEL_INIT
+	select SYS_DPAA_FMAN
 	select SYS_FSL_SRDS_1
 	select SYS_HAS_SERDES
 	select SYS_FSL_DDR
@@ -106,6 +108,7 @@ config ARCH_LS1046A
 	select GICV2
 	select HAS_FSL_XHCI_USB if USB_HOST
 	select SKIP_LOWLEVEL_INIT
+	select SYS_DPAA_FMAN
 	select SYS_FSL_SRDS_1
 	select SYS_HAS_SERDES
 	select SYS_FSL_DDR
@@ -387,66 +390,6 @@ config HAS_FEATURE_ENHANCED_MSI
 	bool
 	default y if ARCH_LS1043A
 
-menu "Layerscape PPA"
-config FSL_LS_PPA
-	bool "FSL Layerscape PPA firmware support"
-	depends on !ARMV8_PSCI
-	select ARMV8_SEC_FIRMWARE_SUPPORT
-	select SEC_FIRMWARE_ARMV8_PSCI
-	select ARMV8_SEC_FIRMWARE_ERET_ADDR_REVERT if FSL_LSCH2
-	help
-	  The FSL Primary Protected Application (PPA) is a software component
-	  which is loaded during boot stage, and then remains resident in RAM
-	  and runs in the TrustZone after boot.
-	  Say y to enable it.
-
-config SPL_FSL_LS_PPA
-	bool "FSL Layerscape PPA firmware support for SPL build"
-	depends on !ARMV8_PSCI
-	select SPL_ARMV8_SEC_FIRMWARE_SUPPORT
-	select SEC_FIRMWARE_ARMV8_PSCI
-	select ARMV8_SEC_FIRMWARE_ERET_ADDR_REVERT if FSL_LSCH2
-	help
-	  The FSL Primary Protected Application (PPA) is a software component
-	  which is loaded during boot stage, and then remains resident in RAM
-	  and runs in the TrustZone after boot. This is to load PPA during SPL
-	  stage instead of the RAM version of U-Boot. Once PPA is initialized,
-	  the rest of U-Boot (including RAM version) runs at EL2.
-choice
-	prompt "FSL Layerscape PPA firmware loading-media select"
-	depends on FSL_LS_PPA
-	default SYS_LS_PPA_FW_IN_MMC if SD_BOOT
-	default SYS_LS_PPA_FW_IN_NAND if NAND_BOOT
-	default SYS_LS_PPA_FW_IN_XIP
-
-config SYS_LS_PPA_FW_IN_XIP
-	bool "XIP"
-	help
-	  Say Y here if the PPA firmware locate at XIP flash, such
-	  as NOR or QSPI flash.
-
-config SYS_LS_PPA_FW_IN_MMC
-	bool "eMMC or SD Card"
-	help
-	  Say Y here if the PPA firmware locate at eMMC/SD card.
-
-config SYS_LS_PPA_FW_IN_NAND
-	bool "NAND"
-	help
-	  Say Y here if the PPA firmware locate at NAND flash.
-
-endchoice
-
-config LS_PPA_ESBC_HDR_SIZE
-	hex "Length of PPA ESBC header"
-	depends on FSL_LS_PPA && CHAIN_OF_TRUST && !SYS_LS_PPA_FW_IN_XIP
-	default 0x2000
-	help
-	  Length (in bytes) of PPA ESBC header to be copied from MMC/SD or
-	  NAND to memory to validate PPA image.
-
-endmenu
-
 config SYS_FSL_ERRATUM_A008997
 	bool "Workaround for USB PHY erratum A008997"
 
@@ -522,13 +465,6 @@ config SYS_CCI400_OFFSET
 	  Offset for CCI400 base
 	  CCI400 base addr = CCSRBAR + CCI400_OFFSET
 
-config SYS_FSL_IFC_BANK_COUNT
-	int "Maximum banks of Integrated flash controller"
-	depends on ARCH_LS1043A || ARCH_LS1046A || ARCH_LS2080A || ARCH_LS1088A
-	default 4 if ARCH_LS1043A
-	default 4 if ARCH_LS1046A
-	default 8 if ARCH_LS2080A || ARCH_LS1088A
-
 config SYS_FSL_HAS_CCI400
 	bool
 
@@ -571,16 +507,7 @@ config SYS_DP_DDR_BASE_PHY
 	  DDR controller uses this value as the base address for binding.
 	  It is mapped to CONFIG_SYS_DP_DDR_BASE for core to access.
 
-config SYS_FSL_SRDS_1
-	bool
-
-config SYS_FSL_SRDS_2
-	bool
-
 config SYS_NXP_SRDS_3
-	bool
-
-config SYS_HAS_SERDES
 	bool
 
 config FSL_TZASC_1
@@ -752,7 +679,7 @@ config HAS_FSL_XHCI_USB
 config SYS_FSL_BOOTROM_BASE
 	hex
 	depends on FSL_LSCH2
-	default 0
+	default 0x0
 
 config SYS_FSL_BOOTROM_SIZE
 	hex

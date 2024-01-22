@@ -43,6 +43,7 @@ config TPL_FRAMEWORK
 
 config TPL_BANNER_PRINT
 	bool "Enable output of the TPL banner 'U-Boot TPL ...'"
+	depends on DEBUG_UART && TPL_SERIAL
 	default y
 	help
 	  If this option is enabled, TPL will print the banner with version
@@ -125,14 +126,14 @@ config TPL_POWER
 
 config TPL_TEXT_BASE
 	hex "Base address for the .text section of the TPL stage"
-	default 0
+	default 0x0
 	help
 	  The base address for the .text section of the TPL stage.
 
 config TPL_MAX_SIZE
 	hex "Maximum size (in bytes) for the TPL stage"
 	default 0x2e000 if ROCKCHIP_RK3399
-	default 0x8000 if ROCKCHIP_RK3288
+	default 0x8000 if ROCKCHIP_RK3288 || ROCKCHIP_RV1126
 	default 0x7000 if ROCKCHIP_RK322X || ROCKCHIP_RK3328 || ROCKCHIP_RK3368
 	default 0x2800 if ROCKCHIP_PX30
 	default 0x0

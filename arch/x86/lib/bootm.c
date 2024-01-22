@@ -10,6 +10,7 @@
 #include <common.h>
 #include <bootstage.h>
 #include <command.h>
+#include <efi.h>
 #include <hang.h>
 #include <log.h>
 #include <asm/global_data.h>
@@ -39,7 +40,7 @@ void bootm_announce_and_cleanup(void)
 	timestamp_add_now(TS_START_KERNEL);
 #endif
 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_HANDOFF, "start_kernel");
-#if CONFIG_IS_ENABLED(BOOTSTAGE_REPORT)
+#if IS_ENABLED(CONFIG_BOOTSTAGE_REPORT)
 	bootstage_report();
 #endif
 
@@ -78,7 +79,7 @@ static int boot_prep_linux(struct bootm_headers *images)
 	size_t len;
 	int ret;
 
-	if (CONFIG_IS_ENABLED(OF_LIBFDT) && CONFIG_IS_ENABLED(LMB) && images->ft_len) {
+	if (CONFIG_IS_ENABLED(OF_LIBFDT) && IS_ENABLED(CONFIG_LMB) && images->ft_len) {
 		debug("using: FDT\n");
 		if (image_setup_linux(images)) {
 			puts("FDT creation failed! hanging...");
@@ -149,26 +150,52 @@ error:
 	return 1;
 }
 
-int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
+int boot_linux_kernel(ulong setup_base, ulong entry, bool image_64bit)
 {
 	bootm_announce_and_cleanup();
 
 #ifdef CONFIG_SYS_COREBOOT
 	timestamp_add_now(TS_U_BOOT_START_KERNEL);
 #endif
+
+	/*
+	 * Exit EFI boot services just before jumping, after all console
+	 * output, since the console won't be available afterwards.
+	 */
+	if (IS_ENABLED(CONFIG_EFI_APP)) {
+		int ret;
+
+		ret = efi_store_memory_map(efi_get_priv());
+		if (ret)
+			return ret;
+		printf("Exiting EFI boot services\n");
+		ret = efi_call_exit_boot_services();
+		if (ret)
+			return ret;
+	}
+
 	if (image_64bit) {
 		if (!cpu_has_64bit()) {
 			puts("Cannot boot 64-bit kernel on 32-bit machine\n");
 			return -EFAULT;
 		}
-		/* At present 64-bit U-Boot does not support booting a
+		/*
+		 * At present 64-bit U-Boot only supports booting a 64-bit
 		 * kernel.
-		 * TODO(sjg@chromium.org): Support booting both 32-bit and
-		 * 64-bit kernels from 64-bit U-Boot.
+		 *
+		 * TODO(sjg@chromium.org): Support booting 32-bit kernels from
+		 * 64-bit U-Boot
 		 */
-#if !CONFIG_IS_ENABLED(X86_64)
-		return cpu_jump_to_64bit(setup_base, load_address);
-#endif
+		if (CONFIG_IS_ENABLED(X86_64)) {
+			typedef void (*h_func)(ulong zero, ulong setup);
+			h_func func;
+
+			/* jump to Linux with rdi=0, rsi=setup_base */
+			func = (h_func)entry;
+			func(0, setup_base);
+		} else {
+			return cpu_jump_to_64bit(setup_base, entry);
+		}
 	} else {
 		/*
 		* Set %ebx, %ebp, and %edi to 0, %esi to point to the
@@ -190,7 +217,7 @@ int boot_linux_kernel(ulong setup_base, ulong load_address, bool image_64bit)
 		"movl $0, %%ebp\n"
 		"cli\n"
 		"jmp *%[kernel_entry]\n"
-		:: [kernel_entry]"a"(load_address),
+		:: [kernel_entry]"a"(entry),
 		[boot_params] "S"(setup_base),
 		"b"(0), "D"(0)
 		);
@@ -231,7 +258,7 @@ static ulong get_sp(void)
 	ulong ret;
 
 #if CONFIG_IS_ENABLED(X86_64)
-	ret = gd->start_addr_sp;
+	asm("mov %%rsp, %0" : "=r"(ret) : );
 #else
 	asm("mov %%esp, %0" : "=r"(ret) : );
 #endif

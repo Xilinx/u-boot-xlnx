@@ -883,6 +883,13 @@ void acpi_inc_align(struct acpi_ctx *ctx, uint amount);
  */
 int acpi_add_table(struct acpi_ctx *ctx, void *table);
 
+static inline int acpi_add_fadt(struct acpi_ctx *ctx, struct acpi_fadt *fadt)
+{
+	acpi_add_table(ctx, fadt);
+	acpi_inc(ctx, sizeof(struct acpi_fadt));
+	return 0;
+}
+
 /**
  * acpi_write_rsdp() - Write out an RSDP indicating where the ACPI tables are
  *
@@ -922,6 +929,14 @@ int acpi_fill_csrt(struct acpi_ctx *ctx);
  * @return address of end of tables, where the next tables can be written
  */
 ulong write_acpi_tables(ulong start);
+
+/**
+ * acpi_find_table() - Look up an ACPI table
+ *
+ * @sig: Signature of table (4 characters, upper case)
+ * Return: pointer to table header, or NULL if not found
+ */
+struct acpi_table_header *acpi_find_table(const char *sig);
 
 #endif /* !__ACPI__*/
 

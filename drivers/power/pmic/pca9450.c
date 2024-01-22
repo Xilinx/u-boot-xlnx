@@ -13,6 +13,7 @@
 #include <log.h>
 #include <asm/global_data.h>
 #include <asm-generic/gpio.h>
+#include <linux/printk.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/pca9450.h>
@@ -86,6 +87,7 @@ static int pca9450_bind(struct udevice *dev)
 static int pca9450_probe(struct udevice *dev)
 {
 	struct pca9450_priv *priv = dev_get_priv(dev);
+	unsigned int reset_ctrl;
 	int ret = 0;
 
 	if (CONFIG_IS_ENABLED(DM_GPIO) && CONFIG_IS_ENABLED(DM_REGULATOR_PCA9450)) {
@@ -95,10 +97,18 @@ static int pca9450_probe(struct udevice *dev)
 		if (IS_ERR(priv->sd_vsel_gpio)) {
 			ret = PTR_ERR(priv->sd_vsel_gpio);
 			dev_err(dev, "Failed to request SD_VSEL GPIO: %d\n", ret);
+			if (ret)
+				return ret;
 		}
 	}
 
-	return ret;
+	if (ofnode_read_bool(dev_ofnode(dev), "nxp,wdog_b-warm-reset"))
+		reset_ctrl = PCA9450_PMIC_RESET_WDOG_B_CFG_WARM;
+	else
+		reset_ctrl = PCA9450_PMIC_RESET_WDOG_B_CFG_COLD_LDO12;
+
+	return pmic_clrsetbits(dev, PCA9450_RESET_CTRL,
+			       PCA9450_PMIC_RESET_WDOG_B_CFG_MASK, reset_ctrl);
 }
 
 static struct dm_pmic_ops pca9450_ops = {
@@ -111,6 +121,7 @@ static const struct udevice_id pca9450_ids[] = {
 	{ .compatible = "nxp,pca9450a", .data = NXP_CHIP_TYPE_PCA9450A, },
 	{ .compatible = "nxp,pca9450b", .data = NXP_CHIP_TYPE_PCA9450BC, },
 	{ .compatible = "nxp,pca9450c", .data = NXP_CHIP_TYPE_PCA9450BC, },
+	{ .compatible = "nxp,pca9451a", .data = NXP_CHIP_TYPE_PCA9451A, },
 	{ }
 };
 

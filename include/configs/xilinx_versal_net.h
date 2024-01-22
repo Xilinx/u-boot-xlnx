@@ -20,12 +20,11 @@
 #define GICR_BASE	0xF9060000
 
 /* Serial setup */
-#define CONFIG_SYS_BAUDRATE_TABLE \
+#define CFG_SYS_BAUDRATE_TABLE \
 	{ 4800, 9600, 19200, 38400, 57600, 115200 }
 
 #if defined(CONFIG_CMD_DFU)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
-#define CONFIG_THOR_RESET_OFF
 #define DFU_ALT_INFO_RAM \
 	"dfu_ram_info=" \
 	"setenv dfu_alt_info " \
@@ -55,9 +54,10 @@
 	"kernel_size_r=0x10000000\0" \
 	"kernel_comp_addr_r=0x30000000\0" \
 	"kernel_comp_size=0x3C00000\0" \
-	"scriptaddr=0x20000000\0" \
 	"ramdisk_addr_r=0x02100000\0" \
 	"script_size_f=0x80000\0"
+
+#if defined(CONFIG_DISTRO_DEFAULTS)
 
 #if defined(CONFIG_MMC_SDHCI_ZYNQ)
 # define BOOT_TARGET_DEVICES_MMC(func)	func(MMC, mmc, 0) func(MMC, mmc, 1)
@@ -84,7 +84,6 @@
 	"sf read $scriptaddr $script_offset_f $script_size_f && " \
 	"echo XSPI: Trying to boot script at ${scriptaddr} && " \
 	"source ${scriptaddr}; echo XSPI: SCRIPT FAILED: continuing...;\0"
-
 #else
 # define BOOT_TARGET_DEVICES_XSPI(func)
 # define BOOTENV_DEV_SHARED_XSPI
@@ -128,9 +127,13 @@
 
 #include <config_distro_bootcmd.h>
 
+#else /* CONFIG_DISTRO_DEFAULTS */
+# define BOOTENV
+#endif /* CONFIG_DISTRO_DEFAULTS */
+
 /* Initial environment variables */
-#ifndef CONFIG_EXTRA_ENV_SETTINGS
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#ifndef CFG_EXTRA_ENV_SETTINGS
+#define CFG_EXTRA_ENV_SETTINGS \
 	ENV_MEM_LAYOUT_SETTINGS \
 	BOOTENV \
 	BOOTENV_DEV_SHARED_XSPI \

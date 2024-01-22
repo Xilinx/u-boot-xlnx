@@ -95,6 +95,19 @@ Binman uses the following terms:
 - binary - an input binary that goes into the image
 
 
+Installation
+------------
+
+You can install binman using::
+
+   pip install binary-manager
+
+The name is chosen since binman conflicts with an existing package.
+
+If you are using binman within the U-Boot tree, it may be easiest to add a
+symlink from your local `~/.bin` directory to `/path/to/tools/binman/binman`.
+
+
 Relationship to FIT
 -------------------
 
@@ -298,7 +311,7 @@ C preprocessor::
 
     #ifdef CONFIG_HAVE_MRC
         intel-mrc {
-                offset = <CONFIG_X86_MRC_ADDR>;
+                offset = <CFG_X86_MRC_ADDR>;
         };
     #endif
 
@@ -393,9 +406,9 @@ system-library directory, replace the last line with:
 Running binman
 --------------
 
-Type::
+Type:
 
-.. code-block: bash
+.. code-block:: bash
 
    make NO_PYTHON=1 PREFIX=/ install
     binman build -b <board_name>
@@ -487,6 +500,14 @@ For x86 devices (with the end-at-4gb property) this base address is not added
 since it is assumed that images are XIP and the offsets already include the
 address.
 
+While U-Boot's symbol updating is handled automatically by the u-boot-spl
+entry type (and others), it is possible to use this feature with any blob. To
+do this, add a `write-symbols` (boolean) property to the node, set the ELF
+filename using `elf-filename` and set 'elf-base-sym' to the base symbol for the
+start of the binary image (this defaults to `__image_copy_start` which is what
+U-Boot uses). See `testBlobSymbol()` for an example.
+
+.. _binman_fdt:
 
 Access to binman entry offsets at run time (fdt)
 ------------------------------------------------
@@ -607,6 +628,14 @@ size:
     this size. If this is not provided, it will be set to the size of the
     contents.
 
+min-size:
+    Sets the minimum size of the entry. This size includes explicit padding
+    ('pad-before' and 'pad-after'), but not padding added to meet alignment
+    requirements. While this does not affect the contents of the entry within
+    binman itself (the padding is performed only when its parent section is
+    assembled), the end result will be that the entry ends with the padding
+    bytes, so may grow. Defaults to 0.
+
 pad-before:
     Padding before the contents of the entry. Normally this is 0, meaning
     that the contents start at the beginning of the entry. This can be used
@@ -688,6 +717,22 @@ no-expanded:
     `--no-expanded` command-line option disables this globally. The
     `no-expanded` property disables this just for a single entry. Put the
     `no-expanded` boolean property in the node to select this behaviour.
+
+optional:
+    External blobs are normally required to be present for the image to be
+    built (but see `External blobs`_). This properly allows an entry to be
+    optional, so that when it is cannot be found, this problem is ignored and
+    an empty file is used for this blob. This should be used only when the blob
+    is entirely optional and is not needed for correct operation of the image.
+    Note that missing, optional blobs do not produce a non-zero exit code from
+    binman, although it does show a warning about the missing external blob.
+
+insert-template:
+    This is not strictly speaking an entry property, since it is processed early
+    in Binman before the entries are read. It is a list of phandles of nodes to
+    include in the current (target) node. For each node, its subnodes and their
+    properties are brought into the target node. See Templates_ below for
+    more information.
 
 The attributes supported for images and sections are described below. Several
 are similar to those for entries.
@@ -782,6 +827,52 @@ align-default:
 symlink:
     Adds a symlink to the image with string given in the symlink property.
 
+overlap:
+    Indicates that this entry overlaps with others in the same section. These
+    entries should appear at the end of the section. Overlapping entries are not
+    packed with other entries, but their contents are written over other entries
+    in the section. Overlapping entries must have an explicit offset and size.
+
+write-symbols:
+    Indicates that the blob should be updated with symbol values calculated by
+    binman. This is automatic for certain entry types, e.g. `u-boot-spl`. See
+    binman_syms_ for more information.
+
+no-write-symbols:
+    Disables symbol writing for this entry. This can be used in entry types
+    where symbol writing is automatic. For example, if `u-boot-spl` refers to
+    the `u_boot_any_image_pos` symbol but U-Boot is not available in the image
+    containing SPL, this can be used to disable the writing. Quite likely this
+    indicates a bug in your setup.
+
+elf-filename:
+    Sets the file name of a blob's associated ELF file. For example, if the
+    blob is `zephyr.bin` then the ELF file may be `zephyr.elf`. This allows
+    binman to locate symbols and understand the structure of the blob. See
+    binman_syms_ for more information.
+
+elf-base-sym:
+    Sets the name of the ELF symbol that points to the start of a blob. For
+    U-Boot this is `__image_copy_start` and that is the default used by binman
+    if this property is missing. For other projects, a difference symbol may be
+    needed. Add this symbol to the properties for the blob so that symbols can
+    be read correctly. See binman_syms_ for more information.
+
+offset-from-elf:
+    Sets the offset of an entry based on a symbol value in an another entry.
+    The format is <&phandle>, "sym_name", <offset> where phandle is the entry
+    containing the blob (with associated ELF file providing symbols), <sym_name>
+    is the symbol to lookup (relative to elf-base-sym) and <offset> is an offset
+    to add to that value.
+
+preserve:
+    Indicates that this entry should be preserved by any firmware updates. This
+    flag should be checked by the updater when it is deciding which entries to
+    update. This flag is normally attached to sections but can be attached to
+    a single entry in a section if the updater supports it. Not that binman
+    itself has no control over the updater's behaviour, so this is just a
+    signal. It is not enforced by binman.
+
 Examples of the above options can be found in the tests. See the
 tools/binman/test directory.
 
@@ -836,6 +927,11 @@ name-prefix:
     renamed to 'ro-u-boot' and 'rw-u-boot'. This can be useful to
     distinguish binaries with otherwise identical names.
 
+filename:
+    This allows the contents of the section to be written to a file in the
+    output directory. This can sometimes be useful to use the data in one
+    section in different image, since there is currently no way to share data
+    beteen images other than through files.
 
 Image Properties
 ----------------
@@ -1007,6 +1103,28 @@ For the BSS case, a 'spl-bss-pad' entry arg controls whether it is present. All
 entry args are provided by the U-Boot Makefile.
 
 
+Optional entries
+----------------
+
+Some entries need to exist only if certain conditions are met. For example, an
+entry may want to appear in the image only if a file has a particular format.
+Obviously the entry must exist in the image description for it to be processed
+at all, so a way needs to be found to have the entry remove itself.
+
+To handle this, when entry.ObtainContents() is called, the entry can call
+entry.mark_absent() to mark itself as absent, passing a suitable message as the
+reason.
+
+Any absent entries are dropped immediately after ObtainContents() has been
+called on all entries.
+
+It is not possible for an entry to mark itself absent at any other point in the
+processing. It must happen in the ObtainContents() method.
+
+The effect is as if the entry had never been present at all, since the image
+is packed without it and it disappears from the list of entries.
+
+
 Compression
 -----------
 
@@ -1039,8 +1157,7 @@ It is sometimes inconvenient to add a 'binman' node to the .dts file for each
 board. This can be done by using #include to bring in a common file. Another
 approach supported by the U-Boot build system is to automatically include
 a common header. You can then put the binman node (and anything else that is
-specific to U-Boot, such as u-boot,dm-pre-reloc properies) in that header
-file.
+specific to U-Boot, such as bootph-all properies) in that header file.
 
 Binman will search for the following files in arch/<arch>/dts::
 
@@ -1061,6 +1178,110 @@ If you are having trouble figuring out what is going on, you can use
      arch/arm/dts/armv8-u-boot.dtsi arch/arm/dts/armltd-u-boot.dtsi
      arch/arm/dts/u-boot.dtsi ... found: "arch/arm/dts/juno-r2-u-boot.dtsi"
 
+
+Templates
+=========
+
+Sometimes multiple images need to be created which have all have a common
+part. For example, a board may generate SPI and eMMC images which both include
+a FIT. Since the FIT includes many entries, it is tedious to repeat them twice
+in the image description.
+
+Templates provide a simple way to handle this::
+
+    binman {
+        multiple-images;
+        common_part: template-1 {
+            some-property;
+            fit {
+                ... lots of entries in here
+            };
+
+            text {
+                text = "base image";
+            };
+        };
+
+        spi-image {
+            filename = "image-spi.bin";
+            insert-template = <&fit>;
+
+            /* things specific to SPI follow */
+            footer {
+            ];
+
+            text {
+                text = "SPI image";
+            };
+        };
+
+        mmc-image {
+            filename = "image-mmc.bin";
+            insert-template = <&fit>;
+
+            /* things specific to MMC follow */
+            footer {
+            ];
+
+            text {
+                text = "MMC image";
+            };
+        };
+    };
+
+The template node name must start with 'template', so it is not considered to be
+an image itself.
+
+The mechanism is very simple. For each phandle in the 'insert-templates'
+property, the source node is looked up. Then the subnodes of that source node
+are copied into the target node, i.e. the one containing the `insert-template`
+property.
+
+If the target node has a node with the same name as a template, its properties
+override corresponding properties in the template. This allows the template to
+be uses as a base, with the node providing updates to the properties as needed.
+The overriding happens recursively.
+
+Template nodes appear first in each node that they are inserted into and
+ordering of template nodes is preserved. Other nodes come afterwards. If a
+template node also appears in the target node, then the template node sets the
+order. Thus the template can be used to set the ordering, even if the target
+node provides all the properties. In the above example, `fit` and `text` appear
+first in the `spi-image` and `mmc-image` images, followed by `footer`.
+
+Where there are multiple template nodes, they are inserted in that order. so
+the first template node appears first, then the second.
+
+Properties in the template node are inserted into the destination node if they
+do not exist there. In the example above, `some-property` is added to each of
+`spi-image` and `mmc-image`.
+
+Note that template nodes are removed from the binman description after
+processing and before binman builds the image descriptions.
+
+The initial devicetree produced by the templating process is written to the
+`u-boot.dtb.tmpl1` file. This can be useful to see what is going on if there is
+a failure before the final `u-boot.dtb.out` file is written. A second
+`u-boot.dtb.tmpl2` file is written when the templates themselves are removed.
+
+Dealing with phandles
+---------------------
+
+Templates can contain phandles and these are copied to the destination node.
+However this should be used with care, since if a template is instantiated twice
+then the phandle will be copied twice, resulting in a devicetree with duplicate
+phandles, i.e. the same phandle used by two different nodes. Binman detects this
+situation and produces an error, for example::
+
+  Duplicate phandle 1 in nodes /binman/image/fit/images/atf/atf-bl31 and
+  /binman/image-2/fit/images/atf/atf-bl31
+
+In this case an atf-bl31 node containing a phandle has been copied into two
+different target nodes, resulting in the same phandle for each. See
+testTemplatePhandleDup() for the test case.
+
+The solution is typically to put the phandles in the corresponding target nodes
+(one for each) and remove the phandle from the template.
 
 Updating an ELF file
 ====================
@@ -1244,6 +1465,38 @@ You can also replace just a selection of entries::
 
     $ binman replace -i image.bin "*u-boot*" -I indir
 
+It is possible to replace whole sections as well, but in that case any
+information about entries within the section may become outdated. This is
+because Binman cannot know whether things have moved around or resized within
+the section, once you have updated its data.
+
+Technical note: With 'allow-repack', Binman writes information about the
+original offset and size properties of each entry, if any were specified, in
+the 'orig-offset' and 'orig-size' properties. This allows Binman to distinguish
+between an entry which ended up being packed at an offset (or assigned a size)
+and an entry which had a particular offset / size requested in the Binman
+configuration. Where are particular offset / size was requested, this is treated
+as set in stone, so Binman will ensure it doesn't change. Without this feature,
+repacking an entry might cause it to disobey the original constraints provided
+when it was created.
+
+
+Signing FIT container with private key in an image
+--------------------------------------------------
+
+You can sign FIT container with private key in your image.
+For example::
+
+    $ binman sign -i image.bin -k privatekey -a sha256,rsa4096 fit
+
+binman will extract FIT container, sign and replace it immediately.
+
+If you want to sign and replace FIT container in place::
+
+    $ binman sign -i image.bin -k privatekey -a sha256,rsa4096 -f fit.fit fit
+
+which will sign FIT container with private key and replace it immediately
+inside your image.
 
 .. _`BinmanLogging`:
 
@@ -1325,6 +1578,16 @@ You can also use `--fetch all` to fetch all tools or `--fetch <tool>` to fetch
 a particular tool. Some tools are built from source code, in which case you will
 need to have at least the `build-essential` and `git` packages installed.
 
+Tools are fetched into the `~/.binman-tools` directory. This directory is
+automatically added to the toolpath so there is no need to use `--toolpath` to
+specify it. If you want to use these tools outside binman, you may want to
+add this directory to your `PATH`. For example, if you use bash, add this to
+the end of `.bashrc`::
+
+   PATH="$HOME/.binman-tools:$PATH"
+
+To select a custom directory, use the `--tooldir` option.
+
 Bintool Documentation
 =====================
 
@@ -1343,8 +1606,9 @@ Binman commands and arguments
 
 Usage::
 
-    binman [-h] [-B BUILD_DIR] [-D] [-H] [--toolpath TOOLPATH] [-T THREADS]
-        [--test-section-timeout] [-v VERBOSITY] [-V]
+    binman [-h] [-B BUILD_DIR] [-D] [--tooldir TOOLDIR] [-H]
+        [--toolpath TOOLPATH] [-T THREADS] [--test-section-timeout]
+        [-v VERBOSITY] [-V]
         {build,bintool-docs,entry-docs,ls,extract,replace,test,tool} ...
 
 Binman provides the following commands:
@@ -1369,11 +1633,13 @@ Options:
 -D, --debug
     Enabling debugging (provides a full traceback on error)
 
+--tooldir TOOLDIR     Set the directory to store tools
+
 -H, --full-help
     Display the README file
 
 --toolpath TOOLPATH
-    Add a path to the directories containing tools
+    Add a path to the list of directories containing tools
 
 -T THREADS, --threads THREADS
     Number of threads to use (0=single-thread). Note that -T0 is useful for
@@ -1581,6 +1847,12 @@ Options:
 -m, --map
     Output a map file for the updated image
 
+-O OUTDIR, --outdir OUTDIR
+    Path to directory to use for intermediate and output files
+
+-p, --preserve
+    Preserve temporary output directory even if option -O is not given
+
 This replaces one or more entries in an existing image. See
 `Replacing files in an image`_.
 
@@ -1612,6 +1884,35 @@ Options:
     Preserve and display test-created input directories; also preserve the
     output directory if a single test is run (pass test name at the end of the
     command line
+
+binman sign
+-----------
+
+Usage::
+
+    binman sign [-h] -a ALGO [-f FILE] -i IMAGE -k KEY [paths ...]
+
+positional arguments:
+
+paths
+    Paths within file to sign (wildcard)
+
+options:
+
+-h, --help
+    show this help message and exit
+
+-a ALGO, --algo ALGO
+    Hash algorithm e.g. sha256,rsa4096
+
+-f FILE, --file FILE
+    Input filename to sign
+
+-i IMAGE, --image IMAGE
+    Image filename to update
+
+-k KEY, --key KEY
+    Private key file for signing
 
 binman tool
 -----------
@@ -1683,7 +1984,8 @@ implementation of Pack() is usually sufficient.
 
 Note: for sections, this also checks that the entries do not overlap, nor extend
 outside the section. If the section does not have a defined size, the size is
-set large enough to hold all the entries.
+set large enough to hold all the entries. For entries that are explicitly marked
+as overlapping, this check is skipped.
 
 6. SetImagePos() - sets the image position of every entry. This is the absolute
 position 'image-pos', as opposed to 'offset' which is relative to the containing

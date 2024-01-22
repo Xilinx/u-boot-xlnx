@@ -47,6 +47,7 @@ static struct ti_lpsc soc_lpsc_list[] = {
 };
 
 static struct ti_dev soc_dev_list[] = {
+	PSC_DEV(35, &soc_lpsc_list[0]),
 	PSC_DEV(108, &soc_lpsc_list[0]),
 	PSC_DEV(109, &soc_lpsc_list[0]),
 	PSC_DEV(110, &soc_lpsc_list[0]),
@@ -67,6 +68,7 @@ static struct ti_dev soc_dev_list[] = {
 	PSC_DEV(99, &soc_lpsc_list[12]),
 	PSC_DEV(98, &soc_lpsc_list[13]),
 	PSC_DEV(146, &soc_lpsc_list[14]),
+	PSC_DEV(354, &soc_lpsc_list[15]),
 	PSC_DEV(357, &soc_lpsc_list[15]),
 	PSC_DEV(4, &soc_lpsc_list[16]),
 	PSC_DEV(202, &soc_lpsc_list[17]),
@@ -78,8 +80,8 @@ const struct ti_k3_pd_platdata j721s2_pd_platdata = {
 	.pd = soc_pd_list,
 	.lpsc = soc_lpsc_list,
 	.devs = soc_dev_list,
-	.num_psc = 2,
-	.num_pd = 6,
-	.num_lpsc = 19,
-	.num_devs = 24,
+	.num_psc = ARRAY_SIZE(soc_psc_list),
+	.num_pd = ARRAY_SIZE(soc_pd_list),
+	.num_lpsc = ARRAY_SIZE(soc_lpsc_list),
+	.num_devs = ARRAY_SIZE(soc_dev_list),
 };

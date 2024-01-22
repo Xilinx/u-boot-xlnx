@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2013 Freescale Semiconductor, Inc.
+ * Copyright 2023 NXP
  */
 
 #include <common.h>
@@ -22,6 +23,7 @@
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
 #include <asm/fsl_liodn.h>
+#include <clock_legacy.h>
 #include <fm_eth.h>
 #include "../common/sleep.h"
 #include "t104xrdb.h"
@@ -29,12 +31,19 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#if CONFIG_IS_ENABLED(DM_SERIAL)
+int get_serial_clock(void)
+{
+	return get_bus_freq(0) / 2;
+}
+#endif
+
 int checkboard(void)
 {
 	struct cpu_type *cpu = gd->arch.cpu;
 	u8 sw;
 
-#if defined(CONFIG_TARGET_T1040D4RDB) || defined(CONFIG_TARGET_T1042D4RDB)
+#if defined(CONFIG_TARGET_T1042D4RDB)
 	printf("Board: %sD4RDB\n", cpu->name);
 #else
 	printf("Board: %sRDB\n", cpu->name);
@@ -62,8 +71,8 @@ int board_early_init_f(void)
 
 int board_early_init_r(void)
 {
-#ifdef CONFIG_SYS_FLASH_BASE
-	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
+#ifdef CFG_SYS_FLASH_BASE
+	const unsigned int flashbase = CFG_SYS_FLASH_BASE;
 	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 
 	/*
@@ -84,10 +93,13 @@ int board_early_init_r(void)
 		disable_tlb(flash_esel);
 	}
 
-	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
+	set_tlb(1, flashbase, CFG_SYS_FLASH_BASE_PHYS,
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 #endif
+
+	pci_init();
+
 	return 0;
 }
 
@@ -109,23 +121,6 @@ int misc_init_r(void)
 	if (srds_s1 == 0x8E)
 		CPLD_WRITE(misc_ctl_status, CPLD_READ(misc_ctl_status) |
 					 MISC_CTL_SG_SEL | MISC_CTL_AURORA_SEL);
-
-#if defined(CONFIG_TARGET_T1040D4RDB)
-	if (hwconfig("qe-tdm")) {
-		CPLD_WRITE(sfp_ctl_status, CPLD_READ(sfp_ctl_status) |
-			   MISC_MUX_QE_TDM);
-		printf("QECSR : 0x%02x, mux to qe-tdm\n",
-		       CPLD_READ(sfp_ctl_status));
-	}
-	/* Mask all CPLD interrupt sources, except QSGMII interrupts */
-	if (CPLD_READ(sw_ver) < 0x03) {
-		debug("CPLD SW version 0x%02x doesn't support int_mask\n",
-		      CPLD_READ(sw_ver));
-	} else {
-		CPLD_WRITE(int_mask, CPLD_INT_MASK_ALL &
-			   ~(CPLD_INT_MASK_QSGMII1 | CPLD_INT_MASK_QSGMII2));
-	}
-#endif
 
 	return 0;
 }

@@ -12,6 +12,7 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm/test.h>
+#include <dm/read.h>
 #include <dm/root.h>
 #include <dm/device-internal.h>
 #include <dm/devres.h>
@@ -134,8 +135,8 @@ int dm_check_devices(struct unit_test_state *uts, int num_devices)
 		 * want to test the code that sets that up
 		 * (testfdt_drv_probe()).
 		 */
-		base = fdtdec_get_addr(gd->fdt_blob, dev_of_offset(dev),
-				       "ping-expect");
+		base = fdtdec_get_int(gd->fdt_blob, dev_of_offset(dev),
+				      "ping-expect", -1);
 		debug("dev=%d, base=%d: %s\n", i, base,
 		      fdt_get_name(gd->fdt_blob, dev_of_offset(dev), NULL));
 
@@ -214,7 +215,7 @@ static int dm_test_fdt_pre_reloc(struct unit_test_state *uts)
 
 	/*
 	 * These are 2 pre-reloc devices:
-	 * one with "u-boot,dm-pre-reloc" property (a-test node), and the other
+	 * one with "bootph-all" property (a-test node), and the other
 	 * one whose driver marked with DM_FLAG_PRE_RELOC flag (h-test node).
 	 */
 	ut_asserteq(2, list_count_items(&uc->dev_head));
@@ -592,7 +593,7 @@ static int dm_test_fdt_translation(struct unit_test_state *uts)
 	ut_asserteq_str("dev@2,200", dev->name);
 	ut_asserteq(0xA000, dev_read_addr(dev));
 
-	/* No translation for busses with #size-cells == 0 */
+	/* No translation for buses with #size-cells == 0 */
 	ut_assertok(uclass_find_device_by_seq(UCLASS_TEST_DUMMY, 3, &dev));
 	ut_asserteq_str("dev@42", dev->name);
 	ut_asserteq(0x42, dev_read_addr(dev));
@@ -616,6 +617,7 @@ static int dm_test_fdt_get_addr_ptr_flat(struct unit_test_state *uts)
 {
 	struct udevice *gpio, *dev;
 	void *ptr;
+	void *paddr;
 
 	/* Test for missing reg property */
 	ut_assertok(uclass_first_device_err(UCLASS_GPIO, &gpio));
@@ -623,7 +625,9 @@ static int dm_test_fdt_get_addr_ptr_flat(struct unit_test_state *uts)
 
 	ut_assertok(uclass_find_device_by_seq(UCLASS_TEST_DUMMY, 0, &dev));
 	ptr = devfdt_get_addr_ptr(dev);
-	ut_asserteq_ptr((void *)0x8000, ptr);
+
+	paddr = map_sysmem(0x8000, 0);
+	ut_asserteq_ptr(paddr, ptr);
 
 	return 0;
 }
@@ -1156,6 +1160,41 @@ static int dm_test_decode_display_timing(struct unit_test_state *uts)
 	return 0;
 }
 DM_TEST(dm_test_decode_display_timing, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+
+/* Test dev_decode_panel_timing() */
+static int dm_test_decode_panel_timing(struct unit_test_state *uts)
+{
+	struct udevice *dev;
+	struct display_timing timing;
+
+	ut_assertok(uclass_first_device_err(UCLASS_TEST_FDT, &dev));
+	ut_asserteq_str("a-test", dev->name);
+
+	ut_assertok(dev_decode_panel_timing(dev, &timing));
+	ut_assert(timing.hactive.typ == 240);
+	ut_assert(timing.hback_porch.typ == 7);
+	ut_assert(timing.hfront_porch.typ == 6);
+	ut_assert(timing.hsync_len.typ == 1);
+	ut_assert(timing.vactive.typ == 320);
+	ut_assert(timing.vback_porch.typ == 5);
+	ut_assert(timing.vfront_porch.typ == 8);
+	ut_assert(timing.vsync_len.typ == 2);
+	ut_assert(timing.pixelclock.typ == 6500000);
+	ut_assert(timing.flags & DISPLAY_FLAGS_HSYNC_HIGH);
+	ut_assert(!(timing.flags & DISPLAY_FLAGS_HSYNC_LOW));
+	ut_assert(!(timing.flags & DISPLAY_FLAGS_VSYNC_HIGH));
+	ut_assert(timing.flags & DISPLAY_FLAGS_VSYNC_LOW);
+	ut_assert(timing.flags & DISPLAY_FLAGS_DE_HIGH);
+	ut_assert(!(timing.flags & DISPLAY_FLAGS_DE_LOW));
+	ut_assert(timing.flags & DISPLAY_FLAGS_PIXDATA_POSEDGE);
+	ut_assert(!(timing.flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE));
+	ut_assert(timing.flags & DISPLAY_FLAGS_INTERLACED);
+	ut_assert(timing.flags & DISPLAY_FLAGS_DOUBLESCAN);
+	ut_assert(timing.flags & DISPLAY_FLAGS_DOUBLECLK);
+
+	return 0;
+}
+DM_TEST(dm_test_decode_panel_timing, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test read_resourcee() */
 static int dm_test_read_resource(struct unit_test_state *uts)

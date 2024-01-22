@@ -13,8 +13,8 @@ import struct
 import sys
 import tempfile
 
-from patman import command
-from patman import tools
+from u_boot_pylib import command
+from u_boot_pylib import tools
 
 def fdt32_to_cpu(val):
     """Convert a device tree cell to an integer
@@ -280,6 +280,34 @@ def GetPhandleList(node, propname):
     if not isinstance(value, list):
         value = [value]
     return [fdt32_to_cpu(v) for v in value]
+
+def GetPhandleNameOffset(node, propname):
+    """Get a <&phandle>, "string", <offset> value from a property
+
+    Args:
+        node: Node object to read from
+        propname: property name to read
+
+    Returns:
+        tuple:
+            Node object
+            str
+            int
+        or None if the property does not exist
+    """
+    prop = node.props.get(propname)
+    if not prop:
+        return None
+    value = prop.bytes
+    phandle = fdt32_to_cpu(value[:4])
+    node = node.GetFdt().LookupPhandle(phandle)
+    name = ''
+    for byte in value[4:]:
+        if not byte:
+            break
+        name += chr(byte)
+    val = fdt32_to_cpu(value[4 + len(name) + 1:])
+    return node, name, val
 
 def GetDatatype(node, propname, datatype):
     """Get a value of a given type from a property

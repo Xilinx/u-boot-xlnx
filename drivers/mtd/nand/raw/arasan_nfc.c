@@ -18,6 +18,7 @@
 #include <asm/arch/sys_proto.h>
 #include <dm.h>
 #include <nand.h>
+#include <linux/printk.h>
 
 struct nand_config {
 	u32 page;
@@ -1232,8 +1233,9 @@ static int arasan_probe(struct udevice *dev)
 	struct mtd_info *mtd;
 	ofnode child;
 	int err = -1;
+	const char *str;
 
-	info->reg = (struct nand_regs *)dev_read_addr(dev);
+	info->reg = dev_read_addr_ptr(dev);
 	mtd = nand_to_mtd(nand_chip);
 	nand_set_controller_data(nand_chip, &arasan->nand_ctrl);
 
@@ -1261,6 +1263,10 @@ static int arasan_probe(struct udevice *dev)
 		printf("%s: nand_scan_ident failed\n", __func__);
 		goto fail;
 	}
+
+	str = ofnode_read_string(nand_chip->flash_node, "nand-ecc-mode");
+	if (strcmp(str, "hw"))
+		printf("%s ecc is not supported, switch to hw ecc\n", str);
 
 	nand_chip->ecc.mode = NAND_ECC_HW;
 	nand_chip->ecc.hwctl = NULL;

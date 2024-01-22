@@ -18,10 +18,10 @@ import shutil
 import tempfile
 import urllib.error
 
-from patman import command
-from patman import terminal
-from patman import tools
-from patman import tout
+from u_boot_pylib import command
+from u_boot_pylib import terminal
+from u_boot_pylib import tools
+from u_boot_pylib import tout
 
 BINMAN_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -43,8 +43,6 @@ FETCH_NAMES = {
 # Status of tool fetching
 FETCHED, FAIL, PRESENT, STATUS_COUNT = range(4)
 
-DOWNLOAD_DESTDIR = os.path.join(os.getenv('HOME'), 'bin')
-
 class Bintool:
     """Tool which operates on binaries to help produce entry contents
 
@@ -52,6 +50,10 @@ class Bintool:
     """
     # List of bintools to regard as missing
     missing_list = []
+
+    # Directory to store tools. Note that this set up by set_tool_dir() which
+    # must be called before this class is used.
+    tooldir = ''
 
     def __init__(self, name, desc, version_regex=None, version_args='-V'):
         self.name = name
@@ -111,6 +113,11 @@ class Bintool:
         # Call its constructor to get the object we want.
         obj = cls(name)
         return obj
+
+    @classmethod
+    def set_tool_dir(cls, pathname):
+        """Set the path to use to store and find tools"""
+        cls.tooldir = pathname
 
     def show(self):
         """Show a line of information about a bintool"""
@@ -208,7 +215,8 @@ class Bintool:
             return FAIL
         if result is not True:
             fname, tmpdir = result
-            dest = os.path.join(DOWNLOAD_DESTDIR, self.name)
+            dest = os.path.join(self.tooldir, self.name)
+            os.makedirs(self.tooldir, exist_ok=True)
             print(f"- writing to '{dest}'")
             shutil.move(fname, dest)
             if tmpdir:
@@ -280,7 +288,7 @@ class Bintool:
         name = os.path.expanduser(self.name)  # Expand paths containing ~
         all_args = (name,) + args
         env = tools.get_env_with_path()
-        tout.detail(f"bintool: {' '.join(all_args)}")
+        tout.debug(f"bintool: {' '.join(all_args)}")
         result = command.run_pipe(
             [all_args], capture=True, capture_stderr=True, env=env,
             raise_on_error=False, binary=binary)
@@ -320,7 +328,7 @@ class Bintool:
             return result.stdout
 
     @classmethod
-    def build_from_git(cls, git_repo, make_target, bintool_path, flags=None):
+    def build_from_git(cls, git_repo, make_targets, bintool_path, flags=None):
         """Build a bintool from a git repo
 
         This clones the repo in a temporary directory, builds it with 'make',
@@ -328,7 +336,8 @@ class Bintool:
 
         Args:
             git_repo (str): URL of git repo
-            make_target (str): Target to pass to 'make' to build the tool
+            make_targets (list of str): List of targets to pass to 'make' to build
+                the tool
             bintool_path (str): Relative path of the tool in the repo, after
                 build is complete
             flags (list of str): Flags or variables to pass to make, or None
@@ -342,12 +351,14 @@ class Bintool:
         tmpdir = tempfile.mkdtemp(prefix='binmanf.')
         print(f"- clone git repo '{git_repo}' to '{tmpdir}'")
         tools.run('git', 'clone', '--depth', '1', git_repo, tmpdir)
-        print(f"- build target '{make_target}'")
-        cmd = ['make', '-C', tmpdir, '-j', f'{multiprocessing.cpu_count()}',
-               make_target]
-        if flags:
-            cmd += flags
-        tools.run(*cmd)
+        for target in make_targets:
+            print(f"- build target '{target}'")
+            cmd = ['make', '-C', tmpdir, '-j', f'{multiprocessing.cpu_count()}',
+                   target]
+            if flags:
+                cmd += flags
+            tools.run(*cmd)
+
         fname = os.path.join(tmpdir, bintool_path)
         if not os.path.exists(fname):
             print(f"- File '{fname}' was not produced")
@@ -389,7 +400,7 @@ class Bintool:
 
     @classmethod
     def apt_install(cls, package):
-        """Install a bintool using the 'aot' tool
+        """Install a bintool using the 'apt' tool
 
         This requires use of servo so may request a password
 

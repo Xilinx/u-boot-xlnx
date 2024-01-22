@@ -1,6 +1,8 @@
 config ARCH_LS1021A
 	bool
+	select FSL_DEVICE_DISABLE
 	select FSL_IFC if !QSPI_BOOT && !SD_BOOT_QSPI
+	select LS102XA_STREAM_ID
 	select SYS_FSL_DDR_BE if SYS_FSL_DDR
 	select SYS_FSL_DDR_VER_50 if SYS_FSL_DDR
 	select SYS_FSL_IFC_BE
@@ -30,8 +32,14 @@ config ARCH_LS1021A
 menu "LS102xA architecture"
 	depends on ARCH_LS1021A
 
+config FSL_DEVICE_DISABLE
+	bool
+
 config LS1_DEEP_SLEEP
 	bool "Deep sleep"
+
+config LS102XA_STREAM_ID
+	bool
 
 config MAX_CPUS
 	int "Maximum number of CPUs permitted for LS102xA"
@@ -42,6 +50,9 @@ config MAX_CPUS
 	  ports. If some ports are reserved but higher ports are used for
 	  cores, count the reserved ports. This will allocate enough memory
 	  in spin table to properly handle all cores.
+
+config PEN_ADDR_BIG_ENDIAN
+	bool
 
 config SYS_CCI400_OFFSET
 	hex "Offset for CCI400 base"
@@ -82,20 +93,15 @@ config SYS_FSL_ERRATUM_A010315
 config SYS_FSL_HAS_CCI400
 	bool
 
-config SYS_FSL_SRDS_1
-	bool
-
-config SYS_FSL_SRDS_2
-	bool
-
-config SYS_HAS_SERDES
-	bool
-
-config SYS_FSL_IFC_BANK_COUNT
-	int "Maximum banks of Integrated flash controller"
-	default 8
-
 config SYS_FSL_ERRATUM_A008407
 	bool
+
+config SYS_FSL_QSPI_SKIP_CLKSEL
+	bool "Skip setting QSPI clock during SoC init"
+	help
+	   To improve startup times when booting from QSPI flash, the QSPI
+	   frequency can be set very early in the boot process. If this option
+	   is enabled, the QSPI frequency will not be changed by U-Boot during
+	   SoC initialization.
 
 endmenu

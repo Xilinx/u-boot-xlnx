@@ -29,7 +29,7 @@ void arch_print_bdinfo(void)
 	struct bd_info *bd = gd->bd;
 
 	bdinfo_print_num_l("arch_number", bd->bi_arch_number);
-#ifdef CONFIG_SYS_MEM_RESERVE_SECURE
+#ifdef CFG_SYS_MEM_RESERVE_SECURE
 	if (gd->arch.secure_ram & MEM_RESERVE_SECURE_SECURED) {
 		bdinfo_print_num_ll("Secure ram",
 				    gd->arch.secure_ram &
@@ -57,7 +57,7 @@ void arch_print_bdinfo(void)
 #ifdef CONFIG_BOARD_TYPES
 	printf("Board Type  = %ld\n", gd->board_type);
 #endif
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_IS_ENABLED(SYS_MALLOC_F)
 	printf("Early malloc usage: %lx / %x\n", gd->malloc_ptr,
 	       CONFIG_VAL(SYS_MALLOC_F_LEN));
 #endif

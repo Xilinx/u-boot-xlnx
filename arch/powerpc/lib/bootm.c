@@ -41,8 +41,8 @@ static ulong get_sp (void);
 extern void ft_fixup_num_cores(void *blob);
 static void set_clocks_in_mhz (struct bd_info *kbd);
 
-#ifndef CONFIG_SYS_LINUX_LOWMEM_MAX_SIZE
-#define CONFIG_SYS_LINUX_LOWMEM_MAX_SIZE	(768*1024*1024)
+#ifndef CFG_SYS_LINUX_LOWMEM_MAX_SIZE
+#define CFG_SYS_LINUX_LOWMEM_MAX_SIZE	(768*1024*1024)
 #endif
 
 static void boot_jump_linux(struct bootm_headers *images)
@@ -126,14 +126,14 @@ void arch_lmb_reserve(struct lmb *lmb)
 
 #ifdef DEBUG
 	if (((u64)bootmap_base + bootm_size) >
-	    (CONFIG_SYS_SDRAM_BASE + (u64)gd->ram_size))
+	    (CFG_SYS_SDRAM_BASE + (u64)gd->ram_size))
 		puts("WARNING: bootm_low + bootm_size exceed total memory\n");
 	if ((bootmap_base + bootm_size) > get_effective_memsize())
 		puts("WARNING: bootm_low + bootm_size exceed eff. memory\n");
 #endif
 
 	size = min(bootm_size, get_effective_memsize());
-	size = min(size, (ulong)CONFIG_SYS_LINUX_LOWMEM_MAX_SIZE);
+	size = min(size, (ulong)CFG_SYS_LINUX_LOWMEM_MAX_SIZE);
 
 	if (size < bootm_size) {
 		ulong base = bootmap_base + size;
@@ -214,7 +214,7 @@ static int boot_body_linux(struct bootm_headers *images)
 	if (ret)
 		return ret;
 
-	if (CONFIG_IS_ENABLED(LMB)) {
+	if (IS_ENABLED(CONFIG_LMB)) {
 		ret = image_setup_linux(images);
 		if (ret)
 			return ret;

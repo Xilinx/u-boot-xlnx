@@ -9,14 +9,11 @@
 #include <asm/arch-rockchip/hardware.h>
 #include "rockchip-common.h"
 
-#define CONFIG_SYS_HZ_CLOCK		24000000
+#define CFG_SYS_HZ_CLOCK		24000000
 
-#define CONFIG_IRAM_BASE		0xff700000
+#define CFG_IRAM_BASE		0xff700000
 
-/* RAW SD card / eMMC locations. */
-
-#define CONFIG_SYS_SDRAM_BASE		0
-#define SDRAM_BANK_SIZE			(2UL << 30)
+#define CFG_SYS_SDRAM_BASE		0
 #define SDRAM_MAX_SIZE			0xfe000000
 
 #define ENV_MEM_LAYOUT_SETTINGS \
@@ -26,17 +23,15 @@
 	"kernel_addr_r=0x02000000\0" \
 	"ramdisk_addr_r=0x04000000\0"
 
-#include <config_distro_bootcmd.h>
-
 /* Linux fails to load the fdt if it's loaded above 256M on a Rock 2 board, so
  * limit the fdt reallocation to that */
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	"fdt_high=0x0fffffff\0" \
 	"initrd_high=0x0fffffff\0" \
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"partitions=" PARTS_DEFAULT \
 	ENV_MEM_LAYOUT_SETTINGS \
 	ROCKCHIP_DEVICE_SETTINGS \
-	BOOTENV
+	"boot_targets=" BOOT_TARGETS "\0"
 
 #endif

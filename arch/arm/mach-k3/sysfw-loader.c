@@ -2,7 +2,7 @@
 /*
  * K3: System Firmware Loader
  *
- * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2019 Texas Instruments Incorporated - https://www.ti.com/
  *	Andreas Dannenberg <dannenberg@ti.com>
  */
 
@@ -23,7 +23,6 @@
 #include <spi_flash.h>
 
 #include <asm/io.h>
-#include <asm/arch/sys_proto.h>
 #include "common.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -322,7 +321,7 @@ exit:
 static void *k3_sysfw_get_spi_addr(void)
 {
 	struct udevice *dev;
-	fdt_addr_t addr;
+	void *addr;
 	int ret;
 	unsigned int sf_bus = spl_spi_boot_bus();
 
@@ -330,11 +329,11 @@ static void *k3_sysfw_get_spi_addr(void)
 	if (ret)
 		return NULL;
 
-	addr = dev_read_addr_index(dev, 1);
-	if (addr == FDT_ADDR_T_NONE)
+	addr = dev_read_addr_index_ptr(dev, 1);
+	if (!addr)
 		return NULL;
 
-	return (void *)(addr + CONFIG_K3_SYSFW_IMAGE_SPI_OFFS);
+	return addr + CONFIG_K3_SYSFW_IMAGE_SPI_OFFS;
 }
 
 static void k3_sysfw_spi_copy(u32 *dst, u32 *src, size_t len)
@@ -350,18 +349,18 @@ static void k3_sysfw_spi_copy(u32 *dst, u32 *src, size_t len)
 static void *get_sysfw_hf_addr(void)
 {
 	struct udevice *dev;
-	fdt_addr_t addr;
+	void *addr;
 	int ret;
 
 	ret = uclass_find_first_device(UCLASS_MTD, &dev);
 	if (ret)
 		return NULL;
 
-	addr = dev_read_addr_index(dev, 1);
-	if (addr == FDT_ADDR_T_NONE)
+	addr = dev_read_addr_index_ptr(dev, 1);
+	if (!addr)
 		return NULL;
 
-	return (void *)(addr + CONFIG_K3_SYSFW_IMAGE_SPI_OFFS);
+	return addr + CONFIG_K3_SYSFW_IMAGE_SPI_OFFS;
 }
 #endif
 

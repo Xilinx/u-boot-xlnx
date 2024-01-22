@@ -34,7 +34,6 @@ config KM_PHRAM
 
 config KM_RESERVED_PRAM
 	hex "Reserved RAM"
-	default 0x801000 if ARCH_KIRKWOOD
 	default 0x0 if MPC83xx
 	default 0x1000 if MPC85xx || ARCH_LS1021A
 	depends on !ARCH_SOCFPGA
@@ -77,21 +76,9 @@ config SYS_CLIPS_BASE
 	help
 	  IFC Base Address for CLIPS FPGA.
 
-config KM_CONSOLE_TTY
-	string "KM Console"
-	default "ttyS0"
-	help
-	  TTY console to use on board.
-
-config KM_DEF_NETDEV
-	string "Default Netdevice"
-	default "eth0"
-	help
-	  Default netdevice for debug interface
-
 config KM_COMMON_ETH_INIT
 	bool "Common Ethernet Initialization"
-	default y if ARCH_KIRKWOOD || MPC83xx
+	default y if MPC83xx
 	default n if MPC85xx || ARCH_SOCFPGA || ARCH_LS1021A
 	help
 	  Use the Ethernet initialization implemented in common code that
@@ -113,8 +100,7 @@ config KM_MVEXTSW_ADDR
 config KM_IVM_BUS
 	int "IVM I2C Bus"
 	default 0 if ARCH_SOCFPGA
-	default 1 if ARCH_KIRKWOOD || MPC85xx || ARCH_LS1021A
-	default 2 if MPC83xx
+	default 1 if PPC || ARCH_LS1021A
 	help
 	  Identifier number of I2C bus, where the inventory EEPROM is connected to.
 
@@ -137,23 +123,22 @@ config SYS_IVM_EEPROM_PAGE_LEN
 	  Page size of inventory in EEPROM.
 
 config PG_WCOM_UBOOT_UPDATE_SUPPORTED
-	bool "Enable U-boot Field Fail-Safe Update Functionality"
-	default n
+	bool "Enable U-Boot Field Fail-Safe Update Functionality"
+	select EVENT
 	help
 	  Indicates that field fail-safe u-boot update is supported.
 	  This functionality works only for designs that are booting
 	  from parallel NOR flash.
 
 config PG_WCOM_UBOOT_BOOTPACKAGE
-	bool "U-boot Is Part Of Factory Boot-Package Image"
-	default n
+	bool "U-Boot Is Part Of Factory Boot-Package Image"
 	help
 	  Indicates that u-boot will be a part of the factory programmed
 	  boot-package image.
 	  Has to be set for original u-boot programmed at factory.
 
 config PG_WCOM_UBOOT_UPDATE_TEXT_BASE
-	hex "Text Base For U-boot Programmed Outside Factory"
+	hex "Text Base For U-Boot Programmed Outside Factory"
 	default 0xFFFFFFFF
 	help
 	  Text base of an updated u-boot that is not factory programmed but
@@ -161,8 +146,7 @@ config PG_WCOM_UBOOT_UPDATE_TEXT_BASE
 	  Has to be set for original u-boot programmed at factory.
 
 config PG_WCOM_UBOOT_UPDATE
-	bool "U-boot Is Part Of Factory Boot-Package Image"
-	default n
+	bool "U-Boot Is Part Of Factory Boot-Package Image"
 	help
 	  Indicates that u-boot will be a part of the embedded software and
 	  programmed at field.

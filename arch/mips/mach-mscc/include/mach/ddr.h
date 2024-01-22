@@ -6,6 +6,7 @@
 #ifndef __ASM_MACH_DDR_H
 #define __ASM_MACH_DDR_H
 
+#include <config.h>
 #include <asm/cacheops.h>
 #include <asm/io.h>
 #include <asm/reboot.h>
@@ -13,7 +14,7 @@
 #include <mach/common.h>
 
 #define MIPS_VCOREIII_MEMORY_DDR3
-#define MIPS_VCOREIII_DDR_SIZE CONFIG_SYS_SDRAM_SIZE
+#define MIPS_VCOREIII_DDR_SIZE CFG_SYS_SDRAM_SIZE
 
 #if defined(CONFIG_DDRTYPE_H5TQ1G63BFA)	/* Serval1 Refboard */
 

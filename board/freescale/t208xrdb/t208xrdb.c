@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2009-2013 Freescale Semiconductor, Inc.
- * Copyright 2021 NXP
+ * Copyright 2021-2023 NXP
  */
 
 #include <common.h>
@@ -20,6 +20,7 @@
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
 #include <asm/fsl_liodn.h>
+#include <clock_legacy.h>
 #include <fm_eth.h>
 #include "t208xrdb.h"
 #include "cpld.h"
@@ -41,6 +42,13 @@ u8 get_hw_revision(void)
 		return 'E';
 	}
 }
+
+#if CONFIG_IS_ENABLED(DM_SERIAL)
+int get_serial_clock(void)
+{
+	return get_bus_freq(0) / 2;
+}
+#endif
 
 int checkboard(void)
 {
@@ -77,7 +85,7 @@ int checkboard(void)
 
 int board_early_init_r(void)
 {
-	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
+	const unsigned int flashbase = CFG_SYS_FLASH_BASE;
 	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 	/*
 	 * Remap Boot flash + PROMJET region to caching-inhibited
@@ -96,7 +104,7 @@ int board_early_init_r(void)
 		disable_tlb(flash_esel);
 	}
 
-	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
+	set_tlb(1, flashbase, CFG_SYS_FLASH_BASE_PHYS,
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 
@@ -106,6 +114,9 @@ int board_early_init_r(void)
 	 */
 	if (adjust_vdd(0))
 		printf("Warning: Adjusting core voltage failed.\n");
+
+	pci_init();
+
 	return 0;
 }
 

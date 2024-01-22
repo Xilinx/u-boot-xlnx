@@ -17,15 +17,13 @@
 /*
  * Serial / UART configurations
  */
-#define CONFIG_SYS_NS16550_MEM32
-#define CONFIG_SYS_BAUDRATE_TABLE {4800, 9600, 19200, 38400, 57600, 115200}
+#define CFG_SYS_BAUDRATE_TABLE {4800, 9600, 19200, 38400, 57600, 115200}
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
-	"autoload=no\0" \
-	"bootargs=cma=256M console=ttyS1,115200 root=/dev/mmcblk0p3 rw rootwait\0" \
-	"distro_bootcmd=bridge enable; run bootcmd_mmc\0" \
-	"bootcmd_mmc=load mmc 0:1 ${loadaddr} kernel.itb; bootm\0" \
-	"bootcmd_net=dhcp; tftpboot ${loadaddr} kernel.itb; bootm\0"
+#define CFG_EXTRA_ENV_SETTINGS \
+	"distro_bootcmd=bridge enable; " \
+		"load mmc 0:1 ${loadaddr} u-boot.txt; " \
+		"env import -t ${loadaddr}; " \
+		"run bootcmd_txt\0"
 
 /*
  * L4 OSC1 Timer 0

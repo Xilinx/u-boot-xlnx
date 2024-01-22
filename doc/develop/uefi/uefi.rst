@@ -318,6 +318,90 @@ Run the following command
       --guid <image GUID> \
       <capsule_file_name>
 
+Capsule with firmware version
+*****************************
+
+The UEFI specification does not define the firmware versioning mechanism.
+EDK II reference implementation inserts the FMP Payload Header right before
+the payload. It coutains the fw_version and lowest supported version,
+EDK II reference implementation uses these information to implement the
+firmware versioning and anti-rollback protection, the firmware version and
+lowest supported version is stored into EFI non-volatile variable.
+
+In U-Boot, the firmware versioning is implemented utilizing
+the FMP Payload Header same as EDK II reference implementation,
+reads the FMP Payload Header and stores the firmware version into
+"FmpStateXXXX" EFI non-volatile variable. XXXX indicates the image index,
+since FMP protocol handles multiple image indexes.
+
+To add the fw_version into the FMP Payload Header,
+add --fw-version option in mkeficapsule tool.
+
+.. code-block:: console
+
+    $ mkeficapsule \
+      --index <index> --instance 0 \
+      --guid <image GUID> \
+      --fw-version 5 \
+      <capsule_file_name>
+
+If the --fw-version option is not set, FMP Payload Header is not inserted
+and fw_version is set as 0.
+
+Capsule Generation through binman
+*********************************
+
+Support has also been added to generate capsules during U-Boot build
+through binman. This requires the platform's DTB to be populated with
+the capsule entry nodes for binman. The capsules then can be generated
+by specifying the capsule parameters as properties in the capsule
+entry node.
+
+Check the test/py/tests/test_efi_capsule/capsule_gen_binman.dts file
+as reference for how a typical binman node for capsule generation
+looks like. For generating capsules as part of the platform's build, a
+capsule node would then have to be included into the platform's
+devicetree.
+
+A typical binman node for generating a capsule would look like::
+
+	capsule {
+		filename = "u-boot.capsule";
+		efi-capsule {
+			image-index = <0x1>;
+			image-guid = "09d7cf52-0720-4710-91d1-08469b7fe9c8";
+
+			u-boot {
+			};
+		};
+	};
+
+In the above example, a capsule file named u-boot.capsule will be
+generated with u-boot.bin as it's input payload. The capsule
+generation parameters like image-index and image-guid are being
+specified as properties. Similarly, other properties like the private
+and public key certificate can be specified for generating signed
+capsules. Refer :ref:`etype_efi_capsule` for documentation about the
+efi-capsule binman entry type, which describes all the properties that
+can be specified.
+
+Dumping capsule headers
+***********************
+
+The mkeficapsule tool also provides a command-line option to dump the
+contents of the capsule header. This is a useful functionality when
+trying to understand the structure of a capsule and is also used in
+capsule verification. This feature is used in testing the capsule
+contents in binman's test framework.
+
+To check the contents of the capsule headers, the mkeficapsule command
+can be used.
+
+.. code-block:: console
+
+    $ mkeficapsule --dump-capsule \
+      <capsule_file_name>
+
 Performing the update
 *********************
 
@@ -330,7 +414,7 @@ bit in OsIndications variable with
 
     => setenv -e -nv -bs -rt -v OsIndications =0x0000000000000004
 
-Since U-boot doesn't currently support SetVariable at runtime, its value
+Since U-Boot doesn't currently support SetVariable at runtime, its value
 won't be taken over across the reboot. If this is the case, you can skip
 this feature check with the Kconfig option (CONFIG_EFI_IGNORE_OSINDICATIONS)
 set.
@@ -386,8 +470,8 @@ is because the FWU feature supports multiple partitions(banks) of
 updatable images, and the actual dfu alt number to which the image is
 to be written to is determined at runtime, based on the value of the
 update bank to which the image is to be written. For more information
-on the FWU Multi Bank Update feature, please refer `doc
-<doc/develop/uefi/fwu_updates.rst>`__.
+on the FWU Multi Bank Update feature, please refer to
+:doc:`/develop/uefi/fwu_updates`.
 
 When using the FMP for FIT images, the image index value needs to be
 set to 1.
@@ -495,20 +579,57 @@ and used by the steps highlighted below.
             ...
     }
 
-You can do step-4 manually with
+You can perform step-4 through the Kconfig symbol
+CONFIG_EFI_CAPSULE_ESL_FILE. This symbol points to the esl file
+generated in step-2. Once the symbol has been populated with the path
+to the esl file, it will automatically get embedded into the
+platform's dtb as part of U-Boot build.
+
+Anti-rollback Protection
+************************
+
+Anti-rollback prevents unintentional installation of outdated firmware.
+To enable anti-rollback, you must add the lowest-supported-version property
+to dtb and specify --fw-version when creating a capsule file with the
+mkeficapsule tool.
+When executing capsule update, U-Boot checks if fw_version is greater than
+or equal to lowest-supported-version. If fw_version is less than
+lowest-supported-version, the update will fail.
+For example, if lowest-supported-version is set to 7 and you run capsule
+update using a capsule file with --fw-version of 5, the update will fail.
+When the --fw-version in the capsule file is updated, lowest-supported-version
+in the dtb might be updated accordingly.
+
+If user needs to enforce anti-rollback to any older version,
+the lowest-supported-version property in dtb must be always updated manually.
+
+Note that the lowest-supported-version property specified in U-Boot's control
+device tree can be changed by U-Boot fdt command.
+Secure systems should not enable this command.
+
+To insert the lowest supported version into a dtb
 
 .. code-block:: console
 
-    $ dtc -@ -I dts -O dtb -o signature.dtbo signature.dts
-    $ fdtoverlay -i orig.dtb -o new.dtb -v signature.dtbo
+    $ dtc -@ -I dts -O dtb -o version.dtbo version.dtso
+    $ fdtoverlay -i orig.dtb -o new.dtb -v version.dtbo
 
-where signature.dts looks like::
+where version.dtso looks like::
 
+    /dts-v1/;
+    /plugin/;
     &{/} {
-            signature {
-                    capsule-key = /incbin/("CRT.esl");
+            firmware-version {
+                    image1 {
+                            image-type-id = "09D7CF52-0720-4710-91D1-08469B7FE9C8";
+                            image-index = <1>;
+                            lowest-supported-version = <3>;
+                    };
             };
     };
+
+The properties of image-type-id and image-index must match the value
+defined in the efi_fw_image array as image_type_id and image_index.
 
 Executing the boot manager
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -405,27 +405,30 @@ int clk_get_by_name(struct udevice *dev, const char *name, struct clk *clk)
 
 int clk_get_by_name_nodev(ofnode node, const char *name, struct clk *clk)
 {
-	int index;
+	int index = 0;
 
 	debug("%s(node=%p, name=%s, clk=%p)\n", __func__,
 		ofnode_get_name(node), name, clk);
 	clk->dev = NULL;
 
-	index = ofnode_stringlist_search(node, "clock-names", name);
-	if (index < 0) {
-		debug("fdt_stringlist_search() failed: %d\n", index);
-		return index;
+	if (name) {
+		index = ofnode_stringlist_search(node, "clock-names", name);
+		if (index < 0) {
+			debug("fdt_stringlist_search() failed: %d\n", index);
+			return index;
+		}
 	}
 
 	return clk_get_by_index_nodev(node, index, clk);
 }
 
-int clk_release_all(struct clk *clk, int count)
+int clk_release_all(struct clk *clk, unsigned int count)
 {
-	int i, ret;
+	unsigned int i;
+	int ret;
 
 	for (i = 0; i < count; i++) {
-		debug("%s(clk[%d]=%p)\n", __func__, i, &clk[i]);
+		debug("%s(clk[%u]=%p)\n", __func__, i, &clk[i]);
 
 		/* check if clock has been previously requested */
 		if (!clk[i].dev)
@@ -475,7 +478,7 @@ void clk_free(struct clk *clk)
 ulong clk_get_rate(struct clk *clk)
 {
 	const struct clk_ops *ops;
-	int ret;
+	ulong ret;
 
 	debug("%s(clk=%p)\n", __func__, clk);
 	if (!clk_valid(clk))
@@ -637,6 +640,7 @@ int clk_enable(struct clk *clk)
 	if (CONFIG_IS_ENABLED(CLK_CCF)) {
 		/* Take id 0 as a non-valid clk, such as dummy */
 		if (clk->id && !clk_get_by_id(clk->id, &clkp)) {
+			ops = clk_dev_ops(clkp->dev);
 			if (clkp->enable_count) {
 				clkp->enable_count++;
 				return 0;
@@ -653,7 +657,7 @@ int clk_enable(struct clk *clk)
 		}
 
 		if (ops->enable) {
-			ret = ops->enable(clk);
+			ret = ops->enable(clkp ? clkp : clk);
 			if (ret) {
 				printf("Enable %s failed\n", clk->dev->name);
 				return ret;
@@ -696,6 +700,7 @@ int clk_disable(struct clk *clk)
 
 	if (CONFIG_IS_ENABLED(CLK_CCF)) {
 		if (clk->id && !clk_get_by_id(clk->id, &clkp)) {
+			ops = clk_dev_ops(clkp->dev);
 			if (clkp->flags & CLK_IS_CRITICAL)
 				return 0;
 
@@ -710,7 +715,7 @@ int clk_disable(struct clk *clk)
 		}
 
 		if (ops->disable) {
-			ret = ops->disable(clk);
+			ret = ops->disable(clkp ? clkp : clk);
 			if (ret)
 				return ret;
 		}

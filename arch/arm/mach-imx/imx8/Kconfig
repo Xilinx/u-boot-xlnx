@@ -34,11 +34,11 @@ config SYS_SOC
 
 config BOOTAUX_RESERVED_MEM_BASE
 	hex "i.MX auxiliary core dram memory base"
-	default 0
+	default 0x0
 
 config BOOTAUX_RESERVED_MEM_SIZE
 	hex "i.MX auxiliary core dram memory size"
-	default 0
+	default 0x0
 
 choice
 	prompt "i.MX8 board select"
@@ -51,7 +51,6 @@ config TARGET_APALIS_IMX8
 
 config TARGET_COLIBRI_IMX8X
 	bool "Support Colibri iMX8X module"
-	select BINMAN
 	select BOARD_LATE_INIT
 	select IMX8QXP
 
@@ -92,6 +91,13 @@ config TARGET_IMX8QM_ROM7720_A1
 	select SUPPORT_SPL
 	select IMX8QM
 
+config TARGET_IMX8QM_DMSSE20_A1
+	bool "Support i.MX8QM DMS-SE20-A1 board"
+	select BINMAN
+	select BOARD_LATE_INIT
+	select SUPPORT_SPL
+	select IMX8QM
+
 config TARGET_IMX8QXP_MEK
 	bool "Support i.MX8QXP MEK board"
 	select BINMAN
@@ -106,6 +112,7 @@ endchoice
 source "board/freescale/imx8qm_mek/Kconfig"
 source "board/freescale/imx8qxp_mek/Kconfig"
 source "board/congatec/cgtqmx8/Kconfig"
+source "board/advantech/imx8qm_dmsse20_a1/Kconfig"
 source "board/advantech/imx8qm_rom7720_a1/Kconfig"
 source "board/toradex/apalis-imx8/Kconfig"
 source "board/toradex/colibri-imx8x/Kconfig"

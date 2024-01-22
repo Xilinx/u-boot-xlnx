@@ -15,6 +15,7 @@
 #include <time.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
+#include <linux/printk.h>
 
 /* Microsemi PHY ID's */
 #define PHY_ID_VSC8530                  0x00070560
@@ -1558,7 +1559,7 @@ static int vsc8502_config(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver VSC8530_driver = {
+U_BOOT_PHY_DRIVER(vsc8530) = {
 	.name = "Microsemi VSC8530",
 	.uid = PHY_ID_VSC8530,
 	.mask = 0x000ffff0,
@@ -1568,7 +1569,7 @@ static struct phy_driver VSC8530_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8531_driver = {
+U_BOOT_PHY_DRIVER(vsc8531) = {
 	.name = "Microsemi VSC8531",
 	.uid = PHY_ID_VSC8531,
 	.mask = 0x000ffff0,
@@ -1578,7 +1579,7 @@ static struct phy_driver VSC8531_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8502_driver = {
+U_BOOT_PHY_DRIVER(vsc8502) = {
 	.name = "Microsemi VSC8502",
 	.uid = PHY_ID_VSC8502,
 	.mask = 0x000ffff0,
@@ -1588,7 +1589,7 @@ static struct phy_driver VSC8502_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8540_driver = {
+U_BOOT_PHY_DRIVER(vsc8540) = {
 	.name = "Microsemi VSC8540",
 	.uid = PHY_ID_VSC8540,
 	.mask = 0x000ffff0,
@@ -1598,7 +1599,7 @@ static struct phy_driver VSC8540_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8541_driver = {
+U_BOOT_PHY_DRIVER(vsc8541) = {
 	.name = "Microsemi VSC8541",
 	.uid = PHY_ID_VSC8541,
 	.mask = 0x000ffff0,
@@ -1608,7 +1609,7 @@ static struct phy_driver VSC8541_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8574_driver = {
+U_BOOT_PHY_DRIVER(vsc8574) = {
 	.name = "Microsemi VSC8574",
 	.uid = PHY_ID_VSC8574,
 	.mask = 0x000ffff0,
@@ -1618,7 +1619,7 @@ static struct phy_driver VSC8574_driver = {
 	.shutdown = &genphy_shutdown,
 };
 
-static struct phy_driver VSC8584_driver = {
+U_BOOT_PHY_DRIVER(vsc8584) = {
 	.name = "Microsemi VSC8584",
 	.uid = PHY_ID_VSC8584,
 	.mask = 0x000ffff0,
@@ -1627,16 +1628,3 @@ static struct phy_driver VSC8584_driver = {
 	.startup = &mscc_startup,
 	.shutdown = &genphy_shutdown,
 };
-
-int phy_mscc_init(void)
-{
-	phy_register(&VSC8530_driver);
-	phy_register(&VSC8531_driver);
-	phy_register(&VSC8502_driver);
-	phy_register(&VSC8540_driver);
-	phy_register(&VSC8541_driver);
-	phy_register(&VSC8574_driver);
-	phy_register(&VSC8584_driver);
-
-	return 0;
-}

@@ -10,9 +10,7 @@
 #include <env_callback.h>
 #include <linux/stringify.h>
 
-#ifndef USE_HOSTCC
 #include <generated/environment.h>
-#endif
 
 #ifdef DEFAULT_ENV_INSTANCE_EMBEDDED
 env_t embedded_environment __UBOOT_ENV_SECTION__(environment) = {
@@ -23,7 +21,7 @@ env_t embedded_environment __UBOOT_ENV_SECTION__(environment) = {
 	{
 #elif defined(DEFAULT_ENV_INSTANCE_STATIC)
 static char default_environment[] = {
-#elif defined(DEFAULT_ENV_IS_RW)
+#elif defined(CONFIG_DEFAULT_ENV_IS_RW)
 char default_environment[] = {
 #else
 const char default_environment[] = {
@@ -44,7 +42,7 @@ const char default_environment[] = {
 #if defined(CONFIG_BOOTDELAY)
 	"bootdelay="	__stringify(CONFIG_BOOTDELAY)	"\0"
 #endif
-#if defined(CONFIG_BAUDRATE) && (CONFIG_BAUDRATE >= 0)
+#if !defined(CONFIG_OF_SERIAL_BAUD) && defined(CONFIG_BAUDRATE) && (CONFIG_BAUDRATE >= 0)
 	"baudrate="	__stringify(CONFIG_BAUDRATE)	"\0"
 #endif
 #ifdef	CONFIG_LOADS_ECHO
@@ -53,11 +51,11 @@ const char default_environment[] = {
 #ifdef	CONFIG_ETHPRIME
 	"ethprime="	CONFIG_ETHPRIME			"\0"
 #endif
-#ifdef	CONFIG_IPADDR
-	"ipaddr="	__stringify(CONFIG_IPADDR)	"\0"
+#ifdef	CONFIG_USE_IPADDR
+	"ipaddr="	CONFIG_IPADDR			"\0"
 #endif
-#ifdef	CONFIG_SERVERIP
-	"serverip="	__stringify(CONFIG_SERVERIP)	"\0"
+#ifdef	CONFIG_USE_SERVERIP
+	"serverip="	CONFIG_SERVERIP			"\0"
 #endif
 #ifdef	CONFIG_SYS_DISABLE_AUTOLOAD
 	"autoload=0\0"
@@ -65,17 +63,17 @@ const char default_environment[] = {
 #ifdef	CONFIG_PREBOOT_DEFINED
 	"preboot="	CONFIG_PREBOOT			"\0"
 #endif
-#ifdef	CONFIG_ROOTPATH
+#ifdef	CONFIG_USE_ROOTPATH
 	"rootpath="	CONFIG_ROOTPATH			"\0"
 #endif
-#ifdef	CONFIG_GATEWAYIP
-	"gatewayip="	__stringify(CONFIG_GATEWAYIP)	"\0"
+#ifdef	CONFIG_USE_GATEWAYIP
+	"gatewayip="	CONFIG_GATEWAYIP		"\0"
 #endif
-#ifdef	CONFIG_NETMASK
-	"netmask="	__stringify(CONFIG_NETMASK)	"\0"
+#ifdef	CONFIG_USE_NETMASK
+	"netmask="	CONFIG_NETMASK			"\0"
 #endif
-#ifdef	CONFIG_HOSTNAME
-	"hostname="	CONFIG_HOSTNAME	"\0"
+#ifdef	CONFIG_USE_HOSTNAME
+	"hostname="	CONFIG_HOSTNAME			"\0"
 #endif
 #ifdef CONFIG_USE_BOOTFILE
 	"bootfile="	CONFIG_BOOTFILE			"\0"
@@ -118,8 +116,12 @@ const char default_environment[] = {
 	/* This is created in the Makefile */
 	CONFIG_EXTRA_ENV_TEXT
 #endif
-#ifdef	CONFIG_EXTRA_ENV_SETTINGS
-	CONFIG_EXTRA_ENV_SETTINGS
+#ifdef	CFG_EXTRA_ENV_SETTINGS
+	CFG_EXTRA_ENV_SETTINGS
+#endif
+#ifdef CONFIG_OF_SERIAL_BAUD
+	/* Padding for baudrate at the end when environment is writable */
+	"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 #endif
 	"\0"
 #else /* CONFIG_USE_DEFAULT_ENV_FILE */

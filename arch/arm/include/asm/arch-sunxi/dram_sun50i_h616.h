@@ -130,6 +130,7 @@ check_member(sunxi_mctl_ctl_reg, unk_0x4240, 0x4240);
 #define MSTR_DEVICETYPE_LPDDR2	BIT(2)
 #define MSTR_DEVICETYPE_LPDDR3	BIT(3)
 #define MSTR_DEVICETYPE_DDR4	BIT(4)
+#define MSTR_DEVICETYPE_LPDDR4	BIT(5)
 #define MSTR_DEVICETYPE_MASK	GENMASK(5, 0)
 #define MSTR_2TMODE		BIT(10)
 #define MSTR_BUSWIDTH_FULL	(0 << 12)
@@ -137,15 +138,35 @@ check_member(sunxi_mctl_ctl_reg, unk_0x4240, 0x4240);
 #define MSTR_ACTIVE_RANKS(x)	(((x == 2) ? 3 : 1) << 24)
 #define MSTR_BURST_LENGTH(x)	(((x) >> 1) << 16)
 
+#define TPR10_CA_BIT_DELAY	BIT(16)
+#define TPR10_DX_BIT_DELAY0	BIT(17)
+#define TPR10_DX_BIT_DELAY1	BIT(18)
+#define TPR10_WRITE_LEVELING	BIT(20)
+#define TPR10_READ_CALIBRATION	BIT(21)
+#define TPR10_READ_TRAINING	BIT(22)
+#define TPR10_WRITE_TRAINING	BIT(23)
+
 struct dram_para {
 	u32 clk;
 	enum sunxi_dram_type type;
+	u32 dx_odt;
+	u32 dx_dri;
+	u32 ca_dri;
+	u32 odt_en;
+	u32 tpr0;
+	u32 tpr2;
+	u32 tpr6;
+	u32 tpr10;
+	u32 tpr11;
+	u32 tpr12;
+};
+
+struct dram_config {
 	u8 cols;
 	u8 rows;
 	u8 ranks;
 	u8 bus_full_width;
 };
-
 
 static inline int ns_to_t(int nanoseconds)
 {
@@ -154,6 +175,6 @@ static inline int ns_to_t(int nanoseconds)
 	return DIV_ROUND_UP(ctrl_freq * nanoseconds, 1000);
 }
 
-void mctl_set_timing_params(struct dram_para *para);
+void mctl_set_timing_params(const struct dram_para *para);
 
 #endif /* _SUNXI_DRAM_SUN50I_H616_H */

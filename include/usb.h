@@ -11,11 +11,14 @@
 #ifndef _USB_H_
 #define _USB_H_
 
+#include <stdbool.h>
 #include <fdtdec.h>
 #include <usb_defs.h>
 #include <linux/usb/ch9.h>
 #include <asm/cache.h>
 #include <part.h>
+
+extern bool usb_started; /* flag for the started/stopped USB status */
 
 /*
  * The EHCI spec says that we must align to at least 32 bytes.  However,
@@ -254,7 +257,14 @@ int usb_kbd_deregister(int force);
 
 #endif
 /* routines */
-int usb_init(void); /* initialize the USB Controller */
+
+/*
+ * usb_init() - initialize the USB Controllers
+ *
+ * Returns: 0 if OK, -ENOENT if there are no USB devices
+ */
+int usb_init(void);
+
 int usb_stop(void); /* stop the USB Controller */
 int usb_detect_change(void); /* detect if a USB device has been (un)plugged */
 
@@ -807,21 +817,6 @@ struct dm_usb_ops {
 
 #define usb_get_ops(dev)	((struct dm_usb_ops *)(dev)->driver->ops)
 #define usb_get_emul_ops(dev)	((struct dm_usb_ops *)(dev)->driver->ops)
-
-/**
- * usb_get_dev_index() - look up a device index number
- *
- * Look up devices using their index number (starting at 0). This works since
- * in U-Boot device addresses are allocated starting at 1 with no gaps.
- *
- * TODO(sjg@chromium.org): Remove this function when usb_ether.c is modified
- * to work better with driver model.
- *
- * @bus:	USB bus to check
- * @index:	Index number of device to find (0=first). This is just the
- *		device address less 1.
- */
-struct usb_device *usb_get_dev_index(struct udevice *bus, int index);
 
 /**
  * usb_setup_device() - set up a device ready for use

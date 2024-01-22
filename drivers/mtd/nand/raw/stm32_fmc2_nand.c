@@ -21,6 +21,7 @@
 #include <linux/iopoll.h>
 #include <linux/ioport.h>
 #include <linux/mtd/rawnand.h>
+#include <linux/printk.h>
 
 /* Bad block marker length */
 #define FMC2_BBM_LEN			2
@@ -734,6 +735,9 @@ static int stm32_fmc2_nfc_setup_interface(struct mtd_info *mtd, int chipnr,
 	sdrt = nand_get_sdr_timings(cf);
 	if (IS_ERR(sdrt))
 		return PTR_ERR(sdrt);
+
+	if (sdrt->tRC_min < 30000)
+		return -EOPNOTSUPP;
 
 	if (chipnr == NAND_DATA_IFACE_CHECK_ONLY)
 		return 0;

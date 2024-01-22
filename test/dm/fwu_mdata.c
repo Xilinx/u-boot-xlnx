@@ -93,12 +93,18 @@ static int dm_test_fwu_mdata_read(struct unit_test_state *uts)
 	struct udevice *dev;
 	struct fwu_mdata mdata = { 0 };
 
+	/*
+	 * Trigger lib/fwu_updates/fwu.c fwu_boottime_checks()
+	 * to populate g_dev global pointer in that library.
+	 */
+	event_notify_null(EVT_MAIN_LOOP);
+
 	ut_assertok(uclass_first_device_err(UCLASS_FWU_MDATA, &dev));
 	ut_assertok(setup_blk_device(uts));
 	ut_assertok(populate_mmc_disk_image(uts));
 	ut_assertok(write_mmc_blk_device(uts));
 
-	ut_assertok(fwu_get_mdata(dev, &mdata));
+	ut_assertok(fwu_get_mdata(&mdata));
 
 	ut_asserteq(mdata.version, 0x1);
 
@@ -112,36 +118,26 @@ static int dm_test_fwu_mdata_write(struct unit_test_state *uts)
 	struct udevice *dev;
 	struct fwu_mdata mdata = { 0 };
 
+	/*
+	 * Trigger lib/fwu_updates/fwu.c fwu_boottime_checks()
+	 * to populate g_dev global pointer in that library.
+	 */
+	event_notify_null(EVT_MAIN_LOOP);
+
 	ut_assertok(setup_blk_device(uts));
 	ut_assertok(populate_mmc_disk_image(uts));
 	ut_assertok(write_mmc_blk_device(uts));
 
 	ut_assertok(uclass_first_device_err(UCLASS_FWU_MDATA, &dev));
 
-	ut_assertok(fwu_get_mdata(dev, &mdata));
+	ut_assertok(fwu_get_mdata(&mdata));
 
 	active_idx = (mdata.active_index + 1) % CONFIG_FWU_NUM_BANKS;
 	ut_assertok(fwu_set_active_index(active_idx));
 
-	ut_assertok(fwu_get_mdata(dev, &mdata));
+	ut_assertok(fwu_get_mdata(&mdata));
 	ut_asserteq(mdata.active_index, active_idx);
 
 	return 0;
 }
 DM_TEST(dm_test_fwu_mdata_write, UT_TESTF_SCAN_FDT);
-
-static int dm_test_fwu_mdata_check(struct unit_test_state *uts)
-{
-	struct udevice *dev;
-
-	ut_assertok(setup_blk_device(uts));
-	ut_assertok(populate_mmc_disk_image(uts));
-	ut_assertok(write_mmc_blk_device(uts));
-
-	ut_assertok(uclass_first_device_err(UCLASS_FWU_MDATA, &dev));
-
-	ut_assertok(fwu_check_mdata_validity());
-
-	return 0;
-}
-DM_TEST(dm_test_fwu_mdata_check, UT_TESTF_SCAN_FDT);

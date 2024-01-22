@@ -15,7 +15,7 @@
 #include <command.h>
 #include <env.h>
 #include <fastboot.h>
-#include <net/fastboot.h>
+#include <net.h>
 
 /**
  * fastboot_buf_addr - base address of the fastboot download buffer
@@ -91,20 +91,21 @@ void fastboot_okay(const char *reason, char *response)
  */
 int __weak fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
 {
-#ifdef CONFIG_FASTBOOT_FLASH_MMC_DEV
 	static const char * const boot_cmds[] = {
 		[FASTBOOT_REBOOT_REASON_BOOTLOADER] = "bootonce-bootloader",
 		[FASTBOOT_REBOOT_REASON_FASTBOOTD] = "boot-fastboot",
 		[FASTBOOT_REBOOT_REASON_RECOVERY] = "boot-recovery"
 	};
+	const int mmc_dev = config_opt_enabled(CONFIG_FASTBOOT_FLASH_MMC,
+					       CONFIG_FASTBOOT_FLASH_MMC_DEV, -1);
+
+	if (!IS_ENABLED(CONFIG_FASTBOOT_FLASH_MMC))
+		return -EINVAL;
 
 	if (reason >= FASTBOOT_REBOOT_REASONS_COUNT)
 		return -EINVAL;
 
-	return bcb_write_reboot_reason(CONFIG_FASTBOOT_FLASH_MMC_DEV, "misc", boot_cmds[reason]);
-#else
-    return -EINVAL;
-#endif
+	return bcb_write_reboot_reason(mmc_dev, "misc", boot_cmds[reason]);
 }
 
 /**
@@ -134,7 +135,7 @@ void fastboot_boot(void)
 	s = env_get("fastboot_bootcmd");
 	if (s) {
 		run_command(s, CMD_FLAG_ENV);
-	} else {
+	} else if (IS_ENABLED(CONFIG_CMD_BOOTM)) {
 		static char boot_addr_start[20];
 		static char *const bootm_args[] = {
 			"bootm", boot_addr_start, NULL
@@ -152,6 +153,37 @@ void fastboot_boot(void)
 		 * of fastbootcmd if that's what's being run
 		 */
 		do_reset(NULL, 0, 0, NULL);
+	}
+}
+
+/**
+ * fastboot_handle_boot() - Shared implementation of system reaction to
+ * fastboot commands
+ *
+ * Making desceisions about device boot state (stay in fastboot, reboot
+ * to bootloader, reboot to OS, etc).
+ */
+void fastboot_handle_boot(int command, bool success)
+{
+	if (!success)
+		return;
+
+	switch (command) {
+	case FASTBOOT_COMMAND_BOOT:
+		fastboot_boot();
+		net_set_state(NETLOOP_SUCCESS);
+		break;
+
+	case FASTBOOT_COMMAND_CONTINUE:
+		net_set_state(NETLOOP_SUCCESS);
+		break;
+
+	case FASTBOOT_COMMAND_REBOOT:
+	case FASTBOOT_COMMAND_REBOOT_BOOTLOADER:
+	case FASTBOOT_COMMAND_REBOOT_FASTBOOTD:
+	case FASTBOOT_COMMAND_REBOOT_RECOVERY:
+		do_reset(NULL, 0, 0, NULL);
+		break;
 	}
 }
 

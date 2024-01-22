@@ -42,20 +42,18 @@ def test_sleep(u_boot_console):
         # margin is hopefully enough to account for any system overhead.
         assert elapsed < (sleep_time + sleep_margin)
 
+@pytest.mark.buildconfigspec("cmd_misc")
 def test_time(u_boot_console):
     """Test the time command, and validate that it gives approximately the
     correct amount of command execution time."""
 
-    sleep_skip = u_boot_console.config.env.get('env__sleep_accurate', True)
+    sleep_skip = u_boot_console.config.env.get("env__sleep_accurate", True)
     if not sleep_skip:
-        pytest.skip('sleep is not accurate')
+        pytest.skip("sleep is not accurate")
 
-    if u_boot_console.config.buildconfig.get('config_cmd_misc', 'n') != 'y':
-        pytest.skip('sleep command not supported')
-
-    sleep_time = u_boot_console.config.env.get('env__sleep_time', 10)
-    sleep_margin = u_boot_console.config.env.get('env__sleep_margin', 0.25)
-    output = u_boot_console.run_command('time sleep %d' % sleep_time)
+    sleep_time = u_boot_console.config.env.get("env__sleep_time", 10)
+    sleep_margin = u_boot_console.config.env.get("env__sleep_margin", 0.25)
+    output = u_boot_console.run_command("time sleep %d" % sleep_time)
     execute_time = float(output.split()[1])
     assert sleep_time >= (execute_time - 0.01)
     if not u_boot_console.config.gdbserver:

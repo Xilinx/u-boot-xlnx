@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/iopoll.h>
 #include <linux/ioport.h>
+#include <linux/printk.h>
 #include <linux/sizes.h>
 
 struct stm32_qspi_regs {
@@ -115,15 +116,8 @@ struct stm32_qspi_regs {
 #define STM32_BUSY_TIMEOUT_US		100000
 #define STM32_ABT_TIMEOUT_US		100000
 
-struct stm32_qspi_flash {
-	u32 cr;
-	u32 dcr;
-	bool initialized;
-};
-
 struct stm32_qspi_priv {
 	struct stm32_qspi_regs *regs;
-	struct stm32_qspi_flash flash[STM32_QSPI_MAX_CHIP];
 	void __iomem *mm_base;
 	resource_size_t mm_size;
 	ulong clock_rate;
@@ -401,31 +395,17 @@ static int stm32_qspi_claim_bus(struct udevice *dev)
 {
 	struct stm32_qspi_priv *priv = dev_get_priv(dev->parent);
 	struct dm_spi_slave_plat *slave_plat = dev_get_parent_plat(dev);
-	int slave_cs = slave_plat->cs;
+	int slave_cs = slave_plat->cs[0];
 
 	if (slave_cs >= STM32_QSPI_MAX_CHIP)
 		return -ENODEV;
 
 	if (priv->cs_used != slave_cs) {
-		struct stm32_qspi_flash *flash = &priv->flash[slave_cs];
-
 		priv->cs_used = slave_cs;
 
-		if (flash->initialized) {
-			/* Set the configuration: speed + cs */
-			writel(flash->cr, &priv->regs->cr);
-			writel(flash->dcr, &priv->regs->dcr);
-		} else {
-			/* Set chip select */
-			clrsetbits_le32(&priv->regs->cr, STM32_QSPI_CR_FSEL,
-					priv->cs_used ? STM32_QSPI_CR_FSEL : 0);
-
-			/* Save the configuration: speed + cs */
-			flash->cr = readl(&priv->regs->cr);
-			flash->dcr = readl(&priv->regs->dcr);
-
-			flash->initialized = true;
-		}
+		/* Set chip select */
+		clrsetbits_le32(&priv->regs->cr, STM32_QSPI_CR_FSEL,
+				priv->cs_used ? STM32_QSPI_CR_FSEL : 0);
 	}
 
 	setbits_le32(&priv->regs->cr, STM32_QSPI_CR_EN);

@@ -8,6 +8,7 @@
 #include <common.h>
 #include <bootstage.h>
 #include <cli.h>
+#include <command.h>
 #include <cpu_func.h>
 #include <env.h>
 #include <errno.h>
@@ -22,6 +23,7 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/sizes.h>
+#include <tpm-v2.h>
 #if defined(CONFIG_CMD_USB)
 #include <usb.h>
 #endif
@@ -29,7 +31,6 @@
 #include "mkimage.h"
 #endif
 
-#include <command.h>
 #include <bootm.h>
 #include <image.h>
 
@@ -100,7 +101,7 @@ static int bootm_pre_load(struct cmd_tbl *cmdtp, int flag, int argc,
 	ulong data_addr = bootm_data_addr(argc, argv);
 	int ret = 0;
 
-	if (CONFIG_IS_ENABLED(CMD_BOOTM_PRE_LOAD))
+	if (IS_ENABLED(CONFIG_CMD_BOOTM_PRE_LOAD))
 		ret = image_pre_load(data_addr);
 
 	if (ret)
@@ -113,6 +114,10 @@ static int bootm_find_os(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
 	const void *os_hdr;
+#ifdef CONFIG_ANDROID_BOOT_IMAGE
+	const void *vendor_boot_img;
+	const void *boot_img;
+#endif
 	bool ep_found = false;
 	int ret;
 
@@ -181,14 +186,23 @@ static int bootm_find_os(struct cmd_tbl *cmdtp, int flag, int argc,
 #endif
 #ifdef CONFIG_ANDROID_BOOT_IMAGE
 	case IMAGE_FORMAT_ANDROID:
+		boot_img = os_hdr;
+		vendor_boot_img = NULL;
+		if (IS_ENABLED(CONFIG_CMD_ABOOTIMG)) {
+			boot_img = map_sysmem(get_abootimg_addr(), 0);
+			vendor_boot_img = map_sysmem(get_avendor_bootimg_addr(), 0);
+		}
 		images.os.type = IH_TYPE_KERNEL;
-		images.os.comp = android_image_get_kcomp(os_hdr);
+		images.os.comp = android_image_get_kcomp(boot_img, vendor_boot_img);
 		images.os.os = IH_OS_LINUX;
-
-		images.os.end = android_image_get_end(os_hdr);
-		images.os.load = android_image_get_kload(os_hdr);
+		images.os.end = android_image_get_end(boot_img, vendor_boot_img);
+		images.os.load = android_image_get_kload(boot_img, vendor_boot_img);
 		images.ep = images.os.load;
 		ep_found = true;
+		if (IS_ENABLED(CONFIG_CMD_ABOOTIMG)) {
+			unmap_sysmem(vendor_boot_img);
+			unmap_sysmem(boot_img);
+		}
 		break;
 #endif
 	default:
@@ -226,8 +240,9 @@ static int bootm_find_os(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 
 	if (images.os.type == IH_TYPE_KERNEL_NOLOAD) {
-		if (CONFIG_IS_ENABLED(CMD_BOOTI) &&
-		    images.os.arch == IH_ARCH_ARM64) {
+		if (IS_ENABLED(CONFIG_CMD_BOOTI) &&
+		    images.os.arch == IH_ARCH_ARM64 &&
+		    images.os.os == IH_OS_LINUX) {
 			ulong image_addr;
 			ulong image_size;
 
@@ -313,7 +328,7 @@ int bootm_find_images(int flag, int argc, char *const argv[], ulong start,
 		return 1;
 	}
 
-	if (CONFIG_IS_ENABLED(CMD_FDT))
+	if (IS_ENABLED(CONFIG_CMD_FDT))
 		set_working_fdt_addr(map_to_sysmem(images.ft_addr));
 #endif
 
@@ -475,9 +490,6 @@ ulong bootm_disable_interrupts(void)
 #ifdef CONFIG_NETCONSOLE
 	/* Stop the ethernet stack if NetConsole could have left it up */
 	eth_halt();
-# ifndef CONFIG_DM_ETH
-	eth_unregister(eth_get_dev());
-# endif
 #endif
 
 #if defined(CONFIG_CMD_USB)
@@ -662,6 +674,75 @@ int bootm_process_cmdline_env(int flags)
 	return 0;
 }
 
+int bootm_measure(struct bootm_headers *images)
+{
+	int ret = 0;
+
+	/* Skip measurement if EFI is going to do it */
+	if (images->os.os == IH_OS_EFI &&
+	    IS_ENABLED(CONFIG_EFI_TCG2_PROTOCOL) &&
+	    IS_ENABLED(CONFIG_BOOTM_EFI))
+		return ret;
+
+	if (IS_ENABLED(CONFIG_MEASURED_BOOT)) {
+		struct tcg2_event_log elog;
+		struct udevice *dev;
+		void *initrd_buf;
+		void *image_buf;
+		const char *s;
+		u32 rd_len;
+		bool ign;
+
+		elog.log_size = 0;
+		ign = IS_ENABLED(CONFIG_MEASURE_IGNORE_LOG);
+		ret = tcg2_measurement_init(&dev, &elog, ign);
+		if (ret)
+			return ret;
+
+		image_buf = map_sysmem(images->os.image_start,
+				       images->os.image_len);
+		ret = tcg2_measure_data(dev, &elog, 8, images->os.image_len,
+					image_buf, EV_COMPACT_HASH,
+					strlen("linux") + 1, (u8 *)"linux");
+		if (ret)
+			goto unmap_image;
+
+		rd_len = images->rd_end - images->rd_start;
+		initrd_buf = map_sysmem(images->rd_start, rd_len);
+		ret = tcg2_measure_data(dev, &elog, 9, rd_len, initrd_buf,
+					EV_COMPACT_HASH, strlen("initrd") + 1,
+					(u8 *)"initrd");
+		if (ret)
+			goto unmap_initrd;
+
+		if (IS_ENABLED(CONFIG_MEASURE_DEVICETREE)) {
+			ret = tcg2_measure_data(dev, &elog, 0, images->ft_len,
+						(u8 *)images->ft_addr,
+						EV_TABLE_OF_DEVICES,
+						strlen("dts") + 1,
+						(u8 *)"dts");
+			if (ret)
+				goto unmap_initrd;
+		}
+
+		s = env_get("bootargs");
+		if (!s)
+			s = "";
+		ret = tcg2_measure_data(dev, &elog, 1, strlen(s) + 1, (u8 *)s,
+					EV_PLATFORM_CONFIG_FLAGS,
+					strlen(s) + 1, (u8 *)s);
+
+unmap_initrd:
+		unmap_sysmem(initrd_buf);
+
+unmap_image:
+		unmap_sysmem(image_buf);
+		tcg2_measurement_term(dev, &elog, ret != 0);
+	}
+
+	return ret;
+}
+
 /**
  * Execute selected states of the bootm command.
  *
@@ -712,6 +793,10 @@ int do_bootm_states(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	if (!ret && (states & BOOTM_STATE_FINDOTHER))
 		ret = bootm_find_other(cmdtp, flag, argc, argv);
+
+	if (IS_ENABLED(CONFIG_MEASURED_BOOT) && !ret &&
+	    (states & BOOTM_STATE_MEASURE))
+		bootm_measure(images);
 
 	/* Load the OS */
 	if (!ret && (states & BOOTM_STATE_LOADOS)) {
@@ -812,6 +897,43 @@ err:
 	return ret;
 }
 
+int bootm_boot_start(ulong addr, const char *cmdline)
+{
+	static struct cmd_tbl cmd = {"bootm"};
+	char addr_str[30];
+	char *argv[] = {addr_str, NULL};
+	int states;
+	int ret;
+
+	/*
+	 * TODO(sjg@chromium.org): This uses the command-line interface, but
+	 * should not. To clean this up, the various bootm states need to be
+	 * passed an info structure instead of cmdline flags. Then this can
+	 * set up the required info and move through the states without needing
+	 * the command line.
+	 */
+	states = BOOTM_STATE_START | BOOTM_STATE_FINDOS | BOOTM_STATE_PRE_LOAD |
+		BOOTM_STATE_FINDOTHER | BOOTM_STATE_LOADOS |
+		BOOTM_STATE_OS_PREP | BOOTM_STATE_OS_FAKE_GO |
+		BOOTM_STATE_OS_GO;
+	if (IS_ENABLED(CONFIG_SYS_BOOT_RAMDISK_HIGH))
+		states |= BOOTM_STATE_RAMDISK;
+	if (IS_ENABLED(CONFIG_PPC) || IS_ENABLED(CONFIG_MIPS))
+		states |= BOOTM_STATE_OS_CMDLINE;
+	images.state |= states;
+
+	snprintf(addr_str, sizeof(addr_str), "%lx", addr);
+
+	ret = env_set("bootargs", cmdline);
+	if (ret) {
+		printf("Failed to set cmdline\n");
+		return ret;
+	}
+	ret = do_bootm_states(&cmd, 0, 1, argv, states, &images, 1);
+
+	return ret;
+}
+
 #if CONFIG_IS_ENABLED(LEGACY_IMAGE_FORMAT)
 /**
  * image_get_kernel - verify legacy format kernel image
@@ -892,11 +1014,15 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
 	int		os_noffset;
 #endif
 
+#ifdef CONFIG_ANDROID_BOOT_IMAGE
+	const void *boot_img;
+	const void *vendor_boot_img;
+#endif
 	img_addr = genimg_get_kernel_addr_fit(argc < 1 ? NULL : argv[0],
 					      &fit_uname_config,
 					      &fit_uname_kernel);
 
-	if (CONFIG_IS_ENABLED(CMD_BOOTM_PRE_LOAD))
+	if (IS_ENABLED(CONFIG_CMD_BOOTM_PRE_LOAD))
 		img_addr += image_load_offset;
 
 	bootstage_mark(BOOTSTAGE_ID_CHECK_MAGIC);
@@ -967,10 +1093,20 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
 #endif
 #ifdef CONFIG_ANDROID_BOOT_IMAGE
 	case IMAGE_FORMAT_ANDROID:
+		boot_img = buf;
+		vendor_boot_img = NULL;
+		if (IS_ENABLED(CONFIG_CMD_ABOOTIMG)) {
+			boot_img = map_sysmem(get_abootimg_addr(), 0);
+			vendor_boot_img = map_sysmem(get_avendor_bootimg_addr(), 0);
+		}
 		printf("## Booting Android Image at 0x%08lx ...\n", img_addr);
-		if (android_image_get_kernel(buf, images->verify,
+		if (android_image_get_kernel(boot_img, vendor_boot_img, images->verify,
 					     os_data, os_len))
 			return NULL;
+		if (IS_ENABLED(CONFIG_CMD_ABOOTIMG)) {
+			unmap_sysmem(vendor_boot_img);
+			unmap_sysmem(boot_img);
+		}
 		break;
 #endif
 	default:

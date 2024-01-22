@@ -11,6 +11,7 @@
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/mach-imx/iomux-v3.h>
+#include <asm/sections.h>
 #include <fsl_esdhc_imx.h>
 #include <init.h>
 #include <linux/delay.h>
@@ -101,7 +102,7 @@ int board_mmc_init(struct bd_info *bis)
 
 	/*
 	 * According to the board_mmc_init() the following map is done:
-	 * (U-boot device node)    (Physical Port)
+	 * (U-Boot device node)    (Physical Port)
 	 * mmc0                    USDHC1
 	 * mmc1                    USDHC2
 	 */

@@ -17,9 +17,9 @@
 #include "../mt7621.h"
 #include "dram.h"
 
-#ifndef CONFIG_SYS_INIT_SP_ADDR
-#define CONFIG_SYS_INIT_SP_ADDR	(CONFIG_SYS_SDRAM_BASE + \
-				CONFIG_SYS_INIT_SP_OFFSET)
+#ifndef CFG_SYS_INIT_SP_ADDR
+#define CFG_SYS_INIT_SP_ADDR	(CFG_SYS_SDRAM_BASE + \
+				CFG_SYS_INIT_SP_OFFSET)
 #endif
 
 #define SP_ADDR_TEMP		0xbe10dff0
@@ -31,13 +31,13 @@
 
 	.macro setup_stack_gd
 	li	t0, -16
-	PTR_LI	t1, CONFIG_SYS_INIT_SP_ADDR
+	PTR_LI	t1, CFG_SYS_INIT_SP_ADDR
 	and	sp, t1, t0		# force 16 byte alignment
 	PTR_SUBU \
 		sp, sp, GD_SIZE		# reserve space for gd
 	and	sp, sp, t0		# force 16 byte alignment
 	move	k0, sp			# save gd pointer
-#if CONFIG_VAL(SYS_MALLOC_F_LEN) && \
+#if CONFIG_IS_ENABLED(SYS_MALLOC_F) && \
     !CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	li	t2, CONFIG_VAL(SYS_MALLOC_F_LEN)
 	PTR_SUBU \
@@ -54,7 +54,7 @@
 	blt	t0, t1, 1b
 	 nop
 
-#if CONFIG_VAL(SYS_MALLOC_F_LEN) && \
+#if CONFIG_IS_ENABLED(SYS_MALLOC_F) && \
     !CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	PTR_S	sp, GD_MALLOC_BASE(k0)	# gd->malloc_base offset
 #endif
@@ -201,7 +201,7 @@ ENTRY(_start)
 
 #if CONFIG_IS_ENABLED(INIT_STACK_WITHOUT_MALLOC_F)
 	/* Set malloc base */
-	li	t0, (CONFIG_SYS_INIT_SP_ADDR + 15) & (~15)
+	li	t0, (CFG_SYS_INIT_SP_ADDR + 15) & (~15)
 	PTR_S	t0, GD_MALLOC_BASE(k0)	# gd->malloc_base offset
 #endif
 

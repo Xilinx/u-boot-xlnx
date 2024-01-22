@@ -41,10 +41,6 @@
 	(CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN)
 #  define ENV_IS_EMBEDDED
 # endif
-# ifdef CONFIG_ENV_IS_EMBEDDED
-#  error "do not define CONFIG_ENV_IS_EMBEDDED in your board config"
-#  error "it is calculated automatically for you"
-# endif
 #endif	/* CONFIG_ENV_IS_IN_FLASH */
 
 #if defined(CONFIG_ENV_IS_IN_NAND)
@@ -56,23 +52,6 @@
 extern unsigned long nand_env_oob_offset;
 # endif /* CONFIG_ENV_OFFSET_OOB */
 #endif /* CONFIG_ENV_IS_IN_NAND */
-
-/*
- * For the flash types where embedded env is supported, but it cannot be
- * calculated automatically (i.e. NAND), take the board opt-in.
- */
-#if defined(CONFIG_ENV_IS_EMBEDDED) && !defined(ENV_IS_EMBEDDED)
-# define ENV_IS_EMBEDDED
-#endif
-
-/* The build system likes to know if the env is embedded */
-#ifdef DO_DEPS_ONLY
-# ifdef ENV_IS_EMBEDDED
-#  ifndef CONFIG_ENV_IS_EMBEDDED
-#   define CONFIG_ENV_IS_EMBEDDED
-#  endif
-# endif
-#endif
 
 #include "compiler.h"
 
@@ -88,7 +67,7 @@ extern unsigned long nand_env_oob_offset;
  * If the environment is in RAM, allocate extra space for it in the malloc
  * region.
  */
-#if defined(CONFIG_ENV_IS_EMBEDDED)
+#if defined(ENV_IS_EMBEDDED)
 #define TOTAL_MALLOC_LEN	CONFIG_SYS_MALLOC_LEN
 #elif (CONFIG_ENV_ADDR + CONFIG_ENV_SIZE < CONFIG_SYS_MONITOR_BASE) || \
       (CONFIG_ENV_ADDR >= CONFIG_SYS_MONITOR_BASE + CONFIG_SYS_MONITOR_LEN) || \
@@ -110,7 +89,7 @@ typedef struct environment_s {
 extern env_t embedded_environment;
 #endif /* ENV_IS_EMBEDDED */
 
-#ifdef DEFAULT_ENV_IS_RW
+#ifdef CONFIG_DEFAULT_ENV_IS_RW
 extern char default_environment[];
 #else
 extern const char default_environment[];
@@ -210,7 +189,7 @@ struct env_driver {
 #endif
 
 #define ENV_SAVE_PTR(x) (CONFIG_IS_ENABLED(SAVEENV) ? (x) : NULL)
-#define ENV_ERASE_PTR(x) (CONFIG_IS_ENABLED(CMD_ERASEENV) ? (x) : NULL)
+#define ENV_ERASE_PTR(x) (IS_ENABLED(CONFIG_CMD_ERASEENV) ? (x) : NULL)
 
 extern struct hsearch_data env_htab;
 

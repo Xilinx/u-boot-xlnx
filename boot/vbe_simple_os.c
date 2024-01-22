@@ -72,6 +72,18 @@ static int bootmeth_vbe_simple_ft_fixup(void *ctx, struct event *event)
 		chosen = oftree_path(tree, "/chosen");
 		if (!ofnode_valid(chosen))
 			continue;
+
+		ret = device_probe(dev);
+		if (ret) {
+			/*
+			 * This should become an error when VBE is updated to
+			 * only bind this device when a node exists
+			 */
+			log_debug("VBE device '%s' failed to probe (err=%d)",
+				  dev->name, ret);
+			return 0;
+		}
+
 		ret = ofnode_add_subnode(chosen, "fwupd", &node);
 		if (ret && ret != -EEXIST)
 			return log_msg_ret("fwu", ret);
@@ -80,13 +92,9 @@ static int bootmeth_vbe_simple_ft_fixup(void *ctx, struct event *event)
 		if (ret && ret != -EEXIST)
 			return log_msg_ret("dev", ret);
 
-		ret = device_probe(dev);
-		if (ret)
-			return log_msg_ret("probe", ret);
-
 		/* Copy over the vbe properties for fwupd */
 		log_debug("Fixing up: %s\n", dev->name);
-		ret = ofnode_copy_props(dev_ofnode(dev), subnode);
+		ret = ofnode_copy_props(subnode, dev_ofnode(dev));
 		if (ret)
 			return log_msg_ret("cp", ret);
 
@@ -101,4 +109,4 @@ static int bootmeth_vbe_simple_ft_fixup(void *ctx, struct event *event)
 
 	return 0;
 }
-EVENT_SPY(EVT_FT_FIXUP, bootmeth_vbe_simple_ft_fixup);
+EVENT_SPY_FULL(EVT_FT_FIXUP, bootmeth_vbe_simple_ft_fixup);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2018 Xilinx, Inc.
- * Siva Durga Prasad Paladugu <siva.durga.paladugu@xilinx.com>
+ * Siva Durga Prasad Paladugu <siva.durga.prasad.paladugu@amd.com>>
  */
 
 #include <common.h>
@@ -14,16 +14,7 @@
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/io.h>
-
-struct aes {
-	u64 srcaddr;
-	u64 ivaddr;
-	u64 keyaddr;
-	u64 dstaddr;
-	u64 len;
-	u64 op;
-	u64 keysrc;
-};
+#include <mach/zynqmp_aes.h>
 
 static int do_zynqmp_verify_secure(struct cmd_tbl *cmdtp, int flag, int argc,
 				   char *const argv[])
@@ -121,9 +112,7 @@ static int do_zynqmp_mmio_write(struct cmd_tbl *cmdtp, int flag, int argc,
 static int do_zynqmp_aes(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char * const argv[])
 {
-	ALLOC_CACHE_ALIGN_BUFFER(struct aes, aes, 1);
-	int ret;
-	u32 ret_payload[PAYLOAD_ARG_CNT];
+	ALLOC_CACHE_ALIGN_BUFFER(struct zynqmp_aes, aes, 1);
 
 	if (zynqmp_firmware_version() <= PMUFW_V1_0) {
 		puts("ERR: PMUFW v1.0 or less is detected\n");
@@ -142,40 +131,14 @@ static int do_zynqmp_aes(struct cmd_tbl *cmdtp, int flag, int argc,
 	aes->keysrc = hextoul(argv[6], NULL);
 	aes->dstaddr = hextoul(argv[7], NULL);
 
-	if (aes->srcaddr && aes->ivaddr && aes->dstaddr) {
-		flush_dcache_range(aes->srcaddr,
-				   (aes->srcaddr +
-				    roundup(aes->len, ARCH_DMA_MINALIGN)));
-		flush_dcache_range(aes->ivaddr,
-				   (aes->ivaddr +
-				    roundup(IV_SIZE, ARCH_DMA_MINALIGN)));
-		flush_dcache_range(aes->dstaddr,
-				   (aes->dstaddr +
-				    roundup(aes->len, ARCH_DMA_MINALIGN)));
-	}
-
 	if (aes->keysrc == 0) {
 		if (argc < cmdtp->maxargs)
 			return CMD_RET_USAGE;
 
 		aes->keyaddr = hextoul(argv[8], NULL);
-		if (aes->keyaddr)
-			flush_dcache_range(aes->keyaddr,
-					   (aes->keyaddr +
-					    roundup(KEY_PTR_LEN,
-						    ARCH_DMA_MINALIGN)));
 	}
 
-	flush_dcache_range((ulong)aes, (ulong)(aes) +
-			   roundup(sizeof(struct aes), ARCH_DMA_MINALIGN));
-
-	ret = xilinx_pm_request(PM_SECURE_AES, upper_32_bits((ulong)aes),
-				lower_32_bits((ulong)aes), 0, 0, ret_payload);
-	if (ret || ret_payload[1])
-		printf("Failed: AES op status:0x%x, errcode:0x%x\n",
-		       ret, ret_payload[1]);
-
-	return ret;
+	return zynqmp_aes_operation(aes);
 }
 
 #ifdef CONFIG_DEFINE_TCM_OCM_MMAP
@@ -216,15 +179,24 @@ static int do_zynqmp_pmufw(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	if (!strncmp(argv[2], "node", 4)) {
 		u32 id;
+		int ret;
 
 		if (!strncmp(argv[3], "close", 5))
 			return zynqmp_pmufw_config_close();
 
 		id = dectoul(argv[3], NULL);
+		if (!id) {
+			printf("Incorrect ID passed\n");
+			return CMD_RET_USAGE;
+		}
 
 		printf("Enable permission for node ID %d\n", id);
 
-		return zynqmp_pmufw_node(id);
+		ret = zynqmp_pmufw_node(id);
+		if (ret == -ENODEV)
+			ret = 0;
+
+		return ret;
 	}
 
 	addr = hextoul(argv[2], NULL);
@@ -395,22 +367,21 @@ static int do_zynqmp(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
 {
 	struct cmd_tbl *c;
+	int ret = CMD_RET_USAGE;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
 	c = find_cmd_tbl(argv[1], &cmd_zynqmp_sub[0],
 			 ARRAY_SIZE(cmd_zynqmp_sub));
-
 	if (c)
-		return c->cmd(c, flag, argc, argv);
-	else
-		return CMD_RET_USAGE;
+		ret = c->cmd(c, flag, argc, argv);
+
+	return cmd_process_error(c, ret);
 }
 
 /***************************************************/
-#ifdef CONFIG_SYS_LONGHELP
-static char zynqmp_help_text[] =
+U_BOOT_LONGHELP(zynqmp,
 	"secure src len [key_addr] - verifies secure images of $len bytes\n"
 	"                            long at address $src. Optional key_addr\n"
 	"                            can be specified if user key needs to\n"
@@ -434,7 +405,7 @@ static char zynqmp_help_text[] =
 	"		       lock(0)/split(1)\n"
 #endif
 	"zynqmp pmufw address size - load PMU FW configuration object\n"
-	"zynqmp pmufw node <id> - load PMU FW configuration object\n"
+	"zynqmp pmufw node <id> - load PMU FW configuration object, <id> in dec\n"
 	"zynqmp pmufw node close - disable config object loading\n"
 	"	node: keyword, id: NODE_ID in decimal format\n"
 	"zynqmp rsa srcaddr srclen mod exp rsaop -\n"
@@ -450,8 +421,7 @@ static char zynqmp_help_text[] =
 	"	48 bytes hash value into srcaddr\n"
 	"	Optional key_addr can be specified for saving sha3 hash value\n"
 	"	Note: srcaddr/srclen should not be 0\n"
-	;
-#endif
+	);
 
 U_BOOT_CMD(
 	zynqmp, 9, 1, do_zynqmp,

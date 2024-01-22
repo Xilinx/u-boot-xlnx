@@ -9,6 +9,7 @@
 #include <efi.h>
 #include <efi_api.h>
 #include <errno.h>
+#include <event.h>
 #include <init.h>
 #include <log.h>
 #include <usb.h>
@@ -27,7 +28,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * the relocation address, and how far U-Boot is moved by relocation are
  * set in the global data structure.
  */
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	struct efi_mem_desc *desc, *end;
 	struct efi_entry_memmap *map;
@@ -168,14 +169,15 @@ int reserve_arch(void)
 	return 0;
 }
 
-int last_stage_init(void)
+static int last_stage_init(void)
 {
 	/* start usb so that usb keyboard can be used as input device */
-	if (CONFIG_IS_ENABLED(USB_KEYBOARD))
+	if (IS_ENABLED(CONFIG_USB_KEYBOARD))
 		usb_init();
 
 	return 0;
 }
+EVENT_SPY_SIMPLE(EVT_LAST_STAGE_INIT, last_stage_init);
 
 unsigned int install_e820_map(unsigned int max_entries,
 			      struct e820_entry *entries)

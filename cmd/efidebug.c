@@ -486,6 +486,7 @@ static int do_efi_show_handles(struct cmd_tbl *cmdtp, int flag,
 			if (guidcmp(guid[j], &efi_guid_device_path))
 				printf("  %pUs\n", guid[j]);
 		}
+		efi_free_pool(guid);
 	}
 
 	efi_free_pool(handles);
@@ -649,11 +650,7 @@ static int do_efi_show_memmap(struct cmd_tbl *cmdtp, int flag,
 static int do_efi_show_tables(struct cmd_tbl *cmdtp, int flag,
 			      int argc, char *const argv[])
 {
-	efi_uintn_t i;
-
-	for (i = 0; i < systab.nr_tables; ++i)
-		printf("%pUl (%pUs)\n",
-		       &systab.tables[i].guid, &systab.tables[i].guid);
+	efi_show_tables(&systab);
 
 	return CMD_RET_SUCCESS;
 }
@@ -1487,8 +1484,7 @@ static int do_efidebug(struct cmd_tbl *cmdtp, int flag,
 	return cp->cmd(cmdtp, flag, argc, argv);
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char efidebug_help_text[] =
+U_BOOT_LONGHELP(efidebug,
 	"  - UEFI Shell-like interface to configure UEFI environment\n"
 	"\n"
 	"efidebug boot add - set UEFI BootXXXX variable\n"
@@ -1535,8 +1531,7 @@ static char efidebug_help_text[] =
 	"  - run simple bootmgr for test\n"
 #endif
 	"efidebug query [-nv][-bs][-rt][-at]\n"
-	"  - show size of UEFI variables store\n";
-#endif
+	"  - show size of UEFI variables store\n");
 
 U_BOOT_CMD(
 	efidebug, CONFIG_SYS_MAXARGS, 0, do_efidebug,

@@ -6,7 +6,6 @@
  *   Pragnesh Patel <pragnesh.patel@sifive.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <asm/sections.h>
@@ -19,7 +18,7 @@ void *board_fdt_blob_setup(int *err)
 			return (ulong *)(uintptr_t)gd->arch.firmware_fdt_addr;
 	}
 
-	return (ulong *)&_end;
+	return (ulong *)_end;
 }
 
 int board_init(void)

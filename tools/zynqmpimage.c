@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2016 Michal Simek <michals@xilinx.com>
+ * Copyright (C) 2016 Michal Simek <michal.simek@amd.com>
  * Copyright (C) 2015 Nathan Rossi <nathan@nathanrossi.com>
  *
  * The following Boot Header format/structures and values are defined in the
@@ -209,7 +209,7 @@ static void print_partition(const void *ptr, const struct partition_header *ph)
 	printf("    Checksum   : 0x%08x\n", le32_to_cpu(ph->checksum));
 }
 
-void zynqmpimage_print_header(const void *ptr)
+void zynqmpimage_print_header(const void *ptr, struct image_tool_params *params)
 {
 	struct zynqmp_header *zynqhdr = (struct zynqmp_header *)ptr;
 	int i;

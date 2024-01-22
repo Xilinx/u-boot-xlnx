@@ -27,7 +27,8 @@ const char *const type_name[] = {
 	"test",
 
 	/* Events related to driver model */
-	"dm_post_init",
+	"dm_post_init_f",
+	"dm_post_init_r",
 	"dm_pre_probe",
 	"dm_post_probe",
 	"dm_pre_remove",
@@ -35,6 +36,12 @@ const char *const type_name[] = {
 
 	/* init hooks */
 	"misc_init_f",
+	"fsp_init_r",
+	"settings_r",
+	"last_stage_init",
+
+	/* Fpga load hook */
+	"fpga_load",
 
 	/* fdt hooks */
 	"ft_fixup",
@@ -46,7 +53,7 @@ const char *const type_name[] = {
 _Static_assert(ARRAY_SIZE(type_name) == EVT_COUNT, "event type_name size");
 #endif
 
-static const char *event_type_name(enum event_t type)
+const char *event_type_name(enum event_t type)
 {
 #if CONFIG_IS_ENABLED(EVENT_DEBUG)
 	return type_name[type];
@@ -68,7 +75,14 @@ static int notify_static(struct event *ev)
 
 			log_debug("Sending event %x/%s to spy '%s'\n", ev->type,
 				  event_type_name(ev->type), event_spy_id(spy));
-			ret = spy->func(NULL, ev);
+			if (spy->flags & EVSPYF_SIMPLE) {
+				const struct evspy_info_simple *simple;
+
+				simple = (struct evspy_info_simple *)spy;
+				ret = simple->func();
+			} else {
+				ret = spy->func(NULL, ev);
+			}
 
 			/*
 			 * TODO: Handle various return codes to
@@ -123,7 +137,7 @@ int event_notify(enum event_t type, void *data, int size)
 
 	ret = notify_static(&event);
 	if (ret)
-		return log_msg_ret("dyn", ret);
+		return log_msg_ret("sta", ret);
 
 	if (CONFIG_IS_ENABLED(EVENT_DYNAMIC)) {
 		ret = notify_dynamic(&event);
@@ -154,20 +168,6 @@ void event_show_spy_list(void)
 		       event_spy_id(spy));
 	}
 }
-
-#if CONFIG_IS_ENABLED(NEEDS_MANUAL_RELOC)
-int event_manual_reloc(void)
-{
-	struct evspy_info *spy, *end;
-
-	spy = ll_entry_start(struct evspy_info, evspy_info);
-	end = ll_entry_end(struct evspy_info, evspy_info);
-	for (; spy < end; spy++)
-		MANUAL_RELOC(spy->func);
-
-	return 0;
-}
-#endif
 
 #if CONFIG_IS_ENABLED(EVENT_DYNAMIC)
 static void spy_free(struct event_spy *spy)

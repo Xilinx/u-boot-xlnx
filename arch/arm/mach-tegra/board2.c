@@ -26,6 +26,10 @@
 #include <asm/arch-tegra/gpu.h>
 #include <asm/arch-tegra/usb.h>
 #include <asm/arch-tegra/xusb-padctl.h>
+#ifndef CONFIG_TEGRA186
+#include <asm/arch-tegra/fuse.h>
+#include <asm/arch/gp_padctrl.h>
+#endif
 #if IS_ENABLED(CONFIG_TEGRA_CLKRST)
 #include <asm/arch/clock.h>
 #endif
@@ -56,6 +60,7 @@ __weak void gpio_early_init_uart(void) {}
 __weak void pin_mux_display(void) {}
 __weak void start_cpu_fan(void) {}
 __weak void cboot_late_init(void) {}
+__weak void nvidia_board_late_init(void) {}
 
 #if defined(CONFIG_TEGRA_NAND)
 __weak void pin_mux_nand(void)
@@ -89,7 +94,7 @@ int checkboard(void)
 {
 	int board_id = tegra_board_id();
 
-	printf("Board: %s", CONFIG_TEGRA_BOARD_STRING);
+	printf("Board: %s", CFG_TEGRA_BOARD_STRING);
 	if (board_id != -1)
 		printf(", ID: %d\n", board_id);
 	printf("\n");
@@ -255,6 +260,37 @@ int board_early_init_f(void)
 }
 #endif	/* EARLY_INIT */
 
+#ifndef CONFIG_TEGRA186
+static void nvidia_board_late_init_generic(void)
+{
+	char serialno_str[17];
+
+	/* Set chip id as serialno */
+	sprintf(serialno_str, "%016llx", tegra_chip_uid());
+	env_set("serial#", serialno_str);
+
+	switch (tegra_get_chip()) {
+	case CHIPID_TEGRA20:
+		env_set("platform", "tegra20");
+		break;
+	case CHIPID_TEGRA30:
+		env_set("platform", "tegra30");
+		break;
+	case CHIPID_TEGRA114:
+		env_set("platform", "tegra114");
+		break;
+	case CHIPID_TEGRA124:
+		env_set("platform", "tegra124");
+		break;
+	case CHIPID_TEGRA210:
+		env_set("platform", "tegra210");
+		break;
+	default:
+		return;
+	}
+}
+#endif
+
 int board_late_init(void)
 {
 #if defined(CONFIG_TEGRA_SUPPORT_NON_SECURE)
@@ -267,6 +303,15 @@ int board_late_init(void)
 #endif
 	start_cpu_fan();
 	cboot_late_init();
+
+	/*
+	 * Perform generic env setup in case
+	 * vendor does not provide it.
+	 */
+#ifndef CONFIG_TEGRA186
+	nvidia_board_late_init_generic();
+#endif
+	nvidia_board_late_init();
 
 	return 0;
 }
@@ -370,7 +415,7 @@ int dram_init_banksize(void)
 
 	/* fall back to default DRAM bank size computation */
 
-	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_dram[0].start = CFG_SYS_SDRAM_BASE;
 	gd->bd->bi_dram[0].size = usable_ram_size_below_4g();
 
 #ifdef CONFIG_PCI
@@ -401,7 +446,7 @@ int dram_init_banksize(void)
  * This function is called before dram_init_banksize(), so we can't simply
  * return gd->bd->bi_dram[1].start + gd->bd->bi_dram[1].size.
  */
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	ulong ram_top;
 
@@ -412,5 +457,5 @@ phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 
 	/* fall back to default usable RAM computation */
 
-	return CONFIG_SYS_SDRAM_BASE + usable_ram_size_below_4g();
+	return CFG_SYS_SDRAM_BASE + usable_ram_size_below_4g();
 }

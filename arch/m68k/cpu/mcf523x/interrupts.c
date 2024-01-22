@@ -6,14 +6,13 @@
  */
 
 /* CPU specific interrupt routine */
-#include <common.h>
 #include <irq_func.h>
 #include <asm/immap.h>
 #include <asm/io.h>
 
 int interrupt_init(void)
 {
-	int0_t *intp = (int0_t *) (CONFIG_SYS_INTR_BASE);
+	int0_t *intp = (int0_t *) (CFG_SYS_INTR_BASE);
 
 	/* Make sure all interrupts are disabled */
 	setbits_be32(&intp->imrl0, 0x1);
@@ -22,13 +21,13 @@ int interrupt_init(void)
 	return 0;
 }
 
-#if defined(CONFIG_MCFTMR)
+#if CONFIG_IS_ENABLED(MCFTMR)
 void dtimer_intr_setup(void)
 {
-	int0_t *intp = (int0_t *) (CONFIG_SYS_INTR_BASE);
+	int0_t *intp = (int0_t *) (CFG_SYS_INTR_BASE);
 
-	out_8(&intp->icr0[CONFIG_SYS_TMRINTR_NO], CONFIG_SYS_TMRINTR_PRI);
+	out_8(&intp->icr0[CFG_SYS_TMRINTR_NO], CFG_SYS_TMRINTR_PRI);
 	clrbits_be32(&intp->imrl0, INTC_IPRL_INT0);
-	clrbits_be32(&intp->imrl0, CONFIG_SYS_TMRINTR_MASK);
+	clrbits_be32(&intp->imrl0, CFG_SYS_TMRINTR_MASK);
 }
 #endif

@@ -23,7 +23,7 @@
 static int (*int_handler[256])(void);
 
 /* to have a common register file for interrupt handlers */
-#ifndef CONFIG_BIOSEMU
+#if !CONFIG_IS_ENABLED(BIOSEMU)
 X86EMU_sysEnv _X86EMU_env;
 #endif
 
@@ -78,7 +78,7 @@ static int int_exception_handler(void)
 	};
 	struct eregs *regs = &reg_info;
 
-	debug("Oops, exception %d while executing option rom\n", regs->vector);
+	log_err("Exception %d while executing option rom\n", regs->vector);
 	cpu_hlt();
 
 	return 0;
@@ -204,7 +204,7 @@ static u8 vbe_get_mode_info(struct vesa_state *mi)
 
 	realmode_interrupt(0x10, VESA_GET_MODE_INFO, 0x0000, mi->video_mode,
 			   0x0000, buffer_seg, buffer_adr);
-	memcpy(mi->mode_info_block, buffer, sizeof(struct vesa_state));
+	memcpy(mi->mode_info_block, buffer, sizeof(struct vesa_mode_info));
 	mi->valid = true;
 
 	return 0;

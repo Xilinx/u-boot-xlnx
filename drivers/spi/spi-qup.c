@@ -9,7 +9,7 @@
  * Author: Robert Marko <robert.marko@sartura.hr>
  * Author: Luka Kovacic <luka.kovacic@sartura.hr>
  *
- * Based on stock U-boot and Linux drivers
+ * Based on stock U-Boot and Linux drivers
  */
 
 #include <asm/gpio.h>
@@ -233,7 +233,7 @@ static unsigned char qup_spi_read_byte(struct udevice *dev)
 }
 
 /*
- * Function to check wheather Input or Output FIFO
+ * Function to check whether Input or Output FIFO
  * has data to be serviced
  */
 static int qup_spi_check_fifo_status(struct udevice *dev, u32 reg_addr)
@@ -719,7 +719,7 @@ static int qup_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		if (ret != 0)
 			return ret;
 
-		ret = qup_spi_set_cs(bus, slave_plat->cs, false);
+		ret = qup_spi_set_cs(bus, slave_plat->cs[0], false);
 		if (ret != 0)
 			return ret;
 	}
@@ -737,7 +737,7 @@ static int qup_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	}
 
 	if (flags & SPI_XFER_END) {
-		ret = qup_spi_set_cs(bus, slave_plat->cs, true);
+		ret = qup_spi_set_cs(bus, slave_plat->cs[0], true);
 		if (ret != 0)
 			return ret;
 	}

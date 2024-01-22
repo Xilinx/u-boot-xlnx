@@ -2,7 +2,7 @@
 /*
  * Texas Instruments' OMAP serial driver
  *
- * Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2018 Texas Instruments Incorporated - https://www.ti.com/
  *	Lokesh Vutla <lokeshvutla@ti.com>
  */
 
@@ -15,14 +15,14 @@
 #include <clk.h>
 #include <linux/err.h>
 
-#ifndef CONFIG_SYS_NS16550_CLK
-#define CONFIG_SYS_NS16550_CLK  0
+#ifndef CFG_SYS_NS16550_CLK
+#define CFG_SYS_NS16550_CLK  0
 #endif
 
 #ifdef CONFIG_DEBUG_UART_OMAP
 
-#ifndef CONFIG_SYS_NS16550_IER
-#define CONFIG_SYS_NS16550_IER  0x00
+#ifndef CFG_SYS_NS16550_IER
+#define CFG_SYS_NS16550_IER  0x00
 #endif
 
 #define UART_MCRVAL 0x00
@@ -71,7 +71,7 @@ static inline void _debug_uart_init(void)
 
 	baud_divisor = ns16550_calc_divisor(com_port, CONFIG_DEBUG_UART_CLOCK,
 					    CONFIG_BAUDRATE);
-	serial_dout(&com_port->ier, CONFIG_SYS_NS16550_IER);
+	serial_dout(&com_port->ier, CFG_SYS_NS16550_IER);
 	serial_dout(&com_port->mdr1, 0x7);
 	serial_dout(&com_port->mcr, UART_MCRVAL);
 	serial_dout(&com_port->fcr, UART_FCR_DEFVAL);
@@ -128,7 +128,7 @@ static int omap_serial_of_to_plat(struct udevice *dev)
 
 	if (!plat->clock)
 		plat->clock = dev_read_u32_default(dev, "clock-frequency",
-						   CONFIG_SYS_NS16550_CLK);
+						   CFG_SYS_NS16550_CLK);
 	if (!plat->clock) {
 		debug("omap serial clock not defined\n");
 		return -EINVAL;

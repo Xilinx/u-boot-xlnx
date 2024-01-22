@@ -9,7 +9,7 @@
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
-#include <asm/arch/sci/sci.h>
+#include <firmware/imx/sci/sci.h>
 #include <asm/arch/clock.h>
 #include <dt-bindings/clock/imx8qxp-clock.h>
 #include <dt-bindings/soc/imx_rsrc.h>
@@ -42,7 +42,7 @@ static int imx8_clk_enable(struct clk *clk)
 	return __imx8_clk_enable(clk, 1);
 }
 
-#if CONFIG_IS_ENABLED(CMD_CLK)
+#if IS_ENABLED(CONFIG_CMD_CLK)
 int soc_clk_dump(void)
 {
 	struct udevice *dev;

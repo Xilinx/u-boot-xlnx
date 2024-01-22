@@ -20,6 +20,7 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/arch/ddr.h>
+#include <asm/sections.h>
 
 #include <dm/uclass.h>
 #include <dm/device.h>
@@ -94,9 +95,6 @@ int power_init_board(void)
 
 	/* enable LDO4 to 1.2v */
 	pmic_reg_write(dev, PCA9450_LDO4CTRL, 0x44);
-
-	/* set WDOG_B_CFG to cold reset */
-	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0xA1);
 
 	return 0;
 }

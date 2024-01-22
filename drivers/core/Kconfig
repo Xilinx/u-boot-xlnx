@@ -14,7 +14,7 @@ config SPL_DM
 	help
 	  Enable driver model in SPL. You will need to provide a
 	  suitable malloc() implementation. If you are not using the
-	  full malloc() enabled by CONFIG_SYS_SPL_MALLOC_START,
+	  full malloc() enabled by CFG_SPL_SYS_MALLOC_START,
 	  consider using CONFIG_SPL_SYS_MALLOC_SIMPLE. In that case you
 	  must provide CONFIG_SPL_SYS_MALLOC_F_LEN to set the size.
 	  In most cases driver model will only allocate a few uclasses
@@ -27,12 +27,12 @@ config TPL_DM
 	help
 	  Enable driver model in TPL. You will need to provide a
 	  suitable malloc() implementation. If you are not using the
-	  full malloc() enabled by CONFIG_SYS_SPL_MALLOC_START,
+	  full malloc() enabled by CFG_TPL_SYS_MALLOC_START,
 	  consider using CONFIG_TPL_SYS_MALLOC_SIMPLE. In that case you
-	  must provide CONFIG_SPL_SYS_MALLOC_F_LEN to set the size.
+	  must provide CONFIG_TPL_SYS_MALLOC_F_LEN to set the size.
 	  In most cases driver model will only allocate a few uclasses
-	  and devices in SPL, so 1KB should be enough. See
-	  CONFIG_SPL_SYS_MALLOC_F_LEN for more details on how to enable it.
+	  and devices in TPL, so 1KB should be enough. See
+	  CONFIG_TPL_SYS_MALLOC_F_LEN for more details on how to enable it.
 	  Disable this for very small implementations.
 
 config VPL_DM
@@ -42,13 +42,12 @@ config VPL_DM
 	help
 	  Enable driver model in VPL. You will need to provide a
 	  suitable malloc() implementation. If you are not using the
-	  full malloc() enabled by CONFIG_SYS_SPL_MALLOC_START,
-	  consider using CONFIG_SPL_SYS_MALLOC_SIMPLE.
+	  full malloc() enabled by CFG_TPL_SYS_MALLOC_START,
+	  consider using CONFIG_TPL_SYS_MALLOC_SIMPLE.
 
 config DM_WARN
 	bool "Enable warnings in driver model"
 	depends on DM
-	default y
 	help
 	  Enable this to see warnings related to driver model.
 
@@ -109,13 +108,14 @@ config DM_DEVICE_REMOVE
 	  causes USB host controllers to not be stopped when booting the OS.
 
 config DM_EVENT
-	bool "Support events with driver model"
-	depends on DM && EVENT
-	default y if SANDBOX
+	bool
+	depends on DM
+	select EVENT
 	help
 	  This enables support for generating events related to driver model
 	  operations, such as prbing or removing a device. Subsystems can
-	  register a 'spy' function that is called when the event occurs.
+	  register a 'spy' function that is called when the event occurs. Such
+	  subsystems must select this option.
 
 config SPL_DM_DEVICE_REMOVE
 	bool "Support device removal in SPL"
@@ -300,6 +300,13 @@ config SPL_SIMPLE_BUS
 	  Supports the 'simple-bus' driver, which is used on some systems
 	  in SPL.
 
+config TPL_SIMPLE_BUS
+	bool "Support simple-bus driver in TPL"
+	depends on TPL_DM && TPL_OF_CONTROL
+	help
+	  Supports the 'simple-bus' driver, which is used on some systems
+	  in TPL.
+
 config SIMPLE_BUS_CORRECT_RANGE
 	bool "Decode the 'simple-bus' <range> by honoring the #address-cells and #size-cells"
 	depends on SIMPLE_BUS
@@ -440,6 +447,7 @@ config OFNODE_MULTI_TREE_MAX
 
 config ACPIGEN
 	bool "Support ACPI table generation in driver model"
+	depends on ACPI
 	default y if SANDBOX || (GENERATE_ACPI_TABLE && !QEMU)
 	select LIB_UUID
 	help

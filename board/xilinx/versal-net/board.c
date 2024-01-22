@@ -194,7 +194,7 @@ static u8 versal_net_get_bootmode(void)
 	return bootmode;
 }
 
-int board_late_init(void)
+static int boot_targets_setup(void)
 {
 	u8 bootmode;
 	struct udevice *dev;
@@ -204,14 +204,6 @@ int board_late_init(void)
 	const char *mode = NULL;
 	char *new_targets;
 	char *env_targets;
-
-	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
-		debug("Saved variables - Skipping\n");
-		return 0;
-	}
-
-	if (!CONFIG_IS_ENABLED(ENV_VARS_UBOOT_RUNTIME_CONFIG))
-		return 0;
 
 	bootmode = versal_net_get_bootmode();
 
@@ -259,6 +251,9 @@ int board_late_init(void)
 		puts("EMMC_MODE\n");
 		mode = "mmc";
 		bootseq = dev_seq(dev);
+		break;
+	case SELECTMAP_MODE:
+		puts("SELECTMAP_MODE\n");
 		break;
 	case SD_MODE:
 		puts("SD_MODE\n");
@@ -321,6 +316,27 @@ int board_late_init(void)
 		env_set("boot_targets", new_targets);
 	}
 
+	return 0;
+}
+
+int board_late_init(void)
+{
+	int ret;
+
+	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
+		debug("Saved variables - Skipping\n");
+		return 0;
+	}
+
+	if (!IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG))
+		return 0;
+
+	if (IS_ENABLED(CONFIG_DISTRO_DEFAULTS)) {
+		ret = boot_targets_setup();
+		if (ret)
+			return ret;
+	}
+
 	return board_late_init_xilinx();
 }
 
@@ -341,7 +357,7 @@ int dram_init(void)
 {
 	int ret;
 
-	if (CONFIG_IS_ENABLED(SYS_MEM_RSVD_FOR_MMU))
+	if (IS_ENABLED(CONFIG_SYS_MEM_RSVD_FOR_MMU))
 		ret = fdtdec_setup_mem_size_base();
 	else
 		ret = fdtdec_setup_mem_size_base_lowest();

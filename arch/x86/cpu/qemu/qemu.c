@@ -48,7 +48,7 @@ static void enable_pm_ich9(void)
 	pci_write_config32(ICH9_PM, PMBA, CONFIG_ACPI_PM1_BASE | 1);
 }
 
-static void qemu_chipset_init(void)
+void qemu_chipset_init(void)
 {
 	u16 device, xbcs;
 	int pam, i;
@@ -97,7 +97,7 @@ static void qemu_chipset_init(void)
 	}
 }
 
-#if !CONFIG_IS_ENABLED(SPL_X86_32BIT_INIT)
+#if CONFIG_IS_ENABLED(X86_32BIT_INIT)
 int arch_cpu_init(void)
 {
 	post_code(POST_CPU_INIT);

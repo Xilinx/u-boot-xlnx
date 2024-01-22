@@ -22,6 +22,7 @@
 #include <irq_func.h>
 #include <log.h>
 #include <malloc.h>
+#include <mapmem.h>
 #include <acpi/acpi_table.h>
 #include <asm/io.h>
 #include <asm/ptrace.h>
@@ -180,7 +181,7 @@ static int setup_device_tree(struct setup_header *hdr, const void *fdt_blob)
 	return 0;
 }
 
-static const char *get_kernel_version(struct boot_params *params,
+const char *zimage_get_kernel_version(struct boot_params *params,
 				      void *kernel_base)
 {
 	struct setup_header *hdr = &params->hdr;
@@ -188,10 +189,14 @@ static const char *get_kernel_version(struct boot_params *params,
 	const char *s, *end;
 
 	bootproto = get_boot_protocol(hdr, false);
+	log_debug("bootproto %x, hdr->setup_sects %x\n", bootproto,
+		  hdr->setup_sects);
 	if (bootproto < 0x0200 || hdr->setup_sects < 15)
 		return NULL;
 
 	/* sanity-check the kernel version in case it is missing */
+	log_debug("hdr->kernel_version %x, str at %p\n", hdr->kernel_version,
+		  kernel_base + hdr->kernel_version + 0x200);
 	for (s = kernel_base + hdr->kernel_version + 0x200, end = s + 0x100; *s;
 	     s++) {
 		if (!isprint(*s))
@@ -238,7 +243,7 @@ struct boot_params *load_zimage(char *image, unsigned long kernel_size,
 	log_debug("Using boot protocol version %x.%02x\n",
 		  (bootproto & 0xff00) >> 8, bootproto & 0xff);
 
-	version = get_kernel_version(params, image);
+	version = zimage_get_kernel_version(params, image);
 	if (version)
 		printf("Linux kernel version %s\n", version);
 	else
@@ -442,8 +447,7 @@ static int do_zboot_start(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
-static int do_zboot_load(struct cmd_tbl *cmdtp, int flag, int argc,
-			 char *const argv[])
+static int zboot_load(void)
 {
 	struct boot_params *base_ptr;
 
@@ -460,13 +464,37 @@ static int do_zboot_load(struct cmd_tbl *cmdtp, int flag, int argc,
 				       &state.load_address);
 		if (!base_ptr) {
 			puts("## Kernel loading failed ...\n");
-			return CMD_RET_FAILURE;
+			return -EINVAL;
 		}
 	}
 	state.base_ptr = base_ptr;
-	if (env_set_hex("zbootbase", (ulong)base_ptr) ||
+
+	return 0;
+}
+
+static int do_zboot_load(struct cmd_tbl *cmdtp, int flag, int argc,
+			 char *const argv[])
+{
+	if (zboot_load())
+		return CMD_RET_FAILURE;
+
+	if (env_set_hex("zbootbase", map_to_sysmem(state.base_ptr)) ||
 	    env_set_hex("zbootaddr", state.load_address))
 		return CMD_RET_FAILURE;
+
+	return 0;
+}
+
+static int zboot_setup(void)
+{
+	struct boot_params *base_ptr = state.base_ptr;
+	int ret;
+
+	ret = setup_zimage(base_ptr, (char *)base_ptr + COMMAND_LINE_OFFSET,
+			   0, state.initrd_addr, state.initrd_size,
+			   (ulong)state.cmdline);
+	if (ret)
+		return -EINVAL;
 
 	return 0;
 }
@@ -475,16 +503,12 @@ static int do_zboot_setup(struct cmd_tbl *cmdtp, int flag, int argc,
 			  char *const argv[])
 {
 	struct boot_params *base_ptr = state.base_ptr;
-	int ret;
 
 	if (!base_ptr) {
 		printf("base is not set: use 'zboot load' first\n");
 		return CMD_RET_FAILURE;
 	}
-	ret = setup_zimage(base_ptr, (char *)base_ptr + COMMAND_LINE_OFFSET,
-			   0, state.initrd_addr, state.initrd_size,
-			   (ulong)state.cmdline);
-	if (ret) {
+	if (zboot_setup()) {
 		puts("Setting up boot parameters failed ...\n");
 		return CMD_RET_FAILURE;
 	}
@@ -501,19 +525,70 @@ static int do_zboot_info(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
+static int zboot_go(void)
+{
+	struct boot_params *params = state.base_ptr;
+	struct setup_header *hdr = &params->hdr;
+	bool image_64bit;
+	ulong entry;
+	int ret;
+
+	disable_interrupts();
+
+	entry = state.load_address;
+	image_64bit = false;
+	if (IS_ENABLED(CONFIG_X86_RUN_64BIT) &&
+	    (hdr->xloadflags & XLF_KERNEL_64)) {
+		entry += 0x200;
+		image_64bit = true;
+	}
+
+	/* we assume that the kernel is in place */
+	ret = boot_linux_kernel((ulong)state.base_ptr, entry, image_64bit);
+
+	return ret;
+}
+
 static int do_zboot_go(struct cmd_tbl *cmdtp, int flag, int argc,
 		       char *const argv[])
 {
 	int ret;
 
-	disable_interrupts();
-
-	/* we assume that the kernel is in place */
-	ret = boot_linux_kernel((ulong)state.base_ptr, state.load_address,
-				false);
+	ret = zboot_go();
 	printf("Kernel returned! (err=%d)\n", ret);
 
 	return CMD_RET_FAILURE;
+}
+
+int zboot_start(ulong addr, ulong size, ulong initrd, ulong initrd_size,
+		ulong base, char *cmdline)
+{
+	int ret;
+
+	memset(&state, '\0', sizeof(state));
+
+	if (base) {
+		state.base_ptr = map_sysmem(base, 0);
+		state.load_address = addr;
+	} else {
+		state.bzimage_addr = addr;
+	}
+	state.bzimage_size = size;
+	state.initrd_addr = initrd;
+	state.initrd_size = initrd_size;
+	state.cmdline = cmdline;
+
+	ret = zboot_load();
+	if (ret)
+		return log_msg_ret("ld", ret);
+	ret = zboot_setup();
+	if (ret)
+		return log_msg_ret("set", ret);
+	ret = zboot_go();
+	if (ret)
+		return log_msg_ret("set", ret);
+
+	return -EFAULT;
 }
 
 static void print_num(const char *name, ulong value)
@@ -617,7 +692,7 @@ static void show_loader(struct setup_header *hdr)
 	printf("\n");
 }
 
-void zimage_dump(struct boot_params *base_ptr)
+void zimage_dump(struct boot_params *base_ptr, bool show_cmdline)
 {
 	struct setup_header *hdr;
 	const char *version;
@@ -628,7 +703,7 @@ void zimage_dump(struct boot_params *base_ptr)
 
 	printf("E820: %d entries\n", base_ptr->e820_entries);
 	if (base_ptr->e820_entries) {
-		printf("%18s  %16s  %s\n", "Addr", "Size", "Type");
+		printf("%12s  %10s  %s\n", "Addr", "Size", "Type");
 		for (i = 0; i < base_ptr->e820_entries; i++) {
 			struct e820_entry *entry = &base_ptr->e820_map[i];
 
@@ -655,9 +730,10 @@ void zimage_dump(struct boot_params *base_ptr)
 		printf("%-20s  %s\n", "", "Ancient kernel, using version 100");
 	print_num("Version", hdr->version);
 	print_num("Real mode switch", hdr->realmode_swtch);
-	print_num("Start sys", hdr->start_sys);
+	print_num("Start sys seg", hdr->start_sys_seg);
 	print_num("Kernel version", hdr->kernel_version);
-	version = get_kernel_version(base_ptr, (void *)state.bzimage_addr);
+	version = zimage_get_kernel_version(base_ptr,
+					    (void *)state.bzimage_addr);
 	if (version)
 		printf("   @%p: %s\n", version, version);
 	print_num("Type of loader", hdr->type_of_loader);
@@ -673,7 +749,7 @@ void zimage_dump(struct boot_params *base_ptr)
 	print_num("Ext loader ver", hdr->ext_loader_ver);
 	print_num("Ext loader type", hdr->ext_loader_type);
 	print_num("Command line ptr", hdr->cmd_line_ptr);
-	if (hdr->cmd_line_ptr) {
+	if (show_cmdline && hdr->cmd_line_ptr) {
 		printf("   ");
 		/* Use puts() to avoid limits from CONFIG_SYS_PBSIZE */
 		puts((char *)(ulong)hdr->cmd_line_ptr);
@@ -711,7 +787,7 @@ static int do_zboot_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 		printf("No zboot setup_base\n");
 		return CMD_RET_FAILURE;
 	}
-	zimage_dump(base_ptr);
+	zimage_dump(base_ptr, true);
 
 	return 0;
 }

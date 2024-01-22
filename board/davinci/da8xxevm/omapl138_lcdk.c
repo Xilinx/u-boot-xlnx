@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2012 Texas Instruments Incorporated - https://www.ti.com/
  *
  * Based on da850evm.c. Original Copyrights follow:
  *
@@ -139,8 +139,8 @@ const struct lpsc_resource lpsc[] = {
 
 const int lpsc_size = ARRAY_SIZE(lpsc);
 
-#ifndef CONFIG_DA850_EVM_MAX_CPU_CLK
-#define CONFIG_DA850_EVM_MAX_CPU_CLK	456000000
+#ifndef CFG_DA850_EVM_MAX_CPU_CLK
+#define CFG_DA850_EVM_MAX_CPU_CLK	456000000
 #endif
 
 int board_early_init_f(void)

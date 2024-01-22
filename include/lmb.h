@@ -35,6 +35,24 @@ struct lmb_property {
 	enum lmb_flags flags;
 };
 
+/*
+ * For regions size management, see LMB configuration in KConfig
+ * all the #if test are done with CONFIG_LMB_USE_MAX_REGIONS (boolean)
+ *
+ * case 1. CONFIG_LMB_USE_MAX_REGIONS is defined (legacy mode)
+ *         => CONFIG_LMB_MAX_REGIONS is used to configure the region size,
+ *         directly in the array lmb_region.region[], with the same
+ *         configuration for memory and reserved regions.
+ *
+ * case 2. CONFIG_LMB_USE_MAX_REGIONS is not defined, the size of each
+ *         region is configurated *independently* with
+ *         => CONFIG_LMB_MEMORY_REGIONS: struct lmb.memory_regions
+ *         => CONFIG_LMB_RESERVED_REGIONS: struct lmb.reserved_regions
+ *         lmb_region.region is only a pointer to the correct buffer,
+ *         initialized in lmb_init(). This configuration is useful to manage
+ *         more reserved memory regions with CONFIG_LMB_RESERVED_REGIONS.
+ */
+
 /**
  * struct lmb_region - Description of a set of region.
  *
@@ -68,7 +86,7 @@ struct lmb_region {
 struct lmb {
 	struct lmb_region memory;
 	struct lmb_region reserved;
-#ifdef CONFIG_LMB_MEMORY_REGIONS
+#if !IS_ENABLED(CONFIG_LMB_USE_MAX_REGIONS)
 	struct lmb_property memory_regions[CONFIG_LMB_MEMORY_REGIONS];
 	struct lmb_property reserved_regions[CONFIG_LMB_RESERVED_REGIONS];
 #endif
@@ -98,16 +116,31 @@ phys_addr_t __lmb_alloc_base(struct lmb *lmb, phys_size_t size, ulong align,
 			     phys_addr_t max_addr);
 phys_addr_t lmb_alloc_addr(struct lmb *lmb, phys_addr_t base, phys_size_t size);
 phys_size_t lmb_get_free_size(struct lmb *lmb, phys_addr_t addr);
-int lmb_is_reserved(struct lmb *lmb, phys_addr_t addr);
+
 /**
- * lmb_is_reserved_flags - test if tha address is in reserved region with a bitfield flag
+ * lmb_is_reserved() - test if address is in reserved region
+ *
+ * The function checks if a reserved region comprising @addr exists.
  *
  * @lmb:	the logical memory block struct
  * @addr:	address to be tested
- * @flags:	flags bitfied to be tested
- * Return:	if not reserved or reserved without the requested flag else 1
+ * Return:	1 if reservation exists, 0 otherwise
+ */
+int lmb_is_reserved(struct lmb *lmb, phys_addr_t addr);
+
+/**
+ * lmb_is_reserved_flags() - test if address is in reserved region with flag bits set
+ *
+ * The function checks if a reserved region comprising @addr exists which has
+ * all flag bits set which are set in @flags.
+ *
+ * @lmb:	the logical memory block struct
+ * @addr:	address to be tested
+ * @flags:	bitmap with bits to be tested
+ * Return:	1 if matching reservation exists, 0 otherwise
  */
 int lmb_is_reserved_flags(struct lmb *lmb, phys_addr_t addr, int flags);
+
 long lmb_free(struct lmb *lmb, phys_addr_t base, phys_size_t size);
 
 void lmb_dump_all(struct lmb *lmb);

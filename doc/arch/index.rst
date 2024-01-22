@@ -8,10 +8,12 @@ Architecture-specific doc
 
    arc
    arm64
+   arm64.ffa
    m68k
    mips
    nios2
+   riscv
    sandbox/index
    sh
-   x86
+   x86/index
    xtensa

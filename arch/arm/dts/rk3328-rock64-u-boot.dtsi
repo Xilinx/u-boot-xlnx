@@ -33,43 +33,28 @@
 };
 
 &gpio0 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &sdmmc0m1_pin {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pcfg_pull_up_4ma {
-	u-boot,dm-spl;
-};
-
-&usb_host0_xhci {
-	vbus-supply = <&vcc_host_5v>;
-	status = "okay";
-};
-
-/*
- * This makes XHCI responsible for toggling VBUS. This is needed to work
- * around an issue where either XHCI only works with USB 2.0 or OTG doesn't
- * work, depending on how VBUS is configured. Having USB 3.0 seems better.
- */
-&vcc_host_5v {
-	/delete-property/ regulator-always-on;
-	/delete-property/ regulator-boot-on;
+	bootph-pre-ram;
 };
 
 /* Need this and all the pinctrl/gpio stuff above to set pinmux */
 &vcc_sd {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &spi0 {
-	spi_flash: spiflash@0 {
-		u-boot,dm-pre-reloc;
+	spi_flash: flash@0 {
+		bootph-all;
 	};
 };

@@ -6,17 +6,18 @@
  * Copyright (C) 2002 - 2008  Paul Mundt
  */
 
-#include <common.h>
-#include <errno.h>
-#include <clk.h>
-#include <dm.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/processor.h>
-#include <serial.h>
-#include <linux/compiler.h>
+#include <clk.h>
+#include <dm.h>
+#include <dm/device_compat.h>
 #include <dm/platform_data/serial_sh.h>
+#include <errno.h>
+#include <linux/compiler.h>
 #include <linux/delay.h>
+#include <reset.h>
+#include <serial.h>
 #include "serial_sh.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -57,6 +58,11 @@ static void sh_serial_init_generic(struct uart_port *port)
 #if defined(CONFIG_RZA1)
 	sci_out(port, SCSPTR, 0x0003);
 #endif
+
+#if IS_ENABLED(CONFIG_RCAR_GEN2) || IS_ENABLED(CONFIG_RCAR_GEN3) || IS_ENABLED(CONFIG_RCAR_GEN4)
+	if (port->type == PORT_HSCIF)
+		sci_out(port, HSSRR, HSSRR_SRE | HSSRR_SRCYC8);
+#endif
 }
 
 static void
@@ -74,10 +80,22 @@ sh_serial_setbrg_generic(struct uart_port *port, int clk, int baudrate)
 
 static void handle_error(struct uart_port *port)
 {
-	sci_in(port, SCxSR);
-	sci_out(port, SCxSR, SCxSR_ERROR_CLEAR(port));
+	/*
+	 * Most errors are cleared by resetting the relevant error bits to zero
+	 * in the FSR & LSR registers. For each register, a read followed by a
+	 * write is needed according to the relevant datasheets.
+	 */
+	unsigned short status = sci_in(port, SCxSR);
+	sci_out(port, SCxSR, status & ~SCxSR_ERRORS(port));
 	sci_in(port, SCLSR);
 	sci_out(port, SCLSR, 0x00);
+
+	/*
+	 * To clear framing errors, we also need to read and discard a
+	 * character.
+	 */
+	if ((port->type != PORT_SCI) && (status & SCIF_FER))
+		sci_in(port, SCxRDR);
 }
 
 static int serial_raw_putc(struct uart_port *port, const char c)
@@ -182,11 +200,23 @@ static int sh_serial_probe(struct udevice *dev)
 {
 	struct sh_serial_plat *plat = dev_get_plat(dev);
 	struct uart_port *priv = dev_get_priv(dev);
+	struct reset_ctl rst;
+	int ret;
 
 	priv->membase	= (unsigned char *)plat->base;
 	priv->mapbase	= plat->base;
 	priv->type	= plat->type;
 	priv->clk_mode	= plat->clk_mode;
+
+	/* De-assert the module reset if it is defined. */
+	ret = reset_get_by_index(dev, 0, &rst);
+	if (!ret) {
+		ret = reset_deassert(&rst);
+		if (ret < 0) {
+			dev_err(dev, "failed to de-assert reset line\n");
+			return ret;
+		}
+	}
 
 	sh_serial_init_generic(priv);
 
@@ -204,7 +234,9 @@ static const struct dm_serial_ops sh_serial_ops = {
 static const struct udevice_id sh_serial_id[] ={
 	{.compatible = "renesas,sci", .data = PORT_SCI},
 	{.compatible = "renesas,scif", .data = PORT_SCIF},
+	{.compatible = "renesas,scif-r9a07g044", .data = PORT_SCIFA},
 	{.compatible = "renesas,scifa", .data = PORT_SCIFA},
+	{.compatible = "renesas,hscif", .data = PORT_HSCIF},
 	{}
 };
 
@@ -249,9 +281,42 @@ U_BOOT_DRIVER(serial_sh) = {
 #endif
 	.priv_auto	= sizeof(struct uart_port),
 };
+#endif
 
-#else /* CONFIG_DM_SERIAL */
+#if !CONFIG_IS_ENABLED(DM_SERIAL) || IS_ENABLED(CONFIG_DEBUG_UART_SCIF)
 
+#if defined(CFG_SCIF_A)
+	#define SCIF_BASE_PORT	PORT_SCIFA
+#elif defined(CFG_SCI)
+	#define SCIF_BASE_PORT  PORT_SCI
+#elif defined(CFG_HSCIF)
+	#define SCIF_BASE_PORT  PORT_HSCIF
+#else
+	#define SCIF_BASE_PORT	PORT_SCIF
+#endif
+
+static void sh_serial_init_nodm(struct uart_port *port)
+{
+	sh_serial_init_generic(port);
+	serial_setbrg();
+}
+
+static void sh_serial_putc_nondm(struct uart_port *port, const char c)
+{
+	if (c == '\n') {
+		while (1) {
+			if  (serial_raw_putc(port, '\r') != -EAGAIN)
+				break;
+		}
+	}
+	while (1) {
+		if  (serial_raw_putc(port, c) != -EAGAIN)
+			break;
+	}
+}
+#endif
+
+#if !CONFIG_IS_ENABLED(DM_SERIAL)
 #if defined(CONFIG_CONS_SCIF0)
 # define SCIF_BASE	SCIF0_BASE
 #elif defined(CONFIG_CONS_SCIF1)
@@ -274,19 +339,11 @@ U_BOOT_DRIVER(serial_sh) = {
 # error "Default SCIF doesn't set....."
 #endif
 
-#if defined(CONFIG_SCIF_A)
-	#define SCIF_BASE_PORT	PORT_SCIFA
-#elif defined(CONFIG_SCI)
-	#define SCIF_BASE_PORT  PORT_SCI
-#else
-	#define SCIF_BASE_PORT	PORT_SCIF
-#endif
-
 static struct uart_port sh_sci = {
 	.membase	= (unsigned char *)SCIF_BASE,
 	.mapbase	= SCIF_BASE,
 	.type		= SCIF_BASE_PORT,
-#ifdef CONFIG_SCIF_USE_EXT_CLK
+#ifdef CFG_SCIF_USE_EXT_CLK
 	.clk_mode =	EXT_CLK,
 #endif
 };
@@ -301,28 +358,14 @@ static void sh_serial_setbrg(void)
 
 static int sh_serial_init(void)
 {
-	struct uart_port *port = &sh_sci;
-
-	sh_serial_init_generic(port);
-	serial_setbrg();
+	sh_serial_init_nodm(&sh_sci);
 
 	return 0;
 }
 
 static void sh_serial_putc(const char c)
 {
-	struct uart_port *port = &sh_sci;
-
-	if (c == '\n') {
-		while (1) {
-			if  (serial_raw_putc(port, '\r') != -EAGAIN)
-				break;
-		}
-	}
-	while (1) {
-		if  (serial_raw_putc(port, c) != -EAGAIN)
-			break;
-	}
+	sh_serial_putc_nondm(&sh_sci, c);
 }
 
 static int sh_serial_tstc(void)
@@ -367,3 +410,29 @@ __weak struct serial_device *default_serial_console(void)
 	return &sh_serial_drv;
 }
 #endif /* CONFIG_DM_SERIAL */
+
+#ifdef CONFIG_DEBUG_UART_SCIF
+#include <debug_uart.h>
+
+static struct uart_port debug_uart_sci = {
+	.membase	= (unsigned char *)CONFIG_DEBUG_UART_BASE,
+	.mapbase	= CONFIG_DEBUG_UART_BASE,
+	.type		= SCIF_BASE_PORT,
+#ifdef CFG_SCIF_USE_EXT_CLK
+	.clk_mode =	EXT_CLK,
+#endif
+};
+
+static inline void _debug_uart_init(void)
+{
+	sh_serial_init_nodm(&debug_uart_sci);
+}
+
+static inline void _debug_uart_putc(int c)
+{
+	sh_serial_putc_nondm(&debug_uart_sci, c);
+}
+
+DEBUG_UART_FUNCS
+
+#endif

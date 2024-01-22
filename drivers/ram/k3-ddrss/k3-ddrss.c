@@ -2,7 +2,7 @@
 /*
  * Texas Instruments' K3 DDRSS driver
  *
- * Copyright (C) 2020-2021 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2020-2021 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 #include <common.h>
@@ -138,6 +138,7 @@ struct k3_ddrss_desc {
 	u32 ddr_freq1;
 	u32 ddr_freq2;
 	u32 ddr_fhs_cnt;
+	u32 dram_class;
 	struct udevice *vtt_supply;
 	u32 instance;
 	lpddr4_obj *driverdt;
@@ -243,14 +244,11 @@ static void k3_lpddr4_freq_update(struct k3_ddrss_desc *ddrss)
 
 static void k3_lpddr4_ack_freq_upd_req(const lpddr4_privatedata *pd)
 {
-	u32 dram_class;
 	struct k3_ddrss_desc *ddrss = (struct k3_ddrss_desc *)pd->ddr_instance;
 
 	debug("--->>> LPDDR4 Initialization is in progress ... <<<---\n");
 
-	dram_class = k3_lpddr4_read_ddr_type(pd);
-
-	switch (dram_class) {
+	switch (ddrss->dram_class) {
 	case DENALI_CTL_0_DRAM_CLASS_DDR4:
 		break;
 	case DENALI_CTL_0_DRAM_CLASS_LPDDR4:
@@ -263,13 +261,12 @@ static void k3_lpddr4_ack_freq_upd_req(const lpddr4_privatedata *pd)
 
 static int k3_ddrss_init_freq(struct k3_ddrss_desc *ddrss)
 {
-	u32 dram_class;
 	int ret;
 	lpddr4_privatedata *pd = &ddrss->pd;
 
-	dram_class = k3_lpddr4_read_ddr_type(pd);
+	ddrss->dram_class = k3_lpddr4_read_ddr_type(pd);
 
-	switch (dram_class) {
+	switch (ddrss->dram_class) {
 	case DENALI_CTL_0_DRAM_CLASS_DDR4:
 		/* Set to ddr_freq1 from DT for DDR4 */
 		ret = clk_set_rate(&ddrss->ddr_clk, ddrss->ddr_freq1);
@@ -334,32 +331,29 @@ static int k3_ddrss_ofdata_to_priv(struct udevice *dev)
 {
 	struct k3_ddrss_desc *ddrss = dev_get_priv(dev);
 	struct k3_ddrss_data *ddrss_data = (struct k3_ddrss_data *)dev_get_driver_data(dev);
-	phys_addr_t reg;
+	void *reg;
 	int ret;
 
 	debug("%s(dev=%p)\n", __func__, dev);
 
-	reg = dev_read_addr_name(dev, "cfg");
-	if (reg == FDT_ADDR_T_NONE) {
+	reg = dev_read_addr_name_ptr(dev, "cfg");
+	if (!reg) {
 		dev_err(dev, "No reg property for DDRSS wrapper logic\n");
 		return -EINVAL;
 	}
-	ddrss->ddrss_ctl_cfg = (void *)reg;
+	ddrss->ddrss_ctl_cfg = reg;
 
-	reg = dev_read_addr_name(dev, "ctrl_mmr_lp4");
-	if (reg == FDT_ADDR_T_NONE) {
+	reg = dev_read_addr_name_ptr(dev, "ctrl_mmr_lp4");
+	if (!reg) {
 		dev_err(dev, "No reg property for CTRL MMR\n");
 		return -EINVAL;
 	}
-	ddrss->ddrss_ctrl_mmr = (void *)reg;
+	ddrss->ddrss_ctrl_mmr = reg;
 
-	reg = dev_read_addr_name(dev, "ss_cfg");
-	if (reg == FDT_ADDR_T_NONE) {
+	reg = dev_read_addr_name_ptr(dev, "ss_cfg");
+	if (!reg)
 		dev_dbg(dev, "No reg property for SS Config region, but this is optional so continuing.\n");
-		ddrss->ddrss_ss_cfg = NULL;
-	} else {
-		ddrss->ddrss_ss_cfg = (void *)reg;
-	}
+	ddrss->ddrss_ss_cfg = reg;
 
 	ret = power_domain_get_by_index(dev, &ddrss->ddrcfg_pwrdmn, 0);
 	if (ret) {
@@ -706,6 +700,7 @@ static const struct k3_ddrss_data j721s2_data = {
 };
 
 static const struct udevice_id k3_ddrss_ids[] = {
+	{.compatible = "ti,am62a-ddrss", .data = (ulong)&k3_data, },
 	{.compatible = "ti,am64-ddrss", .data = (ulong)&k3_data, },
 	{.compatible = "ti,j721e-ddrss", .data = (ulong)&k3_data, },
 	{.compatible = "ti,j721s2-ddrss", .data = (ulong)&j721s2_data, },

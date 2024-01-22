@@ -21,6 +21,7 @@
 /* Trace the 3 different classes of read/write access to QBMan. #undef as
  * required. */
 #include <linux/bug.h>
+#include <linux/printk.h>
 #undef QBMAN_CCSR_TRACE
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
@@ -256,12 +257,12 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
-	s->cena = (void *)valloc(CONFIG_SYS_PAGE_SIZE);
+	s->cena = (void *)valloc(CFG_SYS_PAGE_SIZE);
 	if (!s->cena) {
 		printf("Could not allocate page for cena shadow\n");
 		return -1;
 	}
-	memset((void *)s->cena, 0x00, CONFIG_SYS_PAGE_SIZE);
+	memset((void *)s->cena, 0x00, CFG_SYS_PAGE_SIZE);
 
 #ifdef QBMAN_CHECKING
 	/* We should never be asked to initialise for a portal that isn't in

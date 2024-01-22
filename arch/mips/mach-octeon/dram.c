@@ -77,11 +77,11 @@ phys_size_t get_effective_memsize(void)
 	return UBOOT_RAM_SIZE_MAX;
 }
 
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	if (IS_ENABLED(CONFIG_RAM_OCTEON)) {
 		/* Map a maximum of 256MiB - return not size but address */
-		return CONFIG_SYS_SDRAM_BASE + min(gd->ram_size,
+		return CFG_SYS_SDRAM_BASE + min(gd->ram_size,
 						   UBOOT_RAM_SIZE_MAX);
 	} else {
 		return gd->ram_top;

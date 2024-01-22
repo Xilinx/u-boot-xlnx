@@ -17,6 +17,7 @@
 #include <i2c.h>
 #include <serial.h>
 #include <spl.h>
+#include <sunxi_gpio.h>
 #include <asm/cache.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -35,7 +36,6 @@ struct fel_stash {
 	uint32_t cpsr;
 	uint32_t sctlr;
 	uint32_t vbar;
-	uint32_t cr;
 };
 
 struct fel_stash fel_stash __section(".data");
@@ -65,7 +65,7 @@ static struct mm_region sunxi_mem_map[] = {
 };
 struct mm_region *mem_map = sunxi_mem_map;
 
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	/* Some devices (like the EMAC) have a 32-bit DMA limit. */
 	if (gd->ram_top > (1ULL << 32))
@@ -147,6 +147,10 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(12), SUN9I_GPH_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPH(13), SUN9I_GPH_UART0);
 	sunxi_gpio_set_pull(SUNXI_GPH(13), SUNXI_GPIO_PULL_UP);
+#elif CONFIG_CONS_INDEX == 1 && defined(CONFIG_MACH_SUN8I_R528)
+	sunxi_gpio_set_cfgpin(SUNXI_GPE(2), 6);
+	sunxi_gpio_set_cfgpin(SUNXI_GPE(3), 6);
+	sunxi_gpio_set_pull(SUNXI_GPE(3), SUNXI_GPIO_PULL_UP);
 #elif CONFIG_CONS_INDEX == 2 && defined(CONFIG_MACH_SUNIV)
 	sunxi_gpio_set_cfgpin(SUNXI_GPA(2), SUNIV_GPE_UART0);
 	sunxi_gpio_set_cfgpin(SUNXI_GPA(3), SUNIV_GPE_UART0);
@@ -163,6 +167,10 @@ static int gpio_init(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(0), SUN8I_GPB_UART2);
 	sunxi_gpio_set_cfgpin(SUNXI_GPB(1), SUN8I_GPB_UART2);
 	sunxi_gpio_set_pull(SUNXI_GPB(1), SUNXI_GPIO_PULL_UP);
+#elif CONFIG_CONS_INDEX == 4 && defined(CONFIG_MACH_SUN8I_R528)
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(6), 7);
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(7), 7);
+	sunxi_gpio_set_pull(SUNXI_GPB(7), SUNXI_GPIO_PULL_UP);
 #elif CONFIG_CONS_INDEX == 5 && defined(CONFIG_MACH_SUN8I)
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(2), SUN8I_GPL_R_UART);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(3), SUN8I_GPL_R_UART);
@@ -176,13 +184,19 @@ static int gpio_init(void)
 #error Unsupported console port number. Please fix pin mux settings in board.c
 #endif
 
-#ifdef CONFIG_SUN50I_GEN_H6
-	/* Update PIO power bias configuration by copy hardware detected value */
-	val = readl(SUNXI_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_VAL);
-	writel(val, SUNXI_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_SEL);
-	val = readl(SUNXI_R_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_VAL);
-	writel(val, SUNXI_R_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_SEL);
-#endif
+	/*
+	 * Update PIO power bias configuration by copying the hardware
+	 * detected value.
+	 */
+	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6) ||
+	    IS_ENABLED(CONFIG_SUN50I_GEN_NCAT2)) {
+		val = readl(SUNXI_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_VAL);
+		writel(val, SUNXI_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_SEL);
+	}
+	if (IS_ENABLED(CONFIG_SUN50I_GEN_H6)) {
+		val = readl(SUNXI_R_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_VAL);
+		writel(val, SUNXI_R_PIO_BASE + SUN50I_H6_GPIO_POW_MOD_SEL);
+	}
 
 	return 0;
 }
@@ -324,8 +338,8 @@ uint32_t sunxi_get_spl_size(void)
  * Also U-Boot proper is located at least 32KB after the SPL, but will
  * immediately follow the SPL if that is bigger than that.
  */
-unsigned long spl_mmc_get_uboot_raw_sector(struct mmc *mmc,
-					   unsigned long raw_sect)
+unsigned long board_spl_mmc_get_uboot_raw_sector(struct mmc *mmc,
+						 unsigned long raw_sect)
 {
 	unsigned long spl_size = sunxi_get_spl_size();
 	unsigned long sector;
@@ -365,6 +379,7 @@ static bool sunxi_valid_emmc_boot(struct mmc *mmc)
 	struct blk_desc *bd = mmc_get_blk_desc(mmc);
 	u32 *buffer = (void *)(uintptr_t)CONFIG_TEXT_BASE;
 	struct boot_file_head *egon_head = (void *)buffer;
+	struct toc0_main_info *toc0_info = (void *)buffer;
 	int bootpart = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
 	uint32_t spl_size, emmc_checksum, chksum = 0;
 	ulong count;
@@ -391,11 +406,17 @@ static bool sunxi_valid_emmc_boot(struct mmc *mmc)
 
 	/* Read the first block to do some sanity checks on the eGON header. */
 	count = blk_dread(bd, 0, 1, buffer);
-	if (count != 1 || !sunxi_egon_valid(egon_head))
+	if (count != 1)
+		return false;
+
+	if (sunxi_egon_valid(egon_head))
+		spl_size = egon_head->length;
+	else if (sunxi_toc0_valid(toc0_info))
+		spl_size = toc0_info->length;
+	else
 		return false;
 
 	/* Read the rest of the SPL now we know it's halfway sane. */
-	spl_size = buffer[4];
 	count = blk_dread(bd, 1, DIV_ROUND_UP(spl_size, bd->blksz) - 1,
 			  buffer + bd->blksz / 4);
 
@@ -474,7 +495,7 @@ void reset_cpu(void)
 		/* sun5i sometimes gets stuck without this */
 		writel(WDT_MODE_RESET_EN | WDT_MODE_EN, &wdog->mode);
 	}
-#elif defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_SUN50I_GEN_H6)
+#elif defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_SUN50I_GEN_H6) || defined(CONFIG_SUNXI_GEN_NCAT2)
 #if defined(CONFIG_MACH_SUN50I_H6)
 	/* WDOG is broken for some H6 rev. use the R_WDOG instead */
 	static const struct sunxi_wdog *wdog =

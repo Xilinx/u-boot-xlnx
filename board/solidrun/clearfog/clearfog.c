@@ -10,6 +10,7 @@
 #include <miiphy.h>
 #include <net.h>
 #include <netdev.h>
+#include <mmc.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -35,7 +36,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define BOARD_GPP_POL_LOW	0x0
 #define BOARD_GPP_POL_MID	0x0
 
-static struct tlv_data cf_tlv_data;
+static struct tlv_data cf_tlv_data = { 0 };
 
 static void cf_read_tlv_data(void)
 {
@@ -158,12 +159,27 @@ struct mv_ddr_topology_map *mv_ddr_topology_map_get(void)
 	cf_read_tlv_data();
 
 	switch (cf_tlv_data.ram_size) {
+	case 2:
+		ifp->memory_size = MV_DDR_DIE_CAP_2GBIT;
+		break;
 	case 4:
 	default:
 		ifp->memory_size = MV_DDR_DIE_CAP_4GBIT;
 		break;
 	case 8:
 		ifp->memory_size = MV_DDR_DIE_CAP_8GBIT;
+		break;
+	}
+
+	switch (cf_tlv_data.ram_channels) {
+	default:
+	case 1:
+		for (uint8_t i = 0; i < 5; i++)
+			ifp->as_bus_params[i].cs_bitmask = 0x1;
+		break;
+	case 2:
+		for (uint8_t i = 0; i < 5; i++)
+			ifp->as_bus_params[i].cs_bitmask = 0x3;
 		break;
 	}
 
@@ -258,6 +274,38 @@ int board_late_init(void)
 		env_set("fdtfile", "armada-388-clearfog-base.dtb");
 	else
 		env_set("fdtfile", "armada-388-clearfog-pro.dtb");
+
+	return 0;
+}
+
+static bool has_emmc(void)
+{
+	struct mmc *mmc;
+
+	mmc = find_mmc_device(0);
+	if (!mmc)
+		return 0;
+	return (!mmc_init(mmc) && IS_MMC(mmc)) ? true : false;
+}
+
+/*
+ * The Clearfog devices have only one SDHC device. This is either eMMC
+ * if it is populated on the SOM or SDHC if not. The Linux device tree
+ * assumes the SDHC case. Detect if the device is an eMMC and fixup the
+ * device-tree, so that it will be detected by Linux.
+ */
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	int node;
+
+	if (has_emmc()) {
+		node = fdt_node_offset_by_compatible(blob, -1, "marvell,armada-380-sdhci");
+		if (node < 0)
+			return 0; /* Unexpected eMMC device; patching not supported */
+
+		puts("Patching FDT so that eMMC is detected by OS\n");
+		return fdt_setprop_empty(blob, node, "non-removable");
+	}
 
 	return 0;
 }

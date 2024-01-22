@@ -1,7 +1,7 @@
 /*
  * mux.h
  *
- * Copyright (C) 2013 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2013 Texas Instruments Incorporated - https://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,10 +20,6 @@
 
 #ifdef CONFIG_AM33XX
 #include <asm/arch/mux_am33xx.h>
-#elif defined(CONFIG_TI814X)
-#include <asm/arch/mux_ti814x.h>
-#elif defined(CONFIG_TI816X)
-#include <asm/arch/mux_ti816x.h>
 #elif defined(CONFIG_AM43XX)
 #include <asm/arch/mux_am43xx.h>
 #endif

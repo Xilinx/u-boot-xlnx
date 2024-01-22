@@ -2,7 +2,7 @@
 /*
  * Xilinx Versal NET QSPI single DTS
  *
- * (C) Copyright 2022, Advanced Micro Devices, Inc.
+ * (C) Copyright 2023, Advanced Micro Devices, Inc.
  */
 
 #include "versal-net-mini-qspi.dtsi"

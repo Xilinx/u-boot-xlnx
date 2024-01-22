@@ -1,7 +1,12 @@
 if OMAP54XX
 
+config IODELAY_RECALIBRATION
+	bool
+
 config DRA7XX
 	bool
+	select IODELAY_RECALIBRATION
+	select SYS_OMAP_ABE_SYSCK
 	help
 	  DRA7xx is an OMAP based SOC with Dual Core A-15s.
 
@@ -11,9 +16,6 @@ choice
 
 config TARGET_CM_T54
 	bool "CompuLab CM-T54"
-
-config TARGET_OMAP5_UEVM
-	bool "TI OMAP5 uEVM board"
 
 config TARGET_DRA7XX_EVM
 	bool "TI DRA7XX"
@@ -157,7 +159,6 @@ endchoice
 endmenu
 endif
 
-source "board/ti/omap5_uevm/Kconfig"
 source "board/ti/dra7xx/Kconfig"
 source "board/ti/am57xx/Kconfig"
 

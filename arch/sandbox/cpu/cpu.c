@@ -31,7 +31,7 @@ static struct udevice *map_dev;
 unsigned long map_len;
 #endif
 
-void sandbox_exit(void)
+void __noreturn sandbox_exit(void)
 {
 	/* Do this here while it still has an effect */
 	os_fd_restore();
@@ -230,7 +230,7 @@ phys_addr_t map_to_sysmem(const void *ptr)
 	return mentry->tag;
 }
 
-unsigned int sandbox_read(const void *addr, enum sandboxio_size_t size)
+unsigned long sandbox_read(const void *addr, enum sandboxio_size_t size)
 {
 	struct sandbox_state *state = state_get_current();
 
@@ -284,6 +284,11 @@ void sandbox_set_enable_memio(bool enable)
 void sandbox_set_enable_pci_map(int enable)
 {
 	enable_pci_map = enable;
+}
+
+int dcache_status(void)
+{
+	return 1;
 }
 
 void flush_dcache_range(unsigned long start, unsigned long stop)

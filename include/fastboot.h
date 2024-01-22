@@ -24,10 +24,8 @@
 enum {
 	FASTBOOT_COMMAND_GETVAR = 0,
 	FASTBOOT_COMMAND_DOWNLOAD,
-#if CONFIG_IS_ENABLED(FASTBOOT_FLASH)
 	FASTBOOT_COMMAND_FLASH,
 	FASTBOOT_COMMAND_ERASE,
-#endif
 	FASTBOOT_COMMAND_BOOT,
 	FASTBOOT_COMMAND_CONTINUE,
 	FASTBOOT_COMMAND_REBOOT,
@@ -35,20 +33,12 @@ enum {
 	FASTBOOT_COMMAND_REBOOT_FASTBOOTD,
 	FASTBOOT_COMMAND_REBOOT_RECOVERY,
 	FASTBOOT_COMMAND_SET_ACTIVE,
-#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_FORMAT)
 	FASTBOOT_COMMAND_OEM_FORMAT,
-#endif
-#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_PARTCONF)
 	FASTBOOT_COMMAND_OEM_PARTCONF,
-#endif
-#if CONFIG_IS_ENABLED(FASTBOOT_CMD_OEM_BOOTBUS)
 	FASTBOOT_COMMAND_OEM_BOOTBUS,
-#endif
-#if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT)
+	FASTBOOT_COMMAND_OEM_RUN,
 	FASTBOOT_COMMAND_ACMD,
 	FASTBOOT_COMMAND_UCMD,
-#endif
-
 	FASTBOOT_COMMAND_COUNT
 };
 
@@ -134,6 +124,15 @@ void fastboot_init(void *buf_addr, u32 buf_size);
 void fastboot_boot(void);
 
 /**
+ * fastboot_handle_boot() - Shared implementation of system reaction to
+ * fastboot commands
+ *
+ * Making desceisions about device boot state (stay in fastboot, reboot
+ * to bootloader, reboot to OS, etc).
+ */
+void fastboot_handle_boot(int command, bool success);
+
+/**
  * fastboot_handle_command() - Handle fastboot command
  *
  * @cmd_string: Pointer to command string
@@ -173,7 +172,5 @@ void fastboot_data_download(const void *fastboot_data,
  */
 void fastboot_data_complete(char *response);
 
-#if CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT)
 void fastboot_acmd_complete(void);
-#endif
 #endif /* _FASTBOOT_H_ */

@@ -18,11 +18,11 @@
 struct arch_global_data {
 	long boot_hart;		/* boot hart id */
 	phys_addr_t firmware_fdt_addr;
-#if CONFIG_IS_ENABLED(SIFIVE_CLINT)
-	void __iomem *clint;	/* clint base address */
+#if CONFIG_IS_ENABLED(RISCV_ACLINT)
+	void __iomem *aclint;	/* aclint base address */
 #endif
 #ifdef CONFIG_ANDES_PLICSW
-	void __iomem *plicsw;	/* plic base address */
+	void __iomem *plicsw;	/* andes plicsw base address */
 #endif
 #if CONFIG_IS_ENABLED(SMP)
 	struct ipi_data ipi[CONFIG_NR_CPUS];
@@ -31,6 +31,9 @@ struct arch_global_data {
 #ifdef CONFIG_AVAILABLE_HARTS
 	ulong available_harts;
 #endif
+#endif
+#ifdef CONFIG_SMBIOS
+	ulong smbios_start;		/* Start address of SMBIOS table */
 #endif
 };
 

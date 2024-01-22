@@ -2,12 +2,12 @@
 /*
  * r8a774c0 Clock Pulse Generator / Module Standby and Software Reset
  *
- * Copyright (C) 2020 Renesas Electronics Corp.
+ * Copyright (C) 2018 Renesas Electronics Corp.
  *
  * Based on r8a77990-cpg-mssr.c
  *
  * Copyright (C) 2015 Glider bvba
- * Copyright (C) 2020 Renesas Electronics Corp.
+ * Copyright (C) 2015 Renesas Electronics Corp.
  */
 
 #include <common.h>
@@ -52,7 +52,7 @@ enum clk_ids {
 	MOD_CLK_BASE
 };
 
-static const struct cpg_core_clk r8a774c0_core_clks[] = {
+static const struct cpg_core_clk r8a774c0_core_clks[] __initconst = {
 	/* External Clock Inputs */
 	DEF_INPUT("extal",     CLK_EXTAL),
 
@@ -76,11 +76,6 @@ static const struct cpg_core_clk r8a774c0_core_clks[] = {
 	DEF_FIXED(".sdsrc",    CLK_SDSRC,          CLK_PLL1,       2, 1),
 
 	DEF_FIXED_RPCSRC_E3(".rpcsrc", CLK_RPCSRC, CLK_PLL0, CLK_PLL1),
-
-	DEF_BASE("rpc",		R8A774C0_CLK_RPC, CLK_TYPE_GEN3_RPC,
-		 CLK_RPCSRC),
-	DEF_BASE("rpcd2",	R8A774C0_CLK_RPCD2, CLK_TYPE_GEN3_RPCD2,
-		 R8A774C0_CLK_RPC),
 
 	DEF_DIV6_RO(".r",      CLK_RINT,           CLK_EXTAL, CPG_RCKCR, 32),
 
@@ -108,9 +103,15 @@ static const struct cpg_core_clk r8a774c0_core_clks[] = {
 	DEF_FIXED("s3d2",      R8A774C0_CLK_S3D2,  CLK_S3,         2, 1),
 	DEF_FIXED("s3d4",      R8A774C0_CLK_S3D4,  CLK_S3,         4, 1),
 
-	DEF_GEN3_SD("sd0",     R8A774C0_CLK_SD0,   CLK_SDSRC,	  0x0074),
-	DEF_GEN3_SD("sd1",     R8A774C0_CLK_SD1,   CLK_SDSRC,	  0x0078),
-	DEF_GEN3_SD("sd3",     R8A774C0_CLK_SD3,   CLK_SDSRC,	  0x026c),
+	DEF_BASE("rpc",        R8A774C0_CLK_RPC,   CLK_TYPE_GEN3_RPC,   CLK_RPCSRC),
+	DEF_BASE("rpcd2",      R8A774C0_CLK_RPCD2, CLK_TYPE_GEN3_RPCD2, R8A774C0_CLK_RPC),
+
+	DEF_GEN3_SDH("sd0h",   R8A774C0_CLK_SD0H, CLK_SDSRC,         0x0074),
+	DEF_GEN3_SDH("sd1h",   R8A774C0_CLK_SD1H, CLK_SDSRC,         0x0078),
+	DEF_GEN3_SDH("sd3h",   R8A774C0_CLK_SD3H, CLK_SDSRC,         0x026c),
+	DEF_GEN3_SD("sd0",     R8A774C0_CLK_SD0,  R8A774C0_CLK_SD0H, 0x0074),
+	DEF_GEN3_SD("sd1",     R8A774C0_CLK_SD1,  R8A774C0_CLK_SD1H, 0x0078),
+	DEF_GEN3_SD("sd3",     R8A774C0_CLK_SD3,  R8A774C0_CLK_SD3H, 0x026c),
 
 	DEF_FIXED("cl",        R8A774C0_CLK_CL,    CLK_PLL1,      48, 1),
 	DEF_FIXED("cp",        R8A774C0_CLK_CP,    CLK_EXTAL,      2, 1),
@@ -130,7 +131,7 @@ static const struct cpg_core_clk r8a774c0_core_clks[] = {
 	DEF_GEN3_RCKSEL("r",   R8A774C0_CLK_R, CLK_RINT, 1, CLK_OCO, 61 * 4),
 };
 
-static const struct mssr_mod_clk r8a774c0_mod_clks[] = {
+static const struct mssr_mod_clk r8a774c0_mod_clks[] __initconst = {
 	DEF_MOD("tmu4",			 121,	R8A774C0_CLK_S0D6C),
 	DEF_MOD("tmu3",			 122,	R8A774C0_CLK_S3D2C),
 	DEF_MOD("tmu2",			 123,	R8A774C0_CLK_S3D2C),
@@ -210,7 +211,7 @@ static const struct mssr_mod_clk r8a774c0_mod_clks[] = {
 	DEF_MOD("rpc-if",		 917,	R8A774C0_CLK_RPCD2),
 	DEF_MOD("i2c6",			 918,	R8A774C0_CLK_S3D2),
 	DEF_MOD("i2c5",			 919,	R8A774C0_CLK_S3D2),
-	DEF_MOD("i2c-dvfs",		 926,	R8A774C0_CLK_CP),
+	DEF_MOD("iic-pmic",		 926,	R8A774C0_CLK_CP),
 	DEF_MOD("i2c4",			 927,	R8A774C0_CLK_S3D2),
 	DEF_MOD("i2c3",			 928,	R8A774C0_CLK_S3D2),
 	DEF_MOD("i2c2",			 929,	R8A774C0_CLK_S3D2),
@@ -258,7 +259,7 @@ static const struct mssr_mod_clk r8a774c0_mod_clks[] = {
  */
 #define CPG_PLL_CONFIG_INDEX(md)	(((md) & BIT(19)) >> 19)
 
-static const struct rcar_gen3_cpg_pll_config cpg_pll_configs[2] = {
+static const struct rcar_gen3_cpg_pll_config cpg_pll_configs[2] __initconst = {
 	/* EXTAL div	PLL1 mult/div	PLL3 mult/div */
 	{ 1,		100,	3,	100,	3,	},
 	{ 1,		100,	3,	 58,	3,	},
@@ -299,7 +300,7 @@ const struct cpg_mssr_info r8a774c0_cpg_mssr_info = {
 	.get_pll_config		= r8a774c0_get_pll_config,
 };
 
-static const struct udevice_id r8a774c0_clk_ids[] = {
+static const struct udevice_id r8a774c0_cpg_ids[] = {
 	{
 		.compatible	= "renesas,r8a774c0-cpg-mssr",
 		.data		= (ulong)&r8a774c0_cpg_mssr_info
@@ -307,12 +308,9 @@ static const struct udevice_id r8a774c0_clk_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(clk_r8a774c0) = {
-	.name		= "clk_r8a774c0",
-	.id		= UCLASS_CLK,
-	.of_match	= r8a774c0_clk_ids,
-	.priv_auto	= sizeof(struct gen3_clk_priv),
-	.ops		= &gen3_clk_ops,
-	.probe		= gen3_clk_probe,
-	.remove		= gen3_clk_remove,
+U_BOOT_DRIVER(cpg_r8a774c0) = {
+	.name		= "cpg_r8a774c0",
+	.id		= UCLASS_NOP,
+	.of_match	= r8a774c0_cpg_ids,
+	.bind		= gen3_cpg_bind,
 };

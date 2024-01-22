@@ -23,6 +23,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/printk.h>
 
 struct dram_info {
 	struct ram_info info;
@@ -109,7 +110,7 @@ enum {
 	PCTL_STAT_MSK = 7,
 	INIT_MEM = 0,
 	CONFIG,
-	CONFIG_REQ,
+	CFG_REQ,
 	ACCESS,
 	ACCESS_REQ,
 	LOW_POWER,
@@ -617,12 +618,12 @@ static int sdram_col_row_detect(struct udevice *dev)
 
 	/* Detect col */
 	for (col = 11; col >= 9; col--) {
-		writel(0, CONFIG_SYS_SDRAM_BASE);
-		addr = CONFIG_SYS_SDRAM_BASE +
+		writel(0, CFG_SYS_SDRAM_BASE);
+		addr = CFG_SYS_SDRAM_BASE +
 			(1 << (col + params->chan.bw - 1));
 		writel(test_pattern, addr);
 		if ((readl(addr) == test_pattern) &&
-		    (readl(CONFIG_SYS_SDRAM_BASE) == 0))
+		    (readl(CFG_SYS_SDRAM_BASE) == 0))
 			break;
 	}
 
@@ -637,11 +638,11 @@ static int sdram_col_row_detect(struct udevice *dev)
 
 	/* Detect row*/
 	for (row = 16; row >= 12; row--) {
-		writel(0, CONFIG_SYS_SDRAM_BASE);
-		addr = CONFIG_SYS_SDRAM_BASE + (1 << (row + 15 - 1));
+		writel(0, CFG_SYS_SDRAM_BASE);
+		addr = CFG_SYS_SDRAM_BASE + (1 << (row + 15 - 1));
 		writel(test_pattern, addr);
 		if ((readl(addr) == test_pattern) &&
-		    (readl(CONFIG_SYS_SDRAM_BASE) == 0))
+		    (readl(CFG_SYS_SDRAM_BASE) == 0))
 			break;
 	}
 

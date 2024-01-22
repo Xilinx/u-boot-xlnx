@@ -11,6 +11,7 @@
 #include <efi_loader.h>
 #include <env.h>
 #include <image.h>
+#include <init.h>
 #include <lmb.h>
 #include <log.h>
 #include <asm/global_data.h>
@@ -24,6 +25,7 @@
 #include <i2c_eeprom.h>
 #include <net.h>
 #include <generated/dt.h>
+#include <rng.h>
 #include <slre.h>
 #include <soc.h>
 #include <linux/ctype.h>
@@ -32,7 +34,7 @@
 
 #include "fru.h"
 
-#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
 struct efi_fw_image fw_images[] = {
 #if defined(XILINX_BOOT_IMAGE_GUID)
 	{
@@ -51,10 +53,10 @@ struct efi_fw_image fw_images[] = {
 };
 
 struct efi_capsule_update_info update_info = {
+	.num_images = ARRAY_SIZE(fw_images),
 	.images = fw_images,
 };
 
-u8 num_image_type_guids = ARRAY_SIZE(fw_images);
 #endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 #define EEPROM_HEADER_MAGIC		0xdaaddeed
@@ -207,7 +209,7 @@ static int xilinx_read_eeprom_fru(struct udevice *dev, char *name,
 	}
 
 	fru_capture((unsigned long)fru_content);
-	if (gd->flags & GD_FLG_RELOC || (_DEBUG && CONFIG_IS_ENABLED(DTB_RESELECT))) {
+	if (gd->flags & GD_FLG_RELOC || (_DEBUG && IS_ENABLED(CONFIG_DTB_RESELECT))) {
 		printf("Xilinx I2C FRU format at %s:\n", name);
 		ret = fru_display(0);
 		if (ret) {
@@ -305,7 +307,7 @@ static int xilinx_read_eeprom_single(char *name,
 
 	debug("%s: i2c memory detected: %s\n", __func__, name);
 
-	if (CONFIG_IS_ENABLED(CMD_FRU) && xilinx_detect_fru(buffer))
+	if (IS_ENABLED(CONFIG_CMD_FRU) && xilinx_detect_fru(buffer))
 		return xilinx_read_eeprom_fru(dev, name, desc);
 
 	if (xilinx_detect_legacy(buffer))
@@ -373,12 +375,12 @@ void *board_fdt_blob_setup(int *err)
 		 * region
 		 */
 		if (IS_ENABLED(CONFIG_SPL_SEPARATE_BSS))
-			fdt_blob = (ulong *)&_image_binary_end;
+			fdt_blob = (ulong *)_image_binary_end;
 		else
-			fdt_blob = (ulong *)&__bss_end;
+			fdt_blob = (ulong *)__bss_end;
 	} else {
 		/* FDT is at end of image */
-		fdt_blob = (ulong *)&_end;
+		fdt_blob = (ulong *)_end;
 	}
 
 	if (fdt_magic(fdt_blob) == FDT_MAGIC)
@@ -412,7 +414,7 @@ int board_late_init_xilinx(void)
 	phys_size_t bootm_size = gd->ram_top - gd->ram_base;
 	u64 bootscr_flash_offset, bootscr_flash_size;
 
-	if (!CONFIG_IS_ENABLED(MICROBLAZE)) {
+	if (!IS_ENABLED(CONFIG_MICROBLAZE)) {
 		ulong scriptaddr;
 		u64 bootscr_address;
 		u64 bootscr_offset;
@@ -440,11 +442,12 @@ int board_late_init_xilinx(void)
 		ret |= env_set_hex("script_offset_f", bootscr_flash_offset);
 		ret |= env_set_hex("script_size_f", bootscr_flash_size);
 	} else {
+		debug("!!! Please define bootscr-flash-offset via DT !!!\n");
 		ret |= env_set_hex("script_offset_f",
 				   CONFIG_BOOT_SCRIPT_OFFSET);
 	}
 
-	if (CONFIG_IS_ENABLED(ARCH_ZYNQ) || CONFIG_IS_ENABLED(MICROBLAZE))
+	if (IS_ENABLED(CONFIG_ARCH_ZYNQ) || IS_ENABLED(CONFIG_MICROBLAZE))
 		bootm_size = min(bootm_size, (phys_size_t)(SZ_512M + SZ_256M));
 
 	ret |= env_set_addr("bootm_low", (void *)gd->ram_base);
@@ -504,7 +507,7 @@ int __maybe_unused board_fit_config_name_match(const char *name)
 	debug("%s: Check %s, default %s\n", __func__, name, board_name);
 
 #if !defined(CONFIG_SPL_BUILD)
-	if (CONFIG_IS_ENABLED(REGEX)) {
+	if (IS_ENABLED(CONFIG_REGEX)) {
 		struct slre slre;
 		int ret;
 
@@ -524,7 +527,7 @@ int __maybe_unused board_fit_config_name_match(const char *name)
 	return -1;
 }
 
-#if CONFIG_IS_ENABLED(DTB_RESELECT)
+#if IS_ENABLED(CONFIG_DTB_RESELECT)
 #define MAX_NAME_LENGTH	50
 
 char * __maybe_unused __weak board_name_decode(void)
@@ -650,7 +653,12 @@ int embedded_dtb_select(void)
 #endif
 
 #if defined(CONFIG_LMB)
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+
+#ifndef MMU_SECTION_SIZE
+#define MMU_SECTION_SIZE        (1 * 1024 * 1024)
+#endif
+
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	phys_size_t size;
 	phys_addr_t reg;
@@ -673,5 +681,53 @@ phys_size_t board_get_usable_ram_top(phys_size_t total_size)
 		reg = gd->ram_top - size;
 
 	return reg + size;
+}
+#endif
+
+#ifdef CONFIG_OF_BOARD_SETUP
+#define MAX_RAND_SIZE 8
+int ft_board_setup(void *blob, struct bd_info *bd)
+{
+	size_t n = MAX_RAND_SIZE;
+	struct udevice *dev;
+	u8 buf[MAX_RAND_SIZE];
+	int nodeoffset, ret;
+
+	if (uclass_get_device(UCLASS_RNG, 0, &dev) || !dev) {
+		debug("No RNG device\n");
+		return 0;
+	}
+
+	if (dm_rng_read(dev, buf, n)) {
+		debug("Reading RNG failed\n");
+		return 0;
+	}
+
+	if (!blob) {
+		debug("No FDT memory address configured. Please configure\n"
+		      "the FDT address via \"fdt addr <address>\" command.\n"
+		      "Aborting!\n");
+		return 0;
+	}
+
+	ret = fdt_check_header(blob);
+	if (ret < 0) {
+		debug("fdt_chosen: %s\n", fdt_strerror(ret));
+		return ret;
+	}
+
+	nodeoffset = fdt_find_or_add_subnode(blob, 0, "chosen");
+	if (nodeoffset < 0) {
+		debug("Reading chosen node failed\n");
+		return nodeoffset;
+	}
+
+	ret = fdt_setprop(blob, nodeoffset, "kaslr-seed", buf, sizeof(buf));
+	if (ret < 0) {
+		debug("Unable to set kaslr-seed on chosen node: %s\n", fdt_strerror(ret));
+		return ret;
+	}
+
+	return 0;
 }
 #endif

@@ -34,8 +34,13 @@
 #define SPI_TX_OCTAL	BIT(14)			/* transmit with 8 wires */
 #define SPI_RX_OCTAL	BIT(15)			/* receive with 8 wires */
 
-#define SPI_3BYTE_MODE	0x0
-#define SPI_4BYTE_MODE	0x1
+/* Header byte that marks the start of the message */
+#define SPI_PREAMBLE_END_BYTE	0xec
+
+#define SPI_DEFAULT_WORDLEN	8
+
+#define SPI_3BYTE_MODE 0x0
+#define SPI_4BYTE_MODE 0x1
 
 /* SPI transfer flags */
 #define SPI_XFER_STRIPE	(1 << 6)
@@ -45,11 +50,6 @@
 
 /* Max no. of CS supported per spi device */
 #define SPI_CS_CNT_MAX	2
-
-/* Header byte that marks the start of the message */
-#define SPI_PREAMBLE_END_BYTE	0xec
-
-#define SPI_DEFAULT_WORDLEN	8
 
 /**
  * struct dm_spi_bus - SPI bus info
@@ -168,23 +168,17 @@ struct spi_slave {
 #define SPI_XFER_BEGIN		BIT(0)	/* Assert CS before transfer */
 #define SPI_XFER_END		BIT(1)	/* Deassert CS after transfer */
 #define SPI_XFER_ONCE		(SPI_XFER_BEGIN | SPI_XFER_END)
-#define SPI_XFER_MMAP		BIT(2)	/* Memory Mapped start */
-#define SPI_XFER_MMAP_END	BIT(3)	/* Memory Mapped End */
 #define SPI_XFER_U_PAGE		BIT(4)
-#define SPI_XFER_SET_DDR	BIT(5)
-#define SPI_XFER_STACKED	BIT(6)
-
-	u8 option;
-	u8 dio;
-	u32 bytemode;
-	u8 dummy_bytes;
-	bool multi_die;			/* flash with multiple dies */
+#define SPI_XFER_STACKED	BIT(5)
+#define SPI_XFER_SET_DDR	BIT(6)
 	/*
 	 * Flag indicating that the spi-controller has multi chip select
 	 * capability and can assert/de-assert more than one chip select
 	 * at once.
 	 */
 	bool multi_cs_cap;
+	u32 bytemode;
+	bool multi_die;			/* flash with multiple dies */
 };
 
 /**

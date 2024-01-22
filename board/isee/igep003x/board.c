@@ -37,7 +37,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 /* GPIO0_27 and GPIO0_26 are used to read board revision from IGEP003x boards
  * and control IGEP0034 green and red LEDs.
- * U-boot configures these pins as input pullup to detect board revision:
+ * U-Boot configures these pins as input pullup to detect board revision:
  * IGEP0034-LITE = 0b00
  * IGEP0034 (FULL) = 0b01
  * IGEP0033 = 0b1X
@@ -185,7 +185,7 @@ int spl_start_uboot(void)
  */
 int board_init(void)
 {
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 
 	gpmc_init();
 

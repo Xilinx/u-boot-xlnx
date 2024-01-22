@@ -2,7 +2,7 @@
 /*
  * Driver for the Microchip USB5744 4-port hub.
  *
- * Copyright (C) 2021 Xilinx, Inc.
+ * Copyright (C) 2024,Advanced Micro Devices, Inc.
  */
 
 #include <common.h>

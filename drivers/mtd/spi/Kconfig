@@ -80,6 +80,15 @@ config SF_DEFAULT_SPEED
 
 if SPI_FLASH
 
+config BOOTDEV_SPI_FLASH
+	bool "SPI Flash bootdev support"
+	depends on BOOTSTD
+	help
+	  Enable a boot device for SPI flash. This allows reading a script
+	  from SPI flash so that it can be used to boot an Operating System.
+
+	  If unsure, say N
+
 config SPI_FLASH_SFDP_SUPPORT
 	bool "SFDP table parsing support for SPI NOR flashes"
 	depends on !SPI_FLASH_BAR
@@ -99,7 +108,6 @@ config SPI_FLASH_SMART_HWCAPS
 
 config SPI_NOR_BOOT_SOFT_RESET_EXT_INVERT
 	bool "Command extension type is INVERT for Software Reset on boot"
-	default n
 	help
 	 Because of SFDP information can not be get before boot.
 	 So define command extension type is INVERT when Software Reset on boot only.
@@ -198,7 +206,7 @@ config SPI_FLASH_DTR_ENABLE
 	bool "Enable Flash DTR support"
 	help
 	  Select this config to enable DTR mode by spi-nor framework.
-	  This config provides an option to explicitily enable/disable the DTR
+	  This config provides an option to explicitly enable/disable the DTR
 	  support even though the flash id flags specify flash supports DTR mode.
 
 config SPI_FLASH_SST
@@ -222,6 +230,11 @@ config SPI_FLASH_XTX
 	help
 	  Add support for various XTX (XTX Technology Limited)
 	  SPI flash chips (XT25xxx).
+
+config SPI_FLASH_ZBIT
+	bool "ZBIT SPI flash support"
+	help
+	  Add support for Zbit Semiconductor Inc. SPI flash chips (ZB25xxx).
 
 endif
 

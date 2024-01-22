@@ -3,7 +3,7 @@
  * Heiko Schocher <hs@denx.de>
  *
  * Based on:
- * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2012 Texas Instruments Incorporated - https://www.ti.com/
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -148,7 +148,7 @@
 &epwmss0 {
 	status = "okay";
 
-	ecap0: ecap@100 {
+	ecap0: pwm@100 {
 		status = "okay";
 		pinctrl-names = "default";
 		pinctrl-0 = <&ecap0_pins>;

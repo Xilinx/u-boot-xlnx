@@ -21,6 +21,7 @@
 #include <asm/arch-tegra/tegra_i2c.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/printk.h>
 
 enum i2c_type {
 	TYPE_114,
@@ -364,8 +365,8 @@ static int tegra_i2c_probe(struct udevice *dev)
 
 	i2c_bus->id = dev_seq(dev);
 	i2c_bus->type = dev_get_driver_data(dev);
-	i2c_bus->regs = (struct i2c_ctlr *)dev_read_addr(dev);
-	if ((ulong)i2c_bus->regs == FDT_ADDR_T_NONE) {
+	i2c_bus->regs = dev_read_addr_ptr(dev);
+	if (!i2c_bus->regs) {
 		debug("%s: Cannot get regs address\n", __func__);
 		return -EINVAL;
 	}

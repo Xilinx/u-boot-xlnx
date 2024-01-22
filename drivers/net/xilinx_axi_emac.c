@@ -112,7 +112,7 @@ struct axidma_plat {
 	int pcsaddr;
 	int phyaddr;
 	u8 eth_hasnobuf;
-	int phy_of_handle;
+	ofnode phynode;
 	enum emac_variant mactype;
 };
 
@@ -127,7 +127,7 @@ struct axidma_priv {
 	struct phy_device *phydev;
 	struct mii_dev *bus;
 	u8 eth_hasnobuf;
-	int phy_of_handle;
+	ofnode phynode;
 	enum emac_variant mactype;
 };
 
@@ -335,8 +335,8 @@ static int axiemac_phy_init(struct udevice *dev)
 	phydev->supported &= supported;
 	phydev->advertising = phydev->supported;
 	priv->phydev = phydev;
-	if (priv->phy_of_handle)
-		priv->phydev->node = offset_to_ofnode(priv->phy_of_handle);
+	if (ofnode_valid(priv->phynode))
+		priv->phydev->node = priv->phynode;
 	phy_config(phydev);
 
 	return 0;
@@ -748,7 +748,7 @@ static int axiemac_recv(struct udevice *dev, int flags, uchar **packetp)
 
 	/* Wait for an incoming packet */
 	if (!isrxready(priv))
-		return -1;
+		return -EAGAIN;
 
 	debug("axiemac: RX data ready\n");
 
@@ -839,7 +839,7 @@ static int axi_emac_probe(struct udevice *dev)
 		priv->eth_hasnobuf = plat->eth_hasnobuf;
 		priv->pcsaddr = plat->pcsaddr;
 		priv->phyaddr = plat->phyaddr;
-		priv->phy_of_handle = plat->phy_of_handle;
+		priv->phynode = plat->phynode;
 		priv->interface = pdata->phy_interface;
 
 		if (IS_ENABLED(CONFIG_DM_ETH_PHY))
@@ -894,20 +894,20 @@ static int axi_emac_of_to_plat(struct udevice *dev)
 {
 	struct axidma_plat *plat = dev_get_plat(dev);
 	struct eth_pdata *pdata = &plat->eth_pdata;
-	int node = dev_of_offset(dev);
-	int offset = 0;
+	struct ofnode_phandle_args pcs_node, axistream_node;
+	ofnode phynode;
+	int ret;
 
 	pdata->iobase = dev_read_addr(dev);
 	plat->mactype = dev_get_driver_data(dev);
 
-	offset = fdtdec_lookup_phandle(gd->fdt_blob, node,
-				       "axistream-connected");
-	if (offset <= 0) {
-		printf("%s: axistream is not found\n", __func__);
-		return -EINVAL;
-	}
-	plat->dmatx = (struct axidma_reg *)fdtdec_get_addr_size_auto_parent
-		      (gd->fdt_blob, 0, offset, "reg", 0, NULL, false);
+	ret = dev_read_phandle_with_args(dev, "axistream-connected", NULL, 0, 0,
+					 &axistream_node);
+	if (!ret)
+		plat->dmatx = (struct axidma_reg *)ofnode_get_addr(axistream_node.node);
+	else
+		plat->dmatx = (struct axidma_reg *)dev_read_addr_index(dev, 1);
+
 	if (!plat->dmatx) {
 		printf("%s: axi_dma register space not found\n", __func__);
 		return -EINVAL;
@@ -918,30 +918,27 @@ static int axi_emac_of_to_plat(struct udevice *dev)
 		/* PHYAD 0 always redirects to the PCS/PMA PHY */
 		plat->pcsaddr = 0;
 
-		offset = fdtdec_lookup_phandle(gd->fdt_blob, node,
-					       "phy-handle");
-		if (offset > 0) {
+		phynode = dev_get_phy_node(dev);
+		if (ofnode_valid(phynode)) {
 			if (!(IS_ENABLED(CONFIG_DM_ETH_PHY)))
-				plat->phyaddr = fdtdec_get_int(gd->fdt_blob,
-							       offset,
-							       "reg", -1);
-			plat->phy_of_handle = offset;
+				plat->phyaddr = ofnode_read_u32_default(phynode,
+									"reg", -1);
+			plat->phynode = phynode;
 		}
 
 		pdata->phy_interface = dev_read_phy_mode(dev);
 		if (pdata->phy_interface == PHY_INTERFACE_MODE_NA)
 			return -EINVAL;
 
-		plat->eth_hasnobuf = fdtdec_get_bool(gd->fdt_blob, node,
-						     "xlnx,eth-hasnobuf");
+		plat->eth_hasnobuf = dev_read_bool(dev, "xlnx,eth-hasnobuf");
 
 		if (pdata->phy_interface == PHY_INTERFACE_MODE_SGMII ||
 		    pdata->phy_interface == PHY_INTERFACE_MODE_1000BASEX) {
-			offset = fdtdec_lookup_phandle(gd->fdt_blob, node,
-						       "pcs-handle");
-			if (offset > 0) {
-				plat->pcsaddr = fdtdec_get_int(gd->fdt_blob,
-							       offset, "reg", -1);
+			ret = dev_read_phandle_with_args(dev, "pcs-handle", NULL, 0, 0,
+							 &pcs_node);
+			if (!ret) {
+				plat->pcsaddr = ofnode_read_u32_default(pcs_node.node,
+									"reg", -1);
 			}
 		}
 	}

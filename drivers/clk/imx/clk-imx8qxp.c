@@ -8,7 +8,7 @@
 #include <clk-uclass.h>
 #include <dm.h>
 #include <log.h>
-#include <asm/arch/sci/sci.h>
+#include <firmware/imx/sci/sci.h>
 #include <asm/arch/clock.h>
 #include <dt-bindings/clock/imx8qxp-clock.h>
 #include <dt-bindings/soc/imx_rsrc.h>
@@ -16,7 +16,7 @@
 
 #include "clk-imx8.h"
 
-#if CONFIG_IS_ENABLED(CMD_CLK)
+#if IS_ENABLED(CONFIG_CMD_CLK)
 struct imx8_clks imx8_clk_names[] = {
 	{ IMX8QXP_A35_DIV, "A35_DIV" },
 	{ IMX8QXP_I2C0_CLK, "I2C0" },

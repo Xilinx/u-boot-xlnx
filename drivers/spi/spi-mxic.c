@@ -367,8 +367,8 @@ static int mxic_spi_mem_exec_op(struct spi_slave *slave,
 		nio = 2;
 
 	writel(HC_CFG_NIO(nio) |
-	       HC_CFG_TYPE(slave_plat->cs, HC_CFG_TYPE_SPI_NOR) |
-	       HC_CFG_SLV_ACT(slave_plat->cs) | HC_CFG_IDLE_SIO_LVL(1) |
+	       HC_CFG_TYPE(slave_plat->cs[0], HC_CFG_TYPE_SPI_NOR) |
+	       HC_CFG_SLV_ACT(slave_plat->cs[0]) | HC_CFG_IDLE_SIO_LVL(1) |
 	       HC_CFG_MAN_CS_EN,
 	       priv->regs + HC_CFG);
 	writel(HC_EN_BIT, priv->regs + HC_EN);
@@ -397,7 +397,7 @@ static int mxic_spi_mem_exec_op(struct spi_slave *slave,
 			ss_ctrl |= OP_READ;
 	}
 
-	writel(ss_ctrl, priv->regs + SS_CTRL(slave_plat->cs));
+	writel(ss_ctrl, priv->regs + SS_CTRL(slave_plat->cs[0]));
 
 	writel(readl(priv->regs + HC_CFG) | HC_CFG_MAN_CS_ASSERT,
 	       priv->regs + HC_CFG);
@@ -508,7 +508,7 @@ static int mxic_spi_probe(struct udevice *bus)
 {
 	struct mxic_spi_priv *priv = dev_get_priv(bus);
 
-	priv->regs = (void *)dev_read_addr(bus);
+	priv->regs = dev_read_addr_ptr(bus);
 
 	priv->send_clk = devm_clk_get(bus, "send_clk");
 	if (IS_ERR(priv->send_clk))

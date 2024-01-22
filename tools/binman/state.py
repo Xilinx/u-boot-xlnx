@@ -13,8 +13,8 @@ import threading
 
 from dtoc import fdt
 import os
-from patman import tools
-from patman import tout
+from u_boot_pylib import tools
+from u_boot_pylib import tout
 
 OUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -306,7 +306,7 @@ def GetUpdateNodes(node, for_repack=False):
     """Yield all the nodes that need to be updated in all device trees
 
     The property referenced by this node is added to any device trees which
-    have the given node. Due to removable of unwanted notes, SPL and TPL may
+    have the given node. Due to removable of unwanted nodes, SPL and TPL may
     not have this node.
 
     Args:
@@ -385,8 +385,8 @@ def SetInt(node, prop, value, for_repack=False):
         for_repack: True is this property is only needed for repacking
     """
     for n in GetUpdateNodes(node, for_repack):
-        tout.detail("File %s: Update node '%s' prop '%s' to %#x" %
-                    (n.GetFdt().name, n.path, prop, value))
+        tout.debug("File %s: Update node '%s' prop '%s' to %#x" %
+                   (n.GetFdt().name, n.path, prop, value))
         n.SetInt(prop, value)
 
 def CheckAddHashProp(node):

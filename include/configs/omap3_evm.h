@@ -2,7 +2,7 @@
 /*
  * Configuration settings for the TI OMAP3 EVM board.
  *
- * Copyright (C) 2006-2011 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2006-2011 Texas Instruments Incorporated - https://www.ti.com/
  *
  * Author :
  *	Manikandan Pillai <mani.pillai@ti.com>
@@ -25,11 +25,11 @@
 
 /* NAND */
 #if defined(CONFIG_MTD_RAW_NAND)
-#define CONFIG_SYS_FLASH_BASE		NAND_BASE
-#define CONFIG_SYS_NAND_ECCPOS          {2, 3, 4, 5, 6, 7, 8, 9,\
+#define CFG_SYS_FLASH_BASE		NAND_BASE
+#define CFG_SYS_NAND_ECCPOS          {2, 3, 4, 5, 6, 7, 8, 9,\
                                          10, 11, 12, 13}
-#define CONFIG_SYS_NAND_ECCSIZE         512
-#define CONFIG_SYS_NAND_ECCBYTES        3
+#define CFG_SYS_NAND_ECCSIZE         512
+#define CFG_SYS_NAND_ECCBYTES        3
 #endif /* CONFIG_MTD_RAW_NAND */
 
 #define BOOTENV_DEV_LEGACY_MMC(devtypeu, devtypel, instance) \
@@ -67,9 +67,9 @@
 
 #include <config_distro_bootcmd.h>
 
-#include <environment/ti/mmc.h>
+#include <env/ti/mmc.h>
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#define CFG_EXTRA_ENV_SETTINGS \
 	DEFAULT_LINUX_BOOT_ENV \
 	DEFAULT_MMC_TI_ARGS \
 	DEFAULT_FIT_TI_ARGS \

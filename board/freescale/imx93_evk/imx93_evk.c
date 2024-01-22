@@ -33,8 +33,6 @@ int board_early_init_f(void)
 {
 	imx_iomux_v3_setup_multiple_pads(uart_pads, ARRAY_SIZE(uart_pads));
 
-	init_uart_clk(LPUART1_CLK_ROOT);
-
 	return 0;
 }
 
@@ -66,10 +64,10 @@ static int setup_eqos(void)
 
 int board_init(void)
 {
-	if (CONFIG_IS_ENABLED(FEC_MXC))
+	if (IS_ENABLED(CONFIG_FEC_MXC))
 		setup_fec();
 
-	if (CONFIG_IS_ENABLED(DWC_ETH_QOS))
+	if (IS_ENABLED(CONFIG_DWC_ETH_QOS))
 		setup_eqos();
 
 	return 0;

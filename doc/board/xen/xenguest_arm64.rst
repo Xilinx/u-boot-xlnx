@@ -6,7 +6,7 @@ Xen guest ARM64 board
 This board specification
 ------------------------
 
-This board is to be run as a virtual Xen [1] guest with U-boot as its primary
+This board is to be run as a virtual Xen [1] guest with U-Boot as its primary
 bootloader. Xen is a type 1 hypervisor that allows multiple operating systems
 to run simultaneously on a single physical server. Xen is capable of running
 virtual machines in both full virtualization and para-virtualization (PV)
@@ -16,13 +16,14 @@ Paravirtualized drivers are a special type of device drivers that are used in
 a guest system in the Xen domain and perform I/O operations using a special
 interface provided by the virtualization system and the host system.
 
-Xen support for U-boot is implemented by introducing a new Xen guest ARM64
+Xen support for U-Boot is implemented by introducing a new Xen guest ARM64
 board and porting essential drivers from MiniOS [3] as well as some of the work
 previously done by NXP [4]:
 
 - PV block device frontend driver with XenStore based device enumeration and
   UCLASS_PVBLOCK class;
 - PV serial console device frontend driver;
+- Virtio block device support;
 - Xen hypervisor support with minimal set of the essential headers adapted from
   the Linux kernel;
 - Xen grant table support;
@@ -34,12 +35,13 @@ previously done by NXP [4]:
   define any start addresses at compile time which is up to Xen to choose at
   run-time;
 - new defconfig introduced: xenguest_arm64_defconfig.
+- new defconfig introduced: xenguest_arm64_virtio_defconfig.
 
 
 Board limitations
 -----------------
 
-1. U-boot runs without MMU enabled at the early stages.
+1. U-Boot runs without MMU enabled at the early stages.
    According to Xen on ARM ABI (xen/include/public/arch-arm.h): all memory
    which is shared with other entities in the system (including the hypervisor
    and other guests) must reside in memory which is mapped as Normal Inner
@@ -54,14 +56,14 @@ Board limitations
 2. No serial console until MMU is up.
    Because data cache maintenance is required until the MMU setup the
    early/debug serial console is not implemented. Therefore, we do not have
-   usual prints like U-boot’s banner etc. until the serial driver is
+   usual prints like U-Boot’s banner etc. until the serial driver is
    initialized.
 
 3. Single RAM bank supported.
    If a Xen guest is given much memory it is possible that Xen allocates two
    memory banks for it. The first one is allocated under 4GB address space and
    in some cases may represent the whole guest’s memory. It is assumed that
-   U-boot most likely won’t require high memory bank for its work andlaunching
+   U-Boot most likely won’t require high memory bank for its work andlaunching
    OS, so it is enough to take the first one.
 
 

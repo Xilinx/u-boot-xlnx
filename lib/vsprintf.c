@@ -145,6 +145,7 @@ static noinline char *put_dec(char *buf, uint64_t num)
 #define LEFT	16		/* left justified */
 #define SMALL	32		/* Must be 32 == 0x20 */
 #define SPECIAL	64		/* 0x */
+#define ERRSTR	128		/* %dE showing error string if enabled */
 
 /*
  * Macro to add a new character to our output string, but only if it will
@@ -628,7 +629,7 @@ repeat:
 
 		case 's':
 /* U-Boot uses UTF-16 strings in the EFI context only. */
-#if (CONFIG_IS_ENABLED(EFI_LOADER) || CONFIG_IS_ENABLED(EFI_APP)) && \
+#if (CONFIG_IS_ENABLED(EFI_LOADER) || IS_ENABLED(CONFIG_EFI_APP)) && \
 	!defined(API_BUILD)
 			if (qualifier == 'l') {
 				str = string16(str, end, va_arg(args, u16 *),
@@ -673,13 +674,20 @@ repeat:
 
 		case 'x':
 			flags |= SMALL;
+		/* fallthrough */
 		case 'X':
 			base = 16;
 			break;
 
 		case 'd':
+			if (fmt[1] == 'E') {
+				flags |= ERRSTR;
+				fmt++;
+			}
+		/* fallthrough */
 		case 'i':
 			flags |= SIGN;
+		/* fallthrough */
 		case 'u':
 			break;
 
@@ -712,6 +720,14 @@ repeat:
 		}
 		str = number(str, end, num, base, field_width, precision,
 			     flags);
+		if (IS_ENABLED(CONFIG_ERRNO_STR) && (flags & ERRSTR)) {
+			const char *p;
+
+			ADDCH(str, ':');
+			ADDCH(str, ' ');
+			for (p = errno_str(num); *p; p++)
+				ADDCH(str, *p);
+		}
 	}
 
 	if (size > 0) {

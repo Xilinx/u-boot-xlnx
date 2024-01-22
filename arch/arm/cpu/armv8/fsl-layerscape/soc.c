@@ -531,7 +531,7 @@ static void erratum_a010539(void)
 
 	porsr1 = in_be32(&gur->porsr1);
 	porsr1 &= ~FSL_CHASSIS2_CCSR_PORSR1_RCW_MASK;
-	out_be32((void *)(CONFIG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_PORCR1),
+	out_be32((void *)(CFG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_PORCR1),
 		 porsr1);
 	out_be32((void *)(CFG_SYS_FSL_SCFG_ADDR + 0x1a8), 0xffffffff);
 #endif
@@ -573,11 +573,6 @@ int get_core_volt_from_fuse(void)
 	debug("%s: The required minimum volt of CORE is %dmV\n", __func__, vdd);
 
 	return vdd;
-}
-
-__weak int board_switch_core_volt(u32 vdd)
-{
-	return 0;
 }
 
 static int setup_core_volt(u32 vdd)
@@ -643,8 +638,8 @@ void init_pfe_scfg_dcfg_regs(void)
 	out_be32(&scfg->rd_qos1, (unsigned int)(SCFG_RD_QOS1_PFE1_QOS
 		 | SCFG_RD_QOS1_PFE2_QOS));
 
-	ecccr2 = in_be32(CONFIG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_ECCCR2);
-	out_be32((void *)CONFIG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_ECCCR2,
+	ecccr2 = in_be32(CFG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_ECCCR2);
+	out_be32((void *)CFG_SYS_DCSR_DCFG_ADDR + DCFG_DCSR_ECCCR2,
 		 ecccr2 | (unsigned int)DISABLE_PFE_ECC);
 }
 #endif
@@ -810,7 +805,7 @@ int qspi_ahb_init(void)
 #ifdef CONFIG_TFABOOT
 #define MAX_BOOTCMD_SIZE	512
 
-int fsl_setenv_bootcmd(void)
+__weak int fsl_setenv_bootcmd(void)
 {
 	int ret;
 	enum boot_src src = get_boot_src();

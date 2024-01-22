@@ -13,16 +13,22 @@
 #include <env.h>
 #include <linker_lists.h>
 
+#include <linux/compiler_attributes.h>
+
 #ifndef NULL
 #define NULL	0
 #endif
 
 /* Default to a width of 8 characters for help message command width */
-#ifndef CONFIG_SYS_HELP_CMD_WIDTH
-#define CONFIG_SYS_HELP_CMD_WIDTH	10
+#ifndef CFG_SYS_HELP_CMD_WIDTH
+#define CFG_SYS_HELP_CMD_WIDTH	10
 #endif
 
 #ifndef	__ASSEMBLY__
+
+/* For ARRAY_SIZE() */
+#include <linux/kernel.h>
+
 /*
  * Monitor Command Table
  */
@@ -89,6 +95,12 @@ int var_complete(int argc, char *const argv[], char last_char, int maxv,
 		 char *cmdv[]);
 int cmd_auto_complete(const char *const prompt, char *buf, int *np,
 		      int *colp);
+#else
+static inline int cmd_auto_complete(const char *const prompt, char *buf,
+				    int *np, int *colp)
+{
+	return 0;
+}
 #endif
 
 /**
@@ -260,12 +272,17 @@ int run_command_repeatable(const char *cmd, int flag);
 /**
  * run_commandf() - Run a command created by a format string
  *
- * The command cannot be larger than 127 characters
- *
  * @fmt: printf() format string
  * @...: Arguments to use (flag is always 0)
+ *
+ * The command cannot be larger than (CONFIG_SYS_CBSIZE - 1) characters.
+ *
+ * Return:
+ * Returns 0 on success, -EIO if internal output error occurred, -ENOSPC in
+ *	case of 'fmt' string truncation, or != 0 on error, specific for
+ *	run_command().
  */
-int run_commandf(const char *fmt, ...);
+int run_commandf(const char *fmt, ...) __printf(1, 2);
 
 /**
  * Run a list of commands separated by ; or even \0
@@ -279,6 +296,18 @@ int run_commandf(const char *fmt, ...);
  * Return: 0 on success, or != 0 on error.
  */
 int run_command_list(const char *cmd, int len, int flag);
+
+/**
+ * cmd_source_script() - Execute a script
+ *
+ * Executes a U-Boot script at a particular address in memory. The script should
+ * have a header (FIT or legacy) with the script type (IH_TYPE_SCRIPT).
+ *
+ * @addr: Address of script
+ * @fit_uname: FIT subimage name
+ * Return: result code (enum command_ret_t)
+ */
+int cmd_source_script(ulong addr, const char *fit_uname, const char *confname);
 #endif	/* __ASSEMBLY__ */
 
 /*
@@ -299,23 +328,8 @@ int run_command_list(const char *cmd, int len, int flag);
 # define _CMD_HELP(x)
 #endif
 
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-#define U_BOOT_SUBCMDS_RELOC(_cmdname)					\
-	static void _cmdname##_subcmds_reloc(void)			\
-	{								\
-		static int relocated;					\
-									\
-		if (relocated)						\
-			return;						\
-									\
-		fixup_cmdtable(_cmdname##_subcmds,			\
-			       ARRAY_SIZE(_cmdname##_subcmds));		\
-		relocated = 1;						\
-	}
-#else
-#define U_BOOT_SUBCMDS_RELOC(_cmdname)					\
-	static void _cmdname##_subcmds_reloc(void) { }
-#endif
+#define U_BOOT_LONGHELP(_cmdname, text)					\
+	static __maybe_unused const char _cmdname##_help_text[] = text
 
 #define U_BOOT_SUBCMDS_DO_CMD(_cmdname)					\
 	static int do_##_cmdname(struct cmd_tbl *cmdtp, int flag,	\
@@ -323,8 +337,6 @@ int run_command_list(const char *cmd, int len, int flag);
 				 int *repeatable)			\
 	{								\
 		struct cmd_tbl *subcmd;					\
-									\
-		_cmdname##_subcmds_reloc();				\
 									\
 		/* We need at least the cmd and subcmd names. */	\
 		if (argc < 2 || argc > CONFIG_SYS_MAXARGS)		\
@@ -360,11 +372,10 @@ int run_command_list(const char *cmd, int len, int flag);
 
 #define U_BOOT_SUBCMDS(_cmdname, ...)					\
 	static struct cmd_tbl _cmdname##_subcmds[] = { __VA_ARGS__ };	\
-	U_BOOT_SUBCMDS_RELOC(_cmdname)					\
 	U_BOOT_SUBCMDS_DO_CMD(_cmdname)					\
 	U_BOOT_SUBCMDS_COMPLETE(_cmdname)
 
-#ifdef CONFIG_CMDLINE
+#if CONFIG_IS_ENABLED(CMDLINE)
 #define U_BOOT_CMDREP_MKENT_COMPLETE(_name, _maxargs, _cmd_rep,		\
 				     _usage, _help, _comp)		\
 		{ #_name, _maxargs, _cmd_rep, cmd_discard_repeatable,	\

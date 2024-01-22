@@ -2,23 +2,26 @@
 .. sectionauthor:: Dzmitry Sankouski <dsankouski@gmail.com>
 
 Snapdragon 845
-================
+==============
 
 About this
 ----------
+
 This document describes the information about Qualcomm Snapdragon 845
 supported boards and it's usage steps.
 
 SDM845 - hi-end qualcomm chip, introduced in late 2017.
 Mostly used in flagship phones and tablets of 2018.
 
-U-Boot can be used as a replacement for Qualcomm's original ABL (UEFI) bootloader.
-It is loaded as an Android boot image through ABL
+The current boot flow support loading u-boot as an Android boot image via
+Qualcomm's UEFI-based ABL (Android) Bootloader.
 
 Installation
 ------------
+
 Build
 ^^^^^
+
 Setup ``CROSS_COMPILE`` for aarch64 and build U-Boot for your board::
 
 	$ export CROSS_COMPILE=<aarch64 toolchain prefix>
@@ -29,18 +32,21 @@ This will build ``u-boot.bin`` in the configured output directory.
 
 Generate FIT image
 ^^^^^^^^^^^^^^^^^^
+
 See doc/uImage.FIT for more details
 
 Pack android boot image
 ^^^^^^^^^^^^^^^^^^^^^^^
+
 We'll assemble android boot image with ``u-boot.bin`` instead of linux kernel,
 and FIT image instead of ``initramfs``. Android bootloader expect gzipped kernel
 with appended dtb, so let's mimic linux to satisfy stock bootloader.
 
 Boards
-------------
+------
+
 starqlte
-^^^^^^^^^^^^
+^^^^^^^^
 
 The starqltechn is a production board for Samsung S9 (SM-G9600) phone,
 based on the Qualcomm SDM845 SoC.
@@ -149,7 +155,11 @@ Steps:
 	mkbootimg --kernel u-boot.bin.gz-dtb --ramdisk db845c.itb \
 	--output boot.img --pagesize 4096 --base 0x80000000
 
-- Flash boot.img using db845c fastboot method.
+- Flash boot.img using db845c fastboot method:
+
+  .. code-block:: bash
+
+      sudo fastboot flash boot boot.img
 
 More information can be found on the `DragonBoard 845c page`_.
 

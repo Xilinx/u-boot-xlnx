@@ -35,7 +35,7 @@ enum pm_api_id {
 	PM_FPGA_LOAD = 22,
 	PM_FPGA_GET_STATUS = 23,
 	PM_GET_CHIPID = 24,
-	/* ID 25 is been used by U-boot to process secure boot images */
+	/* ID 25 is been used by U-Boot to process secure boot images */
 	/* Secure library generic API functions */
 	PM_SECURE_SHA = 26,
 	PM_SECURE_RSA = 27,
@@ -454,6 +454,8 @@ int zynqmp_pm_set_sd_config(u32 node, enum pm_sd_config_type config, u32 value);
 int zynqmp_pm_set_gem_config(u32 node, enum pm_gem_config_type config,
 			     u32 value);
 int zynqmp_pm_is_function_supported(const u32 api_id, const u32 id);
+int zynqmp_mmio_read(const u32 address, u32 *value);
+int zynqmp_mmio_write(const u32 address, const u32 mask, const u32 value);
 int zynqmp_pm_feature(const u32 api_id);
 
 /* Type of Config Object */

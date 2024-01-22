@@ -14,6 +14,9 @@
 #include <net/tcp.h>
 #include <net/wget.h>
 
+/* The default, change with environment variable 'httpdstp' */
+#define SERVER_PORT		80
+
 static const char bootfile1[] = "GET ";
 static const char bootfile3[] = " HTTP/1.0\r\n\r\n";
 static const char http_eom[] = "\r\n\r\n";
@@ -35,7 +38,8 @@ struct pkt_qd {
  * The actual packet bufers are in the kernel space, and are
  * expected to be overwritten by the downloaded image.
  */
-static struct pkt_qd pkt_q[PKTBUFSRX / 4];
+#define PKTQ_SZ (PKTBUFSRX / 4)
+static struct pkt_qd pkt_q[PKTQ_SZ];
 static int pkt_q_idx;
 static unsigned long content_length;
 static unsigned int packets;
@@ -88,21 +92,24 @@ static void wget_send_stored(void)
 {
 	u8 action = retry_action;
 	int len = retry_len;
-	unsigned int tcp_ack_num = retry_tcp_ack_num + len;
-	unsigned int tcp_seq_num = retry_tcp_seq_num;
+	unsigned int tcp_ack_num = retry_tcp_seq_num + (len == 0 ? 1 : len);
+	unsigned int tcp_seq_num = retry_tcp_ack_num;
+	unsigned int server_port;
 	uchar *ptr, *offset;
+
+	server_port = env_get_ulong("httpdstp", 10, SERVER_PORT) & 0xffff;
 
 	switch (current_wget_state) {
 	case WGET_CLOSED:
 		debug_cond(DEBUG_WGET, "wget: send SYN\n");
 		current_wget_state = WGET_CONNECTING;
-		net_send_tcp_packet(0, SERVER_PORT, our_port, action,
+		net_send_tcp_packet(0, server_port, our_port, action,
 				    tcp_seq_num, tcp_ack_num);
 		packets = 0;
 		break;
 	case WGET_CONNECTING:
 		pkt_q_idx = 0;
-		net_send_tcp_packet(0, SERVER_PORT, our_port, action,
+		net_send_tcp_packet(0, server_port, our_port, action,
 				    tcp_seq_num, tcp_ack_num);
 
 		ptr = net_tx_packet + net_eth_hdr_size() +
@@ -117,21 +124,21 @@ static void wget_send_stored(void)
 
 		memcpy(offset, &bootfile3, strlen(bootfile3));
 		offset += strlen(bootfile3);
-		net_send_tcp_packet((offset - ptr), SERVER_PORT, our_port,
+		net_send_tcp_packet((offset - ptr), server_port, our_port,
 				    TCP_PUSH, tcp_seq_num, tcp_ack_num);
 		current_wget_state = WGET_CONNECTED;
 		break;
 	case WGET_CONNECTED:
 	case WGET_TRANSFERRING:
 	case WGET_TRANSFERRED:
-		net_send_tcp_packet(0, SERVER_PORT, our_port, action,
+		net_send_tcp_packet(0, server_port, our_port, action,
 				    tcp_seq_num, tcp_ack_num);
 		break;
 	}
 }
 
-static void wget_send(u8 action, unsigned int tcp_ack_num,
-		      unsigned int tcp_seq_num, int len)
+static void wget_send(u8 action, unsigned int tcp_seq_num,
+		      unsigned int tcp_ack_num, int len)
 {
 	retry_action = action;
 	retry_tcp_ack_num = tcp_ack_num;
@@ -178,10 +185,8 @@ static void wget_timeout_handler(void)
 #define PKT_QUEUE_PACKET_SIZE 0x800
 
 static void wget_connected(uchar *pkt, unsigned int tcp_seq_num,
-			   struct in_addr action_and_state,
-			   unsigned int tcp_ack_num, unsigned int len)
+			   u8 action, unsigned int tcp_ack_num, unsigned int len)
 {
-	u8 action = action_and_state.s_addr;
 	uchar *pkt_in_q;
 	char *pos;
 	int hlen, i;
@@ -204,6 +209,13 @@ static void wget_connected(uchar *pkt, unsigned int tcp_seq_num,
 		pkt_q[pkt_q_idx].tcp_seq_num = tcp_seq_num;
 		pkt_q[pkt_q_idx].len = len;
 		pkt_q_idx++;
+
+		if (pkt_q_idx >= PKTQ_SZ) {
+			printf("wget: Fatal error, queue overrun!\n");
+			net_set_state(NETLOOP_FAIL);
+
+			return;
+		}
 	} else {
 		debug_cond(DEBUG_WGET, "wget: Connected HTTP Header %p\n", pkt);
 		/* sizeof(http_eom) - 1 is the string length of (http_eom) */
@@ -268,22 +280,25 @@ static void wget_connected(uchar *pkt, unsigned int tcp_seq_num,
 }
 
 /**
- * wget_handler() - handler of wget
- * @pkt: the pointer to the payload
- * @tcp_seq_num: tcp sequence number
- * @action_and_state: TCP state
- * @tcp_ack_num: tcp acknowledge number
- * @len: length of the payload
+ * wget_handler() - TCP handler of wget
+ * @pkt: pointer to the application packet
+ * @dport: destination TCP port
+ * @sip: source IP address
+ * @sport: source TCP port
+ * @tcp_seq_num: TCP sequential number
+ * @tcp_ack_num: TCP acknowledgment number
+ * @action: TCP action (SYN, ACK, FIN, etc)
+ * @len: packet length
  *
  * In the "application push" invocation, the TCP header with all
  * its information is pointed to by the packet pointer.
  */
-static void wget_handler(uchar *pkt, unsigned int tcp_seq_num,
-			 struct in_addr action_and_state,
-			 unsigned int tcp_ack_num, unsigned int len)
+static void wget_handler(uchar *pkt, u16 dport,
+			 struct in_addr sip, u16 sport,
+			 u32 tcp_seq_num, u32 tcp_ack_num,
+			 u8 action, unsigned int len)
 {
 	enum tcp_state wget_tcp_state = tcp_get_tcp_state();
-	u8 action = action_and_state.s_addr;
 
 	net_set_timeout_handler(wget_timeout, wget_timeout_handler);
 	packets++;
@@ -294,7 +309,7 @@ static void wget_handler(uchar *pkt, unsigned int tcp_seq_num,
 		break;
 	case WGET_CONNECTING:
 		debug_cond(DEBUG_WGET,
-			   "wget: Connecting In len=%x, Seq=%x, Ack=%x\n",
+			   "wget: Connecting In len=%x, Seq=%u, Ack=%u\n",
 			   len, tcp_seq_num, tcp_ack_num);
 		if (!len) {
 			if (wget_tcp_state == TCP_ESTABLISHED) {
@@ -310,14 +325,13 @@ static void wget_handler(uchar *pkt, unsigned int tcp_seq_num,
 		}
 		break;
 	case WGET_CONNECTED:
-		debug_cond(DEBUG_WGET, "wget: Connected seq=%x, len=%x\n",
+		debug_cond(DEBUG_WGET, "wget: Connected seq=%u, len=%x\n",
 			   tcp_seq_num, len);
 		if (!len) {
 			wget_fail("Image not found, no data returned\n",
 				  tcp_seq_num, tcp_ack_num, action);
 		} else {
-			wget_connected(pkt, tcp_seq_num, action_and_state,
-				       tcp_ack_num, len);
+			wget_connected(pkt, tcp_seq_num, action, tcp_ack_num, len);
 		}
 		break;
 	case WGET_TRANSFERRING:
@@ -338,6 +352,7 @@ static void wget_handler(uchar *pkt, unsigned int tcp_seq_num,
 			wget_send(TCP_ACK, tcp_seq_num, tcp_ack_num, len);
 			fallthrough;
 		case TCP_SYN_SENT:
+		case TCP_SYN_RECEIVED:
 		case TCP_CLOSING:
 		case TCP_FIN_WAIT_1:
 		case TCP_CLOSED:

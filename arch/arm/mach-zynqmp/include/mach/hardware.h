@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
  * (C) Copyright 2014 - 2015 Xilinx, Inc.
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 
 #ifndef _ASM_ARCH_HARDWARE_H
@@ -166,7 +166,7 @@ struct csu_regs {
 	u32 jtag_dap_cfg;
 	u32 idcode;
 	u32 version;
-	u32 reserved2[3055];
+	u32 reserved2[3054];
 	u32 pcap_prog;
 };
 

@@ -18,6 +18,7 @@
 #define LOG_CATEGORY UCLASS_VIRTIO
 
 #include <common.h>
+#include <bootdev.h>
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
@@ -163,7 +164,7 @@ int virtio_finalize_features(struct udevice *vdev)
 		return ret;
 	if (!(status & VIRTIO_CONFIG_S_FEATURES_OK)) {
 		debug("(%s): device refuses features %x\n", vdev->name, status);
-		return -ENODEV;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -214,6 +215,7 @@ static int virtio_uclass_post_probe(struct udevice *udev)
 	struct virtio_dev_priv *uc_priv = dev_get_uclass_priv(udev);
 	char dev_name[30], *str;
 	struct udevice *vdev;
+	const char *name;
 	int ret;
 
 	if (uc_priv->device >= VIRTIO_ID_MAX_NUM) {
@@ -222,22 +224,21 @@ static int virtio_uclass_post_probe(struct udevice *udev)
 		return 0;
 	}
 
-	if (!virtio_drv_name[uc_priv->device]) {
+	name = virtio_drv_name[uc_priv->device];
+	if (!name) {
 		debug("(%s): underlying virtio device driver unavailable\n",
 		      udev->name);
 		return 0;
 	}
 
-	snprintf(dev_name, sizeof(dev_name), "%s#%d",
-		 virtio_drv_name[uc_priv->device], dev_seq(udev));
+	snprintf(dev_name, sizeof(dev_name), "%s#%d", name, dev_seq(udev));
 	str = strdup(dev_name);
 	if (!str)
 		return -ENOMEM;
 
-	ret = device_bind_driver(udev, virtio_drv_name[uc_priv->device],
-				 str, &vdev);
+	ret = device_bind_driver(udev, name, str, &vdev);
 	if (ret == -ENOENT) {
-		debug("(%s): no driver configured\n", udev->name);
+		debug("(%s): %s driver not configured\n", udev->name, name);
 		return 0;
 	}
 	if (ret) {
@@ -245,6 +246,12 @@ static int virtio_uclass_post_probe(struct udevice *udev)
 		return ret;
 	}
 	device_set_name_alloced(vdev);
+
+	if (uc_priv->device == VIRTIO_ID_BLOCK && !IS_ENABLED(CONFIG_SANDBOX)) {
+		ret = bootdev_setup_for_sibling_blk(vdev, "virtio_bootdev");
+		if (ret)
+			return log_msg_ret("bootdev", ret);
+	}
 
 	INIT_LIST_HEAD(&uc_priv->vqs);
 
@@ -267,6 +274,10 @@ static int virtio_uclass_child_pre_probe(struct udevice *vdev)
 	u64 driver_features_legacy;
 	int i;
 	int ret;
+
+	/* bootdevs are not virtio devices */
+	if (device_get_uclass_id(vdev) == UCLASS_BOOTDEV)
+		return 0;
 
 	/*
 	 * Save the real virtio device (eg: virtio-net, virtio-blk) to
@@ -325,7 +336,7 @@ static int virtio_uclass_child_pre_probe(struct udevice *vdev)
 	/* Transport features always preserved to pass to finalize_features */
 	for (i = VIRTIO_TRANSPORT_F_START; i < VIRTIO_TRANSPORT_F_END; i++)
 		if ((device_features & (1ULL << i)) &&
-		    (i == VIRTIO_F_VERSION_1))
+		    (i == VIRTIO_F_VERSION_1 || i == VIRTIO_F_IOMMU_PLATFORM))
 			__virtio_set_bit(vdev->parent, i);
 
 	debug("(%s) final negotiated features supported %016llx\n",
@@ -349,6 +360,32 @@ static int virtio_uclass_child_post_probe(struct udevice *vdev)
 	return 0;
 }
 
+static int virtio_bootdev_bind(struct udevice *dev)
+{
+	struct bootdev_uc_plat *ucp = dev_get_uclass_plat(dev);
+
+	ucp->prio = BOOTDEVP_4_SCAN_FAST;
+
+	return 0;
+}
+
+static int virtio_bootdev_hunt(struct bootdev_hunter *info, bool show)
+{
+	int ret;
+
+	if (IS_ENABLED(CONFIG_PCI)) {
+		ret = uclass_probe_all(UCLASS_PCI);
+		if (ret && ret != -ENOENT)
+			return log_msg_ret("pci", ret);
+	}
+
+	ret = uclass_probe_all(UCLASS_VIRTIO);
+	if (ret && ret != -ENOENT)
+		return log_msg_ret("vir", ret);
+
+	return 0;
+}
+
 UCLASS_DRIVER(virtio) = {
 	.name	= "virtio",
 	.id	= UCLASS_VIRTIO,
@@ -359,4 +396,27 @@ UCLASS_DRIVER(virtio) = {
 	.child_pre_probe = virtio_uclass_child_pre_probe,
 	.child_post_probe = virtio_uclass_child_post_probe,
 	.per_device_auto	= sizeof(struct virtio_dev_priv),
+};
+
+struct bootdev_ops virtio_bootdev_ops = {
+};
+
+static const struct udevice_id virtio_bootdev_ids[] = {
+	{ .compatible = "u-boot,bootdev-virtio" },
+	{ }
+};
+
+U_BOOT_DRIVER(virtio_bootdev) = {
+	.name		= "virtio_bootdev",
+	.id		= UCLASS_BOOTDEV,
+	.ops		= &virtio_bootdev_ops,
+	.bind		= virtio_bootdev_bind,
+	.of_match	= virtio_bootdev_ids,
+};
+
+BOOTDEV_HUNTER(virtio_bootdev_hunter) = {
+	.prio		= BOOTDEVP_4_SCAN_FAST,
+	.uclass		= UCLASS_VIRTIO,
+	.hunt		= virtio_bootdev_hunt,
+	.drv		= DM_DRIVER_REF(virtio_bootdev),
 };

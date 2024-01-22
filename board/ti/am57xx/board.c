@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2014 Texas Instruments Incorporated - http://www.ti.com
+ * Copyright (C) 2014 Texas Instruments Incorporated - https://www.ti.com
  *
  * Author: Felipe Balbi <balbi@ti.com>
  *
@@ -11,7 +11,6 @@
 #include <env.h>
 #include <fastboot.h>
 #include <fdt_support.h>
-#include <image.h>
 #include <init.h>
 #include <malloc.h>
 #include <net.h>
@@ -22,7 +21,6 @@
 #include <errno.h>
 #include <asm/global_data.h>
 #include <asm/omap_common.h>
-#include <asm/omap_sec_common.h>
 #include <asm/emif.h>
 #include <asm/gpio.h>
 #include <asm/arch/gpio.h>
@@ -661,7 +659,7 @@ bool am571x_idk_needs_lcd(void)
 int board_init(void)
 {
 	gpmc_init();
-	gd->bd->bi_boot_params = (CONFIG_SYS_SDRAM_BASE + 0x100);
+	gd->bd->bi_boot_params = (CFG_SYS_SDRAM_BASE + 0x100);
 
 	return 0;
 }
@@ -1174,7 +1172,7 @@ int board_fit_config_name_match(const char *name)
 }
 #endif
 
-#if CONFIG_IS_ENABLED(FASTBOOT) && !CONFIG_IS_ENABLED(ENV_IS_NOWHERE)
+#if IS_ENABLED(CONFIG_FASTBOOT) && !CONFIG_IS_ENABLED(ENV_IS_NOWHERE)
 int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
 {
 	if (reason != FASTBOOT_REBOOT_REASON_BOOTLOADER)
@@ -1196,19 +1194,4 @@ static int board_bootmode_has_emmc(void)
 
 	return 0;
 }
-#endif
-
-#ifdef CONFIG_TI_SECURE_DEVICE
-void board_fit_image_post_process(const void *fit, int node, void **p_image,
-				  size_t *p_size)
-{
-	secure_boot_verify_image(p_image, p_size);
-}
-
-void board_tee_image_process(ulong tee_image, size_t tee_size)
-{
-	secure_tee_install((u32)tee_image);
-}
-
-U_BOOT_FIT_LOADABLE_HANDLER(IH_TYPE_TEE, board_tee_image_process);
 #endif

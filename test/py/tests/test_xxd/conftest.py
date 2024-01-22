@@ -13,7 +13,7 @@ def xxd_data(u_boot_config):
     """Set up a file system to be used in xxd tests
 
     Args:
-        u_boot_config -- U-boot configuration.
+        u_boot_config -- U-Boot configuration.
     """
     mnt_point = u_boot_config.persistent_data_dir + '/test_xxd'
     image_path = u_boot_config.persistent_data_dir + '/xxd.img'
@@ -32,4 +32,5 @@ def xxd_data(u_boot_config):
         pytest.skip('Setup failed')
     finally:
         shutil.rmtree(mnt_point)
-        os.remove(image_path)
+        if os.path.exists(image_path):
+            os.remove(image_path)

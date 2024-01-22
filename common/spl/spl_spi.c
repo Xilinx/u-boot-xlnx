@@ -10,12 +10,15 @@
 
 #include <common.h>
 #include <image.h>
+#include <imx_container.h>
 #include <log.h>
+#include <mapmem.h>
 #include <spi.h>
 #include <spi_flash.h>
 #include <errno.h>
 #include <spl.h>
 #include <asm/global_data.h>
+#include <asm/io.h>
 #include <dm/ofnode.h>
 
 #if CONFIG_IS_ENABLED(OS_BOOT)
@@ -31,7 +34,7 @@ static int spi_load_image_os(struct spl_image_info *spl_image,
 	int err;
 
 	/* Read for a header, parse or error out. */
-	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS, sizeof(*header),
+	spi_flash_read(flash, CFG_SYS_SPI_KERNEL_OFFS, sizeof(*header),
 		       (void *)header);
 
 	if (image_get_magic(header) != IH_MAGIC)
@@ -41,13 +44,13 @@ static int spi_load_image_os(struct spl_image_info *spl_image,
 	if (err)
 		return err;
 
-	spi_flash_read(flash, CONFIG_SYS_SPI_KERNEL_OFFS,
+	spi_flash_read(flash, CFG_SYS_SPI_KERNEL_OFFS,
 		       spl_image->size, (void *)spl_image->load_addr);
 
 	/* Read device tree. */
-	spi_flash_read(flash, CONFIG_SYS_SPI_ARGS_OFFS,
-		       CONFIG_SYS_SPI_ARGS_SIZE,
-		       (void *)CONFIG_SYS_SPL_ARGS_ADDR);
+	spi_flash_read(flash, CFG_SYS_SPI_ARGS_OFFS,
+		       CFG_SYS_SPI_ARGS_SIZE,
+		       (void *)CONFIG_SPL_PAYLOAD_ARGS_ADDR);
 
 	return 0;
 }
@@ -133,13 +136,16 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 
 		if (IS_ENABLED(CONFIG_SPL_LOAD_FIT_FULL) &&
 		    image_get_magic(header) == FDT_MAGIC) {
+			u32 size = roundup(fdt_totalsize(header), 4);
+
 			err = spi_flash_read(flash, payload_offs,
-					     roundup(fdt_totalsize(header), 4),
-					     (void *)CONFIG_SYS_LOAD_ADDR);
+					     size,
+					     map_sysmem(CONFIG_SYS_LOAD_ADDR,
+							size));
 			if (err)
 				return err;
 			err = spl_parse_image_header(spl_image, bootdev,
-					(struct legacy_img_hdr *)CONFIG_SYS_LOAD_ADDR);
+					phys_to_virt(CONFIG_SYS_LOAD_ADDR));
 		} else if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
 			   image_get_magic(header) == FDT_MAGIC) {
 			struct spl_load_info load;
@@ -153,7 +159,8 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 			err = spl_load_simple_fit(spl_image, &load,
 						  payload_offs,
 						  header);
-		} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
+		} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER) &&
+			   valid_container_hdr((void *)header)) {
 			struct spl_load_info load;
 
 			load.dev = flash;
@@ -170,7 +177,8 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 				return err;
 			err = spi_flash_read(flash, payload_offs + spl_image->offset,
 					     spl_image->size,
-					     (void *)spl_image->load_addr);
+					     map_sysmem(spl_image->load_addr,
+							spl_image->size));
 		}
 		if (IS_ENABLED(CONFIG_SPI_FLASH_SOFT_RESET)) {
 			err = spi_nor_remove(flash);

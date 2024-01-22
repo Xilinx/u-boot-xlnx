@@ -5,6 +5,7 @@
 
 #include <common.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/ddr.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/io.h>
 #include <dm.h>
@@ -30,35 +31,13 @@ int mach_cpu_init(void)
 int board_phys_sdram_size(phys_size_t *size)
 {
 	const u16 memsz[] = { 512, 1024, 1536, 2048, 3072, 4096, 6144, 8192 };
+	const u8 ecc = readl(DDRC_ECCCFG0(0)) & DDRC_ECCCFG0_ECC_MODE_MASK;
 	u8 memcfg = dh_get_memcfg();
 
-	*size = (u64)memsz[memcfg] << 20ULL;
+	/* 896 kiB, i.e. 1 MiB without 12.5% reserved for in-band ECC */
+	*size = (u64)memsz[memcfg] * (SZ_1M - (ecc ? (SZ_1M / 8) : 0));
 
 	return 0;
-}
-
-static void setup_eqos(void)
-{
-	struct iomuxc_gpr_base_regs *gpr =
-		(struct iomuxc_gpr_base_regs *)IOMUXC_GPR_BASE_ADDR;
-
-	/* Set INTF as RGMII, enable RGMII TXC clock. */
-	clrsetbits_le32(&gpr->gpr[1],
-			IOMUXC_GPR_GPR1_GPR_ENET_QOS_INTF_SEL_MASK, BIT(16));
-	setbits_le32(&gpr->gpr[1], BIT(19) | BIT(21));
-
-	set_clk_eqos(ENET_125MHZ);
-}
-
-static void setup_fec(void)
-{
-	struct iomuxc_gpr_base_regs *gpr =
-		(struct iomuxc_gpr_base_regs *)IOMUXC_GPR_BASE_ADDR;
-
-	/* Enable RGMII TX clk output. */
-	setbits_le32(&gpr->gpr[1], BIT(22));
-
-	set_clk_enet(ENET_125MHZ);
 }
 
 static int dh_imx8_setup_ethaddr(void)
@@ -127,8 +106,6 @@ int dh_setup_mac_address(void)
 
 int board_init(void)
 {
-	setup_eqos();
-	setup_fec();
 	return 0;
 }
 

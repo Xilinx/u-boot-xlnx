@@ -7,6 +7,7 @@
 #include <config.h>
 #include <fdt_support.h>
 #include <image.h>
+#include <imx_container.h>
 #include <log.h>
 #include <spl.h>
 #include <asm/io.h>
@@ -26,12 +27,12 @@ static int spl_nand_load_image(struct spl_image_info *spl_image,
 	nand_init();
 
 	printf("Loading U-Boot from 0x%08x (size 0x%08x) to 0x%08x\n",
-	       CONFIG_SYS_NAND_U_BOOT_OFFS, CONFIG_SYS_NAND_U_BOOT_SIZE,
-	       CONFIG_SYS_NAND_U_BOOT_DST);
+	       CONFIG_SYS_NAND_U_BOOT_OFFS, CFG_SYS_NAND_U_BOOT_SIZE,
+	       CFG_SYS_NAND_U_BOOT_DST);
 
 	nand_spl_load_image(spl_nand_get_uboot_raw_page(),
-			    CONFIG_SYS_NAND_U_BOOT_SIZE,
-			    (void *)CONFIG_SYS_NAND_U_BOOT_DST);
+			    CFG_SYS_NAND_U_BOOT_SIZE,
+			    (void *)CFG_SYS_NAND_U_BOOT_DST);
 	spl_set_header_raw_uboot(spl_image);
 	nand_deselect();
 
@@ -99,7 +100,8 @@ static int spl_nand_load_element(struct spl_image_info *spl_image,
 		load.bl_len = bl_len;
 		load.read = spl_nand_fit_read;
 		return spl_load_simple_fit(spl_image, &load, offset / bl_len, header);
-	} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
+	} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER) &&
+		   valid_container_hdr((void *)header)) {
 		struct spl_load_info load;
 
 		load.dev = NULL;
@@ -159,11 +161,11 @@ static int spl_nand_load_image(struct spl_image_info *spl_image,
 			CONFIG_CMD_SPL_WRITE_SIZE,
 			(void *)CONFIG_TEXT_BASE);
 		/* copy to destintion */
-		for (dst = (int *)CONFIG_SYS_SPL_ARGS_ADDR,
-				src = (int *)CONFIG_TEXT_BASE;
-				src < (int *)(CONFIG_TEXT_BASE +
-				CONFIG_CMD_SPL_WRITE_SIZE);
-				src++, dst++) {
+		for (dst = (int *)CONFIG_SPL_PAYLOAD_ARGS_ADDR,
+		     src = (int *)CONFIG_TEXT_BASE;
+			src < (int *)(CONFIG_TEXT_BASE +
+				      CONFIG_CMD_SPL_WRITE_SIZE);
+		     src++, dst++) {
 			writel(readl(src), dst);
 		}
 

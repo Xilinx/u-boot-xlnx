@@ -29,6 +29,9 @@
 #include <fsl-mc/fsl_dpsparser.h>
 #include <fsl-mc/fsl_qbman_portal.h>
 #include <fsl-mc/ldpaa_wriop.h>
+#include <net/ldpaa_eth.h>
+#include <asm/arch/cpu.h>
+#include <asm/arch-fsl-layerscape/fsl_icid.h>
 
 #define MC_RAM_BASE_ADDR_ALIGNMENT  (512UL * 1024 * 1024)
 #define MC_RAM_BASE_ADDR_ALIGNMENT_MASK	(~(MC_RAM_BASE_ADDR_ALIGNMENT - 1))
@@ -54,7 +57,7 @@ static int mc_memset_resv_ram;
 static struct mc_version mc_ver_info;
 static int mc_boot_status = -1;
 static int mc_dpl_applied = -1;
-#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+#ifdef CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 static int mc_aiop_applied = -1;
 #endif
 struct fsl_mc_io *root_mc_io = NULL;
@@ -165,21 +168,12 @@ enum mc_fixup_type {
 };
 
 static int mc_fixup_mac_addr(void *blob, int nodeoffset,
-#ifdef CONFIG_DM_ETH
 			     const char *propname, struct udevice *eth_dev,
-#else
-			     const char *propname, struct eth_device *eth_dev,
-#endif
 			     enum mc_fixup_type type)
 {
-#ifdef CONFIG_DM_ETH
 	struct eth_pdata *plat = dev_get_plat(eth_dev);
 	unsigned char *enetaddr = plat->enetaddr;
 	int eth_index = dev_seq(eth_dev);
-#else
-	unsigned char *enetaddr = eth_dev->enetaddr;
-	int eth_index = eth_dev->index;
-#endif
 	int err = 0, len = 0, size, i;
 	unsigned char env_enetaddr[ARP_HLEN];
 	unsigned int enetaddr_32[ARP_HLEN];
@@ -252,11 +246,7 @@ const char *dpl_get_connection_endpoint(void *blob, char *endpoint)
 }
 
 static int mc_fixup_dpl_mac_addr(void *blob, int dpmac_id,
-#ifdef CONFIG_DM_ETH
 				 struct udevice *eth_dev)
-#else
-				 struct eth_device *eth_dev)
-#endif
 {
 	int objoff = fdt_path_offset(blob, "/objects");
 	int dpmacoff = -1, dpnioff = -1;
@@ -355,11 +345,7 @@ void fdt_fsl_mc_fixup_iommu_map_entry(void *blob)
 }
 
 static int mc_fixup_dpc_mac_addr(void *blob, int dpmac_id,
-#ifdef CONFIG_DM_ETH
 				 struct udevice *eth_dev)
-#else
-				 struct eth_device *eth_dev)
-#endif
 {
 	int nodeoffset = fdt_path_offset(blob, "/board_info/ports"), noff;
 	int err = 0;
@@ -373,8 +359,7 @@ static int mc_fixup_dpc_mac_addr(void *blob, int dpmac_id,
 	if (noff < 0) {
 		err = fdt_increase_size(blob, 200);
 		if (err) {
-			printf("fdt_increase_size: err=%s\n",
-				fdt_strerror(err));
+			printf("fdt_increase_size: err=%s\n", fdt_strerror(err));
 			return err;
 		}
 
@@ -390,7 +375,7 @@ static int mc_fixup_dpc_mac_addr(void *blob, int dpmac_id,
 					    "link_type", link_type_mode);
 		if (err) {
 			printf("fdt_appendprop_string: err=%s\n",
-				fdt_strerror(err));
+			       fdt_strerror(err));
 			return err;
 		}
 	}
@@ -401,41 +386,31 @@ static int mc_fixup_dpc_mac_addr(void *blob, int dpmac_id,
 
 static int mc_fixup_mac_addrs(void *blob, enum mc_fixup_type type)
 {
-	int i, err = 0, ret = 0;
-#ifdef CONFIG_DM_ETH
-#define ETH_NAME_LEN 20
 	struct udevice *eth_dev;
-#else
-	struct eth_device *eth_dev;
-#endif
-	char ethname[ETH_NAME_LEN];
+	int err = 0, ret = 0;
+	struct uclass *uc;
+	uint32_t dpmac_id;
 
-	for (i = WRIOP1_DPMAC1; i < NUM_WRIOP_PORTS; i++) {
-		/* port not enabled */
-		if (wriop_is_enabled_dpmac(i) != 1)
+	uclass_get(UCLASS_ETH, &uc);
+	uclass_foreach_dev(eth_dev, uc) {
+		if (!eth_dev->driver || !eth_dev->driver->name ||
+		    strcmp(eth_dev->driver->name, LDPAA_ETH_DRIVER_NAME))
 			continue;
 
-		snprintf(ethname, ETH_NAME_LEN, "DPMAC%d@%s", i,
-			 phy_interface_strings[wriop_get_enet_if(i)]);
-
-		eth_dev = eth_get_dev_by_name(ethname);
-		if (eth_dev == NULL)
-			continue;
-
+		dpmac_id = ldpaa_eth_get_dpmac_id(eth_dev);
 		switch (type) {
 		case MC_FIXUP_DPL:
-			err = mc_fixup_dpl_mac_addr(blob, i, eth_dev);
+			err = mc_fixup_dpl_mac_addr(blob, dpmac_id, eth_dev);
 			break;
 		case MC_FIXUP_DPC:
-			err = mc_fixup_dpc_mac_addr(blob, i, eth_dev);
+			err = mc_fixup_dpc_mac_addr(blob, dpmac_id, eth_dev);
 			break;
 		default:
 			break;
 		}
 
 		if (err)
-			printf("fsl-mc: ERROR fixing mac address for %s\n",
-			       ethname);
+			printf("fsl-mc: ERROR fixing mac address for %s\n", eth_dev->name);
 		ret |= err;
 	}
 
@@ -500,13 +475,13 @@ static int load_mc_dpc(u64 mc_ram_addr, size_t mc_ram_size, u64 mc_dpc_addr)
 	int dpc_size;
 #endif
 
-#ifdef CONFIG_SYS_LS_MC_DRAM_DPC_OFFSET
-	BUILD_BUG_ON((CONFIG_SYS_LS_MC_DRAM_DPC_OFFSET & 0x3) != 0 ||
-		     CONFIG_SYS_LS_MC_DRAM_DPC_OFFSET > 0xffffffff);
+#ifdef CFG_SYS_LS_MC_DRAM_DPC_OFFSET
+	BUILD_BUG_ON((CFG_SYS_LS_MC_DRAM_DPC_OFFSET & 0x3) != 0 ||
+		     CFG_SYS_LS_MC_DRAM_DPC_OFFSET > 0xffffffff);
 
-	mc_dpc_offset = CONFIG_SYS_LS_MC_DRAM_DPC_OFFSET;
+	mc_dpc_offset = CFG_SYS_LS_MC_DRAM_DPC_OFFSET;
 #else
-#error "CONFIG_SYS_LS_MC_DRAM_DPC_OFFSET not defined"
+#error "CFG_SYS_LS_MC_DRAM_DPC_OFFSET not defined"
 #endif
 
 	/*
@@ -531,7 +506,7 @@ static int load_mc_dpc(u64 mc_ram_addr, size_t mc_ram_size, u64 mc_dpc_addr)
 	}
 
 	dpc_size = fdt_totalsize(dpc_fdt_hdr);
-	if (dpc_size > CONFIG_SYS_LS_MC_DPC_MAX_LENGTH) {
+	if (dpc_size > CFG_SYS_LS_MC_DPC_MAX_LENGTH) {
 		printf("\nfsl-mc: ERROR: Bad DPC image (too large: %d)\n",
 		       dpc_size);
 		return -EINVAL;
@@ -547,7 +522,6 @@ static int load_mc_dpc(u64 mc_ram_addr, size_t mc_ram_size, u64 mc_dpc_addr)
 	dump_ram_words("DPC", (void *)(mc_ram_addr + mc_dpc_offset));
 	return 0;
 }
-
 
 static int mc_fixup_dpl(u64 dpl_addr)
 {
@@ -576,13 +550,13 @@ static int load_mc_dpl(u64 mc_ram_addr, size_t mc_ram_size, u64 mc_dpl_addr)
 	int dpl_size;
 #endif
 
-#ifdef CONFIG_SYS_LS_MC_DRAM_DPL_OFFSET
-	BUILD_BUG_ON((CONFIG_SYS_LS_MC_DRAM_DPL_OFFSET & 0x3) != 0 ||
-		     CONFIG_SYS_LS_MC_DRAM_DPL_OFFSET > 0xffffffff);
+#ifdef CFG_SYS_LS_MC_DRAM_DPL_OFFSET
+	BUILD_BUG_ON((CFG_SYS_LS_MC_DRAM_DPL_OFFSET & 0x3) != 0 ||
+		     CFG_SYS_LS_MC_DRAM_DPL_OFFSET > 0xffffffff);
 
-	mc_dpl_offset = CONFIG_SYS_LS_MC_DRAM_DPL_OFFSET;
+	mc_dpl_offset = CFG_SYS_LS_MC_DRAM_DPL_OFFSET;
 #else
-#error "CONFIG_SYS_LS_MC_DRAM_DPL_OFFSET not defined"
+#error "CFG_SYS_LS_MC_DRAM_DPL_OFFSET not defined"
 #endif
 
 	/*
@@ -603,7 +577,7 @@ static int load_mc_dpl(u64 mc_ram_addr, size_t mc_ram_size, u64 mc_dpl_addr)
 	}
 
 	dpl_size = fdt_totalsize(dpl_fdt_hdr);
-	if (dpl_size > CONFIG_SYS_LS_MC_DPL_MAX_LENGTH) {
+	if (dpl_size > CFG_SYS_LS_MC_DPL_MAX_LENGTH) {
 		printf("\nfsl-mc: ERROR: Bad DPL image (too large: %d)\n",
 		       dpl_size);
 		return -EINVAL;
@@ -624,7 +598,7 @@ static int load_mc_dpl(u64 mc_ram_addr, size_t mc_ram_size, u64 mc_dpl_addr)
  */
 static unsigned long get_mc_boot_timeout_ms(void)
 {
-	unsigned long timeout_ms = CONFIG_SYS_LS_MC_BOOT_TIMEOUT_MS;
+	unsigned long timeout_ms = CFG_SYS_LS_MC_BOOT_TIMEOUT_MS;
 
 	char *timeout_ms_env_var = env_get(MC_BOOT_TIMEOUT_ENV_VAR);
 
@@ -636,14 +610,14 @@ static unsigned long get_mc_boot_timeout_ms(void)
 			       "\' environment variable: %lu\n",
 			       timeout_ms);
 
-			timeout_ms = CONFIG_SYS_LS_MC_BOOT_TIMEOUT_MS;
+			timeout_ms = CFG_SYS_LS_MC_BOOT_TIMEOUT_MS;
 		}
 	}
 
 	return timeout_ms;
 }
 
-#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+#ifdef CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 
 __weak bool soc_has_aiop(void)
 {
@@ -666,12 +640,12 @@ static int load_mc_aiop_img(u64 aiop_fw_addr)
 
 #ifdef CONFIG_SYS_LS_MC_DPC_IN_DDR
 	printf("MC AIOP is preloaded to %#llx\n", mc_ram_addr +
-	       CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET);
+	       CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET);
 #else
 	aiop_img = (void *)aiop_fw_addr;
 	mc_copy_image("MC AIOP image",
-		      (u64)aiop_img, CONFIG_SYS_LS_MC_AIOP_IMG_MAX_LENGTH,
-		      mc_ram_addr + CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET);
+		      (u64)aiop_img, CFG_SYS_LS_MC_AIOP_IMG_MAX_LENGTH,
+		      mc_ram_addr + CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET);
 #endif
 	mc_aiop_applied = 0;
 
@@ -719,7 +693,6 @@ static int wait_for_mc(bool booting_mc, u32 *final_reg_gsr)
 	} else {
 		printf("SUCCESS\n");
 	}
-
 
 	*final_reg_gsr = reg_gsr;
 	return 0;
@@ -833,7 +806,7 @@ int mc_init(u64 mc_fw_addr, u64 mc_dpc_addr)
 	 * Initialize the global default MC portal
 	 * And check that the MC firmware is responding portal commands:
 	 */
-	root_mc_io = (struct fsl_mc_io *)calloc(sizeof(struct fsl_mc_io), 1);
+	root_mc_io = calloc(sizeof(struct fsl_mc_io), 1);
 	if (!root_mc_io) {
 		printf(" No memory: calloc() failed\n");
 		return -ENOMEM;
@@ -896,7 +869,7 @@ int get_mc_boot_status(void)
 	return mc_boot_status;
 }
 
-#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+#ifdef CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 int get_aiop_apply_status(void)
 {
 	return mc_aiop_applied;
@@ -938,14 +911,14 @@ u64 mc_get_dram_addr(void)
  */
 unsigned long mc_get_dram_block_size(void)
 {
-	unsigned long dram_block_size = CONFIG_SYS_LS_MC_DRAM_BLOCK_MIN_SIZE;
+	unsigned long dram_block_size = CFG_SYS_LS_MC_DRAM_BLOCK_MIN_SIZE;
 
 	char *dram_block_size_env_var = env_get(MC_MEM_SIZE_ENV_VAR);
 
 	if (dram_block_size_env_var) {
 		dram_block_size = hextoul(dram_block_size_env_var, NULL);
 
-		if (dram_block_size < CONFIG_SYS_LS_MC_DRAM_BLOCK_MIN_SIZE) {
+		if (dram_block_size < CFG_SYS_LS_MC_DRAM_BLOCK_MIN_SIZE) {
 			printf("fsl-mc: WARNING: Invalid value for \'"
 			       MC_MEM_SIZE_ENV_VAR
 			       "\' environment variable: %lu\n",
@@ -956,6 +929,114 @@ unsigned long mc_get_dram_block_size(void)
 	}
 
 	return dram_block_size;
+}
+
+/**
+ * Populate the device tree with MC reserved memory ranges.
+ */
+void fdt_reserve_mc_mem(void *blob, u32 mc_icid)
+{
+	u32 phandle, mc_ph;
+	int noff, ret, i;
+	char mem_name[16];
+	struct fdt_memory mc_mem_ranges[] = {
+		{
+			.start = 0,
+			.end = 0
+		},
+		{
+			.start = CFG_SYS_FSL_MC_BASE,
+			.end = CFG_SYS_FSL_MC_BASE + CFG_SYS_FSL_MC_SIZE - 1
+		},
+		{
+			.start = CFG_SYS_FSL_NI_BASE,
+			.end = CFG_SYS_FSL_NI_BASE + CFG_SYS_FSL_NI_SIZE - 1
+		},
+		{
+			.start = CFG_SYS_FSL_QBMAN_BASE,
+			.end = CFG_SYS_FSL_QBMAN_BASE +
+					CFG_SYS_FSL_QBMAN_SIZE - 1
+		},
+		{
+			.start = CFG_SYS_FSL_PEBUF_BASE,
+			.end = CFG_SYS_FSL_PEBUF_BASE +
+					CFG_SYS_FSL_PEBUF_SIZE - 1
+		},
+		{
+			.start = CFG_SYS_FSL_CCSR_BASE,
+			.end = CFG_SYS_FSL_CCSR_BASE + CFG_SYS_FSL_CCSR_SIZE - 1
+		}
+	};
+
+	mc_mem_ranges[0].start = gd->arch.resv_ram;
+	mc_mem_ranges[0].end = mc_mem_ranges[0].start +
+				mc_get_dram_block_size() - 1;
+
+	for (i = 0; i < ARRAY_SIZE(mc_mem_ranges); i++) {
+		noff = fdt_node_offset_by_compatible(blob, -1, "fsl,qoriq-mc");
+		if (noff < 0) {
+			printf("WARN: failed to get MC node: %d\n", noff);
+			return;
+		}
+		mc_ph = fdt_get_phandle(blob, noff);
+		if (!mc_ph) {
+			mc_ph = fdt_create_phandle(blob, noff);
+			if (!mc_ph) {
+				printf("WARN: failed to get MC node phandle\n");
+				return;
+			}
+		}
+
+		sprintf(mem_name, "mc-mem%d", i);
+		ret = fdtdec_add_reserved_memory(blob, mem_name,
+						 &mc_mem_ranges[i], NULL, 0,
+						 &phandle, 0);
+		if (ret < 0) {
+			printf("ERROR: failed to reserve MC memory: %d\n", ret);
+			return;
+		}
+
+		noff = fdt_node_offset_by_phandle(blob, phandle);
+		if (noff < 0) {
+			printf("ERROR: failed get resvmem node offset: %d\n",
+			       noff);
+			return;
+		}
+		ret = fdt_setprop_u32(blob, noff, "iommu-addresses", mc_ph);
+		if (ret < 0) {
+			printf("ERROR: failed to set 'iommu-addresses': %d\n",
+			       ret);
+			return;
+		}
+		ret = fdt_appendprop_u64(blob, noff, "iommu-addresses",
+					 mc_mem_ranges[i].start);
+		if (ret < 0) {
+			printf("ERROR: failed to set 'iommu-addresses': %d\n",
+			       ret);
+			return;
+		}
+		ret = fdt_appendprop_u64(blob, noff, "iommu-addresses",
+					 mc_mem_ranges[i].end -
+						mc_mem_ranges[i].start + 1);
+		if (ret < 0) {
+			printf("ERROR: failed to set 'iommu-addresses': %d\n",
+			       ret);
+			return;
+		}
+
+		noff = fdt_node_offset_by_phandle(blob, mc_ph);
+		if (noff < 0) {
+			printf("ERROR: failed get MC node offset: %d\n", noff);
+			return;
+		}
+		ret = fdt_appendprop_u32(blob, noff, "memory-region", phandle);
+		if (ret < 0) {
+			printf("ERROR: failed to set 'memory-region': %d\n",
+			       ret);
+		}
+	}
+
+	fdt_set_iommu_prop(blob, noff, fdt_get_smmu_phandle(blob), &mc_icid, 1);
 }
 
 int fsl_mc_ldpaa_init(struct bd_info *bis)
@@ -1000,8 +1081,7 @@ static int dpio_init(void)
 	int err = 0;
 	uint16_t major_ver, minor_ver;
 
-	dflt_dpio = (struct fsl_dpio_obj *)calloc(
-					sizeof(struct fsl_dpio_obj), 1);
+	dflt_dpio = calloc(sizeof(struct fsl_dpio_obj), 1);
 	if (!dflt_dpio) {
 		printf("No memory: calloc() failed\n");
 		err = -ENOMEM;
@@ -1059,7 +1139,7 @@ static int dpio_init(void)
 	}
 
 #ifdef DEBUG
-	printf("Init: DPIO id=0x%d\n", dflt_dpio->dpio_id);
+	printf("Init: DPIO.%d\n", dflt_dpio->dpio_id);
 #endif
 	err = dpio_enable(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpio->dpio_handle);
 	if (err < 0) {
@@ -1128,7 +1208,7 @@ static int dpio_exit(void)
 	}
 
 #ifdef DEBUG
-	printf("Exit: DPIO id=0x%d\n", dflt_dpio->dpio_id);
+	printf("Exit: DPIO.%d\n", dflt_dpio->dpio_id);
 #endif
 
 	if (dflt_dpio)
@@ -1180,16 +1260,15 @@ static int dprc_init(void)
 	cfg.icid = DPRC_GET_ICID_FROM_POOL;
 	cfg.portal_id = DPRC_GET_PORTAL_ID_FROM_POOL;
 	err = dprc_create_container(root_mc_io, MC_CMD_NO_FLAGS,
-			root_dprc_handle,
-			&cfg,
-			&child_dprc_id,
-			&mc_portal_offset);
+				    root_dprc_handle, &cfg,
+				    &child_dprc_id,
+				    &mc_portal_offset);
 	if (err < 0) {
 		printf("dprc_create_container() failed: %d\n", err);
 		goto err_create;
 	}
 
-	dflt_mc_io = (struct fsl_mc_io *)calloc(sizeof(struct fsl_mc_io), 1);
+	dflt_mc_io = calloc(sizeof(struct fsl_mc_io), 1);
 	if (!dflt_mc_io) {
 		err  = -ENOMEM;
 		printf(" No memory: calloc() failed\n");
@@ -1271,8 +1350,7 @@ static int dpbp_init(void)
 	struct dpbp_cfg dpbp_cfg;
 	uint16_t major_ver, minor_ver;
 
-	dflt_dpbp = (struct fsl_dpbp_obj *)calloc(
-					sizeof(struct fsl_dpbp_obj), 1);
+	dflt_dpbp = calloc(sizeof(struct fsl_dpbp_obj), 1);
 	if (!dflt_dpbp) {
 		printf("No memory: calloc() failed\n");
 		err = -ENOMEM;
@@ -1333,7 +1411,7 @@ static int dpbp_init(void)
 	}
 
 #ifdef DEBUG
-	printf("Init: DPBP id=0x%x\n", dflt_dpbp->dpbp_attr.id);
+	printf("Init: DPBP.%d\n", dflt_dpbp->dpbp_attr.id);
 #endif
 
 	err = dpbp_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpbp->dpbp_handle);
@@ -1372,7 +1450,7 @@ static int dpbp_exit(void)
 	}
 
 #ifdef DEBUG
-	printf("Exit: DPBP id=0x%d\n", dflt_dpbp->dpbp_attr.id);
+	printf("Exit: DPBP.%d\n", dflt_dpbp->dpbp_attr.id);
 #endif
 
 	if (dflt_dpbp)
@@ -1385,25 +1463,15 @@ err:
 
 static int dpni_init(void)
 {
-	int err;
-	uint8_t	cfg_buf[256] = {0};
-	struct dpni_cfg dpni_cfg;
+	struct dpni_cfg dpni_cfg = {0};
 	uint16_t major_ver, minor_ver;
+	int err;
 
-	dflt_dpni = (struct fsl_dpni_obj *)calloc(
-					sizeof(struct fsl_dpni_obj), 1);
+	dflt_dpni = calloc(sizeof(struct fsl_dpni_obj), 1);
 	if (!dflt_dpni) {
 		printf("No memory: calloc() failed\n");
 		err = -ENOMEM;
 		goto err_calloc;
-	}
-
-	memset(&dpni_cfg, 0, sizeof(dpni_cfg));
-	err = dpni_prepare_cfg(&dpni_cfg, &cfg_buf[0]);
-	if (err < 0) {
-		err = -ENODEV;
-		printf("dpni_prepare_cfg() failed: %d\n", err);
-		goto err_prepare_cfg;
 	}
 
 	err = dpni_create(dflt_mc_io,
@@ -1443,7 +1511,7 @@ static int dpni_init(void)
 	}
 
 #ifdef DEBUG
-	printf("Init: DPNI id=0x%d\n", dflt_dpni->dpni_id);
+	printf("Init: DPNI.%d\n", dflt_dpni->dpni_id);
 #endif
 	err = dpni_close(dflt_mc_io, MC_CMD_NO_FLAGS, dflt_dpni->dpni_handle);
 	if (err < 0) {
@@ -1462,7 +1530,6 @@ err_get_version:
 		     MC_CMD_NO_FLAGS,
 		     dflt_dpni->dpni_id);
 err_create:
-err_prepare_cfg:
 	free(dflt_dpni);
 err_calloc:
 	return err;
@@ -1480,7 +1547,7 @@ static int dpni_exit(void)
 	}
 
 #ifdef DEBUG
-	printf("Exit: DPNI id=0x%d\n", dflt_dpni->dpni_id);
+	printf("Exit: DPNI.%d\n", dflt_dpni->dpni_id);
 #endif
 
 	if (dflt_dpni)
@@ -1817,7 +1884,6 @@ static void mc_dump_log(void)
 	if (size > bytes_end) {
 		print_k_bytes(cur_ptr, &bytes_end);
 
-		cur_ptr = buf;
 		size -= bytes_end;
 	}
 
@@ -1838,7 +1904,7 @@ static int do_fsl_mc(struct cmd_tbl *cmdtp, int flag, int argc,
 	case 's': {
 			char sub_cmd;
 			u64 mc_fw_addr, mc_dpc_addr;
-#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+#ifdef CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 			u64 aiop_fw_addr;
 #endif
 			if (argc < 3)
@@ -1864,7 +1930,7 @@ static int do_fsl_mc(struct cmd_tbl *cmdtp, int flag, int argc,
 					err = mc_init_object();
 				break;
 
-#ifdef CONFIG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
+#ifdef CFG_SYS_LS_MC_DRAM_AIOP_IMG_OFFSET
 			case 'a':
 				if (argc < 4)
 					goto usage;
@@ -1983,7 +2049,6 @@ static int do_fsl_mc(struct cmd_tbl *cmdtp, int flag, int argc,
 	default:
 		printf("Invalid option: %s\n", argv[1]);
 		goto usage;
-		break;
 	}
 	return err;
  usage:

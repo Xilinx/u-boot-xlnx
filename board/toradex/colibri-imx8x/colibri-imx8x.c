@@ -11,7 +11,8 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/imx8-pins.h>
 #include <asm/arch/iomux.h>
-#include <asm/arch/sci/sci.h>
+#include <firmware/imx/sci/sci.h>
+#include <asm/arch/snvs_security_sc.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -40,21 +41,25 @@ static void setup_iomux_uart(void)
 	imx8_iomux_setup_multiple_pads(uart3_pads, ARRAY_SIZE(uart3_pads));
 }
 
+static int is_imx8dx(void)
+{
+	u32 val = 0;
+	int sc_err = sc_misc_otp_fuse_read(-1, 6, &val);
+
+	if (sc_err) {
+		/* DX has two A35 cores disabled */
+		return (val & 0xf) != 0x0;
+	}
+	return false;
+}
+
 void board_mem_get_layout(u64 *phys_sdram_1_start,
 			  u64 *phys_sdram_1_size,
 			  u64 *phys_sdram_2_start,
 			  u64 *phys_sdram_2_size)
 {
-	u32 is_dualx = 0, val = 0;
-	sc_err_t scierr = sc_misc_otp_fuse_read(-1, 6, &val);
-
-	if (scierr == SC_ERR_NONE) {
-		/* DX has two A35 cores disabled */
-		is_dualx = (val & 0xf) != 0x0;
-	}
-
 	*phys_sdram_1_start = PHYS_SDRAM_1;
-	if (is_dualx)
+	if (is_imx8dx())
 		/* Our DX based SKUs only have 1 GB RAM */
 		*phys_sdram_1_size = SZ_1G;
 	else
@@ -66,7 +71,7 @@ void board_mem_get_layout(u64 *phys_sdram_1_start,
 int board_early_init_f(void)
 {
 	sc_pm_clock_rate_t rate;
-	sc_err_t err = 0;
+	int err;
 
 	/*
 	 * This works around that having only UART3 up the baudrate is 1.2M
@@ -74,13 +79,13 @@ int board_early_init_f(void)
 	 */
 	rate = 80000000;
 	err = sc_pm_set_clock_rate(-1, SC_R_UART_0, SC_PM_CLK_PER, &rate);
-	if (err != SC_ERR_NONE)
+	if (err)
 		return 0;
 
 	/* Set UART3 clock root to 80 MHz and enable it */
 	rate = SC_80MHZ;
 	err = sc_pm_setup_uart(SC_R_UART_3, rate);
-	if (err != SC_ERR_NONE)
+	if (err)
 		return 0;
 
 	setup_iomux_uart();
@@ -119,9 +124,28 @@ int checkboard(void)
 	return 0;
 }
 
+static void select_dt_from_module_version(void)
+{
+	/*
+	 * The dtb filename is constructed from ${soc}-colibri-${fdt_board}.dtb.
+	 * Set soc depending on the used SoC.
+	 */
+	if (is_imx8dx())
+		env_set("soc", "imx8dx");
+	else
+		env_set("soc", "imx8qxp");
+}
+
 int board_init(void)
 {
 	board_gpio_init();
+
+	if (IS_ENABLED(CONFIG_IMX_SNVS_SEC_SC_AUTO)) {
+		int ret = snvs_security_sc_init();
+
+		if (ret)
+			return ret;
+	}
 
 	return 0;
 }
@@ -153,6 +177,10 @@ int board_late_init(void)
 	env_set("board_name", "Colibri iMX8QXP");
 	env_set("board_rev", "v1.0");
 #endif
+
+	build_info();
+
+	select_dt_from_module_version();
 
 	return 0;
 }

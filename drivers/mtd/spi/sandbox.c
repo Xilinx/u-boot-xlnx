@@ -139,7 +139,7 @@ static int sandbox_sf_probe(struct udevice *dev)
 		return ret;
 	}
 	slave_plat = dev_get_parent_plat(dev);
-	cs = slave_plat->cs;
+	cs = slave_plat->cs[0];
 	debug("found at cs %d\n", cs);
 
 	if (!pdata->filename) {
@@ -248,6 +248,7 @@ static int sandbox_sf_process_cmd(struct sandbox_spi_flash *sbsf, const u8 *rx,
 		break;
 	case SPINOR_OP_READ_FAST:
 		sbsf->pad_addr_bytes = 1;
+		fallthrough;
 	case SPINOR_OP_READ:
 	case SPINOR_OP_PP:
 		sbsf->state = SF_ADDR;

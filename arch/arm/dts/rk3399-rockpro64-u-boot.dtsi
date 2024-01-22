@@ -9,15 +9,16 @@
 	chosen {
 		u-boot,spl-boot-order = "same-as-spl", &spi_flash, &sdmmc, &sdhci;
 	};
+};
 
-	config {
-		u-boot,spl-payload-offset = <0x60000>; /* @ 384KB */
-	};
+&sdhci {
+	cap-mmc-highspeed;
+	mmc-ddr-1_8v;
 };
 
 &spi1 {
 	spi_flash: flash@0 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 

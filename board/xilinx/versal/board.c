@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014 - 2018 Xilinx, Inc.
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 
+#include <command.h>
 #include <common.h>
 #include <cpu_func.h>
 #include <env.h>
@@ -125,7 +126,7 @@ static u8 versal_get_bootmode(void)
 	return bootmode;
 }
 
-int board_late_init(void)
+static int boot_targets_setup(void)
 {
 	u8 bootmode;
 	struct udevice *dev;
@@ -135,14 +136,6 @@ int board_late_init(void)
 	const char *mode = NULL;
 	char *new_targets;
 	char *env_targets;
-
-	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
-		debug("Saved variables - Skipping\n");
-		return 0;
-	}
-
-	if (!CONFIG_IS_ENABLED(ENV_VARS_UBOOT_RUNTIME_CONFIG))
-		return 0;
 
 	bootmode = versal_get_bootmode();
 
@@ -180,6 +173,9 @@ int board_late_init(void)
 		debug("mmc1 device found at %p, seq %d\n", dev, dev_seq(dev));
 		mode = "mmc";
 		bootseq = dev_seq(dev);
+		break;
+	case SELECTMAP_MODE:
+		puts("SELECTMAP_MODE\n");
 		break;
 	case SD_MODE:
 		puts("SD_MODE\n");
@@ -246,6 +242,27 @@ int board_late_init(void)
 		env_set("boot_targets", new_targets);
 	}
 
+	return 0;
+}
+
+int board_late_init(void)
+{
+	int ret;
+
+	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
+		debug("Saved variables - Skipping\n");
+		return 0;
+	}
+
+	if (!IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG))
+		return 0;
+
+	if (IS_ENABLED(CONFIG_DISTRO_DEFAULTS)) {
+		ret = boot_targets_setup();
+		if (ret)
+			return ret;
+	}
+
 	return board_late_init_xilinx();
 }
 
@@ -298,6 +315,7 @@ enum env_location env_get_location(enum env_operation op, int prio)
 			return ENVL_SPI_FLASH;
 		return ENVL_NOWHERE;
 	case JTAG_MODE:
+	case SELECTMAP_MODE:
 	default:
 		return ENVL_NOWHERE;
 	}

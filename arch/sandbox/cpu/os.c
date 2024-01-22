@@ -166,7 +166,7 @@ int os_write_file(const char *fname, const void *buf, int size)
 	return 0;
 }
 
-int os_filesize(int fd)
+off_t os_filesize(int fd)
 {
 	off_t size;
 
@@ -218,8 +218,8 @@ err:
 int os_map_file(const char *pathname, int os_flags, void **bufp, int *sizep)
 {
 	void *ptr;
-	int size;
-	int ifd;
+	off_t size;
+	int ifd, ret = 0;
 
 	ifd = os_open(pathname, os_flags);
 	if (ifd < 0) {
@@ -229,19 +229,28 @@ int os_map_file(const char *pathname, int os_flags, void **bufp, int *sizep)
 	size = os_filesize(ifd);
 	if (size < 0) {
 		printf("Cannot get file size of '%s'\n", pathname);
-		return -EIO;
+		ret = -EIO;
+		goto out;
+	}
+	if ((unsigned long long)size > (unsigned long long)SIZE_MAX) {
+		printf("File '%s' too large to map\n", pathname);
+		ret = -EIO;
+		goto out;
 	}
 
 	ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, ifd, 0);
 	if (ptr == MAP_FAILED) {
 		printf("Can't map file '%s': %s\n", pathname, strerror(errno));
-		return -EPERM;
+		ret = -EPERM;
+		goto out;
 	}
 
 	*bufp = ptr;
 	*sizep = size;
 
-	return 0;
+out:
+	os_close(ifd);
+	return ret;
 }
 
 int os_unmap(void *buf, int size)
@@ -250,6 +259,30 @@ int os_unmap(void *buf, int size)
 		printf("Can't unmap %p %x\n", buf, size);
 		return -EIO;
 	}
+
+	return 0;
+}
+
+int os_persistent_file(char *buf, int maxsize, const char *fname)
+{
+	const char *dirname = getenv("U_BOOT_PERSISTENT_DATA_DIR");
+	char *ptr;
+	int len;
+
+	len = strlen(fname) + (dirname ? strlen(dirname) + 1 : 0) + 1;
+	if (len > maxsize)
+		return -ENOSPC;
+
+	ptr = buf;
+	if (dirname) {
+		strcpy(ptr, dirname);
+		ptr += strlen(dirname);
+		*ptr++ = '/';
+	}
+	strcpy(ptr, fname);
+
+	if (access(buf, F_OK) == -1)
+		return -ENOENT;
 
 	return 0;
 }

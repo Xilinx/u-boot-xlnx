@@ -1625,7 +1625,7 @@ static void set_ddr_stride(struct rk3399_pmusgrf_regs *pmusgrf, u32 stride)
 	rk_clrsetreg(&pmusgrf->soc_con4, 0x1f << 10, stride << 10);
 }
 
-#if !defined(CONFIG_RAM_RK3399_LPDDR4)
+#if !defined(CONFIG_RAM_ROCKCHIP_LPDDR4)
 static int data_training_first(struct dram_info *dram, u32 channel, u8 rank,
 			       struct rk3399_sdram_params *params)
 {
@@ -2558,8 +2558,7 @@ static int lpddr4_set_rate(struct dram_info *dram,
 
 	return 0;
 }
-
-#endif /* CONFIG_RAM_RK3399_LPDDR4 */
+#endif /* CONFIG_RAM_ROCKCHIP_LPDDR4 */
 
 /* CS0,n=1
  * CS1,n=2
@@ -2749,6 +2748,8 @@ static u64 dram_detect_cap(struct dram_info *dram,
 
 	/* detect cs1 row */
 	sdram_detect_cs1_row(cap_info, params->base.dramtype);
+
+	sdram_detect_high_row(cap_info);
 
 	/* detect die bw */
 	sdram_detect_dbw(cap_info, params->base.dramtype);
@@ -2955,7 +2956,7 @@ static int sdram_init(struct dram_info *dram,
 		params->ch[ch].cap_info.rank = rank;
 	}
 
-#if defined(CONFIG_RAM_RK3399_LPDDR4)
+#if defined(CONFIG_RAM_ROCKCHIP_LPDDR4)
 	/* LPDDR4 needs to be trained at 400MHz */
 	lpddr4_set_rate(dram, params, 0);
 	params->base.ddr_freq = dfs_cfgs_lpddr4[0].base.ddr_freq / MHz;
@@ -2987,7 +2988,7 @@ static int sdram_init(struct dram_info *dram,
 			continue;
 		}
 
-		sdram_print_ddr_info(cap_info, &params->base);
+		sdram_print_ddr_info(cap_info, &params->base, 0);
 		set_memory_map(chan, channel, params);
 		cap_info->ddrconfig =
 			calculate_ddrconfig(params, channel);
@@ -3049,7 +3050,7 @@ static int conv_of_plat(struct udevice *dev)
 	struct dtd_rockchip_rk3399_dmc *dtplat = &plat->dtplat;
 	int ret;
 
-	ret = regmap_init_mem_plat(dev, dtplat->reg,
+	ret = regmap_init_mem_plat(dev, dtplat->reg, sizeof(dtplat->reg[0]),
 				   ARRAY_SIZE(dtplat->reg) / 2, &plat->map);
 	if (ret)
 		return ret;
@@ -3059,7 +3060,7 @@ static int conv_of_plat(struct udevice *dev)
 #endif
 
 static const struct sdram_rk3399_ops rk3399_ops = {
-#if !defined(CONFIG_RAM_RK3399_LPDDR4)
+#if !defined(CONFIG_RAM_ROCKCHIP_LPDDR4)
 	.data_training_first = data_training_first,
 	.set_rate_index = switch_to_phy_index1,
 	.modify_param = modify_param,
@@ -3151,7 +3152,7 @@ static int rk3399_dmc_probe(struct udevice *dev)
 
 	priv->pmugrf = syscon_get_first_range(ROCKCHIP_SYSCON_PMUGRF);
 	debug("%s: pmugrf = %p\n", __func__, priv->pmugrf);
-	priv->info.base = CONFIG_SYS_SDRAM_BASE;
+	priv->info.base = CFG_SYS_SDRAM_BASE;
 	priv->info.size =
 		rockchip_sdram_size((phys_addr_t)&priv->pmugrf->os_reg2);
 #endif

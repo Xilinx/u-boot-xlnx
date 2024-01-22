@@ -4,7 +4,7 @@
  *
  * ddr specific header
  *
- * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2011, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #ifndef _DDR_DEFS_H
@@ -369,15 +369,9 @@ struct ddr_ctrl {
 	unsigned int ddrckectrl;
 };
 
-#ifdef CONFIG_TI816X
-void config_ddr(const struct ddr_data *data, const struct cmd_control *ctrl,
-		const struct emif_regs *regs,
-		const struct dmm_lisa_map_regs *lisa_regs, int nrs);
-#else
 void config_ddr(unsigned int pll, const struct ctrl_ioregs *ioregs,
 		const struct ddr_data *data, const struct cmd_control *ctrl,
 		const struct emif_regs *regs, int nr);
-#endif
 void emif_get_ext_phy_ctrl_const_regs(const u32 **regs, u32 *size);
 
 #endif  /* _DDR_DEFS_H */

@@ -16,10 +16,14 @@
 };
 
 &uart0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 
 &fec0 {
+	status = "okay";
+};
+
+&i2c0 {
 	status = "okay";
 };

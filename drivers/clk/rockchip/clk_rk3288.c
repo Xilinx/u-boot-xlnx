@@ -778,6 +778,7 @@ static ulong rk3288_clk_get_rate(struct clk *clk)
 	case PCLK_I2C5:
 		return gclk_rate;
 	case PCLK_PWM:
+	case PCLK_RKPWM:
 		return PD_BUS_PCLK_HZ;
 	case SCLK_SARADC:
 		new_rate = rockchip_saradc_get_clk(priv->cru);
@@ -1026,7 +1027,7 @@ static int rk3288_clk_bind(struct udevice *dev)
 	ret = offsetof(struct rockchip_cru, cru_softrst_con[0]);
 	ret = rockchip_reset_bind(dev, ret, 12);
 	if (ret)
-		debug("Warning: software reset driver bind faile\n");
+		debug("Warning: software reset driver bind failed\n");
 #endif
 
 	return 0;

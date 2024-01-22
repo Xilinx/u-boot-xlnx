@@ -460,7 +460,7 @@ static void print_hdr_v1(struct imx_header *imx_hdr)
 	uint32_t size, length, ver;
 
 	size = dcd_v1->preamble.length;
-	if (size > (MAX_HW_CFG_SIZE_V1 * sizeof(dcd_type_addr_data_t))) {
+	if (size >= (MAX_HW_CFG_SIZE_V1 * sizeof(dcd_type_addr_data_t))) {
 		fprintf(stderr,
 			"Error: Image corrupt DCD size %d exceed maximum %d\n",
 			(uint32_t)(size / sizeof(dcd_type_addr_data_t)),
@@ -813,7 +813,7 @@ static int imximage_verify_header(unsigned char *ptr, int image_size,
 	return 0;
 }
 
-static void imximage_print_header(const void *ptr)
+static void imximage_print_header(const void *ptr, struct image_tool_params *params)
 {
 	struct imx_header *imx_hdr = (struct imx_header *) ptr;
 	uint32_t version = detect_imximage_version(imx_hdr);

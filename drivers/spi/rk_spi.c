@@ -45,7 +45,7 @@ struct rockchip_spi_plat {
 	struct dtd_rockchip_rk3288_spi of_plat;
 #endif
 	s32 frequency;		/* Default clock frequency, -1 for none */
-	fdt_addr_t base;
+	uintptr_t base;
 	uint deactivate_delay_us;	/* Delay to wait after deactivate */
 	uint activate_delay_us;		/* Delay to wait after activate */
 };
@@ -445,7 +445,7 @@ static int rockchip_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 	/* Assert CS before transfer */
 	if (flags & SPI_XFER_BEGIN)
-		spi_cs_activate(dev, slave_plat->cs);
+		spi_cs_activate(dev, slave_plat->cs[0]);
 
 	/*
 	 * To ensure fast loading of firmware images (e.g. full U-Boot
@@ -485,7 +485,7 @@ static int rockchip_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		/*
 		 * In case that there's a transmit-component, we need to wait
 		 * until the control goes idle before we can disable the SPI
-		 * control logic (as this will implictly flush the FIFOs).
+		 * control logic (as this will implicitly flush the FIFOs).
 		 */
 		if (out) {
 			ret = rkspi_wait_till_not_busy(regs);
@@ -498,7 +498,7 @@ static int rockchip_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 	/* Deassert CS after transfer */
 	if (flags & SPI_XFER_END)
-		spi_cs_deactivate(dev, slave_plat->cs);
+		spi_cs_deactivate(dev, slave_plat->cs[0]);
 
 	rkspi_enable_chip(regs, false);
 

@@ -49,7 +49,7 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 		writel(lower_32_bits((unsigned long)rxbuf), priv->regbase +
 		       CQSPI_DMA_DST_ADDR_REG);
 		writel(upper_32_bits((unsigned long)rxbuf), priv->regbase +
-			CQSPI_DMA_DST_ADDR_MSB_REG);
+		       CQSPI_DMA_DST_ADDR_MSB_REG);
 		writel(priv->trigger_address, priv->regbase +
 		       CQSPI_DMA_SRC_RD_ADDR_REG);
 		writel(bytes_to_dma, priv->regbase +
@@ -145,7 +145,7 @@ static const struct soc_attr matches[] = {
 /*
  * cadence_qspi_versal_set_dll_mode checks for silicon version
  * and set the DLL mode.
- * Returns 0 incase of success, -ENOTSUPP in case of failure.
+ * Returns 0 in case of success, -ENOTSUPP in case of failure.
  */
 int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
 {
@@ -278,7 +278,7 @@ int cadence_qspi_versal_flash_reset(struct udevice *dev)
 
 void cadence_qspi_apb_enable_linear_mode(bool enable)
 {
-	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE)) {
+	if (IS_ENABLED(CONFIG_ZYNQMP_FIRMWARE)) {
 		if (enable)
 			/* ahb read mode */
 			xilinx_pm_request(PM_IOCTL, PM_DEV_OSPI,

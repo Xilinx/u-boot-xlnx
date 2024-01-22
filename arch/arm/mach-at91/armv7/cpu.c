@@ -18,16 +18,16 @@
 #include <asm/arch/at91_gpbr.h>
 #include <asm/arch/clk.h>
 
-#ifndef CONFIG_SYS_AT91_MAIN_CLOCK
-#define CONFIG_SYS_AT91_MAIN_CLOCK 0
+#ifndef CFG_SYS_AT91_MAIN_CLOCK
+#define CFG_SYS_AT91_MAIN_CLOCK 0
 #endif
 
 int arch_cpu_init(void)
 {
-#if defined(CONFIG_CLK_CCF)
+#if defined(CONFIG_CLK_CCF) || defined(CONFIG_CLK_SCMI)
 	return 0;
 #else
-	return at91_clock_init(CONFIG_SYS_AT91_MAIN_CLOCK);
+	return at91_clock_init(CFG_SYS_AT91_MAIN_CLOCK);
 #endif
 }
 

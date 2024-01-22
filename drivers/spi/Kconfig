@@ -101,11 +101,20 @@ config ATMEL_SPI
 
 config BCM63XX_HSSPI
 	bool "BCM63XX HSSPI driver"
-	depends on (ARCH_BMIPS || BCM6856 || BCM6858 || BCM63158)
+	depends on (ARCH_BMIPS || ARCH_BCMBCA)
 	help
-	  Enable the BCM6328 HSSPI driver. This driver can be used to
+	  Enable the BCM63XX HSSPI driver. This driver can be used to
 	  access the SPI NOR flash on platforms embedding this Broadcom
 	  SPI core.
+
+config BCMBCA_HSSPI
+	bool "BCMBCA HSSPI driver"
+	depends on ARCH_BCMBCA && HAVE_SPI_CS_CTRL
+	help
+	  This enables support for the High Speed SPI controller present on
+	  newer Broadcom BCMBCA SoCs. These SoCs include an updated SPI controller
+	  that adds the capability to allow the driver to control chip select
+	  explicitly.
 
 config BCM63XX_SPI
 	bool "BCM6348 SPI driver"
@@ -241,6 +250,15 @@ config MICROCHIP_COREQSPI
 	help
 	  Enable the QSPI driver for Microchip FPGA QSPI controllers.
 	  This driver can be used on Polarfire SoC.
+
+config MESON_SPIFC_A1
+	bool "Amlogic Meson A1 SPI Flash Controller driver"
+	depends on ARCH_MESON
+	help
+	  Enable the Amlogic A1 SPI Flash Controller (SPIFC) driver.
+	  This driver can be used to access the SPI NOR/NAND flash chips
+	  with STR mode frequency up to 98MHz. Dual and quad modes are
+	  supported by controller.
 
 config MPC8XX_SPI
 	bool "MPC8XX SPI Driver"
@@ -381,8 +399,8 @@ config SPI_QUP
 
 config RENESAS_RPC_SPI
 	bool "Renesas RPC SPI driver"
-	depends on RCAR_GEN3 || RZA1
-	imply SPI_FLASH_BAR
+	depends on RCAR_64 || RZA1
+	imply SPI_FLASH_SFDP_SUPPORT
 	help
 	  Enable the Renesas RPC SPI driver, used to access SPI NOR flash
 	  on Renesas RCar Gen3 SoCs. This uses driver model and requires a
@@ -429,10 +447,19 @@ config SANDBOX_SPI
 		};
 	  };
 
+config SANDBOX_SPI_MAX_BUS
+	int
+	depends on SANDBOX
+	default 1
+
+config SANDBOX_SPI_MAX_CS
+	int
+	depends on SANDBOX
+	default 10
+
 config SPI_ASPEED_SMC
 	bool "ASPEED SPI flash controller driver"
 	depends on DM_SPI && SPI_MEM
-	default n
 	help
 	  Enable ASPEED SPI flash controller driver for AST2500
 	  and AST2600 SoCs.
@@ -450,6 +477,14 @@ config SOFT_SPI
 	help
 	 Enable Soft SPI driver. This driver is to use GPIO simulate
 	 the SPI protocol.
+
+config SPI_SN_F_OSPI
+	tristate "Socionext F_OSPI SPI flash controller"
+	depends on SPI_MEM
+	help
+	  This enables support for the Socionext F_OSPI controller
+	  for connecting an SPI flash memory over up to 8-bit wide bus.
+	  It supports indirect access mode only.
 
 config SPI_SUNXI
 	bool "Allwinner SoC SPI controllers"
@@ -555,6 +590,7 @@ endif # if DM_SPI
 
 config FSL_ESPI
 	bool "Freescale eSPI driver"
+	depends on MPC85xx
 	imply SPI_FLASH_BAR
 	help
 	  Enable the Freescale eSPI driver. This driver can be used to

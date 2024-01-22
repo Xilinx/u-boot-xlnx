@@ -11,7 +11,6 @@
  * Copyright (C) 2018, Bin Meng <bmeng.cn@gmail.com>
  */
 
-#include <common.h>
 #include <asm/encoding.h>
 
 #ifdef CONFIG_32BIT
@@ -27,7 +26,7 @@
 	.text
 
 	/* trap entry */
-	.align 2
+	.align 6
 	.global trap_entry
 trap_entry:
 	addi sp, sp, -32 * REGBYTES

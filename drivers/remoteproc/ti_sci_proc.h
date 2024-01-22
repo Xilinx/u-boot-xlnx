@@ -2,7 +2,7 @@
 /*
  * Texas Instruments TI-SCI Processor Controller Helper Functions
  *
- * Copyright (C) 2018-2019 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2018-2019 Texas Instruments Incorporated - https://www.ti.com/
  *	Lokesh Vutla <lokeshvutla@ti.com>
  *	Suman Anna <s-anna@ti.com>
  */
@@ -10,6 +10,7 @@
 #ifndef REMOTEPROC_TI_SCI_PROC_H
 #define REMOTEPROC_TI_SCI_PROC_H
 
+#include <linux/printk.h>
 #define TISCI_INVALID_HOST 0xff
 
 /**

@@ -435,7 +435,7 @@ static void set_bulk_out_req_length(struct fsg_common *common,
 static struct ums *ums;
 static int ums_count;
 static struct fsg_common *the_fsg_common;
-static unsigned int controller_index;
+static struct udevice *udcdev;
 
 static int fsg_set_halt(struct fsg_dev *fsg, struct usb_ep *ep)
 {
@@ -680,7 +680,7 @@ static int sleep_thread(struct fsg_common *common)
 			k = 0;
 		}
 
-		usb_gadget_handle_interrupts(controller_index);
+		dm_usb_gadget_handle_interrupts(udcdev);
 	}
 	common->thread_wakeup_needed = 0;
 	return rc;
@@ -1117,7 +1117,7 @@ static int do_request_sense(struct fsg_common *common, struct fsg_buffhd *bh)
 {
 	struct fsg_lun	*curlun = &common->luns[common->lun];
 	u8		*buf = (u8 *) bh->buf;
-	u32		sd, sdinfo;
+	u32		sd, sdinfo = 0;
 	int		valid;
 
 	/*
@@ -1145,7 +1145,6 @@ static int do_request_sense(struct fsg_common *common, struct fsg_buffhd *bh)
 	if (!curlun) {		/* Unsupported LUNs are okay */
 		common->bad_lun_okay = 1;
 		sd = SS_LOGICAL_UNIT_NOT_SUPPORTED;
-		sdinfo = 0;
 		valid = 0;
 	} else {
 		sd = curlun->sense_data;
@@ -2765,11 +2764,11 @@ int fsg_add(struct usb_configuration *c)
 	return fsg_bind_config(c->cdev, c, fsg_common);
 }
 
-int fsg_init(struct ums *ums_devs, int count, unsigned int controller_idx)
+int fsg_init(struct ums *ums_devs, int count, struct udevice *udc)
 {
 	ums = ums_devs;
 	ums_count = count;
-	controller_index = controller_idx;
+	udcdev = udc;
 
 	return 0;
 }

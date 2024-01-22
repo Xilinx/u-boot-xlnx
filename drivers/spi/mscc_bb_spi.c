@@ -124,11 +124,11 @@ int mscc_bb_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	u8		*rxd = din;
 
 	debug("spi_xfer: slave %s:%s cs%d mode %d, dout %p din %p bitlen %u\n",
-	      dev->parent->name, dev->name, plat->cs,  plat->mode, dout,
+	      dev->parent->name, dev->name, plat->cs[0],  plat->mode, dout,
 	      din, bitlen);
 
 	if (flags & SPI_XFER_BEGIN)
-		mscc_bb_spi_cs_activate(priv, plat->mode, plat->cs);
+		mscc_bb_spi_cs_activate(priv, plat->mode, plat->cs[0]);
 
 	count = bitlen / 8;
 	for (i = 0; i < count; i++) {
@@ -217,7 +217,7 @@ static int mscc_bb_spi_probe(struct udevice *bus)
 
 	debug("%s: loaded, priv %p\n", __func__, priv);
 
-	priv->regs = (void __iomem *)dev_read_addr(bus);
+	priv->regs = dev_read_addr_ptr(bus);
 
 	priv->deactivate_delay_us =
 		dev_read_u32_default(bus, "spi-deactivate-delay", 0);

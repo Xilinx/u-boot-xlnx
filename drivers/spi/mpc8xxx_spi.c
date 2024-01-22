@@ -16,6 +16,7 @@
 #include <dm/device_compat.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
+#include <asm/arch/soc.h>
 
 enum {
 	SPI_EV_NE = BIT(31 - 22),	/* Receiver Not Empty */
@@ -30,6 +31,7 @@ enum {
 	SPI_MODE_REV   = BIT(31 - 5),	/* Reverse mode - MSB first */
 	SPI_MODE_MS    = BIT(31 - 6),	/* Always master */
 	SPI_MODE_EN    = BIT(31 - 7),	/* Enable interface */
+	SPI_MODE_OP    = BIT(31 - 17),	/* CPU Mode, QE otherwise */
 
 	SPI_MODE_LEN_MASK = 0xf00000,
 	SPI_MODE_LEN_SHIFT = 20,
@@ -54,7 +56,7 @@ static int mpc8xxx_spi_of_to_plat(struct udevice *dev)
 	struct clk clk;
 	int ret;
 
-	priv->spi = (spi8xxx_t *)dev_read_addr(dev);
+	priv->spi = dev_read_addr_ptr(dev);
 
 	ret = gpio_request_list_by_name(dev, "gpios", priv->gpios,
 					ARRAY_SIZE(priv->gpios), GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
@@ -89,6 +91,9 @@ static int mpc8xxx_spi_probe(struct udevice *dev)
 	 */
 	out_be32(&priv->spi->mode, SPI_MODE_REV | SPI_MODE_MS);
 
+	if (dev_get_driver_data(dev) == SOC_MPC832X)
+		setbits_be32(&priv->spi->mode, SPI_MODE_OP);
+
 	/* set len to 8 bits */
 	setbits_be32(&spi->mode, (8 - 1) << SPI_MODE_LEN_SHIFT);
 
@@ -109,7 +114,7 @@ static void mpc8xxx_spi_cs_activate(struct udevice *dev)
 	struct mpc8xxx_priv *priv = dev_get_priv(dev->parent);
 	struct dm_spi_slave_plat *plat = dev_get_parent_plat(dev);
 
-	dm_gpio_set_value(&priv->gpios[plat->cs], 1);
+	dm_gpio_set_value(&priv->gpios[plat->cs[0]], 1);
 }
 
 static void mpc8xxx_spi_cs_deactivate(struct udevice *dev)
@@ -117,7 +122,7 @@ static void mpc8xxx_spi_cs_deactivate(struct udevice *dev)
 	struct mpc8xxx_priv *priv = dev_get_priv(dev->parent);
 	struct dm_spi_slave_plat *plat = dev_get_parent_plat(dev);
 
-	dm_gpio_set_value(&priv->gpios[plat->cs], 0);
+	dm_gpio_set_value(&priv->gpios[plat->cs[0]], 0);
 }
 
 static int mpc8xxx_spi_xfer(struct udevice *dev, uint bitlen,
@@ -130,12 +135,13 @@ static int mpc8xxx_spi_xfer(struct udevice *dev, uint bitlen,
 	u32 tmpdin = 0, tmpdout = 0, n;
 	const u8 *cout = dout;
 	u8 *cin = din;
+	ulong type = dev_get_driver_data(bus);
 
 	debug("%s: slave %s:%u dout %08X din %08X bitlen %u\n", __func__,
-	      bus->name, plat->cs, (uint)dout, (uint)din, bitlen);
-	if (plat->cs >= priv->cs_count) {
+	      bus->name, plat->cs[0], (uint)dout, (uint)din, bitlen);
+	if (plat->cs[0] >= priv->cs_count) {
 		dev_err(dev, "chip select index %d too large (cs_count=%d)\n",
-			plat->cs, priv->cs_count);
+			plat->cs[0], priv->cs_count);
 		return -EINVAL;
 	}
 	if (bitlen % 8) {
@@ -156,6 +162,9 @@ static int mpc8xxx_spi_xfer(struct udevice *dev, uint bitlen,
 
 		if (cout)
 			tmpdout = *cout++;
+
+		if (type == SOC_MPC832X)
+			tmpdout <<= 24;
 
 		/* Write the data out */
 		out_be32(&spi->tx, tmpdout);
@@ -178,6 +187,9 @@ static int mpc8xxx_spi_xfer(struct udevice *dev, uint bitlen,
 
 			tmpdin = in_be32(&spi->rx);
 			setbits_be32(&spi->event, SPI_EV_NE);
+
+			if (type == SOC_MPC832X)
+				tmpdin >>= 16;
 
 			if (cin)
 				*cin++ = tmpdin;
@@ -271,6 +283,7 @@ static const struct dm_spi_ops mpc8xxx_spi_ops = {
 
 static const struct udevice_id mpc8xxx_spi_ids[] = {
 	{ .compatible = "fsl,spi" },
+	{ .compatible = "fsl,mpc832x-spi", .data = SOC_MPC832X },
 	{ }
 };
 

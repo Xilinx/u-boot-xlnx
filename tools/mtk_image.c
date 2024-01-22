@@ -510,7 +510,7 @@ static int mtk_image_verify_header(unsigned char *ptr, int image_size,
 	return -1;
 }
 
-static void mtk_image_print_header(const void *ptr)
+static void mtk_image_print_header(const void *ptr, struct image_tool_params *params)
 {
 	struct legacy_img_hdr *hdr = (struct legacy_img_hdr *)ptr;
 	union lk_hdr *lk = (union lk_hdr *)ptr;
@@ -542,11 +542,13 @@ static void put_brom_layout_header(struct brom_layout_header *hdr, int type)
 	hdr->type = cpu_to_le32(type);
 }
 
-static void put_ghf_common_header(struct gfh_common_header *gfh, int size,
-				  int type, int ver)
+static void put_ghf_common_header(struct gfh_common_header *gfh, uint16_t size,
+				  uint16_t type, uint8_t ver)
 {
-	memcpy(gfh->magic, GFH_HEADER_MAGIC, sizeof(gfh->magic));
-	gfh->version = ver;
+	uint32_t magic_version = GFH_HEADER_MAGIC |
+				 (uint32_t)ver << GFH_HEADER_VERSION_SHIFT;
+
+	gfh->magic_version = cpu_to_le32(magic_version);
 	gfh->size = cpu_to_le16(size);
 	gfh->type = cpu_to_le16(type);
 }

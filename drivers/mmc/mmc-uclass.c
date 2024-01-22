@@ -412,7 +412,7 @@ int mmc_bind(struct udevice *dev, struct mmc *mmc, const struct mmc_config *cfg)
 	debug("%s: alias devnum=%d\n", __func__, dev_seq(dev));
 
 	ret = blk_create_devicef(dev, "mmc_blk", "blk", UCLASS_MMC,
-				 dev_seq(dev), 512, 0, &bdev);
+				 dev_seq(dev), DEFAULT_BLKSZ, 0, &bdev);
 	if (ret) {
 		debug("Cannot create block device\n");
 		return ret;
@@ -421,7 +421,7 @@ int mmc_bind(struct udevice *dev, struct mmc *mmc, const struct mmc_config *cfg)
 	mmc->cfg = cfg;
 	mmc->priv = dev;
 
-	ret = bootdev_setup_for_dev(dev, "mmc_bootdev");
+	ret = bootdev_setup_for_sibling_blk(bdev, "mmc_bootdev");
 	if (ret)
 		return log_msg_ret("bootdev", ret);
 

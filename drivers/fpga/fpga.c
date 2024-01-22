@@ -13,11 +13,6 @@
 #include <lattice.h>
 #include <dm/device_compat.h>
 
-/* Local definitions */
-#ifndef CONFIG_MAX_FPGA_DEVICES
-#define CONFIG_MAX_FPGA_DEVICES		5
-#endif
-
 /* Local static data */
 static int next_desc = FPGA_INVALID_DEVICE;
 static fpga_desc desc_table[CONFIG_MAX_FPGA_DEVICES];
@@ -249,6 +244,21 @@ int fpga_loads(int devnum, const void *buf, size_t size,
 }
 #endif
 
+static int fpga_load_event_notify(const void *buf, size_t bsize, int result)
+{
+	if (CONFIG_IS_ENABLED(EVENT)) {
+		struct event_fpga_load load = {
+			.buf = buf,
+			.bsize = bsize,
+			.result = result
+		};
+
+		return event_notify(EVT_FPGA_LOAD, &load, sizeof(load));
+	}
+
+	return 0;
+}
+
 /*
  * Generic multiplexing code
  */
@@ -256,6 +266,7 @@ int fpga_load(int devnum, const void *buf, size_t bsize, bitstream_type bstype,
 	      int flags)
 {
 	int ret_val = FPGA_FAIL;           /* assume failure */
+	int ret_notify;
 	const fpga_desc *desc = fpga_validate(devnum, buf, bsize,
 					      (char *)__func__);
 
@@ -288,6 +299,10 @@ int fpga_load(int devnum, const void *buf, size_t bsize, bitstream_type bstype,
 			       __func__, desc->devtype);
 		}
 	}
+
+	ret_notify = fpga_load_event_notify(buf, bsize, ret_val);
+	if (ret_notify)
+		return ret_notify;
 
 	return ret_val;
 }

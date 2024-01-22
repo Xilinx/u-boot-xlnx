@@ -36,35 +36,13 @@
 #include <mapmem.h>
 #include <asm/global_data.h>
 #include <linux/bitops.h>
+#include <linux/printk.h>
 #include <u-boot/crc.h>
 #include <linux/stddef.h>
 #include <asm/byteorder.h>
 #include <asm/io.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-#if	defined(CONFIG_ENV_IS_IN_EEPROM)	|| \
-	defined(CONFIG_ENV_IS_IN_FLASH)		|| \
-	defined(CONFIG_ENV_IS_IN_MMC)		|| \
-	defined(CONFIG_ENV_IS_IN_FAT)		|| \
-	defined(CONFIG_ENV_IS_IN_EXT4)		|| \
-	defined(CONFIG_ENV_IS_IN_NAND)		|| \
-	defined(CONFIG_ENV_IS_IN_NVRAM)		|| \
-	defined(CONFIG_ENV_IS_IN_ONENAND)	|| \
-	defined(CONFIG_ENV_IS_IN_SATA)		|| \
-	defined(CONFIG_ENV_IS_IN_SPI_FLASH)	|| \
-	defined(CONFIG_ENV_IS_IN_REMOTE)	|| \
-	defined(CONFIG_ENV_IS_IN_UBI)
-
-#define ENV_IS_IN_DEVICE
-
-#endif
-
-#if	!defined(ENV_IS_IN_DEVICE)		&& \
-	!defined(CONFIG_ENV_IS_NOWHERE)
-# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|MMC|FAT|EXT4|\
-NAND|NVRAM|ONENAND|SATA|SPI_FLASH|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
-#endif
 
 /*
  * Maximum expected input data size for import command
@@ -232,7 +210,7 @@ static int _do_env_set(int flag, int argc, char *const argv[], int env_flag)
 
 	debug("Initial value for argc=%d\n", argc);
 
-#if CONFIG_IS_ENABLED(CMD_NVEDIT_EFI)
+#if !IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_CMD_NVEDIT_EFI)
 	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'e')
 		return do_env_set_efi(NULL, flag, --argc, ++argv);
 #endif
@@ -430,11 +408,7 @@ static int print_active_callback(struct env_entry *entry)
 	for (i = 0, clbkp = ll_entry_start(struct env_clbk_tbl, env_clbk);
 	     i < num_callbacks;
 	     i++, clbkp++) {
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-		if (entry->callback == clbkp->callback + gd->reloc_off)
-#else
 		if (entry->callback == clbkp->callback)
-#endif
 			break;
 	}
 
@@ -597,7 +571,7 @@ static int do_env_edit(struct cmd_tbl *cmdtp, int flag, int argc,
 }
 #endif /* CONFIG_CMD_EDITENV */
 
-#if defined(CONFIG_CMD_SAVEENV) && defined(ENV_IS_IN_DEVICE)
+#if defined(CONFIG_CMD_SAVEENV) && !IS_ENABLED(CONFIG_ENV_IS_DEFAULT)
 static int do_env_save(struct cmd_tbl *cmdtp, int flag, int argc,
 		       char *const argv[])
 {
@@ -1026,6 +1000,7 @@ static int do_env_indirect(struct cmd_tbl *cmdtp, int flag,
 	char *from = argv[2];
 	char *default_value = NULL;
 	int ret = 0;
+	char *val;
 
 	if (argc < 3 || argc > 4) {
 		return CMD_RET_USAGE;
@@ -1035,18 +1010,14 @@ static int do_env_indirect(struct cmd_tbl *cmdtp, int flag,
 		default_value = argv[3];
 	}
 
-	if (env_get(from) == NULL && default_value == NULL) {
+	val = env_get(from) ?: default_value;
+	if (!val) {
 		printf("## env indirect: Environment variable for <from> (%s) does not exist.\n", from);
 
 		return CMD_RET_FAILURE;
 	}
 
-	if (env_get(from) == NULL) {
-		ret = env_set(to, default_value);
-	}
-	else {
-		ret = env_set(to, env_get(from));
-	}
+	ret = env_set(to, val);
 
 	if (ret == 0) {
 		return CMD_RET_SUCCESS;
@@ -1109,7 +1080,7 @@ static int do_env_info(struct cmd_tbl *cmdtp, int flag,
 	int eval_flags = 0;
 	int eval_results = 0;
 	bool quiet = false;
-#if defined(CONFIG_CMD_SAVEENV) && defined(ENV_IS_IN_DEVICE)
+#if defined(CONFIG_CMD_SAVEENV) && !IS_ENABLED(CONFIG_ENV_IS_DEFAULT)
 	enum env_location loc;
 #endif
 
@@ -1152,7 +1123,7 @@ static int do_env_info(struct cmd_tbl *cmdtp, int flag,
 
 	/* evaluate whether environment can be persisted */
 	if (eval_flags & ENV_INFO_IS_PERSISTED) {
-#if defined(CONFIG_CMD_SAVEENV) && defined(ENV_IS_IN_DEVICE)
+#if defined(CONFIG_CMD_SAVEENV) && !IS_ENABLED(CONFIG_ENV_IS_DEFAULT)
 		loc = env_get_location(ENVOP_SAVE, gd->env_load_prio);
 		if (ENVL_NOWHERE != loc && ENVL_UNKNOWN != loc) {
 			if (!quiet)
@@ -1233,7 +1204,7 @@ static struct cmd_tbl cmd_env_sub[] = {
 #if defined(CONFIG_CMD_RUN)
 	U_BOOT_CMD_MKENT(run, CONFIG_SYS_MAXARGS, 1, do_run, "", ""),
 #endif
-#if defined(CONFIG_CMD_SAVEENV) && defined(ENV_IS_IN_DEVICE)
+#if defined(CONFIG_CMD_SAVEENV) && !IS_ENABLED(CONFIG_ENV_IS_DEFAULT)
 	U_BOOT_CMD_MKENT(save, 1, 0, do_env_save, "", ""),
 #if defined(CONFIG_CMD_ERASEENV)
 	U_BOOT_CMD_MKENT(erase, 1, 0, do_env_erase, "", ""),
@@ -1247,13 +1218,6 @@ static struct cmd_tbl cmd_env_sub[] = {
 	U_BOOT_CMD_MKENT(exists, 2, 0, do_env_exists, "", ""),
 #endif
 };
-
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-void env_reloc(void)
-{
-	fixup_cmdtable(cmd_env_sub, ARRAY_SIZE(cmd_env_sub));
-}
-#endif
 
 static int do_env(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
@@ -1274,8 +1238,7 @@ static int do_env(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	return CMD_RET_USAGE;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char env_help_text[] =
+U_BOOT_LONGHELP(env,
 #if defined(CONFIG_CMD_ASKENV)
 	"ask name [message] [size] - ask for environment variable\nenv "
 #endif
@@ -1324,7 +1287,7 @@ static char env_help_text[] =
 #if defined(CONFIG_CMD_RUN)
 	"env run var [...] - run commands in an environment variable\n"
 #endif
-#if defined(CONFIG_CMD_SAVEENV) && defined(ENV_IS_IN_DEVICE)
+#if defined(CONFIG_CMD_SAVEENV) && !IS_ENABLED(CONFIG_ENV_IS_DEFAULT)
 	"env save - save environment\n"
 #if defined(CONFIG_CMD_ERASEENV)
 	"env erase - erase environment\n"
@@ -1340,8 +1303,7 @@ static char env_help_text[] =
 	"env set -e [-nv][-bs][-rt][-at][-a][-i addr:size][-v] name [arg ...]\n"
 	"    - set UEFI variable; unset if '-i' or 'arg' not specified\n"
 #endif
-	"env set [-f] name [arg ...]\n";
-#endif
+	"env set [-f] name [arg ...]\n");
 
 U_BOOT_CMD(
 	env, CONFIG_SYS_MAXARGS, 1, do_env,

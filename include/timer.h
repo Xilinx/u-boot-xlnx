@@ -9,11 +9,16 @@
 #define timer_get_ops(dev)	((struct timer_ops *)(dev)->driver->ops)
 
 /**
- * dm_timer_init() - initialize a timer for time keeping. On success
- * initializes gd->timer so that lib/timer can use it for future
- * referrence.
+ * dm_timer_init() - set up a timer for time keeping
  *
- * Return: 0 on success or error number
+ * Sets up gd->timer if the device is not already bound, making sure it is
+ * probed and ready for use
+ *
+ * On success, inits gd->timer so that lib/timer can use it for future reference
+ *
+ * Returns: 0 on success, -EAGAIN if driver model is not ready yet, -ENODEV if
+ * no timer could be found, other error if the timer could not be bound or
+ * probed
  */
 int dm_timer_init(void);
 
@@ -50,10 +55,10 @@ u64 timer_conv_64(u32 count);
 int timer_get_count(struct udevice *dev, u64 *count);
 
 /**
- * timer_get_rate() - Get the timer input clock frequency
+ * timer_get_rate() - Get the timer input clock frequency in Hz
  * @dev: The timer device
  *
- * Return: the timer input clock frequency
+ * Return: the timer input clock frequency in Hz
  */
 unsigned long timer_get_rate(struct udevice *dev);
 
@@ -82,7 +87,7 @@ struct timer_ops {
 /**
  * struct timer_dev_priv - information about a device used by the uclass
  *
- * @clock_rate: the timer input clock frequency
+ * @clock_rate: the timer input clock frequency in Hz
  */
 struct timer_dev_priv {
 	unsigned long clock_rate;

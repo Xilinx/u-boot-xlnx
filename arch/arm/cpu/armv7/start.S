@@ -134,8 +134,8 @@ ENTRY(c_runtime_cpu_setup)
  */
 #if !CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
 	mcr	p15, 0, r0, c7, c5, 0	@ invalidate icache
-	mcr     p15, 0, r0, c7, c10, 4	@ DSB
-	mcr     p15, 0, r0, c7, c5, 4	@ ISB
+	dsb
+	isb
 #endif
 
 	bx	lr
@@ -151,16 +151,14 @@ ENDPROC(c_runtime_cpu_setup)
  * Don't save anything to stack even if compiled with -O0
  *
  *************************************************************************/
-ENTRY(save_boot_params)
+WEAK(save_boot_params)
 	b	save_boot_params_ret		@ back to my caller
 ENDPROC(save_boot_params)
-	.weak	save_boot_params
 
 #ifdef CONFIG_ARMV7_LPAE
-ENTRY(switch_to_hypervisor)
+WEAK(switch_to_hypervisor)
 	b	switch_to_hypervisor_ret
 ENDPROC(switch_to_hypervisor)
-	.weak	switch_to_hypervisor
 #endif
 
 /*************************************************************************
@@ -190,8 +188,8 @@ ENTRY(cpu_init_cp15)
 	mcr	p15, 0, r0, c8, c7, 0	@ invalidate TLBs
 	mcr	p15, 0, r0, c7, c5, 0	@ invalidate icache
 	mcr	p15, 0, r0, c7, c5, 6	@ invalidate BP array
-	mcr     p15, 0, r0, c7, c10, 4	@ DSB
-	mcr     p15, 0, r0, c7, c5, 4	@ ISB
+	dsb
+	isb
 
 	/*
 	 * disable MMU stuff and caches

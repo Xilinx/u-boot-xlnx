@@ -112,7 +112,6 @@
 #define applet_name "hush"
 #include "standalone.h"
 #define hush_main main
-#undef CONFIG_FEATURE_SH_FANCY_PROMPT
 #define BB_BANNER
 #endif
 #endif
@@ -325,7 +324,7 @@ typedef struct {
 /* I can almost use ordinary FILE *.  Is open_memstream() universally
  * available?  Where is it documented? */
 struct in_str {
-	const char *p;
+	const unsigned char *p;
 #ifndef __U_BOOT__
 	char peek_buf[2];
 #endif
@@ -1902,7 +1901,7 @@ static int run_list_real(struct pipe *pi)
 			last_return_code = -rcode - 2;
 			return -2;	/* exit */
 		}
-		last_return_code=(rcode == 0) ? 0 : 1;
+		last_return_code = rcode;
 #endif
 #ifndef __U_BOOT__
 		pi->num_progs = save_num_progs; /* restore number of programs */
@@ -2172,11 +2171,17 @@ int set_local_var(const char *s, int flg_export)
 	 * NAME=VALUE format.  So the first order of business is to
 	 * split 's' on the '=' into 'name' and 'value' */
 	value = strchr(name, '=');
-	if (value == NULL || *(value + 1) == 0) {
+	if (!value) {
 		free(name);
 		return -1;
 	}
 	*value++ = 0;
+
+	if (!*value) {
+		unset_local_var(name);
+		free(name);
+		return 0;
+	}
 
 	for(cur = top_vars; cur; cur = cur->next) {
 		if(strcmp(cur->name, name)==0)
@@ -3212,7 +3217,15 @@ static int parse_stream_outer(struct in_str *inp, int flag)
 					printf("exit not allowed from main input shell.\n");
 					continue;
 				}
-				break;
+				/*
+				 * DANGER
+				 * Return code -2 is special in this context,
+				 * it indicates exit from inner pipe instead
+				 * of return code itself, the return code is
+				 * stored in 'last_return_code' variable!
+				 * DANGER
+				 */
+				return -2;
 			}
 			if (code == -1)
 			    flag_repeat = 0;
@@ -3249,9 +3262,9 @@ int parse_string_outer(const char *s, int flag)
 #endif	/* __U_BOOT__ */
 {
 	struct in_str input;
+	int rcode;
 #ifdef __U_BOOT__
 	char *p = NULL;
-	int rcode;
 	if (!s)
 		return 1;
 	if (!*s)
@@ -3263,11 +3276,12 @@ int parse_string_outer(const char *s, int flag)
 		setup_string_in_str(&input, p);
 		rcode = parse_stream_outer(&input, flag);
 		free(p);
-		return rcode;
+		return rcode == -2 ? last_return_code : rcode;
 	} else {
 #endif
 	setup_string_in_str(&input, s);
-	return parse_stream_outer(&input, flag);
+	rcode = parse_stream_outer(&input, flag);
+	return rcode == -2 ? last_return_code : rcode;
 #ifdef __U_BOOT__
 	}
 #endif
@@ -3287,23 +3301,10 @@ int parse_file_outer(void)
 	setup_file_in_str(&input);
 #endif
 	rcode = parse_stream_outer(&input, FLAG_PARSE_SEMICOLON);
-	return rcode;
+	return rcode == -2 ? last_return_code : rcode;
 }
 
 #ifdef __U_BOOT__
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-static void u_boot_hush_reloc(void)
-{
-	unsigned long addr;
-	struct reserved_combo *r;
-
-	for (r=reserved_list; r<reserved_list+NRES; r++) {
-		addr = (ulong) (r->literal) + gd->reloc_off;
-		r->literal = (char *)addr;
-	}
-}
-#endif
-
 int u_boot_hush_start(void)
 {
 	if (top_vars == NULL) {
@@ -3313,9 +3314,6 @@ int u_boot_hush_start(void)
 		top_vars->next = NULL;
 		top_vars->flg_export = 0;
 		top_vars->flg_read_only = 1;
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-		u_boot_hush_reloc();
-#endif
 	}
 	return 0;
 }

@@ -16,6 +16,7 @@
 #include <asm/cache.h>
 #include <asm/byteorder.h>	/* for nton* / ntoh* stuff */
 #include <env.h>
+#include <hexdump.h>
 #include <log.h>
 #include <time.h>
 #include <linux/if_ether.h>
@@ -29,6 +30,7 @@ struct udevice;
 #define DEBUG_DEV_PKT 0		/* Packets or info directed to the device */
 #define DEBUG_NET_PKT 0		/* Packets on info on the network at large */
 #define DEBUG_INT_STATE 0	/* Internal network state changes */
+#define DEBUG_NET_PKT_TRACE 0	/* Trace all packet data */
 
 /*
  *	The number of receive packet buffers, and the required packet buffer
@@ -66,6 +68,21 @@ struct in_addr {
 int do_tftpb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[]);
 
 /**
+ * dhcp_run() - Run DHCP on the current ethernet device
+ *
+ * This sets the autoload variable, then puts it back to similar to its original
+ * state (y, n or unset).
+ *
+ * @addr: Address to load the file into (0 if @autoload is false)
+ * @fname: Filename of file to load (NULL if @autoload is false or to use the
+ * default filename)
+ * @autoload: true to load the file, false to just get the network IP
+ * @return 0 if OK, -EINVAL if the environment failed, -ENOENT if ant file was
+ * not found
+ */
+int dhcp_run(ulong addr, const char *fname, bool autoload);
+
+/**
  * An incoming packet handler.
  * @param pkt    pointer to the application packet
  * @param dport  destination UDP port
@@ -101,7 +118,6 @@ enum eth_state_t {
 	ETH_STATE_ACTIVE
 };
 
-#ifdef CONFIG_DM_ETH
 /**
  * struct eth_pdata - Platform data for Ethernet MAC controllers
  *
@@ -153,6 +169,9 @@ enum eth_recv_flags {
  *		    to the network stack. This function should fill in the
  *		    eth_pdata::enetaddr field - optional
  * set_promisc: Enable or Disable promiscuous mode
+ * get_sset_count: Number of statistics counters
+ * get_string: Names of the statistic counters
+ * get_stats: The values of the statistic counters
  */
 struct eth_ops {
 	int (*start)(struct udevice *dev);
@@ -164,6 +183,9 @@ struct eth_ops {
 	int (*write_hwaddr)(struct udevice *dev);
 	int (*read_rom_hwaddr)(struct udevice *dev);
 	int (*set_promisc)(struct udevice *dev, bool enable);
+	int (*get_sset_count)(struct udevice *dev);
+	void (*get_strings)(struct udevice *dev, u8 *data);
+	void (*get_stats)(struct udevice *dev, u64 *data);
 };
 
 #define eth_get_ops(dev) ((struct eth_ops *)(dev)->driver->ops)
@@ -180,76 +202,6 @@ unsigned char *eth_get_ethaddr(void); /* get the current device MAC */
 int eth_is_active(struct udevice *dev); /* Test device for active state */
 int eth_init_state_only(void); /* Set active state */
 void eth_halt_state_only(void); /* Set passive state */
-#endif
-
-#ifndef CONFIG_DM_ETH
-struct eth_device {
-#define ETH_NAME_LEN 20
-	char name[ETH_NAME_LEN];
-	unsigned char enetaddr[ARP_HLEN];
-	phys_addr_t iobase;
-	int state;
-
-	int (*init)(struct eth_device *eth, struct bd_info *bd);
-	int (*send)(struct eth_device *, void *packet, int length);
-	int (*recv)(struct eth_device *);
-	void (*halt)(struct eth_device *);
-	int (*mcast)(struct eth_device *, const u8 *enetaddr, int join);
-	int (*write_hwaddr)(struct eth_device *eth);
-	struct eth_device *next;
-	int index;
-	void *priv;
-};
-
-int eth_register(struct eth_device *dev);/* Register network device */
-int eth_unregister(struct eth_device *dev);/* Remove network device */
-
-extern struct eth_device *eth_current;
-
-static __always_inline struct eth_device *eth_get_dev(void)
-{
-	return eth_current;
-}
-struct eth_device *eth_get_dev_by_name(const char *devname);
-struct eth_device *eth_get_dev_by_index(int index); /* get dev @ index */
-
-/* get the current device MAC */
-static inline unsigned char *eth_get_ethaddr(void)
-{
-	if (eth_current)
-		return eth_current->enetaddr;
-	return NULL;
-}
-
-/* Used only when NetConsole is enabled */
-int eth_is_active(struct eth_device *dev); /* Test device for active state */
-/* Set active state */
-static __always_inline int eth_init_state_only(void)
-{
-	eth_get_dev()->state = ETH_STATE_ACTIVE;
-
-	return 0;
-}
-/* Set passive state */
-static __always_inline void eth_halt_state_only(void)
-{
-	eth_get_dev()->state = ETH_STATE_PASSIVE;
-}
-
-/*
- * Set the hardware address for an ethernet interface based on 'eth%daddr'
- * environment variable (or just 'ethaddr' if eth_number is 0).
- * Args:
- *	base_name - base name for device (normally "eth")
- *	eth_number - value of %d (0 for first device of this type)
- * Returns:
- *	0 is success, non-zero is error status from driver.
- */
-int eth_write_hwaddr(struct eth_device *dev, const char *base_name,
-		     int eth_number);
-
-int usb_eth_initialize(struct bd_info *bi);
-#endif
 
 int eth_initialize(void);		/* Initialize network subsystem */
 void eth_try_another(int first_restart);	/* Change the device */
@@ -540,6 +492,8 @@ extern char	net_hostname[32];	/* Our hostname */
 #ifdef CONFIG_NET
 extern char	net_root_path[CONFIG_BOOTP_MAX_ROOT_PATH_LEN];	/* Our root path */
 #endif
+/* Indicates whether the pxe path prefix / config file was specified in dhcp option */
+extern char *pxelinux_configfile;
 /** END OF BOOTP EXTENTIONS **/
 extern u8		net_ethaddr[ARP_HLEN];		/* Our ethernet address */
 extern u8		net_server_ethaddr[ARP_HLEN];	/* Boot server enet address */
@@ -560,8 +514,9 @@ extern ushort		net_native_vlan;	/* Our Native VLAN */
 extern int		net_restart_wrap;	/* Tried all network devices */
 
 enum proto_t {
-	BOOTP, RARP, ARP, TFTPGET, DHCP, PING, PING6, DNS, NFS, CDP, NETCONS,
-	SNTP, TFTPSRV, TFTPPUT, LINKLOCAL, FASTBOOT, WOL, UDP, NCSI, WGET
+	BOOTP, RARP, ARP, TFTPGET, DHCP, DHCP6, PING, PING6, DNS, NFS, CDP,
+	NETCONS, SNTP, TFTPSRV, TFTPPUT, LINKLOCAL, FASTBOOT_UDP, FASTBOOT_TCP,
+	WOL, UDP, NCSI, WGET, RS
 };
 
 extern char	net_boot_file_name[1024];/* Boot File name */
@@ -687,6 +642,8 @@ uchar * net_get_async_tx_pkt_buf(void);
 /* Transmit a packet */
 static inline void net_send_packet(uchar *pkt, int len)
 {
+	if (DEBUG_NET_PKT_TRACE)
+		print_hex_dump_bytes("tx: ", DUMP_PREFIX_OFFSET, pkt, len);
 	/* Currently no way to return errors from eth_send() */
 	(void) eth_send(pkt, len);
 }
@@ -956,5 +913,21 @@ static inline struct in_addr env_get_ip(char *var)
  * This should be implemented by boards if CONFIG_RESET_PHY_R is enabled
  */
 void reset_phy(void);
+
+#if CONFIG_IS_ENABLED(NET)
+/**
+ * eth_set_enable_bootdevs() - Enable or disable binding of Ethernet bootdevs
+ *
+ * These get in the way of bootstd testing, so are normally disabled by tests.
+ * This provide control of this setting. It only affects binding of Ethernet
+ * devices, so if that has already happened, this flag does nothing.
+ *
+ * @enable: true to enable binding of bootdevs when binding new Ethernet
+ * devices, false to disable it
+ */
+void eth_set_enable_bootdevs(bool enable);
+#else
+static inline void eth_set_enable_bootdevs(bool enable) {}
+#endif
 
 #endif /* __NET_H__ */

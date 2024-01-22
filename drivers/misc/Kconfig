@@ -92,10 +92,6 @@ config ROCKCHIP_EFUSE
 	  or through child-nodes that are generated based on the e-fuse map
 	  retrieved from the DTS.
 
-	  This driver currently supports the RK3399 only, but can easily be
-	  extended (by porting the read function from the Linux kernel sources)
-	  to support other recent Rockchip devices.
-
 config ROCKCHIP_OTP
 	bool "Rockchip OTP Support"
 	depends on MISC
@@ -105,12 +101,27 @@ config ROCKCHIP_OTP
 	  addressing and a length or through child-nodes that are generated
 	  based on the e-fuse map retrieved from the DTS.
 
+config ROCKCHIP_IODOMAIN
+	bool "Rockchip IO-domain driver support"
+	depends on DM_REGULATOR && ARCH_ROCKCHIP
+	default y if ROCKCHIP_RK3568
+	help
+	  Enable support for IO-domains in Rockchip SoCs. It is necessary
+	  for the IO-domain setting of the SoC to match the voltage supplied
+	  by the regulators.
+
 config SIFIVE_OTP
 	bool "SiFive eMemory OTP driver"
 	depends on MISC
 	help
 	  Enable support for reading and writing the eMemory OTP on the
 	  SiFive SoCs.
+
+config SMSC_LPC47M
+	bool "LPC47M SMSC driver"
+
+config SMSC_SIO1007
+	bool "SIO1007 SMSC driver"
 
 config VEXPRESS_CONFIG
 	bool "Enable support for Arm Versatile Express config bus"
@@ -119,6 +130,14 @@ config VEXPRESS_CONFIG
 	  If you say Y here, you will get support for accessing the
 	  configuration bus on the Arm Versatile Express boards via
 	  a sysreg driver.
+
+config CBMEM_CONSOLE
+	bool "Write console output to coreboot cbmem"
+	depends on X86
+	help
+	  Enables console output to the cbmem console, which is a memory
+	  region set up by coreboot to hold a record of all console output.
+	  Enable this only if booting from coreboot.
 
 config CMD_CROS_EC
 	bool "Enable crosec command"
@@ -267,6 +286,10 @@ config DS4510
 	  and a configurable timer for the supervisor function. The device is
 	  connected over I2C.
 
+config FSL_IIM
+	bool "Enable FSL IC Identification Module (IIM) driver"
+	depends on ARCH_MX31 || ARCH_MX5
+
 config FSL_SEC_MON
 	bool "Enable FSL SEC_MON Driver"
 	help
@@ -326,6 +349,14 @@ config MXC_OCOTP
 	  Programmable memory pages that are stored on the some
 	  Freescale i.MX processors.
 
+config MXS_OCOTP
+	bool "Enable MXS OCOTP Driver"
+	depends on ARCH_MX23 || ARCH_MX28
+	help
+	  If you say Y here, you will get support for the One Time
+	  Programmable memory pages that are stored on the
+	  Freescale i.MXS family of processors.
+
 config NPCM_HOST
 	bool "Enable support espi or LPC for Host"
 	depends on REGMAP && SYSCON
@@ -334,7 +365,7 @@ config NPCM_HOST
 
 config SPL_MXC_OCOTP
 	bool "Enable MXC OCOTP driver in SPL"
-	depends on SPL_MISC && (ARCH_IMX8M || ARCH_MX6 || ARCH_MX7 || ARCH_MX7ULP || ARCH_VF610)
+	depends on SPL_DRIVERS_MISC && (ARCH_IMX8M || ARCH_MX6 || ARCH_MX7 || ARCH_MX7ULP || ARCH_VF610)
 	default y
 	help
 	  If you say Y here, you will get support for the One Time
@@ -344,14 +375,13 @@ config SPL_MXC_OCOTP
 config NPCM_OTP
 	bool "Nnvoton NPCM BMC On-Chip OTP Memory Support"
 	depends on (ARM && ARCH_NPCM)
-	default n
 	help
 	  Support NPCM BMC OTP memory (fuse).
 	  To compile this driver as a module, choose M here: the module
 	  will be called npcm_otp.
 
-config IMX_SENTINEL
-	bool "Enable i.MX Sentinel MU driver and API"
+config IMX_ELE
+	bool "Enable i.MX EdgeLock Enclave MU driver and API"
 	depends on MISC && (ARCH_IMX9 || ARCH_IMX8ULP)
 	help
 	  If you say Y here to enable Message Unit driver to work with
@@ -497,6 +527,13 @@ config WINBOND_W83627
 	  legacy UART or other devices in the Winbond Super IO chips
 	  on X86 platforms.
 
+config QCOM_GENI_SE
+	bool "Qualcomm GENI Serial Engine Driver"
+	depends on ARCH_SNAPDRAGON
+	help
+	  The driver manages Generic Interface (GENI) firmware based
+	  Qualcomm Technologies, Inc. Universal Peripheral (QUP) Wrapper.
+
 config QFW
 	bool
 	help
@@ -534,7 +571,7 @@ config SPL_I2C_EEPROM
 config SYS_I2C_EEPROM_ADDR
 	hex "Chip address of the EEPROM device"
 	depends on ID_EEPROM || I2C_EEPROM || SPL_I2C_EEPROM || CMD_EEPROM || ENV_IS_IN_EEPROM
-	default 0
+	default 0x0
 
 if I2C_EEPROM
 
@@ -578,7 +615,7 @@ config FS_LOADER
 	  ie. the FPGA device.
 
 config SPL_FS_LOADER
-	bool "Enable loader driver for file system"
+	bool "Enable loader driver for file system in SPL"
 	depends on SPL
 	help
 	  This is file system generic loader which can be used to load
@@ -649,15 +686,15 @@ config USB5744
 	bool "Microchip USB5744 usb hub"
 	depends on DM_USB && DM_I2C && DM_GPIO
 	help
-	   This enables support for Microchip USB5744 Hub. This driver reset
-	   the hub using gpio pin and configure hub via i2c.
+	  This enables support for Microchip USB5744 Hub. This driver reset
+	  the hub using gpio pin and configure hub via i2c.
 
 config USB2244
 	bool "Microchip USB2244 Ultra Fast USB 2.0 SD driver"
 	depends on DM_USB && DM_GPIO
 	help
-	   This option enables support for Microchip USB2244 Ultra Fast USB 2.0
-	   SD controller. This driver will reset the usb2244 controller using a
-	   gpio pin.
+	  This option enables support for Microchip USB2244 Ultra Fast USB 2.0
+	  SD controller. This driver will reset the usb2244 controller using a
+	  gpio pin.
 
 endmenu

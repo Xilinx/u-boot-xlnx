@@ -54,6 +54,9 @@ int cmd_ut_category(const char *name, const char *prefix,
 static struct cmd_tbl cmd_ut_sub[] = {
 	U_BOOT_CMD_MKENT(all, CONFIG_SYS_MAXARGS, 1, do_ut_all, "", ""),
 	U_BOOT_CMD_MKENT(info, 1, 1, do_ut_info, "", ""),
+#ifdef CONFIG_CMD_BDI
+	U_BOOT_CMD_MKENT(bdinfo, CONFIG_SYS_MAXARGS, 1, do_ut_bdinfo, "", ""),
+#endif
 #ifdef CONFIG_BOOTSTD
 	U_BOOT_CMD_MKENT(bootstd, CONFIG_SYS_MAXARGS, 1, do_ut_bootstd,
 			 "", ""),
@@ -65,6 +68,7 @@ static struct cmd_tbl cmd_ut_sub[] = {
 #if defined(CONFIG_UT_ENV)
 	U_BOOT_CMD_MKENT(env, CONFIG_SYS_MAXARGS, 1, do_ut_env, "", ""),
 #endif
+	U_BOOT_CMD_MKENT(exit, CONFIG_SYS_MAXARGS, 1, do_ut_exit, "", ""),
 #ifdef CONFIG_CMD_FDT
 	U_BOOT_CMD_MKENT(fdt, CONFIG_SYS_MAXARGS, 1, do_ut_fdt, "", ""),
 #endif
@@ -83,6 +87,10 @@ static struct cmd_tbl cmd_ut_sub[] = {
 #ifdef CONFIG_UT_LOG
 	U_BOOT_CMD_MKENT(log, CONFIG_SYS_MAXARGS, 1, do_ut_log, "", ""),
 #endif
+#if defined(CONFIG_SANDBOX) && defined(CONFIG_CMD_MBR) && defined(CONFIG_CMD_MMC) \
+        && defined(CONFIG_MMC_SANDBOX) && defined(CONFIG_MMC_WRITE)
+	U_BOOT_CMD_MKENT(mbr, CONFIG_SYS_MAXARGS, 1, do_ut_mbr, "", ""),
+#endif
 	U_BOOT_CMD_MKENT(mem, CONFIG_SYS_MAXARGS, 1, do_ut_mem, "", ""),
 #if defined(CONFIG_SANDBOX) && defined(CONFIG_CMD_SETEXPR)
 	U_BOOT_CMD_MKENT(setexpr, CONFIG_SYS_MAXARGS, 1, do_ut_setexpr, "",
@@ -94,6 +102,10 @@ static struct cmd_tbl cmd_ut_sub[] = {
 #endif
 #if CONFIG_IS_ENABLED(UT_UNICODE) && !defined(API_BUILD)
 	U_BOOT_CMD_MKENT(unicode, CONFIG_SYS_MAXARGS, 1, do_ut_unicode, "", ""),
+#endif
+#ifdef CONFIG_MEASURED_BOOT
+	U_BOOT_CMD_MKENT(measurement, CONFIG_SYS_MAXARGS, 1, do_ut_measurement,
+			 "", ""),
 #endif
 #ifdef CONFIG_SANDBOX
 	U_BOOT_CMD_MKENT(compression, CONFIG_SYS_MAXARGS, 1, do_ut_compression,
@@ -108,6 +120,12 @@ static struct cmd_tbl cmd_ut_sub[] = {
 #endif
 #ifdef CONFIG_CMD_LOADM
 	U_BOOT_CMD_MKENT(loadm, CONFIG_SYS_MAXARGS, 1, do_ut_loadm, "", ""),
+#endif
+#ifdef CONFIG_CMD_PCI_MPS
+	U_BOOT_CMD_MKENT(pci_mps, CONFIG_SYS_MAXARGS, 1, do_ut_pci_mps, "", ""),
+#endif
+#ifdef CONFIG_CMD_SEAMA
+	U_BOOT_CMD_MKENT(seama, CONFIG_SYS_MAXARGS, 1, do_ut_seama, "", ""),
 #endif
 };
 
@@ -156,8 +174,7 @@ static int do_ut(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	return CMD_RET_USAGE;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char ut_help_text[] =
+U_BOOT_LONGHELP(ut,
 	"[-r] [-f] [<suite>] - run unit tests\n"
 	"   -r<runs>   Number of times to run each test\n"
 	"   -f         Force 'manual' tests to run as well\n"
@@ -168,6 +185,9 @@ static char ut_help_text[] =
 	"\ninfo - show info about tests"
 #ifdef CONFIG_CMD_ADDRMAP
 	"\naddrmap - very basic test of addrmap command"
+#endif
+#ifdef CONFIG_CMD_BDI
+	"\nbdinfo - bdinfo command"
 #endif
 #ifdef CONFIG_SANDBOX
 	"\nbloblist - bloblist implementation"
@@ -188,7 +208,7 @@ static char ut_help_text[] =
 	"\nfdt - fdt command"
 #endif
 #ifdef CONFIG_CONSOLE_TRUETYPE
-	"\nut font - font command\n"
+	"\nfont - font command"
 #endif
 #ifdef CONFIG_CMD_LOADM
 	"\nloadm - loadm command parameters and loading memory blob"
@@ -206,10 +226,16 @@ static char ut_help_text[] =
 #ifdef CONFIG_UT_OVERLAY
 	"\noverlay - device tree overlays"
 #endif
+#ifdef CONFIG_CMD_PCI_MPS
+	"\npci_mps - PCI Express Maximum Payload Size"
+#endif
 	"\nprint  - printing things to the console"
 	"\nsetexpr - setexpr command"
 #ifdef CONFIG_SANDBOX
 	"\nstr - basic test of string functions"
+#endif
+#ifdef CONFIG_CMD_SEAMA
+	"\nseama - seama command parameters loading and decoding"
 #endif
 #ifdef CONFIG_UT_TIME
 	"\ntime - very basic test of time functions"
@@ -218,8 +244,7 @@ static char ut_help_text[] =
 	!defined(CONFIG_SPL_BUILD) && !defined(API_BUILD)
 	"\nunicode - Unicode functions"
 #endif
-	;
-#endif /* CONFIG_SYS_LONGHELP */
+	);
 
 U_BOOT_CMD(
 	ut, CONFIG_SYS_MAXARGS, 1, do_ut,

@@ -13,6 +13,7 @@
 #include <power/sandbox_pmic.h>
 #include <asm/gpio.h>
 #include <dm/test.h>
+#include <dt-bindings/input/input.h>
 #include <test/ut.h>
 
 /* Base test of the button uclass */
@@ -46,7 +47,7 @@ static int dm_test_button_gpio(struct unit_test_state *uts)
 	struct udevice *dev, *gpio;
 
 	/*
-	 * Check that we can manipulate an BUTTON. BUTTON 1 is connected to GPIO
+	 * Check that we can manipulate a BUTTON. BUTTON 1 is connected to GPIO
 	 * bank gpio_a, offset 3.
 	 */
 	ut_assertok(uclass_get_device(UCLASS_BUTTON, 1, &dev));
@@ -64,7 +65,7 @@ static int dm_test_button_gpio(struct unit_test_state *uts)
 }
 DM_TEST(dm_test_button_gpio, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
-/* Test obtaining an BUTTON by label */
+/* Test obtaining a BUTTON by label */
 static int dm_test_button_label(struct unit_test_state *uts)
 {
 	struct udevice *dev, *cmp;
@@ -84,6 +85,18 @@ static int dm_test_button_label(struct unit_test_state *uts)
 	return 0;
 }
 DM_TEST(dm_test_button_label, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+
+/* Test button has linux,code */
+static int dm_test_button_linux_code(struct unit_test_state *uts)
+{
+	struct udevice *dev;
+
+	ut_assertok(uclass_get_device(UCLASS_BUTTON, 1, &dev));
+	ut_asserteq(BTN_1, button_get_code(dev));
+
+	return 0;
+}
+DM_TEST(dm_test_button_linux_code, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
 /* Test adc-keys driver */
 static int dm_test_button_keys_adc(struct unit_test_state *uts)

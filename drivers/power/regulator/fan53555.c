@@ -11,6 +11,7 @@
 #include <log.h>
 #include <asm/gpio.h>
 #include <linux/bitops.h>
+#include <linux/printk.h>
 #include <power/fan53555.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
@@ -101,7 +102,7 @@ struct fan53555_priv {
 
 static int fan53555_regulator_of_to_plat(struct udevice *dev)
 {
-	struct fan53555_plat *dev_pdata = dev_get_plat(dev);
+	struct fan53555_plat *plat = dev_get_plat(dev);
 	struct dm_regulator_uclass_plat *uc_pdata =
 		dev_get_uclass_plat(dev);
 	u32 sleep_vsel;
@@ -118,12 +119,12 @@ static int fan53555_regulator_of_to_plat(struct udevice *dev)
 	 */
 	switch (sleep_vsel) {
 	case FAN53555_VSEL0:
-		dev_pdata->sleep_reg = FAN53555_VSEL0;
-		dev_pdata->vol_reg = FAN53555_VSEL1;
+		plat->sleep_reg = FAN53555_VSEL0;
+		plat->vol_reg = FAN53555_VSEL1;
 		break;
 	case FAN53555_VSEL1:
-		dev_pdata->sleep_reg = FAN53555_VSEL1;
-		dev_pdata->vol_reg = FAN53555_VSEL0;
+		plat->sleep_reg = FAN53555_VSEL1;
+		plat->vol_reg = FAN53555_VSEL0;
 		break;
 	default:
 		pr_err("%s: invalid vsel id %d\n", dev->name, sleep_vsel);

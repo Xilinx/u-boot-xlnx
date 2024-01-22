@@ -4,7 +4,6 @@
  */
 
 #include "rockchip-u-boot.dtsi"
-#include "rockchip-optee.dtsi"
 
 / {
 	aliases {
@@ -46,13 +45,13 @@
 		rockchip,pmu = <&pmu>;
 		rockchip,sgrf = <&sgrf>;
 		rockchip,sram = <&ddr_sram>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 
 	noc: syscon@ffac0000 {
 		compatible = "rockchip,rk3288-noc", "syscon";
 		reg = <0xffac0000 0x2000>;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 
@@ -88,23 +87,28 @@
 };
 
 &cru {
-	u-boot,dm-pre-reloc;
+	bootph-all;
+};
+
+&edp {
+	clocks = <&cru SCLK_EDP>, <&cru SCLK_EDP_24M>, <&cru PCLK_EDP_CTRL>;
+	clock-names = "clk_edp", "clk_edp_24m", "pclk_edp";
 };
 
 &gpio7 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &grf {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &pmu {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &sgrf {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &uart0 {
@@ -124,9 +128,9 @@
 };
 
 &vopb {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &vopl {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };

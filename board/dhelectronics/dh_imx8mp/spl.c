@@ -11,15 +11,19 @@
 #include <asm/io.h>
 #include <asm-generic/gpio.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/ddr.h>
 #include <asm/arch/imx8mp_pins.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/arch/ddr.h>
+#include <asm/sections.h>
 
 #include <dm/uclass.h>
 #include <dm/device.h>
 #include <dm/uclass-internal.h>
 #include <dm/device-internal.h>
+
+#include <linux/bitfield.h>
 
 #include <power/pmic.h>
 #include <power/pca9450.h>
@@ -39,6 +43,9 @@ static const iomux_v3_cfg_t uart_pads[] = {
 static const iomux_v3_cfg_t wdog_pads[] = {
 	MX8MP_PAD_GPIO1_IO02__WDOG1_WDOG_B  | MUX_PAD_CTRL(WDOG_PAD_CTRL),
 };
+
+static bool dh_gigabit_eqos, dh_gigabit_fec;
+static u8 dh_som_rev;
 
 static void dh_imx8mp_early_init_f(void)
 {
@@ -88,8 +95,10 @@ static int dh_imx8mp_board_power_init(void)
 	/* To avoid timing risk from SoC to ARM, increase VDD_ARM to OD voltage 0.95V */
 	pmic_reg_write(dev, PCA9450_BUCK2OUT_DVS0, 0x1c);
 
-	/* Set WDOG_B_CFG to cold reset. */
-	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0xA1);
+	/* DRAM Vdd1 always FPWM */
+	pmic_reg_write(dev, PCA9450_BUCK5CTRL, 0x0d);
+	/* DRAM Vdd2/Vddq always FPWM */
+	pmic_reg_write(dev, PCA9450_BUCK6CTRL, 0x0d);
 
 	/* Set LDO4 and CONFIG2 to enable the I2C level translator. */
 	pmic_reg_write(dev, PCA9450_LDO4CTRL, 0x59);
@@ -102,7 +111,7 @@ static struct dram_timing_info *dram_timing_info[8] = {
 	NULL,					/* 512 MiB */
 	NULL,					/* 1024 MiB */
 	NULL,					/* 1536 MiB */
-	NULL,					/* 2048 MiB */
+	&dh_imx8mp_dhcom_dram_timing_16g_x32,	/* 2048 MiB */
 	NULL,					/* 3072 MiB */
 	&dh_imx8mp_dhcom_dram_timing_32g_x32,	/* 4096 MiB */
 	NULL,					/* 6144 MiB */
@@ -126,7 +135,34 @@ static void spl_dram_init(void)
 	}
 
 	ddr_init(dram_timing_info[memcfg]);
+
+	printf("DDR:   Inline ECC %sabled\n",
+	       (readl(DDRC_ECCCFG0(0)) & DDRC_ECCCFG0_ECC_MODE_MASK) ?
+	       "en" : "dis");
 }
+
+#if IS_ENABLED(CONFIG_IMX8M_DRAM_INLINE_ECC)
+static const scrub_func_t dram_scrub_fn[8] = {
+	NULL,					/* 512 MiB */
+	NULL,					/* 1024 MiB */
+	NULL,					/* 1536 MiB */
+	dh_imx8mp_dhcom_dram_scrub_16g_x32,	/* 2048 MiB */
+	NULL,					/* 3072 MiB */
+	dh_imx8mp_dhcom_dram_scrub_32g_x32,	/* 4096 MiB */
+	NULL,					/* 6144 MiB */
+	NULL,					/* 8192 MiB */
+};
+
+void board_dram_ecc_scrub(void)
+{
+	u8 memcfg = dh_get_memcfg();
+
+	if (!dram_scrub_fn[memcfg])
+		return;
+
+	dram_scrub_fn[memcfg]();
+}
+#endif
 
 void spl_board_init(void)
 {
@@ -144,6 +180,61 @@ void spl_board_init(void)
 int spl_board_boot_device(enum boot_device boot_dev_spl)
 {
 	return BOOT_DEVICE_BOOTROM;
+}
+
+int board_spl_fit_append_fdt_skip(const char *name)
+{
+	if (!dh_gigabit_eqos) {		/* 1x or 2x RMII PHY SoM */
+		if (dh_gigabit_fec) {	/* 1x RMII PHY SoM */
+			if (!strcmp(name, "fdt-dto-imx8mp-dhcom-som-overlay-eth1xfast"))
+				return 0;
+		} else {		/* 2x RMII PHY SoM */
+			if (!strcmp(name, "fdt-dto-imx8mp-dhcom-som-overlay-eth2xfast"))
+				return 0;
+			if (!strcmp(name, "fdt-dto-imx8mp-dhcom-pdk-overlay-eth2xfast")) {
+				/* 2x RMII PHY SoM on PDK2 or PDK3 */
+				if (of_machine_is_compatible("dh,imx8mp-dhcom-pdk2") ||
+				    of_machine_is_compatible("dh,imx8mp-dhcom-pdk3"))
+					return 0;
+			}
+		}
+	}
+
+	if (dh_som_rev == 0x0) { /* Prototype SoM rev.100 */
+		if (!strcmp(name, "fdt-dto-imx8mp-dhcom-som-overlay-rev100"))
+			return 0;
+
+		if (!strcmp(name, "fdt-dto-imx8mp-dhcom-pdk3-overlay-rev100") &&
+		    of_machine_is_compatible("dh,imx8mp-dhcom-pdk3"))
+			return 0;
+	}
+
+	return 1;	/* Skip this DTO */
+}
+
+static void dh_imx8mp_board_cache_config(void)
+{
+	const void __iomem *mux_base = (void __iomem *)IOMUXC_BASE_ADDR;
+	const u32 mux_sion[] = {
+		FIELD_GET(MUX_CTRL_OFS_MASK, MX8MP_PAD_ENET_RX_CTL__GPIO1_IO24),
+		FIELD_GET(MUX_CTRL_OFS_MASK, MX8MP_PAD_SAI1_TXFS__GPIO4_IO10),
+		FIELD_GET(MUX_CTRL_OFS_MASK, MX8MP_PAD_NAND_DQS__GPIO3_IO14),
+		FIELD_GET(MUX_CTRL_OFS_MASK, MX8MP_PAD_SAI1_TXD7__GPIO4_IO19),
+		FIELD_GET(MUX_CTRL_OFS_MASK, MX8MP_PAD_SAI5_MCLK__GPIO3_IO25),
+	};
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mux_sion); i++)
+		setbits_le32(mux_base + mux_sion[i], IOMUX_CONFIG_SION);
+
+	dh_gigabit_eqos = !(readl(GPIO1_BASE_ADDR) & BIT(24));
+	dh_gigabit_fec = !(readl(GPIO4_BASE_ADDR) & BIT(10));
+	dh_som_rev = !!(readl(GPIO3_BASE_ADDR) & BIT(14));
+	dh_som_rev |= !!(readl(GPIO4_BASE_ADDR) & BIT(19)) << 1;
+	dh_som_rev |= !!(readl(GPIO3_BASE_ADDR) & BIT(25)) << 2;
+
+	for (i = 0; i < ARRAY_SIZE(mux_sion); i++)
+		clrbits_le32(mux_base + mux_sion[i], IOMUX_CONFIG_SION);
 }
 
 void board_init_f(ulong dummy)
@@ -182,6 +273,8 @@ void board_init_f(ulong dummy)
 
 	/* DDR initialization */
 	spl_dram_init();
+
+	dh_imx8mp_board_cache_config();
 
 	board_init_r(NULL, 0);
 }

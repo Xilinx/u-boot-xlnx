@@ -46,17 +46,17 @@
 };
 
 &i2c4 {
-	u-boot,dm-pre-reloc;
-	u-boot,dm-spl;
+	bootph-all;
+	bootph-pre-ram;
 
 	eeprom0: eeprom@50 {
 	};
 };
 
 &i2c4_pins_a {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	pins {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 
@@ -82,50 +82,85 @@
 };
 
 &pmic {
-	u-boot,dm-pre-reloc;
-	u-boot,dm-spl;
+	bootph-all;
+	bootph-pre-ram;
 
 	regulators {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &flash0 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		partition@0 {
+			label = "fsbl1";
+			reg = <0x00000000 0x00040000>;
+		};
+		partition@40000 {
+			label = "fsbl2";
+			reg = <0x00040000 0x00040000>;
+		};
+		partition@500000 {
+			label = "uboot";
+			reg = <0x00080000 0x00160000>;
+		};
+		partition@900000 {
+			label = "env1";
+			reg = <0x001E0000 0x00010000>;
+		};
+		partition@980000 {
+			label = "env2";
+			reg = <0x001F0000 0x00010000>;
+		};
+	};
 };
 
 &qspi {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &qspi_clk_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &qspi_bk1_pins_a {
-	u-boot,dm-spl;
-	pins1 {
-		u-boot,dm-spl;
-	};
-	pins2 {
-		u-boot,dm-spl;
+	bootph-pre-ram;
+	pins {
+		bootph-pre-ram;
 	};
 };
 
-&qspi_bk2_pins_a {
-	u-boot,dm-spl;
-	pins1 {
-		u-boot,dm-spl;
-	};
-	pins2 {
-		u-boot,dm-spl;
+&qspi_cs1_pins_a {
+	bootph-pre-ram;
+	pins {
+		bootph-pre-ram;
 	};
 };
 
 &rcc {
+	/*
+	 * Reinstate clock names from stm32mp151.dtsi, the MCO2 trick
+	 * used in stm32mp15xx-dhcom-som.dtsi is not supported by the
+	 * U-Boot clock framework.
+	 */
+	clock-names = "hse", "hsi", "csi", "lse", "lsi";
+	clocks = <&clk_hse>, <&clk_hsi>, <&clk_csi>,
+		 <&clk_lse>, <&clk_lsi>;
+
+	/* The MCO2 is already configured correctly, remove those. */
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-parents;
+	/delete-property/ assigned-clock-rates;
+
 	st,clksrc = <
 		CLK_MPU_PLL1P
 		CLK_AXI_PLL2P
@@ -211,7 +246,7 @@
 		reg = <1>;
 		cfg = < 2 65 1 0 0 PQR(1,1,1) >;
 		frac = < 0x1400 >;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 
 	/* VCO = 417.8 MHz => P = 209, Q = 24, R = 11 */
@@ -220,7 +255,7 @@
 		reg = <2>;
 		cfg = < 1 33 1 16 36 PQR(1,1,1) >;
 		frac = < 0x1a04 >;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 
 	/* VCO = 600.0 MHz => P = 100, Q = 50, R = 50 */
@@ -228,12 +263,12 @@
 		compatible = "st,stm32mp1-pll";
 		reg = <3>;
 		cfg = < 1 49 5 11 11 PQR(1,1,1) >;
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 };
 
 &sdmmc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	st,use-ckin;
 	st,cmd-gpios = <&gpiod 2 0>;
 	st,ck-gpios = <&gpioc 12 0>;
@@ -241,91 +276,91 @@
 };
 
 &sdmmc1_b4_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins1 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 	pins2 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &sdmmc1_dir_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins1 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 	pins2 {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &sdmmc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &sdmmc2_b4_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &sdmmc2_d47_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 	pins {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 };
 
 &uart4 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &uart4_pins_a {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	pins1 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 	};
 	pins2 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		/* pull-up on rx to avoid floating level */
 		bias-pull-up;
 	};
 };
 
 &reg11 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &reg18 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usb33 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usbotg_hs_pins_a {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usbotg_hs {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usbphyc {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usbphyc_port0 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usbphyc_port1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &vdd_usb {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };

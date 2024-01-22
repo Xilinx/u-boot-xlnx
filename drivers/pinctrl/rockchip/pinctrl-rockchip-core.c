@@ -12,7 +12,6 @@
 #include <fdtdec.h>
 #include <linux/bitops.h>
 #include <linux/libfdt.h>
-#include <asm/global_data.h>
 
 #include "pinctrl-rockchip.h"
 
@@ -62,8 +61,9 @@ void rockchip_get_recalced_mux(struct rockchip_pin_bank *bank, int pin,
 	*bit = data->bit;
 }
 
-bool rockchip_get_mux_route(struct rockchip_pin_bank *bank, int pin,
-			    int mux, u32 *reg, u32 *value)
+static enum rockchip_pin_route_type
+rockchip_get_mux_route(struct rockchip_pin_bank *bank, int pin,
+		       int mux, u32 *reg, u32 *value)
 {
 	struct rockchip_pinctrl_priv *priv = bank->priv;
 	struct rockchip_pin_ctrl *ctrl = priv->ctrl;
@@ -78,12 +78,12 @@ bool rockchip_get_mux_route(struct rockchip_pin_bank *bank, int pin,
 	}
 
 	if (i >= ctrl->niomux_routes)
-		return false;
+		return ROUTE_TYPE_INVALID;
 
 	*reg = data->route_offset;
 	*value = data->route_val;
 
-	return true;
+	return data->route_type;
 }
 
 int rockchip_get_mux_data(int mux_type, int pin, u8 *bit, int *mask)
@@ -214,8 +214,40 @@ static int rockchip_set_mux(struct rockchip_pin_bank *bank, int pin, int mux)
 		return -ENOTSUPP;
 
 	ret = ctrl->set_mux(bank, pin, mux);
+	if (ret)
+		return ret;
 
-	return ret;
+	if (bank->route_mask & BIT(pin)) {
+		struct regmap *regmap;
+		u32 route_reg = 0, route_val = 0;
+
+		ret = rockchip_get_mux_route(bank, pin, mux,
+					     &route_reg, &route_val);
+		switch (ret) {
+		case ROUTE_TYPE_DEFAULT:
+			if (bank->iomux[iomux_num].type & IOMUX_SOURCE_PMU)
+				regmap = priv->regmap_pmu;
+			else if (bank->iomux[iomux_num].type & IOMUX_L_SOURCE_PMU)
+				regmap = (pin % 8 < 4) ? priv->regmap_pmu : priv->regmap_base;
+			else
+				regmap = priv->regmap_base;
+
+			regmap_write(regmap, route_reg, route_val);
+			break;
+		case ROUTE_TYPE_TOPGRF:
+			regmap_write(priv->regmap_base, route_reg, route_val);
+			break;
+		case ROUTE_TYPE_PMUGRF:
+			regmap_write(priv->regmap_pmu, route_reg, route_val);
+			break;
+		case ROUTE_TYPE_INVALID:
+			fallthrough;
+		default:
+			break;
+		}
+	}
+
+	return 0;
 }
 
 static int rockchip_perpin_drv_list[DRV_TYPE_MAX][8] = {
@@ -400,13 +432,7 @@ static int rockchip_pinctrl_set_state(struct udevice *dev,
 	int prop_len, param;
 	const u32 *data;
 	ofnode node;
-#ifdef CONFIG_OF_LIVE
-	const struct device_node *np;
-	struct property *pp;
-#else
-	int property_offset, pcfg_node;
-	const void *blob = gd->fdt_blob;
-#endif
+	struct ofprop prop;
 	data = dev_read_prop(config, "rockchip,pins", &count);
 	if (count < 0) {
 		debug("%s: bad array size %d\n", __func__, count);
@@ -440,24 +466,15 @@ static int rockchip_pinctrl_set_state(struct udevice *dev,
 		node = ofnode_get_by_phandle(conf);
 		if (!ofnode_valid(node))
 			return -ENODEV;
-#ifdef CONFIG_OF_LIVE
-		np = ofnode_to_np(node);
-		for (pp = np->properties; pp; pp = pp->next) {
-			prop_name = pp->name;
-			prop_len = pp->length;
-			value = pp->value;
-#else
-		pcfg_node = ofnode_to_offset(node);
-		fdt_for_each_property_offset(property_offset, blob, pcfg_node) {
-			value = fdt_getprop_by_offset(blob, property_offset,
-						      &prop_name, &prop_len);
+		ofnode_for_each_prop(prop, node) {
+			value = ofprop_get_property(&prop, &prop_name, &prop_len);
 			if (!value)
-				return -ENOENT;
-#endif
+				continue;
+
 			param = rockchip_pinconf_prop_name_to_param(prop_name,
 								    &default_val);
 			if (param < 0)
-				break;
+				continue;
 
 			if (prop_len >= sizeof(fdt32_t))
 				arg = fdt32_to_cpu(*(fdt32_t *)value);
@@ -545,7 +562,7 @@ static struct rockchip_pin_ctrl *rockchip_pinctrl_get_soc_data(struct udevice *d
 			inc = (iom->type & (IOMUX_WIDTH_4BIT |
 					    IOMUX_WIDTH_3BIT |
 					    IOMUX_8WIDTH_2BIT)) ? 8 : 4;
-			if (iom->type & IOMUX_SOURCE_PMU)
+			if ((iom->type & IOMUX_SOURCE_PMU) || (iom->type & IOMUX_L_SOURCE_PMU))
 				pmu_offs += inc;
 			else
 				grf_offs += inc;

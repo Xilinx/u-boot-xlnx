@@ -36,49 +36,11 @@ static void dump_hdr(struct acpi_table_header *hdr)
 	}
 }
 
-/**
- * find_table() - Look up an ACPI table
- *
- * @sig: Signature of table (4 characters, upper case)
- * Return: pointer to table header, or NULL if not found
- */
-struct acpi_table_header *find_table(const char *sig)
-{
-	struct acpi_rsdp *rsdp;
-	struct acpi_rsdt *rsdt;
-	int len, i, count;
-
-	rsdp = map_sysmem(gd_acpi_start(), 0);
-	if (!rsdp)
-		return NULL;
-	rsdt = map_sysmem(rsdp->rsdt_address, 0);
-	len = rsdt->header.length - sizeof(rsdt->header);
-	count = len / sizeof(u32);
-	for (i = 0; i < count; i++) {
-		struct acpi_table_header *hdr;
-
-		hdr = map_sysmem(rsdt->entry[i], 0);
-		if (!memcmp(hdr->signature, sig, ACPI_NAME_LEN))
-			return hdr;
-		if (!memcmp(hdr->signature, "FACP", ACPI_NAME_LEN)) {
-			struct acpi_fadt *fadt = (struct acpi_fadt *)hdr;
-
-			if (!memcmp(sig, "DSDT", ACPI_NAME_LEN) && fadt->dsdt)
-				return map_sysmem(fadt->dsdt, 0);
-			if (!memcmp(sig, "FACS", ACPI_NAME_LEN) &&
-			    fadt->firmware_ctrl)
-				return map_sysmem(fadt->firmware_ctrl, 0);
-		}
-	}
-
-	return NULL;
-}
-
 static int dump_table_name(const char *sig)
 {
 	struct acpi_table_header *hdr;
 
-	hdr = find_table(sig);
+	hdr = acpi_find_table(sig);
 	if (!hdr)
 		return -ENOENT;
 	printf("%.*s @ %08lx\n", ACPI_NAME_LEN, hdr->signature,
@@ -156,12 +118,32 @@ static int do_acpi_list(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
+static int do_acpi_set(struct cmd_tbl *cmdtp, int flag, int argc,
+		       char *const argv[])
+{
+	ulong val;
+
+	if (argc < 2) {
+		printf("ACPI pointer: %lx\n", gd_acpi_start());
+	} else {
+		val = hextoul(argv[1], NULL);
+		printf("Setting ACPI pointer to %lx\n", val);
+		gd_set_acpi_start(val);
+	}
+
+	return 0;
+}
+
 static int do_acpi_items(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
 	bool dump_contents;
 
 	dump_contents = argc >= 2 && !strcmp("-d", argv[1]);
+	if (!IS_ENABLED(CONFIG_ACPIGEN)) {
+		printf("Not supported (enable ACPIGEN)\n");
+		return CMD_RET_FAILURE;
+	}
 	acpi_dump_items(dump_contents ? ACPI_DUMP_CONTENTS : ACPI_DUMP_LIST);
 
 	return 0;
@@ -189,14 +171,14 @@ static int do_acpi_dump(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char acpi_help_text[] =
-	"list - list ACPI tables\n"
-	"acpi items [-d]  - List/dump each piece of ACPI data from devices\n"
-	"acpi dump <name> - Dump ACPI table";
-#endif
+U_BOOT_LONGHELP(acpi,
+	"list  - list ACPI tables\n"
+	"acpi items [-d]   - List/dump each piece of ACPI data from devices\n"
+	"acpi set [<addr>] - Set or show address of ACPI tables\n"
+	"acpi dump <name>  - Dump ACPI table");
 
 U_BOOT_CMD_WITH_SUBCMDS(acpi, "ACPI tables", acpi_help_text,
 	U_BOOT_SUBCMD_MKENT(list, 1, 1, do_acpi_list),
 	U_BOOT_SUBCMD_MKENT(items, 2, 1, do_acpi_items),
+	U_BOOT_SUBCMD_MKENT(set, 2, 1, do_acpi_set),
 	U_BOOT_SUBCMD_MKENT(dump, 2, 1, do_acpi_dump));

@@ -283,6 +283,16 @@ static int m41t62_rtc_reset(struct udevice *dev)
 	return m41t62_sqw_enable(dev, true);
 }
 
+static int m41t62_rtc_read8(struct udevice *dev, unsigned int reg)
+{
+	return dm_i2c_reg_read(dev, reg);
+}
+
+static int m41t62_rtc_write8(struct udevice *dev, unsigned int reg, int val)
+{
+	return dm_i2c_reg_write(dev, reg, val);
+}
+
 /*
  * Make sure HT bit is cleared. This bit is set on entering battery backup
  * mode, so do this before the first read access.
@@ -296,6 +306,8 @@ static const struct rtc_ops m41t62_rtc_ops = {
 	.get = m41t62_rtc_get,
 	.set = m41t62_rtc_set,
 	.reset = m41t62_rtc_reset,
+	.read8 = m41t62_rtc_read8,
+	.write8 = m41t62_rtc_write8,
 };
 
 static const struct udevice_id m41t62_rtc_ids[] = {
@@ -319,7 +331,7 @@ int rtc_get(struct rtc_time *tm)
 {
 	u8 buf[M41T62_DATETIME_REG_SIZE];
 
-	i2c_read(CONFIG_SYS_I2C_RTC_ADDR, 0, 1, buf, M41T62_DATETIME_REG_SIZE);
+	i2c_read(CFG_SYS_I2C_RTC_ADDR, 0, 1, buf, M41T62_DATETIME_REG_SIZE);
 	m41t62_update_rtc_time(tm, buf);
 
 	return 0;
@@ -329,10 +341,10 @@ int rtc_set(struct rtc_time *tm)
 {
 	u8 buf[M41T62_DATETIME_REG_SIZE];
 
-	i2c_read(CONFIG_SYS_I2C_RTC_ADDR, 0, 1, buf, M41T62_DATETIME_REG_SIZE);
+	i2c_read(CFG_SYS_I2C_RTC_ADDR, 0, 1, buf, M41T62_DATETIME_REG_SIZE);
 	m41t62_set_rtc_buf(tm, buf);
 
-	if (i2c_write(CONFIG_SYS_I2C_RTC_ADDR, 0, 1, buf,
+	if (i2c_write(CFG_SYS_I2C_RTC_ADDR, 0, 1, buf,
 		      M41T62_DATETIME_REG_SIZE)) {
 		printf("I2C write failed in %s()\n", __func__);
 		return -1;
@@ -349,8 +361,8 @@ void rtc_reset(void)
 	 * M41T82: Make sure HT (Halt Update) bit is cleared.
 	 * This bit is 0 in M41T62 so its save to clear it always.
 	 */
-	i2c_read(CONFIG_SYS_I2C_RTC_ADDR, M41T62_REG_ALARM_HOUR, 1, &val, 1);
+	i2c_read(CFG_SYS_I2C_RTC_ADDR, M41T62_REG_ALARM_HOUR, 1, &val, 1);
 	val &= ~M41T80_ALHOUR_HT;
-	i2c_write(CONFIG_SYS_I2C_RTC_ADDR, M41T62_REG_ALARM_HOUR, 1, &val, 1);
+	i2c_write(CFG_SYS_I2C_RTC_ADDR, M41T62_REG_ALARM_HOUR, 1, &val, 1);
 }
 #endif /* CONFIG_DM_RTC */

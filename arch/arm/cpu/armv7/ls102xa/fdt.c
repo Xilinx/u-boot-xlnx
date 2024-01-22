@@ -25,11 +25,7 @@ DECLARE_GLOBAL_DATA_PTR;
 
 void ft_fixup_enet_phy_connect_type(void *fdt)
 {
-#ifdef CONFIG_DM_ETH
 	struct udevice *dev;
-#else
-	struct eth_device *dev;
-#endif
 	struct tsec_private *priv;
 	const char *enet_path, *phy_path;
 	char enet[16];
@@ -37,12 +33,8 @@ void ft_fixup_enet_phy_connect_type(void *fdt)
 	int phy_node;
 	int i = 0;
 	uint32_t ph;
-#ifdef CONFIG_DM_ETH
 	char *name[3] = { "ethernet@2d10000", "ethernet@2d50000",
 			  "ethernet@2d90000" };
-#else
-	char *name[3] = { "eTSEC1", "eTSEC2", "eTSEC3" };
-#endif
 
 	for (; i < ARRAY_SIZE(name); i++) {
 		dev = eth_get_dev_by_name(name[i]);
@@ -53,11 +45,7 @@ void ft_fixup_enet_phy_connect_type(void *fdt)
 			continue;
 		}
 
-#ifdef CONFIG_DM_ETH
 		priv = dev_get_priv(dev);
-#else
-		priv = dev->priv;
-#endif
 		if (priv->flags & TSEC_SGMII)
 			continue;
 
@@ -125,7 +113,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 
 #ifdef CONFIG_SYS_NS16550
 	do_fixup_by_compat_u32(blob, "fsl,16550-FIFO64",
-			       "clock-frequency", CONFIG_SYS_NS16550_CLK, 1);
+			       "clock-frequency", CFG_SYS_NS16550_CLK, 1);
 #endif
 
 	sysclk_path = fdt_get_alias(blob, "sysclk");
@@ -148,7 +136,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 	 */
 	off = fdt_add_mem_rsv(blob, CONFIG_TEXT_BASE - UBOOT_HEAD_LEN,
 			      CONFIG_SYS_MONITOR_LEN +
-			      CONFIG_SYS_SPL_MALLOC_SIZE + UBOOT_HEAD_LEN);
+			      CONFIG_SPL_SYS_MALLOC_SIZE + UBOOT_HEAD_LEN);
 	if (off < 0)
 		printf("Failed to reserve memory for SD boot deep sleep: %s\n",
 		       fdt_strerror(off));
@@ -183,7 +171,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 
 #if defined(CONFIG_QSPI_BOOT) || defined(CONFIG_SD_BOOT_QSPI)
 	off = fdt_node_offset_by_compat_reg(blob, FSL_IFC_COMPAT,
-					    CONFIG_SYS_IFC_ADDR);
+					    CFG_SYS_IFC_ADDR);
 	fdt_set_node_status(blob, off, FDT_STATUS_DISABLED);
 #else
 	off = fdt_node_offset_by_compat_reg(blob, FSL_QSPI_COMPAT,

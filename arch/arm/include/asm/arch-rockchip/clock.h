@@ -22,6 +22,14 @@ enum {
 	ROCKCHIP_SYSCON_PMUSGRF,
 	ROCKCHIP_SYSCON_CIC,
 	ROCKCHIP_SYSCON_MSCH,
+	ROCKCHIP_SYSCON_USBGRF,
+	ROCKCHIP_SYSCON_PCIE30_PHY_GRF,
+	ROCKCHIP_SYSCON_PHP_GRF,
+	ROCKCHIP_SYSCON_PIPE_PHY0_GRF,
+	ROCKCHIP_SYSCON_PIPE_PHY1_GRF,
+	ROCKCHIP_SYSCON_PIPE_PHY2_GRF,
+	ROCKCHIP_SYSCON_VOP_GRF,
+	ROCKCHIP_SYSCON_VO_GRF,
 };
 
 /* Standard Rockchip clock numbers */
@@ -61,6 +69,15 @@ enum rk_clk_id {
 	.frac = _frac,						\
 }
 
+#define RK3588_PLL_RATE(_rate, _p, _m, _s, _k)			\
+{								\
+	.rate	= _rate##U,					\
+	.p = _p,						\
+	.m = _m,						\
+	.s = _s,						\
+	.k = _k,						\
+}
+
 struct rockchip_pll_rate_table {
 	unsigned long rate;
 	unsigned int nr;
@@ -74,6 +91,11 @@ struct rockchip_pll_rate_table {
 	unsigned int postdiv2;
 	unsigned int dsmpd;
 	unsigned int frac;
+	/* for RK3588 */
+	unsigned int m;
+	unsigned int p;
+	unsigned int s;
+	unsigned int k;
 };
 
 enum rockchip_pll_type {
@@ -82,6 +104,7 @@ enum rockchip_pll_type {
 	pll_rk3328,
 	pll_rk3366,
 	pll_rk3399,
+	pll_rk3588,
 };
 
 struct rockchip_pll_clock {
@@ -171,5 +194,26 @@ int rockchip_get_clk(struct udevice **devp);
  * Return: 0 success, or error value
  */
 int rockchip_reset_bind(struct udevice *pdev, u32 reg_offset, u32 reg_number);
+/*
+ * rockchip_reset_bind_lut() - Bind soft reset device as child of clock device
+ *			       using a dedicated SoC lookup table
+ * @pdev: clock udevice
+ * @lookup_table: register lookup_table dedicated to SoC
+ * @reg_offset: the first offset in cru for softreset registers
+ * @reg_number: the reg numbers of softreset registers
+ * Return: 0 success, or error value
+ */
+int rockchip_reset_bind_lut(struct udevice *pdev, const int *lookup_table,
+			    u32 reg_offset, u32 reg_number);
+/*
+ * rk3588_reset_bind_lut() - Bind soft reset device as child of clock device
+ *			     using dedicated RK3588 lookup table
+ *
+ * @pdev: clock udevice
+ * @reg_offset: the first offset in cru for softreset registers
+ * @reg_number: the reg numbers of softreset registers
+ * Return: 0 success, or error value
+ */
+int rk3588_reset_bind_lut(struct udevice *pdev, u32 reg_offset, u32 reg_number);
 
 #endif

@@ -15,18 +15,18 @@
 	};
 
 	leds {
-		u-boot,dm-spl;
+		bootph-all;
 		status-led-red {
-			u-boot,dm-spl;
+			bootph-all;
 		};
 		status-led-green {
-			u-boot,dm-spl;
+			bootph-all;
 		};
 	};
 };
 
 &cbass_mcu {
-	u-boot,dm-spl;
+	bootph-all;
 
 	mcu_navss: bus@28380000 {
 		ringacc@2b800000 {
@@ -53,70 +53,70 @@
 };
 
 &cbass_wakeup {
-	u-boot,dm-spl;
+	bootph-all;
 };
 
 &cbass_main {
-	u-boot,dm-spl;
+	bootph-all;
 	main_navss: bus@30800000 {
-		u-boot,dm-spl;
+		bootph-all;
 	};
 };
 
 &wkup_pmx0 {
-	u-boot,dm-spl;
+	bootph-all;
 	mcu-fss0-ospi0-pins-default {
-		u-boot,dm-spl;
+		bootph-all;
 	};
 };
 
 &main_pmx0 {
-	u-boot,dm-spl;
+	bootph-all;
 	main-uart1-pins-default {
-		u-boot,dm-spl;
+		bootph-all;
 	};
 };
 
 &main_uart1 {
-	u-boot,dm-spl;
+	bootph-all;
 	current-speed = <115200>;
 };
 
 &wkup_gpio0 {
-	u-boot,dm-spl;
+	bootph-all;
 };
 
 &ospi0 {
-	u-boot,dm-spl;
+	bootph-all;
 	flash@0 {
-		u-boot,dm-spl;
+		bootph-all;
 	};
 };
 
 &secure_proxy_main {
-	u-boot,dm-spl;
+	bootph-all;
 };
 
 &dmsc {
-	u-boot,dm-spl;
+	bootph-all;
 	k3_sysreset: sysreset-controller {
 		compatible = "ti,sci-sysreset";
-		u-boot,dm-spl;
+		bootph-all;
 	};
 };
 
 &k3_pds {
-	u-boot,dm-spl;
+	bootph-all;
 };
 
 &k3_clks {
-	u-boot,dm-spl;
+	bootph-all;
 };
 
 &k3_reset {
-	u-boot,dm-spl;
+	bootph-all;
 };
 
 &fss {
-	u-boot,dm-spl;
+	bootph-all;
 };

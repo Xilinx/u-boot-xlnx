@@ -29,6 +29,7 @@
 #include <dm/uclass-internal.h>
 #include <dm/util.h>
 #include <linux/list.h>
+#include <linux/printk.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -52,81 +53,6 @@ void dm_fixup_for_gd_move(struct global_data *new_gd)
 	if (gd->dm_root) {
 		new_gd->uclass_root->next->prev = new_gd->uclass_root;
 		new_gd->uclass_root->prev->next = new_gd->uclass_root;
-	}
-}
-
-void fix_drivers(void)
-{
-	struct driver *drv =
-		ll_entry_start(struct driver, driver);
-	const int n_ents = ll_entry_count(struct driver, driver);
-	struct driver *entry;
-
-	for (entry = drv; entry != drv + n_ents; entry++) {
-		if (entry->of_match)
-			entry->of_match = (const struct udevice_id *)
-				((ulong)entry->of_match + gd->reloc_off);
-		if (entry->bind)
-			entry->bind += gd->reloc_off;
-		if (entry->probe)
-			entry->probe += gd->reloc_off;
-		if (entry->remove)
-			entry->remove += gd->reloc_off;
-		if (entry->unbind)
-			entry->unbind += gd->reloc_off;
-		if (entry->of_to_plat)
-			entry->of_to_plat += gd->reloc_off;
-		if (entry->child_post_bind)
-			entry->child_post_bind += gd->reloc_off;
-		if (entry->child_pre_probe)
-			entry->child_pre_probe += gd->reloc_off;
-		if (entry->child_post_remove)
-			entry->child_post_remove += gd->reloc_off;
-		/* OPS are fixed in every uclass post_probe function */
-		if (entry->ops)
-			entry->ops += gd->reloc_off;
-	}
-}
-
-void fix_uclass(void)
-{
-	struct uclass_driver *uclass =
-		ll_entry_start(struct uclass_driver, uclass_driver);
-	const int n_ents = ll_entry_count(struct uclass_driver, uclass_driver);
-	struct uclass_driver *entry;
-
-	for (entry = uclass; entry != uclass + n_ents; entry++) {
-		if (entry->post_bind)
-			entry->post_bind += gd->reloc_off;
-		if (entry->pre_unbind)
-			entry->pre_unbind += gd->reloc_off;
-		if (entry->pre_probe)
-			entry->pre_probe += gd->reloc_off;
-		if (entry->post_probe)
-			entry->post_probe += gd->reloc_off;
-		if (entry->pre_remove)
-			entry->pre_remove += gd->reloc_off;
-		if (entry->child_post_bind)
-			entry->child_post_bind += gd->reloc_off;
-		if (entry->child_pre_probe)
-			entry->child_pre_probe += gd->reloc_off;
-		if (entry->init)
-			entry->init += gd->reloc_off;
-		if (entry->destroy)
-			entry->destroy += gd->reloc_off;
-	}
-}
-
-void fix_devices(void)
-{
-	struct driver_info *dev =
-		ll_entry_start(struct driver_info, driver_info);
-	const int n_ents = ll_entry_count(struct driver_info, driver_info);
-	struct driver_info *entry;
-
-	for (entry = dev; entry != dev + n_ents; entry++) {
-		if (entry->plat)
-			entry->plat += gd->reloc_off;
 	}
 }
 
@@ -179,12 +105,6 @@ int dm_init(bool of_live)
 	} else {
 		gd->uclass_root = &DM_UCLASS_ROOT_S_NON_CONST;
 		INIT_LIST_HEAD(DM_UCLASS_ROOT_NON_CONST);
-	}
-
-	if (IS_ENABLED(CONFIG_NEEDS_MANUAL_RELOC)) {
-		fix_drivers();
-		fix_uclass();
-		fix_devices();
 	}
 
 	if (CONFIG_IS_ENABLED(OF_PLATDATA_INST)) {
@@ -363,20 +283,22 @@ void *dm_priv_to_rw(void *priv)
 
 static int dm_probe_devices(struct udevice *dev, bool pre_reloc_only)
 {
-	u32 mask = DM_FLAG_PROBE_AFTER_BIND;
-	u32 flags = dev_get_flags(dev);
+	ofnode node = dev_ofnode(dev);
 	struct udevice *child;
 	int ret;
 
-	if (pre_reloc_only)
-		mask |= DM_FLAG_PRE_RELOC;
+	if (pre_reloc_only &&
+	    (!ofnode_valid(node) || !ofnode_pre_reloc(node)) &&
+	    !(dev->driver->flags & DM_FLAG_PRE_RELOC))
+		goto probe_children;
 
-	if ((flags & mask) == mask) {
+	if (dev_get_flags(dev) & DM_FLAG_PROBE_AFTER_BIND) {
 		ret = device_probe(dev);
 		if (ret)
 			return ret;
 	}
 
+probe_children:
 	list_for_each_entry(child, &dev->child_head, sibling_node)
 		dm_probe_devices(child, pre_reloc_only);
 
@@ -435,7 +357,9 @@ int dm_init_and_scan(bool pre_reloc_only)
 		}
 	}
 	if (CONFIG_IS_ENABLED(DM_EVENT)) {
-		ret = event_notify_null(EVT_DM_POST_INIT);
+		ret = event_notify_null(gd->flags & GD_FLG_RELOC ?
+					EVT_DM_POST_INIT_R :
+					EVT_DM_POST_INIT_F);
 		if (ret)
 			return log_msg_ret("ev", ret);
 	}
@@ -502,7 +426,7 @@ void dm_get_mem(struct dm_stats *stats)
 		stats->tag_size;
 }
 
-#ifdef CONFIG_ACPIGEN
+#if CONFIG_IS_ENABLED(ACPIGEN)
 static int root_acpi_get_name(const struct udevice *dev, char *out_name)
 {
 	return acpi_copy_name(out_name, "\\_SB");

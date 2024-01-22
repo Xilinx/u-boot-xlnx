@@ -21,8 +21,8 @@ menu "Device Tree Control"
 
 config OF_CONTROL
 	bool "Run-time configuration via Device Tree"
-	select OF_LIBFDT if !OF_PLATDATA
-	select OF_REAL if !OF_PLATDATA
+	select OF_LIBFDT
+	select OF_REAL
 	help
 	  This feature provides for run-time configuration of U-Boot
 	  via a flattened device tree.
@@ -171,7 +171,7 @@ config OF_LIST
 	default DEFAULT_DEVICE_TREE
 	help
 	  This option specifies a list of device tree files to use for DT
-	  control. These will be packaged into a FIT. At run-time, U-boot
+	  control. These will be packaged into a FIT. At run-time, U-Boot
 	  or SPL will select the correct DT to use by examining the
 	  hardware (e.g. reading a board ID value). This is a list of
 	  device tree files (without the directory or .dtb suffix)
@@ -254,7 +254,7 @@ config DTB_RESELECT
 config MULTI_DTB_FIT
 	bool "Support embedding several DTBs in a FIT image for u-boot"
 	help
-	  This option provides hooks to allow U-boot to parse an
+	  This option provides hooks to allow U-Boot to parse an
 	  appended FIT image and enable board specific code to then select
 	  the correct DTB to be used. Use this if you need to support
 	  multiple DTBs but don't use the SPL.
@@ -342,6 +342,16 @@ config SPL_MULTI_DTB_FIT_USER_DEF_ADDR
 	   at compilation time. This is the address of this area. It must be
 	   aligned on 2-byte boundary.
 
+config OF_TAG_MIGRATE
+	bool "Ease migration from old device trees with u-boot,dm- tags"
+	default y
+	help
+	  U-Boot moved over to use new tags to mark device tree nodes which need
+	  to be processed in SPL, before relocation, etc. Enable this option to
+	  detect old tags and handle them.
+
+	  Note: This option will be removed after the 2023.07 release.
+
 config OF_SPL_REMOVE_PROPS
 	string "List of device tree properties to drop for SPL"
 	depends on SPL_OF_CONTROL
@@ -352,7 +362,7 @@ config OF_SPL_REMOVE_PROPS
 	help
 	  Since SPL normally runs in a reduced memory space, the device tree
 	  is cut down to only what is needed to load and start U-Boot. Only
-	  nodes marked with the property "u-boot,dm-pre-reloc" will be
+	  nodes marked with the property "bootph-all" will be
 	  included. In addition, some properties are not used by U-Boot and
 	  can be discarded. This option defines the list of properties to
 	  discard.
@@ -400,12 +410,14 @@ config SPL_OF_PLATDATA
 	  declarations for each node. See of-plat.txt for more information.
 
 config SPL_OF_REAL
-	bool
+	bool "Support a real devicetree in SPL" if SANDBOX
+	depends on SPL_OF_CONTROL
+	select SPL_OF_LIBFDT
 	help
 	  Indicates that a real devicetree is available which can be accessed
 	  at runtime. This means that dev_read_...() functions can be used to
-	  read data from the devicetree for each device. This is true if
-	  SPL_OF_CONTROL is enabled and not SPL_OF_PLATDATA
+	  read data from the devicetree for each device. You do not need to
+	  enable this option if you have enabled SPL_OF_PLATDATA.
 
 if SPL_OF_PLATDATA
 

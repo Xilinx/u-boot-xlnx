@@ -28,26 +28,26 @@ config CONSOLE_RECORD_OUT_SIZE
 	depends on CONSOLE_RECORD
 	default 0x400 if CONSOLE_RECORD
 	help
-	  Set the size of the console output buffer. When this fills up, no
-	  more data will be recorded until some is removed. The buffer is
-	  allocated immediately after the malloc() region is ready.
+	  Set the size of the console recording output buffer. When this fills
+	  up, no more data will be recorded until some is removed. The buffer
+	  is allocated immediately after the malloc() region is ready.
 
 config CONSOLE_RECORD_OUT_SIZE_F
 	hex "Output buffer size before relocation"
 	depends on CONSOLE_RECORD
 	default 0x400 if CONSOLE_RECORD
 	help
-	  Set the size of the console output buffer before relocation. When
-	  this fills up, no more data will be recorded until some is removed.
-	  The buffer is allocated immediately after the early malloc() region is
-	  ready.
+	  Set the size of the console recording output buffer before
+	  relocation. When this fills up, no more data will be recorded until
+	  some is removed.  The buffer is allocated immediately after the early
+	  malloc() region is ready.
 
 config CONSOLE_RECORD_IN_SIZE
 	hex "Input buffer size"
 	depends on CONSOLE_RECORD
 	default 0x100 if CONSOLE_RECORD
 	help
-	  Set the size of the console input buffer. When this contains data,
+	  Set the size of the console recording input buffer. When this contains data,
 	  tstc() and getc() will use this in preference to real device input.
 	  The buffer is allocated immediately after the malloc() region is
 	  ready.
@@ -164,6 +164,16 @@ config SILENT_CONSOLE_UPDATE_ON_RELOC
 	  (e.g. NAND). This option makes the value of the 'silent'
 	  environment variable take effect at relocation.
 
+config SILENT_CONSOLE_UNTIL_ENV
+	bool "Keep console silent until environment is loaded"
+	depends on SILENT_CONSOLE
+	help
+	  This option makes sure U-Boot will never use the console unless the
+	  environment from flash does not contain the 'silent' variable.  If
+	  set, the console is kept silent until after the environment was
+	  loaded.  Use this in combination with PRE_CONSOLE_BUFFER to print out
+	  earlier messages after loading the environment when allowed.
+
 config PRE_CONSOLE_BUFFER
 	bool "Buffer characters before the console is available"
 	help
@@ -214,9 +224,19 @@ config CONSOLE_FLUSH_SUPPORT
 	help
 	  This enables compilation of flush() function for console flush support.
 
+config CONSOLE_FLUSH_ON_NEWLINE
+	bool "Flush console buffer on every newline character"
+	depends on DM_SERIAL
+	help
+	  This makes the serial core code flush the console device
+	  whenever a newline (\n) character has been emitted. This can
+	  be especially useful when "printf debugging", as otherwise
+	  lots of output could still be in the UART's FIFO by the time
+	  one hits the code which causes the CPU to hang or reset.
+
 config CONSOLE_MUX
 	bool "Enable console multiplexing"
-	default y if VIDEO || VIDEO || LCD
+	default y if VIDEO || LCD
 	help
 	  This allows multiple devices to be used for each console 'file'.
 	  For example, stdout can be set to go to serial and video.
@@ -246,6 +266,7 @@ config SYS_CONSOLE_OVERWRITE_ROUTINE
 
 config SYS_CONSOLE_ENV_OVERWRITE
 	bool "Update environment variables during console init"
+	depends on SYS_CONSOLE_IS_IN_ENV
 	help
 	  The console environment variables (stdout, stdin, stderr) can be
 	  used to determine the correct console devices on start-up. This
@@ -541,16 +562,15 @@ endmenu
 menu "Init options"
 
 config BOARD_TYPES
-	bool "Call get_board_type() to get and display the board type"
+	bool "Enable board_type entry in global data struct"
 	help
-	  If this option is enabled, checkboard() will call get_board_type()
-	  to get a string containing the board type and this will be
-	  displayed immediately after the model is shown on the console
-	  early in boot.
+	  If this option is enabled, a field will be added to the global
+	  data struct to store an unsigned long value for the type of
+	  platform that we have determined we are on, at run-time.
 
 config DISPLAY_CPUINFO
 	bool "Display information about the CPU during start up"
-	default y if ARC|| ARM || NIOS2 || X86 || XTENSA || M68K
+	default y if ARC || ARM || NIOS2 || X86 || XTENSA || M68K
 	help
 	  Display information about the CPU that U-Boot is running on
 	  when U-Boot starts up. The function print_cpuinfo() is called
@@ -594,38 +614,57 @@ config CYCLIC_MAX_CPU_TIME_US
 endif # CYCLIC
 
 config EVENT
-	bool "General-purpose event-handling mechanism"
-	default y if SANDBOX
+	bool
 	help
-	  This enables sending and processing of events, to allow interested
-	  parties to be alerted when something happens. This is an attempt to
-	  stem the flow of weak functions, hooks, functions in board_f.c
-	  and board_r.c and the Kconfig options below.
+	  This adds a framework for general purpose sending and processing of
+	  events, to allow interested parties to be alerted when something
+	  happens. This is an attempt to stem the flow of weak functions,
+	  hooks, functions in board_f.c and board_r.c and the Kconfig options
+	  below.
 
 	  See doc/develop/event.rst for more information.
 
 if EVENT
 
 config EVENT_DYNAMIC
-	bool "Support event registration at runtime"
-	default y if SANDBOX
+	bool
 	help
 	  Enable this to support adding an event spy at runtime, without adding
-	  it to the EVENT_SPy() linker list. This increases code size slightly
+	  it to the EVENT_SPY*() linker list. This increases code size slightly
 	  but provides more flexibility for boards and subsystems that need it.
 
 config EVENT_DEBUG
 	bool "Enable event debugging assistance"
 	default y if SANDBOX
 	help
-	  Enable this get usefui features for seeing what is happening with
+	  Enable this to get useful features for seeing what is happening with
 	  events, such as event-type names. This adds to the code size of
 	  U-Boot so can be turned off for production builds.
+
+config SPL_EVENT
+	bool  # General-purpose event-handling mechanism in SPL
+	depends on SPL
+	help
+	  This adds a framework for general purpose sending and processing of
+	  events, to allow interested parties to be alerted when something
+	  happens. This is an attempt to stem the flow of weak functions,
+	  hooks, functions in board_f.c and board_r.c and the Kconfig options
+	  below.
+
+	  See doc/develop/event.rst for more information.
+
+config SPL_EVENT_DYNAMIC
+	bool
+	depends on SPL_EVENT && EVENT_DYNAMIC
+	help
+	  Enable this to support adding an event spy at runtime, without adding
+	  it to the EVENT_SPY*() linker list. This increases code size slightly
+	  but provides more flexibility for boards and subsystems that need it.
 
 endif # EVENT
 
 config ARCH_EARLY_INIT_R
-	bool "Call arch-specific init soon after relocation"
+	bool
 	help
 	  With this option U-Boot will call arch_early_init_r() soon after
 	  relocation. Driver model is running by this point, and the cache
@@ -676,6 +715,10 @@ config CLOCKS
 	bool "Call set_cpu_clk_info"
 	depends on ARM
 
+config HWCONFIG
+	bool "hwconfig infrastructure"
+	default y if PPC || ARCH_LS1021A || FSL_LSCH2 || FSL_LSCH3
+
 config SYS_FSL_CLK
 	bool
 	depends on ARCH_LS1021A || FSL_LSCH2 || FSL_LSCH3 || \
@@ -687,6 +730,7 @@ config SYS_FSL_CLK
 
 config LAST_STAGE_INIT
 	bool "Call board-specific as last setup step"
+	select EVENT
 	help
 	  Some boards need to perform initialisation immediately before control
 	  is passed to the command-line interpreter (e.g. for initializations
@@ -710,7 +754,7 @@ config SYS_MALLOC_BOOTPARAMS
 config SYS_BOOTPARAMS_LEN
 	hex "Size of the bootparam buffer to malloc in bytes"
 	depends on SYS_MALLOC_BOOTPARAMS
-	default 0x20000 if MIPS || RCAR_GEN3
+	default 0x20000 if MIPS || RCAR_64
 	default 0x10000
 
 config ID_EEPROM
@@ -861,7 +905,7 @@ config UPDATE_COMMON
 
 config UPDATE_TFTP
 	bool "Auto-update using fitImage via TFTP"
-	depends on FIT
+	depends on FIT && OF_LIBFDT && !MTD_NOR_FLASH
 	select UPDATE_COMMON
 	help
 	  This option allows performing update of NOR with data in fitImage
@@ -870,16 +914,24 @@ config UPDATE_TFTP
 config UPDATE_TFTP_CNT_MAX
 	int "The number of connection retries during auto-update"
 	default 0
-	depends on UPDATE_TFTP
+	depends on UPDATE_TFTP || DFU_TFTP
 
 config UPDATE_TFTP_MSEC_MAX
 	int "Delay in mSec to wait for the TFTP server during auto-update"
 	default 100
-	depends on UPDATE_TFTP
+	depends on UPDATE_TFTP || DFU_TFTP
+
+config UPDATE_LOAD_ADDR
+	hex "Address in memory to load the update to"
+	depends on UPDATE_TFTP || DFU_TFTP
+	default 0x100000
+	help
+	  This option defines the location in memory to be used to load the
+	  update to, if 'loadaddr' is not set in the environment.
 
 config UPDATE_FIT
 	bool "Firmware update using fitImage"
-	depends on FIT
+	depends on FIT && OF_LIBFDT
 	depends on DFU
 	select UPDATE_COMMON
 	help
@@ -895,12 +947,22 @@ config ANDROID_AB
 	  allows a bootloader to try a new version of the system but roll back
 	  to previous version if the new one didn't boot all the way.
 
+config ANDROID_AB_BACKUP_OFFSET
+	hex "Offset of backup bootloader control"
+	depends on ANDROID_AB
+	default 0x0
+	help
+	  If non-zero, a backup bootloader message starting at this offset in
+	  the partition will tried in the event that the primary one (starting
+	  at offset 0) fails its checksum.
+
 endmenu
 
 menu "Blob list"
 
 config BLOBLIST
 	bool "Support for a bloblist"
+	select CRC32
 	help
 	  This enables support for a bloblist in U-Boot, which can be passed
 	  from TPL to SPL to U-Boot proper (and potentially to Linux). The
@@ -911,6 +973,7 @@ config BLOBLIST
 config SPL_BLOBLIST
 	bool "Support for a bloblist in SPL"
 	depends on BLOBLIST && SPL_LIBGENERIC_SUPPORT && SPL_LIBCOMMON_SUPPORT
+	select SPL_CRC32
 	default y if SPL
 	help
 	  This enables a bloblist in SPL. If this is the first part of U-Boot
@@ -920,6 +983,7 @@ config SPL_BLOBLIST
 config TPL_BLOBLIST
 	bool "Support for a bloblist in TPL"
 	depends on BLOBLIST && TPL_LIBGENERIC_SUPPORT && TPL_LIBCOMMON_SUPPORT
+	select TPL_CRC32
 	default y if TPL
 	help
 	  This enables a bloblist in TPL. The bloblist is set up in TPL and
@@ -958,7 +1022,7 @@ endchoice
 
 config BLOBLIST_ADDR
 	hex "Address of bloblist"
-	default 0xc000 if SANDBOX
+	default 0xb000 if SANDBOX
 	depends on BLOBLIST_FIXED
 	help
 	  Sets the address of the bloblist, set up by the first part of U-Boot
@@ -978,7 +1042,7 @@ config BLOBLIST_SIZE
 config BLOBLIST_SIZE_RELOC
 	hex "Size of bloblist after relocation"
 	default BLOBLIST_SIZE if BLOBLIST_FIXED || BLOBLIST_ALLOC
-	default 0 if BLOBLIST_PASSAGE
+	default 0x0 if BLOBLIST_PASSAGE
 	help
 	  Sets the size of the bloblist in bytes after relocation. Since U-Boot
 	  has a lot more memory available then, it is possible to use a larger
@@ -1022,7 +1086,7 @@ choice
 	prompt "Bloblist location in TPL"
 	help
 	  Select the location of the bloblist, via various means. Typically
-	  you should use the same value for SPL as for U-Boot, since they need
+	  you should use the same value for TPL as for U-Boot, since they need
 	  to look in the same place. But if BLOBLIST_ALLOC is used, then a
 	  fresh bloblist will be created each time, since there is no shared
 	  address (between phases) for the bloblist.
@@ -1044,6 +1108,35 @@ config TPL_BLOBLIST_ALLOC
 endchoice
 
 endif # TPL_BLOBLIST
+
+if VPL_BLOBLIST
+
+choice
+	prompt "Bloblist location in VPL"
+	help
+	  Select the location of the bloblist, via various means. Typically
+	  you should use the same value for VPL as for U-Boot, since they need
+	  to look in the same place. But if BLOBLIST_ALLOC is used, then a
+	  fresh bloblist will be created each time, since there is no shared
+	  address (between phases) for the bloblist.
+
+config VPL_BLOBLIST_FIXED
+	bool "Place bloblist at a fixed address in memory"
+	help
+	  Select this to used a fixed memory address for the bloblist. If the
+	  bloblist exists at this address from a previous phase, it used as is.
+	  If not it is created at this address in VPL.
+
+config VPL_BLOBLIST_ALLOC
+	bool "Allocate bloblist"
+	help
+	  Allocate the bloblist using malloc(). This avoids the need to
+	  specify a fixed address on systems where this is unknown or can
+	  change at runtime.
+
+endchoice
+
+endif # VPL_BLOBLIST
 
 endmenu
 
@@ -1074,11 +1167,5 @@ config VPL_IMAGE_SIGN_INFO
 
 endif
 
-config FDT_SIMPLEFB
-	bool "FDT tools for simplefb support"
-	depends on OF_LIBFDT
-	help
-	  Enable the fdt tools to manage the simple fb nodes in device tree.
-	  These functions can be used by board to indicate to the OS
-	  the presence of the simple frame buffer with associated reserved
-	  memory
+config IO_TRACE
+	bool

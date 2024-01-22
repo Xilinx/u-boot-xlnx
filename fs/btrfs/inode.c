@@ -390,7 +390,7 @@ int btrfs_read_extent_inline(struct btrfs_path *path,
 			   csize);
 	ret = btrfs_decompress(btrfs_file_extent_compression(leaf, fi),
 			       cbuf, csize, dbuf, dsize);
-	if (ret == (u32)-1) {
+	if (ret < 0) {
 		ret = -EIO;
 		goto out;
 	}
@@ -500,7 +500,7 @@ int btrfs_read_extent_reg(struct btrfs_path *path,
 
 	ret = btrfs_decompress(btrfs_file_extent_compression(leaf, fi), cbuf,
 			       csize, dbuf, dsize);
-	if (ret == (u32)-1) {
+	if (ret < 0) {
 		ret = -EIO;
 		goto out;
 	}
@@ -511,7 +511,9 @@ int btrfs_read_extent_reg(struct btrfs_path *path,
 	if (ret < dsize)
 		memset(dbuf + ret, 0, dsize - ret);
 	/* Then copy the needed part */
-	memcpy(dest, dbuf + btrfs_file_extent_offset(leaf, fi), len);
+	memcpy(dest,
+	       dbuf + btrfs_file_extent_offset(leaf, fi) + offset - key.offset,
+	       len);
 	ret = len;
 out:
 	free(cbuf);

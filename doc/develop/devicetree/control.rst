@@ -100,7 +100,7 @@ and development only and is not recommended for production devices.
 
 If CONFIG_OF_SEPARATE is defined, then it will be built and placed in
 a u-boot.dtb file alongside u-boot-nodtb.bin with the combined result placed
-in u-boot.bin so you can still just flash u-boot,bin onto your board. If you are
+in u-boot.bin so you can still just flash u-boot.bin onto your board. If you are
 using CONFIG_SPL_FRAMEWORK, then u-boot.img will be built to include the device
 tree binary.
 
@@ -135,7 +135,7 @@ control the boot process of Linux with bootm/bootz commands.
 
 To use this, put something like this in your board header file::
 
-   #define CONFIG_EXTRA_ENV_SETTINGS	"fdtcontroladdr=10000\0"
+   #define CFG_EXTRA_ENV_SETTINGS	"fdtcontroladdr=10000\0"
 
 Build:
 

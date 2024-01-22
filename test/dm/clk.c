@@ -26,10 +26,24 @@ static int dm_test_clk_base(struct unit_test_state *uts)
 	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test", &dev));
 
 	/* Get the same clk port in 2 different ways and compare */
+	ut_assertok(clk_get_by_index(dev, 0, &clk_method1));
+	ut_assertok(clk_get_by_name(dev, NULL, &clk_method2));
+	ut_asserteq(clk_is_match(&clk_method1, &clk_method2), true);
+	ut_asserteq(clk_method1.id, clk_method2.id);
+
 	ut_assertok(clk_get_by_index(dev, 1, &clk_method1));
 	ut_assertok(clk_get_by_index_nodev(dev_ofnode(dev), 1, &clk_method2));
 	ut_asserteq(clk_is_match(&clk_method1, &clk_method2), true);
 	ut_asserteq(clk_method1.id, clk_method2.id);
+
+	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test2", &dev));
+	ut_assertok(clk_set_defaults(dev, CLK_DEFAULTS_PRE));
+
+	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test3", &dev));
+	ut_assertok(clk_set_defaults(dev, CLK_DEFAULTS_PRE));
+
+	ut_assertok(uclass_get_device_by_name(UCLASS_MISC, "clk-test4", &dev));
+	ut_assertok(clk_set_defaults(dev, CLK_DEFAULTS_PRE));
 
 	return 0;
 }

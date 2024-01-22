@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <dm.h>
 #include <dm/uclass-internal.h>
+#include <linux/printk.h>
 #include <power/regulator.h>
 
 #define LIMIT_DEVNAME	20
@@ -37,6 +38,7 @@ static int do_dev(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 			printf("Can't get the regulator: %s!\n", name);
 			return failure(ret);
 		}
+		fallthrough;
 	case 1:
 		if (!currdev) {
 			printf("Regulator device is not set!\n\n");

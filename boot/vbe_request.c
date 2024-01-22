@@ -36,7 +36,7 @@ static int handle_random_req(ofnode node, int default_size,
 	u32 size;
 	int ret;
 
-	if (!CONFIG_IS_ENABLED(DM_RNG))
+	if (!IS_ENABLED(CONFIG_DM_RNG))
 		return -ENOTSUPP;
 
 	if (ofnode_read_u32(node, "vbe,size", &size)) {
@@ -187,7 +187,7 @@ static int bootmeth_vbe_ft_fixup(void *ctx, struct event *event)
 		ret = ofnode_add_subnode(dest_parent, name, &dest);
 		if (ret && ret != -EEXIST)
 			return log_msg_ret("add", ret);
-		ret = ofnode_copy_props(node, dest);
+		ret = ofnode_copy_props(dest, node);
 		if (ret)
 			return log_msg_ret("cp", ret);
 
@@ -230,4 +230,4 @@ static int bootmeth_vbe_ft_fixup(void *ctx, struct event *event)
 
 	return 0;
 }
-EVENT_SPY(EVT_FT_FIXUP, bootmeth_vbe_ft_fixup);
+EVENT_SPY_FULL(EVT_FT_FIXUP, bootmeth_vbe_ft_fixup);

@@ -20,12 +20,6 @@ static const char * const weekdays[] = {
 	"Sun", "Mon", "Tues", "Wednes", "Thurs", "Fri", "Satur",
 };
 
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-#define RELOC(a)	((typeof(a))((unsigned long)(a) + gd->reloc_off))
-#else
-#define RELOC(a)	a
-#endif
-
 int mk_date (const char *, struct rtc_time *);
 
 static struct rtc_time default_tm = { 0, 0, 0, 1, 1, 2000, 6, 0, 0 };
@@ -51,10 +45,10 @@ static int do_date(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 #elif CONFIG_IS_ENABLED(SYS_I2C_LEGACY)
 	old_bus = i2c_get_bus_num();
-	i2c_set_bus_num(CONFIG_SYS_RTC_BUS_NUM);
+	i2c_set_bus_num(CFG_SYS_RTC_BUS_NUM);
 #else
 	old_bus = I2C_GET_BUS();
-	I2C_SET_BUS(CONFIG_SYS_RTC_BUS_NUM);
+	I2C_SET_BUS(CFG_SYS_RTC_BUS_NUM);
 #endif
 
 	switch (argc) {
@@ -98,7 +92,7 @@ static int do_date(struct cmd_tbl *cmdtp, int flag, int argc,
 				puts("## Get date failed\n");
 			}
 		}
-		/* FALL TROUGH */
+		fallthrough;
 	case 1:			/* get date & time */
 #ifdef CONFIG_DM_RTC
 		rcode = dm_rtc_get(dev, &tm);
@@ -113,7 +107,7 @@ static int do_date(struct cmd_tbl *cmdtp, int flag, int argc,
 		printf ("Date: %4d-%02d-%02d (%sday)    Time: %2d:%02d:%02d\n",
 			tm.tm_year, tm.tm_mon, tm.tm_mday,
 			(tm.tm_wday<0 || tm.tm_wday>6) ?
-				"unknown " : RELOC(weekdays[tm.tm_wday]),
+				"unknown " : weekdays[tm.tm_wday],
 			tm.tm_hour, tm.tm_min, tm.tm_sec);
 
 		break;

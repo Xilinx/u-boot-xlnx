@@ -175,6 +175,8 @@ config CC_HAS_ASM_INLINE
 
 config XEN
 	bool "Select U-Boot be run as a bootloader for XEN Virtual Machine"
+	depends on ARM64
+	select SSCANF
 	help
 	  Enabling this option will make U-Boot be run as a bootloader
 	  for XEN [1] Virtual Machine.
@@ -190,33 +192,6 @@ config XEN
 	  Xen to use the device drivers for the Domain-0 kernel by default.
 
 	  [1] - https://xenproject.org/
-
-config DISTRO_DEFAULTS
-	bool "Select defaults suitable for booting general purpose Linux distributions"
-	select AUTO_COMPLETE
-	select CMDLINE_EDITING
-	select CMD_BOOTI if ARM64
-	select CMD_BOOTZ if ARM && !ARM64
-	select CMD_DHCP if CMD_NET
-	select CMD_ENV_EXISTS
-	select CMD_EXT2
-	select CMD_EXT4
-	select CMD_FAT
-	select CMD_FS_GENERIC
-	select CMD_PART if PARTITIONS
-	select CMD_PING if CMD_NET
-	select CMD_PXE if NET
-	select CMD_SYSBOOT
-	select ENV_VARS_UBOOT_CONFIG
-	select HUSH_PARSER
-	select SUPPORT_RAW_INITRD
-	select SYS_LONGHELP
-	imply CMD_MII if NET
-	imply USB_STORAGE
-	imply USE_BOOTCOMMAND
-	help
-	  Select this to enable various options and commands which are suitable
-	  for building u-boot for booting general purpose Linux distributions.
 
 config ENV_VARS_UBOOT_CONFIG
 	bool "Add arch, board, vendor and soc variables to default environment"
@@ -264,8 +239,8 @@ config HAS_CUSTOM_SYS_INIT_SP_ADDR
 	default y if TFABOOT
 	help
 	  Typically, we use an initial stack pointer address that is calculated
-	  by taking the statically defined CONFIG_SYS_INIT_RAM_ADDR, adding the
-	  statically defined CONFIG_SYS_INIT_RAM_SIZE and then subtracting the
+	  by taking the statically defined CFG_SYS_INIT_RAM_ADDR, adding the
+	  statically defined CFG_SYS_INIT_RAM_SIZE and then subtracting the
 	  build-time constant of GENERATED_GBL_DATA_SIZE.  On MIPS a different
 	  but statica calculation is performed.  However, some platforms will
 	  take a different approach.  Say Y here to define the address statically
@@ -302,10 +277,17 @@ config SYS_MALLOC_F_LEN
 	default 0x10000 if ARCH_IMX8 || ARCH_IMX8M
 	default 0x2000
 	help
-	  Before relocation, memory is very limited on many platforms. Still,
-	  we can provide a small malloc() pool if needed. Driver model in
-	  particular needs this to operate, so that it can allocate the
-	  initial serial device and any others that are needed.
+		Size of the malloc() pool for use before relocation. If
+		this is defined, then a very simple malloc() implementation
+		will become available before relocation. The address is just
+		below the global data, and the stack is moved down to make
+		space.
+
+		This feature allocates regions with increasing addresses
+		within the region. calloc() is supported, but realloc()
+		is not available. free() is supported but does nothing.
+		The memory will be freed (or in fact just forgotten) when
+		U-Boot relocates itself.
 
 config SYS_MALLOC_LEN
 	hex "Define memory for Dynamic allocation"
@@ -320,31 +302,48 @@ config SYS_MALLOC_LEN
 	  This defines memory to be allocated for Dynamic allocation
 	  TODO: Use for other architectures
 
-config SPL_SYS_MALLOC_F_LEN
-	hex "Size of malloc() pool in SPL"
-	depends on SYS_MALLOC_F && SPL
-	default 0 if !SPL_FRAMEWORK
-	default 0x2800 if RCAR_GEN3
-	default 0x2000 if IMX8MQ
-	default SYS_MALLOC_F_LEN
+config SPL_SYS_MALLOC_F
+	bool "Enable malloc() pool in SPL"
+	depends on SPL_FRAMEWORK && SYS_MALLOC_F && SPL
+	default y
 	help
 	  In SPL memory is very limited on many platforms. Still,
 	  we can provide a small malloc() pool if needed. Driver model in
 	  particular needs this to operate, so that it can allocate the
 	  initial serial device and any others that are needed.
 
-	  It is possible to enable CONFIG_SYS_SPL_MALLOC_START to start a new
+config SPL_SYS_MALLOC_F_LEN
+	hex "Size of malloc() pool in SPL"
+	depends on SPL_SYS_MALLOC_F
+	default 0x2800 if RCAR_GEN3
+	default 0x2000 if IMX8MQ
+	default SYS_MALLOC_F_LEN
+	help
+	  Sets the size of the malloc() pool in SPL. This is used for
+	  driver model and other features, which must allocate memory for
+	  data structures.
+
+	  It is possible to enable CFG_SPL_SYS_MALLOC_START to start a new
 	  malloc() region in SDRAM once it is inited.
 
-config TPL_SYS_MALLOC_F_LEN
-	hex "Size of malloc() pool in TPL"
+config TPL_SYS_MALLOC_F
+	bool "Enable malloc() pool in TPL"
 	depends on SYS_MALLOC_F && TPL
-	default SPL_SYS_MALLOC_F_LEN
+	default y if SPL_SYS_MALLOC_F
 	help
 	  In TPL memory is very limited on many platforms. Still,
 	  we can provide a small malloc() pool if needed. Driver model in
 	  particular needs this to operate, so that it can allocate the
 	  initial serial device and any others that are needed.
+
+config TPL_SYS_MALLOC_F_LEN
+	hex "Size of malloc() pool in TPL"
+	depends on TPL_SYS_MALLOC_F
+	default SPL_SYS_MALLOC_F_LEN
+	help
+	  Sets the size of the malloc() pool in TPL. This is used for
+	  driver model and other features, which must allocate memory for
+	  data structures.
 
 config VALGRIND
 	bool "Inform valgrind about memory allocations"
@@ -361,15 +360,24 @@ config VALGRIND
 	  it can be handled accurately by Valgrind. If you aren't planning on
 	  using valgrind to debug U-Boot, say 'n'.
 
-config VPL_SYS_MALLOC_F_LEN
-	hex "Size of malloc() pool in VPL before relocation"
+config VPL_SYS_MALLOC_F
+	bool "Enable malloc() pool in VPL"
 	depends on SYS_MALLOC_F && VPL
-	default SYS_MALLOC_F_LEN
+	default y if SPL_SYS_MALLOC_F
 	help
-	  Before relocation, memory is very limited on many platforms. Still,
+	  In VPL memory is very limited on many platforms. Still,
 	  we can provide a small malloc() pool if needed. Driver model in
 	  particular needs this to operate, so that it can allocate the
 	  initial serial device and any others that are needed.
+
+config VPL_SYS_MALLOC_F_LEN
+	hex "Size of malloc() pool in VPL before relocation"
+	depends on VPL_SYS_MALLOC_F
+	default SPL_SYS_MALLOC_F_LEN
+	help
+	  Sets the size of the malloc() pool in VPL. This is used for
+	  driver model and other features, which must allocate memory for
+	  data structures.
 
 menuconfig EXPERT
 	bool "Configure standard U-Boot features (expert users)"
@@ -397,6 +405,17 @@ if EXPERT
 	  When disabling this, please check if malloc calls, maybe
 	  should be replaced by calloc - if one expects zeroed memory.
 
+config SPL_SYS_MALLOC_CLEAR_ON_INIT
+	bool "Init with zeros the memory reserved for malloc (slow) in SPL"
+	depends on SPL
+	default SYS_MALLOC_CLEAR_ON_INIT
+	help
+	  Same as SYS_MALLOC_CLEAR_ON_INIT, but for SPL. It's possible to
+	  Enable it without SYS_MALLOC_CLEAR_ON_INIT. It's useful for boards
+	  that must have particular memory regions zero'ed before first use.
+	  If SYS_SPL_MALLOC_START is configured to be in such region, this
+	  option should be enabled.
+
 config SYS_MALLOC_DEFAULT_TO_INIT
 	bool "Default malloc to init while reserving the memory for it"
 	help
@@ -422,10 +441,18 @@ endif # EXPERT
 
 config PHYS_64BIT
 	bool "64bit physical address support"
+	select FDT_64BIT
 	help
 	  Say Y here to support 64bit physical memory address.
 	  This can be used not only for 64bit SoCs, but also for
 	  large physical address extension on 32bit SoCs.
+
+config FDT_64BIT
+	bool "64bit fdt address support"
+	help
+	  Say Y here to support 64bit fdt addresses.
+	  This can be used not only for 64bit SoCs, but also
+	  for large address extensions on 32bit SoCs.
 
 config HAS_ROM
 	bool
@@ -454,15 +481,16 @@ config REMAKE_ELF
 
 config BUILD_TARGET
 	string "Build target special images"
+	default "u-boot-elf.srec" if RCAR_64
+	default "u-boot-with-spl.bin" if ARCH_AT91 && SPL_NAND_SUPPORT
+	default "u-boot-with-spl.bin" if MPC85xx && !E500MC && !E5500 && !E6500 && SPL
+	default "u-boot-with-spl.imx" if ARCH_MX6 && SPL
+	default "u-boot-with-spl.kwb" if ARMADA_32BIT && SPL
 	default "u-boot-with-spl.sfp" if TARGET_SOCFPGA_ARRIA10
 	default "u-boot-with-spl.sfp" if TARGET_SOCFPGA_GEN5
-	default "u-boot-with-spl.kwb" if ARCH_MVEBU && SPL
-	default "u-boot-elf.srec" if RCAR_GEN3
 	default "u-boot.itb" if !BINMAN && SPL_LOAD_FIT && (ARCH_ROCKCHIP || \
-				ARCH_SUNXI || RISCV || ARCH_ZYNQMP)
-	default "u-boot.kwb" if ARCH_KIRKWOOD
-	default "u-boot-with-spl.bin" if ARCH_AT91 && SPL_NAND_SUPPORT
-	default "u-boot-with-spl.imx" if ARCH_MX6 && SPL
+				RISCV || ARCH_ZYNQMP)
+	default "u-boot.kwb" if (ARCH_KIRKWOOD || ARMADA_32BIT) && !SPL
 	help
 	  Some SoCs need special image types (e.g. U-Boot binary
 	  with a special header) as build targets. By defining
@@ -472,14 +500,14 @@ config BUILD_TARGET
 
 config HAS_BOARD_SIZE_LIMIT
 	bool "Define a maximum size for the U-Boot image"
-	default y if RCAR_GEN3
+	default y if RCAR_64
 	help
 	  In some cases, we need to enforce a hard limit on how big the U-Boot
 	  image itself can be.
 
 config BOARD_SIZE_LIMIT
 	int "Maximum size of the U-Boot image in bytes"
-	default 1048576 if RCAR_GEN3
+	default 1048576 if RCAR_64
 	depends on HAS_BOARD_SIZE_LIMIT
 	help
 	  Maximum size of the U-Boot image. When defined, the build system
@@ -601,17 +629,94 @@ config MP
 	  This provides an option to bringup different processors
 	  in multiprocessor cases.
 
-config EXAMPLES
-	bool "Compile API examples"
-	depends on !SANDBOX
-	default y if ARCH_QEMU
-	help
-	  U-Boot provides an API for standalone applications. Examples are
-	  provided in directory examples/.
+config HAVE_TEXT_BASE
+	bool
+	depends on !NIOS2 && !XTENSA
+	depends on !EFI_APP
+	default y
 
-endmenu		# General setup
+config TEXT_BASE
+	depends on HAVE_TEXT_BASE
+	default 0x0 if POSITION_INDEPENDENT
+	default 0x80800000 if ARCH_OMAP2PLUS || ARCH_K3
+	default 0x81700000 if MACH_SUNIV
+	default 0x2a000000 if MACH_SUN9I
+	default 0x4a000000 if SUNXI_MINIMUM_DRAM_MB >= 256
+	default 0x42e00000 if SUNXI_MINIMUM_DRAM_MB >= 64
+	hex "Text Base"
+	help
+	  The address in memory that U-Boot will be copied and executed from
+	  initially.
+
+config HAVE_SYS_UBOOT_START
+	bool "Use custom U-Boot Start"
+	depends on HAVE_TEXT_BASE
+	help
+	  By default, the address in memory that U-Boot will be copied from
+	  (TEXT_BASE) and the entry point are the same. Select this to start the
+	  execution of U-Boot from a different address.
+	  This may be required if a header or vector table needs to be copied
+	  but not executed.
+
+config SYS_UBOOT_START
+	hex
+	depends on HAVE_TEXT_BASE
+	default TEXT_BASE
+	prompt "U-Boot entry" if HAVE_SYS_UBOOT_START
+	help
+	  If TEXT_BASE differs from the start of execution, this sets the
+	  address in memory that U-Boot will start execution from initially.
+
+config HAVE_SYS_MONITOR_BASE
+	bool
+	depends on ARC || MIPS || M68K || NIOS2 || PPC || XTENSA || X86 \
+		|| ENV_IS_IN_FLASH || MTD_NOR_FLASH
+	depends on !EFI_APP
+	default y
+
+config SYS_MONITOR_BASE
+	depends on HAVE_SYS_MONITOR_BASE
+	hex "Physical start address of boot monitor code"
+	default TEXT_BASE
+	help
+	  The physical start address of boot monitor code (which is the same as
+	  CONFIG_TEXT_BASE when linking) and the same as CFG_SYS_FLASH_BASE
+	  when booting from flash.
+
+config SPL_SYS_MONITOR_BASE
+	depends on MPC85xx && SPL && HAVE_SYS_MONITOR_BASE
+	hex "Physical start address of SPL monitor code"
+	default SPL_TEXT_BASE
+
+config TPL_SYS_MONITOR_BASE
+	depends on MPC85xx && TPL && HAVE_SYS_MONITOR_BASE
+	hex "Physical start address of TPL monitor code"
+
+config DYNAMIC_SYS_CLK_FREQ
+	bool "Determine CPU clock frequency at run-time"
+	help
+	  Implement a get_board_sys_clk function that will determine the CPU
+	  clock frequency at run time, rather than define it statically.
+
+config SYS_CLK_FREQ
+	depends on !DYNAMIC_SYS_CLK_FREQ
+	int "CPU clock frequency"
+	default 125000000 if ARCH_LS1012A
+	default 100000000 if ARCH_P2020 || ARCH_T1024 || ARCH_T1042 || \
+			     ARCH_LS1021A || FSL_LSCH2 || FSL_LSCH3
+	default 66666666 if ARCH_P1010 || ARCH_P1020 || ARCH_T4240
+	default 66660000 if ARCH_T2080
+	default 33333333 if RCAR_GEN3
+	default 24000000 if ARCH_EXYNOS
+	default 20000000 if RCAR_GEN2
+	default 0
+	help
+	  A static value for the CPU frequency.  Note that if not required
+	  for a given SoC, this can be left at 0.
 
 source "api/Kconfig"
+
+endmenu		# General setup
 
 source "boot/Kconfig"
 

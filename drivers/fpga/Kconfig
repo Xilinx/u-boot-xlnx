@@ -21,6 +21,12 @@ config FPGA_SOCFPGA
 
 	  This provides common functionality for Gen5 and Arria10 devices.
 
+config FPGA_STRATIX_II
+	bool "Enable Stratix II FPGA drivers"
+	depends on FPGA_ALTERA
+	help
+	  Say Y here to enable the Altera Stratix II FPGA-specific driver.
+
 config FPGA_STRATIX_V
 	bool "Enable Stratix V FPGA drivers"
 	depends on FPGA_ALTERA
@@ -54,6 +60,12 @@ config FPGA_INTEL_SDM_MAILBOX
 	  Enable FPGA driver for writing full bitstream into Intel FPGA
 	  devices through SDM (Secure Device Manager) Mailbox.
 
+config FPGA_LATTICE
+	bool "Enable Lattice FPGA driver"
+	help
+	  This is used for the lattice FPGAs. Please check the source code as
+	  there is no documentation for this at present.
+
 config FPGA_XILINX
 	bool "Enable Xilinx FPGA drivers"
 	select FPGA
@@ -63,7 +75,7 @@ config FPGA_XILINX
 
 config FPGA_ZYNQMPPL
 	bool "Enable Xilinx FPGA driver for ZynqMP"
-	depends on FPGA_XILINX
+	depends on FPGA_XILINX && ZYNQMP_FIRMWARE
 	help
 	  Enable FPGA driver for loading bitstream in BIT and BIN format
 	  on Xilinx Zynq UltraScale+ (ZynqMP) device.
@@ -95,6 +107,10 @@ config FPGA_VIRTEX2
 	help
 	  Enable Virtex-II FPGA driver for loading in BIT format. This driver
 	  also supports many newer Xilinx FPGA families.
+
+config SYS_FPGA_CHECK_BUSY
+	bool "Perform busy check during load from FPGA"
+	depends on FPGA_SPARTAN2 || FPGA_SPARTAN3 || FPGA_VIRTEX2
 
 config FPGA_ZYNQPL
 	bool "Enable Xilinx FPGA for Zynq"
@@ -148,5 +164,10 @@ config SANDBOX_FPGA
 	help
 	  This is a driver model based FPGA driver for sandbox.
 	  Currently it is a stub only, as there are no usable uclass methods yet.
+
+config MAX_FPGA_DEVICES
+	int "Maximum number of FPGA devices"
+	depends on FPGA
+	default 5
 
 endmenu

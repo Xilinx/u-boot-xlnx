@@ -4,12 +4,11 @@
  *
  * Board functions for TI AM43XX based boards
  *
- * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2013, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #include <common.h>
 #include <eeprom.h>
-#include <image.h>
 #include <asm/global_data.h>
 #include <dm/uclass.h>
 #include <env.h>
@@ -20,7 +19,6 @@
 #include <linux/errno.h>
 #include <spl.h>
 #include <usb.h>
-#include <asm/omap_sec_common.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/mux.h>
@@ -639,7 +637,7 @@ int board_init(void)
 	u32 mreqprio_0, mreqprio_1, modena_init0_bw_fractional,
 	    modena_init0_bw_integer, modena_init0_watermark_0;
 
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 	gpmc_init();
 
 	/*
@@ -762,13 +760,13 @@ static struct ti_usb_phy_device usb_phy2_device = {
 	.index = 1,
 };
 
-int usb_gadget_handle_interrupts(int index)
+int dm_usb_gadget_handle_interrupts(struct udevice *dev)
 {
 	u32 status;
 
-	status = dwc3_omap_uboot_interrupt_status(index);
+	status = dwc3_omap_uboot_interrupt_status(dev);
 	if (status)
-		dwc3_uboot_handle_interrupt(index);
+		dwc3_uboot_handle_interrupt(dev);
 
 	return 0;
 }
@@ -866,19 +864,4 @@ int embedded_dtb_select(void)
 
 	return 0;
 }
-#endif
-
-#ifdef CONFIG_TI_SECURE_DEVICE
-void board_fit_image_post_process(const void *fit, int node, void **p_image,
-				  size_t *p_size)
-{
-	secure_boot_verify_image(p_image, p_size);
-}
-
-void board_tee_image_process(ulong tee_image, size_t tee_size)
-{
-	secure_tee_install((u32)tee_image);
-}
-
-U_BOOT_FIT_LOADABLE_HANDLER(IH_TYPE_TEE, board_tee_image_process);
 #endif

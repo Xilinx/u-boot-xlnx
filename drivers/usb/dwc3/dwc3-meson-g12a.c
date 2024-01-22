@@ -15,6 +15,7 @@
 #include <dwc3-uboot.h>
 #include <generic-phy.h>
 #include <linux/delay.h>
+#include <linux/printk.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <malloc.h>
@@ -28,6 +29,7 @@
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/compat.h>
+#include <dt-bindings/clock/amlogic,a1-peripherals-clkc.h>
 
 /* USB2 Ports Control Registers */
 
@@ -102,8 +104,20 @@ enum {
 	PHY_COUNT,
 };
 
-static const char *phy_names[PHY_COUNT] = {
+static const char *const dwc3_meson_g12a_phy_names[] = {
 	"usb2-phy0", "usb2-phy1", "usb3-phy0",
+};
+
+static const char *const dwc3_meson_a1_phy_names[] = {
+	"usb2-phy0", "usb2-phy1"
+};
+
+struct dwc3_meson_g12a;
+
+struct dwc3_meson_g12a_drvdata {
+	const char *const *phy_names;
+	unsigned int phy_cnt;
+	int (*clk_init)(struct dwc3_meson_g12a *priv);
 };
 
 struct dwc3_meson_g12a {
@@ -119,6 +133,7 @@ struct dwc3_meson_g12a {
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
 	struct udevice		*vbus_supply;
 #endif
+	struct dwc3_meson_g12a_drvdata *drvdata;
 };
 
 #define U2P_REG_SIZE						0x20
@@ -293,10 +308,11 @@ int dwc3_meson_g12a_force_mode(struct udevice *dev, enum usb_dr_mode mode)
 
 static int dwc3_meson_g12a_get_phys(struct dwc3_meson_g12a *priv)
 {
+	struct dwc3_meson_g12a_drvdata *data = priv->drvdata;
 	int i, ret;
 
-	for (i = 0 ; i < PHY_COUNT ; ++i) {
-		ret = generic_phy_get_by_name(priv->dev, phy_names[i],
+	for (i = 0 ; i < data->phy_cnt; ++i) {
+		ret = generic_phy_get_by_name(priv->dev, data->phy_names[i],
 					      &priv->phys[i]);
 		if (ret == -ENOENT || ret == -ENODATA)
 			continue;
@@ -354,18 +370,36 @@ static int dwc3_meson_g12a_clk_init(struct dwc3_meson_g12a *priv)
 	return 0;
 }
 
+static int dwc3_meson_a1_clk_init(struct dwc3_meson_g12a *priv)
+{
+	int ret;
+
+	ret = clk_get_by_name(priv->dev, "usb_bus", &priv->clk);
+	if (ret)
+		return ret;
+
+	ret = clk_enable(&priv->clk);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 static int dwc3_meson_g12a_probe(struct udevice *dev)
 {
 	struct dwc3_meson_g12a *priv = dev_get_plat(dev);
+	struct dwc3_meson_g12a_drvdata *data =
+		(struct dwc3_meson_g12a_drvdata *)dev_get_driver_data(dev);
 	int ret, i;
 
+	priv->drvdata = data;
 	priv->dev = dev;
 
 	ret = regmap_init_mem(dev_ofnode(dev), &priv->regmap);
 	if (ret)
 		return ret;
 
-	ret = dwc3_meson_g12a_clk_init(priv);
+	ret = data->clk_init(priv);
 	if (ret)
 		return ret;
 
@@ -398,7 +432,7 @@ static int dwc3_meson_g12a_probe(struct udevice *dev)
 	if (ret)
 		return ret;
 
-	for (i = 0 ; i < PHY_COUNT ; ++i) {
+	for (i = 0 ; i < data->phy_cnt; ++i) {
 		if (!priv->phys[i].dev)
 			continue;
 
@@ -407,7 +441,7 @@ static int dwc3_meson_g12a_probe(struct udevice *dev)
 			goto err_phy_init;
 	}
 
-	for (i = 0; i < PHY_COUNT; ++i) {
+	for (i = 0; i < data->phy_cnt; ++i) {
 		if (!priv->phys[i].dev)
 			continue;
 
@@ -419,7 +453,7 @@ static int dwc3_meson_g12a_probe(struct udevice *dev)
 	return 0;
 
 err_phy_init:
-	for (i = 0 ; i < PHY_COUNT ; ++i) {
+	for (i = 0 ; i < data->phy_cnt ; ++i) {
 		if (!priv->phys[i].dev)
 			continue;
 
@@ -432,20 +466,21 @@ err_phy_init:
 static int dwc3_meson_g12a_remove(struct udevice *dev)
 {
 	struct dwc3_meson_g12a *priv = dev_get_plat(dev);
+	struct dwc3_meson_g12a_drvdata *data = priv->drvdata;
 	int i;
 
 	reset_release_all(&priv->reset, 1);
 
 	clk_release_all(&priv->clk, 1);
 
-	for (i = 0; i < PHY_COUNT; ++i) {
+	for (i = 0; i < data->phy_cnt; ++i) {
 		if (!priv->phys[i].dev)
 			continue;
 
 		 generic_phy_power_off(&priv->phys[i]);
 	}
 
-	for (i = 0 ; i < PHY_COUNT ; ++i) {
+	for (i = 0 ; i < data->phy_cnt; ++i) {
 		if (!priv->phys[i].dev)
 			continue;
 
@@ -455,8 +490,49 @@ static int dwc3_meson_g12a_remove(struct udevice *dev)
 	return dm_scan_fdt_dev(dev);
 }
 
+static const struct dwc3_meson_g12a_drvdata meson_g12a_drvdata = {
+	.phy_names = dwc3_meson_g12a_phy_names,
+	.phy_cnt = ARRAY_SIZE(dwc3_meson_g12a_phy_names),
+	.clk_init = dwc3_meson_g12a_clk_init,
+};
+
+static const struct dwc3_meson_g12a_drvdata meson_a1_drvdata = {
+	.phy_names = dwc3_meson_a1_phy_names,
+	.phy_cnt = ARRAY_SIZE(dwc3_meson_a1_phy_names),
+	.clk_init = dwc3_meson_a1_clk_init,
+};
+
+static int dwc3_meson_g12a_child_pre_probe(struct udevice *dev)
+{
+	if (ofnode_device_is_compatible(dev_ofnode(dev), "amlogic,meson-g12a-usb"))
+		return dwc3_meson_g12a_force_mode(dev->parent, USB_DR_MODE_PERIPHERAL);
+
+	if (ofnode_device_is_compatible(dev_ofnode(dev), "amlogic,meson-a1-usb"))
+		return dwc3_meson_g12a_force_mode(dev->parent, USB_DR_MODE_PERIPHERAL);
+
+	return 0;
+}
+
+static int dwc3_meson_g12a_child_post_remove(struct udevice *dev)
+{
+	if (ofnode_device_is_compatible(dev_ofnode(dev), "amlogic,meson-g12a-usb"))
+		return dwc3_meson_g12a_force_mode(dev->parent, USB_DR_MODE_HOST);
+
+	if (ofnode_device_is_compatible(dev_ofnode(dev), "amlogic,meson-a1-usb"))
+		return dwc3_meson_g12a_force_mode(dev->parent, USB_DR_MODE_HOST);
+
+	return 0;
+}
+
 static const struct udevice_id dwc3_meson_g12a_ids[] = {
-	{ .compatible = "amlogic,meson-g12a-usb-ctrl" },
+	{
+		.compatible = "amlogic,meson-g12a-usb-ctrl",
+		.data = (ulong)&meson_g12a_drvdata,
+	},
+	{
+		.compatible = "amlogic,meson-a1-usb-ctrl",
+		.data = (ulong)&meson_a1_drvdata,
+	},
 	{ }
 };
 
@@ -466,6 +542,8 @@ U_BOOT_DRIVER(dwc3_generic_wrapper) = {
 	.of_match = dwc3_meson_g12a_ids,
 	.probe = dwc3_meson_g12a_probe,
 	.remove = dwc3_meson_g12a_remove,
+	.child_pre_probe = dwc3_meson_g12a_child_pre_probe,
+	.child_post_remove = dwc3_meson_g12a_child_post_remove,
 	.plat_auto	= sizeof(struct dwc3_meson_g12a),
 
 };

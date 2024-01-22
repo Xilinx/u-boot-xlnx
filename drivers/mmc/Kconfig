@@ -46,6 +46,7 @@ config SPL_DM_MMC
 	depends on SPL_DM && DM_MMC
 	default n if ARCH_MVEBU && !MVEBU_SPL_BOOT_DEVICE_MMC
 	default y
+	select SPL_BLK
 	help
 	  This enables the MultiMediaCard (MMC) uclass which supports MMC and
 	  Secure Digital I/O (SDIO) cards. Both removable (SD, micro-SD, etc.)
@@ -385,11 +386,10 @@ config MMC_OMAP36XX_PINS
 
 	  If unsure, say N.
 
-config SH_SDHI
-	bool "SuperH/Renesas ARM SoCs on-chip SDHI host controller support"
-	depends on ARCH_RMOBILE
-	help
-	  Support for the on-chip SDHI host controller on SuperH/Renesas ARM SoCs platform
+config HSMMC2_8BIT
+	bool "Enable 8-bit interface for eMMC (interface #2)"
+	depends on MMC_OMAP_HS && (OMAP44XX || OMAP54XX || DRA7XX || AM33XX || \
+		AM43XX || ARCH_KEYSTONE)
 
 config SH_MMCIF
 	bool "SuperH/Renesas ARM SoCs on-chip MMCIF host controller support"
@@ -470,6 +470,14 @@ config MMC_SDHCI_SDMA
 	help
 	  This enables support for the SDMA (Single Operation DMA) defined
 	  in the SD Host Controller Standard Specification Version 1.00 .
+
+config SPL_MMC_SDHCI_SDMA
+	bool "Support SDHCI SDMA in SPL"
+	depends on SPL_MMC && MMC_SDHCI
+	default y if MMC_SDHCI_SDMA
+	help
+	  This enables support for the SDMA (Single Operation DMA) defined
+	  in the SD Host Controller Standard Specification Version 1.00 in SPL.
 
 config MMC_SDHCI_ADMA
 	bool "Support SDHCI ADMA2"
@@ -616,6 +624,7 @@ config MMC_SDHCI_MV
 	bool "SDHCI support on Marvell platform"
 	depends on ARCH_MVEBU
 	depends on MMC_SDHCI
+	depends on DM_MMC
 	help
 	  This selects the Secure Digital Host Controller Interface on
 	  Marvell platform.
@@ -657,18 +666,6 @@ config MMC_SDHCI_S5P
 	help
 	  This selects the Secure Digital Host Controller Interface (SDHCI)
 	  on Samsung S5P SoCs.
-
-	  If you have a controller with this interface, say Y here.
-
-	  If unsure, say N.
-
-config MMC_SDHCI_SPEAR
-	bool "SDHCI support on ST SPEAr platform"
-	depends on MMC_SDHCI
-	help
-	  This selects the Secure Digital Host Controller Interface (SDHCI)
-	  often referrered to as the HSMMC block in some of the ST SPEAR range
-	  of SoC
 
 	  If you have a controller with this interface, say Y here.
 
@@ -820,8 +817,13 @@ config MMC_MTK
 
 endif
 
+config FSL_SDHC_V2_3
+	bool
+
 config FSL_ESDHC
 	bool "Freescale/NXP eSDHC controller support"
+	select FSL_SDHC_V2_3 if ARCH_P1010 || ARCH_BSC9131 || ARCH_BSC9132 \
+		|| ARCH_C29X
 	help
 	  This selects support for the eSDHC (Enhanced Secure Digital Host
 	  Controller) found on numerous Freescale/NXP SoCs.
@@ -880,6 +882,10 @@ config FSL_USDHC
 	select FSL_ESDHC_IMX
 	help
 	  This enables the Ultra Secured Digital Host Controller enhancements
+
+config FSL_ESDHC_PIN_MUX
+	bool "Perform esdhc device-tree fixup"
+	depends on (FSL_ESDHC || FSL_ESDHC_IMX) && OF_LIBFDT
 
 endmenu
 

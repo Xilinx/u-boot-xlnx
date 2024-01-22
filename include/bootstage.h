@@ -11,6 +11,7 @@
 #ifndef _BOOTSTAGE_H
 #define _BOOTSTAGE_H
 
+#include <linux/types.h>
 #include <linux/kconfig.h>
 
 /* Flags for each bootstage record */
@@ -244,6 +245,8 @@ void show_boot_progress(int val);
 
 #ifdef ENABLE_BOOTSTAGE
 
+#include <mapmem.h>
+
 /* This is the full bootstage implementation */
 
 /**
@@ -451,6 +454,26 @@ static inline int bootstage_init(bool first)
 }
 
 #endif /* ENABLE_BOOTSTAGE */
+
+/* helpers for SPL */
+int _bootstage_stash_default(void);
+int _bootstage_unstash_default(void);
+
+static inline int bootstage_stash_default(void)
+{
+	if (CONFIG_IS_ENABLED(BOOTSTAGE) && IS_ENABLED(CONFIG_BOOTSTAGE_STASH))
+		return _bootstage_stash_default();
+
+	return 0;
+}
+
+static inline int bootstage_unstash_default(void)
+{
+	if (CONFIG_IS_ENABLED(BOOTSTAGE) && IS_ENABLED(CONFIG_BOOTSTAGE_STASH))
+		return _bootstage_unstash_default();
+
+	return 0;
+}
 
 /* Helper macro for adding a bootstage to a line of code */
 #define BOOTSTAGE_MARKER()	\

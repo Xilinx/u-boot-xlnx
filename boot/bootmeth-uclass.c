@@ -50,6 +50,29 @@ int bootmeth_read_bootflow(struct udevice *dev, struct bootflow *bflow)
 	return ops->read_bootflow(dev, bflow);
 }
 
+int bootmeth_set_bootflow(struct udevice *dev, struct bootflow *bflow,
+			  char *buf, int size)
+{
+	const struct bootmeth_ops *ops = bootmeth_get_ops(dev);
+
+	if (!ops->set_bootflow)
+		return -ENOSYS;
+
+	return ops->set_bootflow(dev, bflow, buf, size);
+}
+
+#if CONFIG_IS_ENABLED(BOOTSTD_FULL)
+int bootmeth_read_all(struct udevice *dev, struct bootflow *bflow)
+{
+	const struct bootmeth_ops *ops = bootmeth_get_ops(dev);
+
+	if (!ops->read_all)
+		return -ENOSYS;
+
+	return ops->read_all(dev, bflow);
+}
+#endif /* BOOTSTD_FULL */
+
 int bootmeth_boot(struct udevice *dev, struct bootflow *bflow)
 {
 	const struct bootmeth_ops *ops = bootmeth_get_ops(dev);
@@ -229,18 +252,7 @@ int bootmeth_set_order(const char *order_str)
 	return 0;
 }
 
-/**
- * setup_fs() - Set up read to read a file
- *
- * We must redo the setup before each filesystem operation. This function
- * handles that, including setting the filesystem type if a block device is not
- * being used
- *
- * @bflow: Information about file to try
- * @desc: Block descriptor to read from (NULL if not a block device)
- * Return: 0 if OK, -ve on error
- */
-static int setup_fs(struct bootflow *bflow, struct blk_desc *desc)
+int bootmeth_setup_fs(struct bootflow *bflow, struct blk_desc *desc)
 {
 	int ret;
 
@@ -277,7 +289,7 @@ int bootmeth_try_file(struct bootflow *bflow, struct blk_desc *desc,
 	log_debug("   %s - err=%d\n", path, ret);
 
 	/* Sadly FS closes the file after fs_size() so we must redo this */
-	ret2 = setup_fs(bflow, desc);
+	ret2 = bootmeth_setup_fs(bflow, desc);
 	if (ret2)
 		return log_msg_ret("fs", ret2);
 
@@ -292,9 +304,7 @@ int bootmeth_try_file(struct bootflow *bflow, struct blk_desc *desc,
 
 int bootmeth_alloc_file(struct bootflow *bflow, uint size_limit, uint align)
 {
-	loff_t bytes_read;
-	ulong addr;
-	char *buf;
+	void *buf;
 	uint size;
 	int ret;
 
@@ -303,21 +313,48 @@ int bootmeth_alloc_file(struct bootflow *bflow, uint size_limit, uint align)
 	if (size > size_limit)
 		return log_msg_ret("chk", -E2BIG);
 
-	buf = memalign(align, size + 1);
-	if (!buf)
-		return log_msg_ret("buf", -ENOMEM);
-	addr = map_to_sysmem(buf);
+	ret = fs_read_alloc(bflow->fname, bflow->size, align, &buf);
+	if (ret)
+		return log_msg_ret("all", ret);
 
-	ret = fs_read(bflow->fname, addr, 0, 0, &bytes_read);
-	if (ret) {
-		free(buf);
-		return log_msg_ret("read", ret);
-	}
-	if (size != bytes_read)
-		return log_msg_ret("bread", -EINVAL);
-	buf[size] = '\0';
 	bflow->state = BOOTFLOWST_READY;
 	bflow->buf = buf;
+
+	return 0;
+}
+
+int bootmeth_alloc_other(struct bootflow *bflow, const char *fname,
+			 void **bufp, uint *sizep)
+{
+	struct blk_desc *desc = NULL;
+	char path[200];
+	loff_t size;
+	void *buf;
+	int ret;
+
+	snprintf(path, sizeof(path), "%s%s", bflow->subdir, fname);
+	log_debug("trying: %s\n", path);
+
+	if (bflow->blk)
+		desc = dev_get_uclass_plat(bflow->blk);
+
+	ret = bootmeth_setup_fs(bflow, desc);
+	if (ret)
+		return log_msg_ret("fs", ret);
+
+	ret = fs_size(path, &size);
+	log_debug("   %s - err=%d\n", path, ret);
+
+	ret = bootmeth_setup_fs(bflow, desc);
+	if (ret)
+		return log_msg_ret("fs", ret);
+
+	ret = fs_read_alloc(path, size, 0, &buf);
+	if (ret)
+		return log_msg_ret("all", ret);
+
+	*bufp = buf;
+	*sizep = size;
 
 	return 0;
 }
@@ -333,7 +370,7 @@ int bootmeth_common_read_file(struct udevice *dev, struct bootflow *bflow,
 	if (bflow->blk)
 		desc = dev_get_uclass_plat(bflow->blk);
 
-	ret = setup_fs(bflow, desc);
+	ret = bootmeth_setup_fs(bflow, desc);
 	if (ret)
 		return log_msg_ret("fs", ret);
 
@@ -343,7 +380,7 @@ int bootmeth_common_read_file(struct udevice *dev, struct bootflow *bflow,
 	if (size > *sizep)
 		return log_msg_ret("spc", -ENOSPC);
 
-	ret = setup_fs(bflow, desc);
+	ret = bootmeth_setup_fs(bflow, desc);
 	if (ret)
 		return log_msg_ret("fs", ret);
 
@@ -359,7 +396,7 @@ int bootmeth_common_read_file(struct udevice *dev, struct bootflow *bflow,
 /**
  * on_bootmeths() - Update the bootmeth order
  *
- * This will check for a valid baudrate and only apply it if valid.
+ * This will check for a valid list of bootmeths and only apply it if valid.
  */
 static int on_bootmeths(const char *name, const char *value, enum env_op op,
 			int flags)

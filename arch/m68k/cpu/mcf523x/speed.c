@@ -8,7 +8,6 @@
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  */
 
-#include <common.h>
 #include <clock_legacy.h>
 #include <asm/global_data.h>
 #include <asm/processor.h>
@@ -29,7 +28,7 @@ int get_clocks(void)
 	while (!(in_be32(&pll->synsr) & PLL_SYNSR_LOCK))
 		;
 
-	gd->bus_clk = CONFIG_SYS_CLK;
+	gd->bus_clk = CFG_SYS_CLK;
 	gd->cpu_clk = (gd->bus_clk * 2);
 
 #ifdef CONFIG_SYS_I2C_FSL

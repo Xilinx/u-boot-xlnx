@@ -21,7 +21,6 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/errno.h>
-#include <u-boot/crc.h>
 #else
 #include "mkimage.h"
 #include <linux/compiler_attributes.h>
@@ -36,12 +35,6 @@
 #include <u-boot/sha256.h>
 #include <u-boot/sha512.h>
 #include <u-boot/md5.h>
-
-#if !defined(USE_HOSTCC) && defined(CONFIG_NEEDS_MANUAL_RELOC)
-DECLARE_GLOBAL_DATA_PTR;
-#endif
-
-static void reloc_update(void);
 
 static int __maybe_unused hash_init_sha1(struct hash_algo *algo, void **ctxp)
 {
@@ -326,38 +319,17 @@ static struct hash_algo hash_algo[] = {
 };
 
 /* Try to minimize code size for boards that don't want much hashing */
-#if CONFIG_IS_ENABLED(SHA256) || CONFIG_IS_ENABLED(CMD_SHA1SUM) || \
-	CONFIG_IS_ENABLED(CRC32_VERIFY) || CONFIG_IS_ENABLED(CMD_HASH) || \
+#if CONFIG_IS_ENABLED(SHA256) || IS_ENABLED(CONFIG_CMD_SHA1SUM) || \
+	CONFIG_IS_ENABLED(CRC32_VERIFY) || IS_ENABLED(CONFIG_CMD_HASH) || \
 	CONFIG_IS_ENABLED(SHA384) || CONFIG_IS_ENABLED(SHA512)
 #define multi_hash()	1
 #else
 #define multi_hash()	0
 #endif
 
-static void reloc_update(void)
-{
-#if !defined(USE_HOSTCC) && defined(CONFIG_NEEDS_MANUAL_RELOC)
-	int i;
-	static bool done;
-
-	if (!done) {
-		done = true;
-		for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
-			hash_algo[i].name += gd->reloc_off;
-			hash_algo[i].hash_func_ws += gd->reloc_off;
-			hash_algo[i].hash_init += gd->reloc_off;
-			hash_algo[i].hash_update += gd->reloc_off;
-			hash_algo[i].hash_finish += gd->reloc_off;
-		}
-	}
-#endif
-}
-
 int hash_lookup_algo(const char *algo_name, struct hash_algo **algop)
 {
 	int i;
-
-	reloc_update();
 
 	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
 		if (!strcmp(algo_name, hash_algo[i].name)) {
@@ -374,8 +346,6 @@ int hash_progressive_lookup_algo(const char *algo_name,
 				 struct hash_algo **algop)
 {
 	int i;
-
-	reloc_update();
 
 	for (i = 0; i < ARRAY_SIZE(hash_algo); i++) {
 		if (!strcmp(algo_name, hash_algo[i].name)) {
@@ -586,6 +556,8 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 
 		output = memalign(ARCH_DMA_MINALIGN,
 				  sizeof(uint32_t) * HASH_MAX_DIGEST_SIZE);
+		if (!output)
+			return CMD_RET_FAILURE;
 
 		buf = map_sysmem(addr, len);
 		algo->hash_func_ws(buf, len, output, algo->chunk_size);
@@ -602,6 +574,7 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 					flags & HASH_FLAG_ENV)) {
 				printf("ERROR: %s does not contain a valid "
 					"%s sum\n", *argv, algo->name);
+				free(output);
 				return 1;
 			}
 			if (memcmp(output, vsum, algo->digest_size) != 0) {
@@ -612,6 +585,7 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 				for (i = 0; i < algo->digest_size; i++)
 					printf("%02x", vsum[i]);
 				puts(" ** ERROR **\n");
+				free(output);
 				return 1;
 			}
 		} else {
@@ -622,9 +596,9 @@ int hash_command(const char *algo_name, int flags, struct cmd_tbl *cmdtp,
 				store_result(algo, output, *argv,
 					flags & HASH_FLAG_ENV);
 			}
-		unmap_sysmem(output);
-
 		}
+
+		free(output);
 
 	/* Horrible code size hack for boards that just want crc32 */
 	} else {

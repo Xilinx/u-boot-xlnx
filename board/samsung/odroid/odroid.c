@@ -15,6 +15,7 @@
 #include <asm/arch/cpu.h>
 #include <dm.h>
 #include <env.h>
+#include <linux/printk.h>
 #include <power/pmic.h>
 #include <power/regulator.h>
 #include <power/max77686_pmic.h>
@@ -94,8 +95,8 @@ char *get_dfu_alt_boot(char *interface, char *devstr)
 	if (mmc_init(mmc))
 		return NULL;
 
-	alt_boot = IS_SD(mmc) ? CONFIG_DFU_ALT_BOOT_SD :
-				CONFIG_DFU_ALT_BOOT_EMMC;
+	alt_boot = IS_SD(mmc) ? CFG_DFU_ALT_BOOT_SD :
+				CFG_DFU_ALT_BOOT_EMMC;
 
 	return alt_boot;
 }
@@ -422,11 +423,9 @@ int exynos_early_init_f(void)
 	return 0;
 }
 
-int exynos_init(void)
+void exynos_init(void)
 {
 	board_gpio_init();
-
-	return 0;
 }
 
 int exynos_power_init(void)

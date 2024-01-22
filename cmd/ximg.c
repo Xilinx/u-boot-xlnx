@@ -27,9 +27,9 @@
 #include <asm/cache.h>
 #include <asm/io.h>
 
-#ifndef CONFIG_SYS_XIMG_LEN
+#ifndef CFG_SYS_XIMG_LEN
 /* use 8MByte as default max gunzip size */
-#define CONFIG_SYS_XIMG_LEN	0x800000
+#define CFG_SYS_XIMG_LEN	0x800000
 #endif
 
 static int
@@ -52,7 +52,7 @@ do_imgextract(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	size_t		fit_len;
 #endif
 #ifdef CONFIG_GZIP
-	uint		unc_len = CONFIG_SYS_XIMG_LEN;
+	uint		unc_len = CFG_SYS_XIMG_LEN;
 #endif
 	uint8_t		comp;
 
@@ -258,8 +258,7 @@ do_imgextract(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	return 0;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char imgextract_help_text[] =
+U_BOOT_LONGHELP(imgextract,
 	"addr part [dest]\n"
 	"    - extract <part> from legacy image at <addr> and copy to <dest>"
 #if defined(CONFIG_FIT)
@@ -267,8 +266,7 @@ static char imgextract_help_text[] =
 	"addr uname [dest]\n"
 	"    - extract <uname> subimage from FIT image at <addr> and copy to <dest>"
 #endif
-	"";
-#endif
+	);
 
 U_BOOT_CMD(
 	imxtract, 4, 1, do_imgextract,

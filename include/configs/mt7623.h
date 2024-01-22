@@ -11,17 +11,11 @@
 
 #include <linux/sizes.h>
 
-/* Miscellaneous configurable options */
-
-/* Environment */
-
-/* Preloader -> Uboot */
-
 /* MMC */
 #define MMC_SUPPORTS_TUNING
 
 /* DRAM */
-#define CONFIG_SYS_SDRAM_BASE		0x80000000
+#define CFG_SYS_SDRAM_BASE		0x80000000
 
 /* This is needed for kernel booting */
 #define FDT_HIGH			"0xac000000"
@@ -32,10 +26,6 @@
 	"fdt_addr_r=" FDT_HIGH "\0"			\
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0"
 
-/* Ethernet */
-#define CONFIG_IPADDR			192.168.1.1
-#define CONFIG_SERVERIP			192.168.1.2
-
 #ifdef CONFIG_DISTRO_DEFAULTS
 
 #define BOOT_TARGET_DEVICES(func)	\
@@ -44,7 +34,7 @@
 #include <config_distro_bootcmd.h>
 
 /* Extra environment variables */
-#define CONFIG_EXTRA_ENV_SETTINGS	\
+#define CFG_EXTRA_ENV_SETTINGS	\
 	ENV_MEM_LAYOUT_SETTINGS		\
 	BOOTENV
 

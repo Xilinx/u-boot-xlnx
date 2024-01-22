@@ -12,8 +12,8 @@ Synopis
     dm devres
     dm drivers
     dm static
-    dm tree
-    dm uclass
+    dm tree [-s][-e] [uclass name]
+    dm uclass [-e] [udevice name]
 
 Description
 -----------
@@ -123,6 +123,15 @@ Name
     Shows the device name as well as the tree structure, since child devices are
     shown attached to their parent.
 
+If -s is given, the top-level devices (those which are children of the root
+device) are shown sorted in order of uclass ID, so it is easier to find a
+particular device type.
+
+If -e is given, forward-matching against existing devices is
+made and only the matched devices are shown.
+
+If a device name is given, forward-matching against existing devices is
+made and only the matched devices are shown.
 
 dm uclass
 ~~~~~~~~~
@@ -136,6 +145,11 @@ For each device, the format is::
 
 where `n` is the index within the uclass, `a` is the address of the device in
 memory and `s` is the sequence number of the device.
+
+If -e is given, forward-matching against existing uclasses is
+made and only the matched uclasses are shown.
+
+If no uclass name is given, all the uclasses are shown.
 
 
 Examples
@@ -363,7 +377,7 @@ This example shows the abridged sandbox output::
     ..
     sysreset      0  [   ]   sysreset_sandbox      |-- sysreset_sandbox
     bootstd       0  [   ]   bootstd_drv           |-- bootstd
-    bootmeth      0  [   ]   bootmeth_distro       |   |-- syslinux
+    bootmeth      0  [   ]   bootmeth_extlinux     |   |-- extlinux
     bootmeth      1  [   ]   bootmeth_efi          |   `-- efi
     reboot-mod    0  [   ]   reboot-mode-gpio      |-- reboot-mode0
     reboot-mod    1  [   ]   reboot-mode-rtc       |-- reboot-mode@14
@@ -406,6 +420,15 @@ This example shows the abridged sandbox output::
     nop           8  [   ]   scmi_voltage_domain       `-- regulators
     regulator     5  [   ]   scmi_regulator                |-- reg@0
     regulator     6  [   ]   scmi_regulator                `-- reg@1
+    => dm tree pinc
+    pinctrl       0  [ + ]   sandbox_pinctrl_gpio  pinctrl-gpio
+    gpio          1  [ + ]   sandbox_gpio          |-- base-gpios
+    nop           0  [ + ]   gpio_hog              |   |-- hog_input_active_low
+    nop           1  [ + ]   gpio_hog              |   |-- hog_input_active_high
+    nop           2  [ + ]   gpio_hog              |   |-- hog_output_low
+    nop           3  [ + ]   gpio_hog              |   `-- hog_output_high
+    gpio          2  [   ]   sandbox_gpio          |-- extra-gpios
+    gpio          3  [   ]   sandbox_gpio          `-- pinmux-gpios
     =>
 
 
@@ -483,5 +506,11 @@ This example shows the abridged sandbox output::
     uclass 122: watchdog
     0   * gpio-wdt @ 0301c070, seq 0
     1   * wdt@0 @ 03021710, seq 1
+
+    => dm uclass blk
+    uclass 22: blk
+    0     mmc2.blk @ 0301ca00, seq 0
+    1     mmc1.blk @ 0301cee0, seq 1
+    2     mmc0.blk @ 0301d380, seq 2
 
     =>

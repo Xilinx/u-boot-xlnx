@@ -2,7 +2,7 @@
 /*
  * Xilinx AXI platforms watchdog timer driver.
  *
- * Author(s):	Michal Simek <michal.simek@xilinx.com>
+ * Author(s):	Michal Simek <michal.simek@amd.com>
  *		Shreenidhi Shedi <yesshedi@gmail.com>
  *
  * Copyright (c) 2011-2018 Xilinx Inc.
@@ -94,9 +94,9 @@ static int xlnx_wdt_of_to_plat(struct udevice *dev)
 {
 	struct xlnx_wdt_plat *plat = dev_get_plat(dev);
 
-	plat->regs = (struct watchdog_regs *)dev_read_addr(dev);
-	if (IS_ERR(plat->regs))
-		return PTR_ERR(plat->regs);
+	plat->regs = dev_read_addr_ptr(dev);
+	if (!plat->regs)
+		return -EINVAL;
 
 	plat->enable_once = dev_read_u32_default(dev, "xlnx,wdt-enable-once",
 						 0);

@@ -11,14 +11,13 @@
 
 #include <linux/sizes.h>
 
-#define CONFIG_SYS_SDRAM_BASE		0x80000000
-
-#define CONFIG_STANDALONE_LOAD_ADDR	0x80200000
+#define CFG_SYS_SDRAM_BASE		0x80000000
 
 /* Environment options */
 
 #define BOOT_TARGET_DEVICES(func) \
 	func(NVME, nvme, 0) \
+	func(NVME, nvme, 1) \
 	func(USB, usb, 0) \
 	func(MMC, mmc, 0) \
 	func(SCSI, scsi, 0) \
@@ -36,8 +35,8 @@
 	"name=loader2,size=4MB,type=${type_guid_gpt_loader2};" \
 	"name=system,size=-,bootable,type=${type_guid_gpt_system};"
 
-#define CONFIG_EXTRA_ENV_SETTINGS \
-	"kernel_addr_r=0x84000000\0" \
+#define CFG_EXTRA_ENV_SETTINGS \
+	"kernel_addr_r=0x80200000\0" \
 	"kernel_comp_addr_r=0x88000000\0" \
 	"kernel_comp_size=0x4000000\0" \
 	"fdt_addr_r=0x8c000000\0" \

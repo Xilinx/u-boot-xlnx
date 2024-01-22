@@ -190,8 +190,9 @@ static void show_table(struct sysinfo_t *info, bool verbose)
 	struct cb_serial *ser = info->serial;
 	int i;
 
-	printf("Coreboot table at %lx, decoded to %p",
-	       gd->arch.coreboot_table, info);
+	printf("Coreboot table at %lx, size %x, records %x (dec %d), decoded to %p",
+	       gd->arch.coreboot_table, info->table_size, info->rec_count,
+	       info->rec_count, info);
 	if (info->header)
 		printf(", forwarded to %p\n", info->header);
 	printf("\n");
@@ -363,6 +364,15 @@ static void show_table(struct sysinfo_t *info, bool verbose)
 	print_hex("MTC size", info->mtc_size);
 
 	print_ptr("Chrome OS VPD", info->chromeos_vpd);
+	print_ptr("RSDP", info->rsdp);
+	printf("%-12s: ", "Unimpl.");
+	if (info->unimpl_count) {
+		for (i = 0; i < info->unimpl_count; i++)
+			printf("%02x ", info->unimpl[i]);
+		printf("\n");
+	} else {
+		printf("(none)\n");
+	}
 }
 
 static int do_cbsysinfo(struct cmd_tbl *cmdtp, int flag, int argc,

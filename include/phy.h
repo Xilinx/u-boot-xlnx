@@ -125,8 +125,6 @@ struct phy_driver {
 	int (*write_mmd)(struct phy_device *phydev, int devad, int reg,
 			 u16 val);
 
-	struct list_head list;
-
 	/* driver private data */
 	ulong data;
 };
@@ -138,12 +136,8 @@ struct phy_device {
 	struct phy_driver *drv;
 	void *priv;
 
-#ifdef CONFIG_DM_ETH
 	struct udevice *dev;
 	ofnode node;
-#else
-	struct eth_device *dev;
-#endif
 
 	/* forced speed & duplex (no autoneg)
 	 * partner speed & duplex & pause (autoneg)
@@ -176,18 +170,6 @@ struct fixed_link {
 	int pause;
 	int asym_pause;
 };
-
-#ifdef CONFIG_PHYLIB_10G
-extern struct phy_driver gen10g_driver;
-#endif
-
-/**
- * phy_init() - Initializes the PHY drivers
- * This function registers all available PHY drivers
- *
- * @return: 0 if OK, -ve on error
- */
-int phy_init(void);
 
 /**
  * phy_reset() - Resets the specified PHY
@@ -232,17 +214,6 @@ static inline struct phy_device *fixed_phy_create(ofnode node)
 }
 
 #endif
-
-#ifdef CONFIG_DM_ETH
-
-/**
- * phy_connect_dev() - Associates the given pair of PHY and Ethernet devices
- * @phydev:	PHY device
- * @dev:	Ethernet device
- * @interface:	type of MAC-PHY interface
- */
-void phy_connect_dev(struct phy_device *phydev, struct udevice *dev,
-		     phy_interface_t interface);
 
 /**
  * phy_connect() - Creates a PHY device for the Ethernet interface
@@ -293,41 +264,37 @@ static inline ofnode phy_get_ofnode(struct phy_device *phydev)
 	else
 		return dev_ofnode(phydev->dev);
 }
-#else
 
 /**
- * phy_connect_dev() - Associates the given pair of PHY and Ethernet devices
- * @phydev:	PHY device
- * @dev:	Ethernet device
- * @interface:	type of MAC-PHY interface
- */
-void phy_connect_dev(struct phy_device *phydev, struct eth_device *dev,
-		     phy_interface_t interface);
-
-/**
- * phy_connect() - Creates a PHY device for the Ethernet interface
- * Creates a PHY device for the PHY at the given address, if one doesn't exist
- * already, and associates it with the Ethernet device.
- * The function may be called with addr <= 0, in this case addr value is ignored
- * and the bus is scanned to detect a PHY.  Scanning should only be used if only
- * one PHY is expected to be present on the MDIO bus, otherwise it is undefined
- * which PHY is returned.
+ * phy_read_mmd_poll_timeout - Periodically poll a PHY register until a
+ *                             condition is met or a timeout occurs
  *
- * @bus:	MII/MDIO bus that hosts the PHY
- * @addr:	PHY address on MDIO bus
- * @dev:	Ethernet device to associate to the PHY
- * @interface:	type of MAC-PHY interface
- * @return: pointer to phy_device if a PHY is found, or NULL otherwise
+ * @phydev: The phy_device struct
+ * @devaddr: The MMD to read from
+ * @regnum: The register on the MMD to read
+ * @val: Variable to read the register into
+ * @cond: Break condition (usually involving @val)
+ * @sleep_us: Maximum time to sleep between reads in us (0
+ *            tight-loops).  Should be less than ~20ms since usleep_range
+ *            is used (see Documentation/timers/timers-howto.rst).
+ * @timeout_us: Timeout in us, 0 means never timeout
+ * @sleep_before_read: if it is true, sleep @sleep_us before read.
+ * Returns 0 on success and -ETIMEDOUT upon a timeout. In either
+ * case, the last read value at @args is stored in @val. Must not
+ * be called from atomic context if sleep_us or timeout_us are used.
  */
-struct phy_device *phy_connect(struct mii_dev *bus, int addr,
-				struct eth_device *dev,
-				phy_interface_t interface);
-
-static inline ofnode phy_get_ofnode(struct phy_device *phydev)
-{
-	return ofnode_null();
-}
-#endif
+#define phy_read_mmd_poll_timeout(phydev, devaddr, regnum, val, cond, \
+				  sleep_us, timeout_us, sleep_before_read) \
+({ \
+	int __ret = read_poll_timeout(phy_read_mmd, val, (cond) || val < 0, \
+				  sleep_us, timeout_us, \
+				  phydev, devaddr, regnum); \
+	if (val <  0) \
+		__ret = val; \
+	if (__ret) \
+		dev_err(phydev->dev, "%s failed: %d\n", __func__, __ret); \
+	__ret; \
+})
 
 int phy_read(struct phy_device *phydev, int devad, int regnum);
 int phy_write(struct phy_device *phydev, int devad, int regnum, u16 val);
@@ -336,11 +303,14 @@ int phy_read_mmd(struct phy_device *phydev, int devad, int regnum);
 int phy_write_mmd(struct phy_device *phydev, int devad, int regnum, u16 val);
 int phy_set_bits_mmd(struct phy_device *phydev, int devad, u32 regnum, u16 val);
 int phy_clear_bits_mmd(struct phy_device *phydev, int devad, u32 regnum, u16 val);
+int phy_modify_mmd_changed(struct phy_device *phydev, int devad, u32 regnum,
+			   u16 mask, u16 set);
+int phy_modify_mmd(struct phy_device *phydev, int devad, u32 regnum,
+		   u16 mask, u16 set);
 
 int phy_startup(struct phy_device *phydev);
 int phy_config(struct phy_device *phydev);
 int phy_shutdown(struct phy_device *phydev);
-int phy_register(struct phy_driver *drv);
 int phy_set_supported(struct phy_device *phydev, u32 max_speed);
 int phy_modify(struct phy_device *phydev, int devad, int regnum, u16 mask,
 	       u16 set);
@@ -356,35 +326,12 @@ int gen10g_startup(struct phy_device *phydev);
 int gen10g_shutdown(struct phy_device *phydev);
 int gen10g_discover_mmds(struct phy_device *phydev);
 
-int phy_b53_init(void);
-int phy_mv88e61xx_init(void);
-int phy_adin_init(void);
-int phy_aquantia_init(void);
-int phy_atheros_init(void);
-int phy_broadcom_init(void);
-int phy_cortina_init(void);
-int phy_cortina_access_init(void);
-int phy_davicom_init(void);
-int phy_et1011c_init(void);
-int phy_lxt_init(void);
-int phy_marvell_init(void);
-int phy_micrel_ksz8xxx_init(void);
-int phy_micrel_ksz90x1_init(void);
-int phy_meson_gxl_init(void);
-int phy_natsemi_init(void);
-int phy_nxp_c45_tja11xx_init(void);
-int phy_nxp_tja11xx_init(void);
-int phy_realtek_init(void);
-int phy_smsc_init(void);
-int phy_teranetics_init(void);
-int phy_ti_init(void);
-int phy_vitesse_init(void);
-int phy_xilinx_init(void);
-int phy_xway_init(void);
-int phy_mscc_init(void);
-int phy_fixed_init(void);
-int phy_ncsi_init(void);
-int phy_xilinx_gmii2rgmii_init(void);
+/**
+ * U_BOOT_PHY_DRIVER() - Declare a new U-Boot driver
+ * @__name: name of the driver
+ */
+#define U_BOOT_PHY_DRIVER(__name)					\
+	ll_entry_declare(struct phy_driver, __name, phy_driver)
 
 int board_phy_config(struct phy_device *phydev);
 int get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id);
@@ -397,20 +344,15 @@ int get_phy_id(struct mii_dev *bus, int addr, int devad, u32 *phy_id);
  */
 static inline bool phy_interface_is_rgmii(struct phy_device *phydev)
 {
-	return phydev->interface >= PHY_INTERFACE_MODE_RGMII &&
-		phydev->interface <= PHY_INTERFACE_MODE_RGMII_TXID;
-}
-
-/**
- * phy_interface_is_sgmii - Convenience function for testing if a PHY interface
- * is SGMII (all variants)
- * @phydev: the phy_device struct
- * @return: true if MII bus is SGMII or false if it is not
- */
-static inline bool phy_interface_is_sgmii(struct phy_device *phydev)
-{
-	return phydev->interface >= PHY_INTERFACE_MODE_SGMII &&
-		phydev->interface <= PHY_INTERFACE_MODE_QSGMII;
+	switch (phydev->interface) {
+	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		return 1;
+	default:
+		return 0;
+	}
 }
 
 bool phy_interface_is_ncsi(void);

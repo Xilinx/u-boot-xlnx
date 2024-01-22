@@ -179,14 +179,17 @@ ifdef DEVICE_TREE_DEBUG
 u_boot_dtsi_options_debug = $(warning $(u_boot_dtsi_options_raw))
 endif
 
-# We use the first match
-u_boot_dtsi = $(strip $(u_boot_dtsi_options_debug) \
+# We use the first match to be included
+dtsi_include_list = $(strip $(u_boot_dtsi_options_debug) \
 	$(notdir $(firstword $(u_boot_dtsi_options))))
+
+# The CONFIG_DEVICE_TREE_INCLUDES also need to be included
+dtsi_include_list += $(CONFIG_DEVICE_TREE_INCLUDES)
 
 # Modified for U-Boot
 dtc_cpp_flags  = -Wp,-MD,$(depfile).pre.tmp -nostdinc                    \
 		 $(UBOOTINCLUDE)                                         \
-		 -I$(srctree)/arch/$(ARCH)/dts                           \
+		 -I$(dir $<)                                             \
 		 -I$(srctree)/arch/$(ARCH)/dts/include                   \
 		 -I$(srctree)/include                                    \
 		 -D__ASSEMBLY__                                          \
@@ -320,8 +323,8 @@ quiet_cmd_dtc = DTC     $@
 # Bring in any U-Boot-specific include at the end of the file
 # And finally any custom .dtsi fragments specified with CONFIG_DEVICE_TREE_INCLUDES
 cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
-	(cat $<; $(if $(u_boot_dtsi),echo '$(pound)include "$(u_boot_dtsi)"')) > $(pre-tmp); \
-	$(foreach f,$(subst $(quote),,$(CONFIG_DEVICE_TREE_INCLUDES)), \
+	(cat $< > $(pre-tmp)); \
+	$(foreach f,$(subst $(quote),,$(dtsi_include_list)), \
 	  echo '$(pound)include "$(f)"' >> $(pre-tmp);) \
 	$(HOSTCC) -E $(dtc_cpp_flags) -x assembler-with-cpp -o $(dtc-tmp) $(pre-tmp) ; \
 	$(DTC) -O dtb -o $@ -b 0 \
@@ -331,7 +334,29 @@ cmd_dtc = mkdir -p $(dir ${dtc-tmp}) ; \
 		; \
 	sed "s:$(pre-tmp):$(<):" $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
 
-$(obj)/%.dtb: $(src)/%.dts FORCE
+quiet_cmd_capsule_esl_gen = CAPSULE_ESL_GEN $@
+cmd_capsule_esl_gen = \
+	$(shell sed "s:ESL_BIN_FILE:$(capsule_esl_path):" $(capsule_esl_input_file) > $@)
+
+$(obj)/.capsule_esl.dtsi: FORCE
+ifeq ($(CONFIG_EFI_CAPSULE_ESL_FILE),"")
+	$(error "CONFIG_EFI_CAPSULE_ESL_FILE is empty, EFI capsule authentication \
+	public key must be specified when CONFIG_EFI_CAPSULE_AUTHENTICATE is enabled")
+else
+	$(call cmd_capsule_esl_gen)
+endif
+
+capsule_esl_input_file=$(srctree)/lib/efi_loader/capsule_esl.dtsi.in
+capsule_esl_dtsi = .capsule_esl.dtsi
+capsule_esl_path=$(abspath $(srctree)/$(subst $(quote),,$(CONFIG_EFI_CAPSULE_ESL_FILE)))
+
+ifdef CONFIG_EFI_CAPSULE_AUTHENTICATE
+dtsi_include_list += $(capsule_esl_dtsi)
+endif
+
+dtsi_include_list_deps = $(addprefix $(obj)/,$(subst $(quote),,$(dtsi_include_list)))
+
+$(obj)/%.dtb: $(src)/%.dts $(DTC) $(dtsi_include_list_deps) FORCE
 	$(call if_changed_dep,dtc)
 
 pre-tmp = $(subst $(comma),_,$(dot-target).pre.tmp)
@@ -351,7 +376,10 @@ cmd_dtco = mkdir -p $(dir ${dtc-tmp}) ; \
 		-d $(depfile).dtc.tmp $(dtc-tmp) ; \
 	cat $(depfile).pre.tmp $(depfile).dtc.tmp > $(depfile)
 
-$(obj)/%.dtbo: $(src)/%.dts FORCE
+$(obj)/%.dtbo: $(src)/%.dts $(DTC) FORCE
+	$(call if_changed_dep,dtco)
+
+$(obj)/%.dtbo: $(src)/%.dtso $(DTC) FORCE
 	$(call if_changed_dep,dtco)
 
 # Fonts
@@ -425,9 +453,11 @@ cmd_efi_objcopy = $(OBJCOPY) -j .header -j .text -j .sdata -j .data -j \
 $(obj)/%.efi: $(obj)/%_efi.so
 	$(call cmd,efi_objcopy)
 
+KBUILD_EFILDFLAGS = -nostdlib -zexecstack -znocombreloc -znorelro
+KBUILD_EFILDFLAGS += $(call ld-option,--no-warn-rwx-segments)
 quiet_cmd_efi_ld = LD      $@
-cmd_efi_ld = $(LD) -nostdlib -zexecstack -znocombreloc -T $(EFI_LDS_PATH) \
-		-shared -Bsymbolic -znorelro -s $^ -o $@
+cmd_efi_ld = $(LD) $(KBUILD_EFILDFLAGS) -T $(EFI_LDS_PATH) \
+		-shared -Bsymbolic -s $^ -o $@
 
 EFI_LDS_PATH = $(srctree)/arch/$(ARCH)/lib/$(EFI_LDS)
 
@@ -583,24 +613,35 @@ cmd_mkimage = $(objtree)/tools/mkimage $(MKIMAGEFLAGS_$(@F)) -d $< $@ \
 # ---------------------------------------------------------------------------
 # Pass the original device tree file through fdtgrep twice. The first pass
 # removes any unwanted nodes (i.e. those which don't have the
-# 'u-boot,dm-pre-reloc' property and thus are not needed by SPL. The second
+# 'bootph-all' property and thus are not needed by SPL. The second
 # pass removes various unused properties from the remaining nodes.
 # The output is typically a much smaller device tree file.
+
+ifdef CONFIG_OF_TAG_MIGRATE
+# Support the old tags for a migration period
+migrate_tpl := -b u-boot,dm-pre-reloc -b u-boot,dm-tpl
+migrate_vpl := -b u-boot,dm-pre-reloc -b u-boot,dm-vpl
+migrate_spl := -b u-boot,dm-pre-reloc -b u-boot,dm-spl
+migrate_all := -P u-boot,dm-pre-reloc \
+	-P u-boot,dm-spl -P u-boot,dm-tpl -P u-boot,dm-vpl
+endif
+
 ifeq ($(CONFIG_VPL_BUILD),y)
-fdtgrep_props := -b u-boot,dm-pre-reloc -b u-boot,dm-vpl
+fdtgrep_props := -b bootph-all -b bootph-verify $(migrate_vpl)
 else
 ifeq ($(CONFIG_TPL_BUILD),y)
-fdtgrep_props := -b u-boot,dm-pre-reloc -b u-boot,dm-tpl
+fdtgrep_props := -b bootph-all -b bootph-pre-sram $(migrate_tpl)
 else
-fdtgrep_props := -b u-boot,dm-pre-reloc -b u-boot,dm-spl
+fdtgrep_props := -b bootph-all -b bootph-pre-ram $(migrate_spl)
 endif
 endif
 quiet_cmd_fdtgrep = FDTGREP $@
       cmd_fdtgrep = $(objtree)/tools/fdtgrep $(fdtgrep_props) -RT $< \
 		-n /chosen -n /config -O dtb | \
 	$(objtree)/tools/fdtgrep -r -O dtb - -o $@ \
-		-P u-boot,dm-pre-reloc -P u-boot,dm-spl -P u-boot,dm-tpl \
-		 -P u-boot,dm-vpl \
+		-P bootph-all -P bootph-pre-ram -P bootph-pre-sram \
+		-P bootph-verify \
+		$(migrate_all) \
 		$(addprefix -P ,$(subst $\",,$(CONFIG_OF_SPL_REMOVE_PROPS)))
 
 # fdt_rm_props

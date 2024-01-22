@@ -345,7 +345,7 @@ Build Procedure
         - BL33=u-boot-nodtb.bin
         - BL33_CFG=u-boot.dtb
 
-     You can also update a existing FIP after U-boot compilation with fiptool,
+     You can also update a existing FIP after U-Boot compilation with fiptool,
      a tool provided by TF-A_::
 
      # fiptool update --nt-fw u-boot-nodtb.bin --hw-config u-boot.dtb fip-stm32mp157c-ev1.bin
@@ -478,7 +478,8 @@ or:
   +-------+--------+---------+------------------------+------------------------+
 
 And the 4th partition (Rootfs) is marked bootable with a file extlinux.conf
-following the Generic Distribution feature (doc/README.distro for use).
+following the Generic Distribution feature (see :doc:`../../develop/distro` for
+use).
 
 The size of fip or ssbl partition must be enough for the associated binary file,
 4MB and 2MB are default values.
@@ -620,7 +621,7 @@ Prerequisite: check if a MAC address isn't yet programmed in OTP
     STM32MP> env print ethaddr
     ## Error: "ethaddr" not defined
 
-3) check lock status of fuse 57 & 58 (at 0x39, 0=unlocked, 1=locked)::
+3) check lock status of fuse 57 & 58 (at 0x39, 0=unlocked, 0x40000000=locked)::
 
     STM32MP> fuse sense 0 0x10000039 2
     Sensing bank 0:
@@ -640,11 +641,11 @@ Example to set mac address "12:34:56:78:9a:bc"
 
 3) Lock OTP::
 
-    STM32MP> fuse prog 0 0x10000039 1 1
+    STM32MP> fuse prog 0 0x10000039 0x40000000 0x40000000
 
     STM32MP> fuse sense 0 0x10000039 2
     Sensing bank 0:
-       Word 0x10000039: 00000001 00000001
+       Word 0x10000039: 40000000 40000000
 
 4) next REBOOT, in the trace::
 

@@ -11,9 +11,7 @@ struct dm_stats;
 #if CONFIG_IS_ENABLED(DM_WARN)
 #define dm_warn(fmt...) log(LOGC_DM, LOGL_WARNING, ##fmt)
 #else
-static inline void dm_warn(const char *fmt, ...)
-{
-}
+#define dm_warn(fmt...) log(LOGC_DM, LOGL_DEBUG, ##fmt)
 #endif
 
 struct list_head;
@@ -26,11 +24,22 @@ struct list_head;
  */
 int list_count_items(struct list_head *head);
 
-/* Dump out a tree of all devices */
-void dm_dump_tree(void);
+/**
+ * Dump out a tree of all devices starting @uclass
+ *
+ * @dev_name: udevice name
+ * @extended: true if forword-matching expected
+ * @sort: Sort by uclass name
+ */
+void dm_dump_tree(char *dev_name, bool extended, bool sort);
 
-/* Dump out a list of uclasses and their devices */
-void dm_dump_uclass(void);
+/*
+ * Dump out a list of uclasses and their devices
+ *
+ * @uclass: uclass name
+ * @extended: true if forword-matching expected
+ */
+void dm_dump_uclass(char *uclass, bool extended);
 
 #ifdef CONFIG_DEBUG_DEVRES
 /* Dump out a list of device resources */

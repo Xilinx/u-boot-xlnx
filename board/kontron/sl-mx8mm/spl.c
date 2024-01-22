@@ -12,6 +12,7 @@
 #include <asm/gpio.h>
 #include <asm/mach-imx/boot_mode.h>
 #include <asm/mach-imx/iomux-v3.h>
+#include <asm/sections.h>
 #include <dm/uclass.h>
 #include <dm/device.h>
 #include <dm/uclass-internal.h>
@@ -106,7 +107,7 @@ static void spl_dram_init(void)
 	}
 
 	gd->ram_size = size;
-	writel(size, M4_BOOTROM_BASE_ADDR);
+	writel(size, MCU_BOOTROM_BASE_ADDR);
 }
 
 int do_board_detect(void)
@@ -192,9 +193,6 @@ static int power_init_board(void)
 
 	/* set VDD_SNVS_0V8 from default 0.85V to 0.8V */
 	pmic_reg_write(dev, PCA9450_LDO2CTRL, 0xC0);
-
-	/* set WDOG_B_CFG to cold reset */
-	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0xA1);
 
 	return 0;
 }

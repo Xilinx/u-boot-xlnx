@@ -5,7 +5,7 @@
  * (C) Copyright 2019 - 2022, Xilinx, Inc.
  * (C) Copyright 2022 - 2023, Advanced Micro Devices, Inc.
  *
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 /dts-v1/;
 
@@ -85,7 +85,7 @@
 		clocks = <&si570_user1>;
 	};
 
-	si5332_1: si5332_1 { /* u142 - GEM0 */
+	si5332_1: si5332-1 { /* u142 - GEM0 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <125000000>;

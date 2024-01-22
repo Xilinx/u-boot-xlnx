@@ -487,10 +487,10 @@ static int rk_nfc_write_page_raw(struct mtd_info *mtd,
 		 *
 		 *    BBM  OOB1 OOB2 OOB3 |......|  PA0  PA1  PA2  PA3
 		 *
-		 * The rk_nfc_ooblayout_free() function already has reserved
-		 * these 4 bytes with:
+		 * The oobfree structure already has reserved these 4 bytes
+		 * together with 2 bytes for BBM by reducing it's length:
 		 *
-		 * oob_region->offset = NFC_SYS_DATA_SIZE + 2;
+		 * oobfree[0].length = rknand->metadata_size - NFC_SYS_DATA_SIZE - 2;
 		 */
 		if (!i)
 			memcpy(rk_nfc_oob_ptr(chip, i),
@@ -525,7 +525,7 @@ static int rk_nfc_write_page_hwecc(struct mtd_info *mtd,
 	int pages_per_blk = mtd->erasesize / mtd->writesize;
 	int ret = 0, i, boot_rom_mode = 0;
 	dma_addr_t dma_data, dma_oob;
-	u32 reg;
+	u32 tmp;
 	u8 *oob;
 
 	nand_prog_page_begin_op(chip, page, 0, NULL, 0);
@@ -552,6 +552,13 @@ static int rk_nfc_write_page_hwecc(struct mtd_info *mtd,
 	 *
 	 *   0xFF 0xFF 0xFF 0xFF | BBM OOB1 OOB2 OOB3 | ...
 	 *
+	 * The code here just swaps the first 4 bytes with the last
+	 * 4 bytes without losing any data.
+	 *
+	 * The chip->oob_poi data layout:
+	 *
+	 *    BBM  OOB1 OOB2 OOB3 |......|  PA0  PA1  PA2  PA3
+	 *
 	 * Configure the ECC algorithm supported by the boot ROM.
 	 */
 	if (page < (pages_per_blk * rknand->boot_blks)) {
@@ -561,21 +568,17 @@ static int rk_nfc_write_page_hwecc(struct mtd_info *mtd,
 	}
 
 	for (i = 0; i < ecc->steps; i++) {
-		if (!i) {
-			reg = 0xFFFFFFFF;
-		} else {
+		if (!i)
+			oob = chip->oob_poi + (ecc->steps - 1) * NFC_SYS_DATA_SIZE;
+		else
 			oob = chip->oob_poi + (i - 1) * NFC_SYS_DATA_SIZE;
-			reg = oob[0] | oob[1] << 8 | oob[2] << 16 |
-			      oob[3] << 24;
-		}
 
-		if (!i && boot_rom_mode)
-			reg = (page & (pages_per_blk - 1)) * 4;
+		tmp = oob[0] | oob[1] << 8 | oob[2] << 16 | oob[3] << 24;
 
 		if (nfc->cfg->type == NFC_V9)
-			nfc->oob_buf[i] = reg;
+			nfc->oob_buf[i] = tmp;
 		else
-			nfc->oob_buf[i * (oob_step / 4)] = reg;
+			nfc->oob_buf[i * (oob_step / 4)] = tmp;
 	}
 
 	dma_data = dma_map_single((void *)nfc->page_buf,
@@ -720,12 +723,17 @@ static int rk_nfc_read_page_hwecc(struct mtd_info *mtd,
 		goto timeout_err;
 	}
 
-	for (i = 1; i < ecc->steps; i++) {
-		oob = chip->oob_poi + (i - 1) * NFC_SYS_DATA_SIZE;
+	for (i = 0; i < ecc->steps; i++) {
+		if (!i)
+			oob = chip->oob_poi + (ecc->steps - 1) * NFC_SYS_DATA_SIZE;
+		else
+			oob = chip->oob_poi + (i - 1) * NFC_SYS_DATA_SIZE;
+
 		if (nfc->cfg->type == NFC_V9)
 			tmp = nfc->oob_buf[i];
 		else
 			tmp = nfc->oob_buf[i * (oob_step / 4)];
+
 		*oob++ = (u8)tmp;
 		*oob++ = (u8)(tmp >> 8);
 		*oob++ = (u8)(tmp >> 16);
@@ -814,47 +822,9 @@ static void rk_nfc_disable_clks(struct rk_nfc *nfc)
 	clk_disable_unprepare(nfc->ahb_clk);
 }
 
-static int rk_nfc_ooblayout_free(struct mtd_info *mtd, int section,
-				 struct mtd_oob_region *oob_region)
-{
-	struct nand_chip *chip = mtd_to_nand(mtd);
-	struct rk_nfc_nand_chip *rknand = rk_nfc_to_rknand(chip);
-
-	if (section)
-		return -ERANGE;
-
-	/*
-	 * The beginning of the OOB area stores the reserved data for the NFC,
-	 * the size of the reserved data is NFC_SYS_DATA_SIZE bytes.
-	 */
-	oob_region->length = rknand->metadata_size - NFC_SYS_DATA_SIZE - 2;
-	oob_region->offset = NFC_SYS_DATA_SIZE + 2;
-
-	return 0;
-}
-
-static int rk_nfc_ooblayout_ecc(struct mtd_info *mtd, int section,
-				struct mtd_oob_region *oob_region)
-{
-	struct nand_chip *chip = mtd_to_nand(mtd);
-	struct rk_nfc_nand_chip *rknand = rk_nfc_to_rknand(chip);
-
-	if (section)
-		return -ERANGE;
-
-	oob_region->length = mtd->oobsize - rknand->metadata_size;
-	oob_region->offset = rknand->metadata_size;
-
-	return 0;
-}
-
-static const struct mtd_ooblayout_ops rk_nfc_ooblayout_ops = {
-	.rfree = rk_nfc_ooblayout_free,
-	.ecc = rk_nfc_ooblayout_ecc,
-};
-
 static int rk_nfc_ecc_init(struct rk_nfc *nfc, struct nand_chip *chip)
 {
+	struct rk_nfc_nand_chip *rknand = rk_nfc_to_rknand(chip);
 	const u8 *strengths = nfc->cfg->ecc_strengths;
 	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct nand_ecc_ctrl *ecc = &chip->ecc;
@@ -891,6 +861,21 @@ static int rk_nfc_ecc_init(struct rk_nfc *nfc, struct nand_chip *chip)
 	}
 	ecc->steps = mtd->writesize / ecc->size;
 	ecc->bytes = DIV_ROUND_UP(ecc->strength * fls(8 * chip->ecc.size), 8);
+
+	if (ecc->bytes * ecc->steps > mtd->oobsize - rknand->metadata_size)
+		return -EINVAL;
+
+	ecc->layout = kzalloc(sizeof(*ecc->layout), GFP_KERNEL);
+	if (!ecc->layout)
+		return -ENOMEM;
+
+	ecc->layout->eccbytes = ecc->bytes * ecc->steps;
+
+	for (i = 0; i < ecc->layout->eccbytes; i++)
+		ecc->layout->eccpos[i] = rknand->metadata_size + i;
+
+	ecc->layout->oobfree[0].length = rknand->metadata_size - NFC_SYS_DATA_SIZE - 2;
+	ecc->layout->oobfree[0].offset = 2;
 
 	return 0;
 }
@@ -957,6 +942,7 @@ static int rk_nfc_nand_chip_init(ofnode node, struct rk_nfc *nfc, int devnum)
 
 	nand_set_controller_data(chip, nfc);
 
+	chip->flash_node = node;
 	chip->chip_delay = NFC_RB_DELAY_US;
 	chip->select_chip = rk_nfc_select_chip;
 	chip->cmd_ctrl = rk_nfc_cmd;
@@ -969,7 +955,9 @@ static int rk_nfc_nand_chip_init(ofnode node, struct rk_nfc *nfc, int devnum)
 	chip->bbt_options = NAND_BBT_USE_FLASH | NAND_BBT_NO_OOB;
 	chip->options |= NAND_NO_SUBPAGE_WRITE | NAND_USE_BOUNCE_BUFFER;
 
-	mtd_set_ooblayout(mtd, &rk_nfc_ooblayout_ops);
+	if (IS_ENABLED(CONFIG_ROCKCHIP_NAND_SKIP_BBTSCAN))
+		chip->options |= NAND_SKIP_BBTSCAN;
+
 	rk_nfc_hw_init(nfc);
 	ret = nand_scan_ident(mtd, nsels, NULL);
 	if (ret)
@@ -998,13 +986,16 @@ static int rk_nfc_nand_chip_init(ofnode node, struct rk_nfc *nfc, int devnum)
 
 	if (!nfc->page_buf) {
 		nfc->page_buf = kzalloc(NFC_MAX_PAGE_SIZE, GFP_KERNEL);
-		if (!nfc->page_buf)
+		if (!nfc->page_buf) {
+			kfree(ecc->layout);
 			return -ENOMEM;
+		}
 	}
 
 	if (!nfc->oob_buf) {
 		nfc->oob_buf = kzalloc(NFC_MAX_OOB_SIZE, GFP_KERNEL);
 		if (!nfc->oob_buf) {
+			kfree(ecc->layout);
 			kfree(nfc->page_buf);
 			nfc->page_buf = NULL;
 			return -ENOMEM;
@@ -1165,10 +1156,6 @@ static const struct udevice_id rk_nfc_id_table[] = {
 		.compatible = "rockchip,rv1108-nfc",
 		.data = (unsigned long)&nfc_v8_cfg
 	},
-	{
-		.compatible = "rockchip,rk3308-nfc",
-		.data = (unsigned long)&nfc_v8_cfg
-	},
 	{ /* sentinel */ }
 };
 
@@ -1180,9 +1167,9 @@ static int rk_nfc_probe(struct udevice *dev)
 	nfc->cfg = (void *)dev_get_driver_data(dev);
 	nfc->dev = dev;
 
-	nfc->regs = (void *)dev_read_addr(dev);
-	if (IS_ERR(nfc->regs)) {
-		ret = PTR_ERR(nfc->regs);
+	nfc->regs = dev_read_addr_ptr(dev);
+	if (!nfc->regs) {
+		ret = -EINVAL;
 		goto release_nfc;
 	}
 

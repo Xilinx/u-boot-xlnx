@@ -162,8 +162,6 @@ static efi_status_t efi_env_set_load_options(efi_handle_t handle,
 	return ret;
 }
 
-#if !CONFIG_IS_ENABLED(GENERATE_ACPI_TABLE)
-
 /**
  * copy_fdt() - Copy the device tree to a new location available to EFI
  *
@@ -204,25 +202,12 @@ static efi_status_t copy_fdt(void **fdtp)
 	fdt_pages = efi_size_in_pages(fdt_totalsize(fdt) + 0x3000);
 	fdt_size = fdt_pages << EFI_PAGE_SHIFT;
 
-	/*
-	 * Safe fdt location is at 127 MiB.
-	 * On the sandbox convert from the sandbox address space.
-	 */
-	new_fdt_addr = (uintptr_t)map_sysmem(fdt_ram_start + 0x7f00000 +
-					     fdt_size, 0);
-	ret = efi_allocate_pages(EFI_ALLOCATE_MAX_ADDRESS,
+	ret = efi_allocate_pages(EFI_ALLOCATE_ANY_PAGES,
 				 EFI_ACPI_RECLAIM_MEMORY, fdt_pages,
 				 &new_fdt_addr);
 	if (ret != EFI_SUCCESS) {
-		/* If we can't put it there, put it somewhere */
-		new_fdt_addr = (ulong)memalign(EFI_PAGE_SIZE, fdt_size);
-		ret = efi_allocate_pages(EFI_ALLOCATE_MAX_ADDRESS,
-					 EFI_ACPI_RECLAIM_MEMORY, fdt_pages,
-					 &new_fdt_addr);
-		if (ret != EFI_SUCCESS) {
-			log_err("ERROR: Failed to reserve space for FDT\n");
-			goto done;
-		}
+		log_err("ERROR: Failed to reserve space for FDT\n");
+		goto done;
 	}
 	new_fdt = (void *)(uintptr_t)new_fdt_addr;
 	memcpy(new_fdt, fdt, fdt_totalsize(fdt));
@@ -250,8 +235,6 @@ static void *get_config_table(const efi_guid_t *guid)
 	return NULL;
 }
 
-#endif /* !CONFIG_IS_ENABLED(GENERATE_ACPI_TABLE) */
-
 /**
  * efi_install_fdt() - install device tree
  *
@@ -271,18 +254,15 @@ static void *get_config_table(const efi_guid_t *guid)
  */
 efi_status_t efi_install_fdt(void *fdt)
 {
+	struct bootm_headers img = { 0 };
+	efi_status_t ret;
+
 	/*
 	 * The EBBR spec requires that we have either an FDT or an ACPI table
 	 * but not both.
 	 */
-#if CONFIG_IS_ENABLED(GENERATE_ACPI_TABLE)
-	if (fdt) {
+	if (CONFIG_IS_ENABLED(GENERATE_ACPI_TABLE) && fdt)
 		log_warning("WARNING: Can't have ACPI table and device tree - ignoring DT.\n");
-		return EFI_SUCCESS;
-	}
-#else
-	struct bootm_headers img = { 0 };
-	efi_status_t ret;
 
 	if (fdt == EFI_FDT_USE_INTERNAL) {
 		const char *fdt_opt;
@@ -315,6 +295,12 @@ efi_status_t efi_install_fdt(void *fdt)
 		return EFI_LOAD_ERROR;
 	}
 
+	/* Create memory reservations as indicated by the device tree */
+	efi_carve_out_dt_rsv(fdt);
+
+	if (CONFIG_IS_ENABLED(GENERATE_ACPI_TABLE))
+		return EFI_SUCCESS;
+
 	/* Prepare device tree for payload */
 	ret = copy_fdt(&fdt);
 	if (ret) {
@@ -327,10 +313,15 @@ efi_status_t efi_install_fdt(void *fdt)
 		return EFI_LOAD_ERROR;
 	}
 
-	/* Create memory reservations as indicated by the device tree */
-	efi_carve_out_dt_rsv(fdt);
-
 	efi_try_purge_kaslr_seed(fdt);
+
+	if (CONFIG_IS_ENABLED(EFI_TCG2_PROTOCOL_MEASURE_DTB)) {
+		ret = efi_tcg2_measure_dtb(fdt);
+		if (ret == EFI_SECURITY_VIOLATION) {
+			log_err("ERROR: failed to measure DTB\n");
+			return ret;
+		}
+	}
 
 	/* Install device tree as UEFI table */
 	ret = efi_install_configuration_table(&efi_guid_fdt, fdt);
@@ -338,7 +329,6 @@ efi_status_t efi_install_fdt(void *fdt)
 		log_err("ERROR: failed to install device tree\n");
 		return ret;
 	}
-#endif /* GENERATE_ACPI_TABLE */
 
 	return EFI_SUCCESS;
 }
@@ -594,7 +584,7 @@ static efi_status_t bootefi_test_prepare
 	if (!bootefi_device_path)
 		return EFI_OUT_OF_RESOURCES;
 
-	bootefi_image_path = efi_dp_from_file(NULL, 0, path);
+	bootefi_image_path = efi_dp_from_file(NULL, path);
 	if (!bootefi_image_path) {
 		ret = EFI_OUT_OF_RESOURCES;
 		goto failure;
@@ -609,20 +599,6 @@ static efi_status_t bootefi_test_prepare
 failure:
 	efi_clear_bootdev();
 	return ret;
-}
-
-/**
- * bootefi_run_finish() - finish up after running an EFI test
- *
- * @loaded_image_info: Pointer to a struct which holds the loaded image info
- * @image_obj: Pointer to a struct which holds the loaded image object
- */
-static void bootefi_run_finish(struct efi_loaded_image_obj *image_obj,
-			       struct efi_loaded_image *loaded_image_info)
-{
-	efi_restore_gd();
-	free(loaded_image_info->load_options);
-	efi_delete_handle(&image_obj->header);
 }
 
 /**
@@ -643,7 +619,12 @@ static int do_efi_selftest(void)
 
 	/* Execute the test */
 	ret = EFI_CALL(efi_selftest(&image_obj->header, &systab));
-	bootefi_run_finish(image_obj, loaded_image_info);
+	efi_restore_gd();
+	free(loaded_image_info->load_options);
+	if (ret != EFI_SUCCESS)
+		efi_delete_handle(&image_obj->header);
+	else
+		ret = efi_delete_handle(&image_obj->header);
 
 	return ret != EFI_SUCCESS;
 }
@@ -712,8 +693,7 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 	return ret;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char bootefi_help_text[] =
+U_BOOT_LONGHELP(bootefi,
 	"<image address>[:<image size>] [<fdt address>]\n"
 	"  - boot EFI payload\n"
 #ifdef CONFIG_CMD_BOOTEFI_HELLO
@@ -733,8 +713,7 @@ static char bootefi_help_text[] =
 	"    If specified, the device tree located at <fdt address> gets\n"
 	"    exposed as EFI configuration table.\n"
 #endif
-	;
-#endif
+	);
 
 U_BOOT_CMD(
 	bootefi, 4, 0, do_bootefi,

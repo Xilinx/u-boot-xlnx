@@ -1,9 +1,17 @@
+#include "imx7s-u-boot.dtsi"
+
 /{
     aliases {
         mmc0 = &usdhc3;
         usb0 = &usbotg1;
         display0 = &lcdif;
     };
+
+	wdt-reboot {
+		compatible = "wdt-reboot";
+		wdt = <&wdog1>;
+		bootph-pre-ram;
+	};
 };
 
 &usbotg1 {
@@ -15,7 +23,7 @@
 	pinctrl-0 = <&pinctrl_lcdif>;
 	status = "okay";
 	display = <&display0>;
-	u-boot,dm-pre-reloc;
+	bootph-all;
 
 	display0: display {
 		bits-per-pixel = <16>;
@@ -41,6 +49,10 @@
 			};
 		};
 	};
+};
+
+&wdog1 {
+	bootph-pre-ram;
 };
 
 &iomuxc {

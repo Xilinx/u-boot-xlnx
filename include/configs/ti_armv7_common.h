@@ -2,7 +2,7 @@
 /*
  * ti_armv7_common.h
  *
- * Copyright (C) 2013 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2013 Texas Instruments Incorporated - https://www.ti.com/
  *
  * The various ARMv7 SoCs from TI all share a number of IP blocks when
  * implementing a given feature.  Rather than define these in every
@@ -55,7 +55,8 @@
 		"do;" \
 		"setenv overlaystring ${overlaystring}'#'${overlay};" \
 		"done;\0" \
-	"run_fit=bootm ${addr_fit}#conf-${fdtfile}${overlaystring}\0" \
+	"get_fit_config=setexpr name_fit_config gsub / _ conf-${fdtfile}\0" \
+	"run_fit=run get_fit_config; bootm ${addr_fit}#${name_fit_config}${overlaystring}\0" \
 
 /*
  * DDR information.  If the CONFIG_NR_DRAM_BANKS is not defined,
@@ -64,7 +65,7 @@
  * initial stack pointer in our SRAM. Otherwise, we can define
  * CONFIG_NR_DRAM_BANKS before including this file.
  */
-#define CONFIG_SYS_SDRAM_BASE		0x80000000
+#define CFG_SYS_SDRAM_BASE		0x80000000
 
 /* If DM_I2C, enable non-DM I2C support */
 
@@ -123,7 +124,7 @@
 /* General parts of the framework, required. */
 
 #ifdef CONFIG_MTD_RAW_NAND
-#define CONFIG_SYS_NAND_U_BOOT_START	CONFIG_TEXT_BASE
+#define CFG_SYS_NAND_U_BOOT_START	CONFIG_TEXT_BASE
 #endif
 #endif /* !CONFIG_NOR_BOOT */
 
@@ -152,5 +153,55 @@
 #else
 #define NETARGS ""
 #endif
+
+#ifdef CONFIG_ARM64
+#ifdef CONFIG_DISTRO_DEFAULTS
+#ifdef CONFIG_CMD_PXE
+# define BOOT_TARGET_PXE(func) func(PXE, pxe, na)
+#else
+# define BOOT_TARGET_PXE(func)
+#endif
+
+#ifdef CONFIG_CMD_DHCP
+# define BOOT_TARGET_DHCP(func) func(DHCP, dhcp, na)
+#else
+# define BOOT_TARGET_DHCP(func)
+#endif
+
+#ifdef CONFIG_CMD_MMC
+#define BOOT_TARGET_MMC(func) \
+	func(TI_MMC, ti_mmc, na) \
+	func(MMC, mmc, 0) \
+	func(MMC, mmc, 1)
+#else
+#define BOOT_TARGET_MMC(func)
+#endif
+
+#define BOOTENV_DEV_TI_MMC(devtypeu, devtypel, instance)
+
+#define BOOTENV_DEV_NAME_TI_MMC(devtyeu, devtypel, instance)		\
+	"ti_mmc "
+
+#ifdef CONFIG_CMD_USB
+# define BOOT_TARGET_USB(func)	func(USB, usb, 0)
+#else
+# define BOOT_TARGET_USB(func)
+#endif
+
+#define BOOT_TARGET_DEVICES(func) \
+	BOOT_TARGET_MMC(func) \
+	BOOT_TARGET_USB(func) \
+	BOOT_TARGET_PXE(func) \
+	BOOT_TARGET_DHCP(func)
+
+#include <config_distro_bootcmd.h>
+
+/* Incorporate settings into the U-Boot environment */
+#define CFG_EXTRA_ENV_SETTINGS					\
+	BOOTENV
+
+#endif /* CONFIG_DISTRO_DEFAULTS */
+
+#endif /* CONFIG_ARM64 */
 
 #endif	/* __CONFIG_TI_ARMV7_COMMON_H__ */

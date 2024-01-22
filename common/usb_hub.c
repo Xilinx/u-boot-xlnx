@@ -47,7 +47,7 @@
 #define HUB_SHORT_RESET_TIME	20
 #define HUB_LONG_RESET_TIME	200
 
-#define HUB_DEBOUNCE_TIMEOUT	1000
+#define HUB_DEBOUNCE_TIMEOUT	CONFIG_USB_HUB_DEBOUNCE_TIMEOUT
 
 #define PORT_OVERCURRENT_MAX_SCAN_COUNT		3
 
@@ -395,6 +395,13 @@ int usb_hub_port_connect_change(struct usb_device *dev, int port)
 		break;
 	}
 
+	/*
+	 * USB 2.0 7.1.7.5: devices must be able to accept a SetAddress()
+	 * request (refer to Section 11.24.2 and Section 9.4 respectively)
+	 * after the reset recovery time 10 ms
+	 */
+	mdelay(10);
+
 #if CONFIG_IS_ENABLED(DM_USB)
 	struct udevice *child;
 
@@ -507,11 +514,6 @@ static int usb_scan_port(struct usb_device_scan *usb_scan)
 		debug("port %d enable change, status %x\n", i + 1, portstatus);
 		usb_clear_port_feature(dev, i + 1, USB_PORT_FEAT_C_ENABLE);
 		/*
-		 * The following hack causes a ghost device problem
-		 * to Faraday EHCI
-		 */
-#ifndef CONFIG_USB_EHCI_FARADAY
-		/*
 		 * EM interference sometimes causes bad shielded USB
 		 * devices to be shutdown by the hub, this hack enables
 		 * them again. Works at least with mouse driver
@@ -523,7 +525,6 @@ static int usb_scan_port(struct usb_device_scan *usb_scan)
 			      i + 1);
 			usb_hub_port_connect_change(dev, i);
 		}
-#endif
 	}
 
 	if (portstatus & USB_PORT_STAT_SUSPEND) {

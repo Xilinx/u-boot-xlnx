@@ -12,11 +12,10 @@
 
 /* Default PSCI function, return -1, Not Implemented */
 #define PSCI_DEFAULT(__fn) \
-	ENTRY(__fn); \
+	WEAK(__fn); \
 	mov	w0, #ARM_PSCI_RET_NI; \
 	ret; \
 	ENDPROC(__fn); \
-	.weak __fn
 
 /* PSCI function and ID table definition*/
 #define PSCI_TABLE(__id, __fn) \
@@ -82,6 +81,7 @@ PSCI_DEFAULT(psci_node_hw_state_64)
 PSCI_DEFAULT(psci_system_suspend_64)
 PSCI_DEFAULT(psci_stat_residency_64)
 PSCI_DEFAULT(psci_stat_count_64)
+PSCI_DEFAULT(psci_system_reset2_64)
 
 .align 3
 _psci_64_table:
@@ -95,6 +95,7 @@ PSCI_TABLE(ARM_PSCI_1_0_FN64_NODE_HW_STATE, psci_node_hw_state_64)
 PSCI_TABLE(ARM_PSCI_1_0_FN64_SYSTEM_SUSPEND, psci_system_suspend_64)
 PSCI_TABLE(ARM_PSCI_1_0_FN64_STAT_RESIDENCY, psci_stat_residency_64)
 PSCI_TABLE(ARM_PSCI_1_0_FN64_STAT_COUNT, psci_stat_count_64)
+PSCI_TABLE(ARM_PSCI_1_1_FN64_SYSTEM_RESET2, psci_system_reset2_64)
 PSCI_TABLE(0, 0)
 
 .macro	psci_enter
@@ -207,7 +208,7 @@ handle_smc64:
  * used for the return value, while in this PSCI environment, X0 usually holds
  * the SMC function identifier, so X0 should be saved by caller function.
  */
-ENTRY(psci_get_cpu_id)
+WEAK(psci_get_cpu_id)
 #ifdef CONFIG_ARMV8_PSCI_CPUS_PER_CLUSTER
 	mrs	x9, MPIDR_EL1
 	ubfx	x9, x9, #8, #8
@@ -221,7 +222,6 @@ ENTRY(psci_get_cpu_id)
 	add	x0, x10, x9
 	ret
 ENDPROC(psci_get_cpu_id)
-.weak psci_get_cpu_id
 
 /* CPU ID input in x0, stack top output in x0*/
 LENTRY(psci_get_cpu_stack_top)
@@ -261,10 +261,9 @@ handle_sync:
  * Override this function if custom error handling is
  * needed for asynchronous aborts
  */
-ENTRY(plat_error_handler)
+WEAK(plat_error_handler)
 	ret
 ENDPROC(plat_error_handler)
-.weak plat_error_handler
 
 handle_error:
 	bl	psci_get_cpu_id
@@ -323,9 +322,8 @@ ENTRY(psci_setup_vectors)
 	ret
 ENDPROC(psci_setup_vectors)
 
-ENTRY(psci_arch_init)
+WEAK(psci_arch_init)
 	ret
 ENDPROC(psci_arch_init)
-.weak psci_arch_init
 
 .popsection

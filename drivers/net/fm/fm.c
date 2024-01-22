@@ -5,14 +5,14 @@
  */
 #include <common.h>
 #include <env.h>
+#include <fs_loader.h>
 #include <image.h>
 #include <malloc.h>
 #include <asm/io.h>
+#include <dm/device_compat.h>
 #include <linux/errno.h>
 #include <u-boot/crc.h>
-#ifdef CONFIG_DM_ETH
 #include <dm.h>
-#endif
 
 #include "fm.h"
 #include <fsl_qe.h>		/* For struct qe_firmware */
@@ -26,7 +26,7 @@
 #include <asm/arch/cpu.h>
 #endif
 
-struct fm_muram muram[CONFIG_SYS_NUM_FMAN];
+struct fm_muram muram[CFG_SYS_NUM_FMAN];
 
 void *fm_muram_base(int fm_idx)
 {
@@ -67,9 +67,9 @@ static void fm_init_muram(int fm_idx, void *reg)
 	void *base = reg;
 
 	muram[fm_idx].base = base;
-	muram[fm_idx].size = CONFIG_SYS_FM_MURAM_SIZE;
+	muram[fm_idx].size = CFG_SYS_FM_MURAM_SIZE;
 	muram[fm_idx].alloc = base + FM_MURAM_RES_SIZE;
-	muram[fm_idx].top = base + CONFIG_SYS_FM_MURAM_SIZE;
+	muram[fm_idx].top = base + CFG_SYS_FM_MURAM_SIZE;
 }
 
 /*
@@ -355,7 +355,7 @@ static void fm_init_qmi(struct fm_qmi_common *qmi)
 
 /* Init common part of FM, index is fm num# like fm as above */
 #ifdef CONFIG_TFABOOT
-int fm_init_common(int index, struct ccsr_fman *reg)
+int fm_init_common(int index, struct ccsr_fman *reg, const char *firmware_name)
 {
 	int rc;
 	void *addr = NULL;
@@ -363,7 +363,7 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 
 	if (src == BOOT_SOURCE_IFC_NOR) {
 		addr = (void *)(CONFIG_SYS_FMAN_FW_ADDR +
-				CONFIG_SYS_FSL_IFC_BASE);
+				CFG_SYS_FSL_IFC_BASE);
 #ifdef CONFIG_CMD_NAND
 	} else if (src == BOOT_SOURCE_IFC_NAND) {
 		size_t fw_length = CONFIG_SYS_QE_FMAN_FW_LENGTH;
@@ -450,10 +450,32 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 	return fm_init_bmi(index, &reg->fm_bmi_common);
 }
 #else
-int fm_init_common(int index, struct ccsr_fman *reg)
+int fm_init_common(int index, struct ccsr_fman *reg, const char *firmware_name)
 {
 	int rc;
-#if defined(CONFIG_SYS_QE_FMAN_FW_IN_NOR)
+#if defined(CONFIG_SYS_QE_FMAN_FW_IN_FS)
+	struct udevice *fs_loader;
+	void *addr = malloc(CONFIG_SYS_QE_FMAN_FW_LENGTH);
+
+	if (!addr)
+		return -ENOMEM;
+
+	rc = get_fs_loader(&fs_loader);
+	if (rc) {
+		debug("could not get fs loader: %d\n", rc);
+		return rc;
+	}
+
+	if (!firmware_name)
+		firmware_name = "fman.itb";
+
+	rc = request_firmware_into_buf(fs_loader, firmware_name, addr,
+				       CONFIG_SYS_QE_FMAN_FW_LENGTH, 0);
+	if (rc < 0) {
+		debug("could not request %s: %d\n", firmware_name, rc);
+		return rc;
+	}
+#elif defined(CONFIG_SYS_QE_FMAN_FW_IN_NOR)
 	void *addr = (void *)CONFIG_SYS_FMAN_FW_ADDR;
 #elif defined(CONFIG_SYS_QE_FMAN_FW_IN_NAND)
 	size_t fw_length = CONFIG_SYS_QE_FMAN_FW_LENGTH;
@@ -551,7 +573,6 @@ int fm_init_common(int index, struct ccsr_fman *reg)
 }
 #endif
 
-#ifdef CONFIG_DM_ETH
 struct fman_priv {
 	struct ccsr_fman *reg;
 	unsigned int fman_id;
@@ -564,6 +585,8 @@ static const struct udevice_id fman_ids[] = {
 
 static int fman_probe(struct udevice *dev)
 {
+	const char *firmware_name = NULL;
+	int ret;
 	struct fman_priv *priv = dev_get_priv(dev);
 
 	priv->reg = (struct ccsr_fman *)(uintptr_t)dev_read_addr(dev);
@@ -573,7 +596,13 @@ static int fman_probe(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	return fm_init_common(priv->fman_id, priv->reg);
+	ret = dev_read_string_index(dev, "firmware-name", 0, &firmware_name);
+	if (ret && ret != -EINVAL) {
+		dev_dbg(dev, "Could not read firmware-name\n");
+		return ret;
+	}
+
+	return fm_init_common(priv->fman_id, priv->reg, firmware_name);
 }
 
 static int fman_remove(struct udevice *dev)
@@ -626,4 +655,3 @@ U_BOOT_DRIVER(fman) = {
 	.priv_auto	= sizeof(struct fman_priv),
 	.flags = DM_FLAG_ALLOC_PRIV_DMA,
 };
-#endif /* CONFIG_DM_ETH */

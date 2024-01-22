@@ -414,6 +414,7 @@ struct dm_gpio_ops {
  * @gpio_base: Base GPIO number for this device. For the first active device
  * this will be 0; the numbering for others will follow sequentially so that
  * @gpio_base for device 1 will equal the number of GPIOs in device 0.
+ * @claimed: Array of bits indicating which GPIOs in the bank are claimed.
  * @name: Array of pointers to the name for each GPIO in this bank. The
  * value of the pointer will be NULL if the GPIO has not been claimed.
  */
@@ -421,6 +422,7 @@ struct gpio_dev_priv {
 	const char *bank_name;
 	unsigned gpio_count;
 	unsigned gpio_base;
+	u32 *claimed;
 	char **name;
 };
 
@@ -460,14 +462,6 @@ int dm_gpio_lookup_name(const char *name, struct gpio_desc *desc);
  * @return:	Returns 0 if OK, else -ENODEV
  */
 int gpio_hog_lookup_name(const char *name, struct gpio_desc **desc);
-
-/**
- * gpio_hog_probe_all() - probe all gpio devices with
- * gpio-hog subnodes.
- *
- * @return:	Returns return value from device_probe()
- */
-int gpio_hog_probe_all(void);
 
 /**
  * gpio_lookup_name - Look up a GPIO name and return its details
@@ -588,7 +582,8 @@ int gpio_request_by_name(struct udevice *dev, const char *list_name,
  * This allows boards to implement common behaviours using GPIOs while not
  * requiring specific GPIO offsets be used.
  *
- * @dev:	An instance of a GPIO controller udevice
+ * @dev:        An instance of a GPIO controller udevice, or NULL to search
+ *              all GPIO controller devices
  * @line_name:	The name of the GPIO (e.g. "bmc-secure-boot")
  * @desc:	A GPIO descriptor that is populated with the requested GPIO
  *              upon return

@@ -192,7 +192,7 @@ static int unicode_test_utf8_get(struct unit_test_state *uts)
 		if (!code)
 			break;
 	}
-	ut_asserteq_ptr(s, d2 + 9)
+	ut_asserteq_ptr(s, d2 + 9);
 
 	/* Check characters less than 0x10000 */
 	s = d3;
@@ -203,7 +203,7 @@ static int unicode_test_utf8_get(struct unit_test_state *uts)
 		if (!code)
 			break;
 	}
-	ut_asserteq_ptr(s, d3 + 9)
+	ut_asserteq_ptr(s, d3 + 9);
 
 	/* Check character greater 0xffff */
 	s = d4;
@@ -228,7 +228,7 @@ static int unicode_test_utf8_put(struct unit_test_state *uts)
 
 	/* Commercial at, translates to one character */
 	pos = buffer;
-	ut_assert(!utf8_put('@', &pos))
+	ut_assert(!utf8_put('@', &pos));
 	ut_asserteq(1, pos - buffer);
 	ut_asserteq('@', buffer[0]);
 	ut_assert(!buffer[1]);
@@ -807,28 +807,28 @@ static int unicode_test_u16_strlcat(struct unit_test_state *uts)
 
 	/* dest and src are empty string */
 	memset(buf, 0, sizeof(buf));
-	ret = u16_strlcat(buf, &null_src, sizeof(buf));
-	ut_asserteq(1, ret);
+	ret = u16_strlcat(buf, &null_src, ARRAY_SIZE(buf));
+	ut_asserteq(0, ret);
 
 	/* dest is empty string */
 	memset(buf, 0, sizeof(buf));
-	ret = u16_strlcat(buf, src, sizeof(buf));
-	ut_asserteq(5, ret);
+	ret = u16_strlcat(buf, src, ARRAY_SIZE(buf));
+	ut_asserteq(4, ret);
 	ut_assert(!unicode_test_u16_strcmp(buf, src, 40));
 
 	/* src is empty string */
 	memset(buf, 0xCD, (sizeof(buf) - sizeof(u16)));
 	buf[39] = 0;
 	memcpy(buf, dest, sizeof(dest));
-	ret = u16_strlcat(buf, &null_src, sizeof(buf));
-	ut_asserteq(6, ret);
+	ret = u16_strlcat(buf, &null_src, ARRAY_SIZE(buf));
+	ut_asserteq(5, ret);
 	ut_assert(!unicode_test_u16_strcmp(buf, dest, 40));
 
 	for (i = 0; i <= 40; i++) {
 		memset(buf, 0xCD, (sizeof(buf) - sizeof(u16)));
 		buf[39] = 0;
 		memcpy(buf, dest, sizeof(dest));
-		expected = 10;
+		expected = min(5, i) + 4;
 		ret = u16_strlcat(buf, src, i);
 		ut_asserteq(expected, ret);
 		if (i <= 6) {

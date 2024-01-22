@@ -201,12 +201,6 @@ static int __init compr_init(struct ubifs_compressor *compr)
 {
 	ubifs_compressors[compr->compr_type] = compr;
 
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-	ubifs_compressors[compr->compr_type]->name += gd->reloc_off;
-	ubifs_compressors[compr->compr_type]->capi_name += gd->reloc_off;
-	ubifs_compressors[compr->compr_type]->decompress += gd->reloc_off;
-#endif
-
 	if (compr->capi_name) {
 		compr->cc = crypto_alloc_comp(compr->capi_name, 0, 0);
 		if (IS_ERR(compr->cc)) {
@@ -925,12 +919,12 @@ void ubifs_close(void)
 }
 
 /* Compat wrappers for common/cmd_ubifs.c */
-int ubifs_load(char *filename, u32 addr, u32 size)
+int ubifs_load(char *filename, unsigned long addr, u32 size)
 {
 	loff_t actread;
 	int err;
 
-	printf("Loading file '%s' to addr 0x%08x...\n", filename, addr);
+	printf("Loading file '%s' to addr 0x%08lx...\n", filename, addr);
 
 	err = ubifs_read(filename, (void *)(uintptr_t)addr, 0, size, &actread);
 	if (err == 0) {

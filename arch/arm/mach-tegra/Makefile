@@ -16,6 +16,7 @@ obj-$(CONFIG_TEGRA_GP_PADCTRL) += ap.o
 obj-y += board.o board2.o
 obj-y += cache.o
 obj-$(CONFIG_TEGRA_CLKRST) += clock.o
+obj-$(CONFIG_$(SPL_)TEGRA_CRYPTO) += crypto.o
 obj-$(CONFIG_TEGRA_PINCTRL) += pinmux-common.o
 obj-$(CONFIG_TEGRA_PMC) += powergate.o
 obj-y += xusb-padctl-dummy.o
@@ -30,6 +31,10 @@ obj-$(CONFIG_ARMV7_PSCI) += psci.o
 endif
 obj-$(CONFIG_DISPLAY_CPUINFO) += sys_info.o
 obj-y += pmc.o
+
+ifndef CONFIG_TEGRA186
+obj-y += fuse.o
+endif
 
 obj-$(CONFIG_TEGRA20) += tegra20/
 obj-$(CONFIG_TEGRA30) += tegra30/

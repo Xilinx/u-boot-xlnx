@@ -48,7 +48,6 @@
 
 	ethernet_phy: ethernet-phy@0 {
 		reg = <0>;
-		device_type = "ethernet-phy";
 	};
 };
 
@@ -61,12 +60,12 @@
 };
 
 &sdhci0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 
 &uart0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 };
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
 /**
- * ufs.c - UFS specific U-boot commands
+ * ufs.c - UFS specific U-Boot commands
  *
- * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com
+ * Copyright (C) 2019 Texas Instruments Incorporated - https://www.ti.com
  *
  */
 #include <common.h>

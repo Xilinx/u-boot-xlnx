@@ -67,6 +67,24 @@ config BLOCK_CACHE
 	  it will prevent repeated reads from directory structures and other
 	  filesystem data structures.
 
+config BLKMAP
+	bool "Composable virtual block devices (blkmap)"
+	depends on BLK
+	help
+ 	  Create virtual block devices that are backed by various sources,
+ 	  e.g. RAM, or parts of an existing block device. Though much more
+ 	  rudimentary, it borrows a lot of ideas from Linux's device mapper
+ 	  subsystem.
+
+	  Example use-cases:
+	  - Treat a region of RAM as a block device, i.e. a RAM disk. This let's
+            you extract files from filesystem images stored in RAM (perhaps as a
+            result of a TFTP transfer).
+	  - Create a virtual partition on an existing device. This let's you
+            access filesystems that aren't stored at an exact partition
+            boundary. A common example is a filesystem image embedded in an FIT
+            image.
+
 config SPL_BLOCK_CACHE
 	bool "Use block device cache in SPL"
 	depends on SPL_BLK
@@ -88,6 +106,13 @@ config EFI_MEDIA
 	  anything.
 
 	  For sandbox there is a test driver.
+
+config SPL_BLK_FS
+	bool "Load images from filesystems on block devices"
+	depends on SPL_BLK
+	help
+	  Use generic support to load images from fat/ext filesystems on
+	  different types of block devices such as NVMe.
 
 if EFI_MEDIA
 
@@ -142,7 +167,7 @@ config SYS_IDE_MAXDEVICE
 
 config SYS_ATA_BASE_ADDR
 	hex "Base address of IDE controller"
-	default 0
+	default 0x0
 	help
 	  This is the address of the IDE controller, from which other addresses
 	  are calculated. Each bus is at a fixed offset from this address,
@@ -237,3 +262,10 @@ config SYS_64BIT_LBA
 	help
 	  Make the block subsystem use 64bit sector addresses, rather than the
 	  default of 32bit.
+
+config RKMTD
+	bool "Rockchip rkmtd virtual block device"
+	help
+	  Enable "rkmtd" class and driver to create a virtual block device
+	  to transfer Rockchip boot block data to and from NAND with block
+	  orientate tools like "ums" and "rockusb".

@@ -5,7 +5,7 @@
 # Android Verified Boot 2.0 Test
 
 """
-This tests Android Verified Boot 2.0 support in U-boot:
+This tests Android Verified Boot 2.0 support in U-Boot:
 
 For additional details about how to build proper vbmeta partition
 check doc/android/avb2.rst
@@ -39,6 +39,7 @@ def test_avb_verify(u_boot_console):
 
 @pytest.mark.buildconfigspec('cmd_avb')
 @pytest.mark.buildconfigspec('cmd_mmc')
+@pytest.mark.notbuildconfigspec('sandbox')
 def test_avb_mmc_uuid(u_boot_console):
     """Check if 'avb get_uuid' works, compare results with
     'part list mmc 1' output
@@ -97,6 +98,7 @@ def test_avb_is_unlocked(u_boot_console):
 
 @pytest.mark.buildconfigspec('cmd_avb')
 @pytest.mark.buildconfigspec('cmd_mmc')
+@pytest.mark.notbuildconfigspec('sandbox')
 def test_avb_mmc_read(u_boot_console):
     """Test mmc read operation
     """

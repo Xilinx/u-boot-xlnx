@@ -5,6 +5,17 @@ Building documentation
 
 The U-Boot documentation is based on the Sphinx documentation generator.
 
+In addition to the Python packages listed in ``doc/sphinx/requirements.txt``,
+the following dependencies are needed to build the documentation:
+
+* fontconfig
+
+* graphviz
+
+* imagemagick
+
+* texinfo (if building the `Infodoc documentation`_)
+
 HTML documentation
 ------------------
 
@@ -25,6 +36,9 @@ The *htmldocs* target is used to build the HTML documentation. It uses the
     deactivate
     # Display the documentation in a graphical web browser
     x-www-browser doc/output/index.html
+
+The HTML documentation is published at https://u-boot.readthedocs.io. The build
+process for that site is controlled by the file *.readthedocs.yml*.
 
 Infodoc documentation
 ---------------------

@@ -18,33 +18,20 @@
 
 #include <linux/kernel.h>
 
-#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
 struct efi_fw_image fw_images[] = {
-	{
-		.image_type_id = DEVELOPERBOX_UBOOT_IMAGE_GUID,
-		.fw_name = u"DEVELOPERBOX-UBOOT",
-		.image_index = 1,
-	},
 	{
 		.image_type_id = DEVELOPERBOX_FIP_IMAGE_GUID,
 		.fw_name = u"DEVELOPERBOX-FIP",
-		.image_index = 2,
-	},
-	{
-		.image_type_id = DEVELOPERBOX_OPTEE_IMAGE_GUID,
-		.fw_name = u"DEVELOPERBOX-OPTEE",
-		.image_index = 3,
+		.image_index = 1,
 	},
 };
 
 struct efi_capsule_update_info update_info = {
-	.dfu_string = "mtd nor1=u-boot.bin raw 200000 100000;"
-			"fip.bin raw 180000 78000;"
-			"optee.bin raw 500000 100000",
+	.dfu_string = "mtd nor1=fip.bin raw 600000 400000",
+	.num_images = ARRAY_SIZE(fw_images),
 	.images = fw_images,
 };
-
-u8 num_image_type_guids = ARRAY_SIZE(fw_images);
 #endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 static struct mm_region sc2a11_mem_map[] = {
@@ -137,11 +124,25 @@ int dram_init(void)
 {
 	struct draminfo *synquacer_draminfo = (void *)SQ_DRAMINFO_BASE;
 	struct draminfo_entry *ent = synquacer_draminfo->entry;
+	unsigned long size = 0;
+	int i;
 
-	gd->ram_size = ent[0].size;
+	for (i = 0; i < synquacer_draminfo->nr_regions; i++)
+		size += ent[i].size;
+
+	gd->ram_size = size;
 	gd->ram_base = ent[0].base;
 
 	return 0;
+}
+
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
+{
+	struct draminfo *synquacer_draminfo = (void *)SQ_DRAMINFO_BASE;
+	struct draminfo_entry *ent = synquacer_draminfo->entry;
+
+	return ent[synquacer_draminfo->nr_regions - 1].base +
+	       ent[synquacer_draminfo->nr_regions - 1].size;
 }
 
 int dram_init_banksize(void)

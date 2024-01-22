@@ -104,10 +104,10 @@
  * -> WL = AL + CWL + PL = CWL
  * -> RL = AL + CL + PL = CL
  */
-#define CONFIG_WL			9
-#define CONFIG_RL			12
-#define T_RDDATA_EN			((CONFIG_RL - 2) << 8)
-#define T_PHY_WRLAT			(CONFIG_WL - 2)
+#define CFG_WL			9
+#define CFG_RL			12
+#define T_RDDATA_EN			((CFG_RL - 2) << 8)
+#define T_PHY_WRLAT			(CFG_WL - 2)
 
 /* MR0 */
 #define MR0_CL_12			(BIT(4) | BIT(2))
@@ -838,7 +838,7 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 	u32 test_pattern = 0xdeadbeef;
 	u32 cap_param = SDRAM_CONF_CAP_2048M;
 	u32 refresh_timing_param = DDR4_TRFC;
-	const u32 write_addr_base = CONFIG_SYS_SDRAM_BASE + write_test_offset;
+	const u32 write_addr_base = CFG_SYS_SDRAM_BASE + write_test_offset;
 
 	for (ram_size = SDRAM_MAX_SIZE; ram_size > SDRAM_MIN_SIZE;
 	     ram_size >>= 1) {
@@ -866,7 +866,7 @@ static void ast2600_sdrammc_calc_size(struct dram_info *info)
 			((refresh_timing_param & SDRAM_AC_TRFC_MASK)
 			 << SDRAM_AC_TRFC_SHIFT));
 
-	info->info.base = CONFIG_SYS_SDRAM_BASE;
+	info->info.base = CFG_SYS_SDRAM_BASE;
 	info->info.size = ram_size - ast2600_sdrammc_get_vga_mem_size(info);
 
 	clrsetbits_le32(&info->regs->config, SDRAM_CONF_CAP_MASK,
@@ -974,8 +974,8 @@ static void ast2600_sdrammc_common_init(struct ast2600_sdrammc_regs *regs)
 	/* update CL and WL */
 	reg = readl(&regs->ac_timing[1]);
 	reg &= ~(SDRAM_WL_SETTING | SDRAM_CL_SETTING);
-	reg |= FIELD_PREP(SDRAM_WL_SETTING, CONFIG_WL - 5) |
-	       FIELD_PREP(SDRAM_CL_SETTING, CONFIG_RL - 5);
+	reg |= FIELD_PREP(SDRAM_WL_SETTING, CFG_WL - 5) |
+	       FIELD_PREP(SDRAM_CL_SETTING, CFG_RL - 5);
 	writel(reg, &regs->ac_timing[1]);
 
 	writel(DDR4_MR01_MODE, &regs->mr01_mode_setting);
@@ -1015,7 +1015,7 @@ static void ast2600_sdrammc_update_size(struct dram_info *info)
 		break;
 	}
 
-	info->info.base = CONFIG_SYS_SDRAM_BASE;
+	info->info.base = CFG_SYS_SDRAM_BASE;
 	info->info.size = ram_size - ast2600_sdrammc_get_vga_mem_size(info);
 
 	if (0 == (conf & SDRAM_CONF_ECC_SETUP))
@@ -1089,13 +1089,13 @@ static int ast2600_sdrammc_probe(struct udevice *dev)
 	}
 
 	reg = readl(&priv->scu->mpll);
-	reg &= ~(SCU_PLL_BYPASS | SCU_PLL_DIV_MASK |
+	reg &= ~(SCU_PLL_BYPASS | SCU_PLL_OFF | SCU_PLL_DIV_MASK |
 		 SCU_PLL_DENUM_MASK | SCU_PLL_NUM_MASK);
-	reg |= (SCU_PLL_RST | SCU_PLL_OFF | SCU_MPLL_FREQ_CFG);
+	reg |= (SCU_PLL_RST | SCU_MPLL_FREQ_CFG);
 	writel(reg, &priv->scu->mpll);
 	writel(SCU_MPLL_EXT_CFG, &priv->scu->mpll_ext);
 	udelay(100);
-	reg &= ~(SCU_PLL_RST | SCU_PLL_OFF);
+	reg &= ~SCU_PLL_RST;
 	writel(reg, &priv->scu->mpll);
 
 	while ((readl(&priv->scu->mpll_ext) & BIT(31)) == 0)

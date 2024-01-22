@@ -26,21 +26,17 @@
 
 #include <linux/types.h>
 
-#ifdef CONFIG_DM_SERIAL
+#if CONFIG_IS_ENABLED(DM_SERIAL) ||  defined(CONFIG_NS16550_DYNAMIC) || \
+	defined(CONFIG_DEBUG_UART)
 /*
  * For driver model we always use one byte per register, and sort out the
- * differences in the driver
+ * differences in the driver. In the case of CONFIG_NS16550_DYNAMIC we do
+ * similar, and CONFIG_DEBUG_UART is responsible for shifts in its own manner.
  */
-#define CONFIG_SYS_NS16550_REG_SIZE (-1)
-#endif
-
-#ifdef CONFIG_NS16550_DYNAMIC
 #define UART_REG(x)	unsigned char x
 #else
 #if !defined(CONFIG_SYS_NS16550_REG_SIZE) || (CONFIG_SYS_NS16550_REG_SIZE == 0)
 #error "Please define NS16550 registers size."
-#elif defined(CONFIG_SYS_NS16550_MEM32) && !defined(CONFIG_DM_SERIAL)
-#define UART_REG(x) u32 x
 #elif (CONFIG_SYS_NS16550_REG_SIZE > 0)
 #define UART_REG(x)						   \
 	unsigned char prepad_##x[CONFIG_SYS_NS16550_REG_SIZE - 1]; \
@@ -62,6 +58,7 @@ enum ns16550_flags {
  * struct ns16550_plat - information about a NS16550 port
  *
  * @base:		Base register address
+ * @size:		Size of register area in bytes
  * @reg_width:		IO accesses size of registers (in bytes, 1 or 4)
  * @reg_shift:		Shift size of registers (0=byte, 1=16bit, 2=32bit...)
  * @reg_offset:		Offset to start of registers (normally 0)
@@ -71,7 +68,8 @@ enum ns16550_flags {
  * @bdf:		PCI slot/function (pci_dev_t)
  */
 struct ns16550_plat {
-	unsigned long base;
+	ulong base;
+	ulong size;
 	int reg_width;
 	int reg_shift;
 	int reg_offset;
@@ -113,7 +111,7 @@ struct ns16550 {
 	UART_REG(scr);		/* 10*/
 	UART_REG(ssr);		/* 11*/
 #endif
-#ifdef CONFIG_DM_SERIAL
+#if CONFIG_IS_ENABLED(DM_SERIAL)
 	struct ns16550_plat *plat;
 #endif
 };

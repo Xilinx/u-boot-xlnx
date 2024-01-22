@@ -109,7 +109,7 @@ menu "Info commands"
 
 config CMD_ACPI
 	bool "acpi"
-	depends on ACPIGEN
+	depends on ACPI
 	default y
 	help
 	  List and dump ACPI tables. ACPI (Advanced Configuration and Power
@@ -134,6 +134,14 @@ config CMD_BDI
 	default y
 	help
 	  Print board info
+
+config CMD_BDINFO_EXTRA
+	bool "bdinfo extra features"
+	default y if SANDBOX || X86
+	help
+	  Show additional information about the board. This uses a little more
+	  code space but provides more options, particularly those useful for
+	  bringup, development and debugging.
 
 config CMD_CONFIG
 	bool "config"
@@ -167,6 +175,13 @@ config CMD_FWU_METADATA
 	depends on FWU_MULTI_BANK_UPDATE
 	help
 	  Command to read the metadata and dump it's contents
+
+config CMD_HISTORY
+	bool "history"
+	depends on CMDLINE_EDITING
+	help
+	  Show the command-line history, i.e. a list of commands that are in
+	  the history buffer.
 
 config CMD_LICENSE
 	bool "license"
@@ -231,7 +246,6 @@ config CMD_BOOTM_PRE_LOAD
        bool "enable pre-load on bootm"
        depends on CMD_BOOTM
        depends on IMAGE_PRE_LOAD
-       default n
        help
          Enable support of stage pre-load for the bootm command.
 	 This stage allow to check or modify the image provided
@@ -258,7 +272,7 @@ config CMD_BOOTFLOW
 config CMD_BOOTFLOW_FULL
 	bool "bootflow - extract subcommands"
 	depends on BOOTSTD_FULL
-	default y if BOOTSTD_FULL
+	default y
 	help
 	  Add the ability to list the available bootflows, select one and obtain
 	  information about it.
@@ -337,6 +351,12 @@ config BOOTM_RTEMS
 	help
 	  Support booting RTEMS images via the bootm command.
 
+config CMD_SEAMA
+	bool "Support read SEAMA NAND images"
+	depends on MTD_RAW_NAND
+	help
+	  Support reading NAND Seattle Image (SEAMA) images.
+
 config CMD_VBE
 	bool "vbe - Verified Boot for Embedded"
 	depends on BOOTMETH_VBE
@@ -356,7 +376,8 @@ config BOOTM_VXWORKS
 
 config SYS_BOOTM_LEN
 	hex "Maximum size of a decompresed OS image"
-	depends on CMD_BOOTM || CMD_BOOTI || CMD_BOOTZ
+	depends on CMD_BOOTM || CMD_BOOTI || CMD_BOOTZ || \
+		   LEGACY_IMAGE_FORMAT || SPL_LEGACY_IMAGE_FORMAT
 	default 0x4000000 if PPC || ARM64
 	default 0x1000000 if X86 || ARCH_MX6 || ARCH_MX7
 	default 0x800000
@@ -421,6 +442,15 @@ config CMD_ABOOTIMG
 
 	  See doc/android/boot-image.rst for details.
 
+config CMD_CEDIT
+	bool "cedit - Configuration editor"
+	depends on CEDIT
+	default y
+	help
+	  Provides a command to allow editing of board configuration and
+	  providing a UI for the user to adjust settings. Subcommands allow
+	  loading and saving of configuration as well as showing an editor.
+
 config CMD_ELF
 	bool "bootelf, bootvx"
 	default y
@@ -476,11 +506,6 @@ config CMD_XIMG
 	help
 	  Extract a part of a multi-image.
 
-config CMD_XXD
-	bool "xxd"
-	help
-	  Print file as hexdump to standard output
-
 config CMD_SPL
 	bool "spl export - Export boot information for Falcon boot"
 	depends on SPL
@@ -493,7 +518,7 @@ config CMD_SPL
 config CMD_SPL_NAND_OFS
 	hex "Offset of OS args or dtb for Falcon-mode NAND boot"
 	depends on CMD_SPL && (TPL_NAND_SUPPORT || SPL_NAND_SUPPORT)
-	default 0
+	default 0x0
 	help
 	  This provides the offset of the command line arguments for Linux
 	  when booting from NAND in Falcon mode.  See doc/README.falcon
@@ -503,7 +528,7 @@ config CMD_SPL_NAND_OFS
 config CMD_SPL_NOR_OFS
 	hex "Offset of OS args or dtb for Falcon-mode NOR boot"
 	depends on CMD_SPL && SPL_NOR_SUPPORT
-	default 0
+	default 0x0
 	help
 	  This provides the offset of the command line arguments or dtb for
 	  Linux when booting from NOR in Falcon mode.
@@ -519,13 +544,18 @@ config CMD_SPL_WRITE_SIZE
 
 config CMD_THOR_DOWNLOAD
 	bool "thor - TIZEN 'thor' download"
-	depends on CMD_USB
 	select DFU
+	select USB_FUNCTION_THOR
+	depends on USB_GADGET_DOWNLOAD
 	help
 	  Implements the 'thor' download protocol. This is a way of
 	  downloading a software update over USB from an attached host.
 	  There is no documentation about this within the U-Boot source code
 	  but you should be able to find something on the interwebs.
+
+config THOR_RESET_OFF
+	bool "thor: Disable reset on completion"
+	depends on CMD_THOR_DOWNLOAD
 
 config CMD_ZBOOT
 	bool "zboot - x86 boot command"
@@ -925,6 +955,16 @@ endmenu
 
 menu "Device access commands"
 
+config CMD_ARMFFA
+	bool "Arm FF-A test command"
+	depends on ARM_FFA_TRANSPORT
+	help
+	  Provides a test command for the FF-A support
+	  supported options:
+		- Listing the partition(s) info
+		- Sending a data pattern to the specified partition
+		- Displaying the arm_ffa device info
+
 config CMD_ARMFLASH
 	#depends on FLASH_CFI_DRIVER
 	bool "armflash"
@@ -959,6 +999,7 @@ config CMD_BCB
 config CMD_BIND
 	bool "bind/unbind - Bind or unbind a device to/from a driver"
 	depends on DM
+	default y if USB_ETHER
 	help
 	  Bind or unbind a device to/from a driver from the command line.
 	  This is useful in situations where a device may be handled by several
@@ -1218,6 +1259,7 @@ config LOADS_ECHO
 
 config CMD_SAVES
 	bool "saves - Save a file over serial in S-Record format"
+	depends on CMD_LOADS
 	help
 	  Provides a way to save a binary file using the Motorola S-Record
 	  format over the serial line.
@@ -1270,6 +1312,13 @@ config CMD_BKOPS_ENABLE
 	  Enable command for setting manual background operations handshake
 	  on a eMMC device. The feature is optionally available on eMMC devices
 	  conforming to standard >= 4.41.
+
+config CMD_MMC_REG
+	bool "Enable support for reading card registers in the mmc command"
+	depends on CMD_MMC
+	help
+	  Enable the commands for reading card registers. This is useful
+	  mostly for debugging or extracting details from the card.
 
 config CMD_MMC_RPMB
 	bool "Enable support for RPMB in the mmc command"
@@ -1387,6 +1436,16 @@ config CMD_PCI
 	  peripherals. Sub-commands allow bus enumeration, displaying and
 	  changing configuration space and a few other features.
 
+config CMD_PCI_MPS
+	bool "pci_mps - Configure PCI device MPS"
+	depends on PCI
+	help
+	  Enables PCI Express Maximum Packet Size (MPS) tuning. This
+	  command configures the PCI Express MPS of each endpoint to the
+	  largest value supported by all devices below the root complex.
+	  The Maximum Read Request Size will not be altered. This method is
+	  the same algorithm as used by Linux pci=pcie_bus_safe.
+
 config CMD_PINMUX
 	bool "pinmux - show pins muxing"
 	depends on PINCTRL
@@ -1427,7 +1486,8 @@ config CMD_SATA
 
 config CMD_SCSI
 	bool "scsi - Access to SCSI devices"
-	default y if SCSI
+	depends on SCSI
+	default y
 	help
 	  This provides a 'scsi' command which provides access to SCSI (Small
 	  Computer System Interface) devices. The command provides a way to
@@ -1474,7 +1534,7 @@ config DEFAULT_SPI_BUS
 config DEFAULT_SPI_MODE
 	hex "default spi mode used by sspi command (see include/spi.h)"
 	depends on CMD_SPI
-	default 0
+	default 0x0
 
 config CMD_TEMPERATURE
 	bool "temperature - display the temperature from thermal sensors"
@@ -1514,6 +1574,14 @@ config CMD_USB_SDP
 	  Enables the command "sdp" which is used to have U-Boot emulating the
 	  Serial Download Protocol (SDP) via USB.
 
+config CMD_RKMTD
+	bool "rkmtd"
+	select RKMTD
+	help
+	  Enable the command "rkmtd" to create a virtual block device to transfer
+	  Rockchip boot block data to and from NAND with block orientated tools
+	  like "ums" and "rockusb".
+
 config CMD_ROCKUSB
 	bool "rockusb"
 	depends on USB_FUNCTION_ROCKUSB
@@ -1532,6 +1600,12 @@ config CMD_USB_MASS_STORAGE
 	  Enables the command "ums" and the USB mass storage support to the
 	  export a block device: U-Boot, the USB device, acts as a simple
 	  external hard drive plugged on the host USB port.
+
+config CMD_UMS_ABORT_KEYED
+	bool "UMS abort with any key"
+	depends on CMD_USB_MASS_STORAGE
+	help
+	  Allow interruption of usb mass storage run with any key pressed.
 
 config CMD_PVBLOCK
 	bool "Xen para-virtualized block device"
@@ -1552,6 +1626,11 @@ config CMD_WDT
 	depends on WDT
 	help
 	  This provides commands to control the watchdog timer devices.
+
+config CMD_WRITE
+	bool "write - Write binary data to a partition"
+	help
+	  Provides low-level write access to a partition.
 
 config CMD_AXI
 	bool "axi"
@@ -1605,6 +1684,11 @@ config CMD_SETEXPR_FMT
 	  Evaluate format string expression and store result in an environment
 	    variable.
 
+config CMD_XXD
+	bool "xxd"
+	help
+	  Print file as hexdump to standard output
+
 endmenu
 
 menu "Android support commands"
@@ -1641,6 +1725,15 @@ config CMD_DHCP
 	depends on CMD_BOOTP
 	help
 	  Boot image via network using DHCP/TFTP protocol
+
+config CMD_DHCP6
+	bool "dhcp6"
+	depends on IPV6
+	help
+	  Boot image via network using DHCPv6/TFTP protocol using IPv6.
+
+	  Will perform 4-message exchange with DHCPv6 server, requesting
+	  the minimum required options to TFTP boot. Complies with RFC 8415.
 
 config BOOTP_MAY_FAIL
 	bool "Allow for the BOOTP/DHCP server to not be found"
@@ -1745,7 +1838,11 @@ config BOOTP_PXE_CLIENTARCH
 	depends on BOOTP_PXE
 	default 0x16 if ARM64
 	default 0x15 if ARM
-	default 0 if X86
+	default 0x0 if X86
+
+config BOOTP_PXE_DHCP_OPTION
+	bool "Request & store 'pxe_configfile' from BOOTP/DHCP server"
+	depends on BOOTP_PXE
 
 config BOOTP_VCI_STRING
 	string
@@ -1754,6 +1851,23 @@ config BOOTP_VCI_STRING
 	default "U-Boot.armv8" if ARM64
 	default "U-Boot.arm" if ARM
 	default "U-Boot"
+
+if CMD_DHCP6
+
+config DHCP6_PXE_CLIENTARCH
+	hex
+	default 0x16 if ARM64
+	default 0x15 if ARM
+	default 0xFF
+
+config DHCP6_PXE_DHCP_OPTION
+	bool "Request & store 'pxe_configfile' from DHCP6 server"
+
+config DHCP6_ENTERPRISE_ID
+	int "Enterprise ID to send in DHCPv6 Vendor Class Option"
+	default 0
+
+endif
 
 config CMD_TFTPBOOT
 	bool "tftpboot"
@@ -1791,7 +1905,6 @@ config CMD_RARP
 
 config CMD_NFS
 	bool "nfs"
-	default y
 	help
 	  Boot image via network using NFS protocol.
 
@@ -1885,6 +1998,12 @@ config CMD_NCSI
 	  Normally this happens automatically before other network
 	  operations.
 
+config IPV6_ROUTER_DISCOVERY
+	bool "Do IPv6 router discovery"
+	depends on IPV6
+	help
+	  Will automatically perform router solicitation on first IPv6
+	  network operation
 endif
 
 config CMD_ETHSW
@@ -1910,9 +2029,21 @@ endif
 
 menu "Misc commands"
 
+config CMD_2048
+	bool "Play 2048"
+	help
+	  This is a simple sliding block puzzle game designed by Italian web
+	  developer Gabriele Cirulli. The game's objective is to slide numbered
+	  tiles on a grid to combine them to create a tile with the number
+	  2048.
+
+	  This needs ANSI support on your terminal to work. It is not fully
+	  functional on a video device.
+
 config CMD_BMP
 	bool "Enable 'bmp' command"
 	depends on VIDEO
+	select BMP
 	help
 	  This provides a way to obtain information about a BMP-format image
 	  and to display it. BMP (which presumably stands for BitMaP) is a
@@ -1949,6 +2080,25 @@ config CMD_BLOCK_CACHE
 	  This is most useful when fine-tuning the operation of the cache
 	  during development, but also allows the cache to be disabled when
 	  it might hurt performance (e.g. when using the ums command).
+
+config CMD_BLKMAP
+	bool "blkmap - Composable virtual block devices"
+	depends on BLKMAP
+	default y if BLKMAP
+	help
+ 	  Create virtual block devices that are backed by various sources,
+ 	  e.g. RAM, or parts of an existing block device. Though much more
+ 	  rudimentary, it borrows a lot of ideas from Linux's device mapper
+ 	  subsystem.
+
+	  Example use-cases:
+	  - Treat a region of RAM as a block device, i.e. a RAM disk. This let's
+            you extract files from filesystem images stored in RAM (perhaps as a
+            result of a TFTP transfer).
+	  - Create a virtual partition on an existing device. This let's you
+            access filesystems that aren't stored at an exact partition
+            boundary. A common example is a filesystem image embedded in an FIT
+            image.
 
 config CMD_BUTTON
 	bool "button"
@@ -1991,7 +2141,9 @@ config CMD_EFIDEBUG
 
 config CMD_EFICONFIG
 	bool "eficonfig - provide menu-driven uefi variables maintenance interface"
+	default y if !HAS_BOARD_SIZE_LIMIT
 	depends on CMD_BOOTEFI_BOOTMGR
+	select MENU
 	help
 	  Enable the 'eficonfig' command which provides the menu-driven UEFI
 	  variable maintenance interface.
@@ -2011,6 +2163,13 @@ config CMD_LED
 	  by the board. The LEDs can be listed with 'led list' and controlled
 	  with led on/off/togle/blink. Any LED drivers can be controlled with
 	  this command, e.g. led_gpio.
+
+config CMD_INI
+	bool "ini"
+	help
+	  Enable the 'ini' command which allows a .ini file to be parsed and
+	  placed into environment variables. Please check the source code for
+	  this as there is no documentation.
 
 config CMD_DATE
 	bool "date"
@@ -2207,6 +2366,13 @@ config CMD_VIDCONSOLE
 
 	  The name 'lcdputs' is a bit of a misnomer, but so named because the
 	  video device is often an LCD.
+
+config CMD_SELECT_FONT
+	bool "select font size"
+	depends on VIDEO
+	help
+	  Enabling this will provide 'font' command.
+	  Allows font selection at runtime.
 
 endmenu
 
@@ -2536,6 +2702,7 @@ config CMD_MTDPARTS_SHOW_NET_SIZES
 config MTDIDS_DEFAULT
 	string "Default MTD IDs"
 	depends on MTD || SPI_FLASH
+	depends on !SYS_MTDPARTS_RUNTIME
 	help
 	  Defines a default MTD IDs list for use with MTD partitions in the
 	  Linux MTD command line partitions format.
@@ -2543,6 +2710,7 @@ config MTDIDS_DEFAULT
 config MTDPARTS_DEFAULT
 	string "Default MTD partition scheme"
 	depends on MTD || SPI_FLASH
+	depends on !SYS_MTDPARTS_RUNTIME
 	help
 	  Defines a default MTD partitioning scheme in the Linux MTD command
 	  line partitions format
@@ -2617,6 +2785,7 @@ config CMD_DIAG
 
 config CMD_EVENT
 	bool "event - Show information about events"
+	depends on EVENT
 	default y if EVENT_DEBUG
 	help
 	  This enables the 'event' command which provides information about
@@ -2720,11 +2889,17 @@ config CMD_UBIFS
 config MMC_SPEED_MODE_SET
 	bool "set speed mode using mmc command"
 	depends on CMD_MMC
-	default n
 	help
 	  Enable setting speed mode using mmc rescan and mmc dev commands.
 	  The speed mode is provided as the last argument in these commands
 	  and is indicated using the index from enum bus_mode in
 	  include/mmc.h. A speed mode can be set only if it has already
 	  been enabled in the device tree.
+
+config CMD_MESON
+	bool "Amlogic Meson commands"
+	depends on ARCH_MESON
+	default y
+	help
+	  Enable useful commands for the Meson Soc family developed by Amlogic Inc.
 endmenu

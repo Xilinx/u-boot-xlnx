@@ -159,7 +159,7 @@ on the command line:
 
 .. code-block:: bash
 
-  buildman --boards sandbox,snow --boards
+  buildman --boards sandbox,snow --boards firefly-rk3399
 
 It is convenient to use the -n option to see what will be built based on
 the subset given. Use -v as well to get an actual list of boards.
@@ -474,10 +474,6 @@ Setting up
       ./tools/buildman/buildman --fetch-arch all
       sudo mkdir -p /toolchains
       sudo mv ~/.buildman-toolchains/*/* /toolchains/
-
-   For those not available from kernel.org, download from the following links:
-
-   - `Arc Toolchain`_
 
    Buildman should now be set up to use your new toolchain.
 
@@ -1023,14 +1019,15 @@ U-Boot's build system embeds information such as a build timestamp into the
 final binary. This information varies each time U-Boot is built. This causes
 various files to be rebuilt even if no source changes are made, which in turn
 requires that the final U-Boot binary be re-linked. This unnecessary work can
-be avoided by turning off the timestamp feature. This can be achieved by
-setting the SOURCE_DATE_EPOCH environment variable to 0.
+be avoided by turning off the timestamp feature. This can be achieved using
+the `-r` flag, which enables reproducible builds by setting
+`SOURCE_DATE_EPOCH=0` when building.
 
 Combining all of these options together yields the command-line shown below.
 This will provide the quickest possible feedback regarding the current content
 of the source tree, thus allowing rapid tested evolution of the code::
 
-    SOURCE_DATE_EPOCH=0 ./tools/buildman/buildman -P tegra
+    ./tools/buildman/buildman -Pr tegra
 
 
 Checking configuration
@@ -1065,9 +1062,9 @@ same as 'am335x_evm_usbspl'/
 
 The -K option uses the u-boot.cfg, spl/u-boot-spl.cfg and tpl/u-boot-tpl.cfg
 files which are produced by a build. If all you want is to check the
-configuration you can in fact avoid doing a full build, using -D. This tells
-buildman to configuration U-Boot and create the .cfg files, but not actually
-build the source. This is 5-10 times faster than doing a full build.
+configuration you can in fact avoid doing a full build, using --config-only.
+This tells buildman to configuration U-Boot and create the .cfg files, but not
+actually build the source. This is 5-10 times faster than doing a full build.
 
 By default buildman considers the follow two configuration methods
 equivalent::
@@ -1108,6 +1105,8 @@ and 'brppt1_spi', removing a trailing semicolon. 'brppt1_nand' gained an a
 value for 'altbootcmd', but lost one for ' altbootcmd'.
 
 The -U option uses the u-boot.env files which are produced by a build.
+Internally, buildman writes out an out-env file into the build directory for
+later comparison.
 
 
 Building with clang
@@ -1119,6 +1118,20 @@ toolchain. For example:
 .. code-block:: bash
 
    buildman -O clang-7 --board sandbox
+
+
+Building without LTO
+--------------------
+
+Link-time optimisation (LTO) is designed to reduce code size by globally
+optimising the U-Boot build. Unfortunately this can dramatically slow down
+builds. This is particularly noticeable when running a lot of builds.
+
+Use the -L (--no-lto) flag to disable LTO.
+
+.. code-block:: bash
+
+   buildman -L --board sandbox
 
 
 Doing a simple build
@@ -1290,13 +1303,39 @@ Using boards.cfg
 
 This file is no-longer needed by buildman but it is still generated in the
 working directory. This helps avoid a delay on every build, since scanning all
-the Kconfig files takes a few seconds. Use the -R flag to force regeneration
-of the file - in that case buildman exits after writing the file. with exit code
-2 if there was an error in the maintainer files.
+the Kconfig files takes a few seconds. Use the `-R <filename>` flag to force
+regeneration of the file - in that case buildman exits after writing the file
+with exit code 2 if there was an error in the maintainer files. To use the
+default filename, use a hyphen, i.e. `-R -`.
 
 You should use 'buildman -nv <criteria>' instead of greoing the boards.cfg file,
 since it may be dropped altogether in future.
 
+
+Checking maintainers
+--------------------
+
+Sometimes a board is added without a corresponding entry in a MAINTAINERS file.
+Use the `--maintainer-check` option to check this::
+
+   $ buildman --maintainer-check
+   WARNING: board/mikrotik/crs3xx-98dx3236/MAINTAINERS: missing defconfig ending at line 7
+   WARNING: no maintainers for 'clearfog_spi'
+
+Buildman returns with an exit code of 2 if there area any warnings.
+
+An experimental `--full-check option` also checks for boards which don't have a
+CONFIG_TARGET_xxx where xxx corresponds to their defconfig filename. This is
+not strictly necessary, but may be useful information.
+
+
+Checking the command
+--------------------
+
+Buildman writes out the toolchain information to a `toolchain` file within the
+output directory. It also writes the commands used to build U-Boot in an
+`out-cmd` file. You can check these if you suspect something strange is
+happening.
 
 TODO
 ----
@@ -1316,8 +1355,6 @@ Credits
 Thanks to Grant Grundler <grundler@chromium.org> for his ideas for improving
 the build speed by building all commits for a board instead of the other
 way around.
-
-.. _`Arc Toolchain`: https://github.com/foss-for-synopsys-dwc-arc-processors/toolchain/releases/download/arc-2021.03-release/arc_gnu_2021.03_prebuilt_elf32_le_linux_install.tar.gz
 
 .. sectionauthor:: Simon Glass
 .. sectionauthor:: Copyright (c) 2013 The Chromium OS Authors.

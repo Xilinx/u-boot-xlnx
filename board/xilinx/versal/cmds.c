@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * (C) Copyright 2020 Xilinx, Inc.
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 
 #include <cpu_func.h>
@@ -91,12 +91,9 @@ static int do_versal(struct cmd_tbl *cmdtp, int flag, int argc,
 	return cmd_process_error(c, ret);
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char versal_help_text[] =
+U_BOOT_LONGHELP(versal,
 	"loadpdi addr len - Load pdi image\n"
-	"load pdi image at ddr address 'addr' with pdi image size 'len'\n"
-;
-#endif
+	"load pdi image at ddr address 'addr' with pdi image size 'len'\n");
 
 U_BOOT_CMD(versal, 4, 1, do_versal,
 	   "versal sub-system",

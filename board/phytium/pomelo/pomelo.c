@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <command.h>
+#include <event.h>
 #include <init.h>
 #include <asm/armv8/mmu.h>
 #include <asm/io.h>
@@ -24,7 +25,7 @@ int dram_init(void)
 	ddr_init();
 
 	gd->mem_clk = 0;
-	gd->ram_size = get_ram_size((void *)CONFIG_SYS_SDRAM_BASE, 0x7b000000);
+	gd->ram_size = get_ram_size((void *)CFG_SYS_SDRAM_BASE, 0x7b000000);
 
 	sec_init();
 	debug("PBF relocate done\n");
@@ -102,7 +103,7 @@ int __asm_flush_l3_dcache(void)
 	return 0;
 }
 
-int last_stage_init(void)
+static int last_stage_init(void)
 {
 	int ret;
 
@@ -116,3 +117,4 @@ int last_stage_init(void)
 	}
 	return ret;
 }
+EVENT_SPY_SIMPLE(EVT_LAST_STAGE_INIT, last_stage_init);

@@ -8,6 +8,7 @@
 #include <dfu.h>
 #include <image.h>
 #include <asm/arch/stm32prog.h>
+#include <linux/printk.h>
 #include "stm32prog.h"
 
 struct stm32prog_data *stm32prog_data;
@@ -150,11 +151,11 @@ static int do_stm32prog(struct cmd_tbl *cmdtp, int flag, int argc,
 		/* Try bootm for legacy and FIT format image */
 		if (genimg_get_format(uimage) != IMAGE_FORMAT_INVALID)
 			do_bootm(cmdtp, 0, 4, bootm_argv);
-		else if (CONFIG_IS_ENABLED(CMD_BOOTZ))
+		else if (IS_ENABLED(CONFIG_CMD_BOOTZ))
 			do_bootz(cmdtp, 0, 4, bootm_argv);
 	}
 	if (data->script)
-		image_source_script(data->script, "script@stm32prog");
+		cmd_source_script(data->script, NULL, NULL);
 
 	if (reset) {
 		puts("Reset...\n");
@@ -180,15 +181,6 @@ U_BOOT_CMD(stm32prog, 5, 0, do_stm32prog,
 	   "  <size> = size of flashlayout (optional for image with STM32 header)\n"
 );
 
-#ifdef CONFIG_STM32MP15x_STM32IMAGE
-bool stm32prog_get_tee_partitions(void)
-{
-	if (stm32prog_data)
-		return stm32prog_data->tee_detected;
-
-	return false;
-}
-#endif
 
 bool stm32prog_get_fsbl_nor(void)
 {

@@ -83,6 +83,19 @@ config CLK_COMPOSITE_CCF
 	  Enable this option if you want to (re-)use the Linux kernel's Common
 	  Clock Framework [CCF] composite code in U-Boot's clock driver.
 
+config CLK_GPIO
+	bool "GPIO-controlled clock gate driver"
+	depends on CLK
+	help
+	  Enable this option to add GPIO-controlled clock gate driver.
+
+config SPL_CLK_GPIO
+	bool "GPIO-controlled clock gate driver in SPL"
+	depends on SPL_CLK
+	help
+	  Enable this option to add GPIO-controlled clock gate driver
+	  in U-Boot SPL.
+
 config CLK_BCM6345
 	bool "Clock controller driver for BCM6345"
 	depends on CLK && ARCH_BMIPS
@@ -160,11 +173,20 @@ config SANDBOX_CLK_CCF
 
 config CLK_SCMI
 	bool "Enable SCMI clock driver"
+	depends on CLK
 	depends on SCMI_FIRMWARE
 	help
 	  Enable this option if you want to support clock devices exposed
 	  by a SCMI agent based on SCMI clock protocol communication
 	  with a SCMI server.
+
+config SPL_CLK_SCMI
+	bool "Enable SCMI clock driver in SPL"
+	depends on SCMI_FIRMWARE && SPL_FIRMWARE
+	help
+	  Enable this option if you want to support clock devices exposed
+	  by a SCMI agent based on SCMI clock protocol communication
+	  with a SCMI server in SPL.
 
 config CLK_HSDK
 	bool "Enable cgu clock driver for HSDK boards"
@@ -185,7 +207,7 @@ config CLK_VERSACLOCK
 config CLK_VERSAL
 	bool "Enable clock driver support for Versal"
 	depends on (ARCH_VERSAL || ARCH_VERSAL_NET)
-	select ZYNQMP_FIRMWARE
+	imply ZYNQMP_FIRMWARE
 	help
 	  This clock driver adds support for clock realted settings for
 	  Versal platform.
@@ -219,7 +241,7 @@ config CLK_ZYNQ
 config CLK_ZYNQMP
 	bool "Enable clock driver support for ZynqMP"
 	depends on ARCH_ZYNQMP
-	select ZYNQMP_FIRMWARE
+	imply ZYNQMP_FIRMWARE
 	help
 	  This clock driver adds support for clock realted settings for
 	  ZynqMP platform.
@@ -235,6 +257,7 @@ source "drivers/clk/owl/Kconfig"
 source "drivers/clk/renesas/Kconfig"
 source "drivers/clk/sunxi/Kconfig"
 source "drivers/clk/sifive/Kconfig"
+source "drivers/clk/starfive/Kconfig"
 source "drivers/clk/stm32/Kconfig"
 source "drivers/clk/tegra/Kconfig"
 source "drivers/clk/ti/Kconfig"

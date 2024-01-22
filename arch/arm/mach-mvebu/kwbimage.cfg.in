@@ -11,6 +11,14 @@ VERSION		1
 # Boot Media configurations
 #@BOOT_FROM
 
+# NAND configuration
+#@NAND_PAGE_SIZE
+#@NAND_BLKSZ
+#@NAND_BADBLK_LOCATION
+
+# SATA configuration
+#@SATA_BLKSZ
+
 # Enable BootROM output via DEBUG flag on SoCs which require it
 #@DEBUG
 

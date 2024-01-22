@@ -2,7 +2,7 @@
 /*
  * ti_armv7_omap.h
  *
- * Copyright (C) 2015 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2015 Texas Instruments Incorporated - https://www.ti.com/
  *
  * The various ARMv7 SoCs from TI all share a number of IP blocks when
  * implementing a given feature. This is meant to isolate the features
@@ -16,8 +16,8 @@
  * access CS0 at is 0x8000000.
  */
 #ifdef CONFIG_MTD_RAW_NAND
-#ifndef CONFIG_SYS_NAND_BASE
-#define CONFIG_SYS_NAND_BASE		0x8000000
+#ifndef CFG_SYS_NAND_BASE
+#define CFG_SYS_NAND_BASE		0x8000000
 #endif
 #endif
 

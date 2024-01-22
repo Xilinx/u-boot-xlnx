@@ -24,7 +24,7 @@
 	};
 
 	soc@ffe000000 {
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		spi@110000 {
 			/* This documents where km_fpgacfg should be appear */
 			fpga@0 {
@@ -39,7 +39,7 @@
 		};
 
 		i2c@118000 {
-			u-boot,dm-pre-reloc;
+			bootph-all;
 			mux@70 {
 				i2c@1 { /* IVM bus */
 					reg = <1>;
@@ -50,7 +50,7 @@
 		};
 
 		serial@11c500 {
-			u-boot,dm-pre-reloc;
+			bootph-all;
 			clock-frequency = <200000000>;
 		};
 
@@ -74,24 +74,6 @@
 		compatible = "fsl,pcie-t104x";
 		law_trgt_if = <0>;
 	};
-
-	binman {
-		filename = "u-boot.bin";
-		skip-at-start = <CONFIG_TEXT_BASE>;
-		sort-by-offset;
-		pad-byte = <0xff>;
-		size = <CONFIG_SYS_MONITOR_LEN>;
-
-		u-boot-with-ucode-ptr {
-			offset = <CONFIG_TEXT_BASE>;
-			optional-ucode;
-		};
-
-		u-boot-dtb-with-ucode {
-			align = <256>;
-		};
-		powerpc-mpc85xx-bootpg-resetvec {
-			offset = <(CONFIG_RESET_VECTOR_ADDRESS - 0xffc)>;
-		};
-	};
 };
+
+#include "u-boot.dtsi"

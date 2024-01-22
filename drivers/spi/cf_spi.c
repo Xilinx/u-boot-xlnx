@@ -32,11 +32,11 @@ struct coldfire_spi_priv {
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_SPI_IDLE_VAL
+#ifndef SPI_IDLE_VAL
 #if defined(CONFIG_SPI_MMC)
-#define CONFIG_SPI_IDLE_VAL	0xFFFF
+#define SPI_IDLE_VAL	0xFFFF
 #else
-#define CONFIG_SPI_IDLE_VAL	0x0
+#define SPI_IDLE_VAL	0x0
 #endif
 #endif
 
@@ -124,7 +124,7 @@ static int coldfire_spi_claim_bus(struct udevice *dev)
 	/* Clear FIFO and resume transfer */
 	clrbits_be32(&dspi->mcr, DSPI_MCR_CTXF | DSPI_MCR_CRXF);
 
-	dspi_chip_select(slave_plat->cs);
+	dspi_chip_select(slave_plat->cs[0]);
 
 	return 0;
 }
@@ -140,7 +140,7 @@ static int coldfire_spi_release_bus(struct udevice *dev)
 	/* Clear FIFO */
 	clrbits_be32(&dspi->mcr, DSPI_MCR_CTXF | DSPI_MCR_CRXF);
 
-	dspi_chip_unselect(slave_plat->cs);
+	dspi_chip_unselect(slave_plat->cs[0]);
 
 	return 0;
 }
@@ -169,7 +169,7 @@ static int coldfire_spi_xfer(struct udevice *dev, unsigned int bitlen,
 	if ((flags & SPI_XFER_BEGIN) == SPI_XFER_BEGIN)
 		ctrl |= DSPI_TFR_CONT;
 
-	ctrl = setup_ctrl(ctrl, slave_plat->cs);
+	ctrl = setup_ctrl(ctrl, slave_plat->cs[0]);
 
 	if (len > 1) {
 		int tmp_len = len - 1;
@@ -184,7 +184,7 @@ static int coldfire_spi_xfer(struct udevice *dev, unsigned int bitlen,
 			}
 
 			if (din) {
-				cfspi_tx(cfspi, ctrl, CONFIG_SPI_IDLE_VAL);
+				cfspi_tx(cfspi, ctrl, SPI_IDLE_VAL);
 				if (cfspi->charbit == 16)
 					*spi_rd16++ = cfspi_rx(cfspi);
 				else
@@ -208,7 +208,7 @@ static int coldfire_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		}
 
 		if (din) {
-			cfspi_tx(cfspi, ctrl, CONFIG_SPI_IDLE_VAL);
+			cfspi_tx(cfspi, ctrl, SPI_IDLE_VAL);
 			if (cfspi->charbit == 16)
 				*spi_rd16 = cfspi_rx(cfspi);
 			else
@@ -216,7 +216,7 @@ static int coldfire_spi_xfer(struct udevice *dev, unsigned int bitlen,
 		}
 	} else {
 		/* dummy read */
-		cfspi_tx(cfspi, ctrl, CONFIG_SPI_IDLE_VAL);
+		cfspi_tx(cfspi, ctrl, SPI_IDLE_VAL);
 		cfspi_rx(cfspi);
 	}
 

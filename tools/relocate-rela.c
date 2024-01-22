@@ -24,6 +24,30 @@
 #define R_AARCH64_RELATIVE	1027
 #endif
 
+#ifndef EM_M68K
+#define EM_M68K			4
+#endif
+
+#ifndef R_68K_NONE
+#define R_68K_NONE		0
+#endif
+
+#ifndef R_68K_32
+#define R_68K_32		1
+#endif
+
+#ifndef R_68K_GLOB_DAT
+#define R_68K_GLOB_DAT		20
+#endif
+
+#ifndef R_68K_JMP_SLOT
+#define R_68K_JMP_SLOT		21
+#endif
+
+#ifndef R_68K_RELATIVE
+#define R_68K_RELATIVE		22
+#endif
+
 #ifndef EM_MICROBLAZE
 #define EM_MICROBLAZE		189
 #endif
@@ -45,6 +69,8 @@
 #endif
 
 static int ei_class;
+static int ei_data;
+static int machine;
 
 static uint64_t rela_start, rela_end, text_base, dyn_start;
 
@@ -59,6 +85,30 @@ static void debug(const char *fmt, ...)
 		vprintf(fmt, args);
 		va_end(args);
 	}
+}
+
+static uint16_t elf16_to_cpu(uint16_t data)
+{
+	if (ei_data == ELFDATA2LSB)
+		return le16_to_cpu(data);
+
+	return be16_to_cpu(data);
+}
+
+static uint32_t elf32_to_cpu(uint32_t data)
+{
+	if (ei_data == ELFDATA2LSB)
+		return le32_to_cpu(data);
+
+	return be32_to_cpu(data);
+}
+
+static uint32_t cpu_to_elf32(uint32_t data)
+{
+	if (ei_data == ELFDATA2LSB)
+		return cpu_to_le32(data);
+
+	return cpu_to_be32(data);
 }
 
 static bool supported_rela(Elf64_Rela *rela)
@@ -86,7 +136,7 @@ static int decode_elf64(FILE *felf, char **argv)
 	uint64_t sh_addr, sh_offset, sh_size;
 	Elf64_Half sh_index, sh_num;
 	Elf64_Shdr *sh_table; /* Elf symbol table */
-	int ret, i, machine;
+	int ret, i;
 	char *sh_str;
 
 	debug("64bit version\n");
@@ -220,7 +270,7 @@ static int decode_elf32(FILE *felf, char **argv)
 	uint32_t sh_addr, sh_offset, sh_size;
 	Elf32_Half sh_index, sh_num;
 	Elf32_Shdr *sh_table; /* Elf symbol table */
-	int ret, i, machine;
+	int ret, i;
 	char *sh_str;
 
 	debug("32bit version\n");
@@ -234,18 +284,26 @@ static int decode_elf32(FILE *felf, char **argv)
 		return 25;
 	}
 
-	machine = le16_to_cpu(header.e_machine);
+	machine = elf16_to_cpu(header.e_machine);
 	debug("Machine %d\n", machine);
 
-	if (machine != EM_MICROBLAZE) {
+	if (machine != EM_MICROBLAZE && machine != EM_M68K) {
 		fprintf(stderr, "%s: Not supported machine type\n", argv[0]);
 		return 30;
 	}
 
-	text_base = le32_to_cpu(header.e_entry);
-	section_header_base = le32_to_cpu(header.e_shoff);
-	section_header_size = le16_to_cpu(header.e_shentsize) *
-			      le16_to_cpu(header.e_shnum);
+	text_base = elf32_to_cpu(header.e_entry);
+	/*
+	 * M68K ELF entry point is MONITOR_BASE, not TEXT_BASE.
+	 * TEXT_BASE is always MONITOR_BASE &~ 0x7ff, so clear
+	 * those bits here.
+	 */
+	if (machine == EM_M68K)
+		text_base &= ~0x7ff;
+
+	section_header_base = elf32_to_cpu(header.e_shoff);
+	section_header_size = elf16_to_cpu(header.e_shentsize) *
+			      elf16_to_cpu(header.e_shnum);
 
 	sh_table = malloc(section_header_size);
 	if (!sh_table) {
@@ -273,8 +331,8 @@ static int decode_elf32(FILE *felf, char **argv)
 		return 27;
 	}
 
-	sh_index = le16_to_cpu(header.e_shstrndx);
-	sh_size = le32_to_cpu(sh_table[sh_index].sh_size);
+	sh_index = elf16_to_cpu(header.e_shstrndx);
+	sh_size = elf32_to_cpu(sh_table[sh_index].sh_size);
 	debug("e_shstrndx %x, sh_size %lx\n", sh_index, sh_size);
 
 	sh_str = malloc(sh_size);
@@ -289,8 +347,8 @@ static int decode_elf32(FILE *felf, char **argv)
 	 * Specifies the byte offset from the beginning of the file
 	 * to the first byte in the section.
 	 */
-	sh_offset = le32_to_cpu(sh_table[sh_index].sh_offset);
-	sh_num = le16_to_cpu(header.e_shnum);
+	sh_offset = elf32_to_cpu(sh_table[sh_index].sh_offset);
+	sh_num = elf16_to_cpu(header.e_shnum);
 
 	ret = fseek(felf, sh_offset, SEEK_SET);
 	if (ret) {
@@ -312,13 +370,13 @@ static int decode_elf32(FILE *felf, char **argv)
 	}
 
 	for (i = 0; i < sh_num; i++) {
-		char *sh_name = sh_str + le32_to_cpu(sh_table[i].sh_name);
+		char *sh_name = sh_str + elf32_to_cpu(sh_table[i].sh_name);
 
 		debug("%s\n", sh_name);
 
-		sh_addr = le64_to_cpu(sh_table[i].sh_addr);
-		sh_offset = le64_to_cpu(sh_table[i].sh_offset);
-		sh_size = le64_to_cpu(sh_table[i].sh_size);
+		sh_addr = elf32_to_cpu(sh_table[i].sh_addr);
+		sh_offset = elf32_to_cpu(sh_table[i].sh_offset);
+		sh_size = elf32_to_cpu(sh_table[i].sh_size);
 
 		if (!strcmp(".rela.dyn", sh_name)) {
 			debug("Found section\t\".rela_dyn\"\n");
@@ -383,6 +441,9 @@ static int decode_elf(char **argv)
 
 	ei_class = e_ident[4];
 	debug("EI_CLASS(1=32bit, 2=64bit) %d\n", ei_class);
+
+	ei_data = e_ident[5];
+	debug("EI_DATA(1=little endian, 2=big endian) %d\n", ei_data);
 
 	if (ei_class == 2)
 		return decode_elf64(felf, argv);
@@ -460,25 +521,44 @@ static bool supported_rela32(Elf32_Rela *rela, uint32_t *type)
 
 	debug("Type:\t");
 
-	switch (*type) {
-	case R_MICROBLAZE_32:
-		debug("R_MICROBLAZE_32\n");
-		return true;
-	case R_MICROBLAZE_GLOB_DAT:
-		debug("R_MICROBLAZE_GLOB_DAT\n");
-		return true;
-	case R_MICROBLAZE_NONE:
-		debug("R_MICROBLAZE_NONE - ignoring - do nothing\n");
-		return false;
-	case R_MICROBLAZE_REL:
-		debug("R_MICROBLAZE_REL\n");
-		return true;
-	default:
-		fprintf(stderr, "warning: unsupported relocation type %"
-			PRIu32 " at %" PRIx32 "\n", *type, rela->r_offset);
-
-		return false;
+	if (machine == EM_M68K) {
+		switch (*type) {
+		case R_68K_32:
+			debug("R_68K_32\n");
+			return true;
+		case R_68K_GLOB_DAT:
+			debug("R_68K_GLOB_DAT\n");
+			return true;
+		case R_68K_JMP_SLOT:
+			debug("R_68K_JMP_SLOT\n");
+			return true;
+		case R_68K_NONE:
+			debug("R_68K_NONE - ignoring - do nothing\n");
+			return false;
+		case R_68K_RELATIVE:
+			debug("R_68K_RELATIVE\n");
+			return true;
+		}
+	} else {
+		switch (*type) {
+		case R_MICROBLAZE_32:
+			debug("R_MICROBLAZE_32\n");
+			return true;
+		case R_MICROBLAZE_GLOB_DAT:
+			debug("R_MICROBLAZE_GLOB_DAT\n");
+			return true;
+		case R_MICROBLAZE_NONE:
+			debug("R_MICROBLAZE_NONE - ignoring - do nothing\n");
+			return false;
+		case R_MICROBLAZE_REL:
+			debug("R_MICROBLAZE_REL\n");
+			return true;
+		}
 	}
+	fprintf(stderr, "warning: unsupported relocation type %"
+		PRIu32 " at %" PRIx32 "\n", *type, rela->r_offset);
+
+	return false;
 }
 
 static int rela_elf32(char **argv, FILE *f)
@@ -501,7 +581,7 @@ static int rela_elf32(char **argv, FILE *f)
 		uint32_t pos = rela_start + sizeof(Elf32_Rela) * i;
 		uint32_t addr, pos_dyn;
 
-		debug("\nPossition:\t%d/0x%x\n", i, pos);
+		debug("\nPosition:\t%d/0x%x\n", i, pos);
 
 		if (fseek(f, pos, SEEK_SET) < 0) {
 			fprintf(stderr, "%s: %s: seek to %" PRIx32
@@ -520,9 +600,9 @@ static int rela_elf32(char **argv, FILE *f)
 		      PRIu32 " r_addend:\t%" PRIx32 "\n",
 		      rela.r_offset, rela.r_info, rela.r_addend);
 
-		swrela.r_offset = le32_to_cpu(rela.r_offset);
-		swrela.r_info = le32_to_cpu(rela.r_info);
-		swrela.r_addend = le32_to_cpu(rela.r_addend);
+		swrela.r_offset = elf32_to_cpu(rela.r_offset);
+		swrela.r_info = elf32_to_cpu(rela.r_info);
+		swrela.r_addend = elf32_to_cpu(rela.r_addend);
 
 		debug("SWRela:\toffset:\t%" PRIx32 " r_info:\t%"
 		      PRIu32 " r_addend:\t%" PRIx32 "\n",
@@ -541,8 +621,8 @@ static int rela_elf32(char **argv, FILE *f)
 
 		debug("Addr:\t0x%" PRIx32 "\n", addr);
 
-		switch (type) {
-		case R_MICROBLAZE_REL:
+		if ((machine == EM_M68K && type == R_68K_RELATIVE) ||
+		    (machine == EM_MICROBLAZE && type == R_MICROBLAZE_REL)) {
 			if (fseek(f, addr, SEEK_SET) < 0) {
 				fprintf(stderr, "%s: %s: seek to %"
 					PRIx32 " failed: %s\n",
@@ -557,9 +637,12 @@ static int rela_elf32(char **argv, FILE *f)
 					argv[0], argv[1], addr);
 				return 4;
 			}
-			break;
-		case R_MICROBLAZE_32:
-		case R_MICROBLAZE_GLOB_DAT:
+		} else if ((machine == EM_M68K &&
+		            (type == R_68K_32 || type == R_68K_GLOB_DAT ||
+			     type == R_68K_JMP_SLOT)) ||
+			   (machine == EM_MICROBLAZE &&
+			    (type == R_MICROBLAZE_32 ||
+			     type == R_MICROBLAZE_GLOB_DAT))) {
 			/* global symbols read it and add reloc offset */
 			index = swrela.r_info >> 8;
 			pos_dyn = dyn_start + sizeof(Elf32_Sym) * index;
@@ -582,13 +665,15 @@ static int rela_elf32(char **argv, FILE *f)
 			}
 
 			debug("Symbol description:\n");
-			debug(" st_name:\t0x%x\n", symbols.st_name);
-			debug(" st_value:\t0x%x\n", symbols.st_value);
-			debug(" st_size:\t0x%x\n", symbols.st_size);
+			debug(" st_name:\t0x%x\n", elf32_to_cpu(symbols.st_name));
+			debug(" st_value:\t0x%x\n", elf32_to_cpu(symbols.st_value));
+			debug(" st_size:\t0x%x\n", elf32_to_cpu(symbols.st_size));
 
-			value = swrela.r_addend + symbols.st_value;
+			value = swrela.r_addend + elf32_to_cpu(symbols.st_value);
 
 			debug("Value:\t0x%x\n", value);
+
+			value = cpu_to_elf32(value);
 
 			if (fseek(f, addr, SEEK_SET) < 0) {
 				fprintf(stderr, "%s: %s: seek to %"
@@ -602,12 +687,11 @@ static int rela_elf32(char **argv, FILE *f)
 					argv[0], argv[1], addr);
 				return 4;
 			}
-
-			break;
-		case R_MICROBLAZE_NONE:
+		} else if (machine == EM_M68K && type == R_68K_NONE) {
+			debug("R_68K_NONE - skip\n");
+		} else if (machine == EM_MICROBLAZE && type == R_MICROBLAZE_NONE) {
 			debug("R_MICROBLAZE_NONE - skip\n");
-			break;
-		default:
+		} else {
 			fprintf(stderr, "warning: unsupported relocation type %"
 				PRIu32 " at %" PRIx32 "\n",
 				type, rela.r_offset);

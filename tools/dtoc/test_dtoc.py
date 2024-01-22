@@ -13,6 +13,7 @@ import collections
 import copy
 import glob
 import os
+import pathlib
 import struct
 import unittest
 
@@ -25,10 +26,11 @@ from dtoc.dtb_platdata import get_value
 from dtoc.dtb_platdata import tab_to
 from dtoc.src_scan import conv_name_to_c
 from dtoc.src_scan import get_compat_name
-from patman import test_util
-from patman import tools
+from u_boot_pylib import test_util
+from u_boot_pylib import tools
 
-OUR_PATH = os.path.dirname(os.path.realpath(__file__))
+DTOC_DIR = pathlib.Path(__file__).parent
+TEST_DATA_DIR = DTOC_DIR / 'test/'
 
 
 HEADER = '''/*
@@ -91,7 +93,7 @@ def get_dtb_file(dts_fname, capture_stderr=False):
     Returns:
         str: Filename of compiled file in output directory
     """
-    return fdt_util.EnsureCompiled(os.path.join(OUR_PATH, 'test', dts_fname),
+    return fdt_util.EnsureCompiled(str(TEST_DATA_DIR / dts_fname),
                                    capture_stderr=capture_stderr)
 
 
@@ -929,6 +931,7 @@ U_BOOT_DRVINFO(spl_test) = {
         self._check_strings(HEADER + '''
 struct dtd_source {
 \tstruct phandle_2_arg clocks[4];
+\tunsigned char	phandle_name_offset[13];
 };
 struct dtd_target {
 \tfdt32_t\t\tintval;
@@ -981,6 +984,8 @@ static struct dtd_source dtv_phandle_source = {
 \t\t\t{0, {11}},
 \t\t\t{1, {12, 13}},
 \t\t\t{4, {}},},
+\t.phandle_name_offset	= {0x0, 0x0, 0x0, 0x3, 0x66, 0x72, 0x65, 0x64,
+\t\t0x0, 0x0, 0x0, 0x0, 0x7b},
 };
 U_BOOT_DRVINFO(phandle_source) = {
 \t.name\t\t= "source",

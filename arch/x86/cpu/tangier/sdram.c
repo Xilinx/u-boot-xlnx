@@ -9,6 +9,7 @@
 #include <asm/e820.h>
 #include <asm/global_data.h>
 #include <asm/sfi.h>
+#include <linux/printk.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -204,7 +205,7 @@ unsigned int install_e820_map(unsigned int max_entries,
  * address, and how far U-Boot is moved by relocation are set in the global
  * data structure.
  */
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	struct sfi_table_simple *sb;
 	struct sfi_mem_entry *mentry;

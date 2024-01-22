@@ -19,6 +19,7 @@ static struct ccu_clk_gate h3_gates[] = {
 	[CLK_BUS_MMC0]		= GATE(0x060, BIT(8)),
 	[CLK_BUS_MMC1]		= GATE(0x060, BIT(9)),
 	[CLK_BUS_MMC2]		= GATE(0x060, BIT(10)),
+	[CLK_BUS_NAND]		= GATE(0x060, BIT(13)),
 	[CLK_BUS_EMAC]		= GATE(0x060, BIT(17)),
 	[CLK_BUS_SPI0]		= GATE(0x060, BIT(20)),
 	[CLK_BUS_SPI1]		= GATE(0x060, BIT(21)),
@@ -32,6 +33,11 @@ static struct ccu_clk_gate h3_gates[] = {
 	[CLK_BUS_OHCI2]		= GATE(0x060, BIT(30)),
 	[CLK_BUS_OHCI3]		= GATE(0x060, BIT(31)),
 
+	[CLK_BUS_TCON0]		= GATE(0x064, BIT(3)),
+	[CLK_BUS_TCON1]		= GATE(0x064, BIT(4)),
+	[CLK_BUS_HDMI]		= GATE(0x064, BIT(11)),
+	[CLK_BUS_DE]		= GATE(0x064, BIT(12)),
+
 	[CLK_BUS_PIO]		= GATE(0x068, BIT(5)),
 
 	[CLK_BUS_I2C0]		= GATE(0x06c, BIT(0)),
@@ -44,6 +50,7 @@ static struct ccu_clk_gate h3_gates[] = {
 
 	[CLK_BUS_EPHY]		= GATE(0x070, BIT(0)),
 
+	[CLK_NAND]		= GATE(0x080, BIT(31)),
 	[CLK_SPI0]		= GATE(0x0a0, BIT(31)),
 	[CLK_SPI1]		= GATE(0x0a4, BIT(31)),
 
@@ -55,6 +62,12 @@ static struct ccu_clk_gate h3_gates[] = {
 	[CLK_USB_OHCI1]		= GATE(0x0cc, BIT(17)),
 	[CLK_USB_OHCI2]		= GATE(0x0cc, BIT(18)),
 	[CLK_USB_OHCI3]		= GATE(0x0cc, BIT(19)),
+
+	[CLK_DE]		= GATE(0x104, BIT(31)),
+	[CLK_TCON0]		= GATE(0x118, BIT(31)),
+
+	[CLK_HDMI]		= GATE(0x150, BIT(31)),
+	[CLK_HDMI_DDC]		= GATE(0x154, BIT(31)),
 };
 
 static struct ccu_reset h3_resets[] = {
@@ -66,6 +79,7 @@ static struct ccu_reset h3_resets[] = {
 	[RST_BUS_MMC0]		= RESET(0x2c0, BIT(8)),
 	[RST_BUS_MMC1]		= RESET(0x2c0, BIT(9)),
 	[RST_BUS_MMC2]		= RESET(0x2c0, BIT(10)),
+	[RST_BUS_NAND]		= RESET(0x2c0, BIT(13)),
 	[RST_BUS_EMAC]		= RESET(0x2c0, BIT(17)),
 	[RST_BUS_SPI0]		= RESET(0x2c0, BIT(20)),
 	[RST_BUS_SPI1]		= RESET(0x2c0, BIT(21)),
@@ -78,6 +92,12 @@ static struct ccu_reset h3_resets[] = {
 	[RST_BUS_OHCI1]		= RESET(0x2c0, BIT(29)),
 	[RST_BUS_OHCI2]		= RESET(0x2c0, BIT(30)),
 	[RST_BUS_OHCI3]		= RESET(0x2c0, BIT(31)),
+
+	[RST_BUS_TCON0]		= RESET(0x2c4, BIT(3)),
+	[RST_BUS_TCON1]		= RESET(0x2c4, BIT(4)),
+	[RST_BUS_HDMI0]		= RESET(0x2c4, BIT(10)),
+	[RST_BUS_HDMI1]		= RESET(0x2c4, BIT(11)),
+	[RST_BUS_DE]		= RESET(0x2c4, BIT(12)),
 
 	[RST_BUS_EPHY]		= RESET(0x2c8, BIT(2)),
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright 2014 Freescale Semiconductor, Inc.
- * Copyright 2020 NXP
+ * Copyright 2020-2023 NXP
  */
 
 #include <common.h>
@@ -20,6 +20,7 @@
 #include <asm/fsl_law.h>
 #include <asm/fsl_serdes.h>
 #include <asm/fsl_liodn.h>
+#include <clock_legacy.h>
 #include <fm_eth.h>
 #include "t102xrdb.h"
 #ifdef CONFIG_TARGET_T1024RDB
@@ -43,6 +44,13 @@ enum {
 	I2C_SET_BANK0,
 	I2C_SET_BANK4,
 };
+#endif
+
+#if CONFIG_IS_ENABLED(DM_SERIAL)
+int get_serial_clock(void)
+{
+	return get_bus_freq(0) / 2;
+}
 #endif
 
 int checkboard(void)
@@ -130,8 +138,8 @@ int board_early_init_f(void)
 
 int board_early_init_r(void)
 {
-#ifdef CONFIG_SYS_FLASH_BASE
-	const unsigned int flashbase = CONFIG_SYS_FLASH_BASE;
+#ifdef CFG_SYS_FLASH_BASE
+	const unsigned int flashbase = CFG_SYS_FLASH_BASE;
 	int flash_esel = find_tlb_idx((void *)flashbase, 1);
 	/*
 	 * Remap Boot flash region to caching-inhibited
@@ -150,7 +158,7 @@ int board_early_init_r(void)
 		disable_tlb(flash_esel);
 	}
 
-	set_tlb(1, flashbase, CONFIG_SYS_FLASH_BASE_PHYS,
+	set_tlb(1, flashbase, CFG_SYS_FLASH_BASE_PHYS,
 		MAS3_SX|MAS3_SW|MAS3_SR, MAS2_I|MAS2_G,
 		0, flash_esel, BOOKE_PAGESZ_256M, 1);
 #endif
@@ -158,6 +166,8 @@ int board_early_init_r(void)
 #ifdef CONFIG_TARGET_T1024RDB
 	board_mux_lane();
 #endif
+
+	pci_init();
 
 	return 0;
 }

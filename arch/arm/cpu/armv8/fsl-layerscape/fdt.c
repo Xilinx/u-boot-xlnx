@@ -387,6 +387,10 @@ void fdt_fixup_remove_jr(void *blob)
 	u64 jr_offset, used_jr;
 	fdt32_t *reg;
 
+	/* Return if crypto node not found */
+	if (crypto_node < 0)
+		return;
+
 	used_jr = sec_firmware_used_jobring_offset();
 	fdt_support_default_count_cells(blob, crypto_node, &addr_cells, NULL);
 
@@ -646,7 +650,7 @@ void ft_cpu_setup(void *blob, struct bd_info *bd)
 
 #ifdef CONFIG_SYS_NS16550
 	do_fixup_by_compat_u32(blob, "fsl,ns16550",
-			       "clock-frequency", CONFIG_SYS_NS16550_CLK, 1);
+			       "clock-frequency", CFG_SYS_NS16550_CLK, 1);
 #endif
 
 	do_fixup_by_path_u32(blob, "/sysclk", "clock-frequency",

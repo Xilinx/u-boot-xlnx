@@ -108,7 +108,7 @@ static void _uart_zynq_serial_init(struct uart_zynq *regs)
 
 static int _uart_zynq_serial_putc(struct uart_zynq *regs, const char c)
 {
-	if (CONFIG_IS_ENABLED(DEBUG_UART_ZYNQ)) {
+	if (IS_ENABLED(CONFIG_DEBUG_UART_ZYNQ)) {
 		if (!(readl(&regs->channel_sts) & ZYNQ_UART_SR_TXEMPTY))
 			return -EAGAIN;
 	} else {
@@ -259,9 +259,9 @@ static int zynq_serial_of_to_plat(struct udevice *dev)
 {
 	struct zynq_uart_plat *plat = dev_get_plat(dev);
 
-	plat->regs = (struct uart_zynq *)dev_read_addr(dev);
-	if (IS_ERR(plat->regs))
-		return PTR_ERR(plat->regs);
+	plat->regs = dev_read_addr_ptr(dev);
+	if (!plat->regs)
+		return -EINVAL;
 
 	return 0;
 }

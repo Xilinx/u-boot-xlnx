@@ -49,7 +49,7 @@ static struct mux_control *cmd_mux_find(char *const argv[])
 
 	chip = dev_get_uclass_priv(dev);
 	if (!chip)
-		return ERR_PTR(ret);
+		return ERR_PTR(-EINVAL);
 
 	if (id >= chip->controllers)
 		return ERR_PTR(-EINVAL);
@@ -173,10 +173,10 @@ static int do_mux_deselect(struct cmd_tbl *cmdtp, int flag, int argc,
 	return CMD_RET_SUCCESS;
 }
 
-static char mux_help_text[] =
+U_BOOT_LONGHELP(mux,
 	"list - List all Muxes and their states\n"
 	"select <chip> <id> <state> - Select the given mux state\n"
-	"deselect <chip> <id> - Deselect the given mux and reset it to its idle state";
+	"deselect <chip> <id> - Deselect the given mux and reset it to its idle state");
 
 U_BOOT_CMD_WITH_SUBCMDS(mux, "List, select, and deselect muxes", mux_help_text,
 			U_BOOT_SUBCMD_MKENT(list, 1, 1, do_mux_list),

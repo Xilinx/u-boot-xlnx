@@ -459,9 +459,9 @@ static void pcie_dw_set_host_bars(const void *regs_base)
 	}
 
 	/* Set the BAR base and size towards DDR */
-	bar0 = CONFIG_SYS_SDRAM_BASE & ~0xf;
+	bar0 = CFG_SYS_SDRAM_BASE & ~0xf;
 	bar0 |= PCI_BASE_ADDRESS_MEM_TYPE_32;
-	writel(CONFIG_SYS_SDRAM_BASE, regs_base + PCIE_CONFIG_BAR0);
+	writel(CFG_SYS_SDRAM_BASE, regs_base + PCIE_CONFIG_BAR0);
 
 	reg = ((size >> 20) - 1) << 12;
 	writel(size, regs_base + RESIZABLE_BAR_CTL0);
@@ -564,14 +564,14 @@ static int pcie_dw_mvebu_of_to_plat(struct udevice *dev)
 	struct pcie_dw_mvebu *pcie = dev_get_priv(dev);
 
 	/* Get the controller base address */
-	pcie->ctrl_base = (void *)devfdt_get_addr_index(dev, 0);
-	if ((fdt_addr_t)pcie->ctrl_base == FDT_ADDR_T_NONE)
+	pcie->ctrl_base = devfdt_get_addr_index_ptr(dev, 0);
+	if (!pcie->ctrl_base)
 		return -EINVAL;
 
 	/* Get the config space base address and size */
-	pcie->cfg_base = (void *)devfdt_get_addr_size_index(dev, 1,
-							 &pcie->cfg_size);
-	if ((fdt_addr_t)pcie->cfg_base == FDT_ADDR_T_NONE)
+	pcie->cfg_base = devfdt_get_addr_size_index_ptr(dev, 1,
+							&pcie->cfg_size);
+	if (!pcie->cfg_base)
 		return -EINVAL;
 
 	return 0;

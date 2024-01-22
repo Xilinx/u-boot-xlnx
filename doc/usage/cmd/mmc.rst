@@ -1,7 +1,7 @@
 .. SPDX-License-Identifier: GPL-2.0+:
 
 mmc command
-============
+===========
 
 Synopsis
 --------
@@ -21,6 +21,7 @@ Synopsis
     mmc bootpart-resize <dev> <dev part size MB> <RPMB part size MB>
     mmc partconf <dev> [[varname] | [<boot_ack> <boot_partition> <partition_access>]]
     mmc rst-function <dev> <value>
+    mmc reg read <reg> <offset> [env]
 
 Description
 -----------
@@ -183,6 +184,31 @@ The 'mmc rst-function' command changes the RST_n_FUNCTION field.
         0x3
             Reserved
 
+The 'mmc reg read <reg> <offset> [env]' reads eMMC card register and
+either print it to standard output, or store the value in environment
+variable.
+
+<reg> with
+optional offset <offset> into the register array, and print it to
+standard output or store it into environment variable [env].
+
+    reg
+        cid
+            The Device IDentification (CID) register. Uses offset.
+        csd
+            The Device-Specific Data (CSD) register. Uses offset.
+        dsr
+            The driver stage register (DSR).
+        ocr
+            The operation conditions register (OCR).
+        rca
+            The relative Device address (RCA) register.
+        extcsd
+            The Extended CSD register. Uses offset.
+    offset
+        For 'cid'/'csd' 128 bit registers '[0..3]' in 32-bit increments. For 'extcsd' 512 bit register '[0..512,all]' in 8-bit increments, or 'all' to read the entire register.
+    env
+        Optional environment variable into which 32-bit value read from register should be stored.
 
 Examples
 --------
@@ -213,10 +239,10 @@ The 'mmc info' command displays device's capabilities:
 The raw data can be read/written via 'mmc read/write' command:
 ::
 
-    => mmc read 0x40000000 0x5000 0x100
+    => mmc read 40000000 5000 100
     MMC read: dev # 0, block # 20480, count 256 ... 256 blocks read: OK
 
-    => mmc write 0x40000000 0x5000 0x10
+    => mmc write 40000000 5000 100
     MMC write: dev # 0, block # 20480, count 256 ... 256 blocks written: OK
 
 The partition list can be shown via 'mmc part' command:

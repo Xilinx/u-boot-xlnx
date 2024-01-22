@@ -194,8 +194,8 @@ static int dwc_vbus_supply_init(struct udevice *dev)
 		return 0;
 	}
 
-	ret = regulator_set_enable(priv->vbus_supply, true);
-	if (ret) {
+	ret = regulator_set_enable_if_allowed(priv->vbus_supply, true);
+	if (ret && ret != -ENOSYS) {
 		dev_err(dev, "Error enabling vbus supply\n");
 		return ret;
 	}
@@ -208,12 +208,10 @@ static int dwc_vbus_supply_exit(struct udevice *dev)
 	struct dwc2_priv *priv = dev_get_priv(dev);
 	int ret;
 
-	if (priv->vbus_supply) {
-		ret = regulator_set_enable(priv->vbus_supply, false);
-		if (ret) {
-			dev_err(dev, "Error disabling vbus supply\n");
-			return ret;
-		}
+	ret = regulator_set_enable_if_allowed(priv->vbus_supply, false);
+	if (ret && ret != -ENOSYS) {
+		dev_err(dev, "Error disabling vbus supply\n");
+		return ret;
 	}
 
 	return 0;
@@ -315,9 +313,7 @@ static void dwc_otg_core_host_init(struct udevice *dev,
 
 	/* Turn on the vbus power. */
 	if (readl(&regs->gintsts) & DWC2_GINTSTS_CURMODE_HOST) {
-		hprt0 = readl(&regs->hprt0);
-		hprt0 &= ~(DWC2_HPRT0_PRTENA | DWC2_HPRT0_PRTCONNDET);
-		hprt0 &= ~(DWC2_HPRT0_PRTENCHNG | DWC2_HPRT0_PRTOVRCURRCHNG);
+		hprt0 = readl(&regs->hprt0) & ~DWC2_HPRT0_W1C_MASK;
 		if (!(hprt0 & DWC2_HPRT0_PRTPWR)) {
 			hprt0 |= DWC2_HPRT0_PRTPWR;
 			writel(hprt0, &regs->hprt0);
@@ -748,7 +744,7 @@ static int dwc_otg_submit_rh_msg_out(struct dwc2_priv *priv,
 	case (USB_REQ_CLEAR_FEATURE << 8) | USB_RECIP_OTHER | USB_TYPE_CLASS:
 		switch (wValue) {
 		case USB_PORT_FEAT_C_CONNECTION:
-			setbits_le32(&regs->hprt0, DWC2_HPRT0_PRTCONNDET);
+			clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK, DWC2_HPRT0_PRTCONNDET);
 			break;
 		}
 		break;
@@ -759,21 +755,13 @@ static int dwc_otg_submit_rh_msg_out(struct dwc2_priv *priv,
 			break;
 
 		case USB_PORT_FEAT_RESET:
-			clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_PRTENA |
-					DWC2_HPRT0_PRTCONNDET |
-					DWC2_HPRT0_PRTENCHNG |
-					DWC2_HPRT0_PRTOVRCURRCHNG,
-					DWC2_HPRT0_PRTRST);
+			clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK, DWC2_HPRT0_PRTRST);
 			mdelay(50);
-			clrbits_le32(&regs->hprt0, DWC2_HPRT0_PRTRST);
+			clrbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK | DWC2_HPRT0_PRTRST);
 			break;
 
 		case USB_PORT_FEAT_POWER:
-			clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_PRTENA |
-					DWC2_HPRT0_PRTCONNDET |
-					DWC2_HPRT0_PRTENCHNG |
-					DWC2_HPRT0_PRTOVRCURRCHNG,
-					DWC2_HPRT0_PRTRST);
+			clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK, DWC2_HPRT0_PRTRST);
 			break;
 
 		case USB_PORT_FEAT_ENABLE:
@@ -1213,14 +1201,9 @@ static int dwc2_init_common(struct udevice *dev, struct dwc2_priv *priv)
 		dwc_otg_core_host_init(dev, regs);
 	}
 
-	clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_PRTENA |
-			DWC2_HPRT0_PRTCONNDET | DWC2_HPRT0_PRTENCHNG |
-			DWC2_HPRT0_PRTOVRCURRCHNG,
-			DWC2_HPRT0_PRTRST);
+	clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK, DWC2_HPRT0_PRTRST);
 	mdelay(50);
-	clrbits_le32(&regs->hprt0, DWC2_HPRT0_PRTENA | DWC2_HPRT0_PRTCONNDET |
-		     DWC2_HPRT0_PRTENCHNG | DWC2_HPRT0_PRTOVRCURRCHNG |
-		     DWC2_HPRT0_PRTRST);
+	clrbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK | DWC2_HPRT0_PRTRST);
 
 	for (i = 0; i < MAX_DEVICE; i++) {
 		for (j = 0; j < MAX_ENDPOINT; j++) {
@@ -1246,10 +1229,7 @@ static int dwc2_init_common(struct udevice *dev, struct dwc2_priv *priv)
 static void dwc2_uninit_common(struct dwc2_core_regs *regs)
 {
 	/* Put everything in reset. */
-	clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_PRTENA |
-			DWC2_HPRT0_PRTCONNDET | DWC2_HPRT0_PRTENCHNG |
-			DWC2_HPRT0_PRTOVRCURRCHNG,
-			DWC2_HPRT0_PRTRST);
+	clrsetbits_le32(&regs->hprt0, DWC2_HPRT0_W1C_MASK, DWC2_HPRT0_PRTRST);
 }
 
 #if !CONFIG_IS_ENABLED(DM_USB)

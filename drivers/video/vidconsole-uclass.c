@@ -10,6 +10,7 @@
 #define LOG_CATEGORY UCLASS_VIDEO_CONSOLE
 
 #include <common.h>
+#include <abuf.h>
 #include <command.h>
 #include <console.h>
 #include <log.h>
@@ -18,11 +19,6 @@
 #include <video_console.h>
 #include <video_font.h>		/* Bitmap font for code page 437 */
 #include <linux/ctype.h>
-
-/* By default we scroll by a single line */
-#ifndef CONFIG_CONSOLE_SCROLL_LINES
-#define CONFIG_CONSOLE_SCROLL_LINES 1
-#endif
 
 int vidconsole_putc_xy(struct udevice *dev, uint x, uint y, char ch)
 {
@@ -52,7 +48,7 @@ int vidconsole_set_row(struct udevice *dev, uint row, int clr)
 	return ops->set_row(dev, row, clr);
 }
 
-static int vidconsole_entry_start(struct udevice *dev)
+int vidconsole_entry_start(struct udevice *dev)
 {
 	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
 
@@ -91,7 +87,7 @@ static void vidconsole_newline(struct udevice *dev)
 	struct vidconsole_priv *priv = dev_get_uclass_priv(dev);
 	struct udevice *vid_dev = dev->parent;
 	struct video_priv *vid_priv = dev_get_uclass_priv(vid_dev);
-	const int rows = CONFIG_CONSOLE_SCROLL_LINES;
+	const int rows = CONFIG_VAL(CONSOLE_SCROLL_LINES);
 	int i, ret;
 
 	priv->xcur_frac = priv->xstart_frac;
@@ -557,6 +553,160 @@ static void vidconsole_puts(struct stdio_dev *sdev, const char *s)
 	}
 }
 
+void vidconsole_list_fonts(struct udevice *dev)
+{
+	struct vidfont_info info;
+	int ret, i;
+
+	for (i = 0, ret = 0; !ret; i++) {
+		ret = vidconsole_get_font(dev, i, &info);
+		if (!ret)
+			printf("%s\n", info.name);
+	}
+}
+
+int vidconsole_get_font(struct udevice *dev, int seq,
+			struct vidfont_info *info)
+{
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+
+	if (!ops->get_font)
+		return -ENOSYS;
+
+	return ops->get_font(dev, seq, info);
+}
+
+int vidconsole_get_font_size(struct udevice *dev, const char **name, uint *sizep)
+{
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+
+	if (!ops->get_font_size)
+		return -ENOSYS;
+
+	*name = ops->get_font_size(dev, sizep);
+	return 0;
+}
+
+int vidconsole_select_font(struct udevice *dev, const char *name, uint size)
+{
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+
+	if (!ops->select_font)
+		return -ENOSYS;
+
+	return ops->select_font(dev, name, size);
+}
+
+int vidconsole_measure(struct udevice *dev, const char *name, uint size,
+		       const char *text, struct vidconsole_bbox *bbox)
+{
+	struct vidconsole_priv *priv = dev_get_uclass_priv(dev);
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+	int ret;
+
+	if (ops->measure) {
+		ret = ops->measure(dev, name, size, text, bbox);
+		if (ret != -ENOSYS)
+			return ret;
+	}
+
+	bbox->valid = true;
+	bbox->x0 = 0;
+	bbox->y0 = 0;
+	bbox->x1 = priv->x_charsize * strlen(text);
+	bbox->y1 = priv->y_charsize;
+
+	return 0;
+}
+
+int vidconsole_nominal(struct udevice *dev, const char *name, uint size,
+		       uint num_chars, struct vidconsole_bbox *bbox)
+{
+	struct vidconsole_priv *priv = dev_get_uclass_priv(dev);
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+	int ret;
+
+	if (ops->measure) {
+		ret = ops->nominal(dev, name, size, num_chars, bbox);
+		if (ret != -ENOSYS)
+			return ret;
+	}
+
+	bbox->valid = true;
+	bbox->x0 = 0;
+	bbox->y0 = 0;
+	bbox->x1 = priv->x_charsize * num_chars;
+	bbox->y1 = priv->y_charsize;
+
+	return 0;
+}
+
+int vidconsole_entry_save(struct udevice *dev, struct abuf *buf)
+{
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+	int ret;
+
+	if (ops->measure) {
+		ret = ops->entry_save(dev, buf);
+		if (ret != -ENOSYS)
+			return ret;
+	}
+
+	/* no data so make sure the buffer is empty */
+	abuf_realloc(buf, 0);
+
+	return 0;
+}
+
+int vidconsole_entry_restore(struct udevice *dev, struct abuf *buf)
+{
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+	int ret;
+
+	if (ops->measure) {
+		ret = ops->entry_restore(dev, buf);
+		if (ret != -ENOSYS)
+			return ret;
+	}
+
+	return 0;
+}
+
+int vidconsole_set_cursor_visible(struct udevice *dev, bool visible,
+				  uint x, uint y, uint index)
+{
+	struct vidconsole_ops *ops = vidconsole_get_ops(dev);
+	int ret;
+
+	if (ops->set_cursor_visible) {
+		ret = ops->set_cursor_visible(dev, visible, x, y, index);
+		if (ret != -ENOSYS)
+			return ret;
+	}
+
+	return 0;
+}
+
+void vidconsole_push_colour(struct udevice *dev, enum colour_idx fg,
+			    enum colour_idx bg, struct vidconsole_colour *old)
+{
+	struct video_priv *vid_priv = dev_get_uclass_priv(dev->parent);
+
+	old->colour_fg = vid_priv->colour_fg;
+	old->colour_bg = vid_priv->colour_bg;
+
+	vid_priv->colour_fg = video_index_to_colour(vid_priv, fg);
+	vid_priv->colour_bg = video_index_to_colour(vid_priv, bg);
+}
+
+void vidconsole_pop_colour(struct udevice *dev, struct vidconsole_colour *old)
+{
+	struct video_priv *vid_priv = dev_get_uclass_priv(dev->parent);
+
+	vid_priv->colour_fg = old->colour_fg;
+	vid_priv->colour_bg = old->colour_bg;
+}
+
 /* Set up the number of rows and colours (rotated drivers override this) */
 static int vidconsole_pre_probe(struct udevice *dev)
 {
@@ -616,6 +766,18 @@ int vidconsole_memmove(struct udevice *dev, void *dst, const void *src,
 	return vidconsole_sync_copy(dev, dst, dst + size);
 }
 #endif
+
+int vidconsole_clear_and_reset(struct udevice *dev)
+{
+	int ret;
+
+	ret = video_clear(dev_get_parent(dev));
+	if (ret)
+		return ret;
+	vidconsole_position_cursor(dev, 0, 0);
+
+	return 0;
+}
 
 void vidconsole_position_cursor(struct udevice *dev, unsigned col, unsigned row)
 {

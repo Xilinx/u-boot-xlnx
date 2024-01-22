@@ -3,7 +3,7 @@
  * Texas Instruments System Control Interface Protocol Driver
  * Based on drivers/firmware/ti_sci.c from Linux.
  *
- * Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2018 Texas Instruments Incorporated - https://www.ti.com/
  *	Lokesh Vutla <lokeshvutla@ti.com>
  */
 
@@ -265,7 +265,7 @@ static int ti_sci_do_xfer(struct ti_sci_info *info,
 	if (xfer->rx_len) {
 		ret = ti_sci_get_response(info, xfer, &info->chan_rx);
 		if (!ti_sci_is_response_ack(xfer->tx_message.buf)) {
-			dev_err(info->dev, "Message not acknowledged");
+			dev_err(info->dev, "Message not acknowledged\n");
 			ret = -ENODEV;
 		}
 	}
@@ -1935,7 +1935,7 @@ static int ti_sci_cmd_proc_auth_boot_image(const struct ti_sci_handle *handle,
 
 	info = handle_to_ti_sci_info(handle);
 
-	xfer = ti_sci_setup_one_xfer(info, TISCI_MSG_PROC_AUTH_BOOT_IMIAGE,
+	xfer = ti_sci_setup_one_xfer(info, TISCI_MSG_PROC_AUTH_BOOT_IMAGE,
 				     TI_SCI_FLAG_REQ_ACK_ON_PROCESSED,
 				     (u32 *)&req, sizeof(req), sizeof(*resp));
 	if (IS_ERR(xfer)) {
@@ -2690,6 +2690,8 @@ static void ti_sci_setup_ops(struct ti_sci_info *info)
 const
 struct ti_sci_handle *ti_sci_get_handle_from_sysfw(struct udevice *sci_dev)
 {
+	int ret;
+
 	if (!sci_dev)
 		return ERR_PTR(-EINVAL);
 
@@ -2701,6 +2703,11 @@ struct ti_sci_handle *ti_sci_get_handle_from_sysfw(struct udevice *sci_dev)
 	struct ti_sci_handle *handle = &info->handle;
 
 	if (!handle)
+		return ERR_PTR(-EINVAL);
+
+	ret = ti_sci_cmd_get_revision(handle);
+
+	if (ret)
 		return ERR_PTR(-EINVAL);
 
 	return handle;
@@ -2825,11 +2832,9 @@ static int ti_sci_probe(struct udevice *dev)
 	list_add_tail(&info->list, &ti_sci_list);
 	ti_sci_setup_ops(info);
 
-	ret = ti_sci_cmd_get_revision(&info->handle);
-
 	INIT_LIST_HEAD(&info->dev_list);
 
-	return ret;
+	return 0;
 }
 
 /**

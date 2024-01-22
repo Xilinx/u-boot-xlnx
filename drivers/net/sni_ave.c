@@ -23,6 +23,7 @@
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
+#include <linux/printk.h>
 
 #define AVE_GRST_DELAY_MSEC	40
 #define AVE_MIN_XMITSIZE	60
@@ -391,13 +392,11 @@ static int ave_mdiobus_init(struct ave_private *priv, const char *name)
 static int ave_phy_init(struct ave_private *priv, void *dev)
 {
 	struct phy_device *phydev;
-	int mask = GENMASK(31, 0), ret;
+	int ret;
 
-	phydev = phy_find_by_mask(priv->bus, mask);
+	phydev = phy_connect(priv->bus, -1, dev, priv->phy_mode);
 	if (!phydev)
 		return -ENODEV;
-
-	phy_connect_dev(phydev, dev, priv->phy_mode);
 
 	phydev->supported &= PHY_GBIT_FEATURES;
 	if (priv->max_speed) {

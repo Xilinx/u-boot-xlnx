@@ -6,6 +6,8 @@
  * Copyright (C) 2015 Bin Meng <bmeng.cn@gmail.com>
  */
 
+#define LOG_CATEGORY	UCLASS_RAM
+
 #include <common.h>
 #include <dm.h>
 #include <errno.h>
@@ -197,8 +199,8 @@ static void mrccache_setup(struct mrc_output *mrc, void *data)
 	cache->signature = MRC_DATA_SIGNATURE;
 	cache->data_size = mrc->len;
 	checksum = compute_ip_checksum(mrc->buf, cache->data_size);
-	debug("Saving %d bytes for MRC output data, checksum %04x\n",
-	      cache->data_size, checksum);
+	log_debug("Saving %d bytes for MRC output data, checksum %04x\n",
+		  cache->data_size, checksum);
 	cache->checksum = checksum;
 	cache->reserved = 0;
 	memcpy(cache->data, mrc->buf, cache->data_size);
@@ -303,7 +305,7 @@ static int mrccache_save_type(enum mrc_type_t type)
 	mrc = &gd->arch.mrc[type];
 	if (!mrc->len)
 		return 0;
-	log_debug("Saving %#x bytes of MRC output data type %d to SPI flash\n",
+	log_debug("Saving %x bytes of MRC output data type %d to SPI flash\n",
 		  mrc->len, type);
 	ret = mrccache_get_region(type, &sf, &entry);
 	if (ret)

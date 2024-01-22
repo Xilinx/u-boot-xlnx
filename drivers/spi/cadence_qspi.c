@@ -239,7 +239,7 @@ static int cadence_spi_probe(struct udevice *bus)
 	priv->tchsh_ns		= plat->tchsh_ns;
 	priv->tslch_ns		= plat->tslch_ns;
 
-	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE))
+	if (IS_ENABLED(CONFIG_ZYNQMP_FIRMWARE))
 		xilinx_pm_request(PM_REQUEST_NODE, PM_DEV_OSPI,
 				  ZYNQMP_PM_CAPABILITY_ACCESS, ZYNQMP_PM_MAX_QOS,
 				  ZYNQMP_PM_REQUEST_ACK_NO, NULL);
@@ -615,7 +615,7 @@ static int cadence_spi_setup_strmode(struct udevice *bus)
 	}
 
 	ret = wait_for_bit_le32(base + CQSPI_REG_CONFIG,
-				1 << CQSPI_REG_CONFIG_IDLE_LSB,
+				BIT(CQSPI_REG_CONFIG_IDLE_LSB),
 				1, CQSPI_TIMEOUT_MS, 0);
 	if (ret) {
 		printf("spi_wait_idle error : 0x%x\n", ret);
@@ -665,12 +665,17 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 	cadence_qspi_apb_chipselect(base, priv->cs, priv->is_decoded_cs);
 
 	if (op->data.dir == SPI_MEM_DATA_IN && op->data.buf.in) {
-		if (!op->addr.nbytes)
+		/*
+		 * Performing reads in DAC mode forces to read minimum 4 bytes
+		 * which is unsupported on some flash devices during register
+		 * reads, prefer STIG mode for such small reads.
+		 */
+		if (op->data.nbytes <= CQSPI_STIG_DATA_LEN_MAX)
 			mode = CQSPI_STIG_READ;
 		else
 			mode = CQSPI_READ;
 	} else {
-		if (!op->addr.nbytes || !op->data.buf.out)
+		if (op->data.nbytes <= CQSPI_STIG_DATA_LEN_MAX)
 			mode = CQSPI_STIG_WRITE;
 		else
 			mode = CQSPI_WRITE;
@@ -713,8 +718,8 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 	return err;
 }
 
-bool cadence_spi_mem_dtr_supports_op(struct spi_slave *slave,
-				     const struct spi_mem_op *op)
+static bool cadence_spi_mem_dtr_supports_op(struct spi_slave *slave,
+					    const struct spi_mem_op *op)
 {
 	/*
 	 * In DTR mode, except op->cmd all other parameters like address,
@@ -733,8 +738,15 @@ static bool cadence_spi_mem_supports_op(struct spi_slave *slave,
 {
 	bool all_true, all_false;
 
-	all_true = op->cmd.dtr && op->addr.dtr && op->dummy.dtr &&
-		   op->data.dtr;
+	/*
+	 * op->dummy.dtr is required for converting nbytes into ncycles.
+	 * Also, don't check the dtr field of the op phase having zero nbytes.
+	 */
+	all_true = op->cmd.dtr &&
+		   (!op->addr.nbytes || op->addr.dtr) &&
+		   (!op->dummy.nbytes || op->dummy.dtr) &&
+		   (!op->data.nbytes || op->data.dtr);
+
 	all_false = !op->cmd.dtr && !op->addr.dtr && !op->dummy.dtr &&
 		    !op->data.dtr;
 
@@ -754,9 +766,8 @@ static int cadence_spi_of_to_plat(struct udevice *bus)
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	ofnode subnode;
 
-	plat->regbase = (void *)devfdt_get_addr_index(bus, 0);
-	plat->ahbbase = (void *)devfdt_get_addr_size_index(bus, 1,
-			&plat->ahbsize);
+	plat->regbase = devfdt_get_addr_index_ptr(bus, 0);
+	plat->ahbbase = devfdt_get_addr_size_index_ptr(bus, 1, &plat->ahbsize);
 	plat->is_decoded_cs = dev_read_bool(bus, "cdns,is-decoded-cs");
 	plat->fifo_depth = dev_read_u32_default(bus, "cdns,fifo-depth", 128);
 	plat->fifo_width = dev_read_u32_default(bus, "cdns,fifo-width", 4);
@@ -769,7 +780,7 @@ static int cadence_spi_of_to_plat(struct udevice *bus)
 
 	plat->is_dma = dev_read_bool(bus, "cdns,is-dma");
 
-	/* All other paramters are embedded in the child node */
+	/* All other parameters are embedded in the child node */
 	subnode = dev_read_first_subnode(bus);
 	if (!ofnode_valid(subnode)) {
 		printf("Error: subnode with SPI flash config missing!\n");

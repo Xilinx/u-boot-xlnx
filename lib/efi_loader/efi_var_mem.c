@@ -41,11 +41,13 @@ efi_var_mem_compare(struct efi_var_entry *var, const efi_guid_t *guid,
 	     i < sizeof(efi_guid_t) && match; ++i)
 		match = (guid1[i] == guid2[i]);
 
-	for (data = var->name, var_name = name;; ++data, ++var_name) {
+	for (data = var->name, var_name = name;; ++data) {
 		if (match)
 			match = (*data == *var_name);
 		if (!*data)
 			break;
+		if (*var_name)
+			++var_name;
 	}
 
 	++data;
@@ -175,6 +177,10 @@ efi_status_t __efi_runtime efi_var_mem_ins(
 
 u64 __efi_runtime efi_var_mem_free(void)
 {
+	if (efi_var_buf->length + sizeof(struct efi_var_entry) >=
+	    EFI_VAR_BUF_SIZE)
+		return 0;
+
 	return EFI_VAR_BUF_SIZE - efi_var_buf->length -
 	       sizeof(struct efi_var_entry);
 }

@@ -125,7 +125,7 @@ static void print_config_tables(void)
  * @systable:	system table
  * @con_out:	simple text output protocol
  */
-void print_load_options(struct efi_loaded_image *loaded_image)
+static void print_load_options(struct efi_loaded_image *loaded_image)
 {
 	/* Output the load options */
 	con_out->output_string(con_out, u"Load options: ");
@@ -143,6 +143,7 @@ void print_load_options(struct efi_loaded_image *loaded_image)
  * @device_path:	device path to print
  * @dp2txt:		device path to text protocol
  */
+static
 efi_status_t print_device_path(struct efi_device_path *device_path,
 			       struct efi_device_path_to_text_protocol *dp2txt)
 {
@@ -196,8 +197,10 @@ efi_status_t EFIAPI efi_main(efi_handle_t handle,
 	print_config_tables();
 
 	/* Get the loaded image protocol */
-	ret = boottime->handle_protocol(handle, &loaded_image_guid,
-					(void **)&loaded_image);
+	ret = boottime->open_protocol(handle, &loaded_image_guid,
+				      (void **)&loaded_image, NULL, NULL,
+				      EFI_OPEN_PROTOCOL_GET_PROTOCOL);
+
 	if (ret != EFI_SUCCESS) {
 		con_out->output_string
 			(con_out, u"Cannot open loaded image protocol\r\n");
@@ -213,14 +216,19 @@ efi_status_t EFIAPI efi_main(efi_handle_t handle,
 			(con_out, u"Cannot open device path to text protocol\r\n");
 		goto out;
 	}
+	con_out->output_string(con_out, u"File path: ");
+	ret = print_device_path(loaded_image->file_path, device_path_to_text);
+	if (ret != EFI_SUCCESS)
+		goto out;
 	if (!loaded_image->device_handle) {
 		con_out->output_string
 			(con_out, u"Missing device handle\r\n");
 		goto out;
 	}
-	ret = boottime->handle_protocol(loaded_image->device_handle,
-					&device_path_guid,
-					(void **)&device_path);
+	ret = boottime->open_protocol(loaded_image->device_handle,
+				      &device_path_guid,
+				      (void **)&device_path, NULL, NULL,
+				      EFI_OPEN_PROTOCOL_GET_PROTOCOL);
 	if (ret != EFI_SUCCESS) {
 		con_out->output_string
 			(con_out, u"Missing device path for device handle\r\n");
@@ -228,10 +236,6 @@ efi_status_t EFIAPI efi_main(efi_handle_t handle,
 	}
 	con_out->output_string(con_out, u"Boot device: ");
 	ret = print_device_path(device_path, device_path_to_text);
-	if (ret != EFI_SUCCESS)
-		goto out;
-	con_out->output_string(con_out, u"File path: ");
-	ret = print_device_path(loaded_image->file_path, device_path_to_text);
 	if (ret != EFI_SUCCESS)
 		goto out;
 

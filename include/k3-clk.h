@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * (C) Copyright 2020-2021 Texas Instruments Incorporated - http://www.ti.com
+ * (C) Copyright 2020-2021 Texas Instruments Incorporated - https://www.ti.com
  *      Tero Kristo <t-kristo@ti.com>
  */
 
@@ -175,6 +175,7 @@ extern const struct ti_k3_clk_platdata j721e_clk_platdata;
 extern const struct ti_k3_clk_platdata j7200_clk_platdata;
 extern const struct ti_k3_clk_platdata j721s2_clk_platdata;
 extern const struct ti_k3_clk_platdata am62x_clk_platdata;
+extern const struct ti_k3_clk_platdata am62ax_clk_platdata;
 
 struct clk *clk_register_ti_pll(const char *name, const char *parent_name,
 				void __iomem *reg);

@@ -182,6 +182,61 @@ static int do_part_number(int argc, char *const argv[])
 	return do_part_info(argc, argv, CMD_PART_INFO_NUMBER);
 }
 
+static int do_part_set(int argc, char *const argv[])
+{
+	const char *devname, *partstr, *typestr;
+	struct blk_desc *desc;
+	int dev;
+
+	if (argc < 3)
+		return CMD_RET_USAGE;
+
+	/* Look up the device */
+	devname = argv[0];
+	partstr = argv[1];
+	typestr = argv[2];
+	dev = blk_get_device_by_str(devname, partstr, &desc);
+	if (dev < 0) {
+		printf("** Bad device specification %s %s **\n", devname,
+		       partstr);
+		return CMD_RET_FAILURE;
+	}
+
+	desc->part_type = part_get_type_by_name(typestr);
+	if (!desc->part_type) {
+		printf("Unknown partition type '%s'\n", typestr);
+		return CMD_RET_FAILURE;
+	}
+	part_print(desc);
+
+	return 0;
+}
+
+#ifdef CONFIG_PARTITION_TYPE_GUID
+static int do_part_type(int argc, char *const argv[])
+{
+	int part;
+	struct blk_desc *dev_desc;
+	struct disk_partition info;
+
+	if (argc < 2)
+		return CMD_RET_USAGE;
+	if (argc > 3)
+		return CMD_RET_USAGE;
+
+	part = blk_get_device_part_str(argv[0], argv[1], &dev_desc, &info, 0);
+	if (part < 0)
+		return 1;
+
+	if (argc > 2)
+		env_set(argv[2], info.type_guid);
+	else
+		printf("%s\n", info.type_guid);
+
+	return 0;
+}
+#endif
+
 static int do_part_types(int argc, char * const argv[])
 {
 	struct part_driver *drv = ll_entry_start(struct part_driver,
@@ -220,6 +275,12 @@ static int do_part(struct cmd_tbl *cmdtp, int flag, int argc,
 		return do_part_number(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "types"))
 		return do_part_types(argc - 2, argv + 2);
+	else if (!strcmp(argv[1], "set"))
+		return do_part_set(argc - 2, argv + 2);
+#ifdef CONFIG_PARTITION_TYPE_GUID
+	else if (!strcmp(argv[1], "type"))
+		return do_part_type(argc - 2, argv + 2);
+#endif
 	return CMD_RET_USAGE;
 }
 
@@ -244,6 +305,14 @@ U_BOOT_CMD(
 	"part number <interface> <dev> <part> <varname>\n"
 	"    - set environment variable to the partition number using the partition name\n"
 	"      part must be specified as partition name\n"
+#ifdef CONFIG_PARTITION_TYPE_GUID
+	"part type <interface> <dev>:<part>\n"
+	"    - print partition type\n"
+#endif
+	"part type <interface> <dev>:<part> <varname>\n"
+	"    - set environment variable to partition type\n"
+	"part set <interface> <dev> type\n"
+	"    - set partition type for a device\n"
 	"part types\n"
 	"    - list supported partition table types"
 );

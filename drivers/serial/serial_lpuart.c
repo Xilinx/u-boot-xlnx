@@ -168,23 +168,24 @@ static void _lpuart_serial_setbrg(struct udevice *dev,
 static int _lpuart_serial_getc(struct lpuart_serial_plat *plat)
 {
 	struct lpuart_fsl *base = plat->reg;
-	while (!(__raw_readb(&base->us1) & (US1_RDRF | US1_OR)))
-		schedule();
+	if (!(__raw_readb(&base->us1) & (US1_RDRF | US1_OR)))
+		return -EAGAIN;
 
 	barrier();
 
 	return __raw_readb(&base->ud);
 }
 
-static void _lpuart_serial_putc(struct lpuart_serial_plat *plat,
+static int _lpuart_serial_putc(struct lpuart_serial_plat *plat,
 				const char c)
 {
 	struct lpuart_fsl *base = plat->reg;
 
-	while (!(__raw_readb(&base->us1) & US1_TDRE))
-		schedule();
+	if (!(__raw_readb(&base->us1) & US1_TDRE))
+		return -EAGAIN;
 
 	__raw_writeb(c, &base->ud);
+	return 0;
 }
 
 /* Test whether a character is in the RX buffer */
@@ -328,10 +329,9 @@ static int _lpuart32_serial_getc(struct lpuart_serial_plat *plat)
 	u32 stat, val;
 
 	lpuart_read32(plat->flags, &base->stat, &stat);
-	while ((stat & STAT_RDRF) == 0) {
+	if ((stat & STAT_RDRF) == 0) {
 		lpuart_write32(plat->flags, &base->stat, STAT_FLAGS);
-		schedule();
-		lpuart_read32(plat->flags, &base->stat, &stat);
+		return -EAGAIN;
 	}
 
 	lpuart_read32(plat->flags, &base->data, &val);
@@ -343,25 +343,18 @@ static int _lpuart32_serial_getc(struct lpuart_serial_plat *plat)
 	return val & 0x3ff;
 }
 
-static void _lpuart32_serial_putc(struct lpuart_serial_plat *plat,
+static int _lpuart32_serial_putc(struct lpuart_serial_plat *plat,
 				  const char c)
 {
 	struct lpuart_fsl_reg32 *base = plat->reg;
 	u32 stat;
 
-	if (c == '\n')
-		serial_putc('\r');
-
-	while (true) {
-		lpuart_read32(plat->flags, &base->stat, &stat);
-
-		if ((stat & STAT_TDRE))
-			break;
-
-		schedule();
-	}
+	lpuart_read32(plat->flags, &base->stat, &stat);
+	if (!(stat & STAT_TDRE))
+		return -EAGAIN;
 
 	lpuart_write32(plat->flags, &base->data, c);
+	return 0;
 }
 
 /* Test whether a character is in the RX buffer */
@@ -456,11 +449,9 @@ static int lpuart_serial_putc(struct udevice *dev, const char c)
 	struct lpuart_serial_plat *plat = dev_get_plat(dev);
 
 	if (is_lpuart32(dev))
-		_lpuart32_serial_putc(plat, c);
-	else
-		_lpuart_serial_putc(plat, c);
+		return _lpuart32_serial_putc(plat, c);
 
-	return 0;
+	return _lpuart_serial_putc(plat, c);
 }
 
 static int lpuart_serial_pending(struct udevice *dev, bool input)
@@ -489,17 +480,29 @@ static int lpuart_serial_probe(struct udevice *dev)
 {
 #if CONFIG_IS_ENABLED(CLK)
 	struct clk per_clk;
+	struct clk ipg_clk;
 	int ret;
 
 	ret = clk_get_by_name(dev, "per", &per_clk);
 	if (!ret) {
 		ret = clk_enable(&per_clk);
 		if (ret) {
-			dev_err(dev, "Failed to get per clk: %d\n", ret);
+			dev_err(dev, "Failed to enable per clk: %d\n", ret);
 			return ret;
 		}
 	} else {
 		debug("%s: Failed to get per clk: %d\n", __func__, ret);
+	}
+
+	ret = clk_get_by_name(dev, "ipg", &ipg_clk);
+	if (!ret) {
+		ret = clk_enable(&ipg_clk);
+		if (ret) {
+			dev_err(dev, "Failed to enable ipg clk: %d\n", ret);
+			return ret;
+		}
+	} else {
+		debug("%s: Failed to get ipg clk: %d\n", __func__, ret);
 	}
 #endif
 

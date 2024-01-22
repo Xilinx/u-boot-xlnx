@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015 - 2016 Xilinx, Inc.
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 #include <common.h>
 #include <dm.h>
@@ -217,7 +217,7 @@ static int sata_ceva_probe(struct udevice *dev)
 		}
 	}
 
-	if (phy.dev) {
+	if (generic_phy_valid(&phy)) {
 		dev_dbg(dev, "Perform PHY power on\n");
 		ret = generic_phy_power_on(&phy);
 		if (ret) {

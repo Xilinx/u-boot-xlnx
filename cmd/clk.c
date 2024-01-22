@@ -22,7 +22,7 @@ static void show_clks(struct udevice *dev, int depth, int last_flag)
 	u32 rate;
 
 	clkp = dev_get_clk_ptr(dev);
-	if (device_get_uclass_id(dev) == UCLASS_CLK && clkp) {
+	if (clkp) {
 		parent = clk_get_parent(clkp);
 		if (!IS_ERR(parent) && depth == -1)
 			return;
@@ -49,10 +49,11 @@ static void show_clks(struct udevice *dev, int depth, int last_flag)
 		printf("%s\n", dev->name);
 	}
 
-	list_for_each_entry(child, &dev->child_head, sibling_node) {
+	device_foreach_child_probe(child, dev) {
+		if (device_get_uclass_id(child) != UCLASS_CLK)
+			continue;
 		if (child == dev)
 			continue;
-
 		is_last = list_is_last(&child->sibling_node, &dev->child_head);
 		show_clks(child, depth, (last_flag << 1) | is_last);
 	}
@@ -61,17 +62,11 @@ static void show_clks(struct udevice *dev, int depth, int last_flag)
 int __weak soc_clk_dump(void)
 {
 	struct udevice *dev;
-	struct uclass *uc;
-	int ret;
-
-	ret = uclass_get(UCLASS_CLK, &uc);
-	if (ret)
-		return ret;
 
 	printf(" Rate               Usecnt      Name\n");
 	printf("------------------------------------------\n");
 
-	uclass_foreach_dev(dev, uc)
+	uclass_foreach_dev_probe(UCLASS_CLK, dev)
 		show_clks(dev, -1, 0);
 
 	return 0;
@@ -157,10 +152,8 @@ static int do_clk(struct cmd_tbl *cmdtp, int flag, int argc,
 		return CMD_RET_USAGE;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char clk_help_text[] =
+U_BOOT_LONGHELP(clk,
 	"dump - Print clock frequencies\n"
-	"clk setfreq [clk] [freq] - Set clock frequency";
-#endif
+	"clk setfreq [clk] [freq] - Set clock frequency");
 
 U_BOOT_CMD(clk, 4, 1, do_clk, "CLK sub-system", clk_help_text);

@@ -194,23 +194,23 @@ static void synquacer_spi_config(struct udevice *dev, void *rx, const void *tx)
 	/* if nothing to do */
 	if (slave_plat->mode == priv->mode &&
 	    rwflag == priv->rwflag &&
-	    slave_plat->cs == priv->cs &&
+	    slave_plat->cs[0] == priv->cs &&
 	    slave_plat->max_hz == priv->speed)
 		return;
 
 	priv->rwflag = rwflag;
-	priv->cs = slave_plat->cs;
+	priv->cs = slave_plat->cs[0];
 	priv->mode = slave_plat->mode;
 	priv->speed = slave_plat->max_hz;
 
-	if (priv->mode & SPI_TX_BYTE)
-		bus_width = 1;
-	else if (priv->mode & SPI_TX_DUAL)
+	if (priv->mode & SPI_TX_DUAL)
 		bus_width = 2;
 	else if (priv->mode & SPI_TX_QUAD)
 		bus_width = 4;
 	else if (priv->mode & SPI_TX_OCTAL)
 		bus_width = 8;
+	else
+		bus_width = 1; /* default is single bit mode */
 
 	div = DIV_ROUND_UP(125000000, priv->speed);
 

@@ -99,8 +99,8 @@ The I2C subsystem has supported the driver model since early 2015.
 Maintainers should submit patches switching over to using CONFIG_DM_I2C and
 other base driver model options in time for inclusion in the 2021.10 release.
 
-CONFIG_SYS_TIMER_RATE and CONFIG_SYS_TIMER_COUNTER
---------------------------------------------------
+CFG_SYS_TIMER_RATE and CFG_SYS_TIMER_COUNTER
+--------------------------------------------
 Deadline: 2023.01
 
 These are legacy options which have been replaced by driver model.

@@ -9,16 +9,19 @@
 #define __CONFIG_STM32MP15_ST_COMMON_H__
 
 #define STM32MP_BOARD_EXTRA_ENV \
-	"console=ttySTM0\0"
+	"usb_pgood_delay=2000\0" \
+	"console=ttySTM0\0" \
+	"splashimage=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
+	"splashpos=m,m\0"
 
 #include <configs/stm32mp15_common.h>
 
 /* uart with on-board st-link */
-#define CONFIG_SYS_BAUDRATE_TABLE      { 9600, 19200, 38400, 57600, 115200, \
+#define CFG_SYS_BAUDRATE_TABLE      { 9600, 19200, 38400, 57600, 115200, \
 					 230400, 460800, 921600, \
 					 1000000, 2000000 }
 
-#ifdef CONFIG_EXTRA_ENV_SETTINGS
+#ifdef CFG_EXTRA_ENV_SETTINGS
 /*
  * default bootcmd for stm32mp1 STMicroelectronics boards:
  * for serial/usb: execute the stm32prog command
@@ -42,11 +45,10 @@
 		"run distro_bootcmd;" \
 	"fi;\0"
 
-#undef CONFIG_EXTRA_ENV_SETTINGS
-#define CONFIG_EXTRA_ENV_SETTINGS \
+#undef CFG_EXTRA_ENV_SETTINGS
+#define CFG_EXTRA_ENV_SETTINGS \
 	STM32MP_MEM_LAYOUT \
 	ST_STM32MP1_BOOTCMD \
-	STM32MP_PARTS_DEFAULT \
 	BOOTENV \
 	STM32MP_EXTRA \
 	STM32MP_BOARD_EXTRA_ENV

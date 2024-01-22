@@ -25,13 +25,13 @@ DECLARE_GLOBAL_DATA_PTR;
 /*
  * Table with supported baudrates (defined in config_xyz.h)
  */
-static const unsigned long baudrate_table[] = CONFIG_SYS_BAUDRATE_TABLE;
+static const unsigned long baudrate_table[] = CFG_SYS_BAUDRATE_TABLE;
 
 #if CONFIG_IS_ENABLED(SERIAL_PRESENT)
 static int serial_check_stdout(const void *blob, struct udevice **devp)
 {
 	int node = -1;
-	const char *str, *p, *name;
+	const char *str, *p;
 	int namelen;
 
 	/* Check for a chosen console */
@@ -39,20 +39,16 @@ static int serial_check_stdout(const void *blob, struct udevice **devp)
 	if (str) {
 		p = strchr(str, ':');
 		namelen = p ? p - str : strlen(str);
+		/*
+		 * This also deals with things like
+		 *
+		 *	stdout-path = "serial0:115200n8";
+		 *
+		 * since fdt_path_offset_namelen() treats a str not
+		 * beginning with '/' as an alias and thus applies
+		 * fdt_get_alias_namelen() to it.
+		 */
 		node = fdt_path_offset_namelen(blob, str, namelen);
-
-		if (node < 0) {
-			/*
-			 * Deal with things like
-			 *	stdout-path = "serial0:115200n8";
-			 *
-			 * We need to look up the alias and then follow it to
-			 * the correct node.
-			 */
-			name = fdt_get_alias_namelen(blob, str, namelen);
-			if (name)
-				node = fdt_path_offset(blob, name);
-		}
 	}
 
 	if (node < 0)
@@ -155,8 +151,39 @@ static void serial_find_console_or_panic(void)
 #ifdef CONFIG_REQUIRE_SERIAL_CONSOLE
 	panic_str("No serial driver found");
 #endif
+	gd->cur_serial_dev = NULL;
 }
 #endif /* CONFIG_SERIAL_PRESENT */
+
+/**
+ * check_valid_baudrate() - Check whether baudrate is valid or not
+ *
+ * @baud: baud rate to check
+ * Return: 0 if OK, -ve on error
+ */
+static int check_valid_baudrate(int baud)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(baudrate_table); ++i) {
+		if (baud == baudrate_table[i])
+			return 0;
+	}
+
+	return -EINVAL;
+}
+
+int fetch_baud_from_dtb(void)
+{
+	int baud_value, ret;
+
+	baud_value = ofnode_read_baud();
+	ret = check_valid_baudrate(baud_value);
+	if (ret)
+		return ret;
+
+	return baud_value;
+}
 
 /* Called prior to relocation */
 int serial_init(void)
@@ -164,6 +191,25 @@ int serial_init(void)
 #if CONFIG_IS_ENABLED(SERIAL_PRESENT)
 	serial_find_console_or_panic();
 	gd->flags |= GD_FLG_SERIAL_READY;
+
+	if (IS_ENABLED(CONFIG_OF_SERIAL_BAUD)) {
+		int ret = 0;
+		char *ptr = (char*)&default_environment[0];
+
+		/*
+		 * Fetch the baudrate from the dtb and update the value in the
+		 * default environment.
+		 */
+		ret = fetch_baud_from_dtb();
+		if (ret != -EINVAL && ret != -EFAULT) {
+			gd->baudrate = ret;
+
+			while (*ptr != '\0' && *(ptr + 1) != '\0')
+				ptr++;
+			ptr += 2;
+			sprintf(ptr, "baudrate=%d", gd->baudrate);
+		}
+	}
 	serial_setbrg();
 #endif
 
@@ -185,6 +231,16 @@ int serial_initialize(void)
 	return serial_init();
 }
 
+static void _serial_flush(struct udevice *dev)
+{
+	struct dm_serial_ops *ops = serial_get_ops(dev);
+
+	if (!ops->pending)
+		return;
+	while (ops->pending(dev, false) > 0)
+		;
+}
+
 static void _serial_putc(struct udevice *dev, char ch)
 {
 	struct dm_serial_ops *ops = serial_get_ops(dev);
@@ -196,6 +252,9 @@ static void _serial_putc(struct udevice *dev, char ch)
 	do {
 		err = ops->putc(dev, ch);
 	} while (err == -EAGAIN);
+
+	if (IS_ENABLED(CONFIG_CONSOLE_FLUSH_ON_NEWLINE) && ch == '\n')
+		_serial_flush(dev);
 }
 
 static int __serial_puts(struct udevice *dev, const char *str, size_t len)
@@ -234,21 +293,12 @@ static void _serial_puts(struct udevice *dev, const char *str)
 		if (*newline && __serial_puts(dev, "\r\n", 2))
 			return;
 
+		if (IS_ENABLED(CONFIG_CONSOLE_FLUSH_ON_NEWLINE) && *newline)
+			_serial_flush(dev);
+
 		str += len + !!*newline;
 	} while (*str);
 }
-
-#ifdef CONFIG_CONSOLE_FLUSH_SUPPORT
-static void _serial_flush(struct udevice *dev)
-{
-	struct dm_serial_ops *ops = serial_get_ops(dev);
-
-	if (!ops->pending)
-		return;
-	while (ops->pending(dev, false) > 0)
-		;
-}
-#endif
 
 static int __serial_getc(struct udevice *dev)
 {
@@ -407,7 +457,7 @@ void serial_stdio_init(void)
 {
 }
 
-#if defined(CONFIG_DM_STDIO)
+#if CONFIG_IS_ENABLED(DM_STDIO)
 
 #if CONFIG_IS_ENABLED(SERIAL_PRESENT)
 static void serial_stub_putc(struct stdio_dev *sdev, const char ch)
@@ -505,34 +555,12 @@ U_BOOT_ENV_CALLBACK(baudrate, on_baudrate);
 static int serial_post_probe(struct udevice *dev)
 {
 	struct dm_serial_ops *ops = serial_get_ops(dev);
-#ifdef CONFIG_DM_STDIO
+#if CONFIG_IS_ENABLED(DM_STDIO)
 	struct serial_dev_priv *upriv = dev_get_uclass_priv(dev);
 	struct stdio_dev sdev;
 #endif
 	int ret;
 
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-	if (ops->setbrg)
-		ops->setbrg += gd->reloc_off;
-	if (ops->getc)
-		ops->getc += gd->reloc_off;
-	if (ops->putc)
-		ops->putc += gd->reloc_off;
-	if (ops->pending)
-		ops->pending += gd->reloc_off;
-	if (ops->clear)
-		ops->clear += gd->reloc_off;
-	if (ops->getconfig)
-		ops->getconfig += gd->reloc_off;
-	if (ops->setconfig)
-		ops->setconfig += gd->reloc_off;
-#if CONFIG_POST & CONFIG_SYS_POST_UART
-	if (ops->loop)
-		ops->loop += gd->reloc_off;
-#endif
-	if (ops->getinfo)
-		ops->getinfo += gd->reloc_off;
-#endif
 	/* Set the baud rate */
 	if (ops->setbrg) {
 		ret = ops->setbrg(dev, gd->baudrate);
@@ -540,12 +568,12 @@ static int serial_post_probe(struct udevice *dev)
 			return ret;
 	}
 
-#ifdef CONFIG_DM_STDIO
+#if CONFIG_IS_ENABLED(DM_STDIO)
 	if (!(gd->flags & GD_FLG_RELOC))
 		return 0;
 	memset(&sdev, '\0', sizeof(sdev));
 
-	strncpy(sdev.name, dev->name, sizeof(sdev.name));
+	strlcpy(sdev.name, dev->name, sizeof(sdev.name));
 	sdev.flags = DEV_FLAGS_OUTPUT | DEV_FLAGS_INPUT | DEV_FLAGS_DM;
 	sdev.priv = dev;
 	sdev.putc = serial_stub_putc;

@@ -46,7 +46,7 @@
 
 #if !defined(CONFIG_SPL_BUILD) && !defined(CONFIG_NAND_SPL) && \
 	!defined(CONFIG_SYS_RAMBOOT)
-#define CONFIG_SYS_FLASHBOOT
+#define CFG_SYS_FLASHBOOT
 #endif
 
 /*
@@ -81,8 +81,8 @@
 	.fill	8,1,(((w)>> 8)&0xff);	\
 	.fill	8,1,(((w)    )&0xff)
 
-	_HRCW_TABLE_ENTRY(CONFIG_SYS_HRCW_LOW)
-	_HRCW_TABLE_ENTRY(CONFIG_SYS_HRCW_HIGH)
+	_HRCW_TABLE_ENTRY(CFG_SYS_HRCW_LOW)
+	_HRCW_TABLE_ENTRY(CFG_SYS_HRCW_HIGH)
 
 /*
  * Magic number and version string - put it after the HRCW since it
@@ -180,7 +180,7 @@ _start: /* time t 0 */
 
 	bl	init_e300_core
 
-#ifdef CONFIG_SYS_FLASHBOOT
+#ifdef CFG_SYS_FLASHBOOT
 
 	/* Inflate flash location so it appears everywhere, calculate */
 	/* the absolute address in final location of the FLASH, jump  */
@@ -196,7 +196,7 @@ in_flash:
 #if 1 /* Remapping flash with LAW0. */
 	bl remap_flash_by_law0
 #endif
-#endif	/* CONFIG_SYS_FLASHBOOT */
+#endif	/* CFG_SYS_FLASHBOOT */
 
 	/* setup the bats */
 	bl	setup_bats
@@ -215,6 +215,7 @@ in_flash:
 	 * gt-regs BAT can be reused after board_init_f calls
 	 * board_early_init_f (EVB only).
 	 */
+#ifdef CONFIG_SYS_INIT_RAM_LOCK
 	/* enable address translation */
 	bl	enable_addr_trans
 	sync
@@ -222,7 +223,6 @@ in_flash:
 	/* enable the data cache */
 	bl	dcache_enable
 	sync
-#ifdef CONFIG_SYS_INIT_RAM_LOCK
 	bl	lock_ram_in_cache
 	sync
 #endif
@@ -244,9 +244,9 @@ in_flash:
 	cmplw	r3, r4
 	bne	1b
 
-#if CONFIG_VAL(SYS_MALLOC_F_LEN)
+#if CONFIG_IS_ENABLED(SYS_MALLOC_F)
 
-#if CONFIG_VAL(SYS_MALLOC_F_LEN) + GENERATED_GBL_DATA_SIZE > CONFIG_SYS_INIT_RAM_SIZE
+#if CONFIG_VAL(SYS_MALLOC_F_LEN) + GENERATED_GBL_DATA_SIZE > CFG_SYS_INIT_RAM_SIZE
 #error "SYS_MALLOC_F_LEN too large to fit into initial RAM."
 #endif
 
@@ -483,10 +483,11 @@ init_e300_core: /* time t 10 */
 
 
 	lis	r3, CONFIG_SYS_IMMR@h
+#ifndef CONFIG_WDT_MPC8xxx
 #if defined(CONFIG_WATCHDOG)
 	/* Initialise the Watchdog values and reset it (if req) */
 	/*------------------------------------------------------*/
-	lis r4, CONFIG_SYS_WATCHDOG_VALUE
+	lis r4, CFG_SYS_WATCHDOG_VALUE
 	ori r4, r4, (SWCRR_SWEN | SWCRR_SWRI | SWCRR_SWPR)
 	stw r4, SWCRR(r3)
 
@@ -508,6 +509,7 @@ init_e300_core: /* time t 10 */
 	stw r4, SWCRR(r3)
 1:
 #endif /* CONFIG_WATCHDOG */
+#endif
 
 #if defined(CONFIG_MASK_AER_AO)
 	/* Write the Arbiter Event Enable to mask Address Only traps. */
@@ -525,18 +527,18 @@ init_e300_core: /* time t 10 */
 	/* - force invalidation of data and instruction caches  */
 	/*------------------------------------------------------*/
 
-	lis	r3, CONFIG_SYS_HID0_INIT@h
-	ori	r3, r3, (CONFIG_SYS_HID0_INIT | HID0_ICFI | HID0_DCFI)@l
+	lis	r3, CFG_SYS_HID0_INIT@h
+	ori	r3, r3, (CFG_SYS_HID0_INIT | HID0_ICFI | HID0_DCFI)@l
 	SYNC
 	mtspr	HID0, r3
 
-	lis	r3, CONFIG_SYS_HID0_FINAL@h
-	ori	r3, r3, (CONFIG_SYS_HID0_FINAL & ~(HID0_ICFI | HID0_DCFI))@l
+	lis	r3, CFG_SYS_HID0_FINAL@h
+	ori	r3, r3, (CFG_SYS_HID0_FINAL & ~(HID0_ICFI | HID0_DCFI))@l
 	SYNC
 	mtspr	HID0, r3
 
-	lis	r3, CONFIG_SYS_HID2@h
-	ori	r3, r3, CONFIG_SYS_HID2@l
+	lis	r3, CFG_SYS_HID2@h
+	ori	r3, r3, CFG_SYS_HID2@l
 	SYNC
 	mtspr	HID2, r3
 
@@ -550,131 +552,131 @@ setup_bats:
 	addis	r0, r0, 0x0000
 
 	/* IBAT 0 */
-	addis	r4, r0, CONFIG_SYS_IBAT0L@h
-	ori	r4, r4, CONFIG_SYS_IBAT0L@l
-	addis	r3, r0, CONFIG_SYS_IBAT0U@h
-	ori	r3, r3, CONFIG_SYS_IBAT0U@l
+	addis	r4, r0, CFG_SYS_IBAT0L@h
+	ori	r4, r4, CFG_SYS_IBAT0L@l
+	addis	r3, r0, CFG_SYS_IBAT0U@h
+	ori	r3, r3, CFG_SYS_IBAT0U@l
 	mtspr	IBAT0L, r4
 	mtspr	IBAT0U, r3
 
 	/* DBAT 0 */
-	addis	r4, r0, CONFIG_SYS_DBAT0L@h
-	ori	r4, r4, CONFIG_SYS_DBAT0L@l
-	addis	r3, r0, CONFIG_SYS_DBAT0U@h
-	ori	r3, r3, CONFIG_SYS_DBAT0U@l
+	addis	r4, r0, CFG_SYS_DBAT0L@h
+	ori	r4, r4, CFG_SYS_DBAT0L@l
+	addis	r3, r0, CFG_SYS_DBAT0U@h
+	ori	r3, r3, CFG_SYS_DBAT0U@l
 	mtspr	DBAT0L, r4
 	mtspr	DBAT0U, r3
 
 	/* IBAT 1 */
-	addis	r4, r0, CONFIG_SYS_IBAT1L@h
-	ori	r4, r4, CONFIG_SYS_IBAT1L@l
-	addis	r3, r0, CONFIG_SYS_IBAT1U@h
-	ori	r3, r3, CONFIG_SYS_IBAT1U@l
+	addis	r4, r0, CFG_SYS_IBAT1L@h
+	ori	r4, r4, CFG_SYS_IBAT1L@l
+	addis	r3, r0, CFG_SYS_IBAT1U@h
+	ori	r3, r3, CFG_SYS_IBAT1U@l
 	mtspr	IBAT1L, r4
 	mtspr	IBAT1U, r3
 
 	/* DBAT 1 */
-	addis	r4, r0, CONFIG_SYS_DBAT1L@h
-	ori	r4, r4, CONFIG_SYS_DBAT1L@l
-	addis	r3, r0, CONFIG_SYS_DBAT1U@h
-	ori	r3, r3, CONFIG_SYS_DBAT1U@l
+	addis	r4, r0, CFG_SYS_DBAT1L@h
+	ori	r4, r4, CFG_SYS_DBAT1L@l
+	addis	r3, r0, CFG_SYS_DBAT1U@h
+	ori	r3, r3, CFG_SYS_DBAT1U@l
 	mtspr	DBAT1L, r4
 	mtspr	DBAT1U, r3
 
 	/* IBAT 2 */
-	addis	r4, r0, CONFIG_SYS_IBAT2L@h
-	ori	r4, r4, CONFIG_SYS_IBAT2L@l
-	addis	r3, r0, CONFIG_SYS_IBAT2U@h
-	ori	r3, r3, CONFIG_SYS_IBAT2U@l
+	addis	r4, r0, CFG_SYS_IBAT2L@h
+	ori	r4, r4, CFG_SYS_IBAT2L@l
+	addis	r3, r0, CFG_SYS_IBAT2U@h
+	ori	r3, r3, CFG_SYS_IBAT2U@l
 	mtspr	IBAT2L, r4
 	mtspr	IBAT2U, r3
 
 	/* DBAT 2 */
-	addis	r4, r0, CONFIG_SYS_DBAT2L@h
-	ori	r4, r4, CONFIG_SYS_DBAT2L@l
-	addis	r3, r0, CONFIG_SYS_DBAT2U@h
-	ori	r3, r3, CONFIG_SYS_DBAT2U@l
+	addis	r4, r0, CFG_SYS_DBAT2L@h
+	ori	r4, r4, CFG_SYS_DBAT2L@l
+	addis	r3, r0, CFG_SYS_DBAT2U@h
+	ori	r3, r3, CFG_SYS_DBAT2U@l
 	mtspr	DBAT2L, r4
 	mtspr	DBAT2U, r3
 
 	/* IBAT 3 */
-	addis	r4, r0, CONFIG_SYS_IBAT3L@h
-	ori	r4, r4, CONFIG_SYS_IBAT3L@l
-	addis	r3, r0, CONFIG_SYS_IBAT3U@h
-	ori	r3, r3, CONFIG_SYS_IBAT3U@l
+	addis	r4, r0, CFG_SYS_IBAT3L@h
+	ori	r4, r4, CFG_SYS_IBAT3L@l
+	addis	r3, r0, CFG_SYS_IBAT3U@h
+	ori	r3, r3, CFG_SYS_IBAT3U@l
 	mtspr	IBAT3L, r4
 	mtspr	IBAT3U, r3
 
 	/* DBAT 3 */
-	addis	r4, r0, CONFIG_SYS_DBAT3L@h
-	ori	r4, r4, CONFIG_SYS_DBAT3L@l
-	addis	r3, r0, CONFIG_SYS_DBAT3U@h
-	ori	r3, r3, CONFIG_SYS_DBAT3U@l
+	addis	r4, r0, CFG_SYS_DBAT3L@h
+	ori	r4, r4, CFG_SYS_DBAT3L@l
+	addis	r3, r0, CFG_SYS_DBAT3U@h
+	ori	r3, r3, CFG_SYS_DBAT3U@l
 	mtspr	DBAT3L, r4
 	mtspr	DBAT3U, r3
 
 #ifdef CONFIG_HIGH_BATS
 	/* IBAT 4 */
-	addis   r4, r0, CONFIG_SYS_IBAT4L@h
-	ori     r4, r4, CONFIG_SYS_IBAT4L@l
-	addis   r3, r0, CONFIG_SYS_IBAT4U@h
-	ori     r3, r3, CONFIG_SYS_IBAT4U@l
+	addis   r4, r0, CFG_SYS_IBAT4L@h
+	ori     r4, r4, CFG_SYS_IBAT4L@l
+	addis   r3, r0, CFG_SYS_IBAT4U@h
+	ori     r3, r3, CFG_SYS_IBAT4U@l
 	mtspr   IBAT4L, r4
 	mtspr   IBAT4U, r3
 
 	/* DBAT 4 */
-	addis   r4, r0, CONFIG_SYS_DBAT4L@h
-	ori     r4, r4, CONFIG_SYS_DBAT4L@l
-	addis   r3, r0, CONFIG_SYS_DBAT4U@h
-	ori     r3, r3, CONFIG_SYS_DBAT4U@l
+	addis   r4, r0, CFG_SYS_DBAT4L@h
+	ori     r4, r4, CFG_SYS_DBAT4L@l
+	addis   r3, r0, CFG_SYS_DBAT4U@h
+	ori     r3, r3, CFG_SYS_DBAT4U@l
 	mtspr   DBAT4L, r4
 	mtspr   DBAT4U, r3
 
 	/* IBAT 5 */
-	addis   r4, r0, CONFIG_SYS_IBAT5L@h
-	ori     r4, r4, CONFIG_SYS_IBAT5L@l
-	addis   r3, r0, CONFIG_SYS_IBAT5U@h
-	ori     r3, r3, CONFIG_SYS_IBAT5U@l
+	addis   r4, r0, CFG_SYS_IBAT5L@h
+	ori     r4, r4, CFG_SYS_IBAT5L@l
+	addis   r3, r0, CFG_SYS_IBAT5U@h
+	ori     r3, r3, CFG_SYS_IBAT5U@l
 	mtspr   IBAT5L, r4
 	mtspr   IBAT5U, r3
 
 	/* DBAT 5 */
-	addis   r4, r0, CONFIG_SYS_DBAT5L@h
-	ori     r4, r4, CONFIG_SYS_DBAT5L@l
-	addis   r3, r0, CONFIG_SYS_DBAT5U@h
-	ori     r3, r3, CONFIG_SYS_DBAT5U@l
+	addis   r4, r0, CFG_SYS_DBAT5L@h
+	ori     r4, r4, CFG_SYS_DBAT5L@l
+	addis   r3, r0, CFG_SYS_DBAT5U@h
+	ori     r3, r3, CFG_SYS_DBAT5U@l
 	mtspr   DBAT5L, r4
 	mtspr   DBAT5U, r3
 
 	/* IBAT 6 */
-	addis   r4, r0, CONFIG_SYS_IBAT6L@h
-	ori     r4, r4, CONFIG_SYS_IBAT6L@l
-	addis   r3, r0, CONFIG_SYS_IBAT6U@h
-	ori     r3, r3, CONFIG_SYS_IBAT6U@l
+	addis   r4, r0, CFG_SYS_IBAT6L@h
+	ori     r4, r4, CFG_SYS_IBAT6L@l
+	addis   r3, r0, CFG_SYS_IBAT6U@h
+	ori     r3, r3, CFG_SYS_IBAT6U@l
 	mtspr   IBAT6L, r4
 	mtspr   IBAT6U, r3
 
 	/* DBAT 6 */
-	addis   r4, r0, CONFIG_SYS_DBAT6L@h
-	ori     r4, r4, CONFIG_SYS_DBAT6L@l
-	addis   r3, r0, CONFIG_SYS_DBAT6U@h
-	ori     r3, r3, CONFIG_SYS_DBAT6U@l
+	addis   r4, r0, CFG_SYS_DBAT6L@h
+	ori     r4, r4, CFG_SYS_DBAT6L@l
+	addis   r3, r0, CFG_SYS_DBAT6U@h
+	ori     r3, r3, CFG_SYS_DBAT6U@l
 	mtspr   DBAT6L, r4
 	mtspr   DBAT6U, r3
 
 	/* IBAT 7 */
-	addis   r4, r0, CONFIG_SYS_IBAT7L@h
-	ori     r4, r4, CONFIG_SYS_IBAT7L@l
-	addis   r3, r0, CONFIG_SYS_IBAT7U@h
-	ori     r3, r3, CONFIG_SYS_IBAT7U@l
+	addis   r4, r0, CFG_SYS_IBAT7L@h
+	ori     r4, r4, CFG_SYS_IBAT7L@l
+	addis   r3, r0, CFG_SYS_IBAT7U@h
+	ori     r3, r3, CFG_SYS_IBAT7U@l
 	mtspr   IBAT7L, r4
 	mtspr   IBAT7U, r3
 
 	/* DBAT 7 */
-	addis   r4, r0, CONFIG_SYS_DBAT7L@h
-	ori     r4, r4, CONFIG_SYS_DBAT7L@l
-	addis   r3, r0, CONFIG_SYS_DBAT7U@h
-	ori     r3, r3, CONFIG_SYS_DBAT7U@l
+	addis   r4, r0, CFG_SYS_DBAT7L@h
+	ori     r4, r4, CFG_SYS_DBAT7L@l
+	addis   r3, r0, CFG_SYS_DBAT7U@h
+	ori     r3, r3, CFG_SYS_DBAT7U@l
 	mtspr   DBAT7L, r4
 	mtspr   DBAT7U, r3
 #endif
@@ -1048,10 +1050,10 @@ trap_init:
 lock_ram_in_cache:
 	/* Allocate Initial RAM in data cache.
 	 */
-	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@l
-	li	r4, ((CONFIG_SYS_INIT_RAM_SIZE & ~31) + \
-		     (CONFIG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
+	lis	r3, (CFG_SYS_INIT_RAM_ADDR & ~31)@h
+	ori	r3, r3, (CFG_SYS_INIT_RAM_ADDR & ~31)@l
+	li	r4, ((CFG_SYS_INIT_RAM_SIZE & ~31) + \
+		     (CFG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
 	mtctr	r4
 1:
 	dcbz	r0, r3
@@ -1070,10 +1072,10 @@ lock_ram_in_cache:
 .globl unlock_ram_in_cache
 unlock_ram_in_cache:
 	/* invalidate the INIT_RAM section */
-	lis	r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@h
-	ori	r3, r3, (CONFIG_SYS_INIT_RAM_ADDR & ~31)@l
-	li	r4, ((CONFIG_SYS_INIT_RAM_SIZE & ~31) + \
-		     (CONFIG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
+	lis	r3, (CFG_SYS_INIT_RAM_ADDR & ~31)@h
+	ori	r3, r3, (CFG_SYS_INIT_RAM_ADDR & ~31)@l
+	li	r4, ((CFG_SYS_INIT_RAM_SIZE & ~31) + \
+		     (CFG_SYS_INIT_RAM_ADDR & 31) + 31) / 32
 	mtctr	r4
 1:	icbi	r0, r3
 	dcbi	r0, r3
@@ -1095,7 +1097,7 @@ unlock_ram_in_cache:
 #endif /* !MINIMAL_SPL */
 #endif /* CONFIG_SYS_INIT_RAM_LOCK */
 
-#ifdef CONFIG_SYS_FLASHBOOT
+#ifdef CFG_SYS_FLASHBOOT
 map_flash_by_law1:
 	/* When booting from ROM (Flash or EPROM), clear the  */
 	/* Address Mask in OR0 so ROM appears everywhere      */
@@ -1122,14 +1124,14 @@ map_flash_by_law1:
 	 * LBIU Local Access Widow 0 will not cover this memory space.  So, we
 	 * need another window to map in it.
 	 */
-	lis r4, (CONFIG_SYS_FLASH_BASE)@h
-	ori r4, r4, (CONFIG_SYS_FLASH_BASE)@l
-	stw r4, LBLAWBAR1(r3) /* LBLAWBAR1 <= CONFIG_SYS_FLASH_BASE */
+	lis r4, (CFG_SYS_FLASH_BASE)@h
+	ori r4, r4, (CFG_SYS_FLASH_BASE)@l
+	stw r4, LBLAWBAR1(r3) /* LBLAWBAR1 <= CFG_SYS_FLASH_BASE */
 
-	/* Store 0x80000012 + log2(CONFIG_SYS_FLASH_SIZE) into LBLAWAR1 */
+	/* Store 0x80000012 + log2(CFG_SYS_FLASH_SIZE) into LBLAWAR1 */
 	lis r4, (0x80000012)@h
 	ori r4, r4, (0x80000012)@l
-	li r5, CONFIG_SYS_FLASH_SIZE
+	li r5, CFG_SYS_FLASH_SIZE
 1:	srawi. r5, r5, 1	/* r5 = r5 >> 1 */
 	addi r4, r4, 1
 	bne 1b
@@ -1150,24 +1152,24 @@ remap_flash_by_law0:
 	lwz r4, BR0(r3)
 	li  r5, 0x7FFF
 	and r4, r4, r5
-	lis r5, (CONFIG_SYS_FLASH_BASE & 0xFFFF8000)@h
-	ori r5, r5, (CONFIG_SYS_FLASH_BASE & 0xFFFF8000)@l
+	lis r5, (CFG_SYS_FLASH_BASE & 0xFFFF8000)@h
+	ori r5, r5, (CFG_SYS_FLASH_BASE & 0xFFFF8000)@l
 	or  r5, r5, r4
-	stw r5, BR0(r3) /* r5 <= (CONFIG_SYS_FLASH_BASE & 0xFFFF8000) | (BR0 & 0x00007FFF) */
+	stw r5, BR0(r3) /* r5 <= (CFG_SYS_FLASH_BASE & 0xFFFF8000) | (BR0 & 0x00007FFF) */
 
 	lwz r4, OR0(r3)
-	lis r5, ~((CONFIG_SYS_FLASH_SIZE << 4) - 1)
+	lis r5, ~((CFG_SYS_FLASH_SIZE << 4) - 1)
 	or r4, r4, r5
 	stw r4, OR0(r3)
 
-	lis r4, (CONFIG_SYS_FLASH_BASE)@h
-	ori r4, r4, (CONFIG_SYS_FLASH_BASE)@l
-	stw r4, LBLAWBAR0(r3) /* LBLAWBAR0 <= CONFIG_SYS_FLASH_BASE */
+	lis r4, (CFG_SYS_FLASH_BASE)@h
+	ori r4, r4, (CFG_SYS_FLASH_BASE)@l
+	stw r4, LBLAWBAR0(r3) /* LBLAWBAR0 <= CFG_SYS_FLASH_BASE */
 
-	/* Store 0x80000012 + log2(CONFIG_SYS_FLASH_SIZE) into LBLAWAR0 */
+	/* Store 0x80000012 + log2(CFG_SYS_FLASH_SIZE) into LBLAWAR0 */
 	lis r4, (0x80000012)@h
 	ori r4, r4, (0x80000012)@l
-	li r5, CONFIG_SYS_FLASH_SIZE
+	li r5, CFG_SYS_FLASH_SIZE
 1:	srawi. r5, r5, 1 /* r5 = r5 >> 1 */
 	addi r4, r4, 1
 	bne 1b
@@ -1182,4 +1184,4 @@ remap_flash_by_law0:
 	twi 0,r4,0
 	isync
 	blr
-#endif /* CONFIG_SYS_FLASHBOOT */
+#endif /* CFG_SYS_FLASHBOOT */

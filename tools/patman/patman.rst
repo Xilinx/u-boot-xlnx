@@ -1,6 +1,7 @@
 .. SPDX-License-Identifier: GPL-2.0+
 .. Copyright (c) 2011 The Chromium OS Authors
 .. Simon Glass <sjg@chromium.org>
+.. Maxim Cournoyer <maxim.cournoyer@savoirfairelinux.com>
 .. v1, v2, 19-Oct-11
 .. revised v3 24-Nov-11
 .. revised v4 Independence Day 2020, with Patchwork integration
@@ -40,6 +41,18 @@ In Linux and U-Boot this will also call get_maintainer.pl on each of your
 patches automatically (unless you use -m to disable this).
 
 
+Installation
+------------
+
+You can install patman using::
+
+   pip install patch-manager
+
+The name is chosen since patman conflicts with an existing package.
+
+If you are using patman within the U-Boot tree, it may be easiest to add a
+symlink from your local `~/.bin` directory to `/path/to/tools/patman/patman`.
+
 How to use this tool
 --------------------
 
@@ -68,13 +81,28 @@ this once::
 
     git config sendemail.aliasesfile doc/git-mailrc
 
-For both Linux and U-Boot the 'scripts/get_maintainer.pl' handles figuring
-out where to send patches pretty well.
+For both Linux and U-Boot the 'scripts/get_maintainer.pl' handles
+figuring out where to send patches pretty well. For other projects,
+you may want to specify a different script to be run, for example via
+a project-specific `.patman` file::
+
+    # .patman configuration file at the root of some project
+
+    [settings]
+    get_maintainer_script: etc/teams.scm get-maintainer
+
+The `get_maintainer_script` option corresponds to the
+`--get-maintainer-script` argument of the `send` command.  It is
+looked relatively to the root of the current git repository, as well
+as on PATH.  It can also be provided arguments, as shown above.  The
+contract is that the script should accept a patch file name and return
+a list of email addresses, one per line, like `get_maintainer.pl`
+does.
 
 During the first run patman creates a config file for you by taking the default
 user name and email address from the global .gitconfig file.
 
-To add your own, create a file ~/.patman like this::
+To add your own, create a file `~/.patman` like this::
 
     # patman alias file
 
@@ -84,6 +112,12 @@ To add your own, create a file ~/.patman like this::
     u-boot: U-Boot Mailing List <u-boot@lists.denx.de>
     wolfgang: Wolfgang Denk <wd@denx.de>
     others: Mike Frysinger <vapier@gentoo.org>, Fred Bloggs <f.bloggs@napier.net>
+
+As hinted above, Patman will also look for a `.patman` configuration
+file at the root of the current project git repository, which makes it
+possible to override the `project` settings variable or anything else
+in a project-specific way. The values of this "local" configuration
+file take precedence over those of the "global" one.
 
 Aliases are recursive.
 
@@ -337,11 +371,12 @@ Series-process-log: sort, uniq
     Separate each tag with a comma.
 
 Change-Id:
-    This tag is stripped out but is used to generate the Message-Id
-    of the emails that will be sent. When you keep the Change-Id the
-    same you are asserting that this is a slightly different version
-    (but logically the same patch) as other patches that have been
-    sent out with the same Change-Id.
+    This tag is used to generate the Message-Id of the emails that
+    will be sent. When you keep the Change-Id the same you are
+    asserting that this is a slightly different version (but logically
+    the same patch) as other patches that have been sent out with the
+    same Change-Id. The Change-Id tag line is removed from outgoing
+    patches, unless the `keep_change_id` settings is set to `True`.
 
 Various other tags are silently removed, like these Chrome OS and
 Gerrit tags::
@@ -679,6 +714,16 @@ them:
 .. code-block:: bash
 
     $ tools/patman/patman test
+
+Note that since the test suite depends on data files only available in
+the git checkout, the `test` command is hidden unless `patman` is
+invoked from the U-Boot git repository.
+
+Alternatively, you can run the test suite via Pytest:
+
+.. code-block:: bash
+
+    $ cd tools/patman && pytest
 
 Error handling doesn't always produce friendly error messages - e.g.
 putting an incorrect tag in a commit may provide a confusing message.

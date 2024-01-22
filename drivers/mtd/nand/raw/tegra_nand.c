@@ -24,6 +24,7 @@
 #include <fdtdec.h>
 #include <bouncebuf.h>
 #include <dm.h>
+#include <linux/printk.h>
 #include "tegra_nand.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -906,7 +907,7 @@ static int fdt_decode_nand(struct udevice *dev, struct fdt_nand *config)
 {
 	int err;
 
-	config->reg = (struct nand_ctlr *)dev_read_addr(dev);
+	config->reg = dev_read_addr_ptr(dev);
 	config->enabled = dev_read_enabled(dev);
 	config->width = dev_read_u32_default(dev, "nvidia,nand-width", 8);
 	err = gpio_request_by_name(dev, "nvidia,wp-gpios", 0, &config->wp_gpio,

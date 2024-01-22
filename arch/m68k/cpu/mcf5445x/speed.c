@@ -5,7 +5,6 @@
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  */
 
-#include <common.h>
 #include <clock_legacy.h>
 #include <asm/global_data.h>
 #include <asm/processor.h>
@@ -129,9 +128,8 @@ int get_clocks(void)
 	setup_5441x_clocks();
 #endif
 
-#ifdef CONFIG_SYS_FSL_I2C
-	gd->arch.i2c1_clk = gd->bus_clk;
-#endif
+	if (IS_ENABLED(CONFIG_SYS_I2C_FSL))
+		gd->arch.i2c1_clk = gd->bus_clk;
 
 	return (0);
 }

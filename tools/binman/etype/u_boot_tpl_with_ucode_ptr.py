@@ -7,11 +7,11 @@
 
 import struct
 
-from patman import command
 from binman.entry import Entry
 from binman.etype.blob import Entry_blob
 from binman.etype.u_boot_with_ucode_ptr import Entry_u_boot_with_ucode_ptr
-from patman import tools
+from u_boot_pylib import command
+from u_boot_pylib import tools
 
 class Entry_u_boot_tpl_with_ucode_ptr(Entry_u_boot_with_ucode_ptr):
     """U-Boot TPL with embedded microcode pointer
@@ -20,7 +20,7 @@ class Entry_u_boot_tpl_with_ucode_ptr(Entry_u_boot_with_ucode_ptr):
     process.
     """
     def __init__(self, section, etype, node):
-        super().__init__(section, etype, node)
+        super().__init__(section, etype, node, auto_write_symbols=True)
         self.elf_fname = 'tpl/u-boot-tpl'
 
     def GetDefaultFilename(self):

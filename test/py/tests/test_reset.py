@@ -1,44 +1,50 @@
-#
-# Copyright (c) 2022 Michal Simek
-#
 # SPDX-License-Identifier: GPL-2.0
+# (C) Copyright 2023, Advanced Micro Devices, Inc.
 
 """
-# Setup env__reset_test_skip to True if tests with i2c devices should be
-# skipped. For example: JTAG boot mode
+Note: This test doesn't rely on boardenv_* configuration value but they can
+change test behavior.
+
+# Setup env__reset_test_skip to True if reset test is not possible or desired
+# and should be skipped.
 env__reset_test_skip = True
+
+# This test will be also skipped if the bootmode is detected to JTAG.
 """
 
 import pytest
-import random
-import u_boot_utils
+import re
+import test_000_version
+
+def setup_reset_env(u_boot_console):
+    if u_boot_console.config.env.get('env__reset_test_skip', False):
+        pytest.skip('reset test is not enabled')
+
+    output = u_boot_console.run_command('print modeboot')
+    m = re.search('modeboot=(.+?)boot', output)
+    if not m:
+        pytest.skip('bootmode cannnot be determined')
+
+    bootmode = m.group(1)
+    if bootmode == 'jtag':
+        pytest.skip('skipping reset test due to jtag bootmode')
 
 def test_reset(u_boot_console):
     """Test the reset command in non-JTAG bootmode.
     It does COLD reset, which resets CPU, DDR and peripherals
     """
+    setup_reset_env(u_boot_console)
+    u_boot_console.run_command('reset', wait_for_reboot=True)
 
-    test_skip = u_boot_console.config.env.get('env__reset_test_skip', False)
-    if test_skip:
-        pytest.skip('reset cold test skipped')
-
-    u_boot_console.run_command("reset", wait_for_prompt=False)
-    autoboot_prompt = "Hit any key to stop autoboot"
-    output = u_boot_console.p.expect([autoboot_prompt])
-    u_boot_console.p.send(" ")
-    assert output == 0, f"Expected string: {autoboot_prompt} did not match!"
+    # Checks the u-boot command prompt's functionality after reset
+    test_000_version.test_version(u_boot_console)
 
 def test_reset_w(u_boot_console):
     """Test the reset -w command in non-JTAG bootmode.
     It does WARM reset, which resets CPU but keep DDR/peripherals active.
     """
+    setup_reset_env(u_boot_console)
+    u_boot_console.run_command('reset -w', wait_for_reboot=True)
 
-    test_skip = u_boot_console.config.env.get('env__reset_test_skip', False)
-    if test_skip:
-        pytest.skip('reset warm test skipped')
-
-    u_boot_console.run_command("reset -w", wait_for_prompt=False)
-    autoboot_prompt = "Hit any key to stop autoboot"
-    output = u_boot_console.p.expect([autoboot_prompt])
-    u_boot_console.p.send(" ")
-    assert output == 0, f"Expected string: {autoboot_prompt} did not match!"
+    # Checks the u-boot command prompt's functionality after reset
+    test_000_version.test_version(u_boot_console)

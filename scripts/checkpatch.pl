@@ -2606,8 +2606,8 @@ sub u_boot_line {
 		     "Possible new uclass - make sure to add a sandbox driver, plus a test in test/dm/<name>.c\n" . $herecurr);
 	}
 
-	# try to get people to use the livetree API
-	if ($line =~ /^\+.*fdtdec_/) {
+	# try to get people to use the livetree API, except when changing tooling
+	if ($line =~ /^\+.*fdtdec_/ && $realfile !~ /^tools\//) {
 		WARN("LIVETREE",
 		     "Use the livetree API (dev_read_...)\n" . $herecurr);
 	}
@@ -2630,16 +2630,22 @@ sub u_boot_line {
 		     "strl$1 is preferred over strn$1 because it always produces a nul-terminated string\n" . $herecurr);
 	}
 
-	# use defconfig to manage CONFIG_CMD options
-	if ($line =~ /\+\s*#\s*(define|undef)\s+(CONFIG_CMD\w*)\b/) {
-		ERROR("DEFINE_CONFIG_CMD",
-		      "All commands are managed by Kconfig\n" . $herecurr);
+	# use Kconfig for all CONFIG symbols
+	if ($line =~ /\+\s*#\s*(define|undef)\s+(CONFIG_\w*)\b/) {
+		ERROR("DEFINE_CONFIG_SYM",
+		      "All CONFIG symbols are managed by Kconfig\n" . $herecurr);
 	}
 
-	# Don't put common.h and dm.h in header files
-	if ($realfile =~ /\.h$/ && $rawline =~ /^\+#include\s*<(common|dm)\.h>*/) {
+	# Don't put dm.h in header files
+	if ($realfile =~ /\.h$/ && $rawline =~ /^\+#include\s*<dm\.h>*/) {
 		ERROR("BARRED_INCLUDE_IN_HDR",
 		      "Avoid including common.h and dm.h in header files\n" . $herecurr);
+	}
+
+	# Don't add common.h to files
+	if ($rawline =~ /^\+#include\s*<common\.h>*/) {
+		ERROR("BARRED_INCLUDE_COMMON_H",
+		      "Do not add common.h to files\n" . $herecurr);
 	}
 
 	# Do not disable fdt / initrd relocation
@@ -2680,6 +2686,12 @@ sub u_boot_line {
 		"DEVICE_PRIV_AUTO", $herecurr);
 	u_boot_struct_name($line, "per_device_plat_auto", "_plat",
 		"DEVICE_PLAT_AUTO", $herecurr);
+
+	# Avoid using the pre-schema driver model tags
+	if ($line =~ /^\+.*u-boot,dm-.*/) {
+		ERROR("PRE_SCHEMA",
+		      "Driver model schema uses 'bootph-...' tags now\n" . $herecurr);
+	}
 }
 
 sub exclude_global_initialisers {

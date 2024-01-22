@@ -16,10 +16,13 @@
 #include <asm/arch/imx8mp_pins.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/mach-imx/boot_mode.h>
+#include <asm/mach-imx/mxc_i2c.h>
 #include <asm/arch/ddr.h>
 #include <asm-generic/gpio.h>
+#include <asm/sections.h>
 #include <dm/uclass.h>
 #include <dm/device.h>
+#include <dm/pinctrl.h>
 #include <linux/delay.h>
 #include <power/bd71837.h>
 #include <power/mp5416.h>
@@ -69,6 +72,9 @@ static void spl_dram_init(int size)
 		dram_timing = &dram_timing_2gb_dual_die;
 		size = 2048;
 #elif CONFIG_IMX8MP
+	case 1024:
+		dram_timing = &dram_timing_1gb_single_die;
+		break;
 	case 4096:
 		dram_timing = &dram_timing_4gb_dual_die;
 		break;
@@ -81,9 +87,12 @@ static void spl_dram_init(int size)
 
 	printf("DRAM    : LPDDR4 ");
 	if (size > 512)
-		printf("%d GiB\n", size / 1024);
+		printf("%d GiB", size / 1024);
 	else
-		printf("%d MiB\n", size);
+		printf("%d MiB", size);
+	printf(" %dMT/s %dMHz\n",
+	       dram_timing->fsp_msg[0].drate,
+	       dram_timing->fsp_msg[0].drate / 2);
 	ddr_init(dram_timing);
 }
 
@@ -119,7 +128,8 @@ static int power_init_board(void)
 
 	if ((!strncmp(model, "GW71", 4)) ||
 	    (!strncmp(model, "GW72", 4)) ||
-	    (!strncmp(model, "GW73", 4))) {
+	    (!strncmp(model, "GW73", 4)) ||
+	    (!strncmp(model, "GW7905", 6))) {
 		ret = uclass_get_device_by_seq(UCLASS_I2C, 0, &bus);
 		if (ret) {
 			printf("PMIC    : failed I2C1 probe: %d\n", ret);
@@ -130,17 +140,28 @@ static int power_init_board(void)
 			printf("PMIC    : failed probe: %d\n", ret);
 			return ret;
 		}
-		puts("PMIC    : MP5416\n");
+#ifdef CONFIG_IMX8MM
+		puts("PMIC    : MP5416 (IMX8MM)\n");
 
 		/* set VDD_ARM SW3 to 0.92V for 1.6GHz */
 		dm_i2c_reg_write(dev, MP5416_VSET_SW3,
 				 BIT(7) | MP5416_VSET_SW3_SVAL(920000));
+#elif CONFIG_IMX8MP
+		puts("PMIC    : MP5416 (IMX8MP)\n");
+
+		/* set VDD_ARM SW3 to 0.95V for 1.6GHz */
+		dm_i2c_reg_write(dev, MP5416_VSET_SW3,
+				 BIT(7) | MP5416_VSET_SW3_SVAL(950000));
+		/* set VDD_SOC SW1 to 0.95V for 1.6GHz */
+		dm_i2c_reg_write(dev, MP5416_VSET_SW1,
+				 BIT(7) | MP5416_VSET_SW1_SVAL(950000));
+#endif
 	}
 
 	else if (!strncmp(model, "GW74", 4)) {
-		ret = uclass_get_device_by_seq(UCLASS_I2C, 0, &bus);
+		ret = uclass_get_device_by_seq(UCLASS_I2C, 2, &bus);
 		if (ret) {
-			printf("PMIC    : failed I2C1 probe: %d\n", ret);
+			printf("PMIC    : failed I2C3 probe: %d\n", ret);
 			return ret;
 		}
 		ret = dm_i2c_probe(bus, 0x25, 0, &dev);
@@ -165,9 +186,6 @@ static int power_init_board(void)
 		/* Kernel uses OD/OD freq for SOC */
 		/* To avoid timing risk from SOC to ARM, increase VDD_ARM to OD voltage 0.95v */
 		dm_i2c_reg_write(dev, PCA9450_BUCK2OUT_DVS0, 0x1C);
-
-		/* set WDOG_B_CFG to cold reset */
-		dm_i2c_reg_write(dev, PCA9450_RESET_CTRL, 0xA1);
 	}
 
 	else if ((!strncmp(model, "GW7901", 6)) ||
@@ -218,8 +236,8 @@ static int power_init_board(void)
 
 void board_init_f(ulong dummy)
 {
-	struct udevice *dev;
-	int ret;
+	struct udevice *bus, *dev;
+	int i, ret;
 	int dram_sz;
 
 	arch_cpu_init();
@@ -250,19 +268,28 @@ void board_init_f(ulong dummy)
 	 *
 	 * On a board with a missing/depleted backup battery for GSC, the
 	 * board may be ready to probe the GSC before its firmware is
-	 * running. We will wait here indefinately for the GSC EEPROM.
+	 * running. Wait here for 50ms for the GSC firmware to let go of
+	 * the SCL/SDA lines to avoid the i2c driver spamming
+	 * 'Arbitration lost' I2C errors
 	 */
-#ifdef CONFIG_IMX8MN
-	/*
-	 * IMX8MN boots quicker than IMX8MM and exposes issue
-	 * where because GSC I2C state machine isn't running and its
-	 * SCL/SDA are driven low the I2C driver spams 'Arbitration lost'
-	 * I2C errors.
-	 *
-	 * TODO: Put a loop here that somehow waits for I2C CLK/DAT to be high
-	 */
-	mdelay(50);
-#endif
+	if (!uclass_get_device_by_seq(UCLASS_I2C, 0, &bus)) {
+		if (!pinctrl_select_state(bus, "gpio")) {
+			struct mxc_i2c_bus *i2c_bus = dev_get_priv(bus);
+			struct gpio_desc *scl_gpio = &i2c_bus->scl_gpio;
+			struct gpio_desc *sda_gpio = &i2c_bus->sda_gpio;
+
+			dm_gpio_set_dir_flags(scl_gpio, GPIOD_IS_IN);
+			dm_gpio_set_dir_flags(sda_gpio, GPIOD_IS_IN);
+			for (i = 0; i < 5; i++) {
+				if (dm_gpio_get_value(scl_gpio) &&
+				    dm_gpio_get_value(sda_gpio))
+					break;
+				mdelay(10);
+			}
+			pinctrl_select_state(bus, "default");
+		}
+	}
+	/* Wait indefiniately until the GSC probes */
 	while (1) {
 		if (!uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(gsc), &dev))
 			break;
@@ -319,6 +346,21 @@ int spl_board_boot_device(enum boot_device boot_dev_spl)
 	}
 }
 
+unsigned long board_spl_mmc_get_uboot_raw_sector(struct mmc *mmc, unsigned long raw_sect)
+{
+	if (!IS_SD(mmc)) {
+		switch (EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)) {
+		case 1:
+		case 2:
+			if (IS_ENABLED(CONFIG_IMX8MN) || IS_ENABLED(CONFIG_IMX8MP))
+				raw_sect -= 32 * 2;
+			break;
+		}
+	}
+
+	return raw_sect;
+}
+
 const char *spl_board_loader_name(u32 boot_device)
 {
 	switch (boot_device) {
@@ -331,4 +373,9 @@ const char *spl_board_loader_name(u32 boot_device)
 	default:
 		return NULL;
 	}
+}
+
+void spl_board_init(void)
+{
+	arch_misc_init();
 }

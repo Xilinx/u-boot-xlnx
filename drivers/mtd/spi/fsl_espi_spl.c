@@ -11,7 +11,7 @@
 
 #define ESPI_BOOT_IMAGE_SIZE	0x48
 #define ESPI_BOOT_IMAGE_ADDR	0x50
-#define CONFIG_CFG_DATA_SECTOR	0
+#define CFG_CFG_DATA_SECTOR	0
 
 void fsl_spi_spl_load_image(uint32_t offs, unsigned int size, void *vdst)
 {
@@ -49,8 +49,8 @@ void fsl_spi_boot(void)
 	}
 
 #ifdef CONFIG_FSL_CORENET
-	offset = CONFIG_SYS_SPI_FLASH_U_BOOT_OFFS;
-	code_len = CONFIG_SYS_SPI_FLASH_U_BOOT_SIZE;
+	offset = CFG_SYS_SPI_FLASH_U_BOOT_OFFS;
+	code_len = CFG_SYS_SPI_FLASH_U_BOOT_SIZE;
 #else
 	/*
 	* Load U-Boot image from SPI flash into RAM
@@ -62,11 +62,11 @@ void fsl_spi_boot(void)
 	}
 	memset(buf, 0, flash->page_size);
 
-	spi_flash_read(flash, CONFIG_CFG_DATA_SECTOR,
+	spi_flash_read(flash, CFG_CFG_DATA_SECTOR,
 		       flash->page_size, (void *)buf);
 	offset = *(u32 *)(buf + ESPI_BOOT_IMAGE_ADDR);
 	/* Skip spl code */
-	offset += CONFIG_SYS_SPI_FLASH_U_BOOT_OFFS;
+	offset += CFG_SYS_SPI_FLASH_U_BOOT_OFFS;
 	/* Get the code size from offset 0x48 */
 	code_len = *(u32 *)(buf + ESPI_BOOT_IMAGE_SIZE);
 	/* Skip spl code */
@@ -76,7 +76,7 @@ void fsl_spi_boot(void)
 	printf("Loading second stage boot loader ");
 	while (copy_len <= code_len) {
 		spi_flash_read(flash, offset + copy_len, 0x2000,
-			       (void *)(CONFIG_SYS_SPI_FLASH_U_BOOT_DST
+			       (void *)(CFG_SYS_SPI_FLASH_U_BOOT_DST
 			       + copy_len));
 		copy_len = copy_len + 0x2000;
 		putc('.');
@@ -85,7 +85,7 @@ void fsl_spi_boot(void)
 	/*
 	* Jump to U-Boot image
 	*/
-	flush_cache(CONFIG_SYS_SPI_FLASH_U_BOOT_DST, code_len);
-	uboot = (void *)CONFIG_SYS_SPI_FLASH_U_BOOT_START;
+	flush_cache(CFG_SYS_SPI_FLASH_U_BOOT_DST, code_len);
+	uboot = (void *)CFG_SYS_SPI_FLASH_U_BOOT_START;
 	(*uboot)();
 }

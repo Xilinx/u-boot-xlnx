@@ -62,6 +62,10 @@ config MV88E61XX_PHY_PORTS
 
 config MV88E61XX_FIXED_PORTS
 	hex "Bitmask of PHYless serdes Ports"
+	default 0x0
+	help
+	  These are ports without PHYs that may be wired directly to other
+	  serdes interfaces
 
 endif # MV88E61XX_SWITCH
 
@@ -101,6 +105,9 @@ config PHY_AQUANTIA_FW_NAME
 
 config PHY_ATHEROS
 	bool "Atheros Ethernet PHYs support"
+
+config SPL_PHY_ATHEROS
+	bool "Atheros Ethernet PHYs support (SPL)"
 
 config PHY_BROADCOM
 	bool "Broadcom Ethernet PHYs support"
@@ -167,6 +174,11 @@ config PHY_LXT
 config PHY_MARVELL
 	bool "Marvell Ethernet PHYs support"
 
+config PHY_MARVELL_10G
+	bool "Marvell Alaska 10Gbit PHYs"
+	help
+	  Support for the Marvell Alaska MV88X3310 and compatible PHYs.
+
 config PHY_MESON_GXL
 	bool "Amlogic Meson GXL Internal PHY support"
 
@@ -207,6 +219,12 @@ config PHY_MICREL_KSZ8XXX
 	  KSZ8031, KSZ8051, KSZ8081, KSZ8895, KSZ886x, and KSZ8721.
 
 endif # PHY_MICREL
+
+config PHY_MOTORCOMM
+	tristate "Motorcomm PHYs"
+	help
+	  Enables support for Motorcomm network PHYs.
+	  Currently supports the YT8511 and YT8531 Gigabit Ethernet PHYs.
 
 config PHY_MSCC
 	bool "Microsemi Corp Ethernet PHYs support"
@@ -315,7 +333,6 @@ config PHY_XILINX
 
 config PHY_XILINX_GMII2RGMII
 	bool "Xilinx GMII to RGMII Ethernet PHYs support"
-	depends on DM_ETH
 	help
 	  This adds support for Xilinx GMII to RGMII IP core. This IP acts
 	  as bridge between MAC connected over GMII and external phy that
@@ -336,7 +353,6 @@ config PHY_ETHERNET_ID
 
 config PHY_FIXED
 	bool "Fixed-Link PHY"
-	depends on DM_ETH
 	help
 	  Fixed PHY is used for having a 'fixed-link' to another MAC with a direct
 	  connection (MII, RGMII, ...).
@@ -346,7 +362,6 @@ config PHY_FIXED
 
 config PHY_NCSI
 	bool "NC-SI based PHY"
-	depends on DM_ETH
 
 endif #PHYLIB
 

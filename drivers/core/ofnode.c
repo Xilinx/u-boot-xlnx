@@ -12,6 +12,7 @@
 #include <fdt_support.h>
 #include <log.h>
 #include <malloc.h>
+#include <of_live.h>
 #include <linux/libfdt.h>
 #include <dm/of_access.h>
 #include <dm/of_addr.h>
@@ -46,19 +47,41 @@ static int oftree_find(const void *fdt)
 	return -1;
 }
 
+static int check_tree_count(void)
+{
+	if (oftree_count == CONFIG_OFNODE_MULTI_TREE_MAX) {
+		log_warning("Too many registered device trees (max %d)\n",
+			    CONFIG_OFNODE_MULTI_TREE_MAX);
+		return -E2BIG;
+	}
+
+	return 0;
+}
+
 static oftree oftree_ensure(void *fdt)
 {
 	oftree tree;
 	int i;
 
+	if (of_live_active()) {
+		struct device_node *root;
+		int ret;
+
+		ret = unflatten_device_tree(fdt, &root);
+		if (ret) {
+			log_err("Failed to create live tree: err=%d\n", ret);
+			return oftree_null();
+		}
+		tree = oftree_from_np(root);
+
+		return tree;
+	}
+
 	if (gd->flags & GD_FLG_RELOC) {
 		i = oftree_find(fdt);
 		if (i == -1) {
-			if (oftree_count == CONFIG_OFNODE_MULTI_TREE_MAX) {
-				log_warning("Too many registered device trees (max %d)\n",
-					    CONFIG_OFNODE_MULTI_TREE_MAX);
+			if (check_tree_count())
 				return oftree_null();
-			}
 
 			/* register the new tree */
 			i = oftree_count++;
@@ -67,7 +90,7 @@ static oftree oftree_ensure(void *fdt)
 		}
 	} else {
 		if (fdt != gd->fdt_blob) {
-			log_debug("Cannot only access control FDT before relocation\n");
+			log_debug("Only the control FDT can be accessed before relocation\n");
 			return oftree_null();
 		}
 	}
@@ -77,12 +100,53 @@ static oftree oftree_ensure(void *fdt)
 	return tree;
 }
 
+int oftree_new(oftree *treep)
+{
+	oftree tree = oftree_null();
+	int ret;
+
+	if (of_live_active()) {
+		struct device_node *root;
+
+		ret = of_live_create_empty(&root);
+		if (ret)
+			return log_msg_ret("liv", ret);
+		tree = oftree_from_np(root);
+	} else {
+		const int size = 1024;
+		void *fdt;
+
+		ret = check_tree_count();
+		if (ret)
+			return log_msg_ret("fla", ret);
+
+		/* register the new tree with a small size */
+		fdt = malloc(size);
+		if (!fdt)
+			return log_msg_ret("fla", -ENOMEM);
+		ret = fdt_create_empty_tree(fdt, size);
+		if (ret)
+			return log_msg_ret("fla", -EINVAL);
+		oftree_list[oftree_count++] = fdt;
+		tree.fdt = fdt;
+	}
+	*treep = tree;
+
+	return 0;
+}
+
+void oftree_dispose(oftree tree)
+{
+	if (of_live_active())
+		of_live_free(tree.np);
+}
+
 void *ofnode_lookup_fdt(ofnode node)
 {
 	if (gd->flags & GD_FLG_RELOC) {
 		uint i = OFTREE_TREE_ID(node.of_offset);
 
-		if (i > oftree_count) {
+		if (i >= oftree_count) {
 			log_debug("Invalid tree ID %x\n", i);
 			return NULL;
 		}
@@ -133,6 +197,10 @@ oftree oftree_from_fdt(void *fdt)
 	if (CONFIG_IS_ENABLED(OFNODE_MULTI_TREE))
 		return oftree_ensure(fdt);
 
+#ifdef OF_CHECKS
+	if (of_live_active())
+		return oftree_null();
+#endif
 	tree.fdt = fdt;
 
 	return tree;
@@ -168,7 +236,30 @@ static inline int oftree_find(const void *fdt)
 	return 0;
 }
 
+int oftree_new(oftree *treep)
+{
+	return -ENOSYS;
+}
+
 #endif /* OFNODE_MULTI_TREE */
+
+int oftree_to_fdt(oftree tree, struct abuf *buf)
+{
+	int ret;
+
+	if (of_live_active()) {
+		ret = of_live_flatten(ofnode_to_np(oftree_root(tree)), buf);
+		if (ret)
+			return log_msg_ret("flt", ret);
+	} else {
+		void *fdt = oftree_lookup_fdt(tree);
+
+		abuf_init(buf);
+		abuf_set(buf, fdt, fdt_totalsize(fdt));
+	}
+
+	return 0;
+}
 
 /**
  * ofnode_from_tree_offset() - get an ofnode from a tree offset (flat tree)
@@ -338,7 +429,7 @@ int ofnode_read_u64_index(ofnode node, const char *propname, int index,
 		return -EINVAL;
 	}
 
-	if (len < (sizeof(int) * (index + 1))) {
+	if (len < (sizeof(u64) * (index + 1))) {
 		debug("(not large enough)\n");
 		return -EOVERFLOW;
 	}
@@ -400,12 +491,12 @@ u64 ofnode_read_u64_default(ofnode node, const char *propname, u64 def)
 
 bool ofnode_read_bool(ofnode node, const char *propname)
 {
-	const void *prop;
+	bool prop;
 
 	assert(ofnode_valid(node));
 	debug("%s: %s: ", __func__, propname);
 
-	prop = ofnode_get_property(node, propname, NULL);
+	prop = ofnode_has_property(node, propname);
 
 	debug("%s\n", prop ? "true" : "false");
 
@@ -900,6 +991,24 @@ ofnode ofnode_get_chosen_node(const char *name)
 	return ofnode_path(prop);
 }
 
+int ofnode_read_baud(void)
+{
+	const char *str, *p;
+	u32 baud;
+
+	str = ofnode_read_chosen_string("stdout-path");
+	if (!str)
+		return -EINVAL;
+
+	/* Parse string serial0:115200n8 */
+	p = strchr(str, ':');
+	if (!p)
+		return -EINVAL;
+
+	baud = dectoul(p + 1, NULL);
+	return baud;
+}
+
 const void *ofnode_read_aliases_prop(const char *propname, int *sizep)
 {
 	ofnode node;
@@ -1021,6 +1130,53 @@ int ofnode_decode_display_timing(ofnode parent, int index,
 	return ret;
 }
 
+int ofnode_decode_panel_timing(ofnode parent,
+			       struct display_timing *dt)
+{
+	ofnode timings;
+	u32 val = 0;
+	int ret = 0;
+
+	timings = ofnode_find_subnode(parent, "panel-timing");
+	if (!ofnode_valid(timings))
+		return -EINVAL;
+	memset(dt, 0, sizeof(*dt));
+	ret |= decode_timing_property(timings, "hback-porch", &dt->hback_porch);
+	ret |= decode_timing_property(timings, "hfront-porch", &dt->hfront_porch);
+	ret |= decode_timing_property(timings, "hactive", &dt->hactive);
+	ret |= decode_timing_property(timings, "hsync-len", &dt->hsync_len);
+	ret |= decode_timing_property(timings, "vback-porch", &dt->vback_porch);
+	ret |= decode_timing_property(timings, "vfront-porch", &dt->vfront_porch);
+	ret |= decode_timing_property(timings, "vactive", &dt->vactive);
+	ret |= decode_timing_property(timings, "vsync-len", &dt->vsync_len);
+	ret |= decode_timing_property(timings, "clock-frequency", &dt->pixelclock);
+	dt->flags = 0;
+	if (!ofnode_read_u32(timings, "vsync-active", &val)) {
+		dt->flags |= val ? DISPLAY_FLAGS_VSYNC_HIGH :
+		    DISPLAY_FLAGS_VSYNC_LOW;
+	}
+	if (!ofnode_read_u32(timings, "hsync-active", &val)) {
+		dt->flags |= val ? DISPLAY_FLAGS_HSYNC_HIGH :
+		    DISPLAY_FLAGS_HSYNC_LOW;
+	}
+	if (!ofnode_read_u32(timings, "de-active", &val)) {
+		dt->flags |= val ? DISPLAY_FLAGS_DE_HIGH :
+		    DISPLAY_FLAGS_DE_LOW;
+	}
+	if (!ofnode_read_u32(timings, "pixelclk-active", &val)) {
+		dt->flags |= val ? DISPLAY_FLAGS_PIXDATA_POSEDGE :
+		DISPLAY_FLAGS_PIXDATA_NEGEDGE;
+	}
+	if (ofnode_read_bool(timings, "interlaced"))
+		dt->flags |= DISPLAY_FLAGS_INTERLACED;
+	if (ofnode_read_bool(timings, "doublescan"))
+		dt->flags |= DISPLAY_FLAGS_DOUBLESCAN;
+	if (ofnode_read_bool(timings, "doubleclk"))
+		dt->flags |= DISPLAY_FLAGS_DOUBLECLK;
+
+	return ret;
+}
+
 const void *ofnode_get_property(ofnode node, const char *propname, int *lenp)
 {
 	if (ofnode_is_np(node))
@@ -1028,6 +1184,14 @@ const void *ofnode_get_property(ofnode node, const char *propname, int *lenp)
 	else
 		return fdt_getprop(ofnode_to_fdt(node), ofnode_to_offset(node),
 				   propname, lenp);
+}
+
+bool ofnode_has_property(ofnode node, const char *propname)
+{
+	if (ofnode_is_np(node))
+		return of_find_property(ofnode_to_np(node), propname, NULL);
+	else
+		return ofnode_get_property(node, propname, NULL);
 }
 
 int ofnode_first_property(ofnode node, struct ofprop *prop)
@@ -1124,7 +1288,8 @@ const uint8_t *ofnode_read_u8_array_ptr(ofnode node, const char *propname,
 }
 
 int ofnode_read_pci_addr(ofnode node, enum fdt_pci_space type,
-			 const char *propname, struct fdt_pci_addr *addr)
+			 const char *propname, struct fdt_pci_addr *addr,
+			 fdt_size_t *size)
 {
 	const fdt32_t *cell;
 	int len;
@@ -1152,14 +1317,18 @@ int ofnode_read_pci_addr(ofnode node, enum fdt_pci_space type,
 			      (ulong)fdt32_to_cpu(cell[1]),
 			      (ulong)fdt32_to_cpu(cell[2]));
 			if ((fdt32_to_cpu(*cell) & type) == type) {
+				const unaligned_fdt64_t *ptr;
+
 				addr->phys_hi = fdt32_to_cpu(cell[0]);
 				addr->phys_mid = fdt32_to_cpu(cell[1]);
 				addr->phys_lo = fdt32_to_cpu(cell[2]);
+				ptr = (const unaligned_fdt64_t *)(cell + 3);
+				if (size)
+					*size = fdt64_to_cpu(*ptr);
 				break;
 			}
 
-			cell += (FDT_PCI_ADDR_CELLS +
-				 FDT_PCI_SIZE_CELLS);
+			cell += FDT_PCI_ADDR_CELLS + FDT_PCI_SIZE_CELLS;
 		}
 
 		if (i == num) {
@@ -1295,23 +1464,35 @@ bool ofnode_pre_reloc(ofnode node)
 {
 #if defined(CONFIG_SPL_BUILD) || defined(CONFIG_TPL_BUILD)
 	/* for SPL and TPL the remaining nodes after the fdtgrep 1st pass
-	 * had property dm-pre-reloc or u-boot,dm-spl/tpl.
+	 * had property bootph-all or bootph-pre-sram/bootph-pre-ram.
 	 * They are removed in final dtb (fdtgrep 2nd pass)
 	 */
 	return true;
 #else
-	if (ofnode_read_bool(node, "u-boot,dm-pre-reloc"))
+	if (ofnode_read_bool(node, "bootph-all"))
 		return true;
-	if (ofnode_read_bool(node, "u-boot,dm-pre-proper"))
+	if (ofnode_read_bool(node, "bootph-some-ram"))
 		return true;
 
 	/*
 	 * In regular builds individual spl and tpl handling both
 	 * count as handled pre-relocation for later second init.
 	 */
-	if (ofnode_read_bool(node, "u-boot,dm-spl") ||
-	    ofnode_read_bool(node, "u-boot,dm-tpl"))
-		return true;
+	if (ofnode_read_bool(node, "bootph-pre-ram") ||
+	    ofnode_read_bool(node, "bootph-pre-sram"))
+		return gd->flags & GD_FLG_RELOC;
+
+	if (IS_ENABLED(CONFIG_OF_TAG_MIGRATE)) {
+		/* detect and handle old tags */
+		if (ofnode_read_bool(node, "u-boot,dm-pre-reloc") ||
+		    ofnode_read_bool(node, "u-boot,dm-pre-proper") ||
+		    ofnode_read_bool(node, "u-boot,dm-spl") ||
+		    ofnode_read_bool(node, "u-boot,dm-tpl") ||
+		    ofnode_read_bool(node, "u-boot,dm-vpl")) {
+			gd->flags |= GD_FLG_OF_TAG_MIGRATE;
+			return true;
+		}
+	}
 
 	return false;
 #endif
@@ -1463,7 +1644,46 @@ int ofnode_write_u32(ofnode node, const char *propname, u32 value)
 		return -ENOMEM;
 	*val = cpu_to_fdt32(value);
 
-	return ofnode_write_prop(node, propname, val, sizeof(value), false);
+	return ofnode_write_prop(node, propname, val, sizeof(value), true);
+}
+
+int ofnode_write_u64(ofnode node, const char *propname, u64 value)
+{
+	fdt64_t *val;
+
+	assert(ofnode_valid(node));
+
+	log_debug("%s = %llx", propname, (unsigned long long)value);
+	val = malloc(sizeof(*val));
+	if (!val)
+		return -ENOMEM;
+	*val = cpu_to_fdt64(value);
+
+	return ofnode_write_prop(node, propname, val, sizeof(value), true);
+}
+
+int ofnode_write_bool(ofnode node, const char *propname, bool value)
+{
+	if (value)
+		return ofnode_write_prop(node, propname, NULL, 0, false);
+	else
+		return ofnode_delete_prop(node, propname);
+}
+
+int ofnode_delete_prop(ofnode node, const char *propname)
+{
+	if (ofnode_is_np(node)) {
+		struct property *prop;
+		int len;
+
+		prop = of_find_property(ofnode_to_np(node), propname, &len);
+		if (prop)
+			return of_remove_property(ofnode_to_np(node), prop);
+		return 0;
+	} else {
+		return fdt_delprop(ofnode_to_fdt(node), ofnode_to_offset(node),
+				   propname);
+	}
 }
 
 int ofnode_set_enabled(ofnode node, bool value)
@@ -1647,7 +1867,30 @@ int ofnode_add_subnode(ofnode node, const char *name, ofnode *subnodep)
 	return ret;	/* 0 or -EEXIST */
 }
 
-int ofnode_copy_props(ofnode src, ofnode dst)
+int ofnode_delete(ofnode *nodep)
+{
+	ofnode node = *nodep;
+	int ret;
+
+	assert(ofnode_valid(node));
+	if (ofnode_is_np(node)) {
+		ret = of_remove_node(ofnode_to_np(node));
+	} else {
+		void *fdt = ofnode_to_fdt(node);
+		int offset = ofnode_to_offset(node);
+
+		ret = fdt_del_node(fdt, offset);
+		if (ret)
+			ret = -EFAULT;
+	}
+	if (ret)
+		return ret;
+	*nodep = ofnode_null();
+
+	return 0;
+}
+
+int ofnode_copy_props(ofnode dst, ofnode src)
 {
 	struct ofprop prop;
 
@@ -1667,6 +1910,26 @@ int ofnode_copy_props(ofnode src, ofnode dst)
 			return log_msg_ret("wr", -EINVAL);
 		}
 	}
+
+	return 0;
+}
+
+int ofnode_copy_node(ofnode dst_parent, const char *name, ofnode src,
+		     ofnode *nodep)
+{
+	ofnode node;
+	int ret;
+
+	ret = ofnode_add_subnode(dst_parent, name, &node);
+	if (ret) {
+		if (ret == -EEXIST)
+			*nodep = node;
+		return log_msg_ret("add", ret);
+	}
+	ret = ofnode_copy_props(node, src);
+	if (ret)
+		return log_msg_ret("cpy", ret);
+	*nodep = node;
 
 	return 0;
 }

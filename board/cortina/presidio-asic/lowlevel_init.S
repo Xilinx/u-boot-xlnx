@@ -27,17 +27,15 @@ skip_smp_setup:
 
 #if defined(CONFIG_SOC_CA8277B)
 	/* Enable CPU Timer */
-	ldr x0, =CONFIG_SYS_TIMER_BASE
+	ldr x0, =CFG_SYS_TIMER_BASE
 	mov x1, #1
 	str w1, [x0]
 #endif
 
 #if defined(CONFIG_GICV2) || defined(CONFIG_GICV3)
 	branch_if_slave x0, 1f
-#ifndef CONFIG_TARGET_VENUS
 	ldr	x0, =GICD_BASE
 	bl	gic_init_secure
-#endif
 1:
 #if defined(CONFIG_GICV3)
 	ldr	x0, =GICR_BASE

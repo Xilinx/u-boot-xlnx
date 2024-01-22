@@ -337,13 +337,13 @@ int of_read_u32_index(const struct device_node *np, const char *propname,
  * of_read_u64_index() - Find and read a 64-bit value from a multi-value
  *                       property
  *
- * Search for a property in a device node and read a 64-bit value from
- * it.
- *
  * @np:		device node from which the property value is to be read.
  * @propname:	name of the property to be searched.
  * @index:	index of the u32 in the list of values
  * @outp:	pointer to return value, modified only if return value is 0.
+ *
+ * Search for a property in a device node and read a 64-bit value from
+ * it.
  *
  * Return:
  *   0 on success, -EINVAL if the property does not exist, or -EOVERFLOW if the
@@ -596,5 +596,23 @@ int of_write_prop(struct device_node *np, const char *propname, int len,
  */
 int of_add_subnode(struct device_node *node, const char *name, int len,
 		   struct device_node **subnodep);
+
+/**
+ * of_remove_property() - Remove a property from a node
+ *
+ * @np: Node to remove from
+ * @prop: Pointer to property to remove
+ * Return 0 if OK, -ENODEV if the property could not be found in the node
+ */
+int of_remove_property(struct device_node *np, struct property *prop);
+
+/**
+ * of_remove_node() - Remove a node from the tree
+ *
+ * @to_remove: Node to remove
+ * Return: 0 if OK, -EPERM if it is the root node (wWhich cannot be removed),
+ * -ENOENT if the tree is broken (to_remove is not a child of its parent)
+ */
+int of_remove_node(struct device_node *to_remove);
 
 #endif

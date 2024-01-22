@@ -5,12 +5,13 @@
 
 #include <common.h>
 #include <log.h>
-#include <asm/arch/sci/sci.h>
+#include <firmware/imx/sci/sci.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/global_data.h>
 #include <dm/ofnode.h>
 #include <fdt_support.h>
 #include <linux/libfdt.h>
+#include <linux/printk.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -110,7 +111,7 @@ static int config_smmu_resource_sid(int rsrc, int sid)
 
 	err = sc_rm_set_master_sid(-1, rsrc, sid);
 	debug("set_master_sid rsrc=%d sid=0x%x err=%d\n", rsrc, sid, err);
-	if (err != SC_ERR_NONE) {
+	if (err) {
 		if (!check_owned_resource(rsrc)) {
 			printf("%s rsrc[%d] not owned\n", __func__, rsrc);
 			return -1;

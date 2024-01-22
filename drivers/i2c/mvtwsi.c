@@ -42,7 +42,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #endif /* CONFIG_DM_I2C */
 
 /*
- * On SUNXI, we get CONFIG_SYS_TCLK from this include, so we want to
+ * On SUNXI, we get CFG_SYS_TCLK from this include, so we want to
  * always have it.
  */
 #if CONFIG_IS_ENABLED(DM_I2C) && defined(CONFIG_ARCH_SUNXI)
@@ -124,7 +124,8 @@ enum mvtwsi_ctrl_register_fields {
  * on other platforms, it is a normal r/w bit, which is cleared by writing 0.
  */
 
-#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_SUN50I_GEN_H6)
+#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_SUN50I_GEN_H6) || \
+    defined(CONFIG_SUNXI_GEN_NCAT2)
 #define	MVTWSI_CONTROL_CLEAR_IFLG	0x00000008
 #else
 #define	MVTWSI_CONTROL_CLEAR_IFLG	0x00000000
@@ -142,6 +143,8 @@ enum mvtwsi_ctrl_register_fields {
  * code.
  */
 enum mvstwsi_status_values {
+	/* Protocol violation on bus; this is a terminal state */
+	MVTWSI_BUS_ERROR		= 0x00,
 	/* START condition transmitted */
 	MVTWSI_STATUS_START		= 0x08,
 	/* Repeated START condition transmitted */
@@ -197,17 +200,17 @@ inline uint calc_tick(uint speed)
 static struct mvtwsi_registers *twsi_get_base(struct i2c_adapter *adap)
 {
 	switch (adap->hwadapnr) {
-#ifdef CONFIG_I2C_MVTWSI_BASE0
+#ifdef CFG_I2C_MVTWSI_BASE0
 	case 0:
-		return (struct mvtwsi_registers *)CONFIG_I2C_MVTWSI_BASE0;
+		return (struct mvtwsi_registers *)CFG_I2C_MVTWSI_BASE0;
 #endif
-#ifdef CONFIG_I2C_MVTWSI_BASE1
+#ifdef CFG_I2C_MVTWSI_BASE1
 	case 1:
-		return (struct mvtwsi_registers *)CONFIG_I2C_MVTWSI_BASE1;
+		return (struct mvtwsi_registers *)CFG_I2C_MVTWSI_BASE1;
 #endif
-#ifdef CONFIG_I2C_MVTWSI_BASE2
+#ifdef CFG_I2C_MVTWSI_BASE2
 	case 2:
-		return (struct mvtwsi_registers *)CONFIG_I2C_MVTWSI_BASE2;
+		return (struct mvtwsi_registers *)CFG_I2C_MVTWSI_BASE2;
 #endif
 #ifdef CONFIG_I2C_MVTWSI_BASE3
 	case 3:
@@ -427,9 +430,9 @@ static int twsi_stop(struct mvtwsi_registers *twsi, uint tick)
 static uint twsi_calc_freq(const int n, const int m)
 {
 #ifdef CONFIG_ARCH_SUNXI
-	return CONFIG_SYS_TCLK / (10 * (m + 1) * (1 << n));
+	return CFG_SYS_TCLK / (10 * (m + 1) * (1 << n));
 #else
-	return CONFIG_SYS_TCLK / (10 * (m + 1) * (2 << n));
+	return CFG_SYS_TCLK / (10 * (m + 1) * (2 << n));
 #endif
 }
 
@@ -523,6 +526,36 @@ static void __twsi_i2c_init(struct mvtwsi_registers *twsi, int speed,
 #else
 	(void) twsi_stop(twsi, 10000);
 #endif
+}
+
+/*
+ * __twsi_i2c_reinit() - Reset and reinitialize the I2C controller.
+ *
+ * This function should be called to get the MVTWSI controller out of the
+ * "bus error" state. It saves and restores the baud and address registers.
+ *
+ * @twsi:	The MVTWSI register structure to use.
+ * @tick:	The duration of a clock cycle at the current I2C speed.
+ */
+static void __twsi_i2c_reinit(struct mvtwsi_registers *twsi, uint tick)
+{
+	uint baud;
+	uint slaveadd;
+
+	/* Save baud, address registers */
+	baud = readl(&twsi->baudrate);
+	slaveadd = readl(&twsi->slave_address);
+
+	/* Reset controller */
+	twsi_reset(twsi);
+
+	/* Restore baud, address registers */
+	writel(baud, &twsi->baudrate);
+	writel(slaveadd, &twsi->slave_address);
+	writel(0, &twsi->xtnd_slave_addr);
+
+	/* Assert STOP, but don't care for the result */
+	(void) twsi_stop(twsi, tick);
 }
 
 /*
@@ -621,6 +654,11 @@ static int __twsi_i2c_read(struct mvtwsi_registers *twsi, uchar chip,
 	int stop_status;
 	int expected_start = MVTWSI_STATUS_START;
 
+	/* Check for (and clear) a bus error from a previous failed transaction
+	 * or another master on the same bus */
+	if (readl(&twsi->status) == MVTWSI_BUS_ERROR)
+		__twsi_i2c_reinit(twsi, tick);
+
 	if (alen > 0) {
 		/* Begin i2c write to send the address bytes */
 		status = i2c_begin(twsi, expected_start, (chip << 1), tick);
@@ -667,6 +705,11 @@ static int __twsi_i2c_write(struct mvtwsi_registers *twsi, uchar chip,
 			    uint tick)
 {
 	int status, stop_status;
+
+	/* Check for (and clear) a bus error from a previous failed transaction
+	 * or another master on the same bus */
+	if (readl(&twsi->status) == MVTWSI_BUS_ERROR)
+		__twsi_i2c_reinit(twsi, tick);
 
 	/* Begin i2c write to send first the address bytes, then the
 	 * data bytes */
@@ -737,20 +780,20 @@ static int twsi_i2c_write(struct i2c_adapter *adap, uchar chip, uint addr,
 				10000);
 }
 
-#ifdef CONFIG_I2C_MVTWSI_BASE0
+#ifdef CFG_I2C_MVTWSI_BASE0
 U_BOOT_I2C_ADAP_COMPLETE(twsi0, twsi_i2c_init, twsi_i2c_probe,
 			 twsi_i2c_read, twsi_i2c_write,
 			 twsi_i2c_set_bus_speed,
 			 CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE, 0)
 #endif
-#ifdef CONFIG_I2C_MVTWSI_BASE1
+#ifdef CFG_I2C_MVTWSI_BASE1
 U_BOOT_I2C_ADAP_COMPLETE(twsi1, twsi_i2c_init, twsi_i2c_probe,
 			 twsi_i2c_read, twsi_i2c_write,
 			 twsi_i2c_set_bus_speed,
 			 CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE, 1)
 
 #endif
-#ifdef CONFIG_I2C_MVTWSI_BASE2
+#ifdef CFG_I2C_MVTWSI_BASE2
 U_BOOT_I2C_ADAP_COMPLETE(twsi2, twsi_i2c_init, twsi_i2c_probe,
 			 twsi_i2c_read, twsi_i2c_write,
 			 twsi_i2c_set_bus_speed,

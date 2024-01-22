@@ -26,7 +26,6 @@
  * terminating R_MIPS_NONE reloc includes no offset.
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <init.h>
 #include <asm/relocs.h>
@@ -146,7 +145,7 @@ void relocate_code(ulong start_addr_sp, gd_t *new_gd, ulong relocaddr)
 
 	/* Clear the .bss section */
 	bss_start = (uint8_t *)((unsigned long)__bss_start + off);
-	bss_len = (unsigned long)&__bss_end - (unsigned long)__bss_start;
+	bss_len = (unsigned long)__bss_end - (unsigned long)__bss_start;
 	memset(bss_start, 0, bss_len);
 
 	/* Jump to the relocated U-Boot */

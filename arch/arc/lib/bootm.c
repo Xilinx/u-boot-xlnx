@@ -3,7 +3,6 @@
  * Copyright (C) 2013-2014 Synopsys, Inc. All rights reserved.
  */
 
-#include <common.h>
 #include <bootstage.h>
 #include <env.h>
 #include <image.h>
@@ -29,7 +28,7 @@ static int boot_prep_linux(struct bootm_headers *images)
 {
 	int ret;
 
-	if (CONFIG_IS_ENABLED(LMB)) {
+	if (IS_ENABLED(CONFIG_LMB)) {
 		ret = image_setup_linux(images);
 		if (ret)
 			return ret;

@@ -58,17 +58,6 @@ int arch_cpu_init(void);
 int mach_cpu_init(void);
 
 /**
- * arch_fsp_init() - perform firmware support package init
- *
- * Where U-Boot relies on binary blobs to handle part of the system init, this
- * function can be used to set up the blobs. This is used on some Intel
- * platforms.
- *
- * Return: 0
- */
-int arch_fsp_init(void);
-
-/**
  * arch_fsp_init() - perform post-relocation firmware support package init
  *
  * Where U-Boot relies on binary blobs to handle part of the system init, this
@@ -90,8 +79,8 @@ int dram_init(void);
  *
  * If this is not provided, a default implementation will try to set up a
  * single bank. It will do this if CONFIG_NR_DRAM_BANKS and
- * CONFIG_SYS_SDRAM_BASE are set. The bank will have a start address of
- * CONFIG_SYS_SDRAM_BASE and the size will be determined by a call to
+ * CFG_SYS_SDRAM_BASE are set. The bank will have a start address of
+ * CFG_SYS_SDRAM_BASE and the size will be determined by a call to
  * get_effective_memsize().
  *
  * Return: 0 if OK, -ve on error
@@ -281,30 +270,45 @@ void board_init_r(struct global_data *id, ulong dest_addr)
 	__attribute__ ((noreturn));
 
 int cpu_init_r(void);
-int last_stage_init(void);
 int mac_read_from_eeprom(void);
+
+/**
+ *  serial_read_from_eeprom - read the serial number from EEPROM
+ *
+ *  This function reads the serial number from the EEPROM and sets the
+ *  appropriate environment variable.
+ *
+ *  The environment variable is only set if it has not been set
+ *  already. This ensures that any user-saved variables are never
+ *  overwritten.
+ *
+ *  This function must be called after relocation.
+ */
+int serial_read_from_eeprom(int devnum);
 int set_cpu_clk_info(void);
 int update_flash_size(int flash_size);
 int arch_early_init_r(void);
 int misc_init_r(void);
-#if defined(CONFIG_VID)
-int init_func_vid(void);
-#endif
 
 /* common/board_info.c */
 int checkboard(void);
 int show_board_info(void);
 
 /**
- * Get the uppermost pointer that is valid to access
+ * board_get_usable_ram_top() - get uppermost address for U-Boot relocation
  *
- * Some systems may not map all of their address space. This function allows
- * boards to indicate what their highest support pointer value is for DRAM
- * access.
+ * Some systems have reserved memory areas in high memory. By implementing this
+ * function boards can indicate the highest address value to be used when
+ * relocating U-Boot. The returned address is exclusive (i.e. 1 byte above the
+ * last usable address).
  *
- * @param total_size	Size of U-Boot (unused?)
+ * Due to overflow on systems with 32bit phys_addr_t a value 0 is used instead
+ * of 4GiB.
+ *
+ * @total_size:	monitor length in bytes (size of U-Boot code)
+ * Return:	uppermost address for U-Boot relocation
  */
-phys_size_t board_get_usable_ram_top(phys_size_t total_size);
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size);
 
 int board_early_init_f(void);
 
@@ -352,6 +356,9 @@ void relocate_code(ulong start_addr_sp, struct global_data *new_gd,
 /* Print a numeric value (for use in arch_print_bdinfo()) */
 void bdinfo_print_num_l(const char *name, ulong value);
 void bdinfo_print_num_ll(const char *name, unsigned long long value);
+
+/* Print a string value (for use in arch_print_bdinfo()) */
+void bdinfo_print_str(const char *name, const char *str);
 
 /* Print a clock speed in MHz */
 void bdinfo_print_mhz(const char *name, unsigned long hz);

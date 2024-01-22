@@ -31,14 +31,12 @@ Only x86 is supported at present. If you are using EFI on another architecture
 you may want to reconsider. However, much of the code is generic so could be
 ported.
 
-U-Boot supports running as an EFI application for 32-bit EFI only. This is
-not very useful since only a serial port is provided. You can look around at
-memory and type 'help' but that is about it.
+U-Boot supports running as an EFI application for both 32- and 64-bit EFI.
 
-More usefully, U-Boot supports building itself as a payload for either 32-bit
-or 64-bit EFI. U-Boot is packaged up and loaded in its entirety by EFI. Once
-started, U-Boot changes to 32-bit mode (currently) and takes over the
-machine. You can use devices, boot a kernel, etc.
+U-Boot supports building itself as a payload for either 32-bit or 64-bit EFI.
+U-Boot is packaged up and loaded in its entirety by EFI. Once started, U-Boot
+changes to 32-bit mode (currently) and takes over the machine. You can use
+devices, boot a kernel, etc.
 
 
 Build Instructions
@@ -47,9 +45,9 @@ First choose a board that has EFI support and obtain an EFI implementation
 for that board. It will be either 32-bit or 64-bit. Alternatively, you can
 opt for using QEMU [1] and the OVMF [2], as detailed below.
 
-To build U-Boot as an EFI application (32-bit EFI required), enable CONFIG_EFI
-and CONFIG_EFI_APP. The efi-x86_app config (efi-x86_app32_defconfig) is set up
-for this. Just build U-Boot as normal, e.g.::
+To build U-Boot as an EFI application, enable CONFIG_EFI and CONFIG_EFI_APP.
+The efi-x86_app32 and efi-x86_app64 configs are set up for this. Just build
+U-Boot as normal, e.g.::
 
    make efi-x86_app32_defconfig
    make
@@ -189,9 +187,9 @@ interrupts disabled at present.
 
 32/64-bit
 ~~~~~~~~~
-While the EFI application can in principle be built as either 32- or 64-bit,
-only 32-bit is currently supported. This means that the application can only
-be used with 32-bit EFI.
+While the EFI application can be built as either 32- or 64-bit, you need to be
+careful to build the correct one so that your UEFI firmware can start it. Most
+UEFI images are 64-bit at present.
 
 The payload stub can be build as either 32- or 64-bits. Only a small amount
 of code is built this way (see the extra- line in lib/efi/Makefile).
@@ -254,14 +252,96 @@ This shows running with serial enabled (see `include/configs/efi-x86_app.h`)::
 
    => QEMU: Terminated
 
+Run on VirtualBox (x86_64)
+--------------------------
+
+Enable EFI
+~~~~~~~~~~
+At settings for virtual machine the flag at **System->Motherboard->Enable EFI
+(special OSes only)** has to be enabled.
+
+Installation
+~~~~~~~~~~~~
+Provide the preinstalled Linux system as a Virtual Disk Image (VDI) and assign
+it to a SATA controller (type AHCI) using the settings for the virtual machine
+at menu item **System->Storage->Controller:SATA**.
+
+For the following description three GPT partitions are assumed:
+
+- Partition 1: formatted as FAT file-system and marked as EFI system partition
+  (partition type 0xEF00) used for the U-Boot EFI binary. (If VirtualBox is UEFI
+  compliant, it should recognize the ESP as the boot partition.)
+
+- Partition 2: formatted as **ext4**, used for root file system
+
+Create an extlinux.conf or a boot script
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Following files are assumed to be located at system for boot configuration::
+
+ Partition  File                    Comment
+ 1          EFI/BOOT/BOOTX64.efi    # renamed U-Boot EFI image
+ 1          Image                   # Linux image
+ 1          Initrd                  # Initramfs of Linux
+
+**EFI/BOOT/BOOTX64.efi** is a renamed build result **u-boot-payload.efi**, built with
+**efi-x86_payload64_defconfig** configuration.
+
+Boot script
+~~~~~~~~~~~
+
+The boot script **boot.scr** is assumed to be located at::
+
+ Partition  File        Comment
+ 1          boot.scr    # Boot script, generated with mkimage from template
+
+Content of **boot.scr**:
+
+.. code-block:: bash
+
+  ext4load ${devtype} ${devnum}:${distro_bootpart} ${kernel_addr_r} ${prefix}Image
+  setenv kernel_size ${filesize}
+  ext4load ${devtype} ${devnum}:${distro_bootpart} ${ramdisk_addr_r} ${prefix}Initrd
+  setenv initrd_size ${filesize}
+  zboot  ${kernel_addr_r} ${kernel_size} ${ramdisk_addr_r} ${initrd_size}
+
+Extlinux configuration
+~~~~~~~~~~~~~~~~~~~~~~
+
+Alternatively a configuration **extlinux.conf** can be used. **extlinux.conf**
+is assumed to be located at::
+
+ Partition  File                        Comment
+ 1          extlinux/extlinux.conf      # Extlinux boot configuration
+
+Content of **extlinux.conf**:
+
+.. code-block:: bash
+
+  default l0
+  menu title U-Boot menu
+  prompt 0
+  timeout 50
+
+  label l0
+    menu label Linux
+    linux /Image
+    initrd /Initrd
+
+
+Additionally something like (sda is assumed as disk device):
+
+.. code-block:: bash
+
+	append  root=/dev/sda2 console=tty0 console=ttyS0,115200n8 rootwait rw
+
+
 
 Future work
 -----------
 This work could be extended in a number of ways:
 
 - Add ARM support
-
-- Add 64-bit application support (in progress)
 
 - Figure out how to solve the interrupt problem
 

@@ -6,8 +6,12 @@ config CF_SBF
 config EXTRA_CLOCK
 	def_bool y
 
+config SERIAL_BOOT
+	def_bool y
+	depends on CF_SBF
+
 config SYS_INPUT_CLKSRC
-	hex
+	int "External crystal clock"
 	default 30000000
 
 config SYS_CPU

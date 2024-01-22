@@ -14,6 +14,7 @@
 #include <pwm.h>
 #include <asm/gpio.h>
 #include <linux/delay.h>
+#include <linux/math64.h>
 #include <power/regulator.h>
 
 /**
@@ -59,12 +60,14 @@ struct pwm_backlight_priv {
 
 static int set_pwm(struct pwm_backlight_priv *priv)
 {
+	u64 width;
 	uint duty_cycle;
 	int ret;
 
 	if (priv->period_ns) {
-		duty_cycle = priv->period_ns * (priv->cur_level - priv->min_level) /
-			(priv->max_level - priv->min_level);
+		width = priv->period_ns * (priv->cur_level - priv->min_level);
+		duty_cycle = div_u64(width,
+				     (priv->max_level - priv->min_level));
 		ret = pwm_set_config(priv->pwm, priv->channel, priv->period_ns,
 				     duty_cycle);
 	} else {
@@ -97,8 +100,8 @@ static int enable_sequence(struct udevice *dev, int seq)
 			plat = dev_get_uclass_plat(priv->reg);
 			log_debug("Enable '%s', regulator '%s'/'%s'\n",
 				  dev->name, priv->reg->name, plat->name);
-			ret = regulator_set_enable(priv->reg, true);
-			if (ret) {
+			ret = regulator_set_enable_if_allowed(priv->reg, true);
+			if (ret && ret != -ENOSYS) {
 				log_debug("Cannot enable regulator for PWM '%s'\n",
 					  dev->name);
 				return log_ret(ret);
@@ -178,11 +181,10 @@ static int pwm_backlight_set_brightness(struct udevice *dev, int percent)
 	}
 	if (disable) {
 		dm_gpio_set_value(&priv->enable, 0);
-		if (priv->reg) {
-			ret = regulator_set_enable(priv->reg, false);
-			if (ret)
-				return log_ret(ret);
-		}
+		ret = regulator_set_enable_if_allowed(priv->reg, false);
+		if (ret && ret != -ENOSYS)
+			return log_ret(ret);
+
 		priv->enabled = false;
 	}
 

@@ -125,7 +125,7 @@ static void config_reg_helper(struct pinmux_info *gpioc,
 		*maskp = (1 << crp->var_field_width[in_pos]) - 1;
 		*posp = crp->reg_width;
 		for (k = 0; k <= in_pos; k++)
-			*posp -= crp->var_field_width[k];
+			*posp -= abs(crp->var_field_width[k]);
 	}
 }
 
@@ -568,10 +568,10 @@ static int sh_gpio_get_value(struct pinmux_info *gpioc, unsigned gpio)
 
 	if (!gpioc || get_data_reg(gpioc, gpio, &dr, &bit) != 0)
 		return -1;
-#if defined(CONFIG_RCAR_GEN3)
-	if ((gpioc->gpios[gpio].flags & PINMUX_FLAG_TYPE) == PINMUX_TYPE_INPUT)
+
+	if (IS_ENABLED(CONFIG_RCAR_64) &&
+	    ((gpioc->gpios[gpio].flags & PINMUX_FLAG_TYPE) == PINMUX_TYPE_INPUT))
 		offset += 4;
-#endif
 
 	return gpio_read_bit(dr, offset, bit);
 }

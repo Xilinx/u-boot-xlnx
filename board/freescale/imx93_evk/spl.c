@@ -20,7 +20,7 @@
 #include <asm/mach-imx/mxc_i2c.h>
 #include <asm/arch-mx7ulp/gpio.h>
 #include <asm/mach-imx/syscounter.h>
-#include <asm/mach-imx/s400_api.h>
+#include <asm/sections.h>
 #include <dm/uclass.h>
 #include <dm/device.h>
 #include <dm/uclass-internal.h>
@@ -67,16 +67,26 @@ int power_init_board(void)
 	/* BUCKxOUT_DVS0/1 control BUCK123 output */
 	pmic_reg_write(dev, PCA9450_BUCK123_DVS, 0x29);
 
-	/* 0.9v
-	 */
-	pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS0, 0x18);
-	pmic_reg_write(dev, PCA9450_BUCK3OUT_DVS0, 0x18);
+	/* enable DVS control through PMIC_STBY_REQ */
+	pmic_reg_write(dev, PCA9450_BUCK1CTRL, 0x59);
+
+	if (IS_ENABLED(CONFIG_IMX9_LOW_DRIVE_MODE)) {
+		/* 0.75v for Low drive mode
+		 */
+		pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS0, 0x0c);
+		pmic_reg_write(dev, PCA9450_BUCK3OUT_DVS0, 0x0c);
+	} else {
+		/* 0.9v for Over drive mode
+		 */
+		pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS0, 0x18);
+		pmic_reg_write(dev, PCA9450_BUCK3OUT_DVS0, 0x18);
+	}
+
+	/* set standby voltage to 0.65v */
+	pmic_reg_write(dev, PCA9450_BUCK1OUT_DVS1, 0x4);
 
 	/* I2C_LT_EN*/
 	pmic_reg_write(dev, 0xa, 0x3);
-
-	/* set WDOG_B_CFG to cold reset */
-	pmic_reg_write(dev, PCA9450_RESET_CTRL, 0xA1);
 	return 0;
 }
 #endif
@@ -106,10 +116,11 @@ void board_init_f(ulong dummy)
 		printf("SOC: 0x%x\n", gd->arch.soc_rev);
 		printf("LC: 0x%x\n", gd->arch.lifecycle);
 	}
+
 	power_init_board();
 
-	/* 1.7GHz */
-	set_arm_clk(1700000000);
+	if (!IS_ENABLED(CONFIG_IMX9_LOW_DRIVE_MODE))
+		set_arm_clk(get_cpu_speed_grade_hz());
 
 	/* Init power of mix */
 	soc_power_init();

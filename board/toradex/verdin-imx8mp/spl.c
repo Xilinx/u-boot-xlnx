@@ -21,8 +21,7 @@
 #include <dm/uclass.h>
 #include <power/pmic.h>
 #include <power/pca9450.h>
-
-extern struct dram_timing_info dram_timing2;
+#include "lpddr4_timing.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -34,13 +33,19 @@ int spl_board_boot_device(enum boot_device boot_dev_spl)
 void spl_dram_init(void)
 {
 	/*
-	 * try configuring for quad die, dual rank aka 8 GB falling back to
-	 * dual die, single rank aka 1 GB (untested), 2 GB or 4 GB if it fails
+	 * Try configuring for dual rank memory falling back to single rank
 	 */
-	if (ddr_init(&dram_timing)) {
-		printf("Quad die, dual rank failed, attempting dual die, single rank configuration.\n");
-		ddr_init(&dram_timing2);
+	if (!ddr_init(&dram_timing)) {
+		puts("DDR configured as dual rank\n");
+		return;
 	}
+
+	lpddr4_single_rank_training_patch();
+	if (!ddr_init(&dram_timing)) {
+		puts("DDR configured as single rank\n");
+		return;
+	}
+	puts("DDR configuration failed\n");
 }
 
 void spl_board_init(void)
@@ -115,9 +120,6 @@ int power_init_board(void)
 	/* Kernel uses OD/OD freq for SoC */
 	/* To avoid timing risk from SoC to ARM, increase VDD_ARM to OD voltage 0.95v */
 	pmic_reg_write(p, PCA9450_BUCK2OUT_DVS0, 0x1c);
-
-	/* set WDOG_B_CFG to cold reset */
-	pmic_reg_write(p, PCA9450_RESET_CTRL, 0xA1);
 
 	/* set LDO4 and CONFIG2 to enable the I2C level translator */
 	pmic_reg_write(p, PCA9450_LDO4CTRL, 0x59);

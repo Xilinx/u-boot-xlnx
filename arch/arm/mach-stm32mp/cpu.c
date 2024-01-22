@@ -15,6 +15,7 @@
 #include <lmb.h>
 #include <misc.h>
 #include <net.h>
+#include <spl.h>
 #include <asm/io.h>
 #include <asm/arch/stm32.h>
 #include <asm/arch/sys_proto.h>
@@ -22,6 +23,7 @@
 #include <dm/device.h>
 #include <dm/uclass.h>
 #include <linux/bitops.h>
+#include <linux/printk.h>
 
 /*
  * early TLB into the .data section so that it not get cleared
@@ -36,6 +38,13 @@ u32 get_bootmode(void)
 	/* read bootmode from TAMP backup register */
 	return (readl(TAMP_BOOT_CONTEXT) & TAMP_BOOT_MODE_MASK) >>
 		    TAMP_BOOT_MODE_SHIFT;
+}
+
+u32 get_bootauth(void)
+{
+	/* read boot auth status and partition from TAMP backup register */
+	return (readl(TAMP_BOOT_CONTEXT) & TAMP_BOOT_AUTH_MASK) >>
+		    TAMP_BOOT_AUTH_SHIFT;
 }
 
 /*
@@ -89,10 +98,10 @@ static void early_enable_caches(void)
 	if (CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
 		return;
 
-	if (!(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))) {
+#if !(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
 		gd->arch.tlb_size = PGTABLE_SIZE;
 		gd->arch.tlb_addr = (unsigned long)&early_tlb;
-	}
+#endif
 
 	/* enable MMU (default configuration) */
 	dcache_enable();
@@ -189,7 +198,7 @@ static void setup_boot_mode(void)
 		  __func__, boot_ctx, boot_mode, instance, forced_mode);
 	switch (boot_mode & TAMP_BOOT_DEVICE_MASK) {
 	case BOOT_SERIAL_UART:
-		if (instance > ARRAY_SIZE(serial_addr))
+		if (instance >= ARRAY_SIZE(serial_addr))
 			break;
 		/* serial : search associated node in devicetree */
 		sprintf(cmd, "serial@%x", serial_addr[instance]);
@@ -219,7 +228,7 @@ static void setup_boot_mode(void)
 		break;
 	case BOOT_FLASH_SD:
 	case BOOT_FLASH_EMMC:
-		if (instance > ARRAY_SIZE(sdmmc_addr))
+		if (instance >= ARRAY_SIZE(sdmmc_addr))
 			break;
 		/* search associated sdmmc node in devicetree */
 		sprintf(cmd, "mmc@%x", sdmmc_addr[instance]);
@@ -369,8 +378,24 @@ __weak void stm32mp_misc_init(void)
 {
 }
 
+static int setup_boot_auth_info(void)
+{
+	char buf[10];
+	u32 bootauth = get_bootauth();
+
+	snprintf(buf, sizeof(buf), "%d", bootauth >> 4);
+	env_set("boot_auth", buf);
+
+	snprintf(buf, sizeof(buf), "%d", bootauth &
+		 (u32)TAMP_BOOT_PARTITION_MASK);
+	env_set("boot_part", buf);
+
+	return 0;
+}
+
 int arch_misc_init(void)
 {
+	setup_boot_auth_info();
 	setup_boot_mode();
 	setup_mac_address();
 	setup_serial_number();
@@ -378,3 +403,52 @@ int arch_misc_init(void)
 
 	return 0;
 }
+
+/*
+ * Without forcing the ".data" section, this would get saved in ".bss". BSS
+ * will be cleared soon after, so it's not suitable.
+ */
+static uintptr_t rom_api_table __section(".data");
+static uintptr_t nt_fw_dtb __section(".data");
+
+/*
+ * The ROM gives us the API location in r0 when starting. This is only available
+ * during SPL, as there isn't (yet) a mechanism to pass this on to u-boot. Save
+ * the FDT address provided by TF-A in r2 at boot time. This function is called
+ * from start.S
+ */
+void save_boot_params(unsigned long r0, unsigned long r1, unsigned long r2,
+		      unsigned long r3)
+{
+	if (IS_ENABLED(CONFIG_STM32_ECDSA_VERIFY))
+		rom_api_table = r0;
+
+	if (IS_ENABLED(CONFIG_TFABOOT))
+		nt_fw_dtb = r2;
+
+	save_boot_params_ret();
+}
+
+uintptr_t get_stm32mp_rom_api_table(void)
+{
+	return rom_api_table;
+}
+
+uintptr_t get_stm32mp_bl2_dtb(void)
+{
+	return nt_fw_dtb;
+}
+
+#ifdef CONFIG_SPL_BUILD
+void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
+{
+	typedef void __noreturn (*image_entry_stm32_t)(u32 romapi);
+	uintptr_t romapi = get_stm32mp_rom_api_table();
+
+	image_entry_stm32_t image_entry =
+		(image_entry_stm32_t)spl_image->entry_point;
+
+	printf("image entry point: 0x%lx\n", spl_image->entry_point);
+	image_entry(romapi);
+}
+#endif

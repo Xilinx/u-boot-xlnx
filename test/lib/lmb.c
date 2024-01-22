@@ -451,12 +451,23 @@ static int lib_test_lmb_overlapping_reserve(struct unit_test_state *uts)
 	ut_asserteq(ret, 0);
 	ASSERT_LMB(&lmb, ram, ram_size, 2, 0x40010000, 0x10000,
 		   0x40030000, 0x10000, 0, 0);
-	/* allocate 2nd region */
+	/* allocate 2nd region , This should coalesced all region into one */
 	ret = lmb_reserve(&lmb, 0x40020000, 0x10000);
 	ut_assert(ret >= 0);
 	ASSERT_LMB(&lmb, ram, ram_size, 1, 0x40010000, 0x30000,
 		   0, 0, 0, 0);
 
+	/* allocate 2nd region, which should be added as first region */
+	ret = lmb_reserve(&lmb, 0x40000000, 0x8000);
+	ut_assert(ret >= 0);
+	ASSERT_LMB(&lmb, ram, ram_size, 2, 0x40000000, 0x8000,
+		   0x40010000, 0x30000, 0, 0);
+
+	/* allocate 3rd region, coalesce with first and overlap with second */
+	ret = lmb_reserve(&lmb, 0x40008000, 0x10000);
+	ut_assert(ret >= 0);
+	ASSERT_LMB(&lmb, ram, ram_size, 1, 0x40000000, 0x40000,
+		   0, 0, 0, 0);
 	return 0;
 }
 
@@ -665,10 +676,17 @@ static int lib_test_lmb_get_free_size(struct unit_test_state *uts)
 DM_TEST(lib_test_lmb_get_free_size,
 	UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
 
+#ifdef CONFIG_LMB_USE_MAX_REGIONS
 static int lib_test_lmb_max_regions(struct unit_test_state *uts)
 {
 	const phys_addr_t ram = 0x00000000;
-	const phys_size_t ram_size = 0x8000000;
+	/*
+	 * All of 32bit memory space will contain regions for this test, so
+	 * we need to scale ram_size (which in this case is the size of the lmb
+	 * region) to match.
+	 */
+	const phys_size_t ram_size = ((0xFFFFFFFF >> CONFIG_LMB_MAX_REGIONS)
+			+ 1) * CONFIG_LMB_MAX_REGIONS;
 	const phys_size_t blk_size = 0x10000;
 	phys_addr_t offset;
 	struct lmb lmb;
@@ -677,54 +695,55 @@ static int lib_test_lmb_max_regions(struct unit_test_state *uts)
 	lmb_init(&lmb);
 
 	ut_asserteq(lmb.memory.cnt, 0);
-	ut_asserteq(lmb.memory.max, 8);
+	ut_asserteq(lmb.memory.max, CONFIG_LMB_MAX_REGIONS);
 	ut_asserteq(lmb.reserved.cnt, 0);
-	ut_asserteq(lmb.reserved.max, 8);
+	ut_asserteq(lmb.reserved.max, CONFIG_LMB_MAX_REGIONS);
 
-	/*  Add 8 memory regions */
-	for (i = 0; i < 8; i++) {
+	/*  Add CONFIG_LMB_MAX_REGIONS memory regions */
+	for (i = 0; i < CONFIG_LMB_MAX_REGIONS; i++) {
 		offset = ram + 2 * i * ram_size;
 		ret = lmb_add(&lmb, offset, ram_size);
 		ut_asserteq(ret, 0);
 	}
-	ut_asserteq(lmb.memory.cnt, 8);
+	ut_asserteq(lmb.memory.cnt, CONFIG_LMB_MAX_REGIONS);
 	ut_asserteq(lmb.reserved.cnt, 0);
 
-	/*  error for the 9th memory regions */
-	offset = ram + 2 * 8 * ram_size;
+	/*  error for the (CONFIG_LMB_MAX_REGIONS + 1) memory regions */
+	offset = ram + 2 * (CONFIG_LMB_MAX_REGIONS + 1) * ram_size;
 	ret = lmb_add(&lmb, offset, ram_size);
 	ut_asserteq(ret, -1);
 
-	ut_asserteq(lmb.memory.cnt, 8);
+	ut_asserteq(lmb.memory.cnt, CONFIG_LMB_MAX_REGIONS);
 	ut_asserteq(lmb.reserved.cnt, 0);
 
-	/*  reserve 8 regions */
-	for (i = 0; i < 8; i++) {
+	/*  reserve CONFIG_LMB_MAX_REGIONS regions */
+	for (i = 0; i < CONFIG_LMB_MAX_REGIONS; i++) {
 		offset = ram + 2 * i * blk_size;
 		ret = lmb_reserve(&lmb, offset, blk_size);
 		ut_asserteq(ret, 0);
 	}
 
-	ut_asserteq(lmb.memory.cnt, 8);
-	ut_asserteq(lmb.reserved.cnt, 8);
+	ut_asserteq(lmb.memory.cnt, CONFIG_LMB_MAX_REGIONS);
+	ut_asserteq(lmb.reserved.cnt, CONFIG_LMB_MAX_REGIONS);
 
 	/*  error for the 9th reserved blocks */
-	offset = ram + 2 * 8 * blk_size;
+	offset = ram + 2 * (CONFIG_LMB_MAX_REGIONS + 1) * blk_size;
 	ret = lmb_reserve(&lmb, offset, blk_size);
 	ut_asserteq(ret, -1);
 
-	ut_asserteq(lmb.memory.cnt, 8);
-	ut_asserteq(lmb.reserved.cnt, 8);
+	ut_asserteq(lmb.memory.cnt, CONFIG_LMB_MAX_REGIONS);
+	ut_asserteq(lmb.reserved.cnt, CONFIG_LMB_MAX_REGIONS);
 
 	/*  check each regions */
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < CONFIG_LMB_MAX_REGIONS; i++)
 		ut_asserteq(lmb.memory.region[i].base, ram + 2 * i * ram_size);
 
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < CONFIG_LMB_MAX_REGIONS; i++)
 		ut_asserteq(lmb.reserved.region[i].base, ram + 2 * i * blk_size);
 
 	return 0;
 }
+#endif
 
 DM_TEST(lib_test_lmb_max_regions,
 	UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);

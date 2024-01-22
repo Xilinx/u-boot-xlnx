@@ -31,7 +31,7 @@ int spl_ubi_load_image(struct spl_image_info *spl_image,
 #ifdef CONFIG_SPL_ONENAND_SUPPORT
 	case BOOT_DEVICE_ONENAND:
 		info.read = onenand_spl_read_block;
-		info.peb_size = CONFIG_SYS_ONENAND_BLOCK_SIZE;
+		info.peb_size = CFG_SYS_ONENAND_BLOCK_SIZE;
 		break;
 #endif
 	default:
@@ -50,7 +50,7 @@ int spl_ubi_load_image(struct spl_image_info *spl_image,
 		volumes[0].vol_id = CONFIG_SPL_UBI_LOAD_KERNEL_ID;
 		volumes[0].load_addr = (void *)CONFIG_SYS_LOAD_ADDR;
 		volumes[1].vol_id = CONFIG_SPL_UBI_LOAD_ARGS_ID;
-		volumes[1].load_addr = (void *)CONFIG_SYS_SPL_ARGS_ADDR;
+		volumes[1].load_addr = (void *)CONFIG_SPL_PAYLOAD_ARGS_ADDR;
 
 		ret = ubispl_load_volumes(&info, volumes, 2);
 		if (!ret) {

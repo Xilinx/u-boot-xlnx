@@ -2,7 +2,7 @@
 /*
  * (C) Copyright 2013 - 2014 Xilinx, Inc
  *
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 
 #include <asm-offsets.h>
@@ -54,6 +54,7 @@ SECTIONS
 		__bss_end = .;
 	}
 	_end = . ;
+	_image_binary_end = .;
 }
 
 #if defined(CONFIG_SPL_MAX_FOOTPRINT)

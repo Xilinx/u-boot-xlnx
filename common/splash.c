@@ -96,12 +96,11 @@ __weak int splash_screen_prepare(void)
 	return splash_video_logo_load();
 }
 
-#ifdef CONFIG_SPLASH_SCREEN_ALIGN
 void splash_get_pos(int *x, int *y)
 {
 	char *s = env_get("splashpos");
 
-	if (!s)
+	if (!CONFIG_IS_ENABLED(SPLASH_SCREEN_ALIGN) || !s)
 		return;
 
 	if (s[0] == 'm')
@@ -117,9 +116,8 @@ void splash_get_pos(int *x, int *y)
 			*y = simple_strtol(s + 1, NULL, 0);
 	}
 }
-#endif /* CONFIG_SPLASH_SCREEN_ALIGN */
 
-#if defined(CONFIG_VIDEO) && !defined(CONFIG_HIDE_LOGO_VERSION)
+#if CONFIG_IS_ENABLED(VIDEO) && !CONFIG_IS_ENABLED(HIDE_LOGO_VERSION)
 
 #ifdef CONFIG_VIDEO_LOGO
 #include <bmp_logo.h>
@@ -127,9 +125,11 @@ void splash_get_pos(int *x, int *y)
 #include <dm.h>
 #include <video_console.h>
 #include <video_font.h>
+#include <video_font_data.h>
 
 void splash_display_banner(void)
 {
+	struct video_fontdata __maybe_unused *fontdata = fonts;
 	struct udevice *dev;
 	char buf[DISPLAY_OPTIONS_BANNER_LENGTH];
 	int col, row, ret;
@@ -138,9 +138,9 @@ void splash_display_banner(void)
 	if (ret)
 		return;
 
-#ifdef CONFIG_VIDEO_LOGO
-	col = BMP_LOGO_WIDTH / VIDEO_FONT_WIDTH + 1;
-	row = BMP_LOGO_HEIGHT / VIDEO_FONT_HEIGHT + 1;
+#if IS_ENABLED(CONFIG_VIDEO_LOGO)
+	col = BMP_LOGO_WIDTH / fontdata->width + 1;
+	row = BMP_LOGO_HEIGHT / fontdata->height + 1;
 #else
 	col = 0;
 	row = 0;
@@ -157,13 +157,13 @@ void splash_display_banner(void)
  * Common function to show a splash image if env("splashimage") is set.
  * For additional details please refer to doc/README.splashprepare.
  */
-#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_CMD_BMP)
 int splash_display(void)
 {
 	ulong addr;
 	char *s;
 	int x = 0, y = 0, ret;
-
+	if (!CONFIG_IS_ENABLED(SPLASH_SCREEN))
+		return -ENOSYS;
 	s = env_get("splashimage");
 	if (!s)
 		return -EINVAL;
@@ -175,16 +175,18 @@ int splash_display(void)
 
 	splash_get_pos(&x, &y);
 
-	ret = bmp_display(addr, x, y);
+	if (CONFIG_IS_ENABLED(BMP))
+		ret = bmp_display(addr, x, y);
+	else
+		return -ENOSYS;
 
 	/* Skip banner output on video console if the logo is not at 0,0 */
 	if (x || y)
 		goto end;
 
-#if defined(CONFIG_VIDEO) && !defined(CONFIG_HIDE_LOGO_VERSION)
+#if CONFIG_IS_ENABLED(VIDEO) && !CONFIG_IS_ENABLED(HIDE_LOGO_VERSION)
 	splash_display_banner();
 #endif
 end:
 	return ret;
 }
-#endif

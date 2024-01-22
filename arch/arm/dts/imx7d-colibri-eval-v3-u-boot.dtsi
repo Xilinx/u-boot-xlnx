@@ -3,6 +3,8 @@
  * Copyright 2020-2022 Toradex
  */
 
+#include "imx7s-u-boot.dtsi"
+
 &{/aliases} {
 	/* SDHCI instance order: eMMC, SD/MMC */
 	mmc0 = &usdhc3;
@@ -15,7 +17,7 @@
 	pinctrl-0 = <&pinctrl_lcdif_dat
 		     &pinctrl_lcdif_ctrl>;
 	display = <&display0>;
-	u-boot,dm-pre-reloc;
+	bootph-all;
 
 	display0: display0 {
 		bits-per-pixel = <18>;

@@ -12,6 +12,7 @@
 #include <linux/bitops.h>
 #include <clk-uclass.h>
 #include <clk.h>
+#include <zynqmp_firmware.h>
 #include <asm/arch/sys_proto.h>
 #include <dm.h>
 #include <linux/err.h>
@@ -696,6 +697,7 @@ static ulong zynqmp_clk_get_rate(struct clk *clk)
 	case topsw_lsbus:
 	case sata_ref ... gpu_pp1_ref:
 		two_divs = true;
+		fallthrough;
 	case cpu_r5:
 	case dbg_fpd:
 	case ams_ref:

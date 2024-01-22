@@ -7,26 +7,8 @@
 	wdt-reboot {
 		compatible = "wdt-reboot";
 		wdt = <&wdog3>;
-		u-boot,dm-spl;
-	};
-
-	aliases {
-		usbgadget0 = &usbg1;
-		usbgadget1 = &usbg2;
-	};
-
-	usbg1: usbg1 {
-		compatible = "fsl,imx27-usb-gadget";
-		dr_mode = "peripheral";
-		chipidea,usb = <&usbotg1>;
-		status = "okay";
-	};
-
-	usbg2: usbg2 {
-		compatible = "fsl,imx27-usb-gadget";
-		dr_mode = "peripheral";
-		chipidea,usb = <&usbotg2>;
-		status = "okay";
+		bootph-pre-ram;
+		bootph-some-ram;
 	};
 
 	firmware {
@@ -38,91 +20,109 @@
 };
 
 &{/soc@0} {
-	u-boot,dm-pre-reloc;
-	u-boot,dm-spl;
+	bootph-all;
+	bootph-pre-ram;
 };
 
 &aips1 {
-	u-boot,dm-spl;
-	u-boot,dm-pre-reloc;
+	bootph-pre-ram;
+	bootph-all;
 };
 
 &aips2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &aips3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &iomuxc {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &reg_usdhc2_vmmc {
 	u-boot,off-on-delay-us = <20000>;
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &pinctrl_reg_usdhc2_vmmc {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl_uart1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &pinctrl_usdhc2_gpio {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &pinctrl_usdhc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &gpio1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &gpio2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &gpio3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &gpio4 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &lpuart1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &usdhc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &usdhc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 	fsl,signal-voltage-switch-extra-delay-ms = <8>;
 };
 
 &lpi2c2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &{/soc@0/bus@44000000/i2c@44350000/pmic@25} {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &{/soc@0/bus@44000000/i2c@44350000/pmic@25/regulators} {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &pinctrl_lpi2c2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 };
 
 &fec {
@@ -141,17 +141,31 @@
 	reset-deassert-us = <100000>;
 };
 
-&usbotg1 {
-	status = "okay";
-	extcon = <&ptn5110>;
-};
-
-&usbotg2 {
-	status = "okay";
-	extcon = <&ptn5110_2>;
-};
-
 &s4muap {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+	bootph-some-ram;
 	status = "okay";
+};
+
+&clk {
+	bootph-all;
+	bootph-pre-ram;
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-rates;
+	/delete-property/ assigned-clock-parents;
+};
+
+&osc_32k {
+	bootph-all;
+	bootph-pre-ram;
+};
+
+&osc_24m {
+	bootph-all;
+	bootph-pre-ram;
+};
+
+&clk_ext1 {
+	bootph-all;
+	bootph-pre-ram;
 };

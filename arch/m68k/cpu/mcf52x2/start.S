@@ -35,7 +35,7 @@
  */
 _vectors:
 .long	0x00000000		/* Flash offset is 0 until we setup CS0 */
-#if defined(CONFIG_M5282) && (CONFIG_TEXT_BASE == CONFIG_SYS_INT_FLASH_BASE)
+#if defined(CONFIG_M5282) && (CONFIG_TEXT_BASE == CFG_SYS_INT_FLASH_BASE)
 .long	_start - CONFIG_TEXT_BASE
 #else
 .long	_START
@@ -81,9 +81,9 @@ _vectors:
 
 .text
 
-#if defined(CONFIG_SYS_INT_FLASH_BASE) && \
+#if defined(CFG_SYS_INT_FLASH_BASE) && \
     (defined(CONFIG_M5282) || defined(CONFIG_M5281))
-#if (CONFIG_TEXT_BASE == CONFIG_SYS_INT_FLASH_BASE)
+#if (CONFIG_TEXT_BASE == CFG_SYS_INT_FLASH_BASE)
 .long	0x55AA55AA,0xAA55AA55		/* CFM Backdoorkey */
 .long	0xFFFFFFFF			/* all sectors protected */
 .long	0x00000000			/* supervisor/User restriction */
@@ -98,55 +98,55 @@ _start:
 	nop
 	move.w	#0x2700,%sr
 
-#if defined(CONFIG_M5208)
+#if defined(CONFIG_M5208) && !defined(CONFIG_M68K_QEMU)
 	/* Initialize RAMBAR: locate SRAM and validate it */
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_CTRL), %d0
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_CTRL), %d0
 	movec	%d0, %RAMBAR1
 #endif
 
 #if defined(CONFIG_M5272) || defined(CONFIG_M5249) || defined(CONFIG_M5253)
 	/* set MBAR address + valid flag */
-	move.l	#(CONFIG_SYS_MBAR + 1), %d0
+	move.l	#(CFG_SYS_MBAR + 1), %d0
 	move.c	%d0, %MBAR
 
 	/*** The 5249 has MBAR2 as well ***/
-#ifdef CONFIG_SYS_MBAR2
+#ifdef CFG_SYS_MBAR2
 	/* Get MBAR2 address */
-	move.l	#(CONFIG_SYS_MBAR2 + 1), %d0
+	move.l	#(CFG_SYS_MBAR2 + 1), %d0
 	 /* Set MBAR2 */
 	movec	%d0, #0xc0e
 #endif
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + 1), %d0
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + 1), %d0
 	movec	%d0, %RAMBAR0
 #endif /* CONFIG_M5272 || CONFIG_M5249 || CONFIG_M5253 */
 
-#if defined(CONFIG_M5282) || defined(CONFIG_M5271)
+#if (defined(CONFIG_M5282) || defined(CONFIG_M5271)) && !defined(CONFIG_M68K_QEMU)
 	/* set MBAR address + valid flag */
-	move.l	#(CONFIG_SYS_MBAR + 1), %d0
+	move.l	#(CFG_SYS_MBAR + 1), %d0
 	move.l	%d0, 0x40000000
 
 	/* Initialize RAMBAR1: locate SRAM and validate it */
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + 0x21), %d0
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + 0x21), %d0
 	movec	%d0, %RAMBAR1
 
 #if defined(CONFIG_M5282)
-#if (CONFIG_TEXT_BASE == CONFIG_SYS_INT_FLASH_BASE)
+#if (CONFIG_TEXT_BASE == CFG_SYS_INT_FLASH_BASE)
 	/*
 	 * Setup code in SRAM to initialize FLASHBAR,
 	 * if start from internal Flash
 	 */
-	move.l	#(_flashbar_setup-CONFIG_SYS_INT_FLASH_BASE), %a0
-	move.l	#(_flashbar_setup_end-CONFIG_SYS_INT_FLASH_BASE), %a1
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR), %a2
+	move.l	#(_flashbar_setup-CFG_SYS_INT_FLASH_BASE), %a0
+	move.l	#(_flashbar_setup_end-CFG_SYS_INT_FLASH_BASE), %a1
+	move.l	#(CFG_SYS_INIT_RAM_ADDR), %a2
 _copy_flash:
 	move.l	(%a0)+, (%a2)+
 	cmp.l	%a0, %a1
 	bgt.s	_copy_flash
-	jmp	CONFIG_SYS_INIT_RAM_ADDR
+	jmp	CFG_SYS_INIT_RAM_ADDR
 
 _flashbar_setup:
 	/* Initialize FLASHBAR: locate internal Flash and validate it */
-	move.l	#(CONFIG_SYS_INT_FLASH_BASE + CONFIG_SYS_INT_FLASH_ENABLE), %d0
+	move.l	#(CFG_SYS_INT_FLASH_BASE + CFG_SYS_INT_FLASH_ENABLE), %d0
 	movec	%d0, %FLASHBAR
 	jmp	_after_flashbar_copy.L	/* Force jump to absolute address */
 _flashbar_setup_end:
@@ -154,9 +154,9 @@ _flashbar_setup_end:
 _after_flashbar_copy:
 #else
 	/* Setup code to initialize FLASHBAR, if start from external Memory */
-	move.l	#(CONFIG_SYS_INT_FLASH_BASE + CONFIG_SYS_INT_FLASH_ENABLE), %d0
+	move.l	#(CFG_SYS_INT_FLASH_BASE + CFG_SYS_INT_FLASH_ENABLE), %d0
 	movec	%d0, %FLASHBAR
-#endif /* (CONFIG_TEXT_BASE == CONFIG_SYS_INT_FLASH_BASE) */
+#endif /* (CONFIG_TEXT_BASE == CFG_SYS_INT_FLASH_BASE) */
 
 #endif
 #endif
@@ -165,22 +165,22 @@ _after_flashbar_copy:
 	 * therefore no VBR to set
 	 */
 #if !defined(CONFIG_MONITOR_IS_IN_RAM)
-#if defined(CONFIG_M5282) && (CONFIG_TEXT_BASE == CONFIG_SYS_INT_FLASH_BASE)
-	move.l	#CONFIG_SYS_INT_FLASH_BASE, %d0
+#if defined(CONFIG_M5282) && (CONFIG_TEXT_BASE == CFG_SYS_INT_FLASH_BASE)
+	move.l	#CFG_SYS_INT_FLASH_BASE, %d0
 #else
-	move.l	#CONFIG_SYS_FLASH_BASE, %d0
+	move.l	#CFG_SYS_FLASH_BASE, %d0
 #endif
 	movec	%d0, %VBR
 #endif
 
 #ifdef CONFIG_M5275
 	/* set MBAR address + valid flag */
-	move.l	#(CONFIG_SYS_MBAR + 1), %d0
+	move.l	#(CFG_SYS_MBAR + 1), %d0
 	move.l	%d0, 0x40000000
 /*	movec	%d0, %MBAR */
 
 	/* Initialize RAMBAR: locate SRAM and validate it */
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + 0x21), %d0
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + 0x21), %d0
 	movec	%d0, %RAMBAR1
 #endif
 
@@ -195,7 +195,7 @@ _after_flashbar_copy:
 	move.l	#__got_start, %a5
 
 	/* setup stack initially on top of internal static ram  */
-	move.l	#(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_RAM_SIZE), %sp
+	move.l	#(CFG_SYS_INIT_RAM_ADDR + CFG_SYS_INIT_RAM_SIZE), %sp
 
 	/*
 	 * if configured, malloc_f arena will be reserved first,
@@ -255,6 +255,39 @@ relocate_code:
 	cmp.l	%a1,%a2
 	bgt.s	1b
 
+#define R_68K_32	1
+#define R_68K_RELATIVE	22
+
+	move.l #(__rel_dyn_start), %a1
+	move.l #(__rel_dyn_end), %a2
+
+fixloop:
+	move.l	(%a1)+, %d1	/* Elf32_Rela r_offset */
+	move.l	(%a1)+, %d2	/* Elf32_Rela r_info */
+	move.l	(%a1)+, %d3	/* Elf32_Rela r_addend */
+
+	andi.l	#0xff, %d2
+	cmp.l	#R_68K_32, %d2
+	beq.s	fixup
+	cmp.l	#R_68K_RELATIVE, %d2
+	beq.s	fixup
+
+	bra	fixnext
+
+fixup:
+	/* relative fix: store addend plus offset at dest location */
+	move.l	%a0, %a3
+	add.l	%d1, %a3
+	sub.l   #CONFIG_SYS_MONITOR_BASE, %a3
+	move.l	(%a3), %d4
+	add.l	%a0, %d4
+	sub.l   #CONFIG_SYS_MONITOR_BASE, %d4
+	move.l	%d4, (%a3)
+
+fixnext:
+	cmp.l	%a1, %a2
+	bge.s	fixloop
+
 /*
  * We are done. Do not return, instead branch to second part of board
  * initialization, now running from RAM.
@@ -269,10 +302,8 @@ clear_bss:
 	/*
 	 * Now clear BSS segment
 	 */
-	move.l	%a0, %a1
-	add.l	#(_sbss - CONFIG_SYS_MONITOR_BASE),%a1
-	move.l	%a0, %d1
-	add.l	#(_ebss - CONFIG_SYS_MONITOR_BASE),%d1
+	move.l	#(_sbss), %a1
+	move.l	#(_ebss), %d1
 6:
 	clr.l	(%a1)+
 	cmp.l	%a1,%d1
@@ -281,24 +312,10 @@ clear_bss:
 	/*
 	 * fix got table in RAM
 	 */
-	move.l	%a0, %a1
-	add.l	#(__got_start - CONFIG_SYS_MONITOR_BASE),%a1
-	move.l	%a1,%a5			/* fix got pointer register a5 */
-
-	move.l	%a0, %a2
-	add.l	#(__got_end - CONFIG_SYS_MONITOR_BASE),%a2
-
-7:
-	move.l	(%a1),%d1
-	sub.l	#_start,%d1
-	add.l	%a0,%d1
-	move.l	%d1,(%a1)+
-	cmp.l	%a2, %a1
-	bne	7b
+	move.l	#(__got_start), %a5	/* fix got pointer register a5 */
 
 	/* calculate relative jump to board_init_r in ram */
-	move.l	%a0, %a1
-	add.l	#(board_init_r - CONFIG_SYS_MONITOR_BASE), %a1
+	move.l	#(board_init_r), %a1
 
 	/* set parameters for board_init_r */
 	move.l	%a0,-(%sp)		/* dest_addr */

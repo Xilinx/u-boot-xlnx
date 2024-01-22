@@ -44,6 +44,7 @@ u32 get_cpu_dev(void);
 #define CPU_REV1_2	0x1003
 #define CPU_REV2	0x2000
 #define CPU_REV2_1	0x2001
+#define CPU_REV2_2	0x2003
 
 /* return Silicon revision = REV_ID[15:0] of Device Version */
 u32 get_cpu_rev(void);
@@ -65,6 +66,9 @@ void get_soc_name(char name[SOC_NAME_SIZE]);
 /* return boot mode */
 u32 get_bootmode(void);
 
+/* return auth status and partition */
+u32 get_bootauth(void);
+
 int get_eth_nb(void);
 int setup_mac_address(void);
 
@@ -77,3 +81,6 @@ void stm32mp_misc_init(void);
 
 /* helper function: read data from OTP */
 u32 get_otp(int index, int shift, int mask);
+
+uintptr_t get_stm32mp_rom_api_table(void);
+uintptr_t get_stm32mp_bl2_dtb(void);

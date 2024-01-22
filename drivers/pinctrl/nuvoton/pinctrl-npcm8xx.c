@@ -20,7 +20,7 @@
 #define SWRSTC1		0x44
 #define SWRSTC2		0x48
 #define SWRSTC3		0x4c
-#define SWRSTC4		0x50
+#define TIPRSTC		0x50
 #define CORSTC		0x5c
 #define FLOCKR1		0x74
 #define INTCR4		0xc0
@@ -329,6 +329,7 @@ struct group_info {
 
 static const struct group_info npcm8xx_groups[] = {
 	FUNC_LIST
+	{FN_gpio, "GPIO", NULL, 0, 0, 0}
 };
 
 /* Pin flags */
@@ -772,6 +773,10 @@ static int npcm8xx_gpio_reset_persist(struct udevice *dev, uint bank,
 		regmap_update_bits(priv->rst_regmap, WD1RCR, BIT(offset), 0);
 		regmap_update_bits(priv->rst_regmap, WD2RCR, BIT(offset), 0);
 		regmap_update_bits(priv->rst_regmap, CORSTC, BIT(offset), 0);
+		regmap_update_bits(priv->rst_regmap, SWRSTC1, BIT(offset), 0);
+		regmap_update_bits(priv->rst_regmap, SWRSTC2, BIT(offset), 0);
+		regmap_update_bits(priv->rst_regmap, SWRSTC3, BIT(offset), 0);
+		regmap_update_bits(priv->rst_regmap, TIPRSTC, BIT(offset), 0);
 	} else {
 		regmap_update_bits(priv->rst_regmap, WD0RCR, BIT(offset),
 				   BIT(offset));
@@ -780,6 +785,14 @@ static int npcm8xx_gpio_reset_persist(struct udevice *dev, uint bank,
 		regmap_update_bits(priv->rst_regmap, WD2RCR, BIT(offset),
 				   BIT(offset));
 		regmap_update_bits(priv->rst_regmap, CORSTC, BIT(offset),
+				   BIT(offset));
+		regmap_update_bits(priv->rst_regmap, SWRSTC1, BIT(offset),
+				   BIT(offset));
+		regmap_update_bits(priv->rst_regmap, SWRSTC2, BIT(offset),
+				   BIT(offset));
+		regmap_update_bits(priv->rst_regmap, SWRSTC3, BIT(offset),
+				   BIT(offset));
+		regmap_update_bits(priv->rst_regmap, TIPRSTC, BIT(offset),
 				   BIT(offset));
 	}
 
@@ -796,6 +809,9 @@ static bool is_gpio_persist(struct udevice *dev, uint bank)
 	status = npcm_get_reset_status();
 	dev_dbg(dev, "reset status: 0x%x\n", status);
 
+	if (status & PORST)
+		return false;
+
 	if (status & CORST)
 		regmap_read(priv->rst_regmap, CORSTC, &val);
 	else if (status & WD0RST)
@@ -804,6 +820,14 @@ static bool is_gpio_persist(struct udevice *dev, uint bank)
 		regmap_read(priv->rst_regmap, WD1RCR, &val);
 	else if (status & WD2RST)
 		regmap_read(priv->rst_regmap, WD2RCR, &val);
+	else if (status & SW1RST)
+		regmap_read(priv->rst_regmap, SWRSTC1, &val);
+	else if (status & SW2RST)
+		regmap_read(priv->rst_regmap, SWRSTC2, &val);
+	else if (status & SW3RST)
+		regmap_read(priv->rst_regmap, SWRSTC3, &val);
+	else if (status & TIPRST)
+		regmap_read(priv->rst_regmap, TIPRSTC, &val);
 	else
 		return false;
 
@@ -880,12 +904,12 @@ static int npcm8xx_pinconf_set(struct udevice *dev, unsigned int selector,
 		setbits_le32(base + GPIO_OES, BIT(gpio));
 	case PIN_CONFIG_OUTPUT:
 		dev_dbg(dev, "set pin %d output %d\n", pin, arg);
-		clrbits_le32(base + GPIO_IEM, BIT(gpio));
-		setbits_le32(base + GPIO_OES, BIT(gpio));
 		if (arg)
 			setbits_le32(base + GPIO_DOUT, BIT(gpio));
 		else
 			clrbits_le32(base + GPIO_DOUT, BIT(gpio));
+		clrbits_le32(base + GPIO_IEM, BIT(gpio));
+		setbits_le32(base + GPIO_OES, BIT(gpio));
 		break;
 	case PIN_CONFIG_DRIVE_PUSH_PULL:
 		dev_dbg(dev, "set pin %d push pull\n", pin);

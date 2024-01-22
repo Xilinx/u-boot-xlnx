@@ -10,6 +10,7 @@
 #include <cyclic.h>
 #include <dm.h>
 #include <event.h>
+#include <net.h>
 #include <of_live.h>
 #include <os.h>
 #include <dm/ofnode.h>
@@ -45,13 +46,13 @@ enum fdtchk_t {
  */
 static enum fdtchk_t fdt_action(void)
 {
-	/* Do a copy for sandbox (but only the U-Boot build, not SPL) */
-	if (CONFIG_IS_ENABLED(SANDBOX))
-		return FDTCHK_COPY;
-
 	/* For sandbox SPL builds, do nothing */
-	if (IS_ENABLED(CONFIG_SANDBOX))
+	if (IS_ENABLED(CONFIG_SANDBOX) && IS_ENABLED(CONFIG_SPL_BUILD))
 		return FDTCHK_NONE;
+
+	/* Do a copy for sandbox (but only the U-Boot build, not SPL) */
+	if (IS_ENABLED(CONFIG_SANDBOX))
+		return FDTCHK_COPY;
 
 	/* For all other boards, do a checksum */
 	return FDTCHK_CHECKSUM;
@@ -271,7 +272,7 @@ static int dm_test_restore(struct device_node *of_root)
 		return ret;
 	dm_scan_plat(false);
 	if (!CONFIG_IS_ENABLED(OF_PLATDATA))
-		dm_scan_fdt(false);
+		dm_extended_scan(false);
 
 	return 0;
 }
@@ -296,17 +297,28 @@ static int test_pre_run(struct unit_test_state *uts, struct unit_test *test)
 
 	uts->start = mallinfo();
 
-	if (test->flags & UT_TESTF_SCAN_PDATA) {
+	if (test->flags & UT_TESTF_SCAN_PDATA)
 		ut_assertok(dm_scan_plat(false));
-		ut_assertok(dm_scan_other(false));
-	}
 
 	if (test->flags & UT_TESTF_PROBE_TEST)
 		ut_assertok(do_autoprobe(uts));
 
-	if (!CONFIG_IS_ENABLED(OF_PLATDATA) &&
-	    (test->flags & UT_TESTF_SCAN_FDT))
+	if (CONFIG_IS_ENABLED(OF_REAL) &&
+	    (test->flags & UT_TESTF_SCAN_FDT)) {
+		/*
+		 * only set this if we know the ethernet uclass will be created
+		 */
+		eth_set_enable_bootdevs(test->flags & UT_TESTF_ETH_BOOTDEV);
+		test_sf_set_enable_bootdevs(test->flags & UT_TESTF_SF_BOOTDEV);
 		ut_assertok(dm_extended_scan(false));
+	}
+
+	/*
+	 * Do this after FDT scan since dm_scan_other() in bootstd-uclass.c
+	 * checks for the existence of bootstd
+	 */
+	if (test->flags & UT_TESTF_SCAN_PDATA)
+		ut_assertok(dm_scan_other(false));
 
 	if (IS_ENABLED(CONFIG_SANDBOX) && (test->flags & UT_TESTF_OTHER_FDT)) {
 		/* make sure the other FDT is available */
@@ -464,7 +476,9 @@ static int ut_run_test_live_flat(struct unit_test_state *uts,
 	 *   (for sandbox we handle this by copying the tree, but not for other
 	 *    boards)
 	 */
-	if (!(test->flags & UT_TESTF_LIVE_TREE) &&
+	if ((!CONFIG_IS_ENABLED(OF_LIVE) ||
+	     (test->flags & UT_TESTF_SCAN_FDT)) &&
+	    !(test->flags & UT_TESTF_LIVE_TREE) &&
 	    (CONFIG_IS_ENABLED(OFNODE_MULTI_TREE) ||
 	     !(test->flags & UT_TESTF_OTHER_FDT)) &&
 	    (!runs || ut_test_run_on_flattree(test)) &&
@@ -634,10 +648,6 @@ int ut_run_list(const char *category, const char *prefix,
 		printf("Test '%s' not found\n", select_name);
 	else
 		printf("Failures: %d\n", uts.fail_count);
-
-	/* Best efforts only...ignore errors */
-	if (has_dm_tests)
-		dm_test_restore(uts.of_root);
 
 	return ret;
 }

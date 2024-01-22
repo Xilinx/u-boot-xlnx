@@ -6,6 +6,7 @@ config MX7
 	select ARCH_SUPPORT_PSCI
 	select CPU_V7_HAS_NONSEC
 	select CPU_V7_HAS_VIRT
+	select IOMUX_LPSR
 	select ROM_UNIFIED_SECTIONS
 	select SYSCOUNTER_TIMER
 	imply CMD_FUSE
@@ -22,14 +23,6 @@ config TEXT_BASE
 config SPL_TEXT_BASE
 	depends on SPL
 	default 0x00912000
-
-config OPTEE_TZDRAM_SIZE
-	hex "Amount of Trust-Zone RAM for the OPTEE image"
-	default 0x0000000
-	depends on OPTEE_LIB
-	help
-	  The size of pre-allocated Trust Zone DRAM to allocate for the OPTEE
-	  runtime.
 
 choice
 	prompt "MX7 board select"

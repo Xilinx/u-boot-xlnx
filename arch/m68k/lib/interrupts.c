@@ -7,14 +7,14 @@
  * TsiChung Liew (Tsi-Chung.Liew@freescale.com)
  */
 
-#include <common.h>
+#include <stdio.h>
 #include <irq_func.h>
 #include <watchdog.h>
 #include <asm/processor.h>
 #include <asm/immap.h>
 #include <asm/ptrace.h>
 
-#define	NR_IRQS		(CONFIG_SYS_NUM_IRQS)
+#define	NR_IRQS		(CFG_SYS_NUM_IRQS)
 
 /*
  * Interrupt vector functions.

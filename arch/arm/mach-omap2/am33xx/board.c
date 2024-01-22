@@ -4,7 +4,7 @@
  *
  * Common board functions for AM33XX based boards
  *
- * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2011, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #include <common.h>
@@ -42,6 +42,7 @@
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/compiler.h>
+#include <linux/printk.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/musb.h>
@@ -72,14 +73,14 @@ int dram_init(void)
 
 	/* dram_init must store complete ramsize in gd->ram_size */
 	gd->ram_size = get_ram_size(
-			(void *)CONFIG_SYS_SDRAM_BASE,
-			CONFIG_MAX_RAM_BANK_SIZE);
+			(void *)CFG_SYS_SDRAM_BASE,
+			CFG_MAX_RAM_BANK_SIZE);
 	return 0;
 }
 
 int dram_init_banksize(void)
 {
-	gd->bd->bi_dram[0].start = CONFIG_SYS_SDRAM_BASE;
+	gd->bd->bi_dram[0].start = CFG_SYS_SDRAM_BASE;
 	gd->bd->bi_dram[0].size = gd->ram_size;
 
 	return 0;
@@ -87,29 +88,29 @@ int dram_init_banksize(void)
 
 #if !CONFIG_IS_ENABLED(OF_CONTROL)
 static const struct ns16550_plat am33xx_serial[] = {
-	{ .base = CONFIG_SYS_NS16550_COM1, .reg_shift = 2,
-	  .clock = CONFIG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
-# ifdef CONFIG_SYS_NS16550_COM2
-	{ .base = CONFIG_SYS_NS16550_COM2, .reg_shift = 2,
-	  .clock = CONFIG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
-#  ifdef CONFIG_SYS_NS16550_COM3
-	{ .base = CONFIG_SYS_NS16550_COM3, .reg_shift = 2,
-	  .clock = CONFIG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
-	{ .base = CONFIG_SYS_NS16550_COM4, .reg_shift = 2,
-	  .clock = CONFIG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
-	{ .base = CONFIG_SYS_NS16550_COM5, .reg_shift = 2,
-	  .clock = CONFIG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
-	{ .base = CONFIG_SYS_NS16550_COM6, .reg_shift = 2,
-	  .clock = CONFIG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
+	{ .base = CFG_SYS_NS16550_COM1, .reg_shift = 2,
+	  .clock = CFG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
+# ifdef CFG_SYS_NS16550_COM2
+	{ .base = CFG_SYS_NS16550_COM2, .reg_shift = 2,
+	  .clock = CFG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
+#  ifdef CFG_SYS_NS16550_COM3
+	{ .base = CFG_SYS_NS16550_COM3, .reg_shift = 2,
+	  .clock = CFG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
+	{ .base = CFG_SYS_NS16550_COM4, .reg_shift = 2,
+	  .clock = CFG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
+	{ .base = CFG_SYS_NS16550_COM5, .reg_shift = 2,
+	  .clock = CFG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
+	{ .base = CFG_SYS_NS16550_COM6, .reg_shift = 2,
+	  .clock = CFG_SYS_NS16550_CLK, .fcr = UART_FCR_DEFVAL, },
 #  endif
 # endif
 };
 
 U_BOOT_DRVINFOS(am33xx_uarts) = {
 	{ "ns16550_serial", &am33xx_serial[0] },
-#  ifdef CONFIG_SYS_NS16550_COM2
+#  ifdef CFG_SYS_NS16550_COM2
 	{ "ns16550_serial", &am33xx_serial[1] },
-#   ifdef CONFIG_SYS_NS16550_COM3
+#   ifdef CFG_SYS_NS16550_COM3
 	{ "ns16550_serial", &am33xx_serial[2] },
 	{ "ns16550_serial", &am33xx_serial[3] },
 	{ "ns16550_serial", &am33xx_serial[4] },
@@ -270,11 +271,7 @@ int arch_misc_init(void)
 		return ret;
 
 #if defined(CONFIG_DM_ETH) && defined(CONFIG_USB_ETHER)
-	ret = usb_ether_init();
-	if (ret) {
-		pr_err("USB ether init failed\n");
-		return ret;
-	}
+	usb_ether_init();
 #endif
 
 	return 0;
@@ -520,14 +517,14 @@ void board_init_f(ulong dummy)
 	sdram_init();
 	/* dram_init must store complete ramsize in gd->ram_size */
 	gd->ram_size = get_ram_size(
-			(void *)CONFIG_SYS_SDRAM_BASE,
-			CONFIG_MAX_RAM_BANK_SIZE);
+			(void *)CFG_SYS_SDRAM_BASE,
+			CFG_MAX_RAM_BANK_SIZE);
 }
 #endif
 
 #endif
 
-static int am33xx_dm_post_init(void *ctx, struct event *event)
+static int am33xx_dm_post_init(void)
 {
 	hw_data_init();
 #if !CONFIG_IS_ENABLED(SKIP_LOWLEVEL_INIT)
@@ -535,4 +532,4 @@ static int am33xx_dm_post_init(void *ctx, struct event *event)
 #endif
 	return 0;
 }
-EVENT_SPY(EVT_DM_POST_INIT, am33xx_dm_post_init);
+EVENT_SPY_SIMPLE(EVT_DM_POST_INIT_F, am33xx_dm_post_init);

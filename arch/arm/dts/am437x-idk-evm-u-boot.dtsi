@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2018 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 #include "am4372-u-boot.dtsi"
 
 /{
 	ocp {
-		u-boot,dm-spl;
+		bootph-pre-ram;
 	};
 
 	xtal25mhz: xtal25mhz {
@@ -18,11 +18,11 @@
 };
 
 &uart0 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &i2c0 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 
 	cdce913: cdce913@65 {
 		compatible = "ti,cdce913";
@@ -34,5 +34,5 @@
 };
 
 &mmc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };

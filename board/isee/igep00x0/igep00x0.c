@@ -47,7 +47,7 @@ U_BOOT_DRVINFO(igep_uart) = {
  * IGEP00x0 boards. First of all, it is necessary to reset USB transceiver from
  * IGEP0030 in order to read GPIO_IGEP00X0_BOARD_DETECTION correctly, because
  * this functionality is shared by USB HOST.
- * Once USB reset is applied, U-boot configures these pins as input pullup to
+ * Once USB reset is applied, U-Boot configures these pins as input pullup to
  * detect board and revision:
  * IGEP0020-RF = 0b00
  * IGEP0020-RC = 0b01
@@ -82,7 +82,7 @@ int onenand_board_init(struct mtd_info *mtd)
 {
 	if (gpmc_cs0_flash == MTD_DEV_TYPE_ONENAND) {
 		struct onenand_chip *this = mtd->priv;
-		this->base = (void *)CONFIG_SYS_ONENAND_BASE;
+		this->base = (void *)CFG_SYS_ONENAND_BASE;
 		return 0;
 	}
 	return 1;

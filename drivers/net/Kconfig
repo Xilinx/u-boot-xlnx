@@ -1,7 +1,6 @@
 source "drivers/net/phy/Kconfig"
 source "drivers/net/pfe_eth/Kconfig"
 source "drivers/net/fsl-mc/Kconfig"
-source "drivers/net/bnxt/Kconfig"
 
 config ETH
 	def_bool y
@@ -15,6 +14,10 @@ config DM_ETH
 	  The eth_*() interface will be implemented by the UCLASS_ETH class
 	  This is currently implemented in net/eth-uclass.c
 	  Look in include/net.h for details.
+
+config SPL_DM_ETH
+	depends on SPL_NET
+	def_bool y
 
 config DM_MDIO
 	bool "Enable Driver Model for MDIO devices"
@@ -175,6 +178,8 @@ config BCMGENET
 	help
 	  This driver supports the BCMGENET Ethernet MAC.
 
+source "drivers/net/bnxt/Kconfig"
+
 config CORTINA_NI_ENET
 	bool "Cortina-Access Ethernet driver"
 	depends on CORTINA_PLATFORM
@@ -193,6 +198,18 @@ config DRIVER_DM9000
 	help
 	  The Davicom DM9000 parallel bus external ethernet interface chip.
 
+config DM9000_BYTE_SWAPPED
+	bool "Byte swapped access for DM9000"
+	depends on DRIVER_DM9000
+
+config DM9000_NO_SROM
+	bool "No SROM on DM9000"
+	depends on DRIVER_DM9000
+
+config DM9000_USE_16BIT
+	bool "Use 16bit access in DM9000"
+	depends on DRIVER_DM9000
+
 config DWC_ETH_QOS
 	bool "Synopsys DWC Ethernet QOS device support"
 	select PHYLIB
@@ -207,6 +224,14 @@ config DWC_ETH_QOS_IMX
 	help
 	  The Synopsys Designware Ethernet QOS IP block with the specific
 	  configuration used in IMX soc.
+
+config DWC_ETH_QOS_ROCKCHIP
+	bool "Synopsys DWC Ethernet QOS device support for Rockchip SoCs"
+	depends on DWC_ETH_QOS
+	select DM_ETH_PHY
+	help
+	  The Synopsys Designware Ethernet QOS IP block with specific
+	  configuration used in Rockchip SoCs.
 
 config DWC_ETH_QOS_STM32
 	bool "Synopsys DWC Ethernet QOS device support for STM32"
@@ -224,6 +249,20 @@ config DWC_ETH_QOS_TEGRA186
 	help
 	  The Synopsys Designware Ethernet QOS IP block with specific
 	  configuration used in NVIDIA's Tegra186 chip.
+
+config DWC_ETH_QOS_QCOM
+	bool "Synopsys DWC Ethernet QOS device support for Qcom SoCs"
+	depends on DWC_ETH_QOS
+	help
+	  The Synopsys Designware Ethernet QOS IP block with specific
+	  configuration used in Qcom QCS404 SoC.
+
+config DWC_ETH_QOS_STARFIVE
+	bool "Synopsys DWC Ethernet QOS device support for STARFIVE"
+	depends on DWC_ETH_QOS
+	help
+	  The Synopsys Designware Ethernet QOS IP block with specific
+	  configuration used in STARFIVE  JH7110 soc.
 
 config E1000
 	bool "Intel PRO/1000 Gigabit Ethernet support"
@@ -355,6 +394,7 @@ config FMAN_ENET
 	select SYS_FMAN_V3 if ARCH_B4420 || ARCH_B4860 || ARCH_LS1043A || \
 		ARCH_LS1046A || ARCH_T1024 || ARCH_T1040 || ARCH_T1042 || \
 		ARCH_T2080 || ARCH_T4240
+	select FSL_FM_10GEC_REGULAR_NOTATION if ARCH_T1024
 	help
 	  This driver support the Freescale FMan Ethernet controller
 
@@ -374,8 +414,21 @@ config SYS_FMAN_V3
 	help
 	  SoC has FMan v3 with mEMAC
 
+config FSL_FM_10GEC_REGULAR_NOTATION
+	bool
+	help
+	  On SoCs T4240, T2080, LS1043A, etc, the notation between 10GEC and
+	  MAC as below:
+		10GEC1->MAC9, 10GEC2->MAC10, 10GEC3->MAC1, 10GEC4->MAC2
+	  While on SoCs T1024, etc, the notation between 10GEC and MAC as below:
+		10GEC1->MAC1, 10GEC2->MAC2
+	  so we introduce CONFIG_FSL_FM_10GEC_REGULAR_NOTATION to identify the
+	  new SoCs on which 10GEC enumeration is consistent with MAC
+	  enumeration.
+
 config FTMAC100
 	bool "Ftmac100 Ethernet Support"
+	select MII
 	help
 	  This MAC is present in Andestech SoCs.
 
@@ -442,6 +495,13 @@ config LITEETH
 	bool "LiteX LiteEth Ethernet MAC"
 	help
 	 Driver for the LiteEth Ethernet MAC from LiteX.
+
+config MV88E6XXX
+	bool "Marvell MV88E6xxx Ethernet switch DSA driver"
+	depends on DM_DSA && DM_MDIO
+	help
+	  This driver implements a DSA switch driver for the MV88E6xxx family
+	  of Ethernet switches using the MDIO interface
 
 config MVGBE
 	bool "Marvell Orion5x/Kirkwood network interface support"
@@ -588,6 +648,7 @@ config RTL8139
 
 config RTL8169
 	bool "Realtek 8169 series Ethernet controller driver"
+	depends on PCI
 	help
 	  This driver supports Realtek 8169 series gigabit ethernet family of
 	  PCI/PCIe chipsets/adapters.
@@ -650,6 +711,7 @@ config SUN8I_EMAC
 config SH_ETHER
 	bool "Renesas SH Ethernet MAC"
 	select PHYLIB
+	select PHY_ETHERNET_ID
 	help
 	  This driver supports the Ethernet for Renesas SH and ARM SoCs.
 
@@ -675,6 +737,9 @@ config XILINX_AXIMRMAC
 	  integrated hard IP. This can be configured up to four ports with MAC
 	  rates from 10GE to 100GE. This could be present in some of the Xilinx
 	  Versal designs.
+
+config VSC7385_ENET
+	bool "Vitesse 7385 Switch Firmware Upload driver"
 
 config XILINX_EMACLITE
 	select PHYLIB
@@ -704,10 +769,19 @@ config GMAC_ROCKCHIP
 	  This driver provides Rockchip SoCs network support based on the
 	  Synopsys Designware driver.
 
+config RENESAS_ETHER_SWITCH
+	bool "Renesas Ethernet Switch support"
+	depends on DM_ETH && R8A779F0
+	select PHYLIB
+	help
+	  This driver implements support for the Renesas Ethernet Switch
+	  which is available on R-Car S4 SoC (r8a779f0).
+
 config RENESAS_RAVB
 	bool "Renesas Ethernet AVB MAC"
-	depends on RCAR_GEN3
+	depends on RCAR_64
 	select PHYLIB
+	select PHY_ETHERNET_ID
 	help
 	  This driver implements support for the Ethernet AVB block in
 	  Renesas M3 and H3 SoCs.
@@ -715,7 +789,6 @@ config RENESAS_RAVB
 config MPC8XX_FEC
 	bool "Fast Ethernet Controller on MPC8XX"
 	depends on MPC8xx
-	depends on DM_ETH
 	select MII
 	select SYS_DISCOVER_PHY
 	help
@@ -829,6 +902,23 @@ config MEDIATEK_ETH
 	help
 	  This Driver support MediaTek Ethernet GMAC
 	  Say Y to enable support for the MediaTek Ethernet GMAC.
+
+config HIFEMAC_ETH
+	bool "HiSilicon Fast Ethernet Controller"
+	select DM_CLK
+	select DM_RESET
+	select PHYLIB
+	help
+	  This driver supports HIFEMAC Ethernet controller found on
+	  HiSilicon SoCs.
+
+config HIFEMAC_MDIO
+	bool "HiSilicon Fast Ethernet Controller MDIO interface"
+	depends on DM_MDIO
+	select DM_CLK
+	help
+	  This driver supports the internal MDIO interface of HIFEMAC
+	  Ethernet controller.
 
 config HIGMACV300_ETH
 	bool "HiSilicon Gigabit Ethernet Controller"

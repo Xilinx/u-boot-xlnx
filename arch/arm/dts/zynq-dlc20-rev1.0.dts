@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2018 Xilinx, Inc.
  *
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 /dts-v1/;
 #include "zynq-7000.dtsi"
@@ -26,7 +26,7 @@
 	};
 
 	chosen {
-		bootargs = "earlyprintk";
+		bootargs = "earlycon";
 		stdout-path = "serial0:115200n8";
 	};
 
@@ -64,7 +64,7 @@
 };
 
 &qspi {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay";
 	num-cs = <1>;
 	spi-tx-bus-width = <4>;
@@ -80,14 +80,14 @@
 };
 
 &sdhci0 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay"; /* EMMC MTFC4GACAJCN - MIO40-MIO45 */
 	non-removable;
 	bus-width = <4>;
 };
 
 &uart1 {
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	status = "okay"; /* MIO8/9 */
 };
 

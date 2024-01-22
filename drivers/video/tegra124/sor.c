@@ -15,6 +15,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch-tegra/dc.h>
 #include <linux/delay.h>
+#include <linux/printk.h>
 #include "displayport.h"
 #include "sor.h"
 #include <linux/err.h>
@@ -765,7 +766,7 @@ int tegra_dc_sor_attach(struct udevice *dc_dev, struct udevice *dev,
 
 	/* Use the first display controller */
 	debug("%s\n", __func__);
-	disp_ctrl = (struct dc_ctlr *)dev_read_addr(dc_dev);
+	disp_ctrl = dev_read_addr_ptr(dc_dev);
 
 	tegra_dc_sor_enable_dc(disp_ctrl);
 	tegra_dc_sor_config_panel(sor, 0, link_cfg, timing);
@@ -978,7 +979,7 @@ int tegra_dc_sor_detach(struct udevice *dc_dev, struct udevice *dev)
 
 	debug("%s\n", __func__);
 	/* Use the first display controller */
-	disp_ctrl = (struct dc_ctlr *)dev_read_addr(dev);
+	disp_ctrl = dev_read_addr_ptr(dev);
 
 	/* Sleep mode */
 	tegra_sor_writel(sor, SUPER_STATE1, SUPER_STATE1_ASY_HEAD_OP_SLEEP |
@@ -1047,7 +1048,7 @@ static int tegra_sor_of_to_plat(struct udevice *dev)
 	struct tegra_dc_sor_data *priv = dev_get_priv(dev);
 	int ret;
 
-	priv->base = (void *)dev_read_addr(dev);
+	priv->base = dev_read_addr_ptr(dev);
 
 	priv->pmc_base = (void *)syscon_get_first_range(TEGRA_SYSCON_PMC);
 	if (IS_ERR(priv->pmc_base))

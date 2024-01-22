@@ -7,7 +7,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <cpu_func.h>
 #include <hang.h>
 #include <image.h>
@@ -42,7 +41,7 @@ void board_init_f(ulong dummy)
 	enable_caches();
 
 	/* Clear the BSS */
-	memset(__bss_start, 0, (char *)&__bss_end - __bss_start);
+	memset(__bss_start, 0, (size_t)__bss_end - (size_t)__bss_start);
 
 	gd->flags |= GD_FLG_SPL_INIT;
 
@@ -76,9 +75,9 @@ void board_init_f(ulong dummy)
 }
 #endif /* CONFIG_SPL_BUILD */
 
-phys_size_t board_get_usable_ram_top(phys_size_t total_size)
+phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
-	return CONFIG_SYS_SDRAM_BASE + (256 * 1024 * 1024);
+	return CFG_SYS_SDRAM_BASE + (256 * 1024 * 1024);
 }
 
 int print_cpuinfo(void)

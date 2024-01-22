@@ -191,7 +191,6 @@ static int ar803x_regs_config(struct phy_device *phydev)
 
 static int ar803x_of_init(struct phy_device *phydev)
 {
-#if defined(CONFIG_DM_ETH)
 	struct ar803x_priv *priv;
 	ofnode node, vddio_reg_node;
 	u32 strength, freq, min_uV, max_uV;
@@ -306,7 +305,6 @@ static int ar803x_of_init(struct phy_device *phydev)
 
 	debug("%s: flags=%x clk_25m_reg=%04x clk_25m_mask=%04x\n", __func__,
 	      priv->flags, priv->clk_25m_reg, priv->clk_25m_mask);
-#endif
 
 	return 0;
 }
@@ -335,7 +333,7 @@ static int ar803x_config(struct phy_device *phydev)
 	return 0;
 }
 
-static struct phy_driver AR8021_driver =  {
+U_BOOT_PHY_DRIVER(AR8021) = {
 	.name = "AR8021",
 	.uid = AR8021_PHY_ID,
 	.mask = 0xfffffff0,
@@ -345,7 +343,7 @@ static struct phy_driver AR8021_driver =  {
 	.shutdown = genphy_shutdown,
 };
 
-static struct phy_driver AR8031_driver =  {
+U_BOOT_PHY_DRIVER(AR8031) = {
 	.name = "AR8031/AR8033",
 	.uid = AR8031_PHY_ID,
 	.mask = 0xffffffef,
@@ -355,7 +353,7 @@ static struct phy_driver AR8031_driver =  {
 	.shutdown = genphy_shutdown,
 };
 
-static struct phy_driver AR8035_driver =  {
+U_BOOT_PHY_DRIVER(AR8035) = {
 	.name = "AR8035",
 	.uid = AR8035_PHY_ID,
 	.mask = 0xffffffef,
@@ -364,12 +362,3 @@ static struct phy_driver AR8035_driver =  {
 	.startup = genphy_startup,
 	.shutdown = genphy_shutdown,
 };
-
-int phy_atheros_init(void)
-{
-	phy_register(&AR8021_driver);
-	phy_register(&AR8031_driver);
-	phy_register(&AR8035_driver);
-
-	return 0;
-}

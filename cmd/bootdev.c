@@ -57,7 +57,7 @@ static int do_bootdev_select(struct cmd_tbl *cmdtp, int flag, int argc,
 		std->cur_bootdev = NULL;
 		return 0;
 	}
-	if (bootdev_find_by_any(argv[1], &dev))
+	if (bootdev_find_by_any(argv[1], &dev, NULL))
 		return CMD_RET_FAILURE;
 
 	std->cur_bootdev = dev;
@@ -99,7 +99,7 @@ static int do_bootdev_info(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	printf("Name:      %s\n", dev->name);
 	printf("Sequence:  %d\n", dev_seq(dev));
-	printf("Status:    %s\n", ret ? simple_itoa(ret) : device_active(dev) ?
+	printf("Status:    %s\n", ret ? simple_itoa(-ret) : device_active(dev) ?
 		"Probed" : "OK");
 	printf("Uclass:    %s\n", dev_get_uclass_name(dev_get_parent(dev)));
 	printf("Bootflows: %d (%d valid)\n", i, num_valid);
@@ -107,14 +107,46 @@ static int do_bootdev_info(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
-#ifdef CONFIG_SYS_LONGHELP
-static char bootdev_help_text[] =
-	"list [-p]      - list all available bootdevs (-p to probe)\n"
-	"bootdev select <bd>    - select a bootdev by name | label | seq\n"
-	"bootdev info [-p]      - show information about a bootdev (-p to probe)";
-#endif
+static int do_bootdev_hunt(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
+{
+	struct bootstd_priv *priv;
+	const char *spec = NULL;
+	bool list = false;
+	int ret = 0;
+
+	if (argc >= 2) {
+		if (!strcmp(argv[1], "-l"))
+			list = true;
+		else
+			spec = argv[1];
+	}
+
+	ret = bootstd_get_priv(&priv);
+	if (ret)
+		return ret;
+	if (list) {
+		bootdev_list_hunters(priv);
+	} else {
+		ret = bootdev_hunt(spec, true);
+		if (ret) {
+			printf("Failed (err=%dE)\n", ret);
+
+			return CMD_RET_FAILURE;
+		}
+	}
+
+	return 0;
+}
+
+U_BOOT_LONGHELP(bootdev,
+	"list [-p]         - list all available bootdevs (-p to probe)\n"
+	"bootdev hunt [-l|<spec>]  - use hunt drivers to find bootdevs\n"
+	"bootdev select <bd>       - select a bootdev by name | label | seq\n"
+	"bootdev info [-p]         - show information about a bootdev (-p to probe)");
 
 U_BOOT_CMD_WITH_SUBCMDS(bootdev, "Boot devices", bootdev_help_text,
 	U_BOOT_SUBCMD_MKENT(list, 2, 1, do_bootdev_list),
+	U_BOOT_SUBCMD_MKENT(hunt, 2, 1, do_bootdev_hunt),
 	U_BOOT_SUBCMD_MKENT(select, 2, 1, do_bootdev_select),
 	U_BOOT_SUBCMD_MKENT(info, 2, 1, do_bootdev_info));

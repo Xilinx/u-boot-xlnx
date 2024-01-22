@@ -2,13 +2,12 @@
 /*
  * Copyright (C) 2022, Ovidiu Panait <ovpanait@gmail.com>
  */
-#include <common.h>
 #include <asm/cpuinfo.h>
 #include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if CONFIG_IS_ENABLED(CPU_MICROBLAZE)
+#if IS_ENABLED(CONFIG_CPU_MICROBLAZE)
 /* These key value are as per MBV field in PVR0 */
 static const struct microblaze_version_map cpu_ver_lookup[] = {
 	{"5.00.a", 0x01},

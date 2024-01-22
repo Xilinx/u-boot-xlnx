@@ -14,8 +14,8 @@ config EFI_LOADER
 	depends on !EFI_APP
 	default y if !ARM || SYS_CPU = armv7 || SYS_CPU = armv8
 	select CHARSET
+	# We need to send DM events, dynamically, in the EFI block driver
 	select DM_EVENT
-	select EVENT
 	select EVENT_DYNAMIC
 	select LIB_UUID
 	imply PARTITION_UUIDS
@@ -55,12 +55,49 @@ config EFI_VARIABLE_FILE_STORE
 	  stored as file /ubootefi.var on the EFI system partition.
 
 config EFI_MM_COMM_TEE
-	bool "UEFI variables storage service via OP-TEE"
+	bool "UEFI variables storage service via the trusted world"
 	depends on OPTEE
 	help
+	  Allowing access to the MM SP services (SPs such as  StandAlonneMM, smm-gateway).
+	  When using the u-boot OP-TEE driver, StandAlonneMM is supported.
+	  When using the u-boot FF-A  driver any MM SP is supported.
+
 	  If OP-TEE is present and running StandAloneMM, dispatch all UEFI
 	  variable related operations to that. The application will verify,
 	  authenticate and store the variables on an RPMB.
+
+	  When ARM_FFA_TRANSPORT is used, dispatch all UEFI variable related
+	  operations to the MM SP running in the secure world.
+	  A door bell mechanism is used to notify the SP when there is data in the shared
+	  MM buffer. The data is copied by u-boot to the shared buffer before issuing
+	  the door bell event.
+
+config FFA_SHARED_MM_BUF_SIZE
+	int "Memory size of the shared MM communication buffer"
+	depends on EFI_MM_COMM_TEE && ARM_FFA_TRANSPORT
+	help
+	  This defines the size in bytes of the memory area reserved for the shared
+	  buffer used for communication between the MM feature in U-Boot and
+	  the MM SP in secure world.
+	  The size of the memory region must be a multiple of the size of the maximum
+	  translation granule size that is specified in the ID_AA64MMFR0_EL1 System register.
+	  It is assumed that the MM SP knows the size of the shared MM communication buffer.
+
+config FFA_SHARED_MM_BUF_OFFSET
+	int "Data offset in the shared MM communication buffer"
+	depends on EFI_MM_COMM_TEE && ARM_FFA_TRANSPORT
+	help
+	  This defines the offset in bytes of the data read or written to in the shared
+	  buffer by the MM SP.
+
+config FFA_SHARED_MM_BUF_ADDR
+	hex "Define the address of the shared MM communication buffer"
+	depends on EFI_MM_COMM_TEE && ARM_FFA_TRANSPORT
+	help
+	  This defines the address of the shared MM communication buffer
+	  used for communication between the MM feature in U-Boot and
+	  the MM SP in secure world.
+	  It is assumed that the MM SP knows the address of the shared MM communication buffer.
 
 config EFI_VARIABLE_NO_STORE
 	bool "Don't persist non-volatile UEFI variables"
@@ -96,17 +133,20 @@ endif
 
 config EFI_VAR_BUF_SIZE
 	int "Memory size of the UEFI variable store"
-	default 16384
+	default 131072
 	range 4096 2147483647
 	help
 	  This defines the size in bytes of the memory area reserved for keeping
 	  UEFI variables.
 
-	  When using StandAloneMM (CONFIG_EFI_MM_COMM_TEE=y) this value should
-	  match the value of PcdFlashNvStorageVariableSize used to compile the
-	  StandAloneMM module.
+	  When using StandAloneMM (CONFIG_EFI_MM_COMM_TEE=y) is used the
+	  available size for storing variables is defined in
+	  PcdFlashNvStorageVariableSize.
+	  That value is probed at runtime from U-Boot. In that case,
+	  EFI_VAR_BUF_SIZE represents the memory U-Boot reserves to present
+	  runtime variables to the OS.
 
-	  Minimum 4096, default 16384.
+	  Minimum 4096, default 131072
 
 config EFI_GET_TIME
 	bool "GetTime() runtime service"
@@ -123,6 +163,15 @@ config EFI_SET_TIME
 	help
 	  Provide the SetTime() runtime service at boottime. This service
 	  can be used by an EFI application to adjust the real time clock.
+
+config EFI_SCROLL_ON_CLEAR_SCREEN
+	bool "Avoid overwriting previous output on clear screen"
+	help
+	  Instead of erasing the screen content when the console screen should
+	  be cleared, emit blank new lines so that previous output is scrolled
+	  out of sight rather than overwritten. On serial consoles this allows
+	  to capture complete boot logs (except for interactive menus etc.)
+	  and can ease debugging related issues.
 
 config EFI_HAVE_CAPSULE_SUPPORT
 	bool
@@ -216,6 +265,22 @@ config EFI_CAPSULE_AUTHENTICATE
 	help
 	  Select this option if you want to enable capsule
 	  authentication
+
+config EFI_CAPSULE_MAX
+	int "Max value for capsule index"
+	default 15
+	range 0 65535
+	help
+	  Select the max capsule index value used for capsule report
+	  variables. This value is used to create CapsuleMax variable.
+
+config EFI_CAPSULE_ESL_FILE
+	string "Path to the EFI Signature List File"
+	depends on EFI_CAPSULE_AUTHENTICATE
+	help
+	  Provides the path to the EFI Signature List file which will
+	  be embedded in the platform's device tree and used for
+	  capsule authentication at the time of capsule update.
 
 config EFI_DEVICE_PATH_TO_TEXT
 	bool "Device path to text protocol"
@@ -316,8 +381,6 @@ config EFI_TCG2_PROTOCOL
 	bool "EFI_TCG2_PROTOCOL support"
 	default y
 	depends on TPM_V2
-	# Sandbox TPM currently fails on GetCapabilities needed for TCG2
-	depends on !SANDBOX
 	select SHA1
 	select SHA256
 	select SHA384
@@ -336,6 +399,17 @@ config EFI_TCG2_PROTOCOL_EVENTLOG_SIZE
 		Define the size of the EventLog for EFI_TCG2_PROTOCOL. Note that
 		this is going to be allocated twice. One for the eventlog it self
 		and one for the configuration table that is required from the spec
+
+config EFI_TCG2_PROTOCOL_MEASURE_DTB
+	bool "Measure DTB with EFI_TCG2_PROTOCOL"
+	depends on EFI_TCG2_PROTOCOL
+	help
+	  When enabled, the DTB image passed to the booted EFI image is
+	  measured using the EFI TCG2 protocol. Do not enable this feature if
+	  the passed DTB contains data that change across platform reboots
+	  and cannot be used has a predictable measurement. Otherwise
+	  this feature allows better measurement of the system boot
+	  sequence.
 
 config EFI_LOAD_FILE2_INITRD
 	bool "EFI_FILE_LOAD2_PROTOCOL for Linux initial ramdisk"

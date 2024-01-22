@@ -58,6 +58,17 @@ config ARMV7_SECURE_MAX_SIZE
 	default 0x3c00 if MACH_SUN8I && MACH_SUN8I_H3
 	default 0x10000
 
+config ARM_GIC_BASE_ADDRESS
+	hex
+	depends on ARMV7_NONSEC
+	depends on ARCH_EXYNOS5 || MACH_SUN8I_R528
+	default 0x10480000 if ARCH_EXYNOS5
+	default 0x03020000 if MACH_SUN8I_R528
+	help
+	  Override the GIC base address if the Arm Cortex defined
+	  CBAR/PERIPHBASE system register holds the wrong value.
+	  Used by the PSCI code to configure the secure side of the GIC.
+
 config ARMV7_VIRT
 	bool "Enable support for hardware virtualization" if EXPERT
 	depends on CPU_V7_HAS_VIRT && ARMV7_NONSEC
@@ -106,6 +117,11 @@ config ARMV7_LPAE
 	---help---
 	Say Y here to use the long descriptor page table format. This is
 	required if U-Boot runs in HYP mode.
+
+config ARMV7_SET_CORTEX_SMPEN
+	bool
+	help
+	  Enable the ARM Cortex ACTLR.SMP enable bit in U-Boot.
 
 config SPL_ARMV7_SET_CORTEX_SMPEN
 	bool

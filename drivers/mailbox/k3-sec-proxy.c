@@ -2,7 +2,7 @@
 /*
  * Texas Instruments' K3 Secure proxy Driver
  *
- * Copyright (C) 2017-2018 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2017-2018 Texas Instruments Incorporated - https://www.ti.com/
  *	Lokesh Vutla <lokeshvutla@ti.com>
  */
 
@@ -84,19 +84,14 @@ struct k3_sec_proxy_mbox {
 	struct mbox_chan chan;
 	struct k3_sec_proxy_desc *desc;
 	struct k3_sec_proxy_thread *chans;
-	phys_addr_t target_data;
-	phys_addr_t scfg;
-	phys_addr_t rt;
+	void *target_data;
+	void *scfg;
+	void *rt;
 };
 
 static inline u32 sp_readl(void __iomem *addr, unsigned int offset)
 {
 	return readl(addr + offset);
-}
-
-static inline void sp_writel(void __iomem *addr, unsigned int offset, u32 data)
-{
-	writel(data, addr + offset);
 }
 
 /**
@@ -241,15 +236,20 @@ static int k3_sec_proxy_send(struct mbox_chan *chan, const void *data)
 		/* Ensure all unused data is 0 */
 		data_trail &= 0xFFFFFFFF >> (8 * (sizeof(u32) - trail_bytes));
 		writel(data_trail, data_reg);
-		data_reg++;
+		data_reg += sizeof(u32);
 	}
 
 	/*
 	 * 'data_reg' indicates next register to write. If we did not already
 	 * write on tx complete reg(last reg), we must do so for transmit
+	 * In addition, we also need to make sure all intermediate data
+	 * registers(if any required), are reset to 0 for TISCI backward
+	 * compatibility to be maintained.
 	 */
-	if (data_reg <= (spt->data + spm->desc->data_end_offset))
-		sp_writel(spt->data, spm->desc->data_end_offset, 0);
+	while (data_reg <= (spt->data + spm->desc->data_end_offset)) {
+		writel(0x0, data_reg);
+		data_reg += sizeof(u32);
+	}
 
 	debug("%s: Message successfully sent on thread %ld\n",
 	      __func__, chan->id);
@@ -319,20 +319,20 @@ static int k3_sec_proxy_of_to_priv(struct udevice *dev,
 		return -ENODEV;
 	}
 
-	spm->target_data = devfdt_get_addr_name(dev, "target_data");
-	if (spm->target_data == FDT_ADDR_T_NONE) {
+	spm->target_data = dev_read_addr_name_ptr(dev, "target_data");
+	if (!spm->target_data) {
 		dev_err(dev, "No reg property for target data base\n");
 		return -EINVAL;
 	}
 
-	spm->scfg = devfdt_get_addr_name(dev, "scfg");
-	if (spm->rt == FDT_ADDR_T_NONE) {
+	spm->scfg = dev_read_addr_name_ptr(dev, "scfg");
+	if (!spm->scfg) {
 		dev_err(dev, "No reg property for Secure Cfg base\n");
 		return -EINVAL;
 	}
 
-	spm->rt = devfdt_get_addr_name(dev, "rt");
-	if (spm->rt == FDT_ADDR_T_NONE) {
+	spm->rt = dev_read_addr_name_ptr(dev, "rt");
+	if (!spm->rt) {
 		dev_err(dev, "No reg property for Real Time Cfg base\n");
 		return -EINVAL;
 	}

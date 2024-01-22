@@ -6,7 +6,7 @@
  *
  * Copyright (C) 2018, EETS GmbH, http://www.eets.ch/
  *
- * Copyright (C) 2011, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2011, Texas Instruments, Incorporated - https://www.ti.com/
  */
 
 #include <common.h>
@@ -62,8 +62,8 @@ DECLARE_GLOBAL_DATA_PTR;
  * To get the boot device from 'am33xx_spl_board_init' to
  * 'board_late_init' we therefore use a scratch register from the RTC.
  */
-#define CONFIG_SYS_RTC_SCRATCH0 0x60
-#define BOOT_DEVICE_SAVE_REGISTER (RTC_BASE + CONFIG_SYS_RTC_SCRATCH0)
+#define CFG_SYS_RTC_SCRATCH0 0x60
+#define BOOT_DEVICE_SAVE_REGISTER (RTC_BASE + CFG_SYS_RTC_SCRATCH0)
 
 #ifdef CONFIG_SPL_BUILD
 static void save_boot_device(void)
@@ -286,7 +286,7 @@ int board_init(void)
 	hw_watchdog_init();
 #endif
 
-	gd->bd->bi_boot_params = CONFIG_SYS_SDRAM_BASE + 0x100;
+	gd->bd->bi_boot_params = CFG_SYS_SDRAM_BASE + 0x100;
 	return 0;
 }
 

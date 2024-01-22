@@ -17,9 +17,11 @@
 /* Enable checks to protect against invalid calls */
 #undef OF_CHECKS
 
+struct abuf;
 struct resource;
 
 #include <dm/ofnode_decl.h>
+#include <linux/errno.h>
 
 struct ofnode_phandle_args {
 	ofnode node;
@@ -125,6 +127,27 @@ static inline ofnode noffset_to_ofnode(ofnode other_node, int of_offset)
 }
 
 #endif /* OFNODE_MULTI_TREE */
+
+/**
+ * oftree_new() - Create a new, empty tree
+ *
+ * @treep: Returns a pointer to the tree, on success
+ * Returns: 0 on success, -ENOMEM if out of memory, -E2BIG if !OF_LIVE and
+ * there are too many (flattrees) already
+ */
+int oftree_new(oftree *treep);
+
+/**
+ * oftree_to_fdt() - Convert an oftree to a flat FDT
+ *
+ * @tree: tree to flatten (if livetree) or copy (if not)
+ * @buf: Returns inited buffer containing the newly created flat tree. Note
+ * that for flat tree the buffer is not allocated. In either case the caller
+ * must call abut_uninit() to free any memory used by @buf
+ * Return: 0 on success, -ENOMEM if out of memory, other -ve value for any other
+ * error
+ */
+int oftree_to_fdt(oftree tree, struct abuf *buf);
 
 /**
  * ofnode_to_np() - convert an ofnode to a live DT node pointer
@@ -351,6 +374,16 @@ static inline oftree oftree_from_np(struct device_node *root)
 
 	return tree;
 }
+
+/**
+ * oftree_dispose() - Dispose of an oftree
+ *
+ * This can be used to dispose of a tree that has been created (other than
+ * the control FDT which must not be disposed)
+ *
+ * @tree: Tree to dispose
+ */
+void oftree_dispose(oftree tree);
 
 /**
  * ofnode_name_eq() - Check if the node name is equivalent to a given name
@@ -690,8 +723,8 @@ int ofnode_read_size(ofnode node, const char *propname);
  * @size: Pointer to size of the address
  * Return: address, or FDT_ADDR_T_NONE if not present or invalid
  */
-phys_addr_t ofnode_get_addr_size_index(ofnode node, int index,
-				       fdt_size_t *size);
+fdt_addr_t ofnode_get_addr_size_index(ofnode node, int index,
+				      fdt_size_t *size);
 
 /**
  * ofnode_get_addr_size_index_notrans() - get an address/size from a node
@@ -707,8 +740,8 @@ phys_addr_t ofnode_get_addr_size_index(ofnode node, int index,
  * @size: Pointer to size of the address
  * Return: address, or FDT_ADDR_T_NONE if not present or invalid
  */
-phys_addr_t ofnode_get_addr_size_index_notrans(ofnode node, int index,
-					       fdt_size_t *size);
+fdt_addr_t ofnode_get_addr_size_index_notrans(ofnode node, int index,
+					      fdt_size_t *size);
 
 /**
  * ofnode_get_addr_index() - get an address from a node
@@ -719,7 +752,7 @@ phys_addr_t ofnode_get_addr_size_index_notrans(ofnode node, int index,
  * @index: Index of address to read (0 for first)
  * Return: address, or FDT_ADDR_T_NONE if not present or invalid
  */
-phys_addr_t ofnode_get_addr_index(ofnode node, int index);
+fdt_addr_t ofnode_get_addr_index(ofnode node, int index);
 
 /**
  * ofnode_get_addr() - get an address from a node
@@ -729,7 +762,7 @@ phys_addr_t ofnode_get_addr_index(ofnode node, int index);
  * @node: node to read from
  * Return: address, or FDT_ADDR_T_NONE if not present or invalid
  */
-phys_addr_t ofnode_get_addr(ofnode node);
+fdt_addr_t ofnode_get_addr(ofnode node);
 
 /**
  * ofnode_get_size() - get size from a node
@@ -944,11 +977,21 @@ const char *ofnode_read_chosen_string(const char *propname);
 ofnode ofnode_get_chosen_node(const char *propname);
 
 /**
+ * ofnode_read_baud() - get the baudrate from string value of chosen property
+ *
+ * This looks for stdout-path property within the /chosen node and parses its
+ * value to return baudrate.
+ *
+ * This only works with the control FDT.
+ *
+ * Return: baudrate value if found, else -ve error code
+ */
+int ofnode_read_baud(void);
+
+/**
  * ofnode_read_aliases_prop() - get the value of a aliases property
  *
  * This looks for a property within the /aliases node and returns its value
- *
- * This only works with the control FDT.
  *
  * @propname: Property name to look for
  * @sizep: Returns size of property, or `FDT_ERR_...` error code if function
@@ -987,14 +1030,35 @@ int ofnode_decode_display_timing(ofnode node, int index,
 				 struct display_timing *config);
 
 /**
+ * ofnode_decode_panel_timing() - decode display timings
+ *
+ * Decode panel timings from the supplied 'panel-timings' node.
+ *
+ * @node:	'display-timing' node containing the timing subnodes
+ * @config:	Place to put timings
+ * Return: 0 if OK, -FDT_ERR_NOTFOUND if not found
+ */
+int ofnode_decode_panel_timing(ofnode node,
+			       struct display_timing *config);
+
+/**
  * ofnode_get_property() - get a pointer to the value of a node property
  *
  * @node: node to read
  * @propname: property to read
  * @lenp: place to put length on success
- * Return: pointer to property, or NULL if not found
+ * Return: pointer to property value, or NULL if not found or empty
  */
 const void *ofnode_get_property(ofnode node, const char *propname, int *lenp);
+
+/**
+ * ofnode_has_property() - check if a node has a named property
+ *
+ * @node: node to read
+ * @propname: property to read
+ * Return: true if the property exists in the node, false if not
+ */
+bool ofnode_has_property(ofnode node, const char *propname);
 
 /**
  * ofnode_first_property()- get the reference of the first property
@@ -1067,8 +1131,8 @@ const void *ofprop_get_property(const struct ofprop *prop,
  * @sizep: place to put size value (on success)
  * Return: address value, or FDT_ADDR_T_NONE on error
  */
-phys_addr_t ofnode_get_addr_size(ofnode node, const char *propname,
-				 phys_size_t *sizep);
+fdt_addr_t ofnode_get_addr_size(ofnode node, const char *propname,
+				fdt_size_t *sizep);
 
 /**
  * ofnode_read_u8_array_ptr() - find an 8-bit array
@@ -1099,13 +1163,15 @@ const uint8_t *ofnode_read_u8_array_ptr(ofnode node, const char *propname,
  * @type:	pci address type (FDT_PCI_SPACE_xxx)
  * @propname:	name of property to find
  * @addr:	returns pci address in the form of fdt_pci_addr
+ * @size:	if non-null, returns register-space size
  * Return:
  * 0 if ok, -ENOENT if the property did not exist, -EINVAL if the
  * format of the property was invalid, -ENXIO if the requested
  * address type was not found
  */
 int ofnode_read_pci_addr(ofnode node, enum fdt_pci_space type,
-			 const char *propname, struct fdt_pci_addr *addr);
+			 const char *propname, struct fdt_pci_addr *addr,
+			 fdt_size_t *size);
 
 /**
  * ofnode_read_pci_vendev() - look up PCI vendor and device id
@@ -1188,15 +1254,15 @@ int ofnode_read_simple_size_cells(ofnode node);
  * determine if a node was bound in one of SPL/TPL stages.
  *
  * There are 4 settings currently in use
- * - u-boot,dm-pre-proper: U-Boot proper pre-relocation only
- * - u-boot,dm-pre-reloc: legacy and indicates any of TPL or SPL
+ * - bootph-some-ram: U-Boot proper pre-relocation phase
+ * - bootph-all: all phases
  * Existing platforms only use it to indicate nodes needed in
- * SPL. Should probably be replaced by u-boot,dm-spl for new platforms.
- * - u-boot,dm-spl: SPL and U-Boot pre-relocation
- * - u-boot,dm-tpl: TPL and U-Boot pre-relocation
+ * SPL. Should probably be replaced by bootph-pre-ram for new platforms.
+ * - bootph-pre-ram: SPL phase
+ * - bootph-pre-sram: TPL phase
  *
  * @node: node to check
- * Return: true if node is needed in SPL/TL, false otherwise
+ * Return: true if node should be or was bound, false otherwise
  */
 bool ofnode_pre_reloc(ofnode node);
 
@@ -1408,6 +1474,37 @@ int ofnode_write_string(ofnode node, const char *propname, const char *value);
 int ofnode_write_u32(ofnode node, const char *propname, u32 value);
 
 /**
+ * ofnode_write_u64() - Set an integer property of an ofnode
+ *
+ * @node:	The node for whose string property should be set
+ * @propname:	The name of the string property to set
+ * @value:	The new value of the 64-bit integer property
+ * Return: 0 if successful, -ve on error
+ */
+int ofnode_write_u64(ofnode node, const char *propname, u64 value);
+
+/**
+ * ofnode_write_bool() - Set a boolean property of an ofnode
+ *
+ * This either adds or deleted a property with a zero-length value
+ *
+ * @node:	The node for whose string property should be set
+ * @propname:	The name of the string property to set
+ * @value:	The new value of the boolean property
+ * Return: 0 if successful, -ve on error
+ */
+int ofnode_write_bool(ofnode node, const char *propname, bool value);
+
+/**
+ * ofnode_delete_prop() - Delete a property
+ *
+ * @node:	Node containing the property to delete
+ * @propname:	Name of property to delete
+ * Return: 0 if successful, -ve on error
+ */
+int ofnode_delete_prop(ofnode node, const char *propname);
+
+/**
  * ofnode_set_enabled() - Enable or disable a device tree node given by its
  *			  ofnode
  *
@@ -1547,13 +1644,13 @@ static inline const char *ofnode_conf_read_str(const char *prop_name)
 	return NULL;
 }
 
-int ofnode_read_bootscript_address(u64 *bootscr_address, u64 *bootscr_offset)
+static inline int ofnode_read_bootscript_address(u64 *bootscr_address, u64 *bootscr_offset)
 {
 	return -EINVAL;
 }
 
-int ofnode_read_bootscript_flash(u64 *bootscr_flash_offset,
-				 u64 *bootscr_flash_size)
+static inline int ofnode_read_bootscript_flash(u64 *bootscr_flash_offset,
+					       u64 *bootscr_flash_size)
 {
 	return -EINVAL;
 }
@@ -1575,7 +1672,7 @@ int ofnode_add_subnode(ofnode parent, const char *name, ofnode *nodep);
 /**
  * ofnode_copy_props() - copy all properties from one node to another
  *
- * Makes a copy of all properties from the source note in the destination node.
+ * Makes a copy of all properties from the source node to the destination node.
  * Existing properties in the destination node remain unchanged, except that
  * any with the same name are overwritten, including changing the size of the
  * property.
@@ -1583,9 +1680,37 @@ int ofnode_add_subnode(ofnode parent, const char *name, ofnode *nodep);
  * For livetree, properties are copied / allocated, so the source tree does not
  * need to be present afterwards.
  *
+ * @dst: Destination node to write properties to
  * @src: Source node to read properties from
- * @dst: Destination node to write properties too
  */
-int ofnode_copy_props(ofnode src, ofnode dst);
+int ofnode_copy_props(ofnode dst, ofnode src);
+
+/**
+ * ofnode_copy_node() - Copy a node to another place
+ *
+ * If a node with this name already exists in dst_parent, this returns an
+ * .error
+ *
+ * @dst_parent: Parent of the newly copied node
+ * @name: Name to give the new node
+ * @src: Source node to copy
+ * @nodep: Returns the new node, or the existing node if there is one
+ * Return: 0 if OK, -EEXIST if dst_parent already has a node with this parent
+ */
+int ofnode_copy_node(ofnode dst_parent, const char *name, ofnode src,
+		     ofnode *nodep);
+
+/**
+ * ofnode_delete() - Delete a node
+ *
+ * Delete a node from the tree
+ *
+ * @nodep: Pointer to node to delete (set to ofnode_null() on success)
+ * Return: 0 if OK, -ENOENT if the node does not exist, -EPERM if it is the root
+ * node (wWhich cannot be removed), -EFAULT if the tree is broken (to_remove is
+ * not a child of its parent),
+ *
+ */
+int ofnode_delete(ofnode *nodep);
 
 #endif

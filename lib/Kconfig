@@ -15,6 +15,9 @@ config SYS_NUM_ADDR_MAP
 	help
 	  Sets the number of entries in the virtual-physical mapping table.
 
+config SYS_TIMER_COUNTS_DOWN
+	bool "System timer counts down rather than up"
+
 config PHYSMEM
 	bool "Access to physical memory region (> 4G)"
 	help
@@ -69,6 +72,10 @@ config HAVE_PRIVATE_LIBGCC
 	bool
 
 config LIB_UUID
+	bool
+
+config SPL_LIB_UUID
+	depends on SPL
 	bool
 
 config SEMIHOSTING
@@ -274,9 +281,25 @@ config SUPPORT_ACPI
 	  U-Boot can generate these tables and pass them to the Operating
 	  System.
 
+config ACPI
+	bool "Enable support for ACPI libraries"
+	depends on SUPPORT_ACPI
+	help
+	  Provides library functions for dealing with ACPI tables. This does
+	  not necessarily include generation of tables
+	  (see GENERATE_ACPI_TABLE), but allows for tables to be located.
+
+config SPL_ACPI
+	bool "Enable support for ACPI libraries in SPL"
+	depends on SPL && SUPPORT_ACPI
+	help
+	  Provides library functions for dealing with ACPI tables in SPL. This
+	  does not necessarily include generation of tables
+	  (see GENERATE_ACPI_TABLE), but allows for tables to be located.
+
 config GENERATE_ACPI_TABLE
 	bool "Generate an ACPI (Advanced Configuration and Power Interface) table"
-	depends on SUPPORT_ACPI
+	depends on ACPI
 	select QFW if QEMU
 	help
 	  The Advanced Configuration and Power Interface (ACPI) specification
@@ -313,7 +336,7 @@ config BITREVERSE
 config TRACE
 	bool "Support for tracing of function calls and timing"
 	imply CMD_TRACE
-	select TIMER_EARLY
+	imply TIMER_EARLY
 	help
 	  Enables function tracing within U-Boot. This allows recording of call
 	  traces including timing information. The command can write data to
@@ -365,7 +388,7 @@ config TRACE_EARLY_SIZE
 config TRACE_EARLY_CALL_DEPTH_LIMIT
 	int "Early trace call depth limit"
 	depends on TRACE_EARLY
-	default 200
+	default 15
 	help
 	  Sets the maximum call depth up to which function calls are recorded
 	  during early tracing.
@@ -408,6 +431,10 @@ config TPM
 	bool "Trusted Platform Module (TPM) Support"
 	depends on DM
 	imply DM_RNG
+	select SHA1
+	select SHA256
+	select SHA384
+	select SHA512
 	help
 	  This enables support for TPMs which can be used to provide security
 	  features for your board. The TPM can be connected via LPC or I2C
@@ -419,6 +446,7 @@ config TPM
 config SPL_TPM
 	bool "Trusted Platform Module (TPM) Support in SPL"
 	depends on SPL_DM
+	imply SPL_CRC8
 	help
 	  This enables support for TPMs which can be used to provide security
 	  features for your board. The TPM can be connected via LPC or I2C
@@ -492,6 +520,7 @@ config SHA256
 
 config SHA512
 	bool "Enable SHA512 support"
+	default y if TI_SECURE_DEVICE && FIT_SIGNATURE
 	help
 	  This option enables support of hashing using SHA512 algorithm.
 	  The hash is calculated in software.
@@ -516,6 +545,17 @@ config SHA_HW_ACCEL
 	  hash_lookup_algo() function.
 
 if SPL
+
+config SPL_CRC32
+	bool "Enable CRC32 support in SPL"
+	default y if SPL_LEGACY_IMAGE_SUPPORT || SPL_EFI_PARTITION
+	default y if SPL_ENV_SUPPORT || TPL_BLOBLIST
+	help
+	  This option enables support of hashing using CRC32 algorithm.
+	  The CRC32 algorithm produces 32-bit checksum value. For FIT
+	  images, this is the least secure type of checksum, suitable for
+	  detected accidental image corruption. For secure applications you
+	  should consider SHA256 or SHA384.
 
 config SPL_SHA1
 	bool "Enable SHA1 support in SPL"
@@ -575,6 +615,26 @@ config SPL_SHA_PROG_HW_ACCEL
 
 endif
 
+config VPL_SHA1
+	bool "Enable SHA1 support in VPL"
+	depends on VPL
+	default y if SHA1
+	help
+	  This option enables support of hashing using SHA1 algorithm.
+	  The hash is calculated in software.
+	  The SHA1 algorithm produces a 160-bit (20-byte) hash value
+	  (digest).
+
+config VPL_SHA256
+	bool "Enable SHA256 support in VPL"
+	depends on VPL
+	default y if SHA256
+	help
+	  This option enables support of hashing using SHA256 algorithm.
+	  The hash is calculated in software.
+	  The SHA256 algorithm produces a 256-bit (32-byte) hash value
+	  (digest).
+
 if SHA_HW_ACCEL
 
 config SHA512_HW_ACCEL
@@ -613,6 +673,29 @@ config SPL_MD5
 	  data. It has a number of vulnerabilities which preclude its use in
 	  security applications, but it can be useful for providing a quick
 	  checksum of a block of data.
+
+config CRC8
+	def_bool y
+	help
+	  Enables CRC8 support in U-Boot. This is normally required. CRC8 is
+	  a simple and fast checksumming algorithm which does a bytewise
+	  checksum with feedback to produce an 8-bit result. The code is small
+	  and it does not require a lookup table (unlike CRC32).
+
+config SPL_CRC8
+	bool "Support CRC8 in SPL"
+	depends on SPL
+	help
+	  Enables CRC8 support in SPL. This is not normally required. CRC8 is
+	  a simple and fast checksumming algorithm which does a bytewise
+	  checksum with feedback to produce an 8-bit result. The code is small
+	  and it does not require a lookup table (unlike CRC32).
+
+config SPL_CRC16
+	bool "Support CRC16 in SPL"
+	depends on SPL
+	help
+	  Enables CRC16 support in SPL. This is not normally required.
 
 config CRC32
 	def_bool y
@@ -690,6 +773,27 @@ config ZSTD
 	select XXHASH
 	help
 	  This enables Zstandard decompression library.
+
+if ZSTD
+
+config ZSTD_LIB_MINIFY
+	bool "Minify Zstandard code"
+	default y
+	help
+	  This disables various optional components and changes the
+	  compilation flags to prioritize space-saving.
+
+	  For detailed info, see zstd's lib/README.md
+
+	  https://github.com/facebook/zstd/blob/dev/lib/README.md
+
+endif
+
+config SPL_BZIP2
+	bool "Enable bzip2 decompression support for SPL build"
+	depends on SPL
+	help
+	  This enables support for bzip2 compression algorithm for SPL boot.
 
 config SPL_LZ4
 	bool "Enable LZ4 decompression support in SPL"
@@ -776,7 +880,7 @@ config OF_LIBFDT
 config OF_LIBFDT_ASSUME_MASK
 	hex "Mask of conditions to assume for libfdt"
 	depends on OF_LIBFDT || FIT
-	default 0
+	default 0x0
 	help
 	  Use this to change the assumptions made by libfdt about the
 	  device tree it is working with. A value of 0 means that no assumptions
@@ -867,15 +971,6 @@ config VPL_OF_LIBFDT_ASSUME_MASK
 	  0xff means all assumptions are made and any invalid data may cause
 	  unsafe execution. See FDT_ASSUME_PERFECT, etc. in libfdt_internal.h
 
-config FDT_FIXUP_PARTITIONS
-	bool "overwrite MTD partitions in DTS through defined in 'mtdparts'"
-	depends on OF_LIBFDT
-	depends on CMD_MTDPARTS
-	help
-	  Allow overwriting defined partitions in the device tree blob
-	  using partition info defined in the 'mtdparts' environment
-	  variable.
-
 menu "System tables"
 	depends on (!EFI && !SYS_COREBOOT) || (ARM && EFI_LOADER)
 
@@ -890,8 +985,8 @@ config BLOBLIST_TABLES
 
 config GENERATE_SMBIOS_TABLE
 	bool "Generate an SMBIOS (System Management BIOS) table"
+	depends on SMBIOS
 	default y
-	depends on X86 || EFI_LOADER
 	help
 	  The System Management BIOS (SMBIOS) specification addresses how
 	  motherboard and system vendors present management information about
@@ -900,8 +995,10 @@ config GENERATE_SMBIOS_TABLE
 
 	  Check http://www.dmtf.org/standards/smbios for details.
 
-	  See also SMBIOS_SYSINFO which allows SMBIOS values to be provided in
+	  See also SYSINFO_SMBIOS which allows SMBIOS values to be provided in
 	  the devicetree.
+
+endmenu
 
 config LIB_RATIONAL
 	bool "enable continued fraction calculation routines"
@@ -909,8 +1006,6 @@ config LIB_RATIONAL
 config SPL_LIB_RATIONAL
 	bool "enable continued fraction calculation routines for SPL"
 	depends on SPL
-
-endmenu
 
 config ASN1_COMPILER
 	bool
@@ -960,6 +1055,20 @@ config SPL_OID_REGISTRY
 	  unambiguous persistent name (https://en.wikipedia.org/wiki/Object_identifier).
 	  Enable fast lookup object identifier registry in the SPL.
 
+config SMBIOS
+	bool "SMBIOS support"
+	depends on X86 || EFI_LOADER
+	default y
+	select LAST_STAGE_INIT
+	help
+	  Indicates that this platform can support System Management BIOS
+	  (SMBIOS) tables. These provide various pieces of information about
+	  the board, such as the manufacturer and the model name.
+
+	  See GENERATE_SMBIOS_TABLE which controls whether U-Boot actually
+	  creates these tables, rather than them coming from a previous firmware
+	  stage.
+
 config SMBIOS_PARSER
 	bool "SMBIOS parser"
 	help
@@ -991,7 +1100,6 @@ config LMB
 
 config LMB_USE_MAX_REGIONS
 	bool "Use a common number of memory and reserved regions in lmb lib"
-	depends on LMB
 	default y
 	help
 	  Define the number of supported memory regions in the library logical
@@ -1001,15 +1109,15 @@ config LMB_USE_MAX_REGIONS
 
 config LMB_MAX_REGIONS
 	int "Number of memory and reserved regions in lmb lib"
-	depends on LMB && LMB_USE_MAX_REGIONS
-	default 8
+	depends on LMB_USE_MAX_REGIONS
+	default 16
 	help
 	  Define the number of supported regions, memory and reserved, in the
 	  library logical memory blocks.
 
 config LMB_MEMORY_REGIONS
 	int "Number of memory regions in lmb lib"
-	depends on LMB && !LMB_USE_MAX_REGIONS
+	depends on !LMB_USE_MAX_REGIONS
 	default 8
 	help
 	  Define the number of supported memory regions in the library logical
@@ -1018,16 +1126,19 @@ config LMB_MEMORY_REGIONS
 
 config LMB_RESERVED_REGIONS
 	int "Number of reserved regions in lmb lib"
-	depends on LMB && !LMB_USE_MAX_REGIONS
+	depends on !LMB_USE_MAX_REGIONS
 	default 8
 	help
 	  Define the number of supported reserved regions in the library logical
 	  memory blocks.
 
-endmenu
+config PHANDLE_CHECK_SEQ
+	bool "Enable phandle check while getting sequence number"
+	help
+	  When there are multiple device tree nodes with same name,
+          enable this config option to distinguish them using
+	  phandles in fdtdec_get_alias_seq() function.
 
-menu "FWU Multi Bank Updates"
+endmenu
 
 source lib/fwu_updates/Kconfig
-
-endmenu

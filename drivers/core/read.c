@@ -131,6 +131,16 @@ fdt_addr_t dev_read_addr_index(const struct udevice *dev, int index)
 		return devfdt_get_addr_index(dev, index);
 }
 
+void *dev_read_addr_index_ptr(const struct udevice *dev, int index)
+{
+	fdt_addr_t addr = dev_read_addr_index(dev, index);
+
+	if (addr == FDT_ADDR_T_NONE)
+		return NULL;
+
+	return map_sysmem(addr, 0);
+}
+
 fdt_addr_t dev_read_addr_size_index(const struct udevice *dev, int index,
 				    fdt_size_t *size)
 {
@@ -138,6 +148,17 @@ fdt_addr_t dev_read_addr_size_index(const struct udevice *dev, int index,
 		return ofnode_get_addr_size_index(dev_ofnode(dev), index, size);
 	else
 		return devfdt_get_addr_size_index(dev, index, size);
+}
+
+void *dev_read_addr_size_index_ptr(const struct udevice *dev, int index,
+				   fdt_size_t *size)
+{
+	fdt_addr_t addr = dev_read_addr_size_index(dev, index, size);
+
+	if (addr == FDT_ADDR_T_NONE)
+		return NULL;
+
+	return map_sysmem(addr, 0);
 }
 
 void *dev_remap_addr_index(const struct udevice *dev, int index)
@@ -160,6 +181,16 @@ fdt_addr_t dev_read_addr_name(const struct udevice *dev, const char *name)
 		return dev_read_addr_index(dev, index);
 }
 
+void *dev_read_addr_name_ptr(const struct udevice *dev, const char *name)
+{
+	fdt_addr_t addr = dev_read_addr_name(dev, name);
+
+	if (addr == FDT_ADDR_T_NONE)
+		return NULL;
+
+	return map_sysmem(addr, 0);
+}
+
 fdt_addr_t dev_read_addr_size_name(const struct udevice *dev, const char *name,
 				   fdt_size_t *size)
 {
@@ -169,6 +200,17 @@ fdt_addr_t dev_read_addr_size_name(const struct udevice *dev, const char *name,
 		return FDT_ADDR_T_NONE;
 	else
 		return dev_read_addr_size_index(dev, index, size);
+}
+
+void *dev_read_addr_size_name_ptr(const struct udevice *dev, const char *name,
+				  fdt_size_t *size)
+{
+	fdt_addr_t addr = dev_read_addr_size_name(dev, name, size);
+
+	if (addr == FDT_ADDR_T_NONE)
+		return NULL;
+
+	return map_sysmem(addr, 0);
 }
 
 void *dev_remap_addr_name(const struct udevice *dev, const char *name)
@@ -190,7 +232,10 @@ void *dev_read_addr_ptr(const struct udevice *dev)
 {
 	fdt_addr_t addr = dev_read_addr(dev);
 
-	return (addr == FDT_ADDR_T_NONE) ? NULL : (void *)(uintptr_t)addr;
+	if (addr == FDT_ADDR_T_NONE)
+		return NULL;
+
+	return map_sysmem(addr, 0);
 }
 
 void *dev_remap_addr(const struct udevice *dev)
@@ -198,10 +243,9 @@ void *dev_remap_addr(const struct udevice *dev)
 	return dev_remap_addr_index(dev, 0);
 }
 
-fdt_addr_t dev_read_addr_size(const struct udevice *dev, const char *property,
-			      fdt_size_t *sizep)
+fdt_addr_t dev_read_addr_size(const struct udevice *dev, fdt_size_t *sizep)
 {
-	return ofnode_get_addr_size(dev_ofnode(dev), property, sizep);
+	return dev_read_addr_size_index(dev, 0, sizep);
 }
 
 const char *dev_read_name(const struct udevice *dev)
@@ -382,13 +426,15 @@ int dev_read_alias_highest_id(const char *stem)
 	return fdtdec_get_alias_highest_id(gd->fdt_blob, stem);
 }
 
-fdt_addr_t dev_read_addr_pci(const struct udevice *dev)
+fdt_addr_t dev_read_addr_pci(const struct udevice *dev, fdt_size_t *sizep)
 {
 	ulong addr;
 
 	addr = dev_read_addr(dev);
+	if (sizep)
+		*sizep = 0;
 	if (addr == FDT_ADDR_T_NONE && !of_live_active())
-		addr = devfdt_get_addr_pci(dev);
+		addr = devfdt_get_addr_pci(dev, sizep);
 
 	return addr;
 }
@@ -418,6 +464,12 @@ int dev_decode_display_timing(const struct udevice *dev, int index,
 			      struct display_timing *config)
 {
 	return ofnode_decode_display_timing(dev_ofnode(dev), index, config);
+}
+
+int dev_decode_panel_timing(const struct udevice *dev,
+			    struct display_timing *config)
+{
+	return ofnode_decode_panel_timing(dev_ofnode(dev), config);
 }
 
 ofnode dev_get_phy_node(const struct udevice *dev)

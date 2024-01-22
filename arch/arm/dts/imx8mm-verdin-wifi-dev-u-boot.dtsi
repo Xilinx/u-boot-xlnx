@@ -6,16 +6,9 @@
 #include "imx8mm-u-boot.dtsi"
 
 / {
-	firmware {
-		optee {
-			compatible = "linaro,optee-tz";
-			method = "smc";
-		};
-	};
-
 	wdt-reboot {
 		compatible = "wdt-reboot";
-		u-boot,dm-spl;
+		bootph-pre-ram;
 		wdt = <&wdog1>;
 	};
 };
@@ -27,11 +20,15 @@
 };
 
 &{/soc@0/bus@30800000/i2c@30a20000/pmic@25} {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &{/soc@0/bus@30800000/i2c@30a20000/pmic@25/regulators} {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+};
+
+&aips4 {
+	bootph-pre-ram;
 };
 
 &binman_uboot {
@@ -39,27 +36,31 @@
 };
 
 &gpio1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio4 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &gpio5 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+
+	ctrl-sleep-moci-hog {
+		bootph-pre-ram;
+	};
 };
 
 &i2c1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 
 	eeprom_module: eeprom@50 {
 		compatible = "i2c-eeprom";
@@ -88,46 +89,63 @@
 	};
 };
 
+&pinctrl_ctrl_sleep_moci {
+	bootph-pre-ram;
+};
+
 &pinctrl_i2c1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl_pmic {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl_uart1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl_usdhc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl_usdhc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &pinctrl_wdog {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &uart1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
+};
+
+&usbmisc1 {
+	bootph-pre-ram;
+};
+
+/* Verdin USB_1 */
+&usbotg1 {
+	bootph-pre-ram;
+};
+
+&usbphynop1 {
+	bootph-pre-ram;
 };
 
 &usdhc1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usdhc2 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &usdhc3 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };
 
 &wdog1 {
-	u-boot,dm-spl;
+	bootph-pre-ram;
 };

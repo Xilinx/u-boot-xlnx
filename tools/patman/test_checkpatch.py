@@ -18,19 +18,47 @@ from patman import commit
 
 
 class Line:
+    """Single changed line in one file in a patch
+
+    Args:
+        fname (str): Filename containing the added line
+        text (str): Text of the added line
+    """
     def __init__(self, fname, text):
         self.fname = fname
         self.text = text
 
 
 class PatchMaker:
+    """Makes a patch for checking with checkpatch.pl
+
+    The idea here is to create a patch which adds one line in one file,
+    intended to provoke a checkpatch error or warning. The base patch is empty
+    (i.e. invalid), so you should call add_line() to add at least one line.
+    """
     def __init__(self):
+        """Set up the PatchMaker object
+
+        Properties:
+            lines (list of Line): List of lines to add to the patch. Note that
+                each line has both a file and some text associated with it,
+                since for simplicity we just add a single line for each file
+        """
         self.lines = []
 
     def add_line(self, fname, text):
+        """Add to the list of filename/line pairs"""
         self.lines.append(Line(fname, text))
 
     def get_patch_text(self):
+        """Build the patch text
+
+        Takes a base patch and adds a diffstat and patch for each filename/line
+        pair in the list.
+
+        Returns:
+            str: Patch text ready for submission to checkpatch
+        """
         base = '''From 125b77450f4c66b8fd9654319520bbe795c9ef31 Mon Sep 17 00:00:00 2001
 From: Simon Glass <sjg@chromium.org>
 Date: Sun, 14 Jun 2020 09:45:14 -0600
@@ -75,6 +103,11 @@ Signed-off-by: Simon Glass <sjg@chromium.org>
         return '\n'.join(lines)
 
     def get_patch(self):
+        """Get the patch text and write it into a temporary file
+
+        Returns:
+            str: Filename containing the patch
+        """
         inhandle, inname = tempfile.mkstemp()
         infd = os.fdopen(inhandle, 'w')
         infd.write(self.get_patch_text())
@@ -82,6 +115,22 @@ Signed-off-by: Simon Glass <sjg@chromium.org>
         return inname
 
     def run_checkpatch(self):
+        """Run checkpatch on the patch file
+
+        Returns:
+            namedtuple containing:
+                ok: False=failure, True=ok
+                problems: List of problems, each a dict:
+                    'type'; error or warning
+                    'msg': text message
+                    'file' : filename
+                    'line': line number
+                errors: Number of errors
+                warnings: Number of warnings
+                checks: Number of checks
+                lines: Number of lines
+                stdout: Full output of checkpatch
+        """
         return checkpatch.check_patch(self.get_patch(), show_types=True)
 
 
@@ -160,6 +209,22 @@ Signed-off-by: Simon Glass <sjg@chromium.org>
 
         rc = os.system('diff -u %s %s' % (inname, expname))
         self.assertEqual(rc, 0)
+        os.remove(inname)
+
+        # Test whether the keep_change_id settings works.
+        inhandle, inname = tempfile.mkstemp()
+        infd = os.fdopen(inhandle, 'w', encoding='utf-8')
+        infd.write(data)
+        infd.close()
+
+        patchstream.fix_patch(None, inname, series.Series(), com,
+                              keep_change_id=True)
+
+        with open(inname, 'r') as f:
+            content = f.read()
+            self.assertIn(
+                'Change-Id: I80fe1d0c0b7dd10aa58ce5bb1d9290b6664d5413',
+                content)
 
         os.remove(inname)
         os.remove(expname)
@@ -238,7 +303,7 @@ index 0000000..2234c87
 + * passed to kernel in the ATAGs
 + */
 +
-+#include <common.h>
++#include <config.h>
 +
 +struct bootstage_record {
 +	u32 time_us;
@@ -396,14 +461,19 @@ index 0000000..2234c87
         """Test for enabling/disabling commands using preprocesor"""
         pm = PatchMaker()
         pm.add_line('common/main.c', '#undef CONFIG_CMD_WHICH')
-        self.check_single_message(pm, 'DEFINE_CONFIG_CMD', 'error')
+        self.check_single_message(pm, 'DEFINE_CONFIG_SYM', 'error')
 
     def test_barred_include_in_hdr(self):
         """Test for using a barred include in a header file"""
         pm = PatchMaker()
-        #pm.add_line('include/myfile.h', '#include <common.h>')
         pm.add_line('include/myfile.h', '#include <dm.h>')
         self.check_single_message(pm, 'BARRED_INCLUDE_IN_HDR', 'error')
+
+    def test_barred_include_common_h(self):
+        """Test for adding common.h to a file"""
+        pm = PatchMaker()
+        pm.add_line('include/myfile.h', '#include <common.h>')
+        self.check_single_message(pm, 'BARRED_INCLUDE_COMMON_H', 'error')
 
     def test_config_is_enabled_config(self):
         """Test for accidental CONFIG_IS_ENABLED(CONFIG_*) calls"""
@@ -451,6 +521,12 @@ index 0000000..2234c87
         """Check for uses of strn(cat|cpy)"""
         self.check_strl("cat");
         self.check_strl("cpy");
+
+    def test_schema(self):
+        """Check for uses of strn(cat|cpy)"""
+        pm = PatchMaker()
+        pm.add_line('arch/sandbox/dts/sandbox.dtsi', '\tu-boot,dm-pre-proper;')
+        self.check_single_message(pm, 'PRE_SCHEMA', 'error')
 
 if __name__ == "__main__":
     unittest.main()

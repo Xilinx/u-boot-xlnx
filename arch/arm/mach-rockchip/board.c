@@ -41,7 +41,7 @@ static bool updatable_image(struct disk_partition *info)
 	uuid_str_to_bin(info->type_guid, image_type_guid.b,
 			UUID_STR_FORMAT_GUID);
 
-	for (i = 0; i < num_image_type_guids; i++) {
+	for (i = 0; i < update_info.num_images; i++) {
 		if (!guidcmp(&fw_images[i].image_type_id, &image_type_guid)) {
 			ret = true;
 			break;
@@ -59,7 +59,7 @@ static void set_image_index(struct disk_partition *info, int index)
 	uuid_str_to_bin(info->type_guid, image_type_guid.b,
 			UUID_STR_FORMAT_GUID);
 
-	for (i = 0; i < num_image_type_guids; i++) {
+	for (i = 0; i < update_info.num_images; i++) {
 		if (!guidcmp(&fw_images[i].image_type_id, &image_type_guid)) {
 			fw_images[i].image_index = index;
 			break;
@@ -212,6 +212,7 @@ void enable_caches(void)
 #include <usb.h>
 
 #if defined(CONFIG_USB_GADGET_DWC2_OTG)
+#include <linux/usb/otg.h>
 #include <usb/dwc2_udc.h>
 
 static struct dwc2_plat_otg_data otg_data = {
@@ -223,17 +224,23 @@ static struct dwc2_plat_otg_data otg_data = {
 int board_usb_init(int index, enum usb_init_type init)
 {
 	ofnode node;
-	const char *mode;
 	bool matched = false;
 
 	/* find the usb_otg node */
 	node = ofnode_by_compatible(ofnode_null(), "snps,dwc2");
 	while (ofnode_valid(node)) {
-		mode = ofnode_read_string(node, "dr_mode");
-		if (mode && strcmp(mode, "otg") == 0) {
+		switch (usb_get_dr_mode(node)) {
+		case USB_DR_MODE_OTG:
+		case USB_DR_MODE_PERIPHERAL:
 			matched = true;
 			break;
+
+		default:
+			break;
 		}
+
+		if (matched)
+			break;
 
 		node = ofnode_by_compatible(node, "snps,dwc2");
 	}
@@ -292,9 +299,9 @@ static struct dwc3_device dwc3_device_data = {
 	.hsphy_mode = USBPHY_INTERFACE_MODE_UTMIW,
 };
 
-int usb_gadget_handle_interrupts(int index)
+int dm_usb_gadget_handle_interrupts(struct udevice *dev)
 {
-	dwc3_uboot_handle_interrupt(0);
+	dwc3_uboot_handle_interrupt(dev);
 	return 0;
 }
 
@@ -306,7 +313,7 @@ int board_usb_init(int index, enum usb_init_type init)
 
 #endif /* CONFIG_USB_GADGET */
 
-#if CONFIG_IS_ENABLED(FASTBOOT)
+#if IS_ENABLED(CONFIG_FASTBOOT)
 int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
 {
 	if (reason != FASTBOOT_REBOOT_REASON_BOOTLOADER)
@@ -323,7 +330,7 @@ int fastboot_set_reboot_flag(enum fastboot_reboot_reason reason)
 #ifdef CONFIG_MISC_INIT_R
 __weak int misc_init_r(void)
 {
-	const u32 cpuid_offset = 0x7;
+	const u32 cpuid_offset = CFG_CPUID_OFFSET;
 	const u32 cpuid_length = 0x10;
 	u8 cpuid[cpuid_length];
 	int ret;

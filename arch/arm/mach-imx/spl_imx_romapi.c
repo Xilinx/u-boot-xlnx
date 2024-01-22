@@ -6,11 +6,11 @@
 #include <common.h>
 #include <errno.h>
 #include <image.h>
+#include <imx_container.h>
 #include <log.h>
 #include <asm/global_data.h>
 #include <linux/libfdt.h>
 #include <spl.h>
-#include <asm/mach-imx/image.h>
 #include <asm/arch/sys_proto.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -76,13 +76,16 @@ static int spl_romapi_load_image_seekable(struct spl_image_info *spl_image,
 	u32 image_offset;
 
 	ret = rom_api_query_boot_infor(QUERY_IVT_OFF, &offset);
-	ret |= rom_api_query_boot_infor(QUERY_PAGE_SZ, &pagesize);
-	ret |= rom_api_query_boot_infor(QUERY_IMG_OFF, &image_offset);
+	if (ret != ROM_API_OKAY)
+		goto err;
 
-	if (ret != ROM_API_OKAY) {
-		puts("ROMAPI: Failure query boot infor pagesize/offset\n");
-		return -1;
-	}
+	ret = rom_api_query_boot_infor(QUERY_PAGE_SZ, &pagesize);
+	if (ret != ROM_API_OKAY)
+		goto err;
+
+	ret = rom_api_query_boot_infor(QUERY_IMG_OFF, &image_offset);
+	if (ret != ROM_API_OKAY)
+		goto err;
 
 	header = (struct legacy_img_hdr *)(CONFIG_SPL_IMX_ROMAPI_LOADADDR);
 
@@ -108,7 +111,8 @@ static int spl_romapi_load_image_seekable(struct spl_image_info *spl_image,
 		load.read = spl_romapi_read_seekable;
 		load.priv = &pagesize;
 		return spl_load_simple_fit(spl_image, &load, offset / pagesize, header);
-	} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
+	} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER) &&
+		   valid_container_hdr((void *)header)) {
 		struct spl_load_info load;
 
 		memset(&load, 0, sizeof(load));
@@ -124,6 +128,45 @@ static int spl_romapi_load_image_seekable(struct spl_image_info *spl_image,
 	}
 
 	return 0;
+
+err:
+	puts("ROMAPI: Failure query boot infor pagesize/offset\n");
+	return -1;
+}
+
+struct stream_state {
+	u8 *base;
+	u8 *end;
+	u32 pagesize;
+};
+
+static ulong spl_romapi_read_stream(struct spl_load_info *load, ulong sector,
+			       ulong count, void *buf)
+{
+	struct stream_state *ss = load->priv;
+	u8 *end = (u8*)(sector + count);
+	u32 bytes;
+	int ret;
+
+	if (end > ss->end) {
+		bytes = end - ss->end;
+		bytes += ss->pagesize - 1;
+		bytes /= ss->pagesize;
+		bytes *= ss->pagesize;
+
+		debug("downloading another 0x%x bytes\n", bytes);
+		ret = rom_api_download_image(ss->end, 0, bytes);
+
+		if (ret != ROM_API_OKAY) {
+			printf("Failure download %d\n", bytes);
+			return 0;
+		}
+
+		ss->end += bytes;
+	}
+
+	memcpy(buf, (void *)(sector), count);
+	return count;
 }
 
 static ulong spl_ram_load_read(struct spl_load_info *load, ulong sector,
@@ -140,23 +183,6 @@ static ulong spl_ram_load_read(struct spl_load_info *load, ulong sector,
 	}
 
 	return count;
-}
-
-static ulong get_fit_image_size(void *fit)
-{
-	struct spl_image_info spl_image;
-	struct spl_load_info spl_load_info;
-	ulong last = (ulong)fit;
-
-	memset(&spl_load_info, 0, sizeof(spl_load_info));
-	spl_load_info.bl_len = 1;
-	spl_load_info.read = spl_ram_load_read;
-	spl_load_info.priv = &last;
-
-	spl_load_simple_fit(&spl_image, &spl_load_info,
-			    (uintptr_t)fit, fit);
-
-	return last - (ulong)fit;
 }
 
 static u8 *search_fit_header(u8 *p, int size)
@@ -177,7 +203,8 @@ static u8 *search_container_header(u8 *p, int size)
 
 	for (i = 0; i < size; i += 4) {
 		hdr = p + i;
-		if (*(hdr + 3) == 0x87 && *hdr == 0 && (*(hdr + 1) != 0 || *(hdr + 2) != 0))
+		if (valid_container_hdr((void *)hdr) &&
+		    (*(hdr + 1) != 0 || *(hdr + 2) != 0))
 			return p + i;
 	}
 
@@ -219,9 +246,7 @@ static int img_info_size(void *img_hdr)
 
 static int img_total_size(void *img_hdr)
 {
-	if (IS_ENABLED(CONFIG_SPL_LOAD_FIT)) {
-		return get_fit_image_size(img_hdr);
-	} else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
+	if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER)) {
 		int total = get_container_size((ulong)img_hdr, NULL);
 
 		if (total < 0) {
@@ -260,7 +285,7 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 		ret = rom_api_download_image(p, 0, pg);
 
 		if (ret != ROM_API_OKAY) {
-			puts("Steam(USB) download failure\n");
+			puts("Stream(USB) download failure\n");
 			return -1;
 		}
 
@@ -280,7 +305,7 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 		ret = rom_api_download_image(p, 0, pg);
 
 		if (ret != ROM_API_OKAY) {
-			puts("Steam(USB) download failure\n");
+			puts("Stream(USB) download failure\n");
 			return -1;
 		}
 
@@ -309,6 +334,21 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 		}
 	}
 
+	if (IS_ENABLED(CONFIG_SPL_LOAD_FIT)) {
+		struct stream_state ss;
+
+		ss.base = phdr;
+		ss.end = p;
+		ss.pagesize = pagesize;
+
+		memset(&load, 0, sizeof(load));
+		load.bl_len = 1;
+		load.read = spl_romapi_read_stream;
+		load.priv = &ss;
+
+		return spl_load_simple_fit(spl_image, &load, (ulong)phdr, phdr);
+	}
+
 	total = img_total_size(phdr);
 	total += 3;
 	total &= ~0x3;
@@ -329,9 +369,7 @@ static int spl_romapi_load_image_stream(struct spl_image_info *spl_image,
 	load.bl_len = 1;
 	load.read = spl_ram_load_read;
 
-	if (IS_ENABLED(CONFIG_SPL_LOAD_FIT))
-		return spl_load_simple_fit(spl_image, &load, (ulong)phdr, phdr);
-	else if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER))
+	if (IS_ENABLED(CONFIG_SPL_LOAD_IMX_CONTAINER))
 		return spl_load_imx_container(spl_image, &load, (ulong)phdr);
 
 	return -1;
@@ -341,17 +379,40 @@ int board_return_to_bootrom(struct spl_image_info *spl_image,
 			    struct spl_boot_device *bootdev)
 {
 	int ret;
-	u32 boot;
+	u32 boot, bstage;
 
 	ret = rom_api_query_boot_infor(QUERY_BT_DEV, &boot);
+	if (ret != ROM_API_OKAY)
+		goto err;
 
-	if (ret != ROM_API_OKAY) {
-		puts("ROMAPI: failure at query_boot_info\n");
-		return -1;
+	ret = rom_api_query_boot_infor(QUERY_BT_STAGE, &bstage);
+	if (ret != ROM_API_OKAY)
+		goto err;
+
+	printf("Boot Stage: ");
+
+	switch (bstage) {
+	case BT_STAGE_PRIMARY:
+		printf("Primary boot\n");
+		break;
+	case BT_STAGE_SECONDARY:
+		printf("Secondary boot\n");
+		break;
+	case BT_STAGE_RECOVERY:
+		printf("Recovery boot\n");
+		break;
+	case BT_STAGE_USB:
+		printf("USB boot\n");
+		break;
+	default:
+		printf("Unknown (0x%x)\n", bstage);
 	}
 
 	if (is_boot_from_stream_device(boot))
 		return spl_romapi_load_image_stream(spl_image, bootdev);
 
 	return spl_romapi_load_image_seekable(spl_image, bootdev, boot);
+err:
+	puts("ROMAPI: failure at query_boot_info\n");
+	return -1;
 }

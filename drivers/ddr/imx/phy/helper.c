@@ -46,13 +46,13 @@ void ddr_load_train_firmware(enum fw_type type)
 	u32 error = 0;
 	unsigned long pr_to32, pr_from32;
 	uint32_t fw_offset = type ? IMEM_2D_OFFSET : 0;
-	unsigned long imem_start = (unsigned long)&_end + fw_offset;
+	unsigned long imem_start = (unsigned long)_end + fw_offset;
 	unsigned long dmem_start;
 	unsigned long imem_len = IMEM_LEN, dmem_len = DMEM_LEN;
 
 #ifdef CONFIG_SPL_OF_CONTROL
 	if (gd->fdt_blob && !fdt_check_header(gd->fdt_blob)) {
-		imem_start = roundup((unsigned long)&_end +
+		imem_start = roundup((unsigned long)_end +
 				     fdt_totalsize(gd->fdt_blob), 4) +
 			fw_offset;
 	}
@@ -167,8 +167,7 @@ void ddrphy_trained_csr_save(struct dram_cfg_param *ddrphy_csr,
 	dwc_ddrphy_apb_wr(0xd0000, 0x1);
 }
 
-void dram_config_save(struct dram_timing_info *timing_info,
-		      unsigned long saved_timing_base)
+void *dram_config_save(struct dram_timing_info *timing_info, unsigned long saved_timing_base)
 {
 	int i = 0;
 	struct dram_timing_info *saved_timing = (struct dram_timing_info *)saved_timing_base;
@@ -217,4 +216,6 @@ void dram_config_save(struct dram_timing_info *timing_info,
 		cfg->val = timing_info->ddrphy_pie[i].val;
 		cfg++;
 	}
+
+	return (void *)cfg;
 }

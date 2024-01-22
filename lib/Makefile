@@ -44,6 +44,7 @@ obj-$(CONFIG_GZIP_COMPRESSED) += gzip.o
 obj-$(CONFIG_GENERATE_SMBIOS_TABLE) += smbios.o
 obj-$(CONFIG_SMBIOS_PARSER) += smbios-parser.o
 obj-$(CONFIG_IMAGE_SPARSE) += image-sparse.o
+obj-y += initcall.o
 obj-y += ldiv.o
 obj-$(CONFIG_XXHASH) += xxhash.o
 obj-y += net_utils.o
@@ -57,23 +58,25 @@ endif
 
 obj-$(CONFIG_$(SPL_TPL_)TPM) += tpm-common.o
 ifeq ($(CONFIG_$(SPL_TPL_)TPM),y)
-obj-y += crc8.o
 obj-$(CONFIG_TPM) += tpm_api.o
 obj-$(CONFIG_TPM_V1) += tpm-v1.o
 obj-$(CONFIG_TPM_V2) += tpm-v2.o
 endif
 
+obj-$(CONFIG_$(SPL_TPL_)CRC8) += crc8.o
+obj-$(CONFIG_$(SPL_TPL_)CRC16) += crc16.o
+
 obj-y += crypto/
 
-obj-$(CONFIG_$(SPL_TPL_)GENERATE_ACPI_TABLE) += acpi/
+obj-$(CONFIG_$(SPL_TPL_)ACPI) += acpi/
 obj-$(CONFIG_$(SPL_)MD5) += md5.o
 obj-$(CONFIG_ECDSA) += ecdsa/
 obj-$(CONFIG_$(SPL_)RSA) += rsa/
 obj-$(CONFIG_HASH) += hash-checksum.o
 obj-$(CONFIG_BLAKE2) += blake2/blake2b.o
-obj-$(CONFIG_SHA1) += sha1.o
-obj-$(CONFIG_SHA256) += sha256.o
-obj-$(CONFIG_SHA512) += sha512.o
+obj-$(CONFIG_$(SPL_)SHA1) += sha1.o
+obj-$(CONFIG_$(SPL_)SHA256) += sha256.o
+obj-$(CONFIG_$(SPL_)SHA512) += sha512.o
 obj-$(CONFIG_CRYPT_PW) += crypt/
 obj-$(CONFIG_$(SPL_)ASN1_DECODER) += asn1_decoder.o
 
@@ -126,7 +129,7 @@ obj-$(CONFIG_LIB_UUID) += uuid.o
 obj-$(CONFIG_LIB_RAND) += rand.o
 obj-y += panic.o
 
-ifeq ($(CONFIG_$(SPL_TPL_)BUILD),y)
+ifeq ($(CONFIG_SPL_BUILD),y)
 # SPL U-Boot may use full-printf, tiny-printf or none at all
 ifdef CONFIG_$(SPL_TPL_)USE_TINY_PRINTF
 obj-$(CONFIG_$(SPL_TPL_)SPRINTF) += tiny-printf.o

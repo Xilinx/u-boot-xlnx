@@ -129,11 +129,13 @@ static struct spl_info spl_infos[] = {
 	{ "rk322x", "RK32", 0x8000 - 0x1000, false, RK_HEADER_V1 },
 	{ "rk3288", "RK32", 0x8000, false, RK_HEADER_V1 },
 	{ "rk3308", "RK33", 0x40000 - 0x1000, false, RK_HEADER_V1 },
-	{ "rk3328", "RK32", 0x8000 - 0x1000, false, RK_HEADER_V1 },
+	{ "rk3328", "RK32", 0x8000 - 0x800, false, RK_HEADER_V1 },
 	{ "rk3368", "RK33", 0x8000 - 0x1000, false, RK_HEADER_V1 },
 	{ "rk3399", "RK33", 0x30000 - 0x2000, false, RK_HEADER_V1 },
 	{ "rv1108", "RK11", 0x1800, false, RK_HEADER_V1 },
-	{ "rk3568", "RK35", 0x14000 - 0x1000, false, RK_HEADER_V2 },
+	{ "rv1126", "110B", 0x10000 - 0x1000, false, RK_HEADER_V1 },
+	{ "rk3568", "RK35", 0x10000 - 0x1000, false, RK_HEADER_V2 },
+	{ "rk3588", "RK35", 0x100000 - 0x1000, false, RK_HEADER_V2 },
 };
 
 /**
@@ -154,7 +156,7 @@ struct spl_params {
 
 static struct spl_params spl_params = { 0 };
 
-static unsigned char rc4_key[16] = {
+static const unsigned char rc4_key[16] = {
 	124, 78, 3, 4, 85, 5, 9, 7,
 	45, 44, 123, 56, 23, 13, 23, 17
 };
@@ -479,7 +481,7 @@ int rkcommon_verify_header(unsigned char *buf, int size,
 	return -ENOENT;
 }
 
-void rkcommon_print_header(const void *buf)
+void rkcommon_print_header(const void *buf, struct image_tool_params *params)
 {
 	struct header0_info header0;
 	struct header0_info_v2 header0_v2;

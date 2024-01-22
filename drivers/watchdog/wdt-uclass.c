@@ -7,6 +7,7 @@
 
 #include <common.h>
 #include <cyclic.h>
+#include <div64.h>
 #include <dm.h>
 #include <errno.h>
 #include <hang.h>
@@ -141,7 +142,7 @@ int wdt_start(struct udevice *dev, u64 timeout_ms, ulong flags)
 
 		printf("WDT:   Started %s with%s servicing %s (%ds timeout)\n",
 		       dev->name, IS_ENABLED(CONFIG_WATCHDOG) ? "" : "out",
-		       str, priv->timeout);
+		       str, (u32)lldiv(timeout_ms, 1000));
 	}
 
 	return ret;
@@ -236,28 +237,6 @@ void watchdog_reset(void)
 }
 #endif
 
-static int wdt_post_bind(struct udevice *dev)
-{
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-	struct wdt_ops *ops = (struct wdt_ops *)device_get_ops(dev);
-	static int reloc_done;
-
-	if (!reloc_done) {
-		if (ops->start)
-			ops->start += gd->reloc_off;
-		if (ops->stop)
-			ops->stop += gd->reloc_off;
-		if (ops->reset)
-			ops->reset += gd->reloc_off;
-		if (ops->expire_now)
-			ops->expire_now += gd->reloc_off;
-
-		reloc_done++;
-	}
-#endif
-	return 0;
-}
-
 static int wdt_pre_probe(struct udevice *dev)
 {
 	u32 timeout = WATCHDOG_TIMEOUT_SECS;
@@ -295,7 +274,6 @@ UCLASS_DRIVER(wdt) = {
 	.id			= UCLASS_WDT,
 	.name			= "watchdog",
 	.flags			= DM_UC_FLAG_SEQ_ALIAS,
-	.post_bind		= wdt_post_bind,
 	.pre_probe		= wdt_pre_probe,
 	.per_device_auto	= sizeof(struct wdt_priv),
 };

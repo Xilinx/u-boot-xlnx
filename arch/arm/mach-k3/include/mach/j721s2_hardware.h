@@ -2,7 +2,7 @@
 /*
  * K3: J721S2 SoC definitions, structures etc.
  *
- * (C) Copyright (C) 2021 Texas Instruments Incorporated - http://www.ti.com/
+ * (C) Copyright (C) 2021 Texas Instruments Incorporated - https://www.ti.com/
  */
 #ifndef __ASM_ARCH_J721S2_HARDWARE_H
 #define __ASM_ARCH_J721S2_HARDWARE_H
@@ -37,5 +37,24 @@
 
 /* MCU SCRATCHPAD usage */
 #define TI_SRAM_SCRATCH_BOARD_EEPROM_START	CONFIG_SYS_K3_MCU_SCRATCHPAD_BASE
+
+#if defined(CONFIG_SYS_K3_SPL_ATF) && !defined(__ASSEMBLY__)
+
+#define J721S2_DEV_MCU_RTI0			295
+#define J721S2_DEV_MCU_RTI1			296
+#define J721S2_DEV_MCU_ARMSS0_CPU0		284
+#define J721S2_DEV_MCU_ARMSS0_CPU1		285
+
+static const u32 put_device_ids[] = {
+	J721S2_DEV_MCU_RTI0,
+	J721S2_DEV_MCU_RTI1,
+};
+
+static const u32 put_core_ids[] = {
+	J721S2_DEV_MCU_ARMSS0_CPU1,
+	J721S2_DEV_MCU_ARMSS0_CPU0,	/* Handle CPU0 after CPU1 */
+};
+
+#endif
 
 #endif /* __ASM_ARCH_J721S2_HARDWARE_H */

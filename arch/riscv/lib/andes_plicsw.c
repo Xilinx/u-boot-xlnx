@@ -2,12 +2,12 @@
 /*
  * Copyright (C) 2019, Rick Chen <rick@andestech.com>
  *
- * U-Boot syscon driver for Andes's Platform Level Interrupt Controller (PLIC).
- * The PLIC block holds memory-mapped claim and pending registers
- * associated with software interrupt.
+ * U-Boot syscon driver for Andes' PLICSW
+ * The PLICSW block is an Andes-specific design for software interrupts,
+ * contains memory-mapped priority, enable, claim and pending registers
+ * similar to RISC-V PLIC.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <asm/global_data.h>
 #include <dm/device-internal.h>
@@ -21,31 +21,42 @@
 #include <linux/err.h>
 
 /* pending register */
-#define PENDING_REG(base, hart)	((ulong)(base) + 0x1000 + ((hart) / 4) * 4)
+#define PENDING_REG(base, hart)	((ulong)(base) + 0x1000 + 4 * (((hart) + 1) / 32))
 /* enable register */
-#define ENABLE_REG(base, hart)	((ulong)(base) + 0x2000 + (hart) * 0x80)
+#define ENABLE_REG(base, hart)	((ulong)(base) + 0x2000 + (hart) * 0x80 + 4 * (((hart) + 1) / 32))
 /* claim register */
 #define CLAIM_REG(base, hart)	((ulong)(base) + 0x200004 + (hart) * 0x1000)
+/* priority register */
+#define PRIORITY_REG(base)	((ulong)(base) + PLICSW_PRIORITY_BASE)
 
-#define ENABLE_HART_IPI         (0x01010101)
-#define SEND_IPI_TO_HART(hart)  (0x1 << (hart))
+/* Bit 0 of PLIC-SW pending array is hardwired to zero, so we start from bit 1 */
+#define PLICSW_PRIORITY_BASE        0x4
 
 DECLARE_GLOBAL_DATA_PTR;
 
 static int enable_ipi(int hart)
 {
-	unsigned int en;
+	u32 enable_bit = (hart + 1) % 32;
 
-	en = ENABLE_HART_IPI << hart;
-	writel(en, (void __iomem *)ENABLE_REG(gd->arch.plicsw, hart));
-	writel(en, (void __iomem *)ENABLE_REG(gd->arch.plicsw + 0x4, hart));
+	writel(BIT(enable_bit), (void __iomem *)ENABLE_REG(gd->arch.plicsw, hart));
 
 	return 0;
+}
+
+static void init_priority_ipi(int hart_num)
+{
+	u32 *priority = (void *)PRIORITY_REG(gd->arch.plicsw);
+
+	for (int i = 0; i < hart_num; i++)
+		writel(1, &priority[i]);
+
+	return;
 }
 
 int riscv_init_ipi(void)
 {
 	int ret;
+	int hart_num = 0;
 	long *base = syscon_get_first_range(RISCV_SYSCON_PLICSW);
 	ofnode node;
 	struct udevice *dev;
@@ -58,7 +69,7 @@ int riscv_init_ipi(void)
 	ret = uclass_find_first_device(UCLASS_CPU, &dev);
 	if (ret)
 		return ret;
-	else if (!dev)
+	if (!dev)
 		return -ENODEV;
 
 	ofnode_for_each_subnode(node, dev_ofnode(dev->parent)) {
@@ -79,17 +90,19 @@ int riscv_init_ipi(void)
 		ret = ofnode_read_u32(node, "reg", &reg);
 		if (ret == 0)
 			enable_ipi(reg);
+		hart_num++;
 	}
 
+	init_priority_ipi(hart_num);
 	return 0;
 }
 
 int riscv_send_ipi(int hart)
 {
-	unsigned int ipi = (SEND_IPI_TO_HART(hart) << (8 * gd->arch.boot_hart));
+	u32 interrupt_id = hart + 1;
+	u32 pending_bit  = interrupt_id % 32;
 
-	writel(ipi, (void __iomem *)PENDING_REG(gd->arch.plicsw,
-				gd->arch.boot_hart));
+	writel(BIT(pending_bit), (void __iomem *)PENDING_REG(gd->arch.plicsw, hart));
 
 	return 0;
 }
@@ -106,11 +119,11 @@ int riscv_clear_ipi(int hart)
 
 int riscv_get_ipi(int hart, int *pending)
 {
-	unsigned int ipi = (SEND_IPI_TO_HART(hart) << (8 * gd->arch.boot_hart));
+	u32 interrupt_id = hart + 1;
+	u32 pending_bit  = interrupt_id % 32;
 
-	*pending = readl((void __iomem *)PENDING_REG(gd->arch.plicsw,
-						     gd->arch.boot_hart));
-	*pending = !!(*pending & ipi);
+	*pending = readl((void __iomem *)PENDING_REG(gd->arch.plicsw, hart));
+	*pending = !!(*pending & BIT(pending_bit));
 
 	return 0;
 }

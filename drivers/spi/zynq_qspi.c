@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * (C) Copyright 2013 Xilinx, Inc.
+ * (C) Copyright 2013 - 2022, Xilinx, Inc.
  * (C) Copyright 2015 Jagan Teki <jteki@openedev.com>
+ * (C) Copyright 2023, Advanced Micro Devices, Inc.
  *
  * Xilinx Zynq Quad-SPI(QSPI) controller driver (master mode only)
  */
@@ -44,11 +45,10 @@ DECLARE_GLOBAL_DATA_PTR;
 #define ZYNQ_QSPI_TXD_00_01_OFFSET	0x80	/* Transmit 1-byte inst */
 #define ZYNQ_QSPI_TXD_00_10_OFFSET	0x84	/* Transmit 2-byte inst */
 #define ZYNQ_QSPI_TXD_00_11_OFFSET	0x88	/* Transmit 3-byte inst */
-#define ZYNQ_QSPI_FR_QOUT_CODE		0x6B	/* read instruction code */
-#define ZYNQ_QSPI_FR_DUALIO_CODE	0xBB
+#define ZYNQ_QSPI_FR_QOUT_CODE		0x6B    /* read instruction code */
 
-#define QSPI_SELECT_LOWER_CS		BIT(0)
-#define QSPI_SELECT_UPPER_CS		BIT(1)
+#define QSPI_SELECT_LOWER_CS            BIT(0)
+#define QSPI_SELECT_UPPER_CS            BIT(1)
 
 /*
  * QSPI Linear Configuration Register
@@ -56,10 +56,10 @@ DECLARE_GLOBAL_DATA_PTR;
  * It is named Linear Configuration but it controls other modes when not in
  * linear mode also.
  */
-#define ZYNQ_QSPI_LCFG_TWO_MEM_MASK	0x40000000 /* QSPI Enable Bit Mask */
-#define ZYNQ_QSPI_LCFG_SEP_BUS_MASK	0x20000000 /* QSPI Enable Bit Mask */
-#define ZYNQ_QSPI_LCFG_U_PAGE		0x10000000 /* QSPI Upper memory set */
-#define ZYNQ_QSPI_LCFG_DUMMY_SHIFT	8
+#define ZYNQ_QSPI_LCFG_TWO_MEM_MASK     0x40000000 /* QSPI Enable Bit Mask */
+#define ZYNQ_QSPI_LCFG_SEP_BUS_MASK     0x20000000 /* QSPI Enable Bit Mask */
+#define ZYNQ_QSPI_LCFG_U_PAGE           0x10000000 /* QSPI Upper memory set */
+#define ZYNQ_QSPI_LCFG_DUMMY_SHIFT      8
 
 #define ZYNQ_QSPI_TXFIFO_THRESHOLD	1	/* Tx FIFO threshold level*/
 #define ZYNQ_QSPI_RXFIFO_THRESHOLD	32	/* Rx FIFO threshold level */
@@ -121,7 +121,6 @@ struct zynq_qspi_priv {
 	unsigned int is_inst;
 	unsigned int is_parallel;
 	unsigned int is_stacked;
-	unsigned int is_dio;
 	unsigned int u_page;
 	unsigned cs_change:1;
 	unsigned is_strip:1;
@@ -204,9 +203,8 @@ static int zynq_qspi_child_pre_probe(struct udevice *bus)
 	struct spi_slave *slave = dev_get_parent_priv(bus);
 	struct zynq_qspi_priv *priv = dev_get_priv(bus->parent);
 
-	slave->multi_cs_cap = true;
-	slave->dio = priv->is_dio;
 	priv->max_hz = slave->max_hz;
+	slave->multi_cs_cap = true;
 
 	return 0;
 }
@@ -416,7 +414,7 @@ static void zynq_qspi_fill_tx_fifo(struct zynq_qspi_priv *priv, u32 size)
 			    !priv->is_inst && (len % 2))
 				len++;
 			offset = (priv->rx_buf) ?
-				  offsets[3] : offsets[len - 1];
+				 offsets[3] : offsets[len - 1];
 			writel(data, &regs->cr + (offset / 4));
 		}
 	}
@@ -539,35 +537,22 @@ static int zynq_qspi_start_transfer(struct zynq_qspi_priv *priv)
 
 	if (priv->is_inst && priv->is_stacked && current_u_page != priv->u_page) {
 		if (priv->u_page) {
-			if (priv->is_dio == SF_DUALIO_FLASH)
-				writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
-					ZYNQ_QSPI_LCFG_U_PAGE |
-					(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
-					ZYNQ_QSPI_FR_DUALIO_CODE),
-					&regs->lqspicfg);
-			else
-				/* Configure two memories on shared bus
-				 * by enabling upper mem
-				 */
-				writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
-					ZYNQ_QSPI_LCFG_U_PAGE |
-					(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
-					ZYNQ_QSPI_FR_QOUT_CODE),
-					&regs->lqspicfg);
+			/* Configure two memories on shared bus
+			 * by enabling upper mem
+			 */
+			writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
+				ZYNQ_QSPI_LCFG_U_PAGE |
+				(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
+				ZYNQ_QSPI_FR_QOUT_CODE),
+				&regs->lqspicfg);
 		} else {
-			if (priv->is_dio == SF_DUALIO_FLASH)
-				writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
-					(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
-					ZYNQ_QSPI_FR_DUALIO_CODE),
-					&regs->lqspicfg);
-			else
-				/* Configure two memories on shared bus
-				 * by enabling lower mem
-				 */
-				writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
-					(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
-					ZYNQ_QSPI_FR_QOUT_CODE),
-					&regs->lqspicfg);
+			/* Configure two memories on shared bus
+			 * by enabling lower mem
+			 */
+			writel((ZYNQ_QSPI_LCFG_TWO_MEM_MASK |
+				(1 << ZYNQ_QSPI_LCFG_DUMMY_SHIFT) |
+				ZYNQ_QSPI_FR_QOUT_CODE),
+				&regs->lqspicfg);
 		}
 		current_u_page = priv->u_page;
 	}
@@ -663,7 +648,7 @@ static int zynq_qspi_xfer(struct udevice *dev, unsigned int bitlen,
 	priv->rx_buf = din;
 	priv->len = bitlen / 8;
 
-	debug("zynq_qspi_xfer: bus:%i cs[0]:%i bitlen:%i len:%i flags:%lx\n",
+	debug("%s: bus:%i cs[0]:%i bitlen:%i len:%i flags:%lx\n", __func__,
 	      dev_seq(bus), slave_plat->cs[0], bitlen, priv->len, flags);
 
 	/*
@@ -821,7 +806,6 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	if (ret)
 		return ret;
 
-	slave->dummy_bytes = 0;
 	priv->is_strip = update_stripe(op);
 
 	/* 2nd transfer: rx or tx data path */
@@ -860,8 +844,8 @@ static int zynq_qspi_check_buswidth(struct spi_slave *slave, u8 width)
 	return -EOPNOTSUPP;
 }
 
-bool zynq_qspi_mem_exec_op(struct spi_slave *slave,
-			   const struct spi_mem_op *op)
+static bool zynq_qspi_mem_exec_op(struct spi_slave *slave,
+				  const struct spi_mem_op *op)
 {
 	if (zynq_qspi_check_buswidth(slave, op->cmd.buswidth))
 		return false;

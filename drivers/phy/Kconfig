@@ -70,6 +70,16 @@ config AB8500_USB_PHY
 	help
 	  Support for the USB OTG PHY in ST-Ericsson AB8500.
 
+config APPLE_ATCPHY
+       bool "Apple Type-C PHY Driver"
+       depends on PHY && ARCH_APPLE
+       default y
+       help
+         Support for the Apple Type-C PHY.
+
+	 This is a dummy driver since the PHY is initialized
+	 sufficiently by previous stage firmware.
+
 config BCM6318_USBH_PHY
 	bool "BCM6318 USBH PHY support"
 	depends on PHY && ARCH_BMIPS
@@ -190,7 +200,7 @@ config MESON_GXL_USB_PHY
 
 config MESON_G12A_USB_PHY
 	bool "Amlogic Meson G12A USB PHYs"
-	depends on PHY && ARCH_MESON && MESON_G12A
+	depends on PHY && ARCH_MESON && (MESON_G12A || MESON_A1)
 	imply REGMAP
 	help
 	  This is the generic phy driver for the Amlogic Meson G12A
@@ -285,5 +295,6 @@ source "drivers/phy/rockchip/Kconfig"
 source "drivers/phy/cadence/Kconfig"
 source "drivers/phy/ti/Kconfig"
 source "drivers/phy/qcom/Kconfig"
+source "drivers/phy/renesas/Kconfig"
 
 endmenu

@@ -49,7 +49,11 @@ static int dm_mdio_post_bind(struct udevice *dev)
 		return -EINVAL;
 	}
 
+#if CONFIG_IS_ENABLED(OF_REAL)
+	return dm_scan_fdt_dev(dev);
+#else
 	return 0;
+#endif
 }
 
 int dm_mdio_read(struct udevice *mdio_dev, int addr, int devad, int reg)
@@ -171,7 +175,7 @@ static struct phy_device *dm_eth_connect_phy_handle(struct udevice *ethdev,
 	struct phy_device *phy;
 	ofnode phynode;
 
-	if (CONFIG_IS_ENABLED(PHY_FIXED) &&
+	if (IS_ENABLED(CONFIG_PHY_FIXED) &&
 	    ofnode_phy_is_fixed_link(dev_ofnode(ethdev), &phynode)) {
 		phy = phy_connect(NULL, 0, ethdev, interface);
 		goto out;

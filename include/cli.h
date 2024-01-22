@@ -7,6 +7,47 @@
 #ifndef __CLI_H
 #define __CLI_H
 
+#include <stdbool.h>
+#include <linux/types.h>
+
+/**
+ * struct cli_ch_state - state information for reading cmdline characters
+ *
+ * @esc_len: Number of escape characters read so far
+ * @esc_save: Escape characters collected so far
+ * @emit_upto: Next index to emit from esc_save
+ * @emitting: true if emitting from esc_save
+ */
+struct cli_ch_state {
+	int esc_len;
+	char esc_save[8];
+	int emit_upto;
+	bool emitting;
+};
+
+/**
+ * struct cli_line_state - state of the line editor
+ *
+ * @num: Current cursor position, where 0 is the start
+ * @eol_num: Number of characters in the buffer
+ * @insert: true if in 'insert' mode
+ * @history: true if history should be accessible
+ * @cmd_complete: true if tab completion should be enabled (requires @prompt to
+ *	be set)
+ * @buf: Buffer containing line
+ * @prompt: Prompt for the line
+ */
+struct cli_line_state {
+	uint num;
+	uint eol_num;
+	uint len;
+	bool insert;
+	bool history;
+	bool cmd_complete;
+	char *buf;
+	const char *prompt;
+};
+
 /**
  * Go into the command loop
  *
@@ -81,8 +122,8 @@ int cli_readline(const char *const prompt);
  *
  * @prompt:	Prompt to display
  * @buffer:	Place to put the line that is entered
- * @timeout:	Timeout in milliseconds, 0 if none
- * Return: command line length excluding terminator, or -ve on error: of the
+ * @timeout:	Timeout in seconds, 0 if none
+ * Return: command line length excluding terminator, or -ve on error: if the
  * timeout is exceeded (either CONFIG_BOOT_RETRY_TIME or the timeout
  * parameter), then -2 is returned. If a break is detected (Ctrl-C) then
  * -1 is returned.
@@ -154,5 +195,89 @@ void cli_loop(void);
 void cli_init(void);
 
 #define endtick(seconds) (get_ticks() + (uint64_t)(seconds) * get_tbclk())
+#define CTL_CH(c)		((c) - 'a' + 1)
+
+/**
+ * cli_ch_init() - Set up the initial state to process input characters
+ *
+ * @cch: State to set up
+ */
+void cli_ch_init(struct cli_ch_state *cch);
+
+/**
+ * cli_ch_process() - Process an input character
+ *
+ * When @ichar is 0, this function returns any characters from an invalid escape
+ * sequence which are still pending in the buffer
+ *
+ * Otherwise it processes the input character. If it is an escape character,
+ * then an escape sequence is started and the function returns 0. If we are in
+ * the middle of an escape sequence, the character is processed and may result
+ * in returning 0 (if more characters are needed) or a valid character (if
+ * @ichar finishes the sequence).
+ *
+ * If @ichar is a valid character and there is no escape sequence in progress,
+ * then it is returned as is.
+ *
+ * If the Enter key is pressed, '\n' is returned.
+ *
+ * Usage should be like this::
+ *
+ *    struct cli_ch_state cch;
+ *
+ *    cli_ch_init(cch);
+ *    do
+ *       {
+ *       int ichar, ch;
+ *
+ *       ichar = cli_ch_process(cch, 0);
+ *       if (!ichar) {
+ *          ch = getchar();
+ *          ichar = cli_ch_process(cch, ch);
+ *       }
+ *       (handle the ichar character)
+ *    } while (!done)
+ *
+ * If tstc() is used to look for keypresses, this function can be called with
+ * @ichar set to -ETIMEDOUT if there is no character after 5-10ms. This allows
+ * the ambgiuity between the Escape key and the arrow keys (which generate an
+ * escape character followed by other characters) to be resolved.
+ *
+ * @cch: Current state
+ * @ichar: Input character to process, or 0 if none, or -ETIMEDOUT if no
+ * character has been received within a small number of milliseconds (this
+ * cancels any existing escape sequence and allows pressing the Escape key to
+ * work)
+ * Returns: Resulting input character after processing, 0 if none, '\e' if
+ * an existing escape sequence was cancelled
+ */
+int cli_ch_process(struct cli_ch_state *cch, int ichar);
+
+/**
+ * cread_line_process_ch() - Process a character for line input
+ *
+ * @cls: CLI line state
+ * @ichar: Character to process
+ * Return: 0 if input is complete, with line in cls->buf, -EINTR if input was
+ * cancelled with Ctrl-C, -EAGAIN if more characters are needed
+ */
+int cread_line_process_ch(struct cli_line_state *cls, char ichar);
+
+/**
+ * cli_cread_init() - Set up a new cread struct
+ *
+ * Sets up a new cread state, with history and cmd_complete set to false
+ *
+ * After calling this, you can use cread_line_process_ch() to process characters
+ * received from the user.
+ *
+ * @cls: CLI line state
+ * @buf: Text buffer containing the initial text
+ * @buf_size: Buffer size, including nul terminator
+ */
+void cli_cread_init(struct cli_line_state *cls, char *buf, uint buf_size);
+
+/** cread_print_hist_list() - Print the command-line history list */
+void cread_print_hist_list(void);
 
 #endif

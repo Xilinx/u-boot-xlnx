@@ -2,7 +2,7 @@
 /*
  * CPPI5 descriptors interface
  *
- * Copyright (C) 2018 Texas Instruments Incorporated - http://www.ti.com
+ * Copyright (C) 2018 Texas Instruments Incorporated - https://www.ti.com
  */
 
 #ifndef __TI_CPPI5_H__
@@ -11,6 +11,7 @@
 #include <hexdump.h>
 #include <linux/bitops.h>
 #include <linux/bug.h>
+#include <linux/printk.h>
 
 /**
  * Descriptor header, present in all types of descriptors

@@ -9,7 +9,7 @@
 
 / {
 	binman {
-		filename = "u-boot.bin";
+		filename = "u-boot-dtb.bin";
 		skip-at-start = <CONFIG_TEXT_BASE>;
 		sort-by-offset;
 		pad-byte = <0xff>;
@@ -23,11 +23,11 @@
 		u-boot-dtb-with-ucode {
 			align = <4>;
 		};
-#ifndef CONFIG_RESET_VECTOR_ADDRESS
-#define CONFIG_RESET_VECTOR_ADDRESS 0xfffffffc
+#ifndef CFG_RESET_VECTOR_ADDRESS
+#define CFG_RESET_VECTOR_ADDRESS 0xfffffffc
 #endif
 		powerpc-mpc85xx-bootpg-resetvec {
-			offset = <(CONFIG_RESET_VECTOR_ADDRESS - 0xffc)>;
+			offset = <(CFG_RESET_VECTOR_ADDRESS - 0xffc)>;
 		};
 	};
 };

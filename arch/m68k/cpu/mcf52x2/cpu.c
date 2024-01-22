@@ -13,11 +13,9 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
-#include <common.h>
 #include <init.h>
 #include <net.h>
 #include <vsprintf.h>
-#include <watchdog.h>
 #include <command.h>
 #include <asm/global_data.h>
 #include <asm/immap.h>
@@ -53,51 +51,7 @@ int print_cpuinfo(void)
 	return 0;
 };
 #endif /* CONFIG_DISPLAY_CPUINFO */
-
-#if defined(CONFIG_WATCHDOG)
-/* Called by macro WATCHDOG_RESET */
-void watchdog_reset(void)
-{
-	wdog_t *wdt = (wdog_t *)(MMAP_WDOG);
-
-	out_be16(&wdt->sr, 0x5555);
-	out_be16(&wdt->sr, 0xaaaa);
-}
-
-int watchdog_disable(void)
-{
-	wdog_t *wdt = (wdog_t *)(MMAP_WDOG);
-
-	/* reset watchdog counter */
-	out_be16(&wdt->sr, 0x5555);
-	out_be16(&wdt->sr, 0xaaaa);
-	/* disable watchdog timer */
-	out_be16(&wdt->cr, 0);
-
-	puts("WATCHDOG:disabled\n");
-	return (0);
-}
-
-int watchdog_init(void)
-{
-	wdog_t *wdt = (wdog_t *)(MMAP_WDOG);
-
-	/* disable watchdog */
-	out_be16(&wdt->cr, 0);
-
-	/* set timeout and enable watchdog */
-	out_be16(&wdt->mr,
-		(CONFIG_WATCHDOG_TIMEOUT * CONFIG_SYS_HZ) / (32768 * 1000) - 1);
-
-	/* reset watchdog counter */
-	out_be16(&wdt->sr, 0x5555);
-	out_be16(&wdt->sr, 0xaaaa);
-
-	puts("WATCHDOG:enabled\n");
-	return (0);
-}
-#endif				/* #ifdef CONFIG_WATCHDOG */
-#endif				/* #ifdef CONFIG_M5208 */
+#endif /* #ifdef CONFIG_M5208 */
 
 #ifdef  CONFIG_M5271
 #if defined(CONFIG_DISPLAY_CPUINFO)
@@ -132,11 +86,11 @@ int print_cpuinfo(void)
 
 	if (cpu_model)
 		printf("CPU:   Freescale ColdFire MCF%s rev. %hu, at %s MHz\n",
-		       cpu_model, prn, strmhz(buf, CONFIG_SYS_CLK));
+		       cpu_model, prn, strmhz(buf, CFG_SYS_CLK));
 	else
 		printf("CPU:   Unknown - Freescale ColdFire MCF5271 family"
 		       " (PIN: 0x%x) rev. %hu, at %s MHz\n",
-		       pin, prn, strmhz(buf, CONFIG_SYS_CLK));
+		       pin, prn, strmhz(buf, CFG_SYS_CLK));
 
 	return 0;
 }
@@ -253,7 +207,7 @@ int watchdog_init(void)
 
 	/* set timeout and enable watchdog */
 	out_be16(&wdt->wdog_wrrr,
-		(CONFIG_WATCHDOG_TIMEOUT * CONFIG_SYS_HZ) / (32768 * 1000) - 1);
+		(CONFIG_WATCHDOG_TIMEOUT_MSECS * CONFIG_SYS_HZ) / (32768 * 1000) - 1);
 
 	/* reset watchdog counter */
 	out_be16(&wdt->wdog_wcr, 0);
@@ -284,7 +238,7 @@ int print_cpuinfo(void)
 	char buf[32];
 
 	printf("CPU:   Freescale Coldfire MCF5275 at %s MHz\n",
-			strmhz(buf, CONFIG_SYS_CLK));
+			strmhz(buf, CFG_SYS_CLK));
 	return 0;
 };
 #endif /* CONFIG_DISPLAY_CPUINFO */
@@ -323,7 +277,7 @@ int watchdog_init(void)
 
 	/* set timeout and enable watchdog */
 	out_be16(&wdt->wmr,
-		(CONFIG_WATCHDOG_TIMEOUT * CONFIG_SYS_HZ) / (32768 * 1000) - 1);
+		(CONFIG_WATCHDOG_TIMEOUT_MSECS * CONFIG_SYS_HZ) / (32768 * 1000) - 1);
 
 	/* reset watchdog counter */
 	out_be16(&wdt->wsr, 0x5555);
@@ -370,7 +324,7 @@ int print_cpuinfo(void)
 	char buf[32];
 
 	printf("CPU:   Freescale Coldfire MCF5249 at %s MHz\n",
-	       strmhz(buf, CONFIG_SYS_CLK));
+	       strmhz(buf, CFG_SYS_CLK));
 	return 0;
 }
 #endif /* CONFIG_DISPLAY_CPUINFO */
@@ -394,7 +348,7 @@ int print_cpuinfo(void)
 
 	unsigned char resetsource = mbar_readLong(SIM_RSR);
 	printf("CPU:   Freescale Coldfire MCF5253 at %s MHz\n",
-	       strmhz(buf, CONFIG_SYS_CLK));
+	       strmhz(buf, CFG_SYS_CLK));
 
 	if ((resetsource & SIM_RSR_HRST) || (resetsource & SIM_RSR_SWTR)) {
 		printf("Reset:%s%s\n",

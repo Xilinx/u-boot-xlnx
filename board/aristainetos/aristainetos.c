@@ -27,10 +27,10 @@
 #include <asm/arch/crm_regs.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/sections.h>
 #include <bmp_logo.h>
 #include <dm/root.h>
 #include <env.h>
-#include <env_internal.h>
 #include <i2c_eeprom.h>
 #include <i2c.h>
 #include <micrel.h>
@@ -217,7 +217,6 @@ static void set_gpr_register(void)
 	       &iomuxc_regs->gpr[12]);
 }
 
-extern char __bss_start[], __bss_end[];
 int board_early_init_f(void)
 {
 	select_ldb_di_clock_source(MXC_PLL5_CLK);
@@ -529,22 +528,3 @@ int embedded_dtb_select(void)
 	return 0;
 }
 #endif
-
-enum env_location env_get_location(enum env_operation op, int prio)
-{
-	if (op == ENVOP_SAVE || op == ENVOP_ERASE)
-		return ENVL_SPI_FLASH;
-
-	switch (prio) {
-	case 0:
-		return ENVL_NOWHERE;
-
-	case 1:
-		return ENVL_SPI_FLASH;
-
-	default:
-		return ENVL_UNKNOWN;
-	}
-
-	return ENVL_UNKNOWN;
-}

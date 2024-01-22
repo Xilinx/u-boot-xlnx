@@ -83,7 +83,7 @@ int misc_init_r (void)
 	/*
 	 * Check if boot FLASH isn't max size
 	 */
-	if (gd->bd->bi_flashsize < (0 - CONFIG_SYS_FLASH0)) {
+	if (gd->bd->bi_flashsize < (0 - CFG_SYS_FLASH0)) {
 		set_lbc_or(0, gd->bd->bi_flashstart |
 			   (CONFIG_SYS_OR0_PRELIM & 0x00007fff));
 		set_lbc_br(0, gd->bd->bi_flashstart |
@@ -98,7 +98,7 @@ int misc_init_r (void)
 	/*
 	 * Check if only one FLASH bank is available
 	 */
-	if (gd->bd->bi_flashsize != CONFIG_SYS_MAX_FLASH_BANKS * (0 - CONFIG_SYS_FLASH0)) {
+	if (gd->bd->bi_flashsize != CONFIG_SYS_MAX_FLASH_BANKS * (0 - CFG_SYS_FLASH0)) {
 		set_lbc_or(1, 0);
 		set_lbc_br(1, 0);
 
@@ -143,7 +143,7 @@ void local_bus_init (void)
 	sys_info_t sysinfo;
 	uint clkdiv;
 	uint lbc_mhz;
-	uint lcrr = CONFIG_SYS_LBC_LCRR;
+	uint lcrr = CFG_SYS_LBC_LCRR;
 
 	get_sys_info (&sysinfo);
 	clkdiv = lbc->lcrr & LCRR_CLKDIV;
@@ -204,8 +204,8 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	/* Fixup FPGA mapping */
 	val[i++] = 3;				/* chip select number */
 	val[i++] = 0;				/* always 0 */
-	val[i++] = CONFIG_SYS_FPGA_BASE;
-	val[i++] = CONFIG_SYS_FPGA_SIZE;
+	val[i++] = CFG_SYS_FPGA_BASE;
+	val[i++] = CFG_SYS_FPGA_SIZE;
 
 	rc = fdt_find_and_setprop(blob, "/localbus", "ranges",
 				  val, i * sizeof(u32), 1);
@@ -216,23 +216,6 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	return 0;
 }
 #endif /* CONFIG_OF_BOARD_SETUP */
-
-#if defined(CONFIG_OF_SEPARATE)
-void *board_fdt_blob_setup(int *err)
-{
-	void *fw_dtb;
-
-	*err = 0;
-	fw_dtb = (void *)(CONFIG_TEXT_BASE - CONFIG_ENV_SECT_SIZE);
-	if (fdt_magic(fw_dtb) != FDT_MAGIC) {
-		printf("DTB is not passed via %x\n", (u32)fw_dtb);
-		*err = -ENXIO;
-		return NULL;
-	}
-
-	return fw_dtb;
-}
-#endif
 
 int get_serial_clock(void)
 {

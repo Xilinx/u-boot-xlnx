@@ -3,7 +3,7 @@
  * ET1011C PHY driver
  *
  * Derived from Linux kernel driver by Chaithrika U S
- * Copyright (C) 2013, Texas Instruments, Incorporated - http://www.ti.com/
+ * Copyright (C) 2013, Texas Instruments, Incorporated - https://www.ti.com/
  */
 #include <config.h>
 #include <phy.h>
@@ -60,7 +60,7 @@ static int et1011c_parse_status(struct phy_device *phydev)
 			  mii_reg |
 			  ET1011C_GMII_INTERFACE |
 			  ET1011C_SYS_CLK_EN |
-#ifdef CONFIG_PHY_ET1011C_TX_CLK_FIX
+#ifdef CFG_PHY_ET1011C_TX_CLK_FIX
 			  ET1011C_TX_CLK_EN |
 #endif
 			  ET1011C_TX_FIFO_DEPTH_16);
@@ -87,7 +87,7 @@ static int et1011c_startup(struct phy_device *phydev)
 	return et1011c_parse_status(phydev);
 }
 
-static struct phy_driver et1011c_driver = {
+U_BOOT_PHY_DRIVER(et1011c) = {
 	.name		= "ET1011C",
 	.uid		= 0x0282f014,
 	.mask		= 0xfffffff0,
@@ -95,10 +95,3 @@ static struct phy_driver et1011c_driver = {
 	.config		= &et1011c_config,
 	.startup	= &et1011c_startup,
 };
-
-int phy_et1011c_init(void)
-{
-	phy_register(&et1011c_driver);
-
-	return 0;
-}

@@ -4,7 +4,6 @@
  *
  */
 
-#include <common.h>
 #include <command.h>
 #include <init.h>
 #include <vsprintf.h>
@@ -33,7 +32,7 @@ int print_cpuinfo(void)
 	char buf[32];
 
 	printf("CPU:   Freescale Coldfire MCF5307 at %s MHz\n",
-	       strmhz(buf, CONFIG_SYS_CPU_CLK));
+	       strmhz(buf, CFG_SYS_CPU_CLK));
 	return 0;
 }
 #endif /* CONFIG_DISPLAY_CPUINFO */

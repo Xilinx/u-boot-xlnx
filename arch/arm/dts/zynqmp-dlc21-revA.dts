@@ -4,7 +4,7 @@
  *
  * (C) Copyright 2019 - 2021, Xilinx, Inc.
  *
- * Michal Simek <michal.simek@xilinx.com>
+ * Michal Simek <michal.simek@amd.com>
  */
 /dts-v1/;
 
@@ -43,13 +43,13 @@
 		reg = <0 0 0 0x80000000>, <0x8 0 0x3 0x80000000>;
 	};
 
-	si5332_1: si5332_1 { /* clk0_sgmii - u142 */
+	si5332_1: si5332-1 { /* clk0_sgmii - u142 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <125000000>;
 	};
 
-	si5332_2: si5332_2 { /* clk1_usb - u142 */
+	si5332_2: si5332-2 { /* clk1_usb - u142 */
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <26000000>;
@@ -80,7 +80,7 @@
 
 &uart0 { /* uart0 MIO38-39 */
 	status = "okay";
-	u-boot,dm-pre-reloc;
+	bootph-all;
 };
 
 &gem0 {
@@ -88,9 +88,13 @@
 	phy-handle = <&phy0>;
 	phy-mode = "sgmii"; /* DTG generates this properly  1512 */
 	is-internal-pcspma;
-	/* phy-reset-gpios = <&gpio 142 GPIO_ACTIVE_LOW>; */
-	phy0: ethernet-phy@0 {
-		reg = <0>;
+	mdio: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		/* reset-gpios = <&gpio 142 GPIO_ACTIVE_LOW>; */
+		phy0: ethernet-phy@0 {
+			reg = <0>;
+		};
 	};
 };
 
@@ -195,10 +199,10 @@
 	status = "okay";
 	is-decoded-cs = <0>;
 	num-cs = <1>;
-	u-boot,dm-pre-reloc;
+	bootph-all;
 	displayspi@0 {
 		compatible = "syncoam,seps525";
-		u-boot,dm-pre-reloc;
+		bootph-all;
 		reg = <0>;
 		status = "okay";
 		spi-max-frequency = <10000000>;

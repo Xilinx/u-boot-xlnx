@@ -36,12 +36,12 @@
 #define DEVCFG_MCTRL_RFIFO_FLUSH	0x00000002
 #define DEVCFG_MCTRL_WFIFO_FLUSH	0x00000001
 
-#ifndef CONFIG_SYS_FPGA_WAIT
-#define CONFIG_SYS_FPGA_WAIT CONFIG_SYS_HZ/100	/* 10 ms */
+#ifndef CFG_SYS_FPGA_WAIT
+#define CFG_SYS_FPGA_WAIT CONFIG_SYS_HZ/100	/* 10 ms */
 #endif
 
-#ifndef CONFIG_SYS_FPGA_PROG_TIME
-#define CONFIG_SYS_FPGA_PROG_TIME	(CONFIG_SYS_HZ * 4) /* 4 s */
+#ifndef CFG_SYS_FPGA_PROG_TIME
+#define CFG_SYS_FPGA_PROG_TIME	(CONFIG_SYS_HZ * 4) /* 4 s */
 #endif
 
 #define DUMMY_WORD	0xffffffff
@@ -181,7 +181,7 @@ static int zynq_dma_transfer(u32 srcbuf, u32 srclen, u32 dstbuf, u32 dstlen)
 
 			return FPGA_FAIL;
 		}
-		if (get_timer(ts) > CONFIG_SYS_FPGA_PROG_TIME) {
+		if (get_timer(ts) > CFG_SYS_FPGA_PROG_TIME) {
 			printf("%s: Timeout wait for DMA to complete\n",
 			       __func__);
 			return FPGA_FAIL;
@@ -232,7 +232,7 @@ static int zynq_dma_xfer_init(bitstream_type bstype)
 		/* Polling the PCAP_INIT status for Reset */
 		ts = get_timer(0);
 		while (readl(&devcfg_base->status) & DEVCFG_STATUS_PCFG_INIT) {
-			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+			if (get_timer(ts) > CFG_SYS_FPGA_WAIT) {
 				printf("%s: Timeout wait for INIT to clear\n",
 				       __func__);
 				return FPGA_FAIL;
@@ -246,7 +246,7 @@ static int zynq_dma_xfer_init(bitstream_type bstype)
 		ts = get_timer(0);
 		while (!(readl(&devcfg_base->status) &
 			DEVCFG_STATUS_PCFG_INIT)) {
-			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+			if (get_timer(ts) > CFG_SYS_FPGA_WAIT) {
 				printf("%s: Timeout wait for INIT to set\n",
 				       __func__);
 				return FPGA_FAIL;
@@ -400,7 +400,7 @@ static int zynq_load(xilinx_desc *desc, const void *buf, size_t bsize,
 	/* Check FPGA configuration completion */
 	ts = get_timer(0);
 	while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
-		if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+		if (get_timer(ts) > CFG_SYS_FPGA_WAIT) {
 			printf("%s: Timeout wait for FPGA to config\n",
 			       __func__);
 			return FPGA_FAIL;
@@ -484,7 +484,7 @@ static int zynq_loadfs(xilinx_desc *desc, const void *buf, size_t bsize,
 	/* Check FPGA configuration completion */
 	ts = get_timer(0);
 	while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
-		if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+		if (get_timer(ts) > CFG_SYS_FPGA_WAIT) {
 			printf("%s: Timeout wait for FPGA to config\n",
 			       __func__);
 			return FPGA_FAIL;
@@ -561,7 +561,7 @@ int zynq_decrypt_load(u32 srcaddr, u32 srclen, u32 dstaddr, u32 dstlen,
 		/* Check FPGA configuration completion */
 		ts = get_timer(0);
 		while (!(isr_status & DEVCFG_ISR_PCFG_DONE)) {
-			if (get_timer(ts) > CONFIG_SYS_FPGA_WAIT) {
+			if (get_timer(ts) > CFG_SYS_FPGA_WAIT) {
 				printf("%s: Timeout wait for FPGA to config\n",
 				       __func__);
 				return FPGA_FAIL;

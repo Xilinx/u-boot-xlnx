@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0+ */
 /*
- * Copyright (C) 2016 Michal Simek <michals@xilinx.com>
+ * Copyright (C) 2016 Michal Simek <michal.simek@amd.com>
  * Copyright (C) 2015 Nathan Rossi <nathan@nathanrossi.com>
  *
  * The following Boot Header format/structures and values are defined in the
@@ -133,6 +133,6 @@ struct zynqmp_header {
 };
 
 void zynqmpimage_default_header(struct zynqmp_header *ptr);
-void zynqmpimage_print_header(const void *ptr);
+void zynqmpimage_print_header(const void *ptr, struct image_tool_params *params);
 
 #endif /* _ZYNQMPIMAGE_H_ */

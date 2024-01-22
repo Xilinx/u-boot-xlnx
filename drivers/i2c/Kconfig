@@ -47,6 +47,16 @@ config SPL_DM_I2C
 	  device (bus child) info is kept as parent platdata. The interface
 	  is defined in include/i2c.h.
 
+config TPL_DM_I2C
+	bool "Enable Driver Model for I2C drivers in TPL"
+	depends on TPL_DM && DM_I2C
+	help
+	  Enable driver model for I2C. The I2C uclass interface: probe, read,
+	  write and speed, is implemented with the bus drivers operations,
+	  which provide methods for bus setting and data transfer. Each chip
+	  device (bus child) info is kept as parent platdata. The interface
+	  is defined in include/i2c.h.
+
 config VPL_DM_I2C
 	bool "Enable Driver Model for I2C drivers in VPL"
 	depends on VPL_DM && DM_I2C
@@ -221,6 +231,25 @@ config SYS_I2C_DW
 	  controller is used in various SoCs, e.g. the ST SPEAr, Altera
 	  SoCFPGA, Synopsys ARC700 and some Intel x86 SoCs.
 
+config SYS_I2C_DW_PCI
+	bool "Designware PCI I2C Controller"
+	depends on SYS_I2C_DW && PCI && ACPIGEN
+	default y
+	help
+	  Say yes here to select the Designware PCI I2C Host Controller.
+	  This PCI I2C controller is the base on Desigware I2C host
+	  controller.
+
+config SYS_I2C_AST2600
+    bool "AST2600 I2C Controller"
+    depends on DM_I2C && ARCH_ASPEED
+    help
+      Say yes here to select AST2600 I2C Host Controller. The driver
+      support AST2600 I2C new mode register. This I2C controller supports:
+      _Standard-mode (up to 100 kHz)
+      _Fast-mode (up to 400 kHz)
+      _Fast-mode Plus (up to 1 MHz)
+
 config SYS_I2C_ASPEED
 	bool "Aspeed I2C Controller"
 	depends on DM_I2C && ARCH_ASPEED
@@ -343,7 +372,7 @@ config SYS_MXC_I2C1_SPEED
 
 config SYS_MXC_I2C1_SLAVE
 	hex "I2C1 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C1 Slave
 endif
@@ -358,7 +387,7 @@ config SYS_MXC_I2C2_SPEED
 
 config SYS_MXC_I2C2_SLAVE
 	hex "I2C2 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C2 Slave
 endif
@@ -372,7 +401,7 @@ config SYS_MXC_I2C3_SPEED
 
 config SYS_MXC_I2C3_SLAVE
 	hex "I2C3 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C3 Slave
 endif
@@ -386,7 +415,7 @@ config SYS_MXC_I2C4_SPEED
 
 config SYS_MXC_I2C4_SLAVE
 	hex "I2C4 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C4 Slave
 endif
@@ -400,7 +429,7 @@ config SYS_MXC_I2C5_SPEED
 
 config SYS_MXC_I2C5_SLAVE
 	hex "I2C5 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C5 Slave
 endif
@@ -414,7 +443,7 @@ config SYS_MXC_I2C6_SPEED
 
 config SYS_MXC_I2C6_SLAVE
 	hex "I2C6 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C6 Slave
 endif
@@ -428,7 +457,7 @@ config SYS_MXC_I2C7_SPEED
 
 config SYS_MXC_I2C7_SLAVE
 	hex "I2C7 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C7 Slave
 endif
@@ -442,7 +471,7 @@ config SYS_MXC_I2C8_SPEED
 
 config SYS_MXC_I2C8_SLAVE
 	hex "I2C8 Slave"
-	default 0
+	default 0x0
 	help
 	 MXC I2C8 Slave
 endif
@@ -476,13 +505,13 @@ config SYS_I2C_OMAP24XX
 
 config SYS_I2C_RCAR_I2C
 	bool "Renesas RCar I2C driver"
-	depends on (RCAR_GEN3 || RCAR_GEN2) && DM_I2C
+	depends on (RCAR_GEN2 || RCAR_64) && DM_I2C
 	help
 	  Support for Renesas RCar I2C controller.
 
 config SYS_I2C_RCAR_IIC
 	bool "Renesas RCar Gen3 IIC driver"
-	depends on (RCAR_GEN3 || RCAR_GEN2) && DM_I2C
+	depends on (RCAR_GEN2 || RCAR_GEN3) && DM_I2C
 	help
 	  Support for Renesas RCar Gen3 IIC controller.
 
@@ -498,6 +527,16 @@ config SYS_I2C_ROCKCHIP
 config SYS_I2C_SANDBOX
 	bool "Sandbox I2C driver"
 	depends on SANDBOX && DM_I2C
+	default y
+	help
+	  Enable I2C support for sandbox. This is an emulation of a real I2C
+	  bus. Devices can be attached to the bus using the device tree
+	  which specifies the driver to use.  See sandbox.dts as an example.
+
+config SPL_SYS_I2C_SANDBOX
+	bool "Sandbox I2C driver (SPL)"
+	depends on SPL && SANDBOX && DM_I2C
+	default y
 	help
 	  Enable I2C support for sandbox. This is an emulation of a real I2C
 	  bus. Devices can be attached to the bus using the device tree
@@ -579,6 +618,18 @@ config SYS_I2C_OCTEON
 	  various Octeon parts such as Octeon II/III and OcteonTX/TX2. All
 	  chips have several I2C ports and all are provided, controlled by
 	  the device tree.
+
+config SYS_I2C_QUP
+	bool "Qualcomm QUP I2C controller"
+	depends on ARCH_SNAPDRAGON
+	help
+	  Support for Qualcomm QUP I2C controller based on Qualcomm Universal
+	  Peripherals (QUP) engine. The QUP engine is an advanced high
+	  performance slave port that provides a common data path (an output
+	  FIFO and an input FIFO) for I2C and SPI interfaces. The I2C/SPI QUP
+	  controller is publicly documented in the Snapdragon 410E (APQ8016E)
+	  Technical Reference Manual, chapter "6.1 Qualcomm Universal
+	  Peripherals Engine (QUP)".
 
 config SYS_I2C_S3C24X0
 	bool "Samsung I2C driver"
@@ -702,9 +753,8 @@ config SYS_I2C_SPEED
 config SYS_I2C_BUS_MAX
 	int "Max I2C busses"
 	depends on ARCH_OMAP2PLUS || ARCH_SOCFPGA
-	default 2 if TI816X
 	default 3 if OMAP34XX || AM33XX || AM43XX
-	default 4 if ARCH_SOCFPGA || OMAP44XX || TI814X
+	default 4 if ARCH_SOCFPGA || OMAP44XX
 	default 5 if OMAP54XX
 	help
 	  Define the maximum number of available I2C buses.

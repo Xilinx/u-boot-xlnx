@@ -112,10 +112,9 @@ struct xilinx_spi_priv {
 static int xilinx_spi_probe(struct udevice *bus)
 {
 	struct xilinx_spi_priv *priv = dev_get_priv(bus);
-	struct xilinx_spi_regs *regs = priv->regs;
+	struct xilinx_spi_regs *regs;
 
-	priv->regs = (struct xilinx_spi_regs *)dev_read_addr(bus);
-
+	regs = priv->regs = dev_read_addr_ptr(bus);
 	priv->fifo_depth = dev_read_u32_default(bus, "fifo-size", 0);
 
 	writel(SPISSR_RESET_VALUE, &regs->srr);
@@ -364,8 +363,8 @@ static int xilinx_qspi_check_buswidth(struct spi_slave *slave, u8 width)
 	return -EOPNOTSUPP;
 }
 
-bool xilinx_qspi_mem_exec_op(struct spi_slave *slave,
-			     const struct spi_mem_op *op)
+static bool xilinx_qspi_mem_exec_op(struct spi_slave *slave,
+				    const struct spi_mem_op *op)
 {
 	if (xilinx_qspi_check_buswidth(slave, op->cmd.buswidth))
 		return false;

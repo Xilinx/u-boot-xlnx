@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2015-2016
- * Texas Instruments Incorporated - http://www.ti.com/
+ * Texas Instruments Incorporated - https://www.ti.com/
  */
 #define pr_fmt(fmt) "%s: " fmt, __func__
 #include <common.h>
@@ -11,6 +11,7 @@
 #include <log.h>
 #include <remoteproc.h>
 #include <asm/global_data.h>
+#include <linux/printk.h>
 #include <mach/psc_defs.h>
 
 DECLARE_GLOBAL_DATA_PTR;

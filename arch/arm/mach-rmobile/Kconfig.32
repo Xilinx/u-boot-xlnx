@@ -8,6 +8,7 @@ config RCAR_GEN2
 	bool "Renesas RCar Gen2"
 	select PHY
 	select PHY_RCAR_GEN2
+	select TMU_TIMER
 
 config R8A7740
 	bool "Renesas SoC R8A7740"
@@ -121,8 +122,8 @@ config TARGET_STOUT
 
 endchoice
 
-config SYS_SOC
-	default "rmobile"
+config TMU_TIMER
+	bool
 
 config RMOBILE_EXTRAM_BOOT
 	bool "Enable boot from RAM"

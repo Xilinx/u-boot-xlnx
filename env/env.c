@@ -14,29 +14,6 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-void env_fix_drivers(void)
-{
-	struct env_driver *drv;
-	const int n_ents = ll_entry_count(struct env_driver, env_driver);
-	struct env_driver *entry;
-
-	drv = ll_entry_start(struct env_driver, env_driver);
-	for (entry = drv; entry != drv + n_ents; entry++) {
-		if (entry->name)
-			entry->name += gd->reloc_off;
-		if (entry->load)
-			entry->load += gd->reloc_off;
-		if (entry->save)
-			entry->save += gd->reloc_off;
-		if (entry->erase)
-			entry->erase += gd->reloc_off;
-		if (entry->init)
-			entry->init += gd->reloc_off;
-	}
-}
-#endif
-
 static struct env_driver *_env_driver_lookup(enum env_location loc)
 {
 	struct env_driver *drv;
@@ -77,9 +54,6 @@ static enum env_location env_locations[] = {
 #endif
 #ifdef CONFIG_ENV_IS_IN_REMOTE
 	ENVL_REMOTE,
-#endif
-#ifdef CONFIG_ENV_IS_IN_SATA
-	ENVL_ESATA,
 #endif
 #ifdef CONFIG_ENV_IS_IN_SPI_FLASH
 	ENVL_SPI_FLASH,
@@ -195,6 +169,14 @@ int env_load(void)
 	int best_prio = -1;
 	int prio;
 
+	if (CONFIG_IS_ENABLED(ENV_WRITEABLE_LIST)) {
+		/*
+		 * When using a list of writeable variables, the baseline comes
+		 * from the built-in default env. So load this first.
+		 */
+		env_set_default(NULL, 0);
+	}
+
 	for (prio = 0; (drv = env_driver_lookup(ENVOP_LOAD, prio)); prio++) {
 		int ret;
 
@@ -212,9 +194,7 @@ int env_load(void)
 			printf("OK\n");
 			gd->env_load_prio = prio;
 
-#if !CONFIG_IS_ENABLED(ENV_APPEND)
 			return 0;
-#endif
 		} else if (ret == -ENOMSG) {
 			/* Handle "bad CRC" case */
 			if (best_prio == -1)
@@ -311,11 +291,15 @@ int env_erase(void)
 	if (drv) {
 		int ret;
 
-		if (!drv->erase)
+		if (!drv->erase) {
+			printf("not possible\n");
 			return -ENODEV;
+		}
 
-		if (!env_has_inited(drv->location))
+		if (!env_has_inited(drv->location)) {
+			printf("not initialized\n");
 			return -ENODEV;
+		}
 
 		printf("Erasing Environment on %s... ", drv->name);
 		ret = drv->erase();

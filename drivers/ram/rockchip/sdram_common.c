@@ -36,7 +36,7 @@ void sdram_print_dram_type(unsigned char dramtype)
 }
 
 void sdram_print_ddr_info(struct sdram_cap_info *cap_info,
-			  struct sdram_base_params *base)
+			  struct sdram_base_params *base, u32 split)
 {
 	u64 cap;
 	u32 bg;
@@ -83,6 +83,8 @@ void sdram_print_ddr_info(struct sdram_cap_info *cap_info,
 	cap = sdram_get_cs_cap(cap_info, 3, base->dramtype);
 	if (cap_info->row_3_4)
 		cap = cap * 3 / 4;
+	else if (split)
+		cap = cap / 2 + (split << 24) / 2;
 
 	printascii(" Size=");
 	printdec(cap >> 20);
@@ -123,7 +125,7 @@ inline void sdram_print_dram_type(unsigned char dramtype)
 }
 
 inline void sdram_print_ddr_info(struct sdram_cap_info *cap_info,
-				 struct sdram_base_params *base)
+				 struct sdram_base_params *base, u32 split)
 {
 }
 
@@ -220,12 +222,12 @@ int sdram_detect_col(struct sdram_cap_info *cap_info,
 	u32 bw = cap_info->bw;
 
 	for (col = coltmp; col >= 9; col -= 1) {
-		writel(0, CONFIG_SYS_SDRAM_BASE);
-		test_addr = (void __iomem *)(CONFIG_SYS_SDRAM_BASE +
+		writel(0, CFG_SYS_SDRAM_BASE);
+		test_addr = (void __iomem *)(CFG_SYS_SDRAM_BASE +
 				(1ul << (col + bw - 1ul)));
 		writel(PATTERN, test_addr);
 		if ((readl(test_addr) == PATTERN) &&
-		    (readl(CONFIG_SYS_SDRAM_BASE) == 0))
+		    (readl(CFG_SYS_SDRAM_BASE) == 0))
 			break;
 	}
 	if (col == 8) {
@@ -245,12 +247,12 @@ int sdram_detect_bank(struct sdram_cap_info *cap_info,
 	u32 bk;
 	u32 bw = cap_info->bw;
 
-	test_addr = (void __iomem *)(CONFIG_SYS_SDRAM_BASE +
+	test_addr = (void __iomem *)(CFG_SYS_SDRAM_BASE +
 			(1ul << (coltmp + bktmp + bw - 1ul)));
-	writel(0, CONFIG_SYS_SDRAM_BASE);
+	writel(0, CFG_SYS_SDRAM_BASE);
 	writel(PATTERN, test_addr);
 	if ((readl(test_addr) == PATTERN) &&
-	    (readl(CONFIG_SYS_SDRAM_BASE) == 0))
+	    (readl(CFG_SYS_SDRAM_BASE) == 0))
 		bk = 3;
 	else
 		bk = 2;
@@ -268,12 +270,12 @@ int sdram_detect_bg(struct sdram_cap_info *cap_info,
 	u32 dbw;
 	u32 bw = cap_info->bw;
 
-	test_addr = (void __iomem *)(CONFIG_SYS_SDRAM_BASE +
+	test_addr = (void __iomem *)(CFG_SYS_SDRAM_BASE +
 			(1ul << (coltmp + bw + 1ul)));
-	writel(0, CONFIG_SYS_SDRAM_BASE);
+	writel(0, CFG_SYS_SDRAM_BASE);
 	writel(PATTERN, test_addr);
 	if ((readl(test_addr) == PATTERN) &&
-	    (readl(CONFIG_SYS_SDRAM_BASE) == 0))
+	    (readl(CFG_SYS_SDRAM_BASE) == 0))
 		dbw = 0;
 	else
 		dbw = 1;
@@ -337,12 +339,12 @@ int sdram_detect_row(struct sdram_cap_info *cap_info,
 	void __iomem *test_addr;
 
 	for (row = rowtmp; row > 12; row--) {
-		writel(0, CONFIG_SYS_SDRAM_BASE);
-		test_addr = (void __iomem *)(CONFIG_SYS_SDRAM_BASE +
+		writel(0, CFG_SYS_SDRAM_BASE);
+		test_addr = (void __iomem *)(CFG_SYS_SDRAM_BASE +
 				(1ul << (row + bktmp + coltmp + bw - 1ul)));
 		writel(PATTERN, test_addr);
 		if ((readl(test_addr) == PATTERN) &&
-		    (readl(CONFIG_SYS_SDRAM_BASE) == 0))
+		    (readl(CFG_SYS_SDRAM_BASE) == 0))
 			break;
 	}
 	if (row == 12) {
@@ -363,8 +365,8 @@ int sdram_detect_row_3_4(struct sdram_cap_info *cap_info,
 	u32 row = cap_info->cs0_row;
 	void __iomem *test_addr, *test_addr1;
 
-	test_addr = CONFIG_SYS_SDRAM_BASE;
-	test_addr1 = (void __iomem *)(CONFIG_SYS_SDRAM_BASE +
+	test_addr = CFG_SYS_SDRAM_BASE;
+	test_addr1 = (void __iomem *)(CFG_SYS_SDRAM_BASE +
 			(0x3ul << (row + bktmp + coltmp + bw - 1ul - 1ul)));
 
 	writel(0, test_addr);
@@ -421,15 +423,15 @@ int sdram_detect_cs1_row(struct sdram_cap_info *cap_info, u32 dram_type)
 
 		/* detect cs1 row */
 		for (row = cap_info->cs0_row; row > 12; row--) {
-			test_addr = (void __iomem *)(CONFIG_SYS_SDRAM_BASE +
+			test_addr = (void __iomem *)(CFG_SYS_SDRAM_BASE +
 				    cs0_cap +
 				    (1ul << (row + bktmp + coltmp + bw - 1ul)));
-			writel(0, CONFIG_SYS_SDRAM_BASE + cs0_cap);
+			writel(0, CFG_SYS_SDRAM_BASE + cs0_cap);
 			writel(PATTERN, test_addr);
 
 			if (((readl(test_addr) & byte_mask) ==
 			     (PATTERN & byte_mask)) &&
-			    ((readl(CONFIG_SYS_SDRAM_BASE + cs0_cap) &
+			    ((readl(CFG_SYS_SDRAM_BASE + cs0_cap) &
 			      byte_mask) == 0)) {
 				break;
 			}

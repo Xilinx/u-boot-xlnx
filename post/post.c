@@ -16,7 +16,7 @@
 #include <post.h>
 #include <asm/global_data.h>
 
-#ifdef CONFIG_SYS_POST_HOTKEYS_GPIO
+#ifdef CFG_SYS_POST_HOTKEYS_GPIO
 #include <asm/gpio.h>
 #endif
 
@@ -55,9 +55,9 @@ int post_init_f(void)
  */
 __weak int post_hotkeys_pressed(void)
 {
-#ifdef CONFIG_SYS_POST_HOTKEYS_GPIO
+#ifdef CFG_SYS_POST_HOTKEYS_GPIO
 	int ret;
-	unsigned gpio = CONFIG_SYS_POST_HOTKEYS_GPIO;
+	unsigned gpio = CFG_SYS_POST_HOTKEYS_GPIO;
 
 	ret = gpio_request(gpio, "hotkeys");
 	if (ret) {
@@ -168,7 +168,7 @@ static void post_bootmode_test_off(void)
 	post_word_store(word);
 }
 
-#ifndef CONFIG_POST_SKIP_ENV_FLAGS
+#ifndef CFG_POST_SKIP_ENV_FLAGS
 static void post_get_env_flags(int *test_flags)
 {
 	int  flag[] = {  POST_POWERON,   POST_NORMAL,   POST_SLOWTEST,
@@ -227,7 +227,7 @@ static void post_get_flags(int *test_flags)
 	for (j = 0; j < post_list_size; j++)
 		test_flags[j] = post_list[j].flags;
 
-#ifndef CONFIG_POST_SKIP_ENV_FLAGS
+#ifndef CFG_POST_SKIP_ENV_FLAGS
 	post_get_env_flags(test_flags);
 #endif
 
@@ -415,54 +415,6 @@ int post_log(char *format, ...)
 
 	return 0;
 }
-
-#ifdef CONFIG_NEEDS_MANUAL_RELOC
-void post_reloc(void)
-{
-	unsigned int i;
-
-	/*
-	 * We have to relocate the test table manually
-	 */
-	for (i = 0; i < post_list_size; i++) {
-		ulong addr;
-		struct post_test *test = post_list + i;
-
-		if (test->name) {
-			addr = (ulong)(test->name) + gd->reloc_off;
-			test->name = (char *)addr;
-		}
-
-		if (test->cmd) {
-			addr = (ulong)(test->cmd) + gd->reloc_off;
-			test->cmd = (char *)addr;
-		}
-
-		if (test->desc) {
-			addr = (ulong)(test->desc) + gd->reloc_off;
-			test->desc = (char *)addr;
-		}
-
-		if (test->test) {
-			addr = (ulong)(test->test) + gd->reloc_off;
-			test->test = (int (*)(int flags)) addr;
-		}
-
-		if (test->init_f) {
-			addr = (ulong)(test->init_f) + gd->reloc_off;
-			test->init_f = (int (*)(void)) addr;
-		}
-
-		if (test->reloc) {
-			addr = (ulong)(test->reloc) + gd->reloc_off;
-			test->reloc = (void (*)(void)) addr;
-
-			test->reloc();
-		}
-	}
-}
-#endif
-
 
 /*
  * Some tests (e.g. SYSMON) need the time when post_init_f started,

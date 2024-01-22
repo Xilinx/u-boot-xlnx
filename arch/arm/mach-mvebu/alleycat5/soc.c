@@ -255,6 +255,12 @@ void soc_print_clock_info(void)
 	printf("\tMSS     %4d MHz\n", 200);
 }
 
+/* Return NAND clock in Hz */
+u32 mvebu_get_nand_clock(void)
+{
+	return 400 * 1000000;
+}
+
 /*
  * Override of __weak int mach_cpu_init(void) :
  * SoC/machine dependent CPU setup
@@ -284,15 +290,6 @@ int mach_cpu_init(void)
 		WRITE_MASK(phy_base + 0x4,     0x3,	   0x3);
 		/* Impedance calibration triggering is performed by USB probe */
 	}
-
-	return 0;
-}
-
-int arch_misc_init(void)
-{
-	u32 type, rev;
-
-	get_soc_type_rev(&type, &rev);
 
 	return 0;
 }

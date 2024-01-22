@@ -4,7 +4,7 @@
  *
  * clock header
  *
- * Copyright (C) 2011, Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2011, Texas Instruments Incorporated - https://www.ti.com/
  */
 
 #ifndef _CLOCKS_H_
@@ -12,10 +12,6 @@
 
 #include <asm/arch/clocks_am33xx.h>
 #include <asm/arch/hardware.h>
-
-#if defined(CONFIG_TI816X) || defined(CONFIG_TI814X)
-#include <asm/arch/clock_ti81xx.h>
-#endif
 
 #define LDELAY 1000000
 

@@ -23,6 +23,7 @@
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
+#include <linux/printk.h>
 #include <power/regulator.h>
 
 /* USBPHYC registers */
@@ -583,8 +584,8 @@ static int stm32_usbphyc_probe(struct udevice *dev)
 
 		phy_id = ofnode_read_u32_default(node, "reg", FDT_ADDR_T_NONE);
 		if (phy_id >= MAX_PHYS) {
-			dev_err(dev, "invalid reg value %lx for %s\n",
-				phy_id, ofnode_get_name(node));
+			dev_err(dev, "invalid reg value %llx for %s\n",
+				(fdt64_t)phy_id, ofnode_get_name(node));
 			return -ENOENT;
 		}
 
