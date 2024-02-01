@@ -59,6 +59,10 @@
 
 #define OSPI_CTRL_RST				0xF1260304
 
+#define CMD_4BYTE_FAST_READ			0x0C
+#define CMD_4BYTE_OCTAL_READ			0x7c
+#define CMD_4BYTE_READ				0x13
+
 /****************************************************************************
  * Controller's configuration and status register (offset from QSPI_BASE)
  ****************************************************************************/
