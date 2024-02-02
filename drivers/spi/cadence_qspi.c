@@ -287,8 +287,11 @@ static int cadence_spi_probe(struct udevice *bus)
 		if (priv->read_delay >= 0)
 			priv->read_delay = -1;
 
-	/* Reset ospi flash device */
-	return cadence_qspi_versal_flash_reset(bus);
+	if (!CONFIG_IS_ENABLED(DM_GPIO))
+		/* Reset ospi flash device */
+		return cadence_qspi_versal_flash_reset(bus);
+
+	return 0;
 }
 
 static int cadence_spi_remove(struct udevice *dev)
