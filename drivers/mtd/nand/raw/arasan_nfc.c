@@ -1265,8 +1265,10 @@ static int arasan_probe(struct udevice *dev)
 	}
 
 	str = ofnode_read_string(nand_chip->flash_node, "nand-ecc-mode");
-	if (strcmp(str, "hw"))
-		printf("%s ecc is not supported, switch to hw ecc\n", str);
+	if (!str || strcmp(str, "hw") != 0) {
+		printf("%s ecc mode is not supported\n", str);
+		return -EINVAL;
+	}
 
 	nand_chip->ecc.mode = NAND_ECC_HW;
 	nand_chip->ecc.hwctl = NULL;
