@@ -77,18 +77,20 @@ static int dwc3_generic_probe(struct udevice *dev,
 	 * with the top level node as that seems to be used in majority of DTs
 	 * to reference the clock.
 	 */
-	node = dev_ofnode(dev->parent);
-	index = ofnode_stringlist_search(node, "clock-names", "ref");
-	if (index < 0)
-		index = ofnode_stringlist_search(node, "clock-names", "ref_clk");
-	if (index < 0) {
-		node = dev_ofnode(dev);
+	if (!IS_ENABLED(CONFIG_ARCH_VERSAL)) {
+		node = dev_ofnode(dev->parent);
 		index = ofnode_stringlist_search(node, "clock-names", "ref");
 		if (index < 0)
 			index = ofnode_stringlist_search(node, "clock-names", "ref_clk");
+		if (index < 0) {
+			node = dev_ofnode(dev);
+			index = ofnode_stringlist_search(node, "clock-names", "ref");
+			if (index < 0)
+				index = ofnode_stringlist_search(node, "clock-names", "ref_clk");
+		}
+		if (index >= 0)
+			dwc3->ref_clk = &glue->clks.clks[index];
 	}
-	if (index >= 0)
-		dwc3->ref_clk = &glue->clks.clks[index];
 #endif
 
 	/*

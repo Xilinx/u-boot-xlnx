@@ -1160,6 +1160,9 @@ void dwc3_of_parse(struct dwc3 *dwc)
 		dwc->incrx_mode = INCRX_UNDEF_LENGTH_BURST_MODE;
 		dwc->incrx_size = max(dwc->incrx_size, val);
 	}
+	dwc->ref_clk = devm_clk_get_optional(dev, "ref");
+	if (IS_ERR(dwc->ref_clk))
+		dev_err(dev, "dwc3 ref clock not found\n");
 }
 
 int dwc3_init(struct dwc3 *dwc)
