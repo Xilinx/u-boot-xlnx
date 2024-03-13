@@ -4094,7 +4094,7 @@ static struct spi_nor_fixups s28hx_t_fixups = {
 };
 #endif /* CONFIG_SPI_FLASH_S28HX_T */
 
-#if defined(CONFIG_SPI_FLASH_MT35XU) || defined(CONFIG_SPI_FLASH_ISSI)
+#if defined(CONFIG_SPI_FLASH_MT35XU) || defined(CONFIG_SPI_FLASH_ISSI) || defined(CONFIG_SPI_FLASH_GIGADEVICE)
 static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 {
 	struct spi_mem_op op;
@@ -5981,6 +5981,13 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 #if defined(CONFIG_SPI_FLASH_ISSI)
 	if (!strcmp(nor->info->name, "is25wx256") ||
 	    !strcmp(nor->info->name, "is25lx512")) {
+		nor->fixups = &mt35xu512aba_fixups;
+		return;
+	}
+#endif
+
+#if defined(CONFIG_SPI_FLASH_GIGADEVICE)
+	if (!strcmp(nor->info->name, "gd25lx256e")) {
 		nor->fixups = &mt35xu512aba_fixups;
 		return;
 	}
