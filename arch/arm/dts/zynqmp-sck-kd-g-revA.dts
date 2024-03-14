@@ -11,6 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/pinctrl-zynqmp.h>
+#include <dt-bindings/reset/xlnx-zynqmp-resets.h>
 
 /dts-v1/;
 /plugin/;
@@ -339,6 +340,8 @@
 	linux,rs485-enabled-at-boot-time;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_uart0_default>;
+	resets = <&zynqmp_reset ZYNQMP_RESET_UART0>;
+	assigned-clock-rates = <100000000>;
 };
 
 &uart1 {
