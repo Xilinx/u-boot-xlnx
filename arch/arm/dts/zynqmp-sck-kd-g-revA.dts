@@ -309,6 +309,12 @@
 	};
 };
 
+&uart0 {
+	status = "okay";
+	rts-gpios = <&gpio 72 GPIO_ACTIVE_HIGH>;
+	linux,rs485-enabled-at-boot-time;
+};
+
 &uart1 {
 	status = "okay";
 	pinctrl-names = "default";
