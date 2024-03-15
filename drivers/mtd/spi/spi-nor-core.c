@@ -5917,7 +5917,8 @@ static int spansion_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 static int spi_nor_soft_reset(struct spi_nor *nor)
 {
 	struct spi_mem_op op;
-	int ret;
+	int ret, tmp;
+	u8 id[SPI_NOR_MAX_ID_LEN];
 	enum spi_nor_cmd_ext ext;
 
 	ext = nor->cmd_ext_type;
@@ -5926,6 +5927,16 @@ static int spi_nor_soft_reset(struct spi_nor *nor)
 #if CONFIG_IS_ENABLED(SPI_NOR_BOOT_SOFT_RESET_EXT_INVERT)
 		nor->cmd_ext_type = SPI_NOR_EXT_INVERT;
 #endif /* SPI_NOR_BOOT_SOFT_RESET_EXT_INVERT */
+	}
+
+	tmp = nor->read_reg(nor, SPINOR_OP_RDID, id, SPI_NOR_MAX_ID_LEN);
+	if (tmp < 0) {
+		dev_dbg(nor->dev, "error %d reading JEDEC ID\n", tmp);
+		return tmp;
+	}
+
+	if (id[0] ==  SNOR_MFR_MACRONIX) {
+		nor->cmd_ext_type = SPI_NOR_EXT_INVERT;
 	}
 
 	op = (struct spi_mem_op)SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_SRSTEN, 0),
