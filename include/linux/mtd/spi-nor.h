@@ -633,6 +633,10 @@ struct spi_nor {
 	u32 erase_size;
 };
 
+struct flash_reset {
+	struct gpio_desc *reset;
+};
+
 #ifndef __UBOOT__
 static inline void spi_nor_set_flash_node(struct spi_nor *nor,
 					  const struct device_node *np)
