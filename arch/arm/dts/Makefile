@@ -545,7 +545,7 @@ dtb-$(CONFIG_ARCH_VERSAL2) += \
 	amd-versal2-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	versal-net-vn-p-b2197-00-revA.dtb \
-	versal-net-vn-x-b2197-00-revA.dtb \
+	versal-net-vn-x-b2197-01-revA.dtb \
 	x-prc-07-revA.dtbo \
 	x-prc-07-i3c-revA.dtbo \
 	x-prc-08-revA.dtbo \
