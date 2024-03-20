@@ -762,7 +762,14 @@ static int spansion_sr_ready(struct spi_nor *nor, u32 addr_base, u8 dummy)
 		else
 			dev_dbg(nor->dev, "Programming Error occurred\n");
 
-		nor->write_reg(nor, SPINOR_OP_CLSR, NULL, 0);
+		/*
+		 *  Infineon(Cypress) S28Hx-T family does not support legacy CLSR(0x30) opcode.
+		 *  Instead, it supports CLPEF(0x82). This change does not affect to S25x02GT
+		 *  which uses spansion_sr_ready() as S25Hx-T family also supports CLPEF(0x82)
+		 *  as well as CLSR(0x30).
+		 */
+		nor->write_reg(nor, SPINOR_OP_CYPRESS_CLPEF, NULL, 0);
+
 		return -EIO;
 	}
 
@@ -4019,32 +4026,52 @@ static void s28hx_t_default_init(struct spi_nor *nor)
 static void s28hx_t_post_sfdp_fixup(struct spi_nor *nor,
 				    struct spi_nor_flash_parameter *params)
 {
-	/*
-	 * On older versions of the flash the xSPI Profile 1.0 table has the
-	 * 8D-8D-8D Fast Read opcode as 0x00. But it actually should be 0xEE.
-	 */
-	if (params->reads[SNOR_CMD_READ_8_8_8_DTR].opcode == 0)
-		params->reads[SNOR_CMD_READ_8_8_8_DTR].opcode =
-			SPINOR_OP_CYPRESS_RD_FAST;
+	if (params->hwcaps.mask & SNOR_HWCAPS_PP_8_8_8_DTR) {
+		/*
+		 * On older versions of the flash the xSPI Profile 1.0 table has the
+		 * 8D-8D-8D Fast Read opcode as 0x00. But it actually should be 0xEE.
+		 */
+		if (params->reads[SNOR_CMD_READ_8_8_8_DTR].opcode == 0)
+			params->reads[SNOR_CMD_READ_8_8_8_DTR].opcode =
+				SPINOR_OP_CYPRESS_RD_FAST;
 
-	params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
+		params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
 
-	/* This flash is also missing the 4-byte Page Program opcode bit. */
-	spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP],
-				SPINOR_OP_PP_4B, SNOR_PROTO_1_1_1);
-	/*
-	 * Since xSPI Page Program opcode is backward compatible with
-	 * Legacy SPI, use Legacy SPI opcode there as well.
-	 */
-	spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP_8_8_8_DTR],
-				SPINOR_OP_PP_4B, SNOR_PROTO_8_8_8_DTR);
+		/* This flash is also missing the 4-byte Page Program opcode bit. */
+		spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP],
+					SPINOR_OP_PP_4B, SNOR_PROTO_1_1_1);
+		/*
+		 * Since xSPI Page Program opcode is backward compatible with
+		 * Legacy SPI, use Legacy SPI opcode there as well.
+		 */
+		spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP_8_8_8_DTR],
+					SPINOR_OP_PP_4B, SNOR_PROTO_8_8_8_DTR);
 
-	/*
-	 * The xSPI Profile 1.0 table advertises the number of additional
-	 * address bytes needed for Read Status Register command as 0 but the
-	 * actual value for that is 4.
-	 */
-	params->rdsr_addr_nbytes = 4;
+		/*
+		 * The xSPI Profile 1.0 table advertises the number of additional
+		 * address bytes needed for Read Status Register command as 0 but the
+		 * actual value for that is 4.
+		 */
+		params->rdsr_addr_nbytes = 4;
+
+	} else {
+		/* Configured fixups for SDR functionality. */
+		nor->addr_mode_nbytes = 0x4;
+		params->page_size = 256;
+
+		/* 4-byte Erase opcode bit. */
+		nor->erase_opcode = SPINOR_OP_SE_4B;
+		nor->mtd.erasesize = 0x40000;
+
+		/* 4-byte Page Program opcode bit. */
+		spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP],
+					SPINOR_OP_PP_4B, SNOR_PROTO_1_1_1);
+
+		/* 4-byte Read opcode bit. */
+		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ],
+					  0, 0, SPINOR_OP_READ_4B,
+					  SNOR_PROTO_1_1_1);
+	}
 }
 
 static int s28hx_t_post_bfpt_fixup(struct spi_nor *nor,
@@ -4086,6 +4113,48 @@ static int s28hx_t_post_bfpt_fixup(struct spi_nor *nor,
 
 	return 0;
 }
+
+static int s28hs02gt_setup(struct spi_nor *nor, const struct flash_info *info,
+			   const struct spi_nor_flash_parameter *params)
+{
+	int ret;
+	u8 cr;
+
+#ifdef CONFIG_SPI_FLASH_BAR
+	return -EOPNOTSUPP; /* Bank Address Register is not supported */
+#endif
+	/*
+	 * Read CFR3V to check if uniform sector is selected. If not, assign an
+	 * erase hook that supports non-uniform erase.
+	 */
+	ret = spansion_read_any_reg(nor, SPINOR_REG_CYPRESS_CFR3V, 0, &cr);
+	if (ret)
+		return ret;
+
+	if (!(cr & SPINOR_REG_CYPRESS_CFR3_UNISECT))
+		nor->erase = s28hx_t_erase_non_uniform;
+
+	/*
+	 * For the multi-die package parts, the ready() hook is needed to check
+	 * all dies' status via read any register.
+	 */
+	if (nor->mtd.size > SZ_128M)
+		nor->ready = s25_mdp_ready;
+
+	return spi_nor_default_setup(nor, info, params);
+}
+
+static void s28hs02gt_default_init(struct spi_nor *nor)
+{
+	nor->octal_dtr_enable = spi_nor_cypress_octal_dtr_enable;
+	nor->setup = s28hs02gt_setup;
+}
+
+static struct spi_nor_fixups s28hs02gt_fixups = {
+	.default_init = s28hs02gt_default_init,
+	.post_sfdp = s28hx_t_post_sfdp_fixup,
+	.post_bfpt = s28hx_t_post_bfpt_fixup,
+};
 
 static struct spi_nor_fixups s28hx_t_fixups = {
 	.default_init = s28hx_t_default_init,
@@ -5999,7 +6068,9 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 		case 0x5a: /* S28HL (Octal, 3.3V) */
 		case 0x5b: /* S28HS (Octal, 1.8V) */
 			nor->fixups = &s28hx_t_fixups;
-			break;
+				if (!strcmp(nor->info->name, "s28hs02gt"))
+					nor->fixups = &s28hs02gt_fixups;
+			return;
 #endif
 
 		default:

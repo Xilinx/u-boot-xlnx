@@ -142,6 +142,7 @@
 #define SPINOR_OP_BRWR		0x17	/* Bank register write */
 #define SPINOR_OP_BRRD		0x16	/* Bank register read */
 #define SPINOR_OP_CLSR		0x30	/* Clear status register 1 */
+#define SPINOR_OP_CYPRESS_CLPEF 0x82   /* Clear P/E err flag */
 #define SPINOR_OP_EX4B_CYPRESS	0xB8	/* Exit 4-byte mode */
 #define SPINOR_OP_RDAR		0x65	/* Read any register */
 #define SPINOR_OP_WRAR		0x71	/* Write any register */
