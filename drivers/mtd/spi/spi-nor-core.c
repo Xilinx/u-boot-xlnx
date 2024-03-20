@@ -4144,10 +4144,54 @@ static int s28hs02gt_setup(struct spi_nor *nor, const struct flash_info *info,
 	return spi_nor_default_setup(nor, info, params);
 }
 
+static int cypress_nor_disable_ecc(struct spi_nor *nor)
+{
+	int ret;
+	u8 buf;
+
+	/*
+	 * In S28HS02GT with the default ECC configuration(2-bit error detection)
+	 * byte-programming( < 16bytes) is not allowed. Set the ECC configuration
+	 * to 1-bit error detection/correction to enable byte-programming.
+	 */
+	nor->addr_mode_nbytes = 4;
+	ret = spansion_read_any_reg(nor, SPINOR_REG_CYPRESS_CFR4V, 0, &buf);
+	if (ret < 0)
+		return ret;
+
+	buf &= (u8)(~SPINOR_REG_CYPRESS_CFR4_BIT3);
+
+	ret = write_enable(nor);
+	if (ret)
+		return ret;
+
+	ret = spansion_write_any_reg(nor, SPINOR_REG_CYPRESS_CFR4V, buf);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = write_disable(nor);
+	if (ret)
+		return ret;
+
+	ret = spansion_read_any_reg(nor, SPINOR_REG_CYPRESS_CFR4V, 0, &buf);
+	if (ret < 0)
+		return ret;
+
+	if (buf & (u8)SPINOR_REG_CYPRESS_CFR4_BIT3) {
+		printf("Failed to disable 2-bit ECC detection.\n");
+		return -EOPNOTSUPP;
+	}
+
+	return 0;
+}
+
 static void s28hs02gt_default_init(struct spi_nor *nor)
 {
 	nor->octal_dtr_enable = spi_nor_cypress_octal_dtr_enable;
 	nor->setup = s28hs02gt_setup;
+	cypress_nor_disable_ecc(nor);
 }
 
 static struct spi_nor_fixups s28hs02gt_fixups = {
