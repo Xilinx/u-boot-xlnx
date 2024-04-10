@@ -181,6 +181,11 @@ void cadence_qspi_apb_readdata_capture(void *reg_base,
 	unsigned int reg;
 	cadence_qspi_apb_controller_disable(reg_base);
 
+	reg = readl(reg_base + CQSPI_REG_CONFIG);
+
+	if (reg & CQSPI_REG_CONFIG_DTR_PROTO)
+		delay = 0;
+
 	reg = readl(reg_base + CQSPI_REG_RD_DATA_CAPTURE);
 
 	if (bypass)
