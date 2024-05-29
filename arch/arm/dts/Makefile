@@ -528,6 +528,8 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-x-ebm-02-revA.dtbo \
 	versal-x-ebm-03-revA.dtbo \
 	xilinx-versal-virt.dtb
+dtb-$(CONFIG_ARCH_VERSAL2) += \
+	amd-versal2-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	versal-net-vn-p-b2197-00-revA.dtb \
 	versal-net-vn-x-b2197-00-revA.dtb \
