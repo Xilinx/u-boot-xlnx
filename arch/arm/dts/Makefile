@@ -529,9 +529,6 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-x-ebm-03-revA.dtbo \
 	xilinx-versal-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
-	versal-net-emu-rev1.9.dtb \
-	versal-net-ipp-rev1.9.dtb \
-	versal-net-ipp-rev1.9-ospi.dtb \
 	versal-net-vn-p-b2197-00-revA.dtb \
 	versal-net-vn-x-b2197-00-revA.dtb \
 	x-prc-07-revA.dtbo \
