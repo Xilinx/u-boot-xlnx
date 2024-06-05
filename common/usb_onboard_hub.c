@@ -30,15 +30,21 @@ static int usb_onboard_hub_probe(struct udevice *dev)
 	struct onboard_hub *hub = dev_get_priv(dev);
 	int ret;
 
-	ret = device_get_supply_regulator(dev, "vdd-supply", &hub->vdd);
-	if (ret) {
-		dev_err(dev, "can't get vdd-supply: %d\n", ret);
-		return ret;
+	if (CONFIG_IS_ENABLED(DM_REGULATOR)) {
+		ret = device_get_supply_regulator(dev, "vdd-supply",
+						  &hub->vdd);
+		if (ret && ret != -ENOENT) {
+			dev_err(dev, "Failed to get VDD regulator: %d\n", ret);
+			return ret;
+		}
+		if (hub->vdd) {
+			ret = regulator_set_enable_if_allowed(hub->vdd, true);
+			if (ret && ret != -ENOSYS) {
+				dev_err(dev, "Failed to enable VDD regulator: %d\n", ret);
+				return ret;
+			}
+		}
 	}
-
-	ret = regulator_set_enable_if_allowed(hub->vdd, true);
-	if (ret)
-		dev_err(dev, "can't enable vdd-supply: %d\n", ret);
 
 	hub->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 						  GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
