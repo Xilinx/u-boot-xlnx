@@ -11,6 +11,7 @@
 #include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
+#include <dm/uclass-internal.h>
 #include <i2c.h>
 #include <linux/delay.h>
 #include <power/regulator.h>
@@ -21,7 +22,7 @@
 #define USB5744_CONFIG_REG_ACCESS_LSB 0x99
 
 struct onboard_hub {
-	struct udevice *vdd;
+	struct udevice *vdd, *dev;
 	struct gpio_desc *reset_gpio;
 };
 
@@ -106,7 +107,17 @@ static int usb_onboard_hub_probe(struct udevice *dev)
 	struct onboard_hub_data *data =
 		(struct onboard_hub_data *)dev_get_driver_data(dev);
 	struct onboard_hub *hub = dev_get_priv(dev);
+	struct ofnode_phandle_args phandle;
+	struct udevice *hub_dev;
 	int ret;
+
+	if (!dev_read_phandle_with_args(dev, "peer-hub", NULL, 0, 0, &phandle)) {
+		if (ofnode_valid(phandle.node)) {
+			ret = uclass_find_device_by_ofnode(UCLASS_USB_HUB, phandle.node, &hub_dev);
+			if (hub_dev && hub_dev->priv_)
+				return 0;
+		}
+	}
 
 	if (CONFIG_IS_ENABLED(DM_REGULATOR)) {
 		ret = device_get_supply_regulator(dev, "vdd-supply",
@@ -148,6 +159,9 @@ static int usb_onboard_hub_probe(struct udevice *dev)
 			return ret;
 		}
 	}
+	hub->dev = dev;
+	dev->priv_ = hub;
+
 	return 0;
 }
 
