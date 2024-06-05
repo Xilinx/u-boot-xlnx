@@ -11,8 +11,14 @@
 #include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
+#include <i2c.h>
 #include <linux/delay.h>
 #include <power/regulator.h>
+
+#define USB5744_COMMAND_ATTACH        0x0056
+#define USB5744_COMMAND_ATTACH_LSB    0xAA
+#define USB5744_CONFIG_REG_ACCESS     0x0037
+#define USB5744_CONFIG_REG_ACCESS_LSB 0x99
 
 struct onboard_hub {
 	struct udevice *vdd;
@@ -21,7 +27,79 @@ struct onboard_hub {
 
 struct onboard_hub_data {
 	unsigned long reset_us;
+	int (*onboard_dev_i2c_init)(struct udevice *dev);
 };
+
+static int usb5744_i2c_init(struct udevice *dev)
+{
+	/*
+	 *  Prevent the MCU from the putting the HUB in suspend mode through register write.
+	 *  The BYPASS_UDC_SUSPEND bit (Bit 3) of the RuntimeFlags2 register at address
+	 *  0x411D controls this aspect of the hub.
+	 *  Format to write to hub registers via SMBus- 2D 00 00 05 00 01 41 1D 08
+	 *  Byte 0: Address of slave 2D
+	 *  Byte 1: Memory address 00
+	 *  Byte 2: Memory address 00
+	 *  Byte 3: Number of bytes to write to memory
+	 *  Byte 4: Write configuration register (00)
+	 *  Byte 5: Write the number of data bytes (01- 1 data byte)
+	 *  Byte 6: LSB of register address 0x41
+	 *  Byte 7: MSB of register address 0x1D
+	 *  Byte 8: value to be written to the register
+	 */
+	char data_buf[8] = {0x0, 0x5, 0x0, 0x1, 0x41, 0x1D, 0x08};
+	int ret, slave_addr;
+	u32 buf = USB5744_COMMAND_ATTACH;
+	u32 config_reg_access_buf = USB5744_CONFIG_REG_ACCESS;
+	struct dm_i2c_chip *i2c_chip;
+	struct ofnode_phandle_args phandle;
+	struct udevice *i2c_bus = NULL, *i2c_dev;
+
+	if (!dev_read_phandle_with_args(dev, "i2c-bus", NULL, 0, 0, &phandle)) {
+		ret = device_get_global_by_ofnode(ofnode_get_parent(phandle.node), &i2c_bus);
+		if (ret) {
+			dev_err(dev, "Failed to get i2c node, err: %d\n", ret);
+			return ret;
+		}
+		ret = ofnode_read_u32(phandle.node, "reg", &slave_addr);
+		if (ret)
+			return ret;
+
+		ret = i2c_get_chip(i2c_bus, slave_addr, 1, &i2c_dev);
+		if (ret) {
+			debug("%s: can't find i2c chip device for addr %x\n", __func__,
+			      slave_addr);
+			return ret;
+		}
+
+		i2c_chip = dev_get_parent_plat(i2c_dev);
+		if (i2c_chip) {
+			i2c_chip->flags &= ~DM_I2C_CHIP_WR_ADDRESS;
+			/* SMBus write command */
+			ret = dm_i2c_write(i2c_dev, 0, (uint8_t *)&data_buf, 8);
+			if (ret) {
+				dev_err(dev, "data_buf i2c_write failed, err:%d\n", ret);
+				return ret;
+			}
+
+			/* Configuration register access command */
+			ret = dm_i2c_write(i2c_dev, USB5744_CONFIG_REG_ACCESS_LSB,
+					   (uint8_t *)&config_reg_access_buf, 2);
+			if (ret) {
+				dev_err(dev, "config_reg_access i2c_write failed, err: %d\n", ret);
+				return ret;
+			}
+
+			/* USB Attach with SMBus */
+			ret = dm_i2c_write(i2c_dev, USB5744_COMMAND_ATTACH_LSB, (uint8_t *)&buf, 2);
+			if (ret) {
+				dev_err(dev, "usb_attach i2c_write failed, err: %d\n", ret);
+				return ret;
+			}
+		}
+	}
+	return 0;
+}
 
 static int usb_onboard_hub_probe(struct udevice *dev)
 {
@@ -63,6 +141,13 @@ static int usb_onboard_hub_probe(struct udevice *dev)
 		udelay(data->reset_us);
 	}
 
+	if (data->onboard_dev_i2c_init) {
+		ret = data->onboard_dev_i2c_init(dev);
+		if (ret) {
+			dev_err(dev, "onboard i2c init failed: %d\n", ret);
+			return ret;
+		}
+	}
 	return 0;
 }
 
@@ -90,6 +175,7 @@ static const struct onboard_hub_data usb2514_data = {
 
 static const struct onboard_hub_data usb5744_data = {
 	.reset_us = 10000,
+	.onboard_dev_i2c_init = usb5744_i2c_init,
 };
 
 static const struct udevice_id usb_onboard_hub_ids[] = {
