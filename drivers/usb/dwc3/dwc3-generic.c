@@ -437,10 +437,7 @@ static int dwc3_glue_bind_common(struct udevice *parent, ofnode node)
 	debug("%s: subnode name: %s\n", __func__, name);
 
 	if (!ofnode_device_is_compatible(node, "snps,dwc3")) {
-		if (ofnode_device_is_compatible(node,
-						"microchip,usb5744"))
-				driver = "usb5744";
-		else if (ofnode_device_is_compatible
+		if (ofnode_device_is_compatible
 			(node, "microchip,usb2244"))
 				driver = "usb2244";
 
