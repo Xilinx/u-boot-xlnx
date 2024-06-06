@@ -102,11 +102,6 @@
 	phys = <&psgtr 2 PHY_TYPE_USB3 0 2>;
 	reset-gpios = <&slg7xl45106 0 GPIO_ACTIVE_LOW>;
 	assigned-clock-rates = <250000000>, <20000000>;
-
-	usb2244: usb-sd { /* u41 */
-		compatible = "microchip,usb2244";
-		reset-gpios = <&slg7xl45106 2 GPIO_ACTIVE_LOW>;
-	};
 };
 
 &dwc3_0 {
@@ -133,6 +128,12 @@
 		peer-hub = <&hub_2_0>;
 		i2c-bus = <&hub>;
 		reset-gpios = <&slg7xl45106 3 GPIO_ACTIVE_LOW>;
+	};
+
+	usb2244: mmc@3 { /* u41 */
+		compatible = "usb424,2244";
+		reg = <3>;
+		reset-gpios = <&slg7xl45106 2 GPIO_ACTIVE_LOW>;
 	};
 };
 
