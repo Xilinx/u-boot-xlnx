@@ -6479,3 +6479,12 @@ int spi_flash_cmd_get_sw_write_prot(struct spi_nor *nor)
 
 	return (sr >> 2) & 7;
 }
+
+__weak int spi_get_env_dev(void)
+{
+#ifdef CONFIG_ENV_SPI_BUS
+	return CONFIG_ENV_SPI_BUS;
+#else
+	return 0;
+#endif
+}
