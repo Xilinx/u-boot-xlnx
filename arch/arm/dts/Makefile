@@ -441,6 +441,7 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-x-ebm-03-revA.dtbo \
 	xilinx-versal-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL2) += \
+	versal2-mini-qspi.dtb \
 	versal2-mini.dtb \
 	amd-versal2-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
