@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen2 mini
+ *
+ * Copyright (C) 2023 - 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	compatible = "xlnx,versal2-mini";
+	model = "AMD Versal Gen 2 MINI";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	memory: memory@0 {
+		reg = <0 0xbbf00000 0 0x100000>;
+		device_type = "memory";
+	};
+
+	aliases {
+		serial0 = &serial0;
+		/* serial0 = &dcc; */
+	};
+
+	chosen {
+		stdout-path = "serial0:115200";
+	};
+
+	dcc: dcc {
+		compatible = "arm,dcc";
+		status = "okay";
+		bootph-all;
+	};
+
+	amba: axi {
+		compatible = "simple-bus";
+		bootph-all;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		serial0: serial@f1920000 {
+			bootph-all;
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0 0xf1920000 0 0x1000>;
+			reg-io-width = <4>;
+			clock = <1000000>;
+			skip-init;
+		};
+	};
+};
