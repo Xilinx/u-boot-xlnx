@@ -454,6 +454,17 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-x-ebm-03-revA.dtbo \
 	xilinx-versal-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL2) += \
+	versal2-mini-emmc.dtb \
+	versal2-mini-ospi.dtb \
+	versal2-mini-ospi-stacked.dtb \
+	versal2-mini-qspi.dtb \
+	versal2-mini-qspi-parallel.dtb \
+	versal2-mini-qspi-stacked.dtb \
+	versal2-mini-qspi-x1-single.dtb \
+	versal2-mini-qspi-x1-stacked.dtb \
+	versal2-mini-qspi-x2-single.dtb \
+	versal2-mini-qspi-x2-stacked.dtb \
+	versal2-mini.dtb \
 	amd-versal2-virt.dtb
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	versal-net-vn-x-b2197-01-revA.dtb \

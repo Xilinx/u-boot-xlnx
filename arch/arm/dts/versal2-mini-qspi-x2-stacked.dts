@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen2 mini qspi x2 stacked
+ *
+ * Copyright (C) 2023 - 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ * Padmarao Begari <padmarao.begari@amd.com>
+ */
+
+#include "versal2-mini-qspi.dts"
+
+/ {
+	model = "AMD Versal Gen 2 MINI QSPI X2 STACKED";
+};
+
+&qspi {
+	num-cs = <2>;
+};
+
+&flash0 {
+	reg = <0>, <1>;
+	stacked-memories = /bits/ 64 <0x8000000 0x8000000>; /* 128MB */
+	spi-tx-bus-width = <2>;
+	spi-rx-bus-width = <2>;
+};
