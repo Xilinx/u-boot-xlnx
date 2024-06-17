@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen2 mini ospi
+ *
+ * Copyright (C) 2023 - 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	compatible = "xlnx,versal2-mini";
+	model = "AMD Versal Gen 2 MINI OSPI";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	memory: memory@0 {
+		reg = <0 0xBBF00000 0 0x100000>;
+		device_type = "memory";
+	};
+
+	aliases {
+		serial0 = &serial0;
+		spi0 = &ospi;
+		/* serial0 = &dcc; */
+	};
+
+	chosen {
+		stdout-path = "serial0:115200";
+	};
+
+	clk125: clk125 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <20000000>;
+	};
+
+	dcc: dcc {
+		compatible = "arm,dcc";
+		status = "okay";
+		bootph-all;
+	};
+
+	amba: axi {
+		compatible = "simple-bus";
+		bootph-all;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		serial0: serial@f1920000 {
+			bootph-all;
+			compatible = "arm,pl011", "arm,primecell";
+			reg = <0 0xf1920000 0 0x1000>;
+			reg-io-width = <4>;
+			clock = <1000000>;
+			skip-init;
+		};
+
+		ospi: spi@f1010000 {
+			compatible = "cdns,qspi-nor";
+			status = "okay";
+			reg = <0 0xf1010000 0 0x10000>, <0 0xc0000000 0 0x20000000>;
+			clock-names = "ref_clk", "pclk";
+			clocks = <&clk125>, <&clk125>;
+			bus-num = <2>;
+			num-cs = <1>;
+			cdns,fifo-depth = <256>;
+			cdns,fifo-width = <4>;
+			cdns,is-dma = <1>;
+			cdns,is-stig-pgm = <1>;
+			cdns,trigger-address = <0xc0000000>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			flash0: flash@0 {
+				compatible = "mt35xu02g", "micron,m25p80",
+					"jedec,spi-nor";
+				reg = <0>;
+				spi-tx-bus-width = <8>;
+				spi-rx-bus-width = <8>;
+				spi-max-frequency = <20000000>;
+				no-wp;
+			};
+		};
+	};
+};
