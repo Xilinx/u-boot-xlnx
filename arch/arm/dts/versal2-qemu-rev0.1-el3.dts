@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2
+ *
+ * Copyright (C) 2023, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2.dtsi"
+
+/ {
+	compatible = "amd,versal2-qemu", "amd,versal2";
+	model = "AMD Versal Gen 2 Virtual development board rev0.1 EL3";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1920000 console=ttyAMA0,115200";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>;
+		device_type = "memory";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		transfer_list: memory@7ffe0000 {
+			no-map;
+			reg = <0 0x7ffe0000 0 0x10000>;
+		};
+	};
+
+	clk26000: clk26000 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <26000000>;
+		bootph-all;
+	};
+
+	clk100000: clk100000 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+		bootph-all;
+	};
+
+	clk125000: clk125000 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <125000000>;
+		bootph-all;
+	};
+};
+
+&amba {
+	/* just to test */
+	virtio_mmio@f5e00000 {
+		compatible = "virtio,mmio";
+		reg = <0 0xf5e00000 0 0x200>;
+		interrupts = <0 5 1>;
+		dma-coherent;
+	};
+
+	virtio_mmio@f5e01000 {
+		compatible = "virtio,mmio";
+		reg = <0 0xf5e01000 0 0x200>;
+		interrupts = <0 6 1>;
+		dma-coherent;
+	};
+};
+
+&serial0 {
+	status = "okay";
+	clocks = <&clk100000>, <&clk100000>;
+};
+
+&serial1 {
+	status = "disabled";
+	clocks = <&clk100000>, <&clk100000>;
+};
+
+&gem0 {
+	status = "okay";
+	clocks = <&clk100000>, <&clk100000>, <&clk125000>, <&clk100000>, <&clk100000>;
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+
+	phy0: fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&gem1 {
+	status = "okay";
+	clocks = <&clk100000>, <&clk100000>, <&clk125000>, <&clk100000>, <&clk100000>;
+	phy-handle = <&phy1>;
+	phy-mode = "rgmii-id";
+
+	phy1: fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&ufshc {
+	status = "okay";
+	clocks = <&clk100000>, <&clk26000>, <&clk26000>;
+};
