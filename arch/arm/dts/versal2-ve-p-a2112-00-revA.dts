@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2 VNC (T50)
+ *
+ * Copyright (C) 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2.dtsi"
+#include "versal2-clk-ccf.dtsi"
+
+/ {
+	compatible = "amd,versal2";
+	model = "AMD Versal Gen 2 Silicon EL2";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1920000 console=ttyAMA0,115200";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>; /* LPDDR5 2GB */
+		device_type = "memory";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* TF-A, TEE, RPUs */
+		res: memory@0 {
+			no-map;
+			reg = <0 0 0 0x20000000>;
+		};
+	};
+};
+
+&adma0 {
+	dma-coherent;
+};
+
+&adma1 {
+	dma-coherent;
+};
+
+&adma2 {
+	dma-coherent;
+};
+
+&adma3 {
+	dma-coherent;
+};
+
+&adma4 {
+	dma-coherent;
+};
+
+&adma5 {
+	dma-coherent;
+};
+
+&adma6 {
+	dma-coherent;
+};
+
+&adma7 {
+	dma-coherent;
+};
+
+&gem0 {
+	dma-coherent;
+};
+
+/* GPIO leds/dips/pushPB, SMA to PL */
+
+&mmi_10gbe {
+	status = "okay";
+	phy-mode = "10gbase-r";
+	fixed-link {
+		speed = <10000>;
+		full-duplex;
+	};
+};

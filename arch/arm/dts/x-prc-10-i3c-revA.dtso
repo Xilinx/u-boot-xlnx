@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2 (Palmyra) X-PRC-10 RevA with I3C enabled
+ *
+ * (C) Copyright 2025, Advanced Micro Devices, Inc.
+ *
+ * Manikanta Guntupalli <manikanta.guntupalli@amd.com>;
+ */
+
+#include "x-prc-10-revA.dtso"
+
+&{/} {
+	model = "X-PRC-10 i3c revA";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
+&i3c0 { /* LPD_MIO18-19 */
+	status = "okay";
+	#address-cells = <3>;
+	#size-cells = <0>;
+
+	eeprom: eeprom@51 { /* u45 */
+		compatible = "atmel,24c128";
+		reg = <0x51 0 0x10>;
+	};
+
+	/* icm-42605 - missing i3c driver
+	drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c */
+	icm42605@69 { /* u119 */
+		compatible = "invensense,icm42605";
+		reg = <0x69 0x46a 0x00>;
+	};
+
+	imu@6b { /* u120 */
+		compatible = "st,lsm6dso";
+		reg = <0x6b 0x208 0x6c100b>;
+	};
+};
