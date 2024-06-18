@@ -381,5 +381,7 @@ ofnode cadence_qspi_get_subnode(struct udevice *dev);
 int cadence_qspi_versal_set_dll_mode(struct udevice *dev);
 void cadence_qspi_apb_enable_linear_mode(bool enable);
 int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv);
-
+int cadence_qspi_setup_opcode_ext(struct cadence_spi_priv *priv,
+				  const struct spi_mem_op *op,
+				  unsigned int shift);
 #endif /* __CADENCE_QSPI_H__ */

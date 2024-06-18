@@ -21,7 +21,7 @@
 int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 			      const struct spi_mem_op *op)
 {
-	u32 reg, ret, rx_rem, n_rx, bytes_to_dma, data;
+	u32 reg, ret, rx_rem, n_rx, bytes_to_dma, data, status;
 	u8 opcode, addr_bytes, *rxbuf, dummy_cycles, unaligned_byte;
 
 	n_rx = op->data.nbytes;
@@ -92,6 +92,15 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 		if (opcode == CMD_4BYTE_OCTAL_READ &&
 		    priv->edge_mode != CQSPI_EDGE_MODE_DDR)
 			opcode = CMD_4BYTE_FAST_READ;
+
+		/* Set up command opcode extension. */
+		status = readl(priv->regbase + CQSPI_REG_CONFIG);
+		if (status & CQSPI_REG_CONFIG_DTR_PROTO) {
+			ret = cadence_qspi_setup_opcode_ext(priv, op,
+							    CQSPI_REG_OP_EXT_STIG_LSB);
+			if (ret)
+				return ret;
+		}
 
 		reg = opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
 		reg |= (0x1 << CQSPI_REG_CMDCTRL_RD_EN_LSB);
