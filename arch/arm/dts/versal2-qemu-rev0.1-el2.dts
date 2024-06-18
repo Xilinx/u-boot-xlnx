@@ -1,0 +1,205 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2
+ *
+ * Copyright (C) 2023, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2.dtsi"
+#include "versal2-scmi.dtsi"
+
+/ {
+	compatible = "amd,versal2-qemu", "amd,versal2";
+	model = "AMD Versal Gen 2 Virtual development board rev0.1 EL2";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1920000 console=ttyAMA0,115200";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>;
+		device_type = "memory";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		tfa: memory@10080000 {
+			no-map;
+			reg = <0 0x10080000 0 0x50000>;
+		};
+
+		transfer_list: memory@7ffe0000 {
+			no-map;
+			reg = <0 0x7ffe0000 0 0x10000>;
+		};
+	};
+
+	firmware {
+		optee: optee  {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+
+		psci: psci { /* Should be injected by firmware */
+			compatible = "arm,psci-1.0";
+			method = "smc";
+		};
+	};
+};
+
+&amba {
+	/* just to test */
+	virtio_mmio@f5e00000 {
+		compatible = "virtio,mmio";
+		reg = <0 0xf5e00000 0 0x200>;
+		interrupts = <0 5 1>;
+		dma-coherent;
+	};
+
+	virtio_mmio@f5e01000 {
+		compatible = "virtio,mmio";
+		reg = <0 0xf5e01000 0 0x200>;
+		interrupts = <0 6 1>;
+		dma-coherent;
+	};
+};
+
+&serial0 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&serial1 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&sdhci0 {
+	status = "okay";
+};
+
+&sdhci1 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gem0 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>, <125000000>, <100000000>, <100000000>;
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+
+	phy0: fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&gem1 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>, <125000000>, <100000000>, <100000000>;
+	phy-handle = <&phy1>;
+	phy-mode = "rgmii-id";
+
+	phy1: fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&i2c4 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ufshc {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>, <100000000>;
+};
+
+&spi0 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&spi1 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&ttc0 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc1 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc2 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc3 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc4 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc5 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc6 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&ttc7 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&wwdt0 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&wwdt1 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&wwdt2 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&wwdt3 {
+	status = "okay";
+	assigned-clock-rates = <100000000>;
+};
+
+&rtc {
+	status = "okay";
+};

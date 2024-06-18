@@ -1,0 +1,404 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2
+ *
+ * Copyright (C) 2023 - 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ * Subbu Patibandla <subbu.patibandla@amd.com>
+ */
+
+#include "versal2.dtsi"
+#include "versal2-scmi.dtsi"
+
+#define CLOCK_FREQ	947500
+#define CLOCK_QSPI_FREQ	20000000
+
+/ {
+	compatible = "amd,versal2-spp", "amd,versal2";
+	model = "AMD Versal Gen 2 SPP 0.5 EL2";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1920000 console=ttyAMA0,115200 maxcpus=8 rdinit=/bin/sh";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>;
+		device_type = "memory";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		tfa: memory@10080000 {
+			no-map;
+			reg = <0 0x10080000 0 0x50000>;
+		};
+
+		transfer_list: memory@7ffe0000 {
+			no-map;
+			reg = <0 0x7ffe0000 0 0x10000>;
+		};
+	};
+
+	firmware {
+		optee: optee  {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+
+		psci: psci { /* Should be injected by firmware */
+			compatible = "arm,psci-1.0";
+			method = "smc";
+		};
+	};
+};
+
+&serial0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>;
+};
+
+&serial1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>;
+};
+
+&timer {
+	clock-frequency = <1000000>;
+};
+
+&adma0 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma1 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma2 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma3 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma4 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma5 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma6 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&adma7 {
+	status = "okay";
+	assigned-clock-rates = <100000000>, <100000000>;
+};
+
+&can0 {
+	status = "okay";
+	assigned-clock-rates = <50000000>, <100000000>;
+};
+
+&can1 {
+	status = "okay";
+	assigned-clock-rates = <50000000>, <100000000>;
+};
+
+&can2 {
+	status = "okay";
+	assigned-clock-rates = <50000000>, <100000000>;
+};
+
+&can3 {
+	status = "okay";
+	assigned-clock-rates = <50000000>, <100000000>;
+};
+
+&gpio0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&gpio1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i3c0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i3c1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i3c2 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i3c3 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i2c4 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i2c5 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i2c6 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&i2c7 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&sdhci1 {
+	status = "okay";
+	bus-width = <8>;
+	disable-wp;
+	non-removable;
+	xlnx,mio-bank = <0>;
+	no-mmc-hs400;
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>, <CLOCK_FREQ>;
+	sdhci-caps-mask = <0x80000000 0>;
+	sdhci-caps = <0 0>;
+};
+
+&ospi {
+	status = "okay";
+	reset-names = "qspi";
+	reset-gpios = <&gpio1 12 0>;
+	is-stacked = <0>;
+	is-dual = <0>;
+	assigned-clock-rates = <CLOCK_QSPI_FREQ>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	flash@0 {
+		compatible = "mt35xu02g", "micron,m25p80", "jedec,spi-nor";
+		spi-max-frequency = <50000>;
+		spi-rx-bus-width = <8>;
+		spi-tx-bus-width = <8>;
+		cdns,tslch-ns = <1>;
+		cdns,tchsh-ns = <1>;
+		cdns,tsd2d-ns = <0>;
+		cdns,tshsl-ns = <0>;
+		cdns,read-delay = <0>;
+		#size-cells = <1>;
+		#address-cells = <1>;
+		reg = <0>;
+		no-wp;
+		broken-flash-reset;
+
+		partitions {
+			#size-cells = <1>;
+			#address-cells = <1>;
+			compatible = "fixed-partitions";
+
+			partition@0 {
+				reg = <0x0 0x200000>;
+				label = "ospi-flash0";
+			};
+
+			partition@1 {
+				reg = <0x200000 0x3e00000>;
+				label = "ospi-flash1";
+			};
+		};
+	};
+};
+
+&qspi {
+	status = "okay";
+	#size-cells = <0>;
+	#address-cells = <1>;
+	num-cs = <2>;
+	assigned-clock-rates = <CLOCK_QSPI_FREQ>, <CLOCK_FREQ>;
+
+	flash0: flash@0 {
+		compatible = "micron,m25p80", "jedec,spi-nor";
+		spi-max-frequency = <5000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+		parallel-memories = <0 0x8000000>, <0 0x8000000>;
+		reg = <0>, <1>;
+
+		partitions {
+			#size-cells = <1>;
+			#address-cells = <1>;
+			compatible = "fixed-partitions";
+
+			partition@0 {
+				reg = <0 0x200000>;
+				label = "qspi0-flash0";
+			};
+
+			partition@1 {
+				reg = <0x200000 0x7e00000>;
+				label = "qspi0-flash1";
+			};
+		};
+	};
+};
+
+&rtc {
+	status = "okay";
+};
+
+&ttc0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc2 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc3 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc4 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc5 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc6 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&ttc7 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&usb1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>;
+};
+
+&dwc3_1 {
+	status = "okay";
+	dr_mode = "host";
+	maximum-speed = "high-speed";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&wwdt0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&wwdt1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&wwdt2 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&wwdt3 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>;
+};
+
+&spi0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	num-cs = <1>;
+	flash_spi0: flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <120000>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			partition@0 {
+				label = "spi0-flash0";
+				reg = <0 0x100000>;
+			};
+		};
+	};
+};
+
+&spi1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>;
+};
+
+&gem0 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>, <125000000>, <CLOCK_FREQ>, <CLOCK_FREQ>;
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+
+	phy0: fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&gem1 {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>, <125000000>, <CLOCK_FREQ>, <CLOCK_FREQ>;
+	phy-handle = <&phy1>;
+	phy-mode = "rgmii-id";
+
+	phy1: fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&ufshc {
+	status = "okay";
+	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>, <CLOCK_FREQ>;
+};
+
