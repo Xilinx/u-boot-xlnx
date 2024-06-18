@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2
+ *
+ * Copyright (C) 2023 - 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2.dtsi"
+
+/ {
+	compatible = "amd,versal2-emu", "amd,versal2";
+	model = "AMD Versal Gen 2 EMU 0.4 EL2";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1920000 console=ttyAMA0,115200 maxcpus=8 rdinit=/bin/sh";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>; /* 4GB but keep only 2GB for now */
+		device_type = "memory";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		tfa: memory@10080000 {
+			no-map;
+			reg = <0 0x10080000 0 0x50000>;
+		};
+	};
+
+	clk1: clk1 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <1000000>;
+	};
+
+	firmware {
+		psci: psci { /* Should be injected by firmware */
+			compatible = "arm,psci-1.0";
+			method = "smc";
+		};
+	};
+};
+
+&serial0 {
+	status = "okay";
+	clocks = <&clk1>, <&clk1>;
+};
+
+&timer {
+	clock-frequency = <1000000>;
+};
+

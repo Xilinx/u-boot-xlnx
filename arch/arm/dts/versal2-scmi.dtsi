@@ -1,0 +1,369 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2
+ *
+ * Copyright (C) 2023, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2-scmi.h"
+
+&{/} {
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		scmi_buffer: memory@7fffe000 {
+			no-map;
+			reg = <0 0x7fffe000 0 0x1000>;
+		};
+	};
+
+	sram@7fffe000 {
+		compatible = "mmio-sram";
+		reg = <0 0x7fffe000 0 0x1000>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0 0x7fffe000 0x1000>;
+
+		scmi_buf: scmi-sram-section@0 {
+			compatible = "arm,scmi-shmem";
+			reg = <0 0x400>;
+		};
+	};
+
+	firmware {
+		scmi: scmi { /* Should be injected by firmware */
+			compatible = "arm,scmi-smc";
+			arm,smc-id = <0xc200ffff>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			shmem = <&scmi_buf>;
+
+			scmi_clk: protocol@14 {
+				reg = <0x14>;
+				#clock-cells = <1>;
+			};
+
+			scmi_reset: protocol@16 {
+				reg = <0x16>;
+				#reset-cells = <1>;
+			};
+		};
+	};
+};
+
+&adma0 {
+	clocks = <&scmi_clk CLK_ADMA0_0>, <&scmi_clk CLK_ADMA0_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA0_0>, <&scmi_clk CLK_ADMA0_1>;
+};
+
+&adma1 {
+	clocks = <&scmi_clk CLK_ADMA1_0>, <&scmi_clk CLK_ADMA1_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA1_0>, <&scmi_clk CLK_ADMA1_1>;
+};
+
+&adma2 {
+	clocks = <&scmi_clk CLK_ADMA2_0>, <&scmi_clk CLK_ADMA2_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA2_0>, <&scmi_clk CLK_ADMA2_1>;
+};
+
+&adma3 {
+	clocks = <&scmi_clk CLK_ADMA3_0>, <&scmi_clk CLK_ADMA3_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA3_0>, <&scmi_clk CLK_ADMA3_1>;
+};
+
+&adma4 {
+	clocks = <&scmi_clk CLK_ADMA4_0>, <&scmi_clk CLK_ADMA4_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA4_0>, <&scmi_clk CLK_ADMA4_1>;
+};
+
+&adma5 {
+	clocks = <&scmi_clk CLK_ADMA5_0>, <&scmi_clk CLK_ADMA5_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA5_0>, <&scmi_clk CLK_ADMA5_1>;
+};
+
+&adma6 {
+	clocks = <&scmi_clk CLK_ADMA6_0>, <&scmi_clk CLK_ADMA6_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA6_0>, <&scmi_clk CLK_ADMA6_1>;
+};
+
+&adma7 {
+	clocks = <&scmi_clk CLK_ADMA7_0>, <&scmi_clk CLK_ADMA7_1>;
+	assigned-clocks = <&scmi_clk CLK_ADMA7_0>, <&scmi_clk CLK_ADMA7_1>;
+};
+
+&can0 {
+	clocks = <&scmi_clk CLK_CAN0_0>, <&scmi_clk CLK_CAN0_1>;
+	assigned-clocks = <&scmi_clk CLK_CAN0_0>, <&scmi_clk CLK_CAN0_1>;
+};
+
+&can1 {
+	clocks = <&scmi_clk CLK_CAN1_0>, <&scmi_clk CLK_CAN1_1>;
+	assigned-clocks = <&scmi_clk CLK_CAN1_0>, <&scmi_clk CLK_CAN1_1>;
+};
+
+&can2 {
+	clocks = <&scmi_clk CLK_CAN2_0>, <&scmi_clk CLK_CAN2_1>;
+	assigned-clocks = <&scmi_clk CLK_CAN2_0>, <&scmi_clk CLK_CAN2_1>;
+};
+
+&can3 {
+	clocks = <&scmi_clk CLK_CAN3_0>, <&scmi_clk CLK_CAN3_1>;
+	assigned-clocks = <&scmi_clk CLK_CAN3_0>, <&scmi_clk CLK_CAN3_1>;
+};
+
+&gpio0 {
+	clocks = <&scmi_clk CLK_PS_GPIO_0>;
+	assigned-clocks = <&scmi_clk CLK_PS_GPIO_0>;
+};
+
+&gpio1 {
+	clocks = <&scmi_clk CLK_PMC_GPIO_0>;
+	assigned-clocks = <&scmi_clk CLK_PMC_GPIO_0>;
+};
+
+&i2c0 {
+	clocks = <&scmi_clk CLK_I2C0_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C0_0>;
+};
+
+&i2c1 {
+	clocks = <&scmi_clk CLK_I2C1_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C1_0>;
+};
+
+&i2c2 {
+	clocks = <&scmi_clk CLK_I2C2_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C2_0>;
+};
+
+&i2c3 {
+	clocks = <&scmi_clk CLK_I2C3_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C3_0>;
+};
+
+&i2c4 {
+	clocks = <&scmi_clk CLK_I2C4_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C4_0>;
+};
+
+&i2c5 {
+	clocks = <&scmi_clk CLK_I2C5_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C5_0>;
+};
+
+&i2c6 {
+	clocks = <&scmi_clk CLK_I2C6_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C6_0>;
+};
+
+&i2c7 {
+	clocks = <&scmi_clk CLK_I2C7_0>;
+	assigned-clocks = <&scmi_clk CLK_I2C7_0>;
+};
+
+&i3c0 {
+	clocks = <&scmi_clk CLK_I3C0_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C0_0>;
+};
+
+&i3c1 {
+	clocks = <&scmi_clk CLK_I3C1_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C1_0>;
+};
+
+&i3c2 {
+	clocks = <&scmi_clk CLK_I3C2_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C2_0>;
+};
+
+&i3c3 {
+	clocks = <&scmi_clk CLK_I3C3_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C3_0>;
+};
+
+&i3c4 {
+	clocks = <&scmi_clk CLK_I3C4_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C4_0>;
+};
+
+&i3c5 {
+	clocks = <&scmi_clk CLK_I3C5_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C5_0>;
+};
+
+&i3c6 {
+	clocks = <&scmi_clk CLK_I3C6_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C6_0>;
+};
+
+&i3c7 {
+	clocks = <&scmi_clk CLK_I3C7_0>;
+	assigned-clocks = <&scmi_clk CLK_I3C7_0>;
+};
+
+&ospi {
+	clocks = <&scmi_clk CLK_OSPI0_0>;
+	assigned-clocks = <&scmi_clk CLK_OSPI0_0>;
+	resets = <&scmi_reset RESET_OSPI0_0>;
+};
+
+&qspi {
+	clocks = <&scmi_clk CLK_QSPI0_0>, <&scmi_clk CLK_QSPI0_1>;
+	assigned-clocks = <&scmi_clk CLK_QSPI0_0>, <&scmi_clk CLK_QSPI0_1>;
+};
+
+
+&sdhci0 {
+	clocks = <&scmi_clk CLK_MMC0_0>, <&scmi_clk CLK_MMC0_1>,
+		 <&scmi_clk CLK_MMC0_2>;
+	assigned-clocks = <&scmi_clk CLK_MMC0_0>, <&scmi_clk CLK_MMC0_1>,
+			  <&scmi_clk CLK_MMC0_2>;
+};
+
+&sdhci1 {
+	clocks = <&scmi_clk CLK_MMC1_0>, <&scmi_clk CLK_MMC1_1>,
+		 <&scmi_clk CLK_MMC1_2>;
+	assigned-clocks = <&scmi_clk CLK_MMC1_0>, <&scmi_clk CLK_MMC1_1>,
+			  <&scmi_clk CLK_MMC1_2>;
+};
+
+&serial0 {
+	clocks = <&scmi_clk CLK_SERIAL0_0>, <&scmi_clk CLK_SERIAL0_1>;
+	assigned-clocks = <&scmi_clk CLK_SERIAL0_0>, <&scmi_clk CLK_SERIAL0_1>;
+	resets = <&scmi_reset RESET_SERIAL0_0>;
+};
+
+&serial1 {
+	clocks = <&scmi_clk CLK_SERIAL1_0>, <&scmi_clk CLK_SERIAL1_1>;
+	assigned-clocks = <&scmi_clk CLK_SERIAL1_0>, <&scmi_clk CLK_SERIAL1_1>;
+	resets = <&scmi_reset RESET_SERIAL1_0>;
+};
+
+&ttc0 {
+	clocks = <&scmi_clk CLK_TTC0_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC0_0>;
+};
+
+&ttc0 {
+	clocks = <&scmi_clk CLK_TTC0_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC0_0>;
+};
+
+&ttc1 {
+	clocks = <&scmi_clk CLK_TTC1_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC1_0>;
+};
+
+&ttc2 {
+	clocks = <&scmi_clk CLK_TTC2_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC2_0>;
+};
+
+&ttc3 {
+	clocks = <&scmi_clk CLK_TTC3_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC3_0>;
+};
+
+&ttc4 {
+	clocks = <&scmi_clk CLK_TTC4_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC4_0>;
+};
+
+&ttc5 {
+	clocks = <&scmi_clk CLK_TTC5_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC5_0>;
+};
+
+&ttc6 {
+	clocks = <&scmi_clk CLK_TTC6_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC6_0>;
+};
+
+&ttc7 {
+	clocks = <&scmi_clk CLK_TTC7_0>;
+	assigned-clocks = <&scmi_clk CLK_TTC7_0>;
+};
+
+&gem0 {
+	clocks = <&scmi_clk CLK_GEM0_0>, <&scmi_clk CLK_GEM0_1>,
+		 <&scmi_clk CLK_GEM0_2>, <&scmi_clk CLK_GEM0_3>,
+		 <&scmi_clk CLK_GEM0_4>;
+	assigned-clocks = <&scmi_clk CLK_GEM0_0>, <&scmi_clk CLK_GEM0_1>,
+			  <&scmi_clk CLK_GEM0_2>, <&scmi_clk CLK_GEM0_3>,
+			  <&scmi_clk CLK_GEM0_4>;
+	resets = <&scmi_reset RESET_GEM0_0>;
+};
+
+&gem1 {
+	clocks = <&scmi_clk CLK_GEM1_0>, <&scmi_clk CLK_GEM1_1>,
+		 <&scmi_clk CLK_GEM1_2>, <&scmi_clk CLK_GEM1_3>,
+		 <&scmi_clk CLK_GEM1_4>;
+	assigned-clocks = <&scmi_clk CLK_GEM1_0>, <&scmi_clk CLK_GEM1_1>,
+			  <&scmi_clk CLK_GEM1_2>, <&scmi_clk CLK_GEM1_3>,
+			  <&scmi_clk CLK_GEM1_4>;
+	resets = <&scmi_reset RESET_GEM1_0>;
+};
+
+&ufshc {
+	clocks = <&scmi_clk CLK_UFS0_0>, <&scmi_clk CLK_UFS0_1>,
+		 <&scmi_clk CLK_UFS0_2>;
+	assigned-clocks = <&scmi_clk CLK_UFS0_0>, <&scmi_clk CLK_UFS0_1>,
+			  <&scmi_clk CLK_UFS0_2>;
+	resets = <&scmi_reset RESET_UFS0_0>;
+};
+
+&usb0 {
+	clocks = <&scmi_clk CLK_USB0_0>, <&scmi_clk CLK_USB0_1>;
+	assigned-clocks = <&scmi_clk CLK_USB0_0>, <&scmi_clk CLK_USB0_1>;
+};
+
+&dwc3_0 {
+	clocks = <&scmi_clk CLK_USB0_2>;
+	assigned-clocks = <&scmi_clk CLK_USB0_2>;
+};
+
+&usb1 {
+	clocks = <&scmi_clk CLK_USB1_0>, <&scmi_clk CLK_USB1_1>;
+	assigned-clocks = <&scmi_clk CLK_USB1_0>, <&scmi_clk CLK_USB1_1>;
+};
+
+&dwc3_1 {
+	clocks = <&scmi_clk CLK_USB1_2>;
+	assigned-clocks = <&scmi_clk CLK_USB1_2>;
+};
+
+&wwdt0 {
+	clocks = <&scmi_clk CLK_WWDT0_0>;
+	assigned-clocks = <&scmi_clk CLK_WWDT0_0>;
+};
+
+&wwdt1 {
+	clocks = <&scmi_clk CLK_WWDT1_0>;
+	assigned-clocks = <&scmi_clk CLK_WWDT1_0>;
+};
+
+&wwdt2 {
+	clocks = <&scmi_clk CLK_WWDT2_0>;
+	assigned-clocks = <&scmi_clk CLK_WWDT2_0>;
+};
+
+&wwdt3 {
+	clocks = <&scmi_clk CLK_WWDT3_0>;
+	assigned-clocks = <&scmi_clk CLK_WWDT3_0>;
+};
+
+&spi0 {
+	clocks = <&scmi_clk CLK_SPI0_0>, <&scmi_clk CLK_SPI0_1>;
+	assigned-clocks = <&scmi_clk CLK_SPI0_0>, <&scmi_clk CLK_SPI0_1>;
+};
+
+&spi1 {
+	clocks = <&scmi_clk CLK_SPI1_0>, <&scmi_clk CLK_SPI1_1>;
+	assigned-clocks = <&scmi_clk CLK_SPI1_0>, <&scmi_clk CLK_SPI1_1>;
+};
