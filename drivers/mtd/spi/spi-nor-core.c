@@ -6116,7 +6116,13 @@ int spi_nor_remove(struct spi_nor *nor)
 	    nor->flags & SNOR_F_SOFT_RESET)
 		return spi_nor_soft_reset(nor);
 #endif
+	if (CONFIG_IS_ENABLED(DM_GPIO)) {
+		if (nor->flash_gpio_reset) {
+			struct gpio_desc *flash_gpio_reset = nor->flash_gpio_reset;
 
+			dm_gpio_free(flash_gpio_reset->dev, flash_gpio_reset);
+		}
+	}
 	return 0;
 }
 
@@ -6185,36 +6191,32 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 
 static int spi_nor_hw_reset(struct spi_nor *nor)
 {
-	static struct flash_reset flash_gpio_reset;
 	struct udevice *dev = nor->spi->dev;
 	int rc;
 
-	if (!flash_gpio_reset.reset) {
-		flash_gpio_reset.reset = devm_gpiod_get_optional(dev, "reset",
-								 GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
-			if (IS_ERR_OR_NULL(flash_gpio_reset.reset))
-				return PTR_ERR(flash_gpio_reset.reset);
+	nor->flash_gpio_reset = devm_gpiod_get_optional(dev, "reset",
+							GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
+
+	if (nor->flash_gpio_reset) {
+		/*
+		 * Experimental delay values by looking at different flash device
+		 * vendors datasheets.
+		 */
+		udelay(5);
+
+		/* Toggle gpio to reset the flash device. */
+		rc = dm_gpio_set_value(nor->flash_gpio_reset, 1);
+		if (rc)
+			return rc;
+
+		udelay(150);
+
+		rc = dm_gpio_set_value(nor->flash_gpio_reset, 0);
+		if (rc)
+			return rc;
+
+		udelay(1200);
 	}
-
-	/*
-	 * Experimental delay values by looking at different flash device
-	 * vendors datasheets.
-	 */
-	udelay(5);
-
-	/* Toggle gpio to reset the flash device. */
-	rc = dm_gpio_set_value(flash_gpio_reset.reset, 1);
-	if (rc)
-		return rc;
-
-	udelay(150);
-
-	rc = dm_gpio_set_value(flash_gpio_reset.reset, 0);
-	if (rc)
-		return rc;
-
-	udelay(1200);
-
 	return 0;
 }
 
