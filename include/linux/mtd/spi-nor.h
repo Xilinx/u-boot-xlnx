@@ -601,6 +601,7 @@ struct spi_nor {
 	u8			cmd_buf[SPI_NOR_MAX_CMD_SIZE];
 	enum spi_nor_cmd_ext	cmd_ext_type;
 	struct spi_nor_fixups	*fixups;
+	struct gpio_desc        *flash_gpio_reset;
 
 	int (*setup)(struct spi_nor *nor, const struct flash_info *info,
 		     const struct spi_nor_flash_parameter *params);
