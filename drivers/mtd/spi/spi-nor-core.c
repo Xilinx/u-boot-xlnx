@@ -2189,6 +2189,7 @@ static int write_sr_cr(struct spi_nor *nor, u8 *sr_cr)
 	return write_disable(nor);
 }
 
+#if defined(CONFIG_SPI_FLASH_WINBOND)
 /**
  * winbond_quad_enable() - Set QE bit in status register-2
  * @nor:	pointer to a 'struct spi_nor'
@@ -2231,6 +2232,7 @@ static int winbond_quad_enable(struct spi_nor *nor)
 
 	return write_disable(nor);
 }
+#endif
 
 /**
  * spansion_read_cr_quad_enable() - set QE bit in Configuration Register.
