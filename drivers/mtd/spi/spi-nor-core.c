@@ -3179,6 +3179,9 @@ static int spi_nor_init_params(struct spi_nor *nor,
 	}
 
 #if CONFIG_IS_ENABLED(DM_SPI)
+
+	nor->num_flash = 0;
+
 	/*
 	 * The flashes that are connected in stacked mode should be of same make.
 	 * Except the flash size all other properties are identical for all the
@@ -3200,6 +3203,7 @@ static int spi_nor_init_params(struct spi_nor *nor,
 			if (!(nor->spi->flags & SPI_XFER_STACKED))
 				nor->spi->flags |= SPI_XFER_STACKED;
 		}
+		nor->num_flash++;
 	}
 
 	i = 0;
@@ -3217,13 +3221,25 @@ static int spi_nor_init_params(struct spi_nor *nor,
 			if (!(nor->flags & SNOR_F_HAS_PARALLEL))
 				nor->flags |= SNOR_F_HAS_PARALLEL;
 		}
+		nor->num_flash++;
 	}
 
 	if (nor->flags & (SNOR_F_HAS_STACKED | SNOR_F_HAS_PARALLEL)) {
+		struct spi_nor_flash_parameter *cs_params = spi_nor_get_params(nor, 0);
 		params->size = 0;
-		for (idx = 0; idx < SNOR_FLASH_CNT_MAX; idx++)
-			params->size += flash_size[idx];
+
+		for (idx = 0; idx < nor->num_flash; idx++) {
+			cs_params = spi_nor_get_params(nor, idx);
+			cs_params = devm_kzalloc(nor->dev, sizeof(*cs_params), GFP_KERNEL);
+			if (cs_params) {
+				memcpy(cs_params, spi_nor_get_params(nor, idx), sizeof(*cs_params));
+				cs_params->size = flash_size[idx];
+				spi_nor_set_params(nor, idx, cs_params);
+				params->size += cs_params->size;
+			}
+		}
 	}
+
 	/*
 	 * In parallel-memories the erase operation is
 	 * performed on both the flashes simultaneously
