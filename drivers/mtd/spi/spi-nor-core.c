@@ -1025,7 +1025,7 @@ static int spi_nor_erase_chip(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	return nor->mtd.size;
+	return ret;
 }
 
 /*
@@ -1066,7 +1066,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
 	u32 addr, len, rem, offset, max_size;
 	bool addr_known = false;
-	int ret, err;
+	int ret, err, idx = 0, rc = 0;
 
 	dev_dbg(nor->dev, "at 0x%llx, len %lld\n", (long long)instr->addr,
 		(long long)instr->len);
@@ -1119,7 +1119,37 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 		if (len == mtd->size &&
 		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
-			ret = spi_nor_erase_chip(nor);
+			if (nor->flags & SNOR_F_HAS_STACKED) {
+				struct spi_nor_flash_parameter *cs_params;
+
+				ret = 0; idx = 0;
+				while (idx < nor->num_flash) {
+					if (idx == 1) {
+						nor->spi->flags |= SPI_XFER_U_PAGE;
+						rc = write_enable(nor);
+						if (rc < 0)
+							goto erase_err;
+					}
+					rc = spi_nor_erase_chip(nor);
+					if (rc < 0)
+						goto erase_err;
+
+					cs_params = spi_nor_get_params(nor, idx);
+					rc = spi_nor_erase_chip_wait_till_ready(nor,
+										cs_params->size);
+					if (rc)
+						goto erase_err;
+
+					ret += cs_params->size;
+					idx++;
+				}
+
+			} else {
+				ret = spi_nor_erase_chip(nor);
+				if (ret < 0)
+					goto erase_err;
+				ret = nor->mtd.size;
+			}
 		} else {
 			ret = spi_nor_erase_sector(nor, offset);
 		}
@@ -1130,7 +1160,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		len -= ret;
 
 		if (max_size == mtd->size &&
-		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
+		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE) && !idx) {
 			ret = spi_nor_erase_chip_wait_till_ready(nor, mtd->size);
 		} else {
 			ret = spi_nor_wait_till_ready(nor);
