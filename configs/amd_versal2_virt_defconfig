@@ -61,6 +61,7 @@ CONFIG_CMD_EXT4_WRITE=y
 CONFIG_CMD_SQUASHFS=y
 CONFIG_CMD_MTDPARTS=y
 CONFIG_CMD_UBI=y
+CONFIG_MMC_SPEED_MODE_SET=y
 CONFIG_PARTITION_TYPE_GUID=y
 CONFIG_OF_BOARD=y
 CONFIG_OF_LIST="versal2-spp-mmd-rev0.5-el2 versal2-spp-rev0.4-el2 versal2-spp-rev0.3-el2 versal2-qemu-rev0.1-el3 versal2-qemu-rev0.1-el2"
