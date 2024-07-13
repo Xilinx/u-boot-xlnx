@@ -298,21 +298,6 @@
 		ranges;
 	};
 
-	remoteproc {
-		compatible = "xlnx,zynqmp-r5fss";
-		xlnx,cluster-mode = <1>;
-
-		r5f-0 {
-			compatible = "xlnx,zynqmp-r5f";
-			power-domains = <&zynqmp_firmware PD_RPU_0>;
-		};
-
-		r5f-1 {
-			compatible = "xlnx,zynqmp-r5f";
-			power-domains = <&zynqmp_firmware PD_RPU_1>;
-		};
-	};
-
 	amba: axi {
 		compatible = "simple-bus";
 		bootph-all;
