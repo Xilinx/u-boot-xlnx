@@ -11,7 +11,6 @@
 /* avoid conflicts */
 #undef OFF
 #undef ASMINF
-#undef POSTINC
 #undef NO_GZIP
 #define GUNZIP
 #undef STDC
