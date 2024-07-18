@@ -1120,7 +1120,6 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		if (len == mtd->size &&
 		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
 			if (nor->flags & SNOR_F_HAS_STACKED) {
-				struct spi_nor_flash_parameter *cs_params;
 
 				ret = 0; idx = 0;
 				while (idx < nor->num_flash) {
@@ -1134,13 +1133,12 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 					if (rc < 0)
 						goto erase_err;
 
-					cs_params = spi_nor_get_params(nor, idx);
 					rc = spi_nor_erase_chip_wait_till_ready(nor,
-										cs_params->size);
+										nor->cs_params[idx]);
 					if (rc)
 						goto erase_err;
 
-					ret += cs_params->size;
+					ret += nor->cs_params[idx];
 					idx++;
 				}
 
@@ -3255,18 +3253,11 @@ static int spi_nor_init_params(struct spi_nor *nor,
 	}
 
 	if (nor->flags & (SNOR_F_HAS_STACKED | SNOR_F_HAS_PARALLEL)) {
-		struct spi_nor_flash_parameter *cs_params = spi_nor_get_params(nor, 0);
 		params->size = 0;
 
 		for (idx = 0; idx < nor->num_flash; idx++) {
-			cs_params = spi_nor_get_params(nor, idx);
-			cs_params = devm_kzalloc(nor->dev, sizeof(*cs_params), GFP_KERNEL);
-			if (cs_params) {
-				memcpy(cs_params, spi_nor_get_params(nor, idx), sizeof(*cs_params));
-				cs_params->size = flash_size[idx];
-				spi_nor_set_params(nor, idx, cs_params);
-				params->size += cs_params->size;
-			}
+			nor->cs_params[idx] = flash_size[idx];
+			params->size += flash_size[idx];
 		}
 	}
 
