@@ -637,7 +637,7 @@ struct spi_nor {
 	u32 erase_size;
 /* Number of flashes connected in parallel or stacked mode parameters */
 	u32 num_flash;
-	struct spi_nor_flash_parameter *params[SNOR_FLASH_CNT_MAX];
+	u64 cs_params[SNOR_FLASH_CNT_MAX];
 };
 
 struct flash_reset {
@@ -680,19 +680,6 @@ void spi_nor_setup_op(const struct spi_nor *nor,
  * Return: 0 for success, others for failure.
  */
 int spi_nor_scan(struct spi_nor *nor);
-
-static inline struct spi_nor_flash_parameter *spi_nor_get_params(const struct
-								 spi_nor *nor,
-								 u8 idx)
-{
-	return nor->params[idx];
-}
-
-static inline void spi_nor_set_params(struct spi_nor *nor, u8 idx,
-				      struct spi_nor_flash_parameter *params)
-{
-	nor->params[idx] = params;
-}
 
 #if CONFIG_IS_ENABLED(SPI_FLASH_TINY)
 static inline int spi_nor_remove(struct spi_nor *nor)
