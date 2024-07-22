@@ -492,6 +492,7 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 	versal-mini-qspi-x2-single.dtb \
 	versal-mini-qspi-x2-stacked.dtb \
 	versal-v350-revA.dtb \
+	versal-v80-rev1.0.dtb \
 	versal-vck190-revA.dtb \
 	versal-vck190-revA-x-ebm-01-revA.dtb \
 	versal-vck190-revA-x-ebm-02-revA.dtb \
