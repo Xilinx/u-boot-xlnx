@@ -12,6 +12,7 @@
 
 #define CLOCK_FREQ	822500
 #define CLOCK_QSPI_FREQ	20000000
+#define CLOCK_USB_FREQ	20000000
 
 / {
 	compatible = "amd,versal2-spp", "amd,versal2";
@@ -313,14 +314,14 @@
 
 &usb1 {
 	status = "okay";
-	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>;
+	assigned-clock-rates = <CLOCK_USB_FREQ>, <CLOCK_USB_FREQ>;
 };
 
 &dwc3_1 {
 	status = "okay";
 	dr_mode = "host";
 	maximum-speed = "high-speed";
-	assigned-clock-rates = <CLOCK_FREQ>;
+	assigned-clock-rates = <CLOCK_USB_FREQ>;
 };
 
 &wwdt0 {
