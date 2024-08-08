@@ -740,7 +740,8 @@ bool update_stripe(const struct spi_mem_op *op)
 	if (op->cmd.opcode == SPINOR_OP_BE_4K ||
 	    op->cmd.opcode == SPINOR_OP_CHIP_ERASE ||
 	    op->cmd.opcode == SPINOR_OP_SE ||
-	    op->cmd.opcode == SPINOR_OP_WREAR
+	    op->cmd.opcode == SPINOR_OP_WREAR ||
+	    op->cmd.opcode == SPINOR_OP_WRSR
 	)
 		return false;
 
