@@ -448,6 +448,30 @@ static int do_spi_protect(int argc, char *const argv[])
 	return ret == 0 ? 0 : 1;
 }
 
+static int do_spi_lock_info(int argc, char *const argv[])
+{
+	int ret;
+
+	if (argc != 1)
+		return CMD_RET_USAGE;
+
+	ret = spi_flash_lock_info(flash);
+	if (ret < 0) {
+		printf("Flash info is not set\n");
+		return CMD_RET_FAILURE;
+	}
+
+	if (ret == BOTTOM_PROTECT) {
+		printf("Flash is BOTTOM protected\n");
+		return CMD_RET_SUCCESS;
+	} else if (ret == TOP_PROTECT) {
+		printf("Flash is TOP protected\n");
+		return CMD_RET_SUCCESS;
+	}
+
+	return CMD_RET_FAILURE;
+}
+
 enum {
 	STAGE_ERASE,
 	STAGE_CHECK,
@@ -642,6 +666,8 @@ static int do_spi_flash(struct cmd_tbl *cmdtp, int flag, int argc,
 		ret = do_spi_flash_erase(argc, argv);
 	else if (IS_ENABLED(CONFIG_SPI_FLASH_LOCK) && strcmp(cmd, "protect") == 0)
 		ret = do_spi_protect(argc, argv);
+	else if (IS_ENABLED(CONFIG_SPI_FLASH_LOCK) && strcmp(cmd, "lockinfo") == 0)
+		ret = do_spi_lock_info(argc, argv);
 	else if (IS_ENABLED(CONFIG_CMD_SF_TEST) && !strcmp(cmd, "test"))
 		ret = do_spi_flash_test(argc, argv);
 	else
@@ -667,7 +693,9 @@ U_BOOT_LONGHELP(sf,
 	"					  or to start of mtd `partition'\n"
 #ifdef CONFIG_SPI_FLASH_LOCK
 	"sf protect lock/unlock sector len	- protect/unprotect 'len' bytes starting\n"
-	"					  at address 'sector'"
+	"					  at address 'sector'\n"
+	"sf lockinfo				- shows whether the flash locking is top or bottom\n"
+	"					  protected\n"
 #endif
 #ifdef CONFIG_CMD_SF_TEST
 	"\nsf test offset len		- run a very basic destructive test"

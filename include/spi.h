@@ -53,6 +53,8 @@
 
 #define SPI_MEM_DEV_MAX_ID_LEN 6
 
+#define	BOTTOM_PROTECT	1
+#define	TOP_PROTECT	0
 /**
  * struct dm_spi_bus - SPI bus info
  *
