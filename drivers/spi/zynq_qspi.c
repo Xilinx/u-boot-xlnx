@@ -807,7 +807,8 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 	if (ret)
 		return ret;
 
-	priv->is_strip = update_stripe(op);
+	if (priv->is_parallel)
+		priv->is_strip = update_stripe(op);
 
 	/* 2nd transfer: rx or tx data path */
 	if (tx_buf || rx_buf) {
