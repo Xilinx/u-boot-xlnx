@@ -344,7 +344,7 @@ static int do_spi_flash_read_write(int argc, char *const argv[])
 		ret = spi_flash_update(flash, offset, len, buf);
 	} else if (strncmp(argv[0], "read", 4) == 0 ||
 			strncmp(argv[0], "write", 5) == 0) {
-		int read, ret;
+		int read;
 
 #ifdef CONFIG_LMB
 		ret = do_spi_read_lmb_check(addr, len);
