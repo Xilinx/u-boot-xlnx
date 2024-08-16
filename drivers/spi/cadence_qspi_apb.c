@@ -951,7 +951,7 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 
 		/* Wait up to Indirect Operation Complete bit to set */
 		ret = readl_poll_timeout(priv->regbase + CQSPI_REG_IRQSTATUS, cr,
-					 cr & CQSPI_REG_IRQ_IND_COMP, 10);
+					 cr & CQSPI_REG_IRQ_IND_COMP, 500);
 
 		if (ret) {
 			printf("Indirect write timed out (%i)\n", ret);
@@ -964,7 +964,7 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 
 	/* Check indirect done status */
 	ret = wait_for_bit_le32(priv->regbase + CQSPI_REG_INDIRECTWR,
-				CQSPI_REG_INDIRECTWR_DONE, 1, 10, 0);
+				CQSPI_REG_INDIRECTWR_DONE, 1, 500, 0);
 	if (ret) {
 		printf("Indirect write completion error (%i)\n", ret);
 		goto failwr;
@@ -979,7 +979,7 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 
 	/* Check indirect done status */
 	ret = wait_for_bit_le32(priv->regbase + CQSPI_REG_INDIRECTWR,
-				CQSPI_REG_INDIRECTWR_DONE, 0, 10, 0);
+				CQSPI_REG_INDIRECTWR_DONE, 0, 500, 0);
 	if (ret) {
 		printf("Indirect write clear completion error (%i)\n", ret);
 		goto failwr;
