@@ -315,7 +315,7 @@
 		 <&scmi_clk CLK_UFS0_2>;
 	assigned-clocks = <&scmi_clk CLK_UFS0_0>, <&scmi_clk CLK_UFS0_1>,
 			  <&scmi_clk CLK_UFS0_2>;
-	resets = <&scmi_reset RESET_UFS0_0>;
+	resets = <&scmi_reset RESET_UFS0_0>, <&scmi_reset RESET_UFSPHY_0>;
 };
 
 &usb0 {

@@ -601,12 +601,13 @@
 		};
 
 		ufshc: ufs@f10b0000 {
-			compatible = "cdns,ufshc-m31-16nm", "jedec,ufs-2.0";
+			compatible = "amd,versal2-ufs";
 			status = "disabled";
+			interrupts = <0 234 4>;
 			reg = <0 0xf10b0000 0 0x100>;
-			freq-table-hz = <250000000 250000000>, <19200000 19200000>, <19200000 19200000>;
+			freq-table-hz = <0 0>, <0 0>, <0 0>;
 			clock-names = "core_clk", "phy_clk", "ref_clk";
-			dma-coherent;
+			reset-names = "ufshc-rst", "ufsphy-rst";
 		};
 
 		usb0: usb@f1ee0000 {
