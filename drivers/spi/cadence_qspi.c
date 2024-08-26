@@ -476,7 +476,7 @@ static int cadence_spi_setdlldelay(struct spi_slave *spi, const struct spi_mem_o
 		/* Check for loopback lock */
 		ret = wait_for_bit_le32(regbase + CQSPI_REG_DLL_LOWER,
 					CQSPI_REG_DLL_LOWER_LPBK_LOCK_MASK,
-					1, CQSPI_TIMEOUT_MS, 0);
+					1, 500 * CQSPI_TIMEOUT_MS, 0);
 		if (ret) {
 			printf("Loopback lock bit error (%i)\n", ret);
 			return ret;
