@@ -44,6 +44,11 @@
 			#size-cells = <0>;
 			shmem = <&scmi_buf>;
 
+			scmi_devpd: protocol@11 {
+				reg = <0x11>;
+				#power-domain-cells = <0x1>;
+			};
+
 			scmi_clk: protocol@14 {
 				reg = <0x14>;
 				#clock-cells = <1>;
@@ -321,6 +326,8 @@
 &usb0 {
 	clocks = <&scmi_clk CLK_USB0_0>, <&scmi_clk CLK_USB0_1>;
 	assigned-clocks = <&scmi_clk CLK_USB0_0>, <&scmi_clk CLK_USB0_1>;
+	power-domains = <&scmi_devpd PD_USB0>;
+	resets = <&scmi_reset RESET_USB0_0>;
 };
 
 &dwc3_0 {
@@ -331,6 +338,8 @@
 &usb1 {
 	clocks = <&scmi_clk CLK_USB1_0>, <&scmi_clk CLK_USB1_1>;
 	assigned-clocks = <&scmi_clk CLK_USB1_0>, <&scmi_clk CLK_USB1_1>;
+	power-domains = <&scmi_devpd PD_USB1>;
+	resets = <&scmi_reset RESET_USB1_0>;
 };
 
 &dwc3_1 {
