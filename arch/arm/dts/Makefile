@@ -537,6 +537,7 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-smk-k24-revA-sck-kr-g-revB.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-binman-som.dtb
 
 dtb-$(CONFIG_ARCH_VERSAL) += \
+	versal-emb-plus-rhino-revA.dtb \
 	versal-emb-plus-ve2302-revA.dtb \
 	versal-mini.dtb \
 	versal-mini-emmc0.dtb \
