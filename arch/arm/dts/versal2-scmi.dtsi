@@ -37,6 +37,11 @@
 	};
 
 	firmware {
+		versal2-firmware {
+			compatible = "xlnx,versal-firmware";
+			method = "smc";
+		};
+
 		scmi: scmi { /* Should be injected by firmware */
 			compatible = "arm,scmi-smc";
 			arm,smc-id = <0xc200ffff>;
