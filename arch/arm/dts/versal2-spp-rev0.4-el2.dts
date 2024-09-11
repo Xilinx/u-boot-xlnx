@@ -194,6 +194,9 @@
 	bus-width = <8>;
 	disable-wp;
 	non-removable;
+	no-sd;
+	no-sdio;
+	cap-mmc-hw-reset;
 	xlnx,mio-bank = <0>;
 	no-mmc-hs400;
 	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>, <CLOCK_FREQ>;
