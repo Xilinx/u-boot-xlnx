@@ -496,7 +496,9 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-sc-vn-p-b2197-00-revA.dtb
 dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-sc-vm-p-b1369-00-revA.dtb
 
 zynqmp-sc-k24-revA-vek385-revA-dtbs := zynqmp-sc-k24-revA.dtb zynqmp-sc-vek385-revA.dtbo
+zynqmp-sc-k24-revA-vr-r-a2488-00-revA-dtbs := zynqmp-sc-k24-revA.dtb zynqmp-sc-vr-r-a2488-00-revA.dtbo
 dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-sc-k24-revA-vek385-revA.dtb
+dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-sc-k24-revA-vr-r-a2488-00-revA.dtb
 
 zynqmp-scm-revA-ve-p-a2112-00-revA-dtbs := zynqmp-scm-revA.dtb zynqmp-sc-ve-p-a2112-00-revA.dtbo
 dtb-$(CONFIG_ARCH_ZYNQMP) += zynqmp-scm-revA-ve-p-a2112-00-revA.dtb
