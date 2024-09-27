@@ -11,6 +11,7 @@
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/io.h>
+#include <linux/bitfield.h>
 #include <linux/delay.h>
 
 #define LOCK		0
@@ -260,6 +261,28 @@ void initialize_tcm(bool mode)
 		release_r5_reset(ZYNQMP_CORE_RPU0, SPLIT);
 		release_r5_reset(ZYNQMP_CORE_RPU1, SPLIT);
 	}
+}
+
+int check_tcm_mode(bool mode)
+{
+	u32 tmp, cpu_state;
+	bool mode_prev;
+
+	tmp = readl(&rpu_base->rpu_glbl_ctrl);
+	mode_prev = FIELD_GET(ZYNQMP_RPU_GLBL_CTRL_SPLIT_LOCK_MASK, tmp);
+
+	tmp = readl(&crlapb_base->rst_lpd_top);
+	cpu_state = FIELD_GET(ZYNQMP_CRLAPB_RST_LPD_R50_RST_MASK |
+			      ZYNQMP_CRLAPB_RST_LPD_R51_RST_MASK, tmp);
+	cpu_state = cpu_state ? false : true;
+
+	if ((mode_prev == SPLIT && mode == LOCK) && cpu_state)
+		return -EACCES;
+
+	if (mode_prev == mode)
+		return -EAGAIN;
+
+	return 0;
 }
 
 static void mark_r5_used(u32 nr, u8 mode)
