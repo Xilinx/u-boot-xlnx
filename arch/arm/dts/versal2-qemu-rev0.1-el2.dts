@@ -127,7 +127,7 @@
 
 &ufshc {
 	status = "okay";
-	assigned-clock-rates = <100000000>, <100000000>, <100000000>;
+	assigned-clock-rates = <100000000>, <26000000>, <26000000>;
 };
 
 &spi0 {

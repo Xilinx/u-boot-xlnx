@@ -410,6 +410,6 @@
 
 &ufshc {
 	status = "okay";
-	assigned-clock-rates = <CLOCK_FREQ>, <CLOCK_FREQ>, <CLOCK_FREQ>;
+	assigned-clock-rates = <100000000>, <26000000>, <26000000>;
 };
 
