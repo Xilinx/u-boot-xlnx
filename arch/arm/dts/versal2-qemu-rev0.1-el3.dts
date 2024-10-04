@@ -34,6 +34,13 @@
 		};
 	};
 
+	clk26000: clk26000 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <26000000>;
+		bootph-all;
+	};
+
 	clk100000: clk100000 {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -102,5 +109,5 @@
 
 &ufshc {
 	status = "okay";
-	clocks = <&clk100000>, <&clk100000>, <&clk100000>;
+	clocks = <&clk100000>, <&clk26000>, <&clk26000>;
 };
