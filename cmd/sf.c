@@ -11,7 +11,6 @@
 #include <div64.h>
 #include <dm.h>
 #include <log.h>
-#include <lmb.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <spi.h>
@@ -272,35 +271,6 @@ static int spi_flash_update(struct spi_flash *flash, u32 offset,
 	return 0;
 }
 
-#ifdef CONFIG_LMB
-static int do_spi_read_lmb_check(ulong start_addr, loff_t len)
-{
-	struct lmb lmb;
-	phys_size_t max_size;
-	ulong end_addr;
-
-	lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
-	lmb_dump_all(&lmb);
-
-	max_size = lmb_get_free_size(&lmb, start_addr);
-	if (!max_size) {
-		printf("ERROR: trying to overwrite reserved memory...\n");
-		return CMD_RET_FAILURE;
-	}
-
-	end_addr = start_addr + max_size;
-	if (!end_addr)
-		end_addr = ULONG_MAX;
-
-	if ((start_addr + len) > end_addr) {
-		printf("ERROR: trying to overwrite reserved memory...\n");
-		return CMD_RET_FAILURE;
-	}
-
-	return 0;
-}
-#endif
-
 static int do_spi_flash_read_write(int argc, char *const argv[])
 {
 	unsigned long addr;
@@ -345,12 +315,6 @@ static int do_spi_flash_read_write(int argc, char *const argv[])
 	} else if (strncmp(argv[0], "read", 4) == 0 ||
 			strncmp(argv[0], "write", 5) == 0) {
 		int read;
-
-#ifdef CONFIG_LMB
-		ret = do_spi_read_lmb_check(addr, len);
-		if (ret)
-			return ret;
-#endif
 
 		read = strncmp(argv[0], "read", 4) == 0;
 		if (read)
