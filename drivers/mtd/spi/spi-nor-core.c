@@ -12,6 +12,7 @@
 #include <display_options.h>
 #include <log.h>
 #include <watchdog.h>
+#include <asm/gpio.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <dm/devres.h>
@@ -5972,6 +5973,37 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 #endif /* SPI_FLASH_MACRONIX */
 }
 
+static int spi_nor_hw_reset(struct spi_nor *nor)
+{
+	struct udevice *dev = nor->spi->dev;
+	int rc;
+
+	nor->flash_gpio_reset = devm_gpiod_get_optional(dev, "reset",
+							GPIOD_IS_OUT | GPIOD_ACTIVE_LOW);
+
+	if (nor->flash_gpio_reset) {
+		/*
+		 * Experimental delay values by looking at different flash device
+		 * vendors datasheets.
+		 */
+		udelay(5);
+
+		/* Toggle gpio to reset the flash device. */
+		rc = dm_gpio_set_value(nor->flash_gpio_reset, 1);
+		if (rc)
+			return rc;
+
+		udelay(150);
+
+		rc = dm_gpio_set_value(nor->flash_gpio_reset, 0);
+		if (rc)
+			return rc;
+
+		udelay(1200);
+	}
+	return 0;
+}
+
 int spi_nor_scan(struct spi_nor *nor)
 {
 	struct spi_nor_flash_parameter params;
@@ -5996,6 +6028,12 @@ int spi_nor_scan(struct spi_nor *nor)
 	nor->write_reg = spi_nor_write_reg;
 
 	nor->setup = spi_nor_default_setup;
+
+	if (CONFIG_IS_ENABLED(DM_GPIO)) {
+		ret = spi_nor_hw_reset(nor);
+		if (ret)
+			return ret;
+	}
 
 #ifdef CONFIG_SPI_FLASH_SOFT_RESET_ON_BOOT
 	/*
