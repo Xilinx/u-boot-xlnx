@@ -1,0 +1,256 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for SC on VRK160 revA (k24)
+ *
+ * (C) Copyright 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+	compatible = "xlnx,zynqmp-sc-vrk160-revA",
+		     "xlnx,zynqmp-sc-vrk160", "xlnx,zynqmp";
+	model = "ZynqMP SC VRK160 revA";
+};
+
+&i2c0 { /* I2C_SCK C23/C24 - MIO 66/67 */
+	status = "okay";
+	/* board_i2c0 */
+};
+
+&i2c1 { /* I2C_SCK C23/C24 - MIO from SOM */
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	i2carb: i2c-arbitrator@72 { /* u18 */
+		compatible = "nxp,pca9541";
+		reg = <0x72>;
+
+		i2carb1: i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* board_i2c1 */
+
+			tca6416_u23: gpio@20 { /* u23 */
+				compatible = "ti,tca6416";
+				reg = <0x20>;
+				gpio-controller; /* interrupt on MIO69 */
+				#gpio-cells = <2>;
+				gpio-line-names = "SFP_04_TX_FAULT", "SFP_04_RX_LOS", "SFP_04_MOD_ABS", "SFP_04_TX_DISABLE", /* 0 - 3 */
+						"SFP_04_RS0", "SFP_04_RS1", "", "", /* 4 - 7 */
+						"FMCP1_FMC_PRSNT_M2C_B", "FMCP1_FMCP_PRSNT_M2C_B", "PMBUS4_INA_ALERT", "PMBUS3_INA_ALERT", /* 10 - 13 */
+						"PMBUS2_INA_ALERT", "PMBUS1_INA_ALERT", "PMBUS1_NIRQ", "PMBUS1_ALERT"; /* 14 - 17 */
+			};
+
+			tca6416_u214: gpio@26 { /* u214 */
+				compatible = "ti,tca6416";
+				reg = <0x26>;
+				gpio-controller; /* interrupt on MIO69 */
+				#gpio-cells = <2>;
+				gpio-line-names = "SFP_02_TX_FAULT", "SFP_02_RX_LOS", "SFP_02_MOD_ABS", "SFP_02_TX_DISABLE", /* 0 - 3 */
+						"SFP_02_RS0", "SFP_02_RS1", "", "", /* 4 - 7 */
+						"SFP_03_TX_FAULT", "SFP_03_RX_LOS", "SFP_03_MOD_ABS", "SFP_03_TX_DISABLE", /* 10 - 13 */
+						"SFP_03_RS0", "SFP_03_RS1", "", ""; /* 14 - 17 */
+			};
+
+			tca6416_u24: gpio@27 { /* u24 */
+				compatible = "ti,tca6416";
+				reg = <0x27>;
+				gpio-controller; /* interrupt on MIO69 */
+				#gpio-cells = <2>;
+				gpio-line-names = "QSFP1_MODSELL", "QSFP1_RESETL", "QSFP1_MODPRSL", "QSFP1_INTL", /* 0 - 3 */
+						"QSFP1_LPMODE", "", "", "", /* 4 - 7 */
+						"SFP_01_TX_FAULT", "SFP_01_RX_LOS", "SFP_01_MOD_ABS", "SFP_01_TX_DISABLE", /* 10 - 13 */
+						"SFP_01_RS0", "SFP_01_RS1", "", ""; /* 14 - 17 */
+			};
+
+			i2cmux0: i2c-mux@71 { /* u162 */
+				compatible = "nxp,pca9548";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x71>;
+				i2cmux0_0: i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+					/* pmbus1 */
+					/* J3 connector */
+					/* u136 mpq2283 0x12 */
+					/* u146 mpq2283 0x1a */
+					/* u148 mpq2283 0x1c */
+					/* u143 mpq2285 0x1d */
+					/* u55 mpq72963 0x22 */
+					/* u31 mpq72963 0x23 */
+					/* u46 mpq72963 0x24 */
+					/* u167 ucd90320 0x77 */
+				};
+				i2cmux0_1: i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					/* pmbus2 */
+					/* J4 connector */
+					/* u142 mpq2283 0x1 */
+					/* u149 mpq2285 0x2 */
+					/* u151 mpq2283 0x3 */
+					/* u152 mpq2283 0x4 */
+					/* u134 mpq2283 0x1e */
+					/* u135 mpq2283 0x1f */
+					/* u137 mpq2283 0x13 */
+					/* u138 mpq2283 0x14 */
+					/* u139 mpq2283 0x16 */
+					/* u140 mpq2283 0x17 */
+					/* u141 mpq2283 0x18 */
+					/* u145 mpq2283 0x19 */
+					/* u147 mpq2283 0x1b */
+					/* u6 mp54522 61 */
+					/* u7 mp54522 62 */
+					/* u8 mp54322 63 */
+					/* u9 mp54322 64 */
+				};
+				i2cmux0_2: i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+					/* pmbus1_ina */
+					/* u42 ina745a 0x40 vccint_gt_bus */
+					/* u57 ina745a 0x41 vcc_soc_bus */
+					/* u45 ina745a 0x44 lp5_vcco_1v0 */
+					/* u153 ina700a 0x45 vccaux_pmc */
+					/* u154 ina700a 0x46 vcco_50x */
+					/* u155 ina700a 0x47 vcco_io */
+					/* u37 ina745a 0x48 vccint_bus1 */
+					/* u39 ina745a 0x49 vccint_bus2 */
+					/* u38 ina745a 0x4a vccint_bus3 */
+					/* u40 ina745a 0x4b vccint_bus4 */
+					/* u41 ina745a 0x4C vccint_bus5 */
+				};
+				i2cmux0_3: i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+					/* pmbus2_ina */
+					/* u156 ina700a 0x44 vcc_pmc */
+					/* u157 ina700a 0x45 vcc_ram */
+					/* u157 ina700a 0x46 vccaux */
+					/* u150 ina700a 0x47 vadj_fmc */
+					/* u49 ina745a 0x48 vcc_aie_bus1 */
+					/* u50 ina745a 0x49 vcc_aie_bus2 */
+				};
+				i2cmux0_4: i2c@4 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <4>;
+					/* clkgen_sit95314_2 */
+					/* u211 sit95314 0x69 - 4 outputs */
+
+					eeprom_u212: eeprom@57 { /* also at 0x5f */
+						compatible = "atmel,24c64";
+						label = "eeprom_cg2";
+						reg = <0x57>;
+					};
+				};
+				i2cmux0_5: i2c@5 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <5>;
+					/* clkgen_sit95314_1 */
+					/* u209 sit95314 0x69 - 4 outputs */
+					eeprom_u210: eeprom@57 { /* also at 0x5f */
+						compatible = "atmel,24c64";
+						label = "eeprom_cg1";
+						reg = <0x57>;
+					};
+				};
+				i2cmux0_6: i2c@6 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <6>;
+					/* pmbus3_ina */
+					/* u203 ina700a 0x43 adc_avcc */
+					/* u159 ina700a 0x44 vcco_302 */
+					/* u160 ina700a 0x45 gtyp1_avccaux */
+					/* u144 ina700a 0x46 gtyp_avtt */
+					/* u133 ina700a 0x47 vcc_psfp */
+				};
+				i2cmux0_7: i2c@7 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <7>;
+					/* pmbus4_ina */
+					/* u131 ina700a 0x44 vcc_pslp */
+					/* u52 ina700a 0x45 gtm_avtt */
+					/* u54 ina700a 0x46 gtm_avcc */
+				};
+			};
+
+			i2cmux1: i2c-mux@77 { /* u20 */
+				compatible = "nxp,pca9548";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x77>;
+				i2cmux1_0: i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+					/* qsfp1 */
+				};
+				i2cmux1_1: i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					/* sfp_04 */
+				};
+				i2cmux1_2: i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+					/* pmbus5_ina */
+					/* u228 ina700a 0x46 dac_avccaux */
+					/* u229 ina700a 0x47 adc_avccaux */
+				};
+				i2cmux1_3: i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+					/* pmbus6_ina */
+					/* u230 ina700a 0x44 gtm_avccaux */
+					/* u231 ina700a 0x45 dac_avtt */
+					/* u232 ina700a 0x46 gtyp_avcc */
+					/* u233 ina700a 0x47 vcco_x5io */
+				};
+				i2cmux1_4: i2c@4 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <4>;
+					/* nc */
+				};
+				i2cmux1_5: i2c@5 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <5>;
+					/* sfp_01 */
+				};
+				i2cmux1_6: i2c@6 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <6>;
+					/* sfp_02 */
+				};
+				i2cmux1_7: i2c@7 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <7>;
+					/* sfp_03 */
+				};
+			};
+		};
+	};
+};
+
+&zynqmp_dpsub {
+	status = "disabled";
+};
