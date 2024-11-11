@@ -20,7 +20,7 @@
 				fit,align = <0x8>;
 				fit,external-offset = <0x0>;
 				description = "DTBs for SCs+CCs";
-				fit,fdt-list-val = "zynqmp-sc-k24-revA";
+				fit,fdt-list-val = "zynqmp-sc-k24-revA", "zynqmp-sc-k24-revA-vek385-revA";
 
 				images {
 					@fdt-SEQ {
@@ -38,6 +38,10 @@
 					conf-1 {
 						description = "SC K24 (spec)";
 						fdt = "fdt-1";
+					};
+					conf-2 {
+						description = "*vek385*";
+						fdt = "fdt-2";
 					};
 				};
 			};
