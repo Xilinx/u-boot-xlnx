@@ -430,6 +430,7 @@ dtb-$(CONFIG_ARCH_ZYNQMP) += \
 	zynqmp-sc-revB.dtb			\
 	zynqmp-sc-revC.dtb			\
 	zynqmp-sc-k24-revA.dtb			\
+	zynqmp-scm-revA.dtb			\
 	zynqmp-binman-sc.dtb			\
 	zynqmp-sm-k24-revA.dtb			\
 	zynqmp-smk-k24-revA.dtb			\
