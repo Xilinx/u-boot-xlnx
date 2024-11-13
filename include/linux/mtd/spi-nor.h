@@ -165,6 +165,8 @@
 #define SR_BP3			BIT(6)  /* Block protect 3 */
 #define SR_BP3_MX		BIT(5)	/* Block protect 3 (Macronix) */
 #define SR_BP3_ISSI		BIT(5)	/* Block protect 3 (ISSI) */
+#define SR_TB_GIGA		BIT(6)  /* Top/Bottom protect (GIGADEVICE)*/
+#define SR_BP3_GIGA		BIT(5)	/* Block protect 3 (GIGADEVICE) */
 #define SR_TB			BIT(5)	/* Top/Bottom protect */
 #define SR_SRWD			BIT(7)	/* SR write protect */
 
