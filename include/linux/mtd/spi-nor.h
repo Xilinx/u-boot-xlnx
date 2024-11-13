@@ -196,6 +196,7 @@
 /* Configuration Register bits. */
 #define CR_QUAD_EN_SPAN		BIT(1)	/* Spansion Quad I/O */
 #define CR_TB_MX		BIT(3)	/* Macronix Top/Bottom protect */
+#define CR_TB_SPAN		BIT(5)	/* Spansion Top/Bottom protect */
 
 /* Status Register 2 bits. */
 #define SR2_QUAD_EN_BIT7	BIT(7)
