@@ -78,6 +78,8 @@
 #define SPINOR_OP_WREAR		0xc5	/* Write Extended Address Register */
 #define SPINOR_OP_SRSTEN	0x66	/* Software Reset Enable */
 #define SPINOR_OP_SRST		0x99	/* Software Reset */
+#define SPINOR_OP_RDFR		0x48	/* Read Function register */
+#define SPINOR_OP_WRFR		0x42	/* Write Function register 1 byte */
 
 /* 4-byte address opcodes - used on Spansion and some Macronix flashes. */
 #define SPINOR_OP_READ_4B	0x13	/* Read data bytes (low frequency) */
@@ -162,6 +164,7 @@
 #define SR_BP2			BIT(4)	/* Block protect 2 */
 #define SR_BP3			BIT(6)  /* Block protect 3 */
 #define SR_BP3_MX		BIT(5)	/* Block protect 3 (Macronix) */
+#define SR_BP3_ISSI		BIT(5)	/* Block protect 3 (ISSI) */
 #define SR_TB			BIT(5)	/* Top/Bottom protect */
 #define SR_SRWD			BIT(7)	/* SR write protect */
 
@@ -184,6 +187,9 @@
 #define FSR_E_ERR		BIT(5)	/* Erase operation status */
 #define FSR_P_ERR		BIT(4)	/* Program operation status */
 #define FSR_PT_ERR		BIT(1)	/* Protection error bit */
+
+/* Function register bit */
+#define FR_TB			BIT(1)	/*ISSI: Top/Bottom protect */
 
 /* Configuration Register bits. */
 #define CR_QUAD_EN_SPAN		BIT(1)	/* Spansion Quad I/O */
@@ -325,6 +331,7 @@ enum spi_nor_option_flags {
 	SNOR_F_HAS_STACKED	= 0,
 	SNOR_F_HAS_PARALLEL	= 0,
 #endif
+	SNOR_F_HAS_BP3		= BIT(11),
 };
 
 struct spi_nor;
