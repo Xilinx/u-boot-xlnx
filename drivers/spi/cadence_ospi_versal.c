@@ -22,7 +22,7 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 			      const struct spi_mem_op *op)
 {
 	u32 reg, ret, rx_rem, n_rx, bytes_to_dma, data;
-	u8 opcode, addr_bytes, *rxbuf, dummy_cycles;
+	u8 opcode, addr_bytes, *rxbuf, dummy_cycles, unaligned_byte;
 
 	n_rx = op->data.nbytes;
 
@@ -73,13 +73,14 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 		writel(CQSPI_REG_INDIRECTRD_DONE, priv->regbase +
 		       CQSPI_REG_INDIRECTRD);
 		rxbuf += bytes_to_dma;
-	}
 
-	if (rx_rem) {
+		/* Disable DMA on completion */
 		reg = readl(priv->regbase + CQSPI_REG_CONFIG);
 		reg &= ~CQSPI_REG_CONFIG_ENBL_DMA;
 		writel(reg, priv->regbase + CQSPI_REG_CONFIG);
+	}
 
+	if (rx_rem) {
 		reg = readl(priv->regbase + CQSPI_REG_INDIRECTRDSTARTADDR);
 		reg += bytes_to_dma;
 		writel(reg, priv->regbase + CQSPI_REG_CMDADDRESS);
@@ -87,10 +88,10 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 		addr_bytes = readl(priv->regbase + CQSPI_REG_SIZE) &
 				   CQSPI_REG_SIZE_ADDRESS_MASK;
 
-		opcode = CMD_4BYTE_FAST_READ;
-		dummy_cycles = 8;
-		writel((dummy_cycles << CQSPI_REG_RD_INSTR_DUMMY_LSB) | opcode,
-		       priv->regbase + CQSPI_REG_RD_INSTR);
+		opcode = (u8)readl(priv->regbase + CQSPI_REG_RD_INSTR);
+		if (opcode == CMD_4BYTE_OCTAL_READ &&
+		    priv->edge_mode != CQSPI_EDGE_MODE_DDR)
+			opcode = CMD_4BYTE_FAST_READ;
 
 		reg = opcode << CQSPI_REG_CMDCTRL_OPCODE_LSB;
 		reg |= (0x1 << CQSPI_REG_CMDCTRL_RD_EN_LSB);
@@ -102,7 +103,12 @@ int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 				CQSPI_REG_RD_INSTR_DUMMY_MASK;
 		reg |= (dummy_cycles & CQSPI_REG_CMDCTRL_DUMMY_MASK) <<
 			CQSPI_REG_CMDCTRL_DUMMY_LSB;
-		reg |= (((rx_rem - 1) & CQSPI_REG_CMDCTRL_RD_BYTES_MASK) <<
+		if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && (rx_rem % 2) != 0)
+			unaligned_byte = 1;
+		else
+			unaligned_byte = 0;
+		reg |= (((rx_rem - 1 + unaligned_byte) &
+			CQSPI_REG_CMDCTRL_RD_BYTES_MASK) <<
 			CQSPI_REG_CMDCTRL_RD_BYTES_LSB);
 		ret = cadence_qspi_apb_exec_flash_cmd(priv->regbase, reg);
 		if (ret)
