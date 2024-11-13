@@ -164,6 +164,7 @@ struct spi_slave {
 #define SPI_XFER_U_PAGE		BIT(4)
 #define SPI_XFER_STACKED	BIT(5)
 #define SPI_XFER_LOWER		BIT(6)
+#define SPI_XFER_SET_DDR	BIT(7)
 
 	/*
 	 * Flag indicating that the spi-controller has multi chip select
