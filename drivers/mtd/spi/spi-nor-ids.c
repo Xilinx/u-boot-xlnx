@@ -192,7 +192,8 @@ const struct flash_info spi_nor_ids[] = {
 	{
 		INFO("gd25lx256e", 0xc86819, 0, 64 * 1024, 512,
 		     SECT_4K | SPI_NOR_OCTAL_READ | SPI_NOR_4B_OPCODES |
-		     SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB)
+		     SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB |
+		     SPI_NOR_OCTAL_DTR_READ | SPI_NOR_OCTAL_DTR_PP)
 	},
 	/* adding these 1.8V OSPI flash parts */
 	{INFO("gd25lx512", 0xc8681A, 0, 64 * 1024, 1024,	SECT_4K |
