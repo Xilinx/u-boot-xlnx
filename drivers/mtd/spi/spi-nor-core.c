@@ -4206,18 +4206,18 @@ static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
 {
 	struct spi_mem_op op;
 	int ret;
-	u8 buf;
+	u8 *buf = nor->cmd_buf;
 
 	ret = write_enable(nor);
 	if (ret)
 		return ret;
 
-	buf = SPINOR_REG_MXIC_DC_20;
+	*buf = SPINOR_REG_MXIC_DC_20;
 	op = (struct spi_mem_op)
 		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WR_CR2, 1),
 			   SPI_MEM_OP_ADDR(4, SPINOR_REG_MXIC_CR2_DC, 1),
 			   SPI_MEM_OP_NO_DUMMY,
-			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+			   SPI_MEM_OP_DATA_OUT(1, buf, 1));
 
 	ret = spi_mem_exec_op(nor->spi, &op);
 	if (ret)
@@ -4232,18 +4232,33 @@ static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	buf = SPINOR_REG_MXIC_OPI_DTR_EN;
+	nor->spi->flags |= SPI_XFER_SET_DDR;
+	*buf = SPINOR_REG_MXIC_OPI_DTR_EN;
 	op = (struct spi_mem_op)
 		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_WR_CR2, 1),
 			   SPI_MEM_OP_ADDR(4, SPINOR_REG_MXIC_CR2_MODE, 1),
 			   SPI_MEM_OP_NO_DUMMY,
-			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+			   SPI_MEM_OP_DATA_OUT(1, buf, 1));
 
 	ret = spi_mem_exec_op(nor->spi, &op);
 	if (ret) {
 		dev_err(nor->dev, "Failed to enable octal DTR mode\n");
 		return ret;
 	}
+
+	/* Read flash ID to make sure the switch was successful. */
+	op = (struct spi_mem_op)
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_RDID, 1),
+			   SPI_MEM_OP_ADDR(4, 0, 1),
+			   SPI_MEM_OP_DUMMY(4, 1),
+			   SPI_MEM_OP_DATA_IN(round_up(nor->info->id_len, 2), buf, 1));
+
+	spi_nor_setup_op(nor, &op, SNOR_PROTO_8_8_8_DTR);
+
+	ret = spi_mem_exec_op(nor->spi, &op);
+	if (ret)
+		return ret;
+
 	nor->reg_proto = SNOR_PROTO_8_8_8_DTR;
 
 	return 0;
@@ -4252,6 +4267,20 @@ static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
 static void macronix_octal_late_init(struct spi_nor *nor,
 				     struct spi_nor_flash_parameter *params)
 {
+	u8 id_byte1, id_byte2;
+       /*
+	* Macronix Read Id bytes are always output in STR mode. Since tuning
+	* is based on Read Id command, adjust the Read Id bytes that will
+	* match the Read Id output in DTR mode.
+	*/
+	id_byte1 = nor->spi->device_id[1];
+	id_byte2 = nor->spi->device_id[2];
+	nor->spi->device_id[1] = nor->spi->device_id[0];
+	nor->spi->device_id[2] = id_byte1;
+	nor->spi->device_id[3] = id_byte1;
+	nor->spi->device_id[4] = id_byte2;
+	nor->spi->device_id[5] = id_byte2;
+
 	nor->octal_dtr_enable = spi_nor_macronix_octal_dtr_enable;
 }
 
@@ -4262,8 +4291,16 @@ static void macronix_octal_post_sfdp_fixup(struct spi_nor *nor,
 	 * Adding SNOR_HWCAPS_PP_8_8_8_DTR in hwcaps.mask when
 	 * SPI_NOR_OCTAL_DTR_READ flag exists.
 	 */
-	if (params->hwcaps.mask & SNOR_HWCAPS_READ_8_8_8_DTR)
+	if (params->hwcaps.mask & SNOR_HWCAPS_READ_8_8_8_DTR) {
 		params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
+		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_8_8_8_DTR],
+					  0, 20, SPINOR_OP_MXIC_DTR_RD,
+					  SNOR_PROTO_8_8_8_DTR);
+		nor->cmd_ext_type = SPI_NOR_EXT_INVERT;
+		nor->flags |= SNOR_F_IO_MODE_EN_VOLATILE;
+		params->rdsr_dummy = 8;
+		params->rdsr_addr_nbytes = 0;
+	}
 }
 
 static struct spi_nor_fixups macronix_octal_fixups = {
