@@ -4100,6 +4100,9 @@ static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 	u8 addr_width = 3;
 	int ret;
 
+	if ((nor->flags & SNOR_F_HAS_STACKED) && (nor->spi->flags & SPI_XFER_U_PAGE))
+		nor->reg_proto = SNOR_PROTO_1_1_1;
+
 	/* Set dummy cycles for Fast Read to the default of 20. */
 	ret = write_enable(nor);
 	if (ret)
@@ -4115,9 +4118,11 @@ static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	ret = spi_nor_wait_till_ready(nor);
-	if (ret)
-		return ret;
+	if (!(nor->flags & SNOR_F_HAS_STACKED)) {
+		ret = spi_nor_wait_till_ready(nor);
+		if (ret)
+			return ret;
+	}
 
 	nor->read_dummy = 20;
 
@@ -4137,6 +4142,12 @@ static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 		dev_err(nor->dev, "Failed to enable octal DTR mode\n");
 		return ret;
 	}
+
+	/* If Stacked mode is activated, skip tuning DDR for the Lower flash and
+	 * instead tune it for the Upper flash.
+	 */
+	if ((nor->flags & SNOR_F_HAS_STACKED) && !(nor->spi->flags & SPI_XFER_U_PAGE))
+		return 0;
 
 	/* Read flash ID to make sure the switch was successful. */
 	op = (struct spi_mem_op)
@@ -4208,6 +4219,9 @@ static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
 	int ret;
 	u8 *buf = nor->cmd_buf;
 
+	if ((nor->flags & SNOR_F_HAS_STACKED) && (nor->spi->flags & SPI_XFER_U_PAGE))
+		nor->reg_proto = SNOR_PROTO_1_1_1;
+
 	ret = write_enable(nor);
 	if (ret)
 		return ret;
@@ -4223,9 +4237,11 @@ static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	ret = spi_nor_wait_till_ready(nor);
-	if (ret)
-		return ret;
+	if (!(nor->flags & SNOR_F_HAS_STACKED)) {
+		ret = spi_nor_wait_till_ready(nor);
+		if (ret)
+			return ret;
+	}
 
 	nor->read_dummy = MXIC_MAX_DC;
 	ret = write_enable(nor);
@@ -4245,6 +4261,12 @@ static int spi_nor_macronix_octal_dtr_enable(struct spi_nor *nor)
 		dev_err(nor->dev, "Failed to enable octal DTR mode\n");
 		return ret;
 	}
+
+	/* If Stacked mode is activated, skip tuning DDR for the Lower flash and
+	 * instead tune it for the Upper flash.
+	 */
+	if ((nor->flags & SNOR_F_HAS_STACKED) && !(nor->spi->flags & SPI_XFER_U_PAGE))
+		return 0;
 
 	/* Read flash ID to make sure the switch was successful. */
 	op = (struct spi_mem_op)
