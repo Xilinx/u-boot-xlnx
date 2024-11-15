@@ -639,6 +639,9 @@ struct spi_nor {
 	u32 size;
 	u32 sector_size;
 	u32 erase_size;
+	/* Number of flashes connected in parallel or stacked mode parameters */
+	u32 num_flash;
+	u64 cs_params[SNOR_FLASH_CNT_MAX];
 };
 
 #ifndef __UBOOT__
