@@ -48,6 +48,7 @@
 #define SPINOR_OP_WRSR		0x01	/* Write status register 1 byte */
 #define SPINOR_OP_RDSR2		0x3f	/* Read status register 2 */
 #define SPINOR_OP_WRSR2		0x3e	/* Write status register 2 */
+#define SPINOR_OP_WIN_WRSR2	0x31	/* Winbond Write status register 2 */
 #define SPINOR_OP_RDSR3		0x15	/* Read status register 3 */
 #define SPINOR_OP_WRSR3		0x11	/* Write status register 3 */
 #define SPINOR_OP_READ		0x03	/* Read data bytes (low frequency) */
@@ -200,6 +201,7 @@
 
 /* Status Register 2 bits. */
 #define SR2_QUAD_EN_BIT7	BIT(7)
+#define SR2_QUAD_EN_BIT1	BIT(1)	/* Winbond Quad I/O */
 
 /* Status Register 3 bits. */
 #define SR3_WPS			BIT(2)
