@@ -626,6 +626,7 @@ struct spi_nor {
 	int (*quad_enable)(struct spi_nor *nor);
 	int (*octal_dtr_enable)(struct spi_nor *nor);
 	int (*ready)(struct spi_nor *nor);
+	bool (*flash_lock_info)(struct spi_nor *nor);
 
 	struct {
 		struct spi_mem_dirmap_desc *rdesc;

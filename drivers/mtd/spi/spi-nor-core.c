@@ -5010,6 +5010,21 @@ static int mx_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 
 	return mx_check_lock_status(nor, ofs, len, sr, cr, false);
 }
+
+static bool mx_flash_lock_info(struct spi_nor *nor)
+{
+	int cr;
+
+	cr = mx_read_cr(nor);
+	if (cr < 0)
+		return cr;
+
+	if (cr & CR_TB_MX)
+		return BOTTOM_PROTECT;
+
+	return TOP_PROTECT;
+}
+
 #endif /* CONFIG_SPI_FLASH_MACRONIX */
 
 #if defined(CONFIG_SPI_FLASH_ISSI)
@@ -5346,6 +5361,21 @@ static int issi_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	}
 	return ret;
 }
+
+static bool issi_flash_lock_info(struct spi_nor *nor)
+{
+	int fr;
+
+	fr = spi_nor_read_fr(nor);
+	if (fr < 0)
+		return fr;
+
+	if (fr & FR_TB)
+		return BOTTOM_PROTECT;
+
+	return TOP_PROTECT;
+}
+
 #endif /* CONFIG_SPI_FLASH_ISSI */
 
 #if defined(CONFIG_SPI_FLASH_GIGADEVICE)
@@ -5647,6 +5677,21 @@ static int giga_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	}
 	return ret;
 }
+
+static bool giga_flash_lock_info(struct spi_nor *nor)
+{
+	int status;
+
+	status = read_sr(nor);
+	if (status < 0)
+		return status;
+
+	if (status & SR_TB_GIGA)
+		return BOTTOM_PROTECT;
+
+	return TOP_PROTECT;
+}
+
 #endif /* CONFIG_SPI_FLASH_GIGADEVICE */
 
 #if defined(CONFIG_SPI_FLASH_SPANSION)
@@ -6011,6 +6056,21 @@ static int spansion_flash_unlock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 
 	return 0;
 }
+
+static bool spansion_flash_lock_info(struct spi_nor *nor)
+{
+	int cr;
+
+	cr = spansion_read_cr(nor);
+	if (cr < 0)
+		return cr;
+
+	if (cr & CR_TB_SPAN)
+		return BOTTOM_PROTECT;
+
+	return TOP_PROTECT;
+}
+
 #endif /* CONFIG_SPI_FLASH_SPANSION */
 #endif /* CONFIG_SPI_FLASH_LOCK */
 
@@ -6300,6 +6360,7 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_lock = mx_lock;
 		nor->flash_unlock = mx_unlock;
 		nor->flash_is_unlocked = mx_is_unlocked;
+		nor->flash_lock_info = mx_flash_lock_info;
 	}
 #endif
 
@@ -6308,6 +6369,7 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_lock = issi_flash_lock;
 		nor->flash_unlock = issi_flash_unlock;
 		nor->flash_is_unlocked = issi_is_unlocked;
+		nor->flash_lock_info = issi_flash_lock_info;
 	}
 #endif
 
@@ -6316,6 +6378,7 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_lock = giga_flash_lock;
 		nor->flash_unlock = giga_flash_unlock;
 		nor->flash_is_unlocked = giga_is_unlocked;
+		nor->flash_lock_info = giga_flash_lock_info;
 	}
 #endif
 
@@ -6324,6 +6387,7 @@ int spi_nor_scan(struct spi_nor *nor)
 		nor->flash_lock = spansion_flash_lock;
 		nor->flash_unlock = spansion_flash_unlock;
 		nor->flash_is_unlocked = spansion_is_unlocked;
+		nor->flash_lock_info = spansion_flash_lock_info;
 	}
 #endif
 
