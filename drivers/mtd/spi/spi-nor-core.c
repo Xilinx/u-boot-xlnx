@@ -1064,7 +1064,7 @@ static int spi_nor_erase_chip(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	return nor->mtd.size;
+	return ret;
 }
 
 /*
@@ -1105,7 +1105,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
 	u32 addr, len, rem, offset, max_size;
 	bool addr_known = false;
-	int ret, err;
+	int ret, err, idx = 0, rc = 0;
 
 	dev_dbg(nor->dev, "at 0x%llx, len %lld\n", (long long)instr->addr,
 		(long long)instr->len);
@@ -1153,7 +1153,34 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 		if (len == mtd->size &&
 		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
-			ret = spi_nor_erase_chip(nor);
+			if (nor->flags & SNOR_F_HAS_STACKED) {
+				ret = 0; idx = 0;
+				while (idx < nor->num_flash) {
+					if (idx == 1) {
+						nor->spi->flags |= SPI_XFER_U_PAGE;
+						rc = write_enable(nor);
+						if (rc < 0)
+							goto erase_err;
+					}
+					rc = spi_nor_erase_chip(nor);
+					if (rc < 0)
+						goto erase_err;
+
+					rc = spi_nor_erase_chip_wait_till_ready(nor,
+										nor->cs_params[idx]);
+					if (rc)
+						goto erase_err;
+
+					ret += nor->cs_params[idx];
+					idx++;
+				}
+
+			} else {
+				ret = spi_nor_erase_chip(nor);
+				if (ret < 0)
+					goto erase_err;
+				ret = nor->mtd.size;
+			}
 		} else {
 			ret = spi_nor_erase_sector(nor, offset);
 		}
@@ -1164,7 +1191,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 		len -= ret;
 
 		if (max_size == mtd->size &&
-		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE)) {
+		    !(nor->flags & SNOR_F_NO_OP_CHIP_ERASE) && !idx) {
 			ret = spi_nor_erase_chip_wait_till_ready(nor, mtd->size);
 		} else {
 			ret = spi_nor_wait_till_ready(nor);
@@ -3275,6 +3302,7 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		struct udevice *dev = nor->spi->dev;
 		u32 idx = 0, i = 0;
 		int rc;
+		nor->num_flash = 0;
 
 		/*
 		 * The flashes that are connected in stacked mode should be of same make.
@@ -3297,6 +3325,7 @@ static int spi_nor_init_params(struct spi_nor *nor,
 				if (!(nor->spi->flags & SPI_XFER_STACKED))
 					nor->spi->flags |= SPI_XFER_STACKED;
 			}
+			nor->num_flash++;
 		}
 
 		i = 0;
@@ -3314,12 +3343,15 @@ static int spi_nor_init_params(struct spi_nor *nor,
 				if (!(nor->flags & SNOR_F_HAS_PARALLEL))
 					nor->flags |= SNOR_F_HAS_PARALLEL;
 			}
+			nor->num_flash++;
 		}
 
 		if (nor->flags & (SNOR_F_HAS_STACKED | SNOR_F_HAS_PARALLEL)) {
 			params->size = 0;
-			for (idx = 0; idx < SNOR_FLASH_CNT_MAX; idx++)
+			for (idx = 0; idx < nor->num_flash; idx++) {
+				nor->cs_params[idx] = flash_size[idx];
 				params->size += flash_size[idx];
+			}
 		}
 		/*
 		 * In parallel-memories the erase operation is
