@@ -2255,6 +2255,51 @@ static int write_sr_cr(struct spi_nor *nor, u8 *sr_cr)
 	return 0;
 }
 
+#if defined(CONFIG_SPI_FLASH_WINBOND)
+/**
+ * winbond_quad_enable() - Set QE bit in status register-2
+ * @nor:	pointer to a 'struct spi_nor'
+ *
+ * Return: 0 on success, -errno otherwise.
+ */
+static int winbond_quad_enable(struct spi_nor *nor)
+{
+	int ret;
+	u8 cr = 0;
+
+	/* Check current Quad Enable bit value. */
+	cr = read_cr(nor);
+	if (cr < 0) {
+		dev_dbg(nor->dev,
+			"error while reading configuration register\n");
+		return -EINVAL;
+	}
+
+	if (cr & SR2_QUAD_EN_BIT1)
+		return 0;
+
+	cr |= SR2_QUAD_EN_BIT1;
+
+	write_enable(nor);
+
+	ret = nor->write_reg(nor, SPINOR_OP_WIN_WRSR2, &cr, 1);
+	if (ret < 0) {
+		dev_dbg(nor->dev,
+			"error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = spi_nor_wait_till_ready(nor);
+	if (ret) {
+		dev_dbg(nor->dev,
+			"timeout while writing configuration register\n");
+		return ret;
+	}
+
+	return write_disable(nor);
+}
+#endif
+
 /**
  * spansion_read_cr_quad_enable() - set QE bit in Configuration Register.
  * @nor:	pointer to a 'struct spi_nor'
@@ -3189,6 +3234,12 @@ static int spi_nor_init_params(struct spi_nor *nor,
 		case SNOR_MFR_ST:
 		case SNOR_MFR_MICRON:
 			break;
+
+#if defined(CONFIG_SPI_FLASH_WINBOND)
+		case SNOR_MFR_WINBOND:
+			params->quad_enable = winbond_quad_enable;
+			break;
+#endif
 
 		default:
 #if defined(CONFIG_SPI_FLASH_SPANSION) || defined(CONFIG_SPI_FLASH_WINBOND)
