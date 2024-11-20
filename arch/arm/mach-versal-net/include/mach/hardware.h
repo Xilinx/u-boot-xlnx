@@ -93,3 +93,5 @@ enum versal_net_platform {
 #define MIO_PIN_12	0xF1060030
 #define BANK0_OUTPUT	0xF1020040
 #define BANK0_TRI	0xF1060200
+
+#define OSPI_CTRL_RST	0xF1260304
