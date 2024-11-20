@@ -46,6 +46,8 @@ struct spinand_info;
 /* Max no. of CS supported per spi device */
 #define SPI_CS_CNT_MAX	2
 
+#define SPI_MEM_DEV_MAX_ID_LEN 6
+
 /**
  * struct dm_spi_bus - SPI bus info
  *
@@ -153,6 +155,7 @@ struct spi_slave {
 	unsigned int bus;
 	unsigned int cs;
 #endif
+	u8 device_id[SPI_MEM_DEV_MAX_ID_LEN];
 	uint mode;
 	unsigned int wordlen;
 	unsigned int max_read_size;
