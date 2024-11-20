@@ -320,26 +320,25 @@ static int cadence_spi_set_mode(struct udevice *bus, uint mode)
 	return 0;
 }
 
-static int cadence_qspi_rx_dll_tuning(struct cadence_spi_priv *priv,
+static int cadence_qspi_rx_dll_tuning(struct spi_slave *spi, const struct spi_mem_op *op,
 				      u32 txtap, u8 extra_dummy)
 {
+	struct udevice *bus = spi->dev->parent;
+	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	void *regbase = priv->regbase;
 	int ret, i, j;
-	u8 id[CQSPI_READ_ID_LEN + 1], min_rxtap = 0, max_rxtap = 0, avg_rxtap,
+	u8 *id = op->data.buf.in;
+	u8 min_rxtap = 0, max_rxtap = 0, avg_rxtap,
 	max_tap, windowsize, dummy_flag = 0, max_index = 0, min_index = 0;
 	s8 max_windowsize = -1;
+	unsigned int reg;
 	bool id_matched, rxtapfound = false;
-	struct spi_mem_op op =
-		SPI_MEM_OP(SPI_MEM_OP_CMD(CQSPI_READ_ID | (CQSPI_READ_ID << 8), 8),
-			   SPI_MEM_OP_NO_ADDR,
-			   SPI_MEM_OP_DUMMY(8, 8),
-			   SPI_MEM_OP_DATA_IN(CQSPI_READ_ID_LEN, id, 8));
 
-	op.cmd.nbytes = 2;
-	op.dummy.nbytes *= 2;
-	op.cmd.dtr = true;
-	op.addr.dtr = true;
-	op.data.dtr = true;
+	/* Return if octal-spi disabled */
+	reg = readl(regbase + CQSPI_REG_CONFIG);
+	reg &= CQSPI_REG_CONFIG_ENABLE;
+	if (!reg)
+		return 0;
 
 	max_tap = CQSPI_MAX_DLL_TAPS;
 	/*
@@ -369,9 +368,9 @@ static int cadence_qspi_rx_dll_tuning(struct cadence_spi_priv *priv,
 			}
 		}
 
-		ret = cadence_qspi_apb_command_read_setup(priv, &op);
+		ret = cadence_qspi_apb_command_read_setup(priv, op);
 		if (!ret) {
-			ret = cadence_qspi_apb_command_read(priv, &op);
+			ret = cadence_qspi_apb_command_read(priv, op);
 			if (ret < 0) {
 				printf("error %d reading JEDEC ID\n", ret);
 				return ret;
@@ -379,8 +378,8 @@ static int cadence_qspi_rx_dll_tuning(struct cadence_spi_priv *priv,
 		}
 
 		id_matched = true;
-		for (j = 0; j < CQSPI_READ_ID_LEN; j++) {
-			if (priv->device_id[j] != id[j]) {
+		for (j = 0; j < op->data.nbytes; j++) {
+			if (spi->device_id[j] != id[j]) {
 				id_matched = false;
 				break;
 			}
@@ -447,8 +446,9 @@ static int cadence_qspi_rx_dll_tuning(struct cadence_spi_priv *priv,
 	return avg_rxtap;
 }
 
-static int cadence_spi_setdlldelay(struct udevice *bus)
+static int cadence_spi_setdlldelay(struct spi_slave *spi, const struct spi_mem_op *op)
 {
+	struct udevice *bus = spi->dev->parent;
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	void *regbase = priv->regbase;
 	u32 txtap;
@@ -499,7 +499,7 @@ static int cadence_spi_setdlldelay(struct udevice *bus)
 		if (extra_dummy)
 			priv->extra_dummy = true;
 
-		rxtap = cadence_qspi_rx_dll_tuning(priv, txtap, extra_dummy);
+		rxtap = cadence_qspi_rx_dll_tuning(spi, op, txtap, extra_dummy);
 		if (extra_dummy && rxtap < 0) {
 			printf("Failed RX dll tuning\n");
 			return rxtap;
@@ -573,8 +573,9 @@ static int priv_setup_ddrmode(struct udevice *bus)
 	return 0;
 }
 
-static int cadence_spi_setup_ddrmode(struct udevice *bus)
+static int cadence_spi_setup_ddrmode(struct spi_slave *spi, const struct spi_mem_op *op)
 {
+	struct udevice *bus = spi->dev->parent;
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	int ret;
 
@@ -586,7 +587,7 @@ static int cadence_spi_setup_ddrmode(struct udevice *bus)
 		return ret;
 
 	priv->edge_mode = CQSPI_EDGE_MODE_DDR;
-	ret = cadence_spi_setdlldelay(bus);
+	ret = cadence_spi_setdlldelay(spi, op);
 	if (ret) {
 		printf("DDR tuning failed with error %d\n", ret);
 		return ret;
@@ -651,9 +652,6 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 			return err;
 	}
 
-	if (!CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE) && op->cmd.dtr)
-		return 0;
-
 	if (spi->flags & SPI_XFER_U_PAGE)
 		priv->cs = CQSPI_CS1;
 	else
@@ -710,9 +708,8 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 		break;
 	}
 
-	if (CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE) &&
-		(spi->flags & SPI_XFER_SET_DDR))
-		err = cadence_spi_setup_ddrmode(bus);
+	if ((spi->flags & SPI_XFER_SET_DDR) && op->cmd.dtr)
+		err = cadence_spi_setup_ddrmode(spi, op);
 
 	return err;
 }

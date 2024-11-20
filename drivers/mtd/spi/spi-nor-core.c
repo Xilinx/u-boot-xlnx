@@ -1565,8 +1565,10 @@ static const struct flash_info *spi_nor_read_id(struct spi_nor *nor)
 	info = spi_nor_ids;
 	for (; info->name; info++) {
 		if (info->id_len) {
-			if (!memcmp(info->id, id, info->id_len))
+			if ((!memcmp(info->id, id, info->id_len)) &&
+			    memcpy(nor->spi->device_id, id, SPI_NOR_MAX_ID_LEN)) {
 				return info;
+			}
 		}
 	}
 
@@ -4094,7 +4096,7 @@ static struct spi_nor_fixups s28hx_t_fixups = {
 static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 {
 	struct spi_mem_op op;
-	u8 buf;
+	u8 *buf = nor->cmd_buf;
 	u8 addr_width = 3;
 	int ret;
 
@@ -4103,12 +4105,12 @@ static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 	if (ret)
 		return ret;
 
-	buf = 20;
+	*buf = 20;
 	op = (struct spi_mem_op)
 		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_MT_WR_ANY_REG, 1),
 			   SPI_MEM_OP_ADDR(addr_width, SPINOR_REG_MT_CFR1V, 1),
 			   SPI_MEM_OP_NO_DUMMY,
-			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+			   SPI_MEM_OP_DATA_OUT(1, buf, 1));
 	ret = spi_mem_exec_op(nor->spi, &op);
 	if (ret)
 		return ret;
@@ -4124,17 +4126,32 @@ static int spi_nor_micron_octal_dtr_enable(struct spi_nor *nor)
 		return ret;
 
 	nor->spi->flags |= SPI_XFER_SET_DDR;
-	buf = SPINOR_MT_OCT_DTR;
+	*buf = SPINOR_MT_OCT_DTR;
 	op = (struct spi_mem_op)
 		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_MT_WR_ANY_REG, 1),
 			   SPI_MEM_OP_ADDR(addr_width, SPINOR_REG_MT_CFR0V, 1),
 			   SPI_MEM_OP_NO_DUMMY,
-			   SPI_MEM_OP_DATA_OUT(1, &buf, 1));
+			   SPI_MEM_OP_DATA_OUT(1, buf, 1));
 	ret = spi_mem_exec_op(nor->spi, &op);
 	if (ret) {
 		dev_err(nor->dev, "Failed to enable octal DTR mode\n");
 		return ret;
 	}
+
+	/* Read flash ID to make sure the switch was successful. */
+	op = (struct spi_mem_op)
+		SPI_MEM_OP(SPI_MEM_OP_CMD(SPINOR_OP_RDID, 0),
+			   SPI_MEM_OP_ADDR(0, 0, 0),
+			   SPI_MEM_OP_DUMMY(8, 0),
+			   SPI_MEM_OP_DATA_IN(SPI_NOR_MAX_ID_LEN, buf, 0));
+
+	spi_nor_setup_op(nor, &op, SNOR_PROTO_8_8_8_DTR);
+
+	ret = spi_mem_exec_op(nor->spi, &op);
+	if (ret)
+		return ret;
+
+	nor->reg_proto = SNOR_PROTO_8_8_8_DTR;
 
 	return 0;
 }
@@ -4148,20 +4165,19 @@ static void mt35xu512aba_late_init(struct spi_nor *nor,
 static void mt35xu512aba_post_sfdp_fixup(struct spi_nor *nor,
 					 struct spi_nor_flash_parameter *params)
 {
-	if (!CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE))
-		return;
+	if (params->hwcaps.mask & SNOR_HWCAPS_READ_8_8_8_DTR) {
+		/* Set the Fast Read settings. */
+		params->hwcaps.mask |= SNOR_HWCAPS_READ_8_8_8_DTR;
+		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_8_8_8_DTR],
+					  0, 20, SPINOR_OP_MT_DTR_RD,
+					  SNOR_PROTO_8_8_8_DTR);
 
-	/* Set the Fast Read settings. */
-	params->hwcaps.mask |= SNOR_HWCAPS_READ_8_8_8_DTR;
-	spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_8_8_8_DTR],
-				  0, 20, SPINOR_OP_MT_DTR_RD,
-				  SNOR_PROTO_8_8_8_DTR);
+		params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
 
-	params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
-
-	nor->cmd_ext_type = SPI_NOR_EXT_REPEAT;
-	params->rdsr_dummy = 8;
-	params->rdsr_addr_nbytes = 0;
+		nor->cmd_ext_type = SPI_NOR_EXT_REPEAT;
+		params->rdsr_dummy = 8;
+		params->rdsr_addr_nbytes = 0;
+	}
 
 	/*
 	 * The BFPT quad enable field is set to a reserved value so the quad
