@@ -162,6 +162,35 @@ int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
 	return -ENOTSUPP;
 }
 
+int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
+{
+	int ret;
+
+	if (CONFIG_IS_ENABLED(ZYNQMP_FIRMWARE)) {
+		/* Assert ospi controller */
+		ret = reset_assert(priv->resets->resets);
+		if (ret)
+			return ret;
+
+		udelay(10);
+
+		/* Deassert ospi controller */
+		ret = reset_deassert(priv->resets->resets);
+		if (ret)
+			return ret;
+	} else {
+		/* Assert ospi controller */
+		setbits_le32((u32 *)OSPI_CTRL_RST, 1);
+
+		udelay(10);
+
+		/* Deassert ospi controller */
+		clrbits_le32((u32 *)OSPI_CTRL_RST, 1);
+	}
+
+	return 0;
+}
+
 #if !CONFIG_IS_ENABLED(DM_GPIO)
 int cadence_qspi_flash_reset(struct udevice *dev)
 {

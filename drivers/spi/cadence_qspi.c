@@ -157,7 +157,7 @@ static int spi_calibration(struct udevice *bus, uint hz)
 
 	/* just to ensure we do once only when speed or chip select change */
 	priv->qspi_calibrated_hz = hz;
-	priv->qspi_calibrated_cs = spi_chip_select(bus);
+	priv->qspi_calibrated_cs = priv->cs;
 
 	return 0;
 }
@@ -182,7 +182,7 @@ static int cadence_spi_set_speed(struct udevice *bus, uint hz)
 						  priv->read_delay);
 	} else if (priv->previous_hz != hz ||
 		   priv->qspi_calibrated_hz != hz ||
-		   priv->qspi_calibrated_cs != spi_chip_select(bus)) {
+		   priv->qspi_calibrated_cs != priv->cs) {
 		/*
 		 * Calibration required for different current SCLK speed,
 		 * requested SCLK speed or chip select
@@ -578,6 +578,9 @@ static int cadence_spi_setup_ddrmode(struct udevice *bus)
 	struct cadence_spi_priv *priv = dev_get_priv(bus);
 	int ret;
 
+	if (priv->ddr_init)
+		return 0;
+
 	ret = priv_setup_ddrmode(bus);
 	if (ret)
 		return ret;
@@ -588,12 +591,50 @@ static int cadence_spi_setup_ddrmode(struct udevice *bus)
 		printf("DDR tuning failed with error %d\n", ret);
 		return ret;
 	}
-	priv->ddr_init = 1;
+	priv->ddr_init = true;
 
 	return 0;
 }
 
+static int cadence_spi_setup_strmode(struct udevice *bus)
+{
+	struct cadence_spi_priv *priv = dev_get_priv(bus);
+	void *base = priv->regbase;
+	int ret;
 
+	if (!priv->ddr_init)
+		return 0;
+
+	/* Reset ospi controller */
+	ret = cadence_spi_versal_ctrl_reset(priv);
+	if (ret) {
+		printf("Cadence ctrl reset failed err: %d\n", ret);
+		return ret;
+	}
+
+	ret = wait_for_bit_le32(base + CQSPI_REG_CONFIG,
+				BIT(CQSPI_REG_CONFIG_IDLE_LSB),
+				1, CQSPI_TIMEOUT_MS, 0);
+	if (ret) {
+		printf("spi_wait_idle error : 0x%x\n", ret);
+		return ret;
+	}
+
+	cadence_qspi_apb_controller_init(priv);
+	priv->edge_mode = CQSPI_EDGE_MODE_SDR;
+	priv->extra_dummy = 0;
+	priv->previous_hz = 0;
+	priv->qspi_calibrated_hz = 0;
+
+	/* Setup default speed and calibrate */
+	ret = cadence_spi_set_speed(bus, 0);
+	if (ret)
+		return ret;
+
+	priv->ddr_init = false;
+
+	return 0;
+}
 
 static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 				   const struct spi_mem_op *op)
@@ -604,9 +645,23 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 	int err = 0;
 	u32 mode;
 
+	if (!op->cmd.dtr) {
+		err = cadence_spi_setup_strmode(bus);
+		if (err)
+			return err;
+	}
+
+	if (!CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE) && op->cmd.dtr)
+		return 0;
+
+	if (spi->flags & SPI_XFER_U_PAGE)
+		priv->cs = CQSPI_CS1;
+	else
+		priv->cs = CQSPI_CS0;
+
+
 	/* Set Chip select */
-	cadence_qspi_apb_chipselect(base, spi_chip_select(spi->dev),
-				    priv->is_decoded_cs);
+	cadence_qspi_apb_chipselect(base, priv->cs, priv->is_decoded_cs);
 
 	if (op->data.dir == SPI_MEM_DATA_IN && op->data.buf.in) {
 		/*
@@ -655,7 +710,8 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 		break;
 	}
 
-	if (!priv->ddr_init && (spi->flags & SPI_XFER_SET_DDR))
+	if (CONFIG_IS_ENABLED(SPI_FLASH_DTR_ENABLE) &&
+		(spi->flags & SPI_XFER_SET_DDR))
 		err = cadence_spi_setup_ddrmode(bus);
 
 	return err;

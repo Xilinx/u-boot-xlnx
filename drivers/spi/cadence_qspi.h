@@ -18,6 +18,9 @@
 #define CQSPI_DECODER_MAX_CS		16
 #define CQSPI_READ_CAPTURE_MAX_DELAY	16
 
+#define CQSPI_CS0				0
+#define CQSPI_CS1				1
+
 #define CQSPI_REG_POLL_US                       1 /* 1us */
 #define CQSPI_REG_RETRY                         10000
 #define CQSPI_POLL_IDLE_RETRY                   3
@@ -52,6 +55,8 @@
 #define CQSPI_READ_ID_LEN			3
 #define CQSPI_READID_LOOP_MAX			10
 #define TERA_MACRO				1000000000000l
+
+#define OSPI_CTRL_RST				0xF1260304
 
 #define CMD_4BYTE_FAST_READ			0x0C
 #define CMD_4BYTE_OCTAL_READ			0x7c
@@ -288,6 +293,7 @@ struct cadence_spi_priv {
 	size_t		data_len;
 
 	int		qspi_is_init;
+	unsigned int    cs;
 	unsigned int	qspi_calibrated_hz;
 	unsigned int	qspi_calibrated_cs;
 	unsigned int	previous_hz;
@@ -362,5 +368,6 @@ int cadence_qspi_versal_flash_reset(struct udevice *dev);
 ofnode cadence_qspi_get_subnode(struct udevice *dev);
 int cadence_qspi_versal_set_dll_mode(struct udevice *dev);
 void cadence_qspi_apb_enable_linear_mode(bool enable);
+int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv);
 
 #endif /* __CADENCE_QSPI_H__ */
