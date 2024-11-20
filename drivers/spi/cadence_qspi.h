@@ -10,6 +10,7 @@
 #include <reset.h>
 #include <linux/mtd/spi-nor.h>
 #include <spi-mem.h>
+#include <wait_bit.h>
 
 #define CQSPI_IS_ADDR(cmd_len)		(cmd_len > 1 ? 1 : 0)
 
@@ -20,6 +21,8 @@
 #define CQSPI_REG_POLL_US                       1 /* 1us */
 #define CQSPI_REG_RETRY                         10000
 #define CQSPI_POLL_IDLE_RETRY                   3
+
+#define CQSPI_TIMEOUT_MS			1000
 
 /* Transfer mode */
 #define CQSPI_INST_TYPE_SINGLE                  0
@@ -32,6 +35,23 @@
 #define CQSPI_DUMMY_CLKS_PER_BYTE               8
 #define CQSPI_DUMMY_BYTES_MAX                   4
 #define CQSPI_DUMMY_CLKS_MAX                    31
+
+#define CQSPI_TX_TAP_MASTER			0x1E
+#define CQSPI_MAX_DLL_TAPS			127
+
+#define CQSPI_DLL_MODE_MASTER			0
+#define CQSPI_DLL_MODE_BYPASS			1
+
+#define CQSPI_EDGE_MODE_SDR			0
+#define CQSPI_EDGE_MODE_DDR			1
+
+#define SILICON_VER_MASK			0xFF
+#define SILICON_VER_1				0x10
+
+#define CQSPI_READ_ID				0x9F
+#define CQSPI_READ_ID_LEN			3
+#define CQSPI_READID_LOOP_MAX			10
+#define TERA_MACRO				1000000000000l
 
 #define CMD_4BYTE_FAST_READ			0x0C
 #define CMD_4BYTE_OCTAL_READ			0x7c
@@ -69,6 +89,7 @@
 #define CQSPI_REG_RD_INSTR_TYPE_ADDR_MASK       0x3
 #define CQSPI_REG_RD_INSTR_TYPE_DATA_MASK       0x3
 #define CQSPI_REG_RD_INSTR_DUMMY_MASK           0x1F
+#define CQSPI_REG_RD_INSTR_DDR_ENABLE		BIT(10)
 
 #define CQSPI_REG_WR_INSTR                      0x08
 #define CQSPI_REG_WR_INSTR_OPCODE_LSB           0
@@ -113,9 +134,14 @@
 
 #define CQSPI_REG_WR_COMPLETION_CTRL		0x38
 #define CQSPI_REG_WR_DISABLE_AUTO_POLL		BIT(14)
+#define CQSPI_REG_WRCOMPLETION			0x38
+#define CQSPI_REG_WRCOMPLETION_POLLCNT_MASK	0xFF0000
+#define CQSPI_REG_WRCOMPLETION_POLLCNY_LSB	16
+#define CQSPI_REG_WRCOMPLETION_POLLCNT		3
 
 #define CQSPI_REG_IRQSTATUS                     0x40
 #define CQSPI_REG_IRQMASK                       0x44
+#define CQSPI_REG_ECO				0x48
 
 #define CQSPI_REG_INDIRECTRD                    0x60
 #define CQSPI_REG_INDIRECTRD_START              BIT(0)
@@ -166,7 +192,31 @@
 #define CQSPI_REG_OP_EXT_STIG_LSB               0
 
 #define CQSPI_REG_PHY_CONFIG                    0xB4
+#define CQSPI_REG_PHY_CONFIG_RESYNC_FLD_MASK	0x80000000
 #define CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK     0x40000000
+#define CQSPI_REG_PHY_CONFIG_TX_DLL_DLY_LSB	16
+
+#define CQSPI_REG_PHY_MASTER_CTRL              0xB8
+#define CQSPI_REG_PHY_INITIAL_DLY              0x4
+#define CQSPI_REG_DLL_LOWER                    0xBC
+#define CQSPI_REG_DLL_LOWER_LPBK_LOCK_MASK     0x8000
+#define CQSPI_REG_DLL_LOWER_DLL_LOCK_MASK      0x1
+
+#define CQSPI_REG_DLL_OBSVBLE_UPPER		0xC0
+#define CQSPI_REG_DLL_UPPER_RX_FLD_MASK		0x7F
+
+#define CQSPI_REG_EXT_OP_LOWER			0xE0
+#define CQSPI_REG_EXT_STIG_OP_MASK		0xFF
+#define CQSPI_REG_EXT_READ_OP_MASK		0xFF000000
+#define CQSPI_REG_EXT_READ_OP_SHIFT		24
+#define CQSPI_REG_EXT_WRITE_OP_MASK		0xFF0000
+#define CQSPI_REG_EXT_WRITE_OP_SHIFT		16
+#define CQSPI_REG_DMA_SRC_ADDR			0x1000
+#define CQSPI_REG_DMA_DST_ADDR			0x1800
+#define CQSPI_REG_DMA_DST_SIZE			0x1804
+#define CQSPI_REG_DMA_DST_STS			0x1808
+#define CQSPI_REG_DMA_DST_CTRL			0x180C
+#define CQSPI_REG_DMA_DST_CTRL_VAL		0xF43FFA00
 
 #define CQSPI_DMA_DST_ADDR_REG                  0x1800
 #define CQSPI_DMA_DST_SIZE_REG                  0x1804
@@ -251,6 +301,7 @@ struct cadence_spi_priv {
 	u32		tsd2d_ns;
 	u32		tchsh_ns;
 	u32		tslch_ns;
+	u8              device_id[CQSPI_READ_ID_LEN];
 	u8              edge_mode;
 	u8              dll_mode;
 	bool		extra_dummy;
@@ -309,6 +360,7 @@ int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_priv *priv);
 int cadence_qspi_apb_exec_flash_cmd(void *reg_base, unsigned int reg);
 int cadence_qspi_versal_flash_reset(struct udevice *dev);
 ofnode cadence_qspi_get_subnode(struct udevice *dev);
+int cadence_qspi_versal_set_dll_mode(struct udevice *dev);
 void cadence_qspi_apb_enable_linear_mode(bool enable);
 
 #endif /* __CADENCE_QSPI_H__ */

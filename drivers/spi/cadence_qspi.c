@@ -92,11 +92,21 @@ static int spi_calibration(struct udevice *bus, uint hz)
 	/* Enable QSPI */
 	cadence_qspi_apb_controller_enable(base);
 
-	/* read the ID which will be our golden value */
-	err = cadence_spi_read_id(priv, 3, (u8 *)&idcode);
-	if (err) {
-		puts("SF: Calibration failed (read)\n");
-		return err;
+	if (!priv->ddr_init) {
+		/* read the ID which will be our golden value */
+		err = cadence_spi_read_id(priv, CQSPI_READ_ID_LEN, (u8 *)&idcode);
+		if (err) {
+			puts("SF: Calibration failed (read)\n");
+			return err;
+		}
+
+		/* Save flash id's for further use */
+		priv->device_id[0] = (u8)idcode;
+		priv->device_id[1] = (u8)(idcode >> 8);
+		priv->device_id[2] = (u8)(idcode >> 16);
+	} else {
+		idcode = priv->device_id[0] | priv->device_id[1] << 8 |
+			 priv->device_id[2] << 16;
 	}
 
 	/* use back the intended clock and find low range */
@@ -112,7 +122,7 @@ static int spi_calibration(struct udevice *bus, uint hz)
 		cadence_qspi_apb_controller_enable(base);
 
 		/* issue a RDID to get the ID value */
-		err = cadence_spi_read_id(priv, 3, (u8 *)&temp);
+		err = cadence_spi_read_id(priv, CQSPI_READ_ID_LEN, (u8 *)&temp);
 		if (err) {
 			puts("SF: Calibration failed (read)\n");
 			return err;
@@ -193,6 +203,20 @@ static int cadence_spi_set_speed(struct udevice *bus, uint hz)
 	return 0;
 }
 
+static int cadence_spi_child_pre_probe(struct udevice *bus)
+{
+	struct spi_slave *slave = dev_get_parent_priv(bus);
+
+	slave->bytemode = SPI_4BYTE_MODE;
+
+	return 0;
+}
+
+__weak int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
+{
+	return -ENOTSUPP;
+}
+
 static int cadence_spi_probe(struct udevice *bus)
 {
 	struct cadence_spi_plat *plat = dev_get_plat(bus);
@@ -249,6 +273,14 @@ static int cadence_spi_probe(struct udevice *bus)
 		priv->qspi_is_init = 1;
 	}
 
+	priv->edge_mode = CQSPI_EDGE_MODE_SDR;
+	priv->dll_mode = CQSPI_DLL_MODE_BYPASS;
+
+	/* Select dll mode */
+	ret = cadence_qspi_versal_set_dll_mode(bus);
+	if (ret == -ENOTSUPP)
+		debug("DLL mode set to bypass mode : %x\n", ret);
+
 	priv->wr_delay = 50 * DIV_ROUND_UP(NSEC_PER_SEC, priv->ref_clk_hz);
 
 	/* Reset ospi flash device */
@@ -287,6 +319,281 @@ static int cadence_spi_set_mode(struct udevice *bus, uint mode)
 
 	return 0;
 }
+
+static int cadence_qspi_rx_dll_tuning(struct cadence_spi_priv *priv,
+				      u32 txtap, u8 extra_dummy)
+{
+	void *regbase = priv->regbase;
+	int ret, i, j;
+	u8 id[CQSPI_READ_ID_LEN + 1], min_rxtap = 0, max_rxtap = 0, avg_rxtap,
+	max_tap, windowsize, dummy_flag = 0, max_index = 0, min_index = 0;
+	s8 max_windowsize = -1;
+	bool id_matched, rxtapfound = false;
+	struct spi_mem_op op =
+		SPI_MEM_OP(SPI_MEM_OP_CMD(CQSPI_READ_ID | (CQSPI_READ_ID << 8), 8),
+			   SPI_MEM_OP_NO_ADDR,
+			   SPI_MEM_OP_DUMMY(8, 8),
+			   SPI_MEM_OP_DATA_IN(CQSPI_READ_ID_LEN, id, 8));
+
+	op.cmd.nbytes = 2;
+	op.dummy.nbytes *= 2;
+	op.cmd.dtr = true;
+	op.addr.dtr = true;
+	op.data.dtr = true;
+
+	max_tap = CQSPI_MAX_DLL_TAPS;
+	/*
+	 * Rx dll tuning is done by setting tx delay and increment rx
+	 * delay and check for correct flash id's by reading from flash.
+	 */
+	for (i = 0; i <= max_tap; i++) {
+		/* Set DLL reset bit */
+		writel((txtap | i | CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK),
+		       regbase + CQSPI_REG_PHY_CONFIG);
+		/*
+		 * Re-synchronisation delay lines to update them
+		 * with values from TX DLL Delay and RX DLL Delay fields
+		 */
+		writel((CQSPI_REG_PHY_CONFIG_RESYNC_FLD_MASK | txtap | i |
+		       CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK),
+		       regbase + CQSPI_REG_PHY_CONFIG);
+		/* Check lock of loopback */
+		if (priv->dll_mode == CQSPI_DLL_MODE_MASTER) {
+			ret = wait_for_bit_le32
+				(regbase + CQSPI_REG_DLL_LOWER,
+				 CQSPI_REG_DLL_LOWER_LPBK_LOCK_MASK, 1,
+				 CQSPI_TIMEOUT_MS, 0);
+			if (ret) {
+				printf("LOWER_DLL_LOCK bit err: %i\n", ret);
+				return ret;
+			}
+		}
+
+		ret = cadence_qspi_apb_command_read_setup(priv, &op);
+		if (!ret) {
+			ret = cadence_qspi_apb_command_read(priv, &op);
+			if (ret < 0) {
+				printf("error %d reading JEDEC ID\n", ret);
+				return ret;
+			}
+		}
+
+		id_matched = true;
+		for (j = 0; j < CQSPI_READ_ID_LEN; j++) {
+			if (priv->device_id[j] != id[j]) {
+				id_matched = false;
+				break;
+			}
+		}
+
+		if (id_matched && !rxtapfound) {
+			if (priv->dll_mode == CQSPI_DLL_MODE_MASTER) {
+				min_rxtap =
+				readl(regbase + CQSPI_REG_DLL_OBSVBLE_UPPER) &
+				      CQSPI_REG_DLL_UPPER_RX_FLD_MASK;
+				max_rxtap = min_rxtap;
+				max_index = i;
+				min_index = i;
+			} else {
+				min_rxtap = i;
+				max_rxtap = i;
+			}
+			rxtapfound = true;
+		}
+
+		if (id_matched && rxtapfound) {
+			if (priv->dll_mode == CQSPI_DLL_MODE_MASTER) {
+				max_rxtap =
+					readl(regbase +
+					      CQSPI_REG_DLL_OBSVBLE_UPPER) &
+					      CQSPI_REG_DLL_UPPER_RX_FLD_MASK;
+				max_index = i;
+			} else {
+				max_rxtap = i;
+			}
+		}
+
+		if ((!id_matched || i == max_tap) && rxtapfound) {
+			windowsize = max_rxtap - min_rxtap + 1;
+			if (windowsize > max_windowsize) {
+				dummy_flag = extra_dummy;
+				max_windowsize = windowsize;
+				if (priv->dll_mode == CQSPI_DLL_MODE_MASTER)
+					avg_rxtap = (max_index + min_index);
+				else
+					avg_rxtap = (max_rxtap + min_rxtap);
+				avg_rxtap /= 2;
+			}
+
+			if (windowsize >= 3)
+				i = max_tap;
+
+			rxtapfound = false;
+		}
+	}
+
+	if (!extra_dummy) {
+		rxtapfound = false;
+		min_rxtap = 0;
+		max_rxtap = 0;
+	}
+
+	if (!dummy_flag)
+		priv->extra_dummy = false;
+
+	if (max_windowsize < 3)
+		return -EINVAL;
+
+	return avg_rxtap;
+}
+
+static int cadence_spi_setdlldelay(struct udevice *bus)
+{
+	struct cadence_spi_priv *priv = dev_get_priv(bus);
+	void *regbase = priv->regbase;
+	u32 txtap;
+	int ret, rxtap;
+	u8 extra_dummy;
+
+	ret = wait_for_bit_le32(regbase + CQSPI_REG_CONFIG,
+				1 << CQSPI_REG_CONFIG_IDLE_LSB,
+				1, CQSPI_TIMEOUT_MS, 0);
+	if (ret) {
+		printf("spi_wait_idle error : 0x%x\n", ret);
+		return ret;
+	}
+
+	if (priv->dll_mode == CQSPI_DLL_MODE_MASTER) {
+		/* Drive DLL reset bit to low */
+		writel(0, regbase + CQSPI_REG_PHY_CONFIG);
+
+		/* Set initial delay value */
+		writel(CQSPI_REG_PHY_INITIAL_DLY,
+		       regbase + CQSPI_REG_PHY_MASTER_CTRL);
+		/* Set DLL reset bit */
+		writel(CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK,
+		       regbase + CQSPI_REG_PHY_CONFIG);
+
+		/* Check for loopback lock */
+		ret = wait_for_bit_le32(regbase + CQSPI_REG_DLL_LOWER,
+					CQSPI_REG_DLL_LOWER_LPBK_LOCK_MASK,
+					1, CQSPI_TIMEOUT_MS, 0);
+		if (ret) {
+			printf("Loopback lock bit error (%i)\n", ret);
+			return ret;
+		}
+
+		/* Re-synchronize slave DLLs */
+		writel(CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK,
+		       regbase + CQSPI_REG_PHY_CONFIG);
+		writel(CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK |
+		       CQSPI_REG_PHY_CONFIG_RESYNC_FLD_MASK,
+		       regbase + CQSPI_REG_PHY_CONFIG);
+
+		txtap = CQSPI_TX_TAP_MASTER <<
+			CQSPI_REG_PHY_CONFIG_TX_DLL_DLY_LSB;
+	}
+
+	priv->extra_dummy = false;
+	for (extra_dummy = 0; extra_dummy <= 1; extra_dummy++) {
+		if (extra_dummy)
+			priv->extra_dummy = true;
+
+		rxtap = cadence_qspi_rx_dll_tuning(priv, txtap, extra_dummy);
+		if (extra_dummy && rxtap < 0) {
+			printf("Failed RX dll tuning\n");
+			return rxtap;
+		}
+	}
+	debug("RXTAP: %d\n", rxtap);
+
+	writel((txtap | rxtap | CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK),
+	       regbase + CQSPI_REG_PHY_CONFIG);
+	writel((CQSPI_REG_PHY_CONFIG_RESYNC_FLD_MASK | txtap | rxtap |
+	       CQSPI_REG_PHY_CONFIG_RESET_FLD_MASK),
+	       regbase + CQSPI_REG_PHY_CONFIG);
+
+	if (priv->dll_mode == CQSPI_DLL_MODE_MASTER) {
+		ret = wait_for_bit_le32(regbase + CQSPI_REG_DLL_LOWER,
+					CQSPI_REG_DLL_LOWER_LPBK_LOCK_MASK,
+					1, CQSPI_TIMEOUT_MS, 0);
+		if (ret) {
+			printf("LOWER_DLL_LOCK bit err: %i\n", ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int priv_setup_ddrmode(struct udevice *bus)
+{
+	struct cadence_spi_priv *priv = dev_get_priv(bus);
+	void *regbase = priv->regbase;
+	int ret;
+
+	ret = wait_for_bit_le32(regbase + CQSPI_REG_CONFIG,
+				1 << CQSPI_REG_CONFIG_IDLE_LSB,
+				1, CQSPI_TIMEOUT_MS, 0);
+	if (ret) {
+		printf("spi_wait_idle error : 0x%x\n", ret);
+		return ret;
+	}
+
+	/* Disable QSPI */
+	cadence_qspi_apb_controller_disable(regbase);
+
+	/* Disable DAC mode */
+	if (priv->use_dac_mode) {
+		clrbits_le32(regbase + CQSPI_REG_CONFIG,
+			     CQSPI_REG_CONFIG_DIRECT);
+		priv->use_dac_mode = false;
+	}
+
+	setbits_le32(regbase + CQSPI_REG_CONFIG,
+		     CQSPI_REG_CONFIG_PHY_ENABLE_MASK);
+
+	/* Program POLL_CNT */
+	clrsetbits_le32(regbase + CQSPI_REG_WRCOMPLETION,
+			CQSPI_REG_WRCOMPLETION_POLLCNT_MASK,
+			CQSPI_REG_WRCOMPLETION_POLLCNT <<
+			CQSPI_REG_WRCOMPLETION_POLLCNY_LSB);
+
+	setbits_le32(regbase + CQSPI_REG_CONFIG,
+		     CQSPI_REG_CONFIG_DTR_PROT_EN_MASK);
+
+	clrsetbits_le32(regbase + CQSPI_REG_RD_DATA_CAPTURE,
+			(CQSPI_REG_RD_DATA_CAPTURE_DELAY_MASK <<
+			 CQSPI_REG_RD_DATA_CAPTURE_DELAY_LSB),
+			CQSPI_REG_READCAPTURE_DQS_ENABLE);
+
+	/* Enable QSPI */
+	cadence_qspi_apb_controller_enable(regbase);
+
+	return 0;
+}
+
+static int cadence_spi_setup_ddrmode(struct udevice *bus)
+{
+	struct cadence_spi_priv *priv = dev_get_priv(bus);
+	int ret;
+
+	ret = priv_setup_ddrmode(bus);
+	if (ret)
+		return ret;
+
+	priv->edge_mode = CQSPI_EDGE_MODE_DDR;
+	ret = cadence_spi_setdlldelay(bus);
+	if (ret) {
+		printf("DDR tuning failed with error %d\n", ret);
+		return ret;
+	}
+	priv->ddr_init = 1;
+
+	return 0;
+}
+
+
 
 static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 				   const struct spi_mem_op *op)
@@ -347,6 +654,9 @@ static int cadence_spi_mem_exec_op(struct spi_slave *spi,
 		err = -1;
 		break;
 	}
+
+	if (!priv->ddr_init && (spi->flags & SPI_XFER_SET_DDR))
+		err = cadence_spi_setup_ddrmode(bus);
 
 	return err;
 }
@@ -464,6 +774,7 @@ U_BOOT_DRIVER(cadence_spi) = {
 	.plat_auto	= sizeof(struct cadence_spi_plat),
 	.priv_auto	= sizeof(struct cadence_spi_priv),
 	.probe = cadence_spi_probe,
+	.child_pre_probe = cadence_spi_child_pre_probe,
 	.remove = cadence_spi_remove,
 	.flags = DM_FLAG_OS_PREPARE,
 };

@@ -464,6 +464,9 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 	u8 opcode;
 
 	if (priv->dtr)
+		rxlen = ((rxlen % 2) != 0) ? (rxlen + 1) : rxlen;
+
+	if (priv->dtr)
 		opcode = op->cmd.opcode >> 8;
 	else
 		opcode = op->cmd.opcode;
@@ -477,6 +480,9 @@ int cadence_qspi_apb_command_read(struct cadence_spi_priv *priv,
 	dummy_clk = cadence_qspi_calc_dummy(op, priv->dtr);
 	if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 		return -ENOTSUPP;
+
+	if (priv->extra_dummy)
+		dummy_clk++;
 
 	if (dummy_clk)
 		reg |= (dummy_clk & CQSPI_REG_CMDCTRL_DUMMY_MASK)
@@ -554,6 +560,9 @@ int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 	void *reg_base = priv->regbase;
 	u8 opcode;
 
+	reg = cadence_qspi_calc_rdreg(priv);
+	writel(reg, reg_base + CQSPI_REG_RD_INSTR);
+
 	if (priv->dtr)
 		opcode = op->cmd.opcode >> 8;
 	else
@@ -610,7 +619,6 @@ int cadence_qspi_apb_command_write(struct cadence_spi_priv *priv,
 int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 				const struct spi_mem_op *op)
 {
-	unsigned int reg;
 	unsigned int rd_reg;
 	unsigned int dummy_clk;
 	unsigned int dummy_bytes = op->dummy.nbytes;
@@ -648,6 +656,9 @@ int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 		if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 			return -ENOTSUPP;
 
+		if (priv->extra_dummy)
+			dummy_clk++;
+
 		if (dummy_clk)
 			rd_reg |= (dummy_clk & CQSPI_REG_RD_INSTR_DUMMY_MASK)
 				<< CQSPI_REG_RD_INSTR_DUMMY_LSB;
@@ -656,10 +667,10 @@ int cadence_qspi_apb_read_setup(struct cadence_spi_priv *priv,
 	writel(rd_reg, priv->regbase + CQSPI_REG_RD_INSTR);
 
 	/* set device size */
-	reg = readl(priv->regbase + CQSPI_REG_SIZE);
-	reg &= ~CQSPI_REG_SIZE_ADDRESS_MASK;
-	reg |= (op->addr.nbytes - 1);
-	writel(reg, priv->regbase + CQSPI_REG_SIZE);
+	clrsetbits_le32(priv->regbase + CQSPI_REG_SIZE,
+			CQSPI_REG_SIZE_ADDRESS_MASK,
+			op->addr.nbytes - 1);
+
 	return 0;
 }
 
@@ -829,10 +840,10 @@ int cadence_qspi_apb_write_setup(struct cadence_spi_priv *priv,
 		writel(reg, priv->regbase + CQSPI_REG_WR_COMPLETION_CTRL);
 	}
 
-	reg = readl(priv->regbase + CQSPI_REG_SIZE);
-	reg &= ~CQSPI_REG_SIZE_ADDRESS_MASK;
-	reg |= (op->addr.nbytes - 1);
-	writel(reg, priv->regbase + CQSPI_REG_SIZE);
+	clrsetbits_le32(priv->regbase + CQSPI_REG_SIZE,
+			CQSPI_REG_SIZE_ADDRESS_MASK,
+			op->addr.nbytes - 1);
+
 	return 0;
 }
 
@@ -846,6 +857,10 @@ cadence_qspi_apb_indirect_write_execute(struct cadence_spi_priv *priv,
 	void *bounce_buf = NULL;
 	unsigned int write_bytes;
 	int ret;
+
+	if (priv->edge_mode == CQSPI_EDGE_MODE_DDR && (n_tx % 2) != 0)
+		n_tx++;
+	remaining = n_tx;
 
 	/*
 	 * Use bounce buffer for non 32 bit aligned txbuf to avoid data
