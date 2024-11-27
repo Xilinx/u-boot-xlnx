@@ -223,8 +223,8 @@ static const struct onboard_hub_data usb2514_data = {
 
 static const struct onboard_hub_data usb5744_data = {
 	.init = usb5744_i2c_init,
-	.power_on_delay_us = 1000,
-	.reset_us = 5,
+	.power_on_delay_us = 10000,
+	.reset_us = 10000,
 };
 
 static const struct udevice_id usb_onboard_hub_ids[] = {
