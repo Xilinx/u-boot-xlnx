@@ -271,8 +271,8 @@ static const struct onboard_hub_data usb2514_data = {
 
 static const struct onboard_hub_data usb5744_data = {
 	.init = usb5744_i2c_init,
-	.power_on_delay_us = 1000,
-	.reset_us = 5,
+	.power_on_delay_us = 10000,
+	.reset_us = 10000,
 	.num_supplies = 1,
 	.supply_names = { "vdd-supply" },
 };
