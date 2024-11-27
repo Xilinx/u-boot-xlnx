@@ -41,11 +41,11 @@
 						fdt = "fdt-1";
 					};
 					conf-2 {
-						description = "*vek385*";
+						description = ".*vek385.*";
 						fdt = "fdt-2";
 					};
 					conf-3 {
-						description = "*vr-r-a2488-00*";
+						description = ".*vr-r-a2488-00.*";
 						fdt = "fdt-3";
 					};
 				};
