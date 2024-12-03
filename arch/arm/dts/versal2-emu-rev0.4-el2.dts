@@ -28,7 +28,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		tfa: memory@10080000 {
+		tfa: tf-a@10080000 {
 			no-map;
 			reg = <0 0x10080000 0 0x50000>;
 		};
