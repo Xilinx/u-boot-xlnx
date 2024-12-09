@@ -117,15 +117,15 @@
 };
 
 &usb0 { /* mio52 - mio63 */
-        status = "okay";
-        reset-gpios = <&gpio 76 GPIO_ACTIVE_LOW>;
+	status = "okay";
+	reset-gpios = <&gpio 76 GPIO_ACTIVE_LOW>;
 };
 
 &dwc3_0 {
-        status = "okay";
-        dr_mode = "host";
-        snps,usb3_lpm_capable;
-        maximum-speed = "super-speed";
+	status = "okay";
+	dr_mode = "host";
+	snps,usb3_lpm_capable;
+	maximum-speed = "super-speed";
 };
 
 &pinctrl0 {
