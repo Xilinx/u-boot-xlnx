@@ -5360,7 +5360,11 @@ static int issi_flash_lock(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	else
 		lock_len = ofs + len;
 
-	sector_size = nor->sector_size;
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		sector_size = nor->sector_size / 2;
+	else
+		sector_size = nor->sector_size;
+
 	n_sectors = (nor->size) / sector_size;
 
 	bp_slots = (1 << hweight8(mask)) - 2;
