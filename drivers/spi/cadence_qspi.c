@@ -286,6 +286,9 @@ static int cadence_spi_probe(struct udevice *bus)
 	/* Reset ospi flash device */
 	return cadence_qspi_flash_reset(bus);
 
+	if (device_is_compatible(bus, "amd,versal2-ospi"))
+		return cadence_device_reset(bus);
+
 	return 0;
 }
 
@@ -830,6 +833,7 @@ static const struct dm_spi_ops cadence_spi_ops = {
 static const struct udevice_id cadence_spi_ids[] = {
 	{ .compatible = "cdns,qspi-nor" },
 	{ .compatible = "ti,am654-ospi" },
+	{ .compatible = "amd,versal2-ospi" },
 	{ }
 };
 

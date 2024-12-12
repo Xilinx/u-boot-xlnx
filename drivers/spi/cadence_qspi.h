@@ -71,6 +71,8 @@
 #define CQSPI_REG_CONFIG_CLK_POL                BIT(1)
 #define CQSPI_REG_CONFIG_CLK_PHA                BIT(2)
 #define CQSPI_REG_CONFIG_PHY_ENABLE_MASK        BIT(3)
+#define CQSPI_REG_CONFIG_RESET_PIN_FLD_MASK	BIT(5)
+#define CQSPI_REG_CONFIG_RESET_CFG_FLD_MASK	BIT(6)
 #define CQSPI_REG_CONFIG_DIRECT                 BIT(7)
 #define CQSPI_REG_CONFIG_DECODE                 BIT(9)
 #define CQSPI_REG_CONFIG_ENBL_DMA               BIT(15)
@@ -384,4 +386,5 @@ int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv);
 int cadence_qspi_setup_opcode_ext(struct cadence_spi_priv *priv,
 				  const struct spi_mem_op *op,
 				  unsigned int shift);
+int cadence_device_reset(struct udevice *dev);
 #endif /* __CADENCE_QSPI_H__ */
