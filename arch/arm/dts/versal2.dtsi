@@ -675,6 +675,28 @@
 			};
 		};
 
+		mmi_usb {
+			compatible = "xlnx,versal2-mmi-dwc3";
+			status = "disabled";
+			ranges;
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			mmi_dwc3: usb@edec0000  {
+				compatible = "snps,dwc3";
+				status = "disabled";
+				reg = <0x0 0xedec0000 0x0 0x10000>;
+				interrupt-names = "host", "peripheral";
+				interrupts = <0 191 4>, <0 191 4>;
+				snps,dis_u2_susphy_quirk;
+				snps,dis_u3_susphy_quirk;
+				snps,quirk-frame-length-adjustment = <0x20>;
+				snps,usb3_lpm_capable;
+				dr_mode = "host";
+				clock-names = "ref";
+			};
+		};
+
 		wwdt0: watchdog@ecc10000 {
 			compatible = "xlnx,versal-wwdt";
 			status = "disabled";
