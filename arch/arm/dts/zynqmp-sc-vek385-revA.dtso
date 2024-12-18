@@ -60,6 +60,7 @@
 
 			eeprom_cc: eeprom@54 { /* u35 - required by spec - also at address 0x5C */
 				compatible = "atmel,24c128";
+				label = "eeprom_cc";
 				reg = <0x54>;
 				wp-gpios = <&slg7xl45106 5 GPIO_ACTIVE_LOW>;
 			};
@@ -172,6 +173,7 @@
 					/* u101 sit95211 0x69 - 12 outputs */
 					eeprom_u166: eeprom@57 { /* u166 - required by spec - also at address 0x5F */
 						compatible = "atmel,24c64";
+						label = "eeprom_sit95211";
 						reg = <0x57>;
 					};
 
@@ -184,6 +186,7 @@
 					/* u164 sit95314 0x69 - 4 outputs */
 					eeprom_u165: eeprom@57 { /* u165 - required by spec - also at address 0x5F */
 						compatible = "atmel,24c64";
+						label = "eeprom_sit95314";
 						reg = <0x57>;
 					};
 				};
