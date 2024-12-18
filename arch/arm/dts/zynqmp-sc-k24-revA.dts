@@ -62,6 +62,7 @@
 	eeprom_cc: eeprom@54 { /* on CC defined by spec */
 		bootph-all;
 		compatible = "atmel,24c64";
+		label = "eeprom_cc";
 		reg = <0x54>;
 	};
 

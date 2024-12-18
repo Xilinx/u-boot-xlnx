@@ -463,6 +463,7 @@
 	/* i2c_main u21 - repeater from SC (J79 - disabling) */
 	eeprom: eeprom@54 { /* u97 - m24128 16kB */
 		compatible = "st,24c128", "atmel,24c128";
+		label = "eeprom_cc";
 		reg = <0x54>; /* & 0x5c */
 		/* WP from SC PL or via J1801 */
 	};
