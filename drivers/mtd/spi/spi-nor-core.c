@@ -1141,17 +1141,21 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 				offset /= 2;
 
 			if (nor->flags & SNOR_F_HAS_STACKED) {
-				if (offset >= (mtd->size / 2))
+				if (offset >= (mtd->size / 2)) {
+					offset = offset - (mtd->size / 2);
 					nor->spi->flags |= SPI_XFER_U_PAGE;
-				else
+				} else {
 					nor->spi->flags &= ~SPI_XFER_U_PAGE;
+				}
 			}
 		}
+		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
-		ret = write_bar(nor, offset);
-		if (ret < 0)
-			goto erase_err;
+			ret = write_bar(nor, offset);
+			if (ret < 0)
+				goto erase_err;
 #endif
+		}
 		ret = write_enable(nor);
 		if (ret < 0)
 			goto erase_err;
@@ -1705,11 +1709,12 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 		ret = write_bar(nor, offset);
 		if (ret < 0)
 			return log_ret(ret);
+#endif
+
 		if (len < rem_bank_len)
 			read_len = len;
 		else
 			read_len = rem_bank_len;
-#endif
 
 		if (read_len == 0)
 			return -EIO;
@@ -2092,11 +2097,13 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 			}
 		}
 
+		if (nor->addr_width == 3) {
 #ifdef CONFIG_SPI_FLASH_BAR
-		ret = write_bar(nor, offset);
-		if (ret < 0)
-			return ret;
+			ret = write_bar(nor, offset);
+			if (ret < 0)
+				return ret;
 #endif
+		}
 
 		/* the size of data remaining on the first page */
 		page_remain = min_t(size_t,
@@ -6476,6 +6483,7 @@ int spi_nor_scan(struct spi_nor *nor)
 #else
 	/* Configure the BAR - discover bank cmds and read current bank */
 	nor->addr_width = 3;
+	set_4byte(nor, info, 0);
 	ret = read_bar(nor, info);
 	if (ret < 0)
 		return ret;
