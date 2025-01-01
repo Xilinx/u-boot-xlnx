@@ -1578,13 +1578,11 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 			size_t *retlen, u_char *buf)
 {
 	struct spi_nor *nor = mtd_to_spi_nor(mtd);
-	loff_t offset = from;
-	u32 rem_bank_len = 0;
-	u32 stack_shift = 0;
-	size_t read_len;
-	u8 bank;
 	int ret;
+	u32 offset = from;
 	bool is_ofst_odd = false;
+	u32 bank_size, stack_shift = 0, read_len = 0, rem_bank_len = 0;
+	u8 bank, cur_bank, nxt_bank;
 
 	dev_dbg(nor->dev, "from 0x%08x, len %zd\n", (u32)from, len);
 
@@ -1622,6 +1620,40 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 				} else {
 					nor->spi->flags &= ~SPI_XFER_U_PAGE;
 				}
+			}
+		}
+
+		if (nor->addr_width == 4) {
+			/*
+			 * Some flash devices like N25Q512 have multiple dies
+			 * in it. Read operation in these devices is bounded
+			 * by its die segment. In a continuous read, across
+			 * multiple dies, when the last byte of the selected
+			 * die segment is read, the next byte read is the
+			 * first byte of the same die segment. This is Die
+			 * cross over issue. So to handle this issue, split
+			 * a read transaction, that spans across multiple
+			 * banks, into one read per bank. Bank size is 16MB
+			 * for single and dual stacked mode and 32MB for dual
+			 * parallel mode.
+			 */
+			if (nor->spi && nor->spi->multi_die) {
+				bank_size = SZ_16M;
+				if (nor->flags & SNOR_F_HAS_PARALLEL)
+					bank_size <<= 1;
+				cur_bank = offset / bank_size;
+				nxt_bank = (offset + len) / bank_size;
+				if (cur_bank != nxt_bank)
+					rem_bank_len = (bank_size *
+							(cur_bank + 1)) -
+							offset;
+				else
+					rem_bank_len = (mtd->size >>
+							stack_shift) -
+							offset;
+			} else {
+				rem_bank_len = (mtd->size >> stack_shift) -
+						offset;
 			}
 		}
 
