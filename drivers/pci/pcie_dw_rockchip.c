@@ -5,7 +5,6 @@
  * Copyright (c) 2021 Rockchip, Inc.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <generic-phy.h>
@@ -506,7 +505,6 @@ static int rockchip_pcie_probe(struct udevice *dev)
 		 dev_seq(dev), pcie_dw_get_link_speed(&priv->dw),
 		 pcie_dw_get_link_width(&priv->dw),
 		 hose->first_busno);
-
 
 	ret = pcie_dw_prog_outbound_atu_unroll(&priv->dw,
 					       PCIE_ATU_REGION_INDEX0,

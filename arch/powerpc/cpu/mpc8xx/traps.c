@@ -15,7 +15,7 @@
  * This file handles the architecture-dependent parts of hardware exceptions
  */
 
-#include <common.h>
+#include <vsprintf.h>
 #include <asm/ptrace.h>
 #include <command.h>
 #include <asm/processor.h>
@@ -74,7 +74,6 @@ void show_regs(struct pt_regs *regs)
 			printf("\n");
 	}
 }
-
 
 static void _exception(int signr, struct pt_regs *regs)
 {
@@ -141,7 +140,6 @@ void SoftEmuException(struct pt_regs *regs)
 	print_backtrace((unsigned long *)regs->gpr[1]);
 	panic("Software Emulation Exception");
 }
-
 
 void UnknownException(struct pt_regs *regs)
 {

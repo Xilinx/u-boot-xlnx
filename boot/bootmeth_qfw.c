@@ -8,7 +8,6 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <command.h>
 #include <bootdev.h>
 #include <bootflow.h>
@@ -89,7 +88,7 @@ static struct bootmeth_ops qfw_bootmeth_ops = {
 };
 
 static const struct udevice_id qfw_bootmeth_ids[] = {
-	{ .compatible = "u-boot,qfw-extlinux" },
+	{ .compatible = "u-boot,qfw-bootmeth" },
 	{ }
 };
 

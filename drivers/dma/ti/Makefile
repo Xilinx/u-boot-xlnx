@@ -8,3 +8,7 @@ k3-psil-data-$(CONFIG_SOC_K3_J721E) += k3-psil-j721e.o
 k3-psil-data-$(CONFIG_SOC_K3_J721S2) += k3-psil-j721s2.o
 k3-psil-data-$(CONFIG_SOC_K3_AM642) += k3-psil-am64.o
 k3-psil-data-$(CONFIG_SOC_K3_AM625) += k3-psil-am62.o
+k3-psil-data-$(CONFIG_SOC_K3_AM62A7) += k3-psil-am62a.o
+k3-psil-data-$(CONFIG_SOC_K3_J784S4) += k3-psil-j784s4.o
+k3-psil-data-$(CONFIG_SOC_K3_AM62P5) += k3-psil-am62p.o
+k3-psil-data-$(CONFIG_SOC_K3_J722S) += k3-psil-am62p.o

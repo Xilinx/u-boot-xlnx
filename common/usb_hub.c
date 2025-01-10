@@ -21,7 +21,6 @@
  * Probes device for being a hub and configurate it
  */
 
-#include <common.h>
 #include <command.h>
 #include <dm.h>
 #include <env.h>
@@ -29,6 +28,7 @@
 #include <log.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <time.h>
 #include <asm/processor.h>
 #include <asm/unaligned.h>
 #include <linux/ctype.h>
@@ -162,7 +162,6 @@ int usb_get_port_status(struct usb_device *dev, int port, void *data)
 	return ret;
 }
 
-
 static void usb_hub_power_on(struct usb_hub_device *hub)
 {
 	int i;
@@ -174,8 +173,12 @@ static void usb_hub_power_on(struct usb_hub_device *hub)
 
 	debug("enabling power on all ports\n");
 	for (i = 0; i < dev->maxchild; i++) {
+		if (usb_hub_is_superspeed(dev)) {
+			usb_set_port_feature(dev, i + 1, USB_PORT_FEAT_RESET);
+			debug("Reset : port %d returns %lX\n", i + 1, dev->status);
+		}
 		usb_set_port_feature(dev, i + 1, USB_PORT_FEAT_POWER);
-		debug("port %d returns %lX\n", i + 1, dev->status);
+		debug("PowerOn : port %d returns %lX\n", i + 1, dev->status);
 	}
 
 #ifdef CONFIG_SANDBOX

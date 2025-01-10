@@ -9,7 +9,6 @@
  */
 
 #include <env.h>
-#include <common.h>
 #include <mpc8xx.h>
 #include <asm/cpm_8xx.h>
 #include <asm/io.h>
@@ -115,8 +114,10 @@ static int setup_mac(void)
 	if (memcmp(din + EE_OFF_MAC1, &ident, sizeof(ident)) == 0)
 		eth_env_set_enetaddr("ethaddr", din + EE_OFF_MAC1);
 
-	if (memcmp(din + EE_OFF_MAC2, &ident, sizeof(ident)) == 0)
+	if (memcmp(din + EE_OFF_MAC2, &ident, sizeof(ident)) == 0) {
 		eth_env_set_enetaddr("eth1addr", din + EE_OFF_MAC2);
+		eth_env_set_enetaddr("eth2addr", din + EE_OFF_MAC2);
+	}
 
 	return 0;
 }

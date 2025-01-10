@@ -4,7 +4,6 @@
  *
  */
 
-#include <common.h>
 #include <asm/arch/clock_manager.h>
 #include <asm/io.h>
 #include <asm/arch/handoff_soc64.h>
@@ -12,7 +11,7 @@
 
 const struct cm_config * const cm_get_default_config(void)
 {
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	struct cm_config *cm_handoff_cfg = (struct cm_config *)
 		(SOC64_HANDOFF_CLOCK + SOC64_HANDOFF_OFFSET_DATA);
 	u32 *conversion = (u32 *)cm_handoff_cfg;
@@ -33,7 +32,7 @@ const struct cm_config * const cm_get_default_config(void)
 
 const unsigned int cm_get_osc_clk_hz(void)
 {
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 
 	u32 clock = readl(SOC64_HANDOFF_CLOCK_OSC);
 
@@ -51,7 +50,7 @@ const unsigned int cm_get_intosc_clk_hz(void)
 
 const unsigned int cm_get_fpga_clk_hz(void)
 {
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	u32 clock = readl(SOC64_HANDOFF_CLOCK_FPGA);
 
 	writel(clock,

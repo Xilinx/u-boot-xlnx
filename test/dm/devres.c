@@ -5,7 +5,6 @@
  * Copyright 2019 Google LLC
  */
 
-#include <common.h>
 #include <errno.h>
 #include <dm.h>
 #include <log.h>
@@ -40,7 +39,7 @@ static int dm_test_devres_alloc(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_devres_alloc, UT_TESTF_SCAN_PDATA);
+DM_TEST(dm_test_devres_alloc, UTF_SCAN_PDATA);
 
 /* Test devm_kfree() can be used to free memory too */
 static int dm_test_devres_free(struct unit_test_state *uts)
@@ -68,8 +67,7 @@ static int dm_test_devres_free(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_devres_free, UT_TESTF_SCAN_PDATA);
-
+DM_TEST(dm_test_devres_free, UTF_SCAN_PDATA);
 
 /* Test that kzalloc() returns memory that is zeroed */
 static int dm_test_devres_kzalloc(struct unit_test_state *uts)
@@ -88,7 +86,7 @@ static int dm_test_devres_kzalloc(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_devres_kzalloc, UT_TESTF_SCAN_PDATA);
+DM_TEST(dm_test_devres_kzalloc, UTF_SCAN_PDATA);
 
 /* Test that devm_kmalloc_array() allocates an array that can be set */
 static int dm_test_devres_kmalloc_array(struct unit_test_state *uts)
@@ -111,7 +109,7 @@ static int dm_test_devres_kmalloc_array(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_devres_kmalloc_array, UT_TESTF_SCAN_PDATA);
+DM_TEST(dm_test_devres_kmalloc_array, UTF_SCAN_PDATA);
 
 /* Test that devm_kcalloc() allocates a zeroed array */
 static int dm_test_devres_kcalloc(struct unit_test_state *uts)
@@ -140,7 +138,7 @@ static int dm_test_devres_kcalloc(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_devres_kcalloc, UT_TESTF_SCAN_PDATA);
+DM_TEST(dm_test_devres_kcalloc, UTF_SCAN_PDATA);
 
 /* Test devres releases resources automatically as expected */
 static int dm_test_devres_phase(struct unit_test_state *uts)
@@ -183,4 +181,4 @@ static int dm_test_devres_phase(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_devres_phase, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_devres_phase, UTF_SCAN_PDATA | UTF_SCAN_FDT);

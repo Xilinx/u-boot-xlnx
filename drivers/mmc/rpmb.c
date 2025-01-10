@@ -8,7 +8,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <log.h>
 #include <memalign.h>
 #include <mmc.h>
@@ -60,7 +59,6 @@ static const char * const rpmb_err_msg[] = {
 	"Read failure",
 	"Authentication key not yet programmed",
 };
-
 
 /* Structure of RPMB data frame. */
 struct s_rpmb {

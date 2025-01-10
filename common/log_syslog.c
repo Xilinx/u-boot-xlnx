@@ -5,7 +5,6 @@
  * Copyright (c) 2020, Heinrich Schuchardt <xypron.glpk@gmx.de>
  */
 
-#include <common.h>
 #include <log.h>
 #include <net.h>
 #include <asm/global_data.h>
@@ -89,7 +88,7 @@ static int log_syslog_emit(struct log_device *ldev, struct log_rec *rec)
 	if (fmt & BIT(LOGF_LINE))
 		append(&ptr, msg_end, "%d-", rec->line);
 	if (fmt & BIT(LOGF_FUNC))
-		append(&ptr, msg_end, "%s()", rec->func);
+		append(&ptr, msg_end, "%s()", rec->func ?: "?");
 	if (fmt & BIT(LOGF_MSG))
 		append(&ptr, msg_end, "%s%s",
 		       fmt != BIT(LOGF_MSG) ? " " : "", rec->msg);

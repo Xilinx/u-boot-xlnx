@@ -4,7 +4,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <sysreset.h>
@@ -21,7 +20,7 @@ static int sandbox_warm_sysreset_request(struct udevice *dev,
 		state->last_sysreset = type;
 		break;
 	default:
-		return -ENOSYS;
+		return -EPROTONOSUPPORT;
 	}
 	if (!state->sysreset_allowed[type])
 		return -EACCES;
@@ -70,7 +69,7 @@ static int sandbox_sysreset_request(struct udevice *dev, enum sysreset_t type)
 			return -EACCES;
 		sandbox_exit();
 	default:
-		return -ENOSYS;
+		return -EPROTONOSUPPORT;
 	}
 	if (!state->sysreset_allowed[type])
 		return -EACCES;

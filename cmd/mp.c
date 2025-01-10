@@ -3,9 +3,9 @@
  * Copyright 2008-2009 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <command.h>
 #include <cpu_func.h>
+#include <vsprintf.h>
 
 static int cpu_status_all(void)
 {
@@ -41,7 +41,6 @@ cpu_cmd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		printf ("Core num: %lu is not valid\n",	cpuid);
 		return 1;
 	}
-
 
 	if (argc == 3) {
 		if (strncmp(argv[2], "reset", 5) == 0)

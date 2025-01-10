@@ -3,7 +3,6 @@
  * (C) Copyright 2020, Heinrich Schuchardt <xypron.glpk@gmx.de>
  */
 
-#include <common.h>
 #include <efi_loader.h>
 #include <test/lib.h>
 #include <test/test.h>
@@ -66,7 +65,6 @@ static int lib_test_efi_image_region_add(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_test_efi_image_region_add, 0);
 
 static int lib_test_efi_image_region_sort(struct unit_test_state *uts)
@@ -159,5 +157,4 @@ static int lib_test_efi_image_region_sort(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_test_efi_image_region_sort, 0);

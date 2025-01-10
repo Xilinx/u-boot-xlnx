@@ -3,7 +3,6 @@
  * Copyright 2010-2011 Calxeda, Inc.
  */
 
-#include <common.h>
 #include <ahci.h>
 #include <cpu_func.h>
 #include <env.h>
@@ -51,19 +50,6 @@ int board_init(void)
 
 	return 0;
 }
-
-#ifdef CONFIG_SCSI_AHCI_PLAT
-void scsi_init(void)
-{
-	u32 reg = readl(HB_SREG_A9_PWRDOM_STAT);
-
-	cphy_disable_overrides();
-	if (reg & PWRDOM_STAT_SATA) {
-		ahci_init((void __iomem *)HB_AHCI_BASE);
-		scsi_scan(true);
-	}
-}
-#endif
 
 #ifdef CONFIG_MISC_INIT_R
 int misc_init_r(void)

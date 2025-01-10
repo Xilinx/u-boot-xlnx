@@ -8,7 +8,6 @@
  * Copyright (C) 2023 Johan Jonker <jbx6244@gmail.com>
  */
 
-#include <common.h>
 #include <blk.h>
 #include <dm.h>
 #include <fs.h>
@@ -86,7 +85,7 @@ static int dm_test_rkmtd(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_rkmtd, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_rkmtd, UTF_SCAN_FDT);
 
 /* Reusing the same label should work */
 static int dm_test_rkmtd_dup(struct unit_test_state *uts)
@@ -113,7 +112,7 @@ static int dm_test_rkmtd_dup(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_rkmtd_dup, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_rkmtd_dup, UTF_SCAN_FDT);
 
 /* Basic test of the 'rkmtd' command */
 static int dm_test_rkmtd_cmd(struct unit_test_state *uts)
@@ -197,4 +196,4 @@ static int dm_test_rkmtd_cmd(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_rkmtd_cmd, UT_TESTF_SCAN_FDT | UT_TESTF_CONSOLE_REC);
+DM_TEST(dm_test_rkmtd_cmd, UTF_SCAN_FDT | UTF_CONSOLE);

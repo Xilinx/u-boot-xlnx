@@ -312,7 +312,7 @@ config ENV_IS_IN_NVRAM
 
 config ENV_IS_IN_ONENAND
 	bool "Environment is in OneNAND"
-	depends on !CHAIN_OF_TRUST
+	depends on !CHAIN_OF_TRUST && CMD_ONENAND
 	help
 	  Define this if you want to put your local device's environment in
 	  OneNAND.
@@ -342,7 +342,7 @@ config ENV_IS_IN_REMOTE
 
 config ENV_IS_IN_SPI_FLASH
 	bool "Environment is in SPI flash"
-	depends on !CHAIN_OF_TRUST && SPI
+	depends on !CHAIN_OF_TRUST && (SPI_FLASH || DM_SPI_FLASH)
 	default y if ARMADA_XP
 	default y if INTEL_BAYTRAIL
 	default y if INTEL_BRASWELL
@@ -655,7 +655,7 @@ config SYS_RELOC_GD_ENV_ADDR
 
 config SYS_MMC_ENV_DEV
 	int "mmc device number"
-	depends on ENV_IS_IN_MMC || ENV_IS_IN_FAT || \
+	depends on ENV_IS_IN_MMC || ENV_IS_IN_FAT || ENV_IS_IN_EXT4 || \
 		CMD_MVEBU_BUBT || FMAN_ENET || QE || PHY_CORTINA
 	default 0
 	help

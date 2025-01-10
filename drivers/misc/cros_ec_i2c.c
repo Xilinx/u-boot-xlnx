@@ -12,7 +12,6 @@
  * KBC.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <i2c.h>
 #include <cros_ec.h>
@@ -99,7 +98,6 @@ static int cros_ec_i2c_packet(struct udevice *udev, int out_bytes, int in_bytes)
 		       __func__, ec_response_i2c->packet_length);
 		return -EBADMSG;
 	}
-
 
 	/* drop result and packet_len */
 	memmove(dev->din, &ec_response_i2c->ec_response, in_bytes);

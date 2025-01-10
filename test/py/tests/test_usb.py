@@ -227,7 +227,8 @@ def test_usb_part(u_boot_console):
 
             lines = output.split('\n')
             part_fat = []
-            part_ext = []
+            part_ext2 = []
+            part_ext4 = []
             for line in lines:
                 obj = re.search(r'(\d)\s+\d+\s+\d+\s+\w+\d+\w+-\d+\s+(\d+\w+)', line)
                 if obj:
@@ -239,15 +240,21 @@ def test_usb_part(u_boot_console):
                         print('Fat detected')
                         part_fat.append(part_id)
                     elif part_type == '83':
-                        print('ext detected')
-                        part_ext.append(part_id)
+                        print('ext(2/4) detected')
+                        output = u_boot_console.run_command(
+                            'fstype usb %d:%d' % i, part_id
+                        )
+                        if 'ext2' in output:
+                            part_ext2.append(part_id)
+                        elif 'ext4' in output:
+                            part_ext4.append(part_id)
                     else:
                         pytest.fail('Unsupported Filesystem on device %d' % i)
-            devices[i]['ext4'] = part_ext
-            devices[i]['ext2'] = part_ext
+            devices[i]['ext4'] = part_ext4
+            devices[i]['ext2'] = part_ext2
             devices[i]['fat'] = part_fat
 
-            if not part_ext and not part_fat:
+            if not part_ext2 and not part_ext4 and not part_fat:
                 pytest.fail('No partition detected on device %d' % i)
 
     return devices, controllers, storage_device
@@ -288,6 +295,47 @@ def test_usb_fatls_fatinfo(u_boot_console):
     if not part_detect:
         pytest.skip('No %s partition detected' % fs.upper())
 
+def usb_fatload_fatwrite(u_boot_console, fs, x, part):
+    addr = u_boot_utils.find_ram_base(u_boot_console)
+    size = random.randint(4, 1 * 1024 * 1024)
+    output = u_boot_console.run_command('crc32 %x %x' % (addr, size))
+    m = re.search('==> (.+?)', output)
+    if not m:
+        pytest.fail('CRC32 failed')
+    expected_crc32 = m.group(1)
+
+    file = '%s_%d' % ('uboot_test', size)
+    output = u_boot_console.run_command(
+        '%swrite usb %d:%s %x %s %x' % (fs, x, part, addr, file, size)
+    )
+    assert 'Unable to write' not in output
+    assert 'Error' not in output
+    assert 'overflow' not in output
+    expected_text = '%d bytes written' % size
+    assert expected_text in output
+
+    alignment = int(
+        u_boot_console.config.buildconfig.get(
+            'config_sys_cacheline_size', 128
+        )
+    )
+    offset = random.randrange(alignment, 1024, alignment)
+    output = u_boot_console.run_command(
+        '%sload usb %d:%s %x %s' % (fs, x, part, addr + offset, file)
+    )
+    assert 'Invalid FAT entry' not in output
+    assert 'Unable to read file' not in output
+    assert 'Misaligned buffer address' not in output
+    expected_text = '%d bytes read' % size
+    assert expected_text in output
+
+    output = u_boot_console.run_command(
+        'crc32 %x $filesize' % (addr + offset)
+    )
+    assert expected_crc32 in output
+
+    return file, size, expected_crc32
+
 @pytest.mark.buildconfigspec('cmd_usb')
 @pytest.mark.buildconfigspec('cmd_fat')
 @pytest.mark.buildconfigspec('cmd_memory')
@@ -309,48 +357,10 @@ def test_usb_fatload_fatwrite(u_boot_console):
 
             for part in partitions:
                 part_detect = 1
-                addr = u_boot_utils.find_ram_base(u_boot_console)
-                size = random.randint(4, 1 * 1024 * 1024)
-                output = u_boot_console.run_command('crc32 %x %x' % (addr, size))
-                m = re.search('==> (.+?)', output)
-                if not m:
-                    pytest.fail('CRC32 failed')
-                expected_crc32 = m.group(1)
-
-                file = '%s_%d' % ('uboot_test', size)
-                output = u_boot_console.run_command(
-                    '%swrite usb %d:%s %x %s %x' % (fs, x, part, addr, file, size)
-                )
-                assert 'Unable to write' not in output
-                assert 'Error' not in output
-                assert 'overflow' not in output
-                expected_text = '%d bytes written' % size
-                assert expected_text in output
-
-                alignment = int(
-                    u_boot_console.config.buildconfig.get(
-                        'config_sys_cacheline_size', 128
-                    )
-                )
-                offset = random.randrange(alignment, 1024, alignment)
-                output = u_boot_console.run_command(
-                    '%sload usb %d:%s %x %s' % (fs, x, part, addr + offset, file)
-                )
-                assert 'Invalid FAT entry' not in output
-                assert 'Unable to read file' not in output
-                assert 'Misaligned buffer address' not in output
-                expected_text = '%d bytes read' % size
-                assert expected_text in output
-
-                output = u_boot_console.run_command(
-                    'crc32 %x $filesize' % (addr + offset)
-                )
-                assert expected_crc32 in output
+                usb_fatload_fatwrite(u_boot_console, fs, x, part)
 
     if not part_detect:
         pytest.skip('No %s partition detected' % fs.upper())
-
-    return file, size
 
 @pytest.mark.buildconfigspec('cmd_usb')
 @pytest.mark.buildconfigspec('cmd_ext4')
@@ -380,9 +390,42 @@ def test_usb_ext4ls(u_boot_console):
     if not part_detect:
         pytest.skip('No %s partition detected' % fs.upper())
 
+def usb_ext4load_ext4write(u_boot_console, fs, x, part):
+    addr = u_boot_utils.find_ram_base(u_boot_console)
+    size = random.randint(4, 1 * 1024 * 1024)
+    output = u_boot_console.run_command('crc32 %x %x' % (addr, size))
+    m = re.search('==> (.+?)', output)
+    if not m:
+        pytest.fail('CRC32 failed')
+    expected_crc32 = m.group(1)
+    file = '%s_%d' % ('uboot_test', size)
+
+    output = u_boot_console.run_command(
+        '%swrite usb %d:%s %x /%s %x' % (fs, x, part, addr, file, size)
+    )
+    assert 'Unable to write' not in output
+    assert 'Error' not in output
+    assert 'overflow' not in output
+    expected_text = '%d bytes written' % size
+    assert expected_text in output
+
+    offset = random.randrange(128, 1024, 128)
+    output = u_boot_console.run_command(
+        '%sload usb %d:%s %x /%s' % (fs, x, part, addr + offset, file)
+    )
+    expected_text = '%d bytes read' % size
+    assert expected_text in output
+
+    output = u_boot_console.run_command(
+        'crc32 %x $filesize' % (addr + offset)
+    )
+    assert expected_crc32 in output
+
+    return file, size, expected_crc32
+
 @pytest.mark.buildconfigspec('cmd_usb')
 @pytest.mark.buildconfigspec('cmd_ext4')
-@pytest.mark.buildconfigspec('ext4_write')
+@pytest.mark.buildconfigspec('cmd_ext4_write')
 @pytest.mark.buildconfigspec('cmd_memory')
 def test_usb_ext4load_ext4write(u_boot_console):
     devices, controllers, storage_device = test_usb_part(u_boot_console)
@@ -402,40 +445,10 @@ def test_usb_ext4load_ext4write(u_boot_console):
 
             for part in partitions:
                 part_detect = 1
-                addr = u_boot_utils.find_ram_base(u_boot_console)
-                size = random.randint(4, 1 * 1024 * 1024)
-                output = u_boot_console.run_command('crc32 %x %x' % (addr, size))
-                m = re.search('==> (.+?)', output)
-                if not m:
-                    pytest.fail('CRC32 failed')
-                expected_crc32 = m.group(1)
-                file = '%s_%d' % ('uboot_test', size)
-
-                output = u_boot_console.run_command(
-                    '%swrite usb %d:%s %x /%s %x' % (fs, x, part, addr, file, size)
-                )
-                assert 'Unable to write' not in output
-                assert 'Error' not in output
-                assert 'overflow' not in output
-                expected_text = '%d bytes written' % size
-                assert expected_text in output
-
-                offset = random.randrange(128, 1024, 128)
-                output = u_boot_console.run_command(
-                    '%sload usb %d:%s %x /%s' % (fs, x, part, addr + offset, file)
-                )
-                expected_text = '%d bytes read' % size
-                assert expected_text in output
-
-                output = u_boot_console.run_command(
-                    'crc32 %x $filesize' % (addr + offset)
-                )
-                assert expected_crc32 in output
+                usb_ext4load_ext4write(u_boot_console, fs, x, part)
 
     if not part_detect:
         pytest.skip('No %s partition detected' % fs.upper())
-
-    return file, size
 
 @pytest.mark.buildconfigspec('cmd_usb')
 @pytest.mark.buildconfigspec('cmd_ext2')
@@ -469,11 +482,10 @@ def test_usb_ext2ls(u_boot_console):
 @pytest.mark.buildconfigspec('cmd_usb')
 @pytest.mark.buildconfigspec('cmd_ext2')
 @pytest.mark.buildconfigspec('cmd_ext4')
-@pytest.mark.buildconfigspec('ext4_write')
+@pytest.mark.buildconfigspec('cmd_ext4_write')
 @pytest.mark.buildconfigspec('cmd_memory')
 def test_usb_ext2load(u_boot_console):
     devices, controllers, storage_device = test_usb_part(u_boot_console)
-    file, size = test_usb_ext4load_ext4write(u_boot_console)
 
     if not devices:
         pytest.skip('No devices detected')
@@ -491,12 +503,9 @@ def test_usb_ext2load(u_boot_console):
 
             for part in partitions:
                 part_detect = 1
+                file, size, expected_crc32 = \
+                    usb_ext4load_ext4write(u_boot_console, fs, x, part)
                 addr = u_boot_utils.find_ram_base(u_boot_console)
-                output = u_boot_console.run_command('crc32 %x %x' % (addr, size))
-                m = re.search('==> (.+?)', output)
-                if not m:
-                    pytest.fail('CRC32 failed')
-                expected_crc32 = m.group(1)
 
                 offset = random.randrange(128, 1024, 128)
                 output = u_boot_console.run_command(
@@ -524,7 +533,7 @@ def test_usb_ls(u_boot_console):
     for x in range(0, int(storage_device)):
         if devices[x]['detected'] == 'yes':
             u_boot_console.run_command('usb dev %d' % x)
-            for fs in ['fat', 'ext4']:
+            for fs in ['fat', 'ext2', 'ext4']:
                 try:
                     partitions = devices[x][fs]
                 except:
@@ -543,6 +552,7 @@ def test_usb_ls(u_boot_console):
         pytest.skip('No partition detected')
 
 @pytest.mark.buildconfigspec('cmd_usb')
+@pytest.mark.buildconfigspec('cmd_ext4_write')
 @pytest.mark.buildconfigspec('cmd_fs_generic')
 def test_usb_load(u_boot_console):
     devices, controllers, storage_device = test_usb_part(u_boot_console)
@@ -553,7 +563,7 @@ def test_usb_load(u_boot_console):
     for x in range(0, int(storage_device)):
         if devices[x]['detected'] == 'yes':
             u_boot_console.run_command('usb dev %d' % x)
-            for fs in ['fat', 'ext4']:
+            for fs in ['fat', 'ext2', 'ext4']:
                 try:
                     partitions = devices[x][fs]
                 except:
@@ -565,15 +575,11 @@ def test_usb_load(u_boot_console):
                     addr = u_boot_utils.find_ram_base(u_boot_console)
 
                     if fs == 'fat':
-                        file, size = test_usb_fatload_fatwrite(u_boot_console)
-                    elif fs == 'ext4':
-                        file, size = test_usb_ext4load_ext4write(u_boot_console)
-
-                    output = u_boot_console.run_command('crc32 %x %x' % (addr, size))
-                    m = re.search('==> (.+?)', output)
-                    if not m:
-                        pytest.fail('CRC32 failed')
-                    expected_crc32 = m.group(1)
+                        file, size, expected_crc32 = \
+                            usb_fatload_fatwrite(u_boot_console, fs, x, part)
+                    elif fs in ['ext4', 'ext2']:
+                        file, size, expected_crc32 = \
+                            usb_ext4load_ext4write(u_boot_console, fs, x, part)
 
                     offset = random.randrange(128, 1024, 128)
                     output = u_boot_console.run_command(
@@ -601,7 +607,7 @@ def test_usb_save(u_boot_console):
     for x in range(0, int(storage_device)):
         if devices[x]['detected'] == 'yes':
             u_boot_console.run_command('usb dev %d' % x)
-            for fs in ['fat', 'ext4']:
+            for fs in ['fat', 'ext2', 'ext4']:
                 try:
                     partitions = devices[x][fs]
                 except:

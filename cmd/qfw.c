@@ -3,7 +3,6 @@
  * (C) Copyright 2015 Miao Yan <yanmiaobest@gmail.com>
  */
 
-#include <common.h>
 #include <command.h>
 #include <env.h>
 #include <errno.h>
@@ -121,4 +120,4 @@ U_BOOT_CMD(
 	"    - list                             : print firmware(s) currently loaded\n"
 	"    - cpus                             : print online cpu number\n"
 	"    - load <kernel addr> <initrd addr> : load kernel and initrd (if any), and setup for zboot\n"
-)
+);

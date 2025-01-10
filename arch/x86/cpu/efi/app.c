@@ -3,11 +3,11 @@
  * Copyright (c) 2015 Google, Inc
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <fdtdec.h>
 #include <init.h>
 #include <netdev.h>
+#include <asm/u-boot-x86.h>
 
 int arch_cpu_init(void)
 {
@@ -17,11 +17,6 @@ int arch_cpu_init(void)
 int checkcpu(void)
 {
 	return 0;
-}
-
-int print_cpuinfo(void)
-{
-	return default_print_cpuinfo();
 }
 
 void board_final_init(void)

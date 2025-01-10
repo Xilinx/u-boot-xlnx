@@ -7,9 +7,9 @@
  * u-boot.
  */
 
-#include <common.h>
 #include <bootstage.h>
 #include <hang.h>
+#include <stdio.h>
 #include <os.h>
 
 /**
@@ -22,7 +22,7 @@
  */
 void hang(void)
 {
-#if !defined(CONFIG_SPL_BUILD) || \
+#if !defined(CONFIG_XPL_BUILD) || \
 		(CONFIG_IS_ENABLED(LIBCOMMON_SUPPORT) && \
 		 CONFIG_IS_ENABLED(SERIAL))
 	puts("### ERROR ### Please RESET the board ###\n");

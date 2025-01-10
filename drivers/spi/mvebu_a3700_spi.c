@@ -5,7 +5,6 @@
  * Copyright (C) 2016 Stefan Roese <sr@denx.de>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
@@ -296,15 +295,6 @@ static int mvebu_spi_of_to_plat(struct udevice *bus)
 	return 0;
 }
 
-static int mvebu_spi_remove(struct udevice *bus)
-{
-	struct mvebu_spi_plat *plat = dev_get_plat(bus);
-
-	clk_free(&plat->clk);
-
-	return 0;
-}
-
 static const struct dm_spi_ops mvebu_spi_ops = {
 	.xfer		= mvebu_spi_xfer,
 	.set_speed	= mvebu_spi_set_speed,
@@ -328,5 +318,4 @@ U_BOOT_DRIVER(mvebu_spi) = {
 	.of_to_plat = mvebu_spi_of_to_plat,
 	.plat_auto	= sizeof(struct mvebu_spi_plat),
 	.probe = mvebu_spi_probe,
-	.remove = mvebu_spi_remove,
 };

@@ -75,7 +75,6 @@
 
 #define __U_BOOT__
 #ifdef __U_BOOT__
-#include <common.h>         /* readline */
 #include <env.h>
 #include <malloc.h>         /* malloc, free, realloc*/
 #include <linux/ctype.h>    /* isalpha, isdigit */
@@ -733,7 +732,6 @@ static int builtin_jobs(struct child_prog *child)
 	return EXIT_SUCCESS;
 }
 
-
 /* built-in 'pwd' handler */
 static int builtin_pwd(struct child_prog *dummy)
 {
@@ -784,7 +782,6 @@ static int builtin_set(struct child_prog *child)
 
 		return EXIT_SUCCESS;
 }
-
 
 /* Built-in 'shift' handler */
 static int builtin_shift(struct child_prog *child)
@@ -1732,7 +1729,6 @@ static int run_pipe_real(struct pipe *pi)
 
 			pseudo_exec(child);
 		}
-
 
 		/* put our child in the process group whose leader is the
 		   first process in this pipe */
@@ -3409,7 +3405,6 @@ int hush_main(int argc, char * const *argv)
 	}
 
 	last_return_code=EXIT_SUCCESS;
-
 
 	if (argv[0] && argv[0][0] == '-') {
 		debug_printf("\nsourcing /etc/profile\n");

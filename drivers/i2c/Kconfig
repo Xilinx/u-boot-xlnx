@@ -504,16 +504,16 @@ config SYS_I2C_OMAP24XX
 	  Add support for the OMAP2+ I2C driver.
 
 config SYS_I2C_RCAR_I2C
-	bool "Renesas RCar I2C driver"
+	bool "Renesas R-Car I2C driver"
 	depends on (RCAR_GEN2 || RCAR_64) && DM_I2C
 	help
-	  Support for Renesas RCar I2C controller.
+	  Support for Renesas R-Car I2C controller.
 
 config SYS_I2C_RCAR_IIC
-	bool "Renesas RCar Gen3 IIC driver"
+	bool "Renesas R-Car Gen3 IIC driver"
 	depends on (RCAR_GEN2 || RCAR_GEN3) && DM_I2C
 	help
-	  Support for Renesas RCar Gen3 IIC controller.
+	  Support for Renesas R-Car Gen3 IIC controller.
 
 config SYS_I2C_ROCKCHIP
 	bool "Rockchip I2C driver"
@@ -523,6 +523,13 @@ config SYS_I2C_ROCKCHIP
 	  Rockchip parts such as RK3126, RK3128, RK3036 and RK3288. All chips
 	  have several I2C ports and all are provided, controlled by the
 	  device tree.
+
+config SYS_I2C_RZ_RIIC
+	bool "Renesas RZ/G2L RIIC driver"
+	depends on RZG2L && DM_I2C
+	help
+	  Support for the I2C controller (RIIC) on the Renesas RZ/G2L SoC
+	  family.
 
 config SYS_I2C_SANDBOX
 	bool "Sandbox I2C driver"
@@ -544,7 +551,7 @@ config SPL_SYS_I2C_SANDBOX
 
 config SYS_I2C_SH
 	bool "Legacy SuperH I2C interface"
-	depends on ARCH_RMOBILE && SYS_I2C_LEGACY
+	depends on ARCH_RENESAS && SYS_I2C_LEGACY
 	help
 	  Enable the legacy SuperH I2C interface.
 
@@ -631,9 +638,19 @@ config SYS_I2C_QUP
 	  Technical Reference Manual, chapter "6.1 Qualcomm Universal
 	  Peripherals Engine (QUP)".
 
+config SYS_I2C_GENI
+	bool "Qualcomm Generic Interface (GENI) I2C controller"
+	depends on ARCH_SNAPDRAGON
+	help
+	  Support for the Qualcomm Generic Interface (GENI) I2C interface.
+	  The Generic Interface (GENI) is a firmware based Qualcomm Universal
+	  Peripherals (QUP) Serial Engine (SE) Wrapper which can support multiple
+	  bus protocols depending on the firmware type loaded at early boot time
+	  based on system configuration.
+
 config SYS_I2C_S3C24X0
 	bool "Samsung I2C driver"
-	depends on (ARCH_EXYNOS4 || ARCH_EXYNOS5) && DM_I2C
+	depends on DM_I2C
 	help
 	  Support for Samsung I2C controller as Samsung SoCs.
 
@@ -754,7 +771,7 @@ config SYS_I2C_BUS_MAX
 	int "Max I2C busses"
 	depends on ARCH_OMAP2PLUS || ARCH_SOCFPGA
 	default 3 if OMAP34XX || AM33XX || AM43XX
-	default 4 if ARCH_SOCFPGA || OMAP44XX
+	default 4 if ARCH_SOCFPGA
 	default 5 if OMAP54XX
 	help
 	  Define the maximum number of available I2C buses.

@@ -8,7 +8,6 @@
  * part in order to simplify future porting of fixes and support for other SoCs.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/device_compat.h>
@@ -312,6 +311,12 @@ static int eqos_probe_resources_rk(struct udevice *dev)
 	int reset_flags = GPIOD_IS_OUT | GPIOD_IS_OUT_ACTIVE;
 	int ret;
 
+	ret = eqos_get_base_addr_dt(dev);
+	if (ret) {
+		dev_err(dev, "eqos_get_base_addr_dt failed: %d\n", ret);
+		return ret;
+	}
+
 	data = calloc(1, sizeof(struct rockchip_platform_data));
 	if (!data)
 		return -ENOMEM;
@@ -372,7 +377,7 @@ static int eqos_probe_resources_rk(struct udevice *dev)
 		ret = clk_get_by_name(dev, "clk_mac_speed", &eqos->clk_tx);
 		if (ret) {
 			dev_dbg(dev, "clk_get_by_name(clk_mac_speed) failed: %d", ret);
-			goto err_free_clk_master_bus;
+			goto err_release_resets;
 		}
 	}
 
@@ -393,8 +398,6 @@ static int eqos_probe_resources_rk(struct udevice *dev)
 
 	return 0;
 
-err_free_clk_master_bus:
-	clk_free(&eqos->clk_master_bus);
 err_release_resets:
 	reset_release_bulk(&data->resets);
 err_free:
@@ -412,8 +415,6 @@ static int eqos_remove_resources_rk(struct udevice *dev)
 	if (dm_gpio_is_valid(&eqos->phy_reset_gpio))
 		dm_gpio_free(dev, &eqos->phy_reset_gpio);
 
-	clk_free(&eqos->clk_tx);
-	clk_free(&eqos->clk_master_bus);
 	reset_release_bulk(&data->resets);
 	free(data);
 

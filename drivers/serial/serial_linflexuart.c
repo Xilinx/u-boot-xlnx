@@ -3,7 +3,6 @@
  * (C) Copyright 2013-2016 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <watchdog.h>
@@ -69,7 +68,6 @@ static int _linflex_serial_getc(struct linflex_fsl *base)
 static int _linflex_serial_putc(struct linflex_fsl *base, const char c)
 {
 	__raw_writeb(c, &base->bdrl);
-
 
 	if (!(__raw_readb(&base->uartsr) & UARTSR_DTF))
 		return -EAGAIN;
@@ -197,7 +195,6 @@ U_BOOT_DRIVER(serial_linflex) = {
 #ifdef CONFIG_DEBUG_UART_LINFLEXUART
 
 #include <debug_uart.h>
-
 
 static inline void _debug_uart_init(void)
 {

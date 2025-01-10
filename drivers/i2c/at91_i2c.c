@@ -8,7 +8,6 @@
 #include <malloc.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <errno.h>
@@ -200,8 +199,6 @@ static int at91_i2c_enable_clk(struct udevice *dev)
 		return -EINVAL;
 
 	bus->bus_clk_rate = clk_rate;
-
-	clk_free(&clk);
 
 	return 0;
 }

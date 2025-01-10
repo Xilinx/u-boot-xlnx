@@ -3,7 +3,6 @@
  * (C) Copyright 2007-2008 Semihalf, Rafal Jaworowski <raj@semihalf.com>
  */
 
-#include <common.h>
 #include <env.h>
 #include <linux/types.h>
 #include <api_public.h>
@@ -42,8 +41,8 @@ static int valid_sig(struct api_signature *sig)
 int api_search_sig(struct api_signature **sig)
 {
 	unsigned char *sp;
-	uint32_t search_start = 0;
-	uint32_t search_end = 0;
+	uintptr_t search_start = 0;
+	uintptr_t search_end = 0;
 
 	if (sig == NULL)
 		return 0;
@@ -153,7 +152,6 @@ unsigned long ub_get_timer(unsigned long base)
 
 	return cur;
 }
-
 
 /****************************************************************************
  *

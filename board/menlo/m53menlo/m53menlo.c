@@ -6,7 +6,6 @@
  * Copyright (C) 2014-2017 Olaf Mandel <o.mandel@menlosystems.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <init.h>
 #include <malloc.h>
@@ -525,7 +524,7 @@ int checkboard(void)
 /*
  * NAND SPL
  */
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 void spl_board_init(void)
 {
 	setup_iomux_nand();

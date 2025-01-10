@@ -201,6 +201,7 @@ config TARGET_DISPLAY5
 	select DM_SPI
 	select DM_GPIO
 	select DM_SERIAL
+	select MTD
 	select SUPPORT_SPL
 	imply CMD_DM
 
@@ -246,7 +247,7 @@ config TARGET_KOSAGI_NOVENA
 	select DM_GPIO
 	select DM_MMC
 	select PCI
-	select DM_SCSI
+	select SCSI
 	select VIDEO
 	select OF_CONTROL
 	select SUPPORT_SPL
@@ -261,6 +262,7 @@ config TARGET_MCCMON6
 	select DM_SERIAL
 	select DM_I2C
 	select DM_SPI
+	select MTD
 	imply CMD_DM
 
 config TARGET_MX6CUBOXI
@@ -354,6 +356,15 @@ config TARGET_MX6Q_ACC
 	select DM_THERMAL
 	select SUPPORT_SPL
 
+config TARGET_MX6S_SIELAFF
+	bool "Sielaff i.MX6 Solo Board"
+	depends on MX6S
+	select BINMAN
+	select DM
+	select DM_THERMAL
+	select SUPPORT_SPL
+	imply CMD_DM
+
 config TARGET_MX6SABREAUTO
 	bool "mx6sabreauto"
 	depends on MX6QDL
@@ -382,6 +393,7 @@ config TARGET_MX6SLEVK
 	bool "mx6slevk"
 	depends on MX6SL
 	select SUPPORT_SPL
+	imply OF_UPSTREAM
 
 config TARGET_MX6SLLEVK
 	bool "mx6sll evk"
@@ -470,6 +482,7 @@ config TARGET_MX6ULZ_SMM_M2
 	select DM_MTD
 	select DM_THERMAL
 	select SUPPORT_SPL
+	imply OF_UPSTREAM
 
 config TARGET_MYS_6ULX
 	bool "MYiR MYS-6ULX"
@@ -527,6 +540,16 @@ config TARGET_LITEBOARD
 	depends on MX6UL
 	select BOARD_LATE_INIT
 	select MX6UL_LITESOM
+
+config TARGET_LXR2
+	bool "Comvetia i.MX6Q LXR2"
+	depends on MX6Q
+	select BOARD_EARLY_INIT_F
+	select BOARD_LATE_INIT
+	select DM
+	select DM_THERMAL
+	select SUPPORT_SPL
+	imply CMD_DM
 
 config TARGET_PCM058
 	bool "Phytec PCM058 i.MX6 Quad"
@@ -602,6 +625,7 @@ config TARGET_TQMA6
 	imply DM
 	imply DM_GPIO
 	imply DM_MMC
+	imply MTD
 	imply DM_SPI
 	imply DM_SPI_FLASH
 	imply DM_I2C
@@ -623,6 +647,7 @@ config TARGET_UDOO_NEO
 	select DM_THERMAL
 	select SUPPORT_SPL
 	imply CMD_DM
+	imply OF_UPSTREAM
 
 config TARGET_SOFTING_VINING_2000
 	bool "Softing VIN|ING 2000"
@@ -681,6 +706,7 @@ source "board/boundary/nitrogen6x/Kconfig"
 source "board/bsh/imx6ulz_smm_m2/Kconfig"
 source "board/bticino/mamoj/Kconfig"
 source "board/compulab/cm_fx6/Kconfig"
+source "board/comvetia/lxr2/Kconfig"
 source "board/dhelectronics/dh_imx6/Kconfig"
 source "board/embest/mx6boards/Kconfig"
 source "board/engicam/imx6q/Kconfig"
@@ -705,6 +731,7 @@ source "board/softing/vining_2000/Kconfig"
 source "board/liebherr/display5/Kconfig"
 source "board/liebherr/mccmon6/Kconfig"
 source "board/logicpd/imx6/Kconfig"
+source "board/sielaff/imx6dl-sielaff/Kconfig"
 source "board/solidrun/mx6cuboxi/Kconfig"
 source "board/somlabs/visionsom-6ull/Kconfig"
 source "board/technexion/pico-imx6/Kconfig"

@@ -27,6 +27,14 @@ enum {
  * Drivers must set up @rows, @cols, @x_charsize, @y_charsize in their probe()
  * method. Drivers may set up @xstart_frac if desired.
  *
+ * Note that these values relate to the rotated console, so that an 80x25
+ * console which is rotated 90 degrees will have rows=80 and cols=25
+ *
+ * The xcur_frac and ycur values refer to the unrotated coordinates, that is
+ * xcur_frac always advances with each character, even if its limit might be
+ * vid_priv->ysize instead of vid_priv->xsize if the console is rotated 90 or
+ * 270 degrees.
+ *
  * @sdev:		stdio device, acting as an output sink
  * @xcur_frac:		Current X position, in fractional units (VID_TO_POS(x))
  * @ycur:		Current Y position in pixels (0=top)
@@ -43,6 +51,7 @@ enum {
  * @col_saved:		Saved X position, in fractional units (VID_TO_POS(x))
  * @row_saved:		Saved Y position in pixels (0=top)
  * @escape_buf:		Buffer to accumulate escape sequence
+ * @utf8_buf:		Buffer to accumulate UTF-8 byte sequence
  */
 struct vidconsole_priv {
 	struct stdio_dev sdev;
@@ -66,6 +75,7 @@ struct vidconsole_priv {
 	int row_saved;
 	int col_saved;
 	char escape_buf[32];
+	char utf8_buf[5];
 };
 
 /**
@@ -124,12 +134,12 @@ struct vidconsole_ops {
 	 * @x_frac:	Fractional pixel X position (0=left-most pixel) which
 	 *		is the X position multipled by VID_FRAC_DIV.
 	 * @y:		Pixel Y position (0=top-most pixel)
-	 * @ch:		Character to write
+	 * @cp:		UTF-32 code point to write
 	 * @return number of fractional pixels that the cursor should move,
 	 * if all is OK, -EAGAIN if we ran out of space on this line, other -ve
 	 * on error
 	 */
-	int (*putc_xy)(struct udevice *dev, uint x_frac, uint y, char ch);
+	int (*putc_xy)(struct udevice *dev, uint x_frac, uint y, int cp);
 
 	/**
 	 * move_rows() - Move text rows from one place to another
@@ -403,12 +413,12 @@ void vidconsole_pop_colour(struct udevice *dev, struct vidconsole_colour *old);
  * @x_frac:	Fractional pixel X position (0=left-most pixel) which
  *		is the X position multipled by VID_FRAC_DIV.
  * @y:		Pixel Y position (0=top-most pixel)
- * @ch:		Character to write
+ * @cp:		UTF-32 code point to write
  * Return: number of fractional pixels that the cursor should move,
  * if all is OK, -EAGAIN if we ran out of space on this line, other -ve
  * on error
  */
-int vidconsole_putc_xy(struct udevice *dev, uint x, uint y, char ch);
+int vidconsole_putc_xy(struct udevice *dev, uint x, uint y, int cp);
 
 /**
  * vidconsole_move_rows() - Move text rows from one place to another

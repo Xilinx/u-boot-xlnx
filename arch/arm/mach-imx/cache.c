@@ -3,7 +3,7 @@
  * Copyright 2015 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
+#include <config.h>
 #include <cpu_func.h>
 #include <asm/armv7.h>
 #include <asm/cache.h>
@@ -85,7 +85,6 @@ void v7_outer_cache_enable(void)
 	struct pl310_regs *const pl310 = (struct pl310_regs *)L2_PL310_BASE;
 	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
 	unsigned int val, cache_id;
-
 
 	/*
 	 * Must disable the L2 before changing the latency parameters

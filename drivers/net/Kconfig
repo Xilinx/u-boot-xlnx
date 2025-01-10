@@ -48,6 +48,7 @@ config DM_DSA
 	bool "Enable Driver Model for DSA switches"
 	depends on DM_MDIO
 	depends on PHY_FIXED
+	depends on !NET_LWIP
 	help
 	  Enable driver model for DSA switches
 
@@ -96,7 +97,7 @@ config DSA_SANDBOX
 
 menuconfig NETDEVICES
 	bool "Network device support"
-	depends on NET
+	depends on NET || NET_LWIP
 	select DM_ETH
 	help
 	  You must select Y to enable any network device support
@@ -193,6 +194,24 @@ config CALXEDA_XGMAC
 	  This driver supports the XGMAC in Calxeda Highbank and Midway
 	  machines.
 
+config DWC_ETH_XGMAC
+        bool "Synopsys DWC Ethernet XGMAC device support"
+	select PHYLIB
+        help
+          This driver supports the Synopsys Designware Ethernet XGMAC (10G
+          Ethernet MAC) IP block. The IP supports many options for bus type,
+          clocking/reset structure, and feature list.
+
+config DWC_ETH_XGMAC_SOCFPGA
+	bool "Synopsys DWC Ethernet XGMAC device support for SOCFPGA"
+	select REGMAP
+	select SYSCON
+	depends on DWC_ETH_XGMAC
+	default y if TARGET_SOCFPGA_AGILEX5
+	help
+	  The Synopsys Designware Ethernet XGMAC IP block with specific
+	  configuration used in Intel SoC FPGA chip.
+
 config DRIVER_DM9000
 	bool "Davicom DM9000 controller driver"
 	help
@@ -224,6 +243,13 @@ config DWC_ETH_QOS_IMX
 	help
 	  The Synopsys Designware Ethernet QOS IP block with the specific
 	  configuration used in IMX soc.
+
+config DWC_ETH_QOS_INTEL
+	bool "Synopsys DWC Ethernet QOS device support for Intel"
+	depends on DWC_ETH_QOS
+	help
+	  The Synopsys Designware Ethernet QOS IP block with the specific
+	  configuration used in the Intel Elkhart-Lake soc.
 
 config DWC_ETH_QOS_ROCKCHIP
 	bool "Synopsys DWC Ethernet QOS device support for Rockchip SoCs"
@@ -307,8 +333,17 @@ config EEPRO100
 	  This driver supports Intel(R) PRO/100 82557/82559/82559ER fast
 	  ethernet family of adapters.
 
+config ESSEDMA
+	bool "Qualcomm ESS Edma support"
+	depends on DM_ETH && ARCH_IPQ40XX
+	select PHYLIB
+	help
+	  This driver supports ethernet DMA adapter found in
+	  Qualcomm IPQ40xx series SoC-s.
+
 config ETH_SANDBOX
 	depends on SANDBOX
+	depends on NET
 	default y
 	bool "Sandbox: Mocked Ethernet driver"
 	help
@@ -317,8 +352,20 @@ config ETH_SANDBOX
 
 	  This driver is particularly useful in the test/dm/eth.c tests
 
+config ETH_SANDBOX_LWIP
+	depends on SANDBOX
+	depends on NET_LWIP
+	default y
+	bool "Sandbox: Mocked Ethernet driver (for NET_LWIP)"
+	help
+	  This driver is meant as a replacement for ETH_SANDBOX when
+	  the network stack is NET_LWIP rather than NET. It currently
+	  does nothing, i.e. it drops the sent packets and never receives
+	  data.
+
 config ETH_SANDBOX_RAW
 	depends on SANDBOX
+	depends on NET
 	default y
 	bool "Sandbox: Bridge to Linux Raw Sockets"
 	help
@@ -435,6 +482,7 @@ config FTMAC100
 config FTGMAC100
 	bool "Ftgmac100 Ethernet Support"
 	select PHYLIB
+	depends on NET
 	help
 	  This driver supports the Faraday's FTGMAC100 Gigabit SoC
 	  Ethernet controller that can be found on Aspeed SoCs (which
@@ -471,25 +519,17 @@ config SYS_UNIFY_CACHE
 	depends on MCFFEC
 	bool "Invalidate icache during ethernet operations"
 
-config FSLDMAFEC
-        bool "ColdFire DMA Ethernet Support"
-	select PHYLIB
-	select SYS_DISCOVER_PHY
-	help
-	  This driver supports the network interface units in the
-	  ColdFire family.
-
 config KS8851_MLL
 	bool "Microchip KS8851-MLL controller driver"
 	help
 	  The Microchip KS8851 parallel bus external ethernet interface chip.
 
 config KSZ9477
-	bool "Microchip KSZ9477 I2C controller driver"
-	depends on DM_DSA && DM_I2C
+	bool "Microchip KSZ9477 controller driver"
+	depends on DM_DSA && (DM_I2C || DM_SPI)
 	help
 	  This driver implements a DSA switch driver for the KSZ9477 family
-	  of GbE switches using the I2C interface.
+	  of GbE switches using the I2C or SPI interface.
 
 config LITEETH
 	bool "LiteX LiteEth Ethernet MAC"
@@ -722,6 +762,38 @@ config TULIP
 	help
 	  This driver supports DEC DC2114x Fast ethernet chips.
 
+config TULIP_SUPPORT_NON_PCI
+	bool "No PCI controller"
+	depends on TULIP
+	default n
+	help
+	  Say Y to this and you can run this driver on platforms that do not
+	  have PCI controllers.
+
+config TULIP_IGNORE_TX_NO_CARRIER
+	bool "Ignore tx no carrier error"
+	depends on TULIP
+	default n
+	help
+	  Some IP cores of dc2114x or its variants do not comply so well with
+	  the behaviors described by the official document. A packet could be
+	  sent successfully but reported with No Carrier error. Latest drivers
+	  of this IP core do not detect this error anymore. Say Y to this could
+	  disable handling of this error.
+
+config TULIP_MULTIPLE_TX_DESC
+	bool "Use multiple tx descriptors"
+	depends on TULIP
+	default n
+	help
+	  Some IP cores of dc2114x or its variants do not comply so well with
+	  the behaviors described by the official document. Originally this
+	  driver uses only one tx descriptor and organizes it as a ring buffer,
+	  which would lead to a problem that one packet would be sent twice.
+	  Say Y to this could prevent this bug if you are using IP cores with
+	  this issue, by using multiple tx descriptors and organizing them as
+	  a real well-defined ring buffer.
+
 config XILINX_AXIEMAC
 	select PHYLIB
 	select MII
@@ -865,7 +937,7 @@ config FEC2_PHY_NORXERR
 
 config SYS_DPAA_QBMAN
 	bool "Device tree fixup for QBMan on freescale SOCs"
-	depends on (ARM || PPC) && !SPL_BUILD
+	depends on ARM || PPC
 	default y if ARCH_B4860 || \
 		     ARCH_B4420 || \
 		     ARCH_P1023 || \
@@ -986,6 +1058,13 @@ config MDIO_MUX_MESON_G12A
 	depends on DM_MDIO_MUX
 	help
 	  This driver is used for the MDIO mux found on the Amlogic G12A & compatible
+	  SoCs.
+
+config MDIO_MUX_MESON_GXL
+	bool "MDIO MUX for Amlogic Meson GXL SoCs"
+	depends on DM_MDIO_MUX
+	help
+	  This driver is used for the MDIO mux found on the Amlogic GXL & compatible
 	  SoCs.
 
 endif # NETDEVICES

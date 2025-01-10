@@ -8,10 +8,11 @@
  * pca9539, etc)
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <i2c.h>
 #include <pca953x.h>
+#include <vsprintf.h>
 
 /* Default to an address that hopefully won't corrupt other i2c devices */
 #ifndef CFG_SYS_I2C_PCA953X_ADDR
@@ -142,7 +143,7 @@ int pca953x_get_val(uint8_t chip)
 	return (int)val;
 }
 
-#if defined(CONFIG_CMD_PCA953X) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_CMD_PCA953X) && !defined(CONFIG_XPL_BUILD)
 /*
  * Display pca953x information
  */

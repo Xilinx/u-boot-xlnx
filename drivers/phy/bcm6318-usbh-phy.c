@@ -7,7 +7,6 @@
  *	Copyright 2013 Florian Fainelli <florian@openwrt.org>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <generic-phy.h>
@@ -97,8 +96,6 @@ static int bcm6318_usbh_probe(struct udevice *dev)
 	ret = clk_enable(&clk);
 	if (ret < 0)
 		return ret;
-
-	clk_free(&clk);
 
 	/* enable power domain */
 	ret = power_domain_get(dev, &pwr_dom);

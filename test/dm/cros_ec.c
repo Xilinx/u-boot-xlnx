@@ -3,7 +3,6 @@
  * Copyright 2021 Google LLC
  */
 
-#include <common.h>
 #include <cros_ec.h>
 #include <dm.h>
 #include <asm/test.h>
@@ -29,7 +28,7 @@ static int dm_test_cros_ec_hello(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_hello, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_hello, UTF_SCAN_FDT);
 
 static int dm_test_cros_ec_sku_id(struct unit_test_state *uts)
 {
@@ -39,14 +38,13 @@ static int dm_test_cros_ec_sku_id(struct unit_test_state *uts)
 	ut_asserteq(1234, cros_ec_get_sku_id(dev));
 
 	/* try the command */
-	console_record_reset();
 	ut_assertok(run_command("crosec sku", 0));
 	ut_assert_nextline("1234");
 	ut_assert_console_end();
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_sku_id, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_sku_id, UTF_SCAN_FDT | UTF_CONSOLE);
 
 static int dm_test_cros_ec_features(struct unit_test_state *uts)
 {
@@ -65,7 +63,6 @@ static int dm_test_cros_ec_features(struct unit_test_state *uts)
 	ut_asserteq(true, cros_ec_check_feature(dev, EC_FEATURE_ISH));
 
 	/* try the command */
-	console_record_reset();
 	ut_assertok(run_command("crosec features", 0));
 	ut_assert_nextline("flash");
 	ut_assert_nextline("i2c");
@@ -76,7 +73,7 @@ static int dm_test_cros_ec_features(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_features, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_features, UTF_SCAN_FDT | UTF_CONSOLE);
 
 static int dm_test_cros_ec_switches(struct unit_test_state *uts)
 {
@@ -86,7 +83,6 @@ static int dm_test_cros_ec_switches(struct unit_test_state *uts)
 	ut_asserteq(0, cros_ec_get_switches(dev));
 
 	/* try the command */
-	console_record_reset();
 	ut_assertok(run_command("crosec switches", 0));
 	ut_assert_console_end();
 
@@ -95,14 +91,13 @@ static int dm_test_cros_ec_switches(struct unit_test_state *uts)
 	ut_asserteq(EC_SWITCH_LID_OPEN, cros_ec_get_switches(dev));
 
 	/* try the command */
-	console_record_reset();
 	ut_assertok(run_command("crosec switches", 0));
 	ut_assert_nextline("lid open");
 	ut_assert_console_end();
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_switches, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_switches, UTF_SCAN_FDT | UTF_CONSOLE);
 
 static int dm_test_cros_ec_events(struct unit_test_state *uts)
 {
@@ -114,7 +109,6 @@ static int dm_test_cros_ec_events(struct unit_test_state *uts)
 	ut_asserteq(0, events);
 
 	/* try the command */
-	console_record_reset();
 	ut_assertok(run_command("crosec events", 0));
 	ut_assert_nextline("00000000");
 	ut_assert_console_end();
@@ -125,7 +119,6 @@ static int dm_test_cros_ec_events(struct unit_test_state *uts)
 	ut_asserteq(EC_HOST_EVENT_MASK(EC_HOST_EVENT_LID_OPEN), events);
 
 	/* try the command */
-	console_record_reset();
 	ut_assertok(run_command("crosec events", 0));
 	ut_assert_nextline("00000002");
 	ut_assert_nextline("lid_open");
@@ -139,7 +132,7 @@ static int dm_test_cros_ec_events(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_events, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_events, UTF_SCAN_FDT | UTF_CONSOLE);
 
 static int dm_test_cros_ec_vstore(struct unit_test_state *uts)
 {
@@ -175,4 +168,4 @@ static int dm_test_cros_ec_vstore(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_vstore, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_vstore, UTF_SCAN_FDT);

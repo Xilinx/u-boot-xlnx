@@ -19,20 +19,26 @@ Registering a cyclic function
 
 To register a cyclic function, use something like this::
 
-    static void cyclic_demo(void *ctx)
+    struct donkey {
+        struct cyclic_info cyclic;
+        void (*say)(const char *s);
+    };
+
+    static void cyclic_demo(struct cyclic_info *c)
     {
-        /* Just a small dummy delay here */
-        udelay(10);
+        struct donkey *donkey = container_of(c, struct donkey, cyclic);
+
+        donkey->say("Are we there yet?");
     }
-    
-    int board_init(void)
+
+    int donkey_init(void)
     {
-        struct cyclic_info *cyclic;
-        
+        struct donkey *donkey;
+
+        /* Initialize donkey ... */
+
         /* Register demo cyclic function */
-        cyclic = cyclic_register(cyclic_demo, 10 * 1000, "cyclic_demo", NULL);
-        if (!cyclic)
-        printf("Registering of cyclic_demo failed\n");
+        cyclic_register(&donkey->cyclic, cyclic_demo, 10 * 1000, "cyclic_demo");
         
         return 0;
     }
@@ -43,8 +49,8 @@ executed all 10ms.
 How is this cyclic functionality integrated /  executed?
 --------------------------------------------------------
 
-The cyclic infrastructure integrates the main function responsible for
-calling all registered cyclic functions cyclic_run() into the common
-WATCHDOG_RESET macro. This guarantees that cyclic_run() is executed
-very often, which is necessary for the cyclic functions to get scheduled
-and executed at their configured periods.
+The cyclic infrastructure integrates cyclic_run(), the main function
+responsible for calling all registered cyclic functions, into the
+common schedule() function. This guarantees that cyclic_run() is
+executed very often, which is necessary for the cyclic functions to
+get scheduled and executed at their configured periods.

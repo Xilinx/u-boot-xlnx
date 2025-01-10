@@ -9,7 +9,6 @@
  * Unit tests for sscanf() function
  */
 
-#include <common.h>
 #include <command.h>
 #include <log.h>
 #include <test/lib.h>
@@ -170,5 +169,4 @@ static int lib_sscanf(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_sscanf, 0);

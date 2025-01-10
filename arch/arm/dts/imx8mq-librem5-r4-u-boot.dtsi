@@ -10,15 +10,10 @@
 	bootph-pre-ram;
 };
 
-&binman {
-	/delete-node/ signed-hdmi;
-
-	signed-hdmi {
-		filename = "signed_hdmi.bin";
-
-		signed-dp-imx8m {
+&binman_imx_spl {
+	section {
+		signed-hdmi-imx8m {
 			filename = "signed_dp_imx8m.bin";
-			type = "blob-ext";
 		};
 	};
 };

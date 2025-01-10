@@ -4,12 +4,9 @@
  * Copyright (c) 2016 Andreas Färber
  */
 
-#include <common.h>
 #include <init.h>
 #include <syscon.h>
 #include <asm/armv8/mmu.h>
-#include <asm/global_data.h>
-#include <asm/io.h>
 #include <asm/arch-rockchip/bootrom.h>
 #include <asm/arch-rockchip/clock.h>
 #include <asm/arch-rockchip/cru_rk3368.h>
@@ -17,8 +14,6 @@
 #include <asm/arch-rockchip/hardware.h>
 #include <linux/bitops.h>
 #include <linux/delay.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define IMEM_BASE                  0xFF8C0000
 
@@ -59,6 +54,7 @@ struct mm_region *mem_map = rk3368_mem_map;
 
 const char * const boot_devices[BROM_LAST_BOOTSOURCE + 1] = {
 	[BROM_BOOTSOURCE_EMMC] = "/mmc@ff0f0000",
+	[BROM_BOOTSOURCE_SPINOR] = "/spi@ff120000/flash@0",
 	[BROM_BOOTSOURCE_SD] = "/mmc@ff0c0000",
 };
 
@@ -97,7 +93,7 @@ int arch_early_init_r(void)
 }
 #endif
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 /*
  * The SPL (and also the full U-Boot stage on the RK3368) will run in
  * secure mode (i.e. EL3) and an ATF will eventually be booted before

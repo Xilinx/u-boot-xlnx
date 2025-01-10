@@ -6,15 +6,13 @@
 #ifndef _FSL_ERRATA_H
 #define _FSL_ERRATA_H
 
-#include <common.h>
 #if defined(CONFIG_PPC)
-#include <asm/processor.h>
+#include <asm/ppc.h>
 #elif defined(CONFIG_ARCH_LS1021A)
 #include <asm/arch-ls102xa/immap_ls102xa.h>
 #elif defined(CONFIG_FSL_LAYERSCAPE)
 #include <asm/arch/soc.h>
 #endif
-
 
 #ifdef CONFIG_SYS_FSL_ERRATUM_A006379
 static inline bool has_erratum_a006379(void)
@@ -62,7 +60,6 @@ static inline bool has_erratum_a008378(void)
 {
 	u32 svr = get_svr();
 	u32 soc = SVR_SOC_VER(svr);
-
 
 	switch (soc) {
 #ifdef CONFIG_ARCH_LS1021A

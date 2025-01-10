@@ -8,7 +8,7 @@
  * Copyright (C) 2004 Texas Instruments.
  */
 
-#include <common.h>
+#include <config.h>
 #include <env.h>
 #include <i2c.h>
 #include <init.h>
@@ -21,7 +21,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 int dram_init(void)
 {
 	/* dram_init must store complete ramsize in gd->ram_size */

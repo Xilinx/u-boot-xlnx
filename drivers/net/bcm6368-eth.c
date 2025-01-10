@@ -6,7 +6,6 @@
  *	Copyright (C) 2008 Maxime Bizon <mbizon@freebox.fr>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <dma.h>
@@ -546,8 +545,6 @@ static int bcm6368_eth_probe(struct udevice *dev)
 			pr_err("%s: error enabling clock %d\n", __func__, i);
 			return ret;
 		}
-
-		clk_free(&clk);
 	}
 
 	/* try to perform resets */

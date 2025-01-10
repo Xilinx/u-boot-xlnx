@@ -3,7 +3,6 @@
  * Copyright 2014 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <i2c.h>
 #include <hwconfig.h>
 #include <init.h>
@@ -39,7 +38,6 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 		pbsp = rdimms[0];
 	else
 		pbsp = udimms[0];
-
 
 	/* Get clk_adjust, cpo, write_data_delay,2T, according to the board ddr
 	 * freqency and n_banks specified in board_specific_parameters table.
@@ -113,7 +111,7 @@ int dram_init(void)
 
 	puts("Initializing....using SPD\n");
 
-#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_RAMBOOT_PBL)
+#if defined(CONFIG_XPL_BUILD) || !defined(CONFIG_RAMBOOT_PBL)
 	dram_size = fsl_ddr_sdram();
 #else
 	/* DDR has been initialised by first stage boot loader */

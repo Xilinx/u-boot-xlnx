@@ -13,7 +13,6 @@
  * warranty of any kind, whether express or implied.
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <asm/cache.h>
@@ -4702,7 +4701,6 @@ static int mvpp2_port_init(struct udevice *dev, struct mvpp2_port *port)
 
 		port->rxqs[queue] = rxq;
 	}
-
 
 	/* Create Rx descriptor rings */
 	for (queue = 0; queue < rxq_number; queue++) {

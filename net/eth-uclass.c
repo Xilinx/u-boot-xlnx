@@ -7,7 +7,6 @@
 
 #define LOG_CATEGORY UCLASS_ETH
 
-#include <common.h>
 #include <bootdev.h>
 #include <bootstage.h>
 #include <dm.h>
@@ -48,6 +47,8 @@ struct eth_uclass_priv {
 
 /* eth_errno - This stores the most recent failure code from DM functions */
 static int eth_errno;
+/* Are we currently in eth_init() or eth_halt()? */
+static bool in_init_halt;
 
 /* board-specific Ethernet Interface initializations. */
 __weak int board_interface_eth_init(struct udevice *dev,
@@ -283,13 +284,42 @@ static int on_ethaddr(const char *name, const char *value, enum env_op op,
 }
 U_BOOT_ENV_CALLBACK(ethaddr, on_ethaddr);
 
+int eth_start_udev(struct udevice *dev)
+{
+	struct eth_device_priv *priv = dev_get_uclass_priv(dev);
+	int ret;
+
+	if (priv->running)
+		return 0;
+
+	if (!device_active(dev))
+		return -EINVAL;
+
+	ret = eth_get_ops(dev)->start(dev);
+	if (ret < 0)
+		return ret;
+
+	priv->state = ETH_STATE_ACTIVE;
+	priv->running = true;
+
+	return 0;
+}
+
 int eth_init(void)
 {
-	char *ethact = env_get("ethact");
-	char *ethrotate = env_get("ethrotate");
 	struct udevice *current = NULL;
 	struct udevice *old_current;
 	int ret = -ENODEV;
+	char *ethrotate;
+	char *ethact;
+
+	if (in_init_halt)
+		return -EBUSY;
+
+	in_init_halt = true;
+
+	ethact = env_get("ethact");
+	ethrotate = env_get("ethrotate");
 
 	/*
 	 * When 'ethrotate' variable is set to 'no' and 'ethact' variable
@@ -298,8 +328,10 @@ int eth_init(void)
 	if ((ethrotate != NULL) && (strcmp(ethrotate, "no") == 0)) {
 		if (ethact) {
 			current = eth_get_dev_by_name(ethact);
-			if (!current)
-				return -EINVAL;
+			if (!current) {
+				ret = -EINVAL;
+				goto end;
+			}
 		}
 	}
 
@@ -307,7 +339,8 @@ int eth_init(void)
 		current = eth_get_dev();
 		if (!current) {
 			log_err("No ethernet found.\n");
-			return -ENODEV;
+			ret = -ENODEV;
+			goto end;
 		}
 	}
 
@@ -316,19 +349,11 @@ int eth_init(void)
 		if (current) {
 			debug("Trying %s\n", current->name);
 
-			if (device_active(current)) {
-				ret = eth_get_ops(current)->start(current);
-				if (ret >= 0) {
-					struct eth_device_priv *priv =
-						dev_get_uclass_priv(current);
-
-					priv->state = ETH_STATE_ACTIVE;
-					priv->running = true;
-					return 0;
-				}
-			} else {
+			ret = eth_start_udev(current);
+			if (ret < 0)
 				ret = eth_errno;
-			}
+			else
+				break;
 
 			debug("FAIL\n");
 		} else {
@@ -344,6 +369,8 @@ int eth_init(void)
 		current = eth_get_dev();
 	} while (old_current != current);
 
+end:
+	in_init_halt = false;
 	return ret;
 }
 
@@ -352,17 +379,25 @@ void eth_halt(void)
 	struct udevice *current;
 	struct eth_device_priv *priv;
 
+	if (in_init_halt)
+		return;
+
+	in_init_halt = true;
+
 	current = eth_get_dev();
 	if (!current)
-		return;
+		goto end;
 
 	priv = dev_get_uclass_priv(current);
 	if (!priv || !priv->running)
-		return;
+		goto end;
 
 	eth_get_ops(current)->stop(current);
 	priv->state = ETH_STATE_PASSIVE;
 	priv->running = false;
+
+end:
+	in_init_halt = false;
 }
 
 int eth_is_active(struct udevice *dev)

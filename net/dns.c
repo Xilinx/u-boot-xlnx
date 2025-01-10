@@ -22,7 +22,6 @@
  * this stuff is worth it, you can buy me a beer in return.
  */
 
-#include <common.h>
 #include <command.h>
 #include <env.h>
 #include <log.h>
@@ -121,7 +120,6 @@ static void dns_handler(uchar *pkt, unsigned dest, struct in_addr sip,
 	int found, stop, dlen;
 	char ip_str[22];
 	struct in_addr ip_addr;
-
 
 	debug("%s\n", __func__);
 	if (dest != dns_our_port)

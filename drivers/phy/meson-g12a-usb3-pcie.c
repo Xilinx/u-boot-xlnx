@@ -7,7 +7,6 @@
  * Author: Neil Armstrong <narmstron@baylibre.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <malloc.h>
@@ -398,7 +397,6 @@ int meson_g12a_usb3_pcie_phy_probe(struct udevice *dev)
 	ret = clk_enable(&priv->clk);
 	if (ret && ret != -ENOENT && ret != -ENOTSUPP) {
 		pr_err("failed to enable PHY clock\n");
-		clk_free(&priv->clk);
 		return ret;
 	}
 #endif

@@ -8,7 +8,6 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <bootdev.h>
 #include <bootflow.h>
 #include <bootmeth.h>
@@ -151,7 +150,7 @@ static int extlinux_pxe_boot(struct udevice *dev, struct bootflow *bflow)
 	info.bflow = bflow;
 	info.cmdtp = &cmdtp;
 	ret = pxe_setup_ctx(ctx, &cmdtp, extlinux_pxe_getfile, &info, false,
-			    bflow->subdir, false);
+			    bflow->subdir, false, false);
 	if (ret)
 		return log_msg_ret("ctx", -EINVAL);
 
@@ -184,7 +183,7 @@ static const struct udevice_id extlinux_bootmeth_pxe_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(bootmeth_pxe) = {
+U_BOOT_DRIVER(bootmeth_zpxe) = {
 	.name		= "bootmeth_pxe",
 	.id		= UCLASS_BOOTMETH,
 	.of_match	= extlinux_bootmeth_pxe_ids,

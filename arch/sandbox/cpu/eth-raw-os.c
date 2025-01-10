@@ -105,7 +105,12 @@ static int _raw_packet_start(struct eth_sandbox_raw_priv *priv,
 
 	/* Make the socket non-blocking */
 	flags = fcntl(priv->sd, F_GETFL, 0);
-	fcntl(priv->sd, F_SETFL, flags | O_NONBLOCK);
+	ret = fcntl(priv->sd, F_SETFL, flags | O_NONBLOCK);
+	if (ret == -1) {
+		printf("Failed to make socket non-blocking: %d %s\n", errno,
+		       strerror(errno));
+		return -errno;
+	}
 
 	/* Enable promiscuous mode to receive responses meant for us */
 	mr.mr_ifindex = device->sll_ifindex;
@@ -172,7 +177,12 @@ static int _local_inet_start(struct eth_sandbox_raw_priv *priv)
 
 	/* Make the socket non-blocking */
 	flags = fcntl(priv->sd, F_GETFL, 0);
-	fcntl(priv->sd, F_SETFL, flags | O_NONBLOCK);
+	ret = fcntl(priv->sd, F_SETFL, flags | O_NONBLOCK);
+	if (ret == -1) {
+		printf("Failed to make socket non-blocking: %d %s\n", errno,
+		       strerror(errno));
+		return -errno;
+	}
 
 	/* Include the UDP/IP headers on send and receive */
 	ret = setsockopt(priv->sd, IPPROTO_IP, IP_HDRINCL, &one,
@@ -256,7 +266,7 @@ int sandbox_eth_raw_os_send(void *packet, int length,
 		       strerror(errno));
 		return -errno;
 	}
-	return retval;
+	return 0;
 }
 
 int sandbox_eth_raw_os_recv(void *packet, int *length,

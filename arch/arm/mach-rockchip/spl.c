@@ -3,7 +3,7 @@
  * (C) Copyright 2019 Rockchip Electronics Co., Ltd
  */
 
-#include <common.h>
+#include <cpu_func.h>
 #include <debug_uart.h>
 #include <dm.h>
 #include <hang.h>
@@ -13,6 +13,7 @@
 #include <ram.h>
 #include <spl.h>
 #include <asm/arch-rockchip/bootrom.h>
+#include <asm/arch-rockchip/timer.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/bitops.h>
@@ -32,18 +33,26 @@ __weak const char * const boot_devices[BROM_LAST_BOOTSOURCE + 1] = {
 
 const char *board_spl_was_booted_from(void)
 {
-	u32  bootdevice_brom_id = readl(BROM_BOOTSOURCE_ID_ADDR);
+	static u32 brom_bootsource_id_cache = BROM_BOOTSOURCE_UNKNOWN;
+	u32 bootdevice_brom_id;
 	const char *bootdevice_ofpath = NULL;
+
+	if (brom_bootsource_id_cache != BROM_BOOTSOURCE_UNKNOWN)
+		bootdevice_brom_id = brom_bootsource_id_cache;
+	else
+		bootdevice_brom_id = readl(BROM_BOOTSOURCE_ID_ADDR);
 
 	if (bootdevice_brom_id < ARRAY_SIZE(boot_devices))
 		bootdevice_ofpath = boot_devices[bootdevice_brom_id];
 
-	if (bootdevice_ofpath)
+	if (bootdevice_ofpath) {
+		brom_bootsource_id_cache = bootdevice_brom_id;
 		debug("%s: brom_bootdevice_id %x maps to '%s'\n",
 		      __func__, bootdevice_brom_id, bootdevice_ofpath);
-	else
+	} else {
 		debug("%s: failed to resolve brom_bootdevice_id %x\n",
 		      __func__, bootdevice_brom_id);
+	}
 
 	return bootdevice_ofpath;
 }
@@ -69,33 +78,6 @@ u32 spl_boot_device(void)
 u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 {
 	return MMCSD_MODE_RAW;
-}
-
-#define TIMER_LOAD_COUNT_L	0x00
-#define TIMER_LOAD_COUNT_H	0x04
-#define TIMER_CONTROL_REG	0x10
-#define TIMER_EN	0x1
-#define	TIMER_FMODE	BIT(0)
-#define	TIMER_RMODE	BIT(1)
-
-__weak void rockchip_stimer_init(void)
-{
-#if defined(CONFIG_ROCKCHIP_STIMER_BASE)
-	/* If Timer already enabled, don't re-init it */
-	u32 reg = readl(CONFIG_ROCKCHIP_STIMER_BASE + TIMER_CONTROL_REG);
-
-	if (reg & TIMER_EN)
-		return;
-#ifndef CONFIG_ARM64
-	asm volatile("mcr p15, 0, %0, c14, c0, 0"
-		     : : "r"(CONFIG_COUNTER_FREQUENCY));
-#endif
-	writel(0, CONFIG_ROCKCHIP_STIMER_BASE + TIMER_CONTROL_REG);
-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE);
-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + 4);
-	writel(TIMER_EN | TIMER_FMODE, CONFIG_ROCKCHIP_STIMER_BASE +
-	       TIMER_CONTROL_REG);
-#endif
 }
 
 __weak int board_early_init_f(void)
@@ -136,6 +118,20 @@ void board_init_f(ulong dummy)
 	}
 	gd->ram_top = gd->ram_base + get_effective_memsize();
 	gd->ram_top = board_get_usable_ram_top(gd->ram_size);
+
+	if (IS_ENABLED(CONFIG_ARM64) && !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)) {
+		gd->relocaddr = gd->ram_top;
+		arch_reserve_mmu();
+		enable_caches();
+	}
 #endif
 	preloader_console_init();
+}
+
+void spl_board_prepare_for_boot(void)
+{
+	if (!IS_ENABLED(CONFIG_ARM64) || CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
+		return;
+
+	cleanup_before_linux();
 }

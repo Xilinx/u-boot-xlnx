@@ -21,6 +21,9 @@ from dtoc import fdt_util
 from u_boot_pylib import tools
 from u_boot_pylib import tout
 
+# This is imported if needed
+state = None
+
 class Image(section.Entry_section):
     """A Image, representing an output from binman
 
@@ -75,6 +78,10 @@ class Image(section.Entry_section):
     def __init__(self, name, node, copy_to_orig=True, test=False,
                  ignore_missing=False, use_expanded=False, missing_etype=False,
                  generate=True):
+        # Put this here to allow entry-docs and help to work without libfdt
+        global state
+        from binman import state
+
         super().__init__(None, 'section', node, test=test)
         self.copy_to_orig = copy_to_orig
         self.name = name
@@ -185,6 +192,19 @@ class Image(section.Entry_section):
             if os.path.islink(sname):
                 os.remove(sname)
             os.symlink(fname, sname)
+
+    def WriteAlternates(self):
+        """Write out alternative devicetree blobs, each in its own file"""
+        alt_entry = self.FindEntryType('alternates-fdt')
+        if not alt_entry:
+            return
+
+        for alt in alt_entry.alternates:
+            fname, data = alt_entry.ProcessWithFdt(alt)
+            pathname = tools.get_output_filename(fname)
+            tout.info(f"Writing alternate '{alt}' to '{pathname}'")
+            tools.write_file(pathname, data)
+            tout.info("Wrote %#x bytes" % len(data))
 
     def WriteMap(self):
         """Write a map of the image to a .map file
@@ -361,11 +381,10 @@ class Image(section.Entry_section):
             selected_entries.append(entry)
         return selected_entries, lines, widths
 
-    def LookupImageSymbol(self, sym_name, optional, msg, base_addr):
-        """Look up a symbol in an ELF file
+    def GetImageSymbolValue(self, sym_name, optional, msg, base_addr):
+        """Get the value of a Binman symbol
 
-        Looks up a symbol in an ELF file. Only entry types which come from an
-        ELF image can be used by this function.
+        Look up a Binman symbol and obtain its value.
 
         This searches through this image including all of its subsections.
 
@@ -385,12 +404,10 @@ class Image(section.Entry_section):
             optional: True if the symbol is optional. If False this function
                 will raise if the symbol is not found
             msg: Message to display if an error occurs
-            base_addr: Base address of image. This is added to the returned
-                image_pos in most cases so that the returned position indicates
-                where the targeted entry/binary has actually been loaded. But
-                if end-at-4gb is used, this is not done, since the binary is
-                already assumed to be linked to the ROM position and using
-                execute-in-place (XIP).
+            base_addr (int): Base address of image. This is added to the
+                returned value of image-pos so that the returned position
+                indicates where the targeted entry/binary has actually been
+                loaded
 
         Returns:
             Value that should be assigned to that symbol, or None if it was
@@ -403,8 +420,8 @@ class Image(section.Entry_section):
         entries = OrderedDict()
         entries_by_name = {}
         self._CollectEntries(entries, entries_by_name, self)
-        return self.LookupSymbol(sym_name, optional, msg, base_addr,
-                                 entries_by_name)
+        return self.GetSymbolValue(sym_name, optional, msg, base_addr,
+                                   entries_by_name)
 
     def CollectBintools(self):
         """Collect all the bintools used by this image
@@ -418,3 +435,7 @@ class Image(section.Entry_section):
         super().AddBintools(bintools)
         self.bintools = bintools
         return bintools
+
+    def FdtContents(self, fdt_etype):
+        """This base-class implementation simply calls the state function"""
+        return state.GetFdtContents(fdt_etype)

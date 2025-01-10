@@ -6,6 +6,8 @@
 #ifndef _SEQUENCER_H_
 #define _SEQUENCER_H_
 
+#include <config.h>
+
 #define RW_MGR_NUM_DM_PER_WRITE_GROUP (seq->rwcfg->mem_data_mask_width \
 	/ seq->rwcfg->mem_if_write_dqs_width)
 #define RW_MGR_NUM_TRUE_DM_PER_WRITE_GROUP ( \
@@ -161,7 +163,6 @@ struct param_type {
 	u32	write_correct_mask;
 	u32	write_correct_mask_vg;
 };
-
 
 /* global variable holder */
 struct gbl_type {

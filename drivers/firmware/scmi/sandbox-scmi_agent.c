@@ -5,7 +5,6 @@
 
 #define LOG_CATEGORY UCLASS_SCMI_AGENT
 
-#include <common.h>
 #include <dm.h>
 #include <malloc.h>
 #include <scmi_agent.h>
@@ -66,10 +65,10 @@ struct scmi_channel {
 };
 
 static u8 protocols[] = {
-	SCMI_PROTOCOL_ID_POWER_DOMAIN,
-	SCMI_PROTOCOL_ID_CLOCK,
-	SCMI_PROTOCOL_ID_RESET_DOMAIN,
-	SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN,
+	CONFIG_IS_ENABLED(SCMI_POWER_DOMAIN, (SCMI_PROTOCOL_ID_POWER_DOMAIN,))
+	CONFIG_IS_ENABLED(CLK_SCMI, (SCMI_PROTOCOL_ID_CLOCK,))
+	CONFIG_IS_ENABLED(RESET_SCMI, (SCMI_PROTOCOL_ID_RESET_DOMAIN,))
+	CONFIG_IS_ENABLED(DM_REGULATOR_SCMI, (SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN,))
 };
 
 #define NUM_PROTOCOLS ARRAY_SIZE(protocols)
@@ -1124,6 +1123,13 @@ unsigned int sandbox_scmi_channel_id(struct udevice *dev)
 	return chan->channel_id;
 }
 
+static int sandbox_proto_not_supported(struct scmi_msg *msg)
+{
+	*(u32 *)msg->out_msg = SCMI_NOT_SUPPORTED;
+
+	return 0;
+}
+
 static int sandbox_scmi_test_process_msg(struct udevice *dev,
 					 struct scmi_channel *channel,
 					 struct scmi_msg *msg)
@@ -1160,6 +1166,9 @@ static int sandbox_scmi_test_process_msg(struct udevice *dev,
 		}
 		break;
 	case SCMI_PROTOCOL_ID_POWER_DOMAIN:
+		if (!CONFIG_IS_ENABLED(SCMI_POWER_DOMAIN))
+			return sandbox_proto_not_supported(msg);
+
 		switch (msg->message_id) {
 		case SCMI_PROTOCOL_VERSION:
 			return sandbox_scmi_pwd_protocol_version(dev, msg);
@@ -1180,6 +1189,9 @@ static int sandbox_scmi_test_process_msg(struct udevice *dev,
 		}
 		break;
 	case SCMI_PROTOCOL_ID_CLOCK:
+		if (!CONFIG_IS_ENABLED(CLK_SCMI))
+			return sandbox_proto_not_supported(msg);
+
 		switch (msg->message_id) {
 		case SCMI_PROTOCOL_ATTRIBUTES:
 			return sandbox_scmi_clock_protocol_attribs(dev, msg);
@@ -1196,6 +1208,9 @@ static int sandbox_scmi_test_process_msg(struct udevice *dev,
 		}
 		break;
 	case SCMI_PROTOCOL_ID_RESET_DOMAIN:
+		if (!CONFIG_IS_ENABLED(RESET_SCMI))
+			return sandbox_proto_not_supported(msg);
+
 		switch (msg->message_id) {
 		case SCMI_RESET_DOMAIN_ATTRIBUTES:
 			return sandbox_scmi_rd_attribs(dev, msg);
@@ -1206,6 +1221,9 @@ static int sandbox_scmi_test_process_msg(struct udevice *dev,
 		}
 		break;
 	case SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN:
+		if (!CONFIG_IS_ENABLED(DM_REGULATOR_SCMI))
+			return sandbox_proto_not_supported(msg);
+
 		switch (msg->message_id) {
 		case SCMI_VOLTAGE_DOMAIN_ATTRIBUTES:
 			return sandbox_scmi_voltd_attribs(dev, msg);
@@ -1224,8 +1242,7 @@ static int sandbox_scmi_test_process_msg(struct udevice *dev,
 	case SCMI_PROTOCOL_ID_SYSTEM:
 	case SCMI_PROTOCOL_ID_PERF:
 	case SCMI_PROTOCOL_ID_SENSOR:
-		*(u32 *)msg->out_msg = SCMI_NOT_SUPPORTED;
-		return 0;
+		return sandbox_proto_not_supported(msg);
 	default:
 		break;
 	}

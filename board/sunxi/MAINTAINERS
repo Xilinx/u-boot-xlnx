@@ -132,6 +132,11 @@ M:	Paul Kocialkowski <contact@paulk.fr>
 S:	Maintained
 F:	configs/Ampe_A76_defconfig
 
+ANBERNIC RG35XX-2024
+M:	Chris Morgan <macromorgan@hotmail.com>
+S:	Maintained
+F:	configs/anbernic_rg35xx_h700_defconfig
+
 BANANAPI M1 PLUS
 M:	Jagan Teki <jagan@amarulasolutions.com>
 S:	Maintained
@@ -348,6 +353,11 @@ M:	Chen-Yu Tsai <wens@csie.org>
 S:	Maintained
 F:	configs/libretech_all_h5_cc_h5_defconfig
 
+NANOPI DUO2 BOARD
+M:	Chuanhong Guo <gch981213@gmail.com>
+S:	Maintained
+F:	configs/nanopi_duo2_defconfig
+
 NANOPI-M1 BOARD
 M:	Mylène Josserand <mylene.josserand@free-electrons.com>
 S:	Maintained
@@ -455,6 +465,11 @@ M:	Jernej Skrabec <jernej.skrabec@siol.net>
 S:	Maintained
 F:	configs/orangepi_zero2_defconfig
 
+ORANGEPI ZERO 2W BOARD
+M:	Andre Przywara <andre.przywara@arm.com>
+S:	Maintained
+F:	configs/orangepi_zero2w_defconfig
+
 ORANGEPI ZERO 3 BOARD
 M:	Andre Przywara <andre.przywara@arm.com>
 S:	Maintained
@@ -539,6 +554,12 @@ S:	Maintained
 F:	configs/Sunchip_CX-A99_defconfig
 W:	https://linux-sunxi.org/Sunchip_CX-A99
 
+TANIX TX1 BOARD
+M:	Andre Przywara <andre.przywara@arm.com>
+S:	Maintained
+F:	configs/tanix_tx1_defconfig
+W:	https://linux-sunxi.org/Tanix_TX1
+
 TANIX TX6 BOARD
 M:	Jernej Skrabec <jernej.skrabec@siol.net>
 S:	Maintained
@@ -549,6 +570,11 @@ TBS A711 BOARD
 M:	Maxime Ripard <mripard@kernel.org>
 S:	Maintained
 F:	configs/tbs_a711_defconfig
+
+TRANSPEED 8K618-T BOARD
+M:	Nick Alilovic <nickalilovic@gmail.com>
+S:	Maintained
+F:	configs/transpeed-8k618-t_defconfig
 
 WEXLER-TAB7200 BOARD
 M:	Aleksei Mamlin <mamlinav@gmail.com>

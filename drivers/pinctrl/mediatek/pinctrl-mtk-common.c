@@ -4,7 +4,6 @@
  * Author: Ryder Lee <ryder.lee@mediatek.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
@@ -672,7 +671,7 @@ const struct pinctrl_ops mtk_pinctrl_ops = {
 };
 
 #if CONFIG_IS_ENABLED(DM_GPIO) || \
-    (defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_GPIO))
+    (defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_GPIO))
 static int mtk_gpio_get(struct udevice *dev, unsigned int off)
 {
 	int val, err;
@@ -762,6 +761,15 @@ static int mtk_gpiochip_register(struct udevice *parent)
 	if (!drv)
 		return -ENOENT;
 
+	/*
+	 * Support upstream linux DTSI that define gpio-controller
+	 * in the root node (instead of a dedicated subnode)
+	 */
+	if (dev_read_bool(parent, "gpio-controller")) {
+		node = dev_ofnode(parent);
+		goto bind;
+	}
+
 	ret = -ENOENT;
 	dev_for_each_subnode(node, parent)
 		if (ofnode_read_bool(node, "gpio-controller")) {
@@ -772,6 +780,7 @@ static int mtk_gpiochip_register(struct udevice *parent)
 	if (ret)
 		return ret;
 
+bind:
 	ret = device_bind_with_driver_data(parent, &mtk_gpio_driver,
 					   "mediatek_gpio", 0, node,
 					   &dev);
@@ -782,11 +791,20 @@ static int mtk_gpiochip_register(struct udevice *parent)
 }
 #endif
 
+int mtk_pinctrl_common_bind(struct udevice *dev)
+{
+#if CONFIG_IS_ENABLED(DM_GPIO) || \
+    (defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_GPIO))
+	return mtk_gpiochip_register(dev);
+#else
+	return 0;
+#endif
+}
+
 int mtk_pinctrl_common_probe(struct udevice *dev,
 			     const struct mtk_pinctrl_soc *soc)
 {
 	struct mtk_pinctrl_priv *priv = dev_get_priv(dev);
-	int ret = 0;
 	u32 i = 0;
 	fdt_addr_t addr;
 	u32 base_calc = soc->base_calc;
@@ -804,10 +822,5 @@ int mtk_pinctrl_common_probe(struct udevice *dev,
 		priv->base[i] = (void __iomem *)addr;
 	}
 
-#if CONFIG_IS_ENABLED(DM_GPIO) || \
-    (defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_GPIO))
-	ret = mtk_gpiochip_register(dev);
-#endif
-
-	return ret;
+	return 0;
 }

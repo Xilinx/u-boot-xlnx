@@ -3,7 +3,6 @@
  * Copyright 2017 NXP
  */
 
-#include <common.h>
 #include <fsl_ddr_sdram.h>
 #include <fsl_ddr_dimm_params.h>
 #include <log.h>
@@ -14,7 +13,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#if defined(CONFIG_VID) && (!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD))
+#if defined(CONFIG_VID) && (!defined(CONFIG_SPL) || defined(CONFIG_XPL_BUILD))
 static void fsl_ddr_setup_0v9_volt(memctl_options_t *popts)
 {
 	int vdd;
@@ -95,7 +94,6 @@ found:
 	popts->wrlvl_override = 1;
 	popts->wrlvl_sample = 0xf;
 
-
 	/* Enable ZQ calibration */
 	popts->zq_en = 1;
 
@@ -103,7 +101,7 @@ found:
 	popts->addr_hash = 1;
 
 	popts->ddr_cdr1 = DDR_CDR1_DHC_EN | DDR_CDR1_ODT(DDR_CDR_ODT_60ohm);
-#if defined(CONFIG_VID) && (!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD))
+#if defined(CONFIG_VID) && (!defined(CONFIG_SPL) || defined(CONFIG_XPL_BUILD))
 	fsl_ddr_setup_0v9_volt(popts);
 #endif
 
@@ -126,7 +124,7 @@ int fsl_initdram(void)
 {
 	puts("Initializing DDR....using SPD\n");
 
-#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_SPL) && !defined(CONFIG_XPL_BUILD)
 	gd->ram_size = fsl_ddr_sdram_size();
 #else
 	gd->ram_size = fsl_ddr_sdram();

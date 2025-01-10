@@ -8,7 +8,6 @@
  * Copyright (C) 2012  Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <dm/pinctrl.h>
@@ -6118,8 +6117,8 @@ static const struct pinmux_bias_reg pinmux_bias_regs[] = {
 static int r8a7790_pinmux_soc_init(struct sh_pfc *pfc)
 {
 	/* Initialize TDSEL on old revisions */
-	if ((rmobile_get_cpu_rev_integer() == 1) &&
-	    (rmobile_get_cpu_rev_fraction() == 0))
+	if ((renesas_get_cpu_rev_integer() == 1) &&
+	    (renesas_get_cpu_rev_fraction() == 0))
 		sh_pfc_write(pfc, 0xe6060088, 0x00155554);
 
 	return 0;

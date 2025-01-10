@@ -19,7 +19,6 @@
  * This version now uses the ydevconfig mechanism to set up partitions.
  */
 
-#include <common.h>
 #include <div64.h>
 #include <malloc.h>
 #include <linux/printk.h>
@@ -40,7 +39,6 @@
 
 unsigned yaffs_trace_mask = 0x0; /* Disable logging */
 static int yaffs_errno;
-
 
 void yaffs_bug_fn(const char *fn, int n)
 {
@@ -66,7 +64,6 @@ int yaffsfs_GetLastError(void)
 {
 	return yaffs_errno;
 }
-
 
 int yaffsfs_GetError(void)
 {
@@ -100,7 +97,6 @@ void yaffsfs_LocalInitialisation(void)
 {
 	/* No locking used */
 }
-
 
 static const char *yaffs_file_type_str(struct yaffs_stat *stat)
 {
@@ -306,7 +302,6 @@ void make_a_file(char *yaffsName, char bval, int sizeOfFile)
 
 	} while (sizeOfFile > 0);
 
-
 	yaffs_close(outh);
 }
 
@@ -342,7 +337,6 @@ void cmd_yaffs_mount(char *mp)
 			yaffsfs_GetError(), yaffs_error_str());
 }
 
-
 void cmd_yaffs_umount(char *mp)
 {
 	if (yaffs_unmount(mp) == -1)
@@ -355,12 +349,10 @@ void cmd_yaffs_write_file(char *yaffsName, char bval, int sizeOfFile)
 	make_a_file(yaffsName, bval, sizeOfFile);
 }
 
-
 void cmd_yaffs_read_file(char *fn)
 {
 	read_a_file(fn);
 }
-
 
 void cmd_yaffs_mread_file(char *fn, char *addr)
 {
@@ -382,7 +374,6 @@ void cmd_yaffs_mread_file(char *fn, char *addr)
 	yaffs_close(h);
 }
 
-
 void cmd_yaffs_mwrite_file(char *fn, char *addr, int size)
 {
 	int outh;
@@ -395,7 +386,6 @@ void cmd_yaffs_mwrite_file(char *fn, char *addr, int size)
 
 	yaffs_close(outh);
 }
-
 
 void cmd_yaffs_ls(const char *mountpt, int longlist)
 {
@@ -429,7 +419,6 @@ void cmd_yaffs_ls(const char *mountpt, int longlist)
 
 	yaffs_closedir(d);
 }
-
 
 void cmd_yaffs_mkdir(const char *dir)
 {

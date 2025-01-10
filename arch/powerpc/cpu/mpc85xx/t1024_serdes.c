@@ -3,11 +3,9 @@
  * Copyright 2014 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <asm/fsl_serdes.h>
 #include <asm/processor.h>
 #include <asm/io.h>
-
 
 static u8 serdes_cfg_tbl[][SRDS_MAX_LANES] = {
 	[0x40] = {PCIE1, PCIE1, PCIE1, PCIE1},

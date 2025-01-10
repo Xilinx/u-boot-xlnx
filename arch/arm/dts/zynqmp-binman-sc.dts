@@ -13,13 +13,13 @@
 / {
 	binman: binman {
 		multiple-images;
-		fit-dtb.blob {
-			filename = "fit-dtb.blob";
+		fit-dtb-k24 {
+			filename = "fit-dtb-k24.blob";
 			pad-byte = <0>;
 			fit {
 				fit,align = <0x8>;
 				fit,external-offset = <0x0>;
-				description = "DTBs for SCs+CCs";
+				description = "DTBs for k24 SCs+CCs";
 				fit,fdt-list-val = "zynqmp-sc-k24-revA", "zynqmp-sc-k24-revA-vek385-revA",
 						   "zynqmp-sc-k24-revA-vr-r-a2488-00-revA";
 
@@ -41,19 +41,85 @@
 						fdt = "fdt-1";
 					};
 					conf-2 {
-						description = "*vek385*";
+						description = ".*vek385.*";
 						fdt = "fdt-2";
 					};
 					conf-3 {
-						description = "*vr-r-a2488-00*";
+						description = ".*vr-r-a2488-00.*";
 						fdt = "fdt-3";
 					};
 				};
 			};
 		};
 
+		fit-dtb.blob {
+			filename = "fit-dtb.blob";
+			pad-byte = <0>;
+			fit {
+				fit,align = <0x8>;
+				fit,external-offset = <0x0>;
+				description = "DTBs for origin SCs+CCs";
+				fit,fdt-list-val = "zynqmp-sc-revB",
+						   "zynqmp-sc-vek280-revA", "zynqmp-sc-vek280-revB",
+						   "zynqmp-sc-vhk158-revA", "zynqmp-sc-vpk120-revB",
+						   "zynqmp-sc-vpk180-revA", "zynqmp-sc-vpk180-revB",
+						   "zynqmp-sc-vn-p-b2197-00-revA", "zynqmp-sc-vm-p-b1369-00-revA";
+
+				images {
+					@fdt-SEQ {
+						description = "NAME";
+						type = "flat_dt";
+						arch = "arm64";
+						compression = "none";
+						hash-1 {
+							algo = "md5";
+						};
+					};
+				};
+				configurations {
+					default = "conf-1";
+					conf-1 {
+						description = "SC revB (spec)";
+						fdt = "fdt-1";
+					};
+					conf-2 {
+						description = ".*vek280-revA.*";
+						fdt = "fdt-2";
+					};
+					conf-3 {
+						description = ".*vek280.*";
+						fdt = "fdt-3";
+					};
+					conf-4 {
+						description = ".*vhk158.*";
+						fdt = "fdt-4";
+					};
+					conf-5 {
+						description = ".*vpk120.*";
+						fdt = "fdt-5";
+					};
+					conf-6 {
+						description = ".*vpk180-revA.*";
+						fdt = "fdt-6";
+					};
+					conf-7 {
+						description = ".*vpk180.*";
+						fdt = "fdt-7";
+					};
+					conf-8 {
+						description = ".*vn-p-b2197.*";
+						fdt = "fdt-8";
+					};
+					conf-9 {
+						description = ".*vm-p-b1369.*";
+						fdt = "fdt-9";
+					};
+				};
+			};
+		};
+
 		/* u-boot.itb generation in a static way */
-		itb {
+		u-boot {
 			filename = "u-boot.itb";
 			pad-byte = <0>;
 
@@ -92,7 +158,7 @@
 						};
 					};
 					fdt {
-						description = "Multi DTB fit image";
+						description = "Multi DTB fit image (k24)";
 						type = "flat_dt";
 						arch = "arm64";
 						compression = "none";
@@ -117,9 +183,73 @@
 			};
 		};
 
+		u-boot-k24 {
+			filename = "u-boot-k24.itb";
+			pad-byte = <0>;
+
+			fit {
+				description = "Configuration for Xilinx ZynqMP SoC";
+				fit,align = <0x8>;
+				fit,external-offset = <0x0>;
+				images {
+					uboot {
+						description = "U-Boot (64-bit)";
+						type = "firmware";
+						os = "u-boot";
+						arch = "arm64";
+						compression = "none";
+						load = /bits/ 64 <CONFIG_TEXT_BASE>;
+						entry = /bits/ 64 <CONFIG_TEXT_BASE>;
+						hash {
+							algo = "md5";
+						};
+						u-boot-nodtb {
+						};
+					};
+					atf {
+						description = "Trusted Firmware-A";
+						type = "firmware";
+						os = "arm-trusted-firmware";
+						arch = "arm64";
+						compression = "none";
+						load = /bits/ 64 <CONFIG_BL31_LOAD_ADDR>;
+						entry = /bits/ 64 <CONFIG_BL31_LOAD_ADDR>;
+						hash {
+							algo = "md5";
+						};
+						atf-bl31 {
+							optional;
+						};
+					};
+					fdt {
+						description = "Multi DTB fit image (k24)";
+						type = "flat_dt";
+						arch = "arm64";
+						compression = "none";
+						load = <0x0 0x100000>;
+						hash {
+							algo = "md5";
+						};
+						fdt-blob {
+							filename = "fit-dtb-k24.blob";
+							type = "blob-ext";
+						};
+					};
+				};
+				configurations {
+					default = "conf-1";
+					conf-1 {
+						description = "Multi DTB with TF-A/TEE (k24)";
+						firmware = "atf";
+						loadables = "uboot", "fdt";
+					};
+				};
+			};
+		};
+
 #ifdef CONFIG_SYS_SPI_U_BOOT_OFFS
 		/* Full QSPI image for recovery app */
-		image {
+		qspi {
 			filename = "qspi.bin";
 			pad-byte = <0>;
 
@@ -130,6 +260,21 @@
 			blob-ext@2 {
 				offset = <CONFIG_SYS_SPI_U_BOOT_OFFS>;
 				filename = "u-boot.itb";
+			};
+			fdtmap {
+			};
+		};
+		qspi-k24 {
+			filename = "qspi-k24.bin";
+			pad-byte = <0>;
+
+			blob-ext@1 {
+				offset = <0x0>;
+				filename = "spl/boot.bin";
+			};
+			blob-ext@2 {
+				offset = <CONFIG_SYS_SPI_U_BOOT_OFFS>;
+				filename = "u-boot-k24.itb";
 			};
 			fdtmap {
 			};

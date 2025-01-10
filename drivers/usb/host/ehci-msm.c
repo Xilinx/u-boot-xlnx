@@ -7,8 +7,10 @@
  * Based on Linux driver
  */
 
-#include <common.h>
+#include <clk.h>
 #include <dm.h>
+#include <dm/device_compat.h>
+#include <dm/lists.h>
 #include <errno.h>
 #include <usb.h>
 #include <usb/ehci-ci.h>
@@ -24,6 +26,8 @@ struct msm_ehci_priv {
 	struct usb_ehci *ehci; /* Start of IP core*/
 	struct ulpi_viewport ulpi_vp; /* ULPI Viewport */
 	struct phy phy;
+	struct clk iface_clk;
+	struct clk core_clk;
 };
 
 static int msm_init_after_reset(struct ehci_ctrl *dev)
@@ -52,20 +56,46 @@ static int ehci_usb_probe(struct udevice *dev)
 	struct ehci_hcor *hcor;
 	int ret;
 
+	ret = clk_get_by_name(dev, "core", &p->core_clk);
+	if (ret) {
+		dev_err(dev, "Failed to get core clock: %d\n", ret);
+		return ret;
+	}
+
+	ret = clk_get_by_name(dev, "iface", &p->iface_clk);
+	if (ret) {
+		dev_err(dev, "Failed to get iface clock: %d\n", ret);
+		return ret;
+	}
+
+	ret = clk_prepare_enable(&p->core_clk);
+	if (ret)
+		return ret;
+
+	ret = clk_prepare_enable(&p->iface_clk);
+	if (ret)
+		goto cleanup_core;
+
 	hccr = (struct ehci_hccr *)((phys_addr_t)&ehci->caplength);
 	hcor = (struct ehci_hcor *)((phys_addr_t)hccr +
 			HC_LENGTH(ehci_readl(&(hccr)->cr_capbase)));
 
-	ret = generic_setup_phy(dev, &p->phy, 0);
+	ret = generic_setup_phy(dev, &p->phy, 0, PHY_MODE_USB_HOST, 0);
 	if (ret)
-		return ret;
+		goto cleanup_iface;
 
 	ret = board_usb_init(0, plat->init_type);
 	if (ret < 0)
-		return ret;
+		goto cleanup_iface;
 
 	return ehci_register(dev, hccr, hcor, &msm_ehci_ops, 0,
 			     plat->init_type);
+
+cleanup_iface:
+	clk_disable_unprepare(&p->iface_clk);
+cleanup_core:
+	clk_disable_unprepare(&p->core_clk);
+	return ret;
 }
 
 static int ehci_usb_remove(struct udevice *dev)
@@ -80,6 +110,9 @@ static int ehci_usb_remove(struct udevice *dev)
 
 	/* Stop controller. */
 	clrbits_le32(&ehci->usbcmd, CMD_RUN);
+
+	clk_disable_unprepare(&p->iface_clk);
+	clk_disable_unprepare(&p->core_clk);
 
 	ret = generic_shutdown_phy(&p->phy);
 	if (ret)
@@ -119,6 +152,24 @@ static int ehci_usb_of_to_plat(struct udevice *dev)
 	return 0;
 }
 
+static int ehci_usb_of_bind(struct udevice *dev)
+{
+	ofnode ulpi_node = ofnode_first_subnode(dev_ofnode(dev));
+	ofnode phy_node;
+
+	if (!ofnode_valid(ulpi_node))
+		return 0;
+
+	phy_node = ofnode_first_subnode(ulpi_node);
+	if (!ofnode_valid(phy_node)) {
+		printf("%s: ulpi subnode with no phy\n", __func__);
+		return -ENOENT;
+	}
+
+	return device_bind_driver_to_node(dev, "msm8916_usbphy", "msm8916_usbphy",
+					  phy_node, NULL);
+}
+
 #if defined(CONFIG_CI_UDC)
 /* Little quirk that MSM needs with Chipidea controller
  * Must reinit phy after reset
@@ -132,7 +183,7 @@ void ci_init_after_reset(struct ehci_ctrl *ctrl)
 #endif
 
 static const struct udevice_id ehci_usb_ids[] = {
-	{ .compatible = "qcom,ehci-host", },
+	{ .compatible = "qcom,ci-hdrc", },
 	{ }
 };
 
@@ -141,6 +192,7 @@ U_BOOT_DRIVER(usb_ehci) = {
 	.id	= UCLASS_USB,
 	.of_match = ehci_usb_ids,
 	.of_to_plat = ehci_usb_of_to_plat,
+	.bind = ehci_usb_of_bind,
 	.probe = ehci_usb_probe,
 	.remove = ehci_usb_remove,
 	.ops	= &ehci_usb_ops,

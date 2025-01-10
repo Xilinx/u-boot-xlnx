@@ -3,7 +3,6 @@
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <init.h>
 #include <pci.h>
@@ -14,6 +13,7 @@
 #include <asm/processor.h>
 #include <asm/arch/device.h>
 #include <asm/arch/qemu.h>
+#include <asm/u-boot-x86.h>
 
 static bool i440fx;
 
@@ -108,12 +108,6 @@ int arch_cpu_init(void)
 int checkcpu(void)
 {
 	return 0;
-}
-
-int print_cpuinfo(void)
-{
-	post_code(POST_CPU_INFO);
-	return default_print_cpuinfo();
 }
 #endif
 

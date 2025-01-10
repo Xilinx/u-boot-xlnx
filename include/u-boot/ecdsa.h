@@ -8,7 +8,6 @@
 
 #include <errno.h>
 #include <image.h>
-#include <linux/kconfig.h>
 
 /**
  * crypto_algo API impementation for ECDSA;
@@ -66,5 +65,7 @@ int ecdsa_verify(struct image_sign_info *info,
 /** @} */
 
 #define ECDSA256_BYTES	(256 / 8)
+#define ECDSA384_BYTES	(384 / 8)
+#define ECDSA521_BYTES	((521 + 7) / 8)
 
 #endif

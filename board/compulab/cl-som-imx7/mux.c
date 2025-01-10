@@ -7,7 +7,7 @@
  * Author: Uri Mashiach <uri.mashiach@compulab.co.il>
  */
 
-#include <common.h>
+#include <linux/kernel.h>
 #include <asm/mach-imx/iomux-v3.h>
 #include <asm/arch-mx7/mx7-pins.h>
 
@@ -67,7 +67,7 @@ PADS_SET(espi1_pads)
 
 #endif /* CONFIG_SPI */
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 
 #ifdef CONFIG_FSL_ESDHC_IMX
 
@@ -138,4 +138,4 @@ static iomux_v3_cfg_t const wdog_pads[] = {
 
 PADS_SET(wdog_pads)
 
-#endif /* !CONFIG_SPL_BUILD */
+#endif /* !CONFIG_XPL_BUILD */

@@ -9,7 +9,6 @@
 #ifndef _SPI_H_
 #define _SPI_H_
 
-#include <common.h>
 #include <linux/bitops.h>
 
 /* SPI mode flags */
@@ -42,12 +41,6 @@
 #define SPI_3BYTE_MODE 0x0
 #define SPI_4BYTE_MODE 0x1
 
-/* SPI transfer flags */
-#define SPI_XFER_STRIPE	(1 << 6)
-#define SPI_XFER_MASK	(3 << 8)
-#define SPI_XFER_LOWER	(1 << 8)
-#define SPI_XFER_UPPER	(2 << 8)
-
 /* Max no. of CS supported per spi device */
 #define SPI_CS_CNT_MAX	2
 
@@ -55,6 +48,7 @@
 
 #define	BOTTOM_PROTECT	1
 #define	TOP_PROTECT	0
+
 /**
  * struct dm_spi_bus - SPI bus info
  *
@@ -175,7 +169,10 @@ struct spi_slave {
 #define SPI_XFER_ONCE		(SPI_XFER_BEGIN | SPI_XFER_END)
 #define SPI_XFER_U_PAGE		BIT(4)
 #define SPI_XFER_STACKED	BIT(5)
-#define SPI_XFER_SET_DDR	BIT(6)
+#define SPI_XFER_LOWER		BIT(6)
+#define SPI_XFER_SET_DDR	BIT(7)
+#define SPI_XFER_UPPER		BIT(8)
+
 	/*
 	 * Flag indicating that the spi-controller has multi chip select
 	 * capability and can assert/de-assert more than one chip select
@@ -183,7 +180,7 @@ struct spi_slave {
 	 */
 	bool multi_cs_cap;
 	u32 bytemode;
-	bool multi_die;			/* flash with multiple dies */
+	bool multi_die;		/* flash with multiple dies */
 };
 
 /**

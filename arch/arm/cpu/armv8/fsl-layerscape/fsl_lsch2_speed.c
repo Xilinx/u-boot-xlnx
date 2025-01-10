@@ -4,7 +4,7 @@
  * Copyright 2019 NXP.
  */
 
-#include <common.h>
+#include <config.h>
 #include <clock_legacy.h>
 #include <cpu_func.h>
 #include <asm/global_data.h>
@@ -93,7 +93,7 @@ void get_sys_info(struct sys_info *sys_info)
 
 #define HWA_CGA_M1_CLK_SEL	0xe0000000
 #define HWA_CGA_M1_CLK_SHIFT	29
-#if defined(CONFIG_SYS_DPAA_FMAN) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_SYS_DPAA_FMAN) && !defined(CONFIG_XPL_BUILD)
 	rcw_tmp = in_be32(&gur->rcwsr[7]);
 	switch ((rcw_tmp & HWA_CGA_M1_CLK_SEL) >> HWA_CGA_M1_CLK_SHIFT) {
 	case 2:

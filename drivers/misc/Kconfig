@@ -104,7 +104,7 @@ config ROCKCHIP_OTP
 config ROCKCHIP_IODOMAIN
 	bool "Rockchip IO-domain driver support"
 	depends on DM_REGULATOR && ARCH_ROCKCHIP
-	default y if ROCKCHIP_RK3568
+	default y if ROCKCHIP_RK3328 || ROCKCHIP_RK3568
 	help
 	  Enable support for IO-domains in Rockchip SoCs. It is necessary
 	  for the IO-domain setting of the SoC to match the voltage supplied
@@ -505,6 +505,17 @@ config TEST_DRV
 	  model. This should only be enabled for testing as it is not useful for
 	  anything else.
 
+config TURRIS_OMNIA_MCU
+	bool "Enable Turris Omnia MCU driver"
+	depends on DM_I2C
+	depends on DM_GPIO
+	depends on DM_RNG
+	depends on SYSRESET
+	default y if TARGET_TURRIS_OMNIA
+	help
+	  This enables support for Turris Omnia MCU connected GPIOs and
+	  board power off.
+
 config USB_HUB_USB251XB
 	tristate "USB251XB Hub Controller Configuration Driver"
 	depends on I2C
@@ -527,18 +538,18 @@ config WINBOND_W83627
 	  legacy UART or other devices in the Winbond Super IO chips
 	  on X86 platforms.
 
-config QCOM_GENI_SE
-	bool "Qualcomm GENI Serial Engine Driver"
-	depends on ARCH_SNAPDRAGON
-	help
-	  The driver manages Generic Interface (GENI) firmware based
-	  Qualcomm Technologies, Inc. Universal Peripheral (QUP) Wrapper.
-
 config QFW
 	bool
 	help
 	  Hidden option to enable QEMU fw_cfg interface and uclass. This will
 	  be selected by either CONFIG_CMD_QFW or CONFIG_GENERATE_ACPI_TABLE.
+
+config QFW_ACPI
+	bool
+	default y
+	depends on QFW && GENERATE_ACPI_TABLE && !SANDBOX
+	help
+	  Hidden option to read ACPI tables from QEMU.
 
 config QFW_PIO
 	bool
@@ -553,6 +564,13 @@ config QFW_MMIO
 	help
 	  Hidden option to enable MMIO QEMU fw_cfg interface. This will be
 	  selected by the appropriate QEMU board.
+
+config QFW_SMBIOS
+	bool
+	default y
+	depends on QFW && SMBIOS && !SANDBOX
+	help
+	  Hidden option to read SMBIOS tables from QEMU.
 
 config I2C_EEPROM
 	bool "Enable driver for generic I2C-attached EEPROMs"
@@ -682,12 +700,11 @@ config SL28CPLD
 	  the base driver which provides common access methods for the
 	  sub-drivers.
 
-config USB2244
-	bool "Microchip USB2244 Ultra Fast USB 2.0 SD driver"
-	depends on DM_USB && DM_GPIO
+config SPL_SOCFPGA_DT_REG
+	bool "Enable register setting from device tree in SPL"
+	depends on SPL
 	help
-	  This option enables support for Microchip USB2244 Ultra Fast USB 2.0
-	  SD controller. This driver will reset the usb2244 controller using a
-	  gpio pin.
-
+	  Enable register setting from device tree. This also
+	  provides user a clean interface and all register settings are
+	  centralized in one place, device tree.
 endmenu

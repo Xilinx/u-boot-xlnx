@@ -3,7 +3,6 @@
  * Copyright 2012-2016 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <log.h>
 #include <asm/fsl_pamu.h>
 #include <asm/global_data.h>
@@ -29,7 +28,7 @@ void construct_pamu_addr_table(struct pamu_addr_tbl *tbl, int *num_entries)
 
 	i++;
 #endif
-#if (defined(CONFIG_SPL_BUILD) && (CFG_SYS_INIT_L3_VADDR))
+#if (defined(CONFIG_XPL_BUILD) && (CFG_SYS_INIT_L3_VADDR))
 	tbl->start_addr[i] =
 		(uint64_t)virt_to_phys((void *)CFG_SYS_INIT_L3_VADDR);
 	tbl->size[i] = 256 * 1024; /* 256K CPC flash */

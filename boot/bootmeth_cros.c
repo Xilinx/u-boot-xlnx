@@ -8,7 +8,6 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <blk.h>
 #include <bootdev.h>
 #include <bootflow.h>
@@ -148,7 +147,7 @@ static int scan_part(struct udevice *blk, int partnum,
 {
 	struct blk_desc *desc = dev_get_uclass_plat(blk);
 	struct vb2_keyblock *hdr;
-	struct uuid type;
+	efi_guid_t type;
 	ulong num_blks;
 	int ret;
 
@@ -161,10 +160,10 @@ static int scan_part(struct udevice *blk, int partnum,
 
 	/* Check for kernel partition type */
 	log_debug("part %x: type=%s\n", partnum, info->type_guid);
-	if (uuid_str_to_bin(info->type_guid, (u8 *)&type, UUID_STR_FORMAT_GUID))
+	if (uuid_str_to_bin(info->type_guid, type.b, UUID_STR_FORMAT_GUID))
 		return log_msg_ret("typ", -EINVAL);
 
-	if (memcmp(&cros_kern_type, &type, sizeof(type)))
+	if (guidcmp(&cros_kern_type, &type))
 		return log_msg_ret("typ", -ENOEXEC);
 
 	/* Make a buffer for the header information */
@@ -432,9 +431,9 @@ static int cros_boot(struct udevice *dev, struct bootflow *bflow)
 	}
 
 	if (IS_ENABLED(CONFIG_X86)) {
-		ret = zboot_start(map_to_sysmem(bflow->buf), bflow->size, 0, 0,
-				  map_to_sysmem(bflow->x86_setup),
-				  bflow->cmdline);
+		ret = zboot_run(map_to_sysmem(bflow->buf), bflow->size, 0, 0,
+				map_to_sysmem(bflow->x86_setup),
+				bflow->cmdline);
 	} else {
 		ret = bootm_boot_start(map_to_sysmem(bflow->buf),
 				       bflow->cmdline);

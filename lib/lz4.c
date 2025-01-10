@@ -27,7 +27,6 @@
  *	- LZ4 homepage : http://www.lz4.org
  *	- LZ4 source repository : https://github.com/lz4/lz4
  */
-#include <common.h>
 #include <compiler.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -71,7 +70,6 @@ static void LZ4_wildCopy(void* dstPtr, const void* srcPtr, void* dstEnd)
     BYTE* e = (BYTE*)dstEnd;
     do { LZ4_copy8(d,s); d+=8; s+=8; } while (d<e);
 }
-
 
 /**************************************
 *  Common Constants

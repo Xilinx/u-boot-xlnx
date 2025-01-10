@@ -7,7 +7,6 @@
 
 #define LOG_CATEGORY LOGC_EFI
 
-#include <common.h>
 #include <efi_loader.h>
 #include <efi_variable.h>
 #include <log.h>
@@ -87,7 +86,6 @@ out:
 	return ret;
 }
 
-#ifdef CONFIG_EFI_SECURE_BOOT
 /**
  * efi_init_secure_boot - initialize secure boot state
  *
@@ -113,12 +111,6 @@ static efi_status_t efi_init_secure_boot(void)
 
 	return ret;
 }
-#else
-static efi_status_t efi_init_secure_boot(void)
-{
-	return EFI_SUCCESS;
-}
-#endif /* CONFIG_EFI_SECURE_BOOT */
 
 /**
  * efi_init_capsule - initialize capsule update state
@@ -245,6 +237,13 @@ efi_status_t efi_init_obj_list(void)
 	if (ret != EFI_SUCCESS)
 		goto out;
 
+	if (IS_ENABLED(CONFIG_CMD_BOOTEFI_BOOTMGR)) {
+		/* update boot option after variable service initialized */
+		ret = efi_bootmgr_update_media_device_boot_option();
+		if (ret != EFI_SUCCESS)
+			goto out;
+	}
+
 	/* Define supported languages */
 	ret = efi_init_platform_lang();
 	if (ret != EFI_SUCCESS)
@@ -296,9 +295,11 @@ efi_status_t efi_init_obj_list(void)
 	}
 
 	/* Secure boot */
-	ret = efi_init_secure_boot();
-	if (ret != EFI_SUCCESS)
-		goto out;
+	if (IS_ENABLED(CONFIG_EFI_SECURE_BOOT)) {
+		ret = efi_init_secure_boot();
+		if (ret != EFI_SUCCESS)
+			goto out;
+	}
 
 	/* Indicate supported runtime services */
 	ret = efi_init_runtime_supported();
@@ -316,11 +317,11 @@ efi_status_t efi_init_obj_list(void)
 		if (ret != EFI_SUCCESS)
 			goto out;
 	}
-#ifdef CONFIG_NETDEVICES
-	ret = efi_net_register();
-	if (ret != EFI_SUCCESS)
-		goto out;
-#endif
+	if (IS_ENABLED(CONFIG_NETDEVICES)) {
+		ret = efi_net_register();
+		if (ret != EFI_SUCCESS)
+			goto out;
+	}
 	if (IS_ENABLED(CONFIG_ACPI)) {
 		ret = efi_acpi_register();
 		if (ret != EFI_SUCCESS)

@@ -6,7 +6,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <bootflow.h>
 #include <bootstd.h>
 #include <dm.h>
@@ -123,7 +122,7 @@ static int bootstd_probe(struct udevice *dev)
 	return 0;
 }
 
-/* For now, bind the boormethod device if none are found in the devicetree */
+/* For now, bind the bootmethod device if none are found in the devicetree */
 int dm_scan_other(bool pre_reloc_only)
 {
 	struct driver *drv = ll_entry_start(struct driver, driver);

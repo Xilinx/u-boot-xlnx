@@ -29,7 +29,6 @@
  *        the ispVMLCOUNT function
  */
 
-#include <common.h>
 #include <log.h>
 #include <linux/string.h>
 #include <malloc.h>
@@ -580,7 +579,6 @@ void ispVMFreeMem(void)
 		g_pLVDSList = NULL;
 	}
 }
-
 
 /*
  *

@@ -3,7 +3,6 @@
  * Copyright 2022 Marek Vasut <marex@denx.de>
  */
 
-#include <common.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/ddr.h>
 #include <asm/arch/sys_proto.h>
@@ -15,6 +14,7 @@
 #include <malloc.h>
 #include <net.h>
 #include <miiphy.h>
+#include <power/regulator.h>
 
 #include "lpddr4_timing.h"
 #include "../common/dh_common.h"
@@ -47,6 +47,9 @@ static int dh_imx8_setup_ethaddr(void)
 	if (dh_mac_is_in_env("ethaddr"))
 		return 0;
 
+	if (dh_get_mac_is_enabled("ethernet0"))
+		return 0;
+
 	if (!dh_imx_get_mac_from_fuse(enetaddr))
 		goto out;
 
@@ -64,6 +67,9 @@ static int dh_imx8_setup_eth1addr(void)
 	unsigned char enetaddr[6];
 
 	if (dh_mac_is_in_env("eth1addr"))
+		return 0;
+
+	if (dh_get_mac_is_enabled("ethernet1"))
 		return 0;
 
 	if (!dh_imx_get_mac_from_fuse(enetaddr))

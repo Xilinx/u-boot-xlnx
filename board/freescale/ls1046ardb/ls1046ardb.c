@@ -4,7 +4,7 @@
  * Copyright 2021 NXP
  */
 
-#include <common.h>
+#include <config.h>
 #include <i2c.h>
 #include <fdt_support.h>
 #include <init.h>
@@ -44,7 +44,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 int checkboard(void)
 {
 	static const char *freq[2] = {"100.00MHZ", "156.25MHZ"};

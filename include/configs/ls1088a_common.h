@@ -7,7 +7,7 @@
 #define __LS1088_COMMON_H
 
 /* SPL build */
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 #define SPL_NO_BOARDINFO
 #define SPL_NO_QIXIS
 #define SPL_NO_PCI
@@ -41,7 +41,6 @@
 /* GPIO */
 
 /* I2C */
-
 
 /* Serial Port */
 #define CFG_SYS_NS16550_CLK          (get_bus_freq(0) / 2)
@@ -84,10 +83,8 @@ unsigned long long get_qixis_addr(void);
 #define QIXIS_BASE_PHYS				0x20000000
 #define QIXIS_BASE_PHYS_EARLY			0xC000000
 
-
 #define CFG_SYS_NAND_BASE			0x530000000ULL
 #define CFG_SYS_NAND_BASE_PHYS		0x30000000
-
 
 /* MC firmware */
 /* TODO Actual DPL max length needs to be confirmed with the MC FW team */

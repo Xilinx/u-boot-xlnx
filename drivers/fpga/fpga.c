@@ -5,7 +5,6 @@
  */
 
 /* Generic FPGA support */
-#include <common.h>             /* core U-Boot definitions */
 #include <init.h>
 #include <log.h>
 #include <xilinx.h>             /* xilinx specific definitions */
@@ -30,7 +29,6 @@ static void fpga_no_sup(char *fn, char *msg)
 	else
 		printf("No FPGA support!\n");
 }
-
 
 /* fpga_get_desc
  *	map a device number to a descriptor

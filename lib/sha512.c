@@ -11,13 +11,9 @@
  */
 
 #ifndef USE_HOSTCC
-#include <common.h>
-#include <linux/string.h>
-#else
-#include <string.h>
+#include <u-boot/schedule.h>
 #endif /* USE_HOSTCC */
 #include <compiler.h>
-#include <watchdog.h>
 #include <u-boot/sha512.h>
 
 const uint8_t sha384_der_prefix[SHA384_DER_LEN] = {
@@ -292,7 +288,8 @@ void sha384_csum_wd(const unsigned char *input, unsigned int ilen,
 		unsigned char *output, unsigned int chunk_sz)
 {
 	sha512_context ctx;
-#if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
+#if !defined(USE_HOSTCC) && \
+    (defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG))
 	const unsigned char *end;
 	unsigned char *curr;
 	int chunk;
@@ -300,7 +297,8 @@ void sha384_csum_wd(const unsigned char *input, unsigned int ilen,
 
 	sha384_starts(&ctx);
 
-#if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
+#if !defined(USE_HOSTCC) && \
+    (defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG))
 	curr = (unsigned char *)input;
 	end = input + ilen;
 	while (curr < end) {
@@ -355,7 +353,8 @@ void sha512_csum_wd(const unsigned char *input, unsigned int ilen,
 		unsigned char *output, unsigned int chunk_sz)
 {
 	sha512_context ctx;
-#if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
+#if !defined(USE_HOSTCC) && \
+    (defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG))
 	const unsigned char *end;
 	unsigned char *curr;
 	int chunk;
@@ -363,7 +362,8 @@ void sha512_csum_wd(const unsigned char *input, unsigned int ilen,
 
 	sha512_starts(&ctx);
 
-#if defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG)
+#if !defined(USE_HOSTCC) && \
+    (defined(CONFIG_HW_WATCHDOG) || defined(CONFIG_WATCHDOG))
 	curr = (unsigned char *)input;
 	end = input + ilen;
 	while (curr < end) {

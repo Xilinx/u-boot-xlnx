@@ -10,13 +10,13 @@
  *	Copyright 2004	Sun Microsystems, Inc.
  */
 
-#include <common.h>
 #include <log.h>
 #include <malloc.h>
 #include <linux/stat.h>
 #include <linux/time.h>
 #include <linux/ctype.h>
 #include <asm/byteorder.h>
+#include <u-boot/zlib.h>
 #include "zfs_common.h"
 #include "div64.h"
 
@@ -50,9 +50,7 @@ struct blk_desc *zfs_dev_desc;
 #include <zfs/dsl_dir.h>
 #include <zfs/dsl_dataset.h>
 
-
 #define	ZPOOL_PROP_BOOTFS		"bootfs"
-
 
 /*
  * For nvlist manipulation. (from nvpair.h)
@@ -65,7 +63,6 @@ struct blk_desc *zfs_dev_desc;
 #define	DATA_TYPE_STRING	9
 #define	DATA_TYPE_NVLIST	19
 #define	DATA_TYPE_NVLIST_ARRAY	20
-
 
 /*
  * Macros to get fields in a bp or DVA.
@@ -120,15 +117,12 @@ struct blk_desc *zfs_dev_desc;
 	((zap_leaf_chunk_t *)(l->l_hash + ZAP_LEAF_HASH_NUMENTRIES(bs)))[idx]
 #define	ZAP_LEAF_ENTRY(l, bs, idx) (&ZAP_LEAF_CHUNK(l, bs, idx).l_entry)
 
-
 /*
  * Decompression Entry - lzjb
  */
 #ifndef	NBBY
 #define	NBBY	8
 #endif
-
-
 
 typedef int zfs_decomp_func_t(void *s_start, void *d_start,
 							  uint32_t s_len, uint32_t d_len);
@@ -176,14 +170,12 @@ struct zfs_data {
 
 };
 
-
-
-
 static int
 zlib_decompress(void *s, void *d,
 				uint32_t slen, uint32_t dlen)
 {
-	if (zlib_decompress(s, d, slen, dlen) < 0)
+	uLongf z_dest_len = dlen;
+	if (uncompress(d, &z_dest_len, s, slen) != Z_OK)
 		return ZFS_ERR_BAD_FS;
 	return ZFS_ERR_NONE;
 }
@@ -204,8 +196,6 @@ static decomp_entry_t decomp_table[ZIO_COMPRESS_FUNCTIONS] = {
 	{"gzip-8", zlib_decompress},  /* ZIO_COMPRESS_GZIP8 */
 	{"gzip-9", zlib_decompress},  /* ZIO_COMPRESS_GZIP9 */
 };
-
-
 
 static int zio_read_data(blkptr_t *bp, zfs_endian_t endian,
 						 void *buf, struct zfs_data *data);
@@ -229,7 +219,6 @@ zfs_log2(uint64_t num)
 
 	return i;
 }
-
 
 /* Checksum Functions */
 static void
@@ -334,6 +323,12 @@ vdev_uberblock_compare(uberblock_t *ub1, uberblock_t *ub2)
 	return 0;
 }
 
+static inline int
+is_supported_spa_version(uint64_t version) {
+	return version == FEATURES_SUPPORTED_SPA_VERSION ||
+		(version > 0 && version <= SPA_VERSION);
+}
+
 /*
  * Three pieces of information are needed to verify an uberblock: the magic
  * number, the version number, and the checksum.
@@ -355,14 +350,12 @@ uberblock_verify(uberblock_t *uber, int offset, struct zfs_data *data)
 		return ZFS_ERR_BAD_FS;
 	}
 
-	if (zfs_to_cpu64(uber->ub_magic, LITTLE_ENDIAN) == UBERBLOCK_MAGIC
-		&& zfs_to_cpu64(uber->ub_version, LITTLE_ENDIAN) > 0
-		&& zfs_to_cpu64(uber->ub_version, LITTLE_ENDIAN) <= SPA_VERSION)
+	if (zfs_to_cpu64(uber->ub_magic, LITTLE_ENDIAN) == UBERBLOCK_MAGIC &&
+		is_supported_spa_version(zfs_to_cpu64(uber->ub_version, LITTLE_ENDIAN)))
 		endian = LITTLE_ENDIAN;
 
-	if (zfs_to_cpu64(uber->ub_magic, BIG_ENDIAN) == UBERBLOCK_MAGIC
-		&& zfs_to_cpu64(uber->ub_version, BIG_ENDIAN) > 0
-		&& zfs_to_cpu64(uber->ub_version, BIG_ENDIAN) <= SPA_VERSION)
+	if (zfs_to_cpu64(uber->ub_magic, BIG_ENDIAN) == UBERBLOCK_MAGIC &&
+		is_supported_spa_version(zfs_to_cpu64(uber->ub_version, BIG_ENDIAN)))
 		endian = BIG_ENDIAN;
 
 	if (endian == UNKNOWN_ENDIAN) {
@@ -655,7 +648,7 @@ dmu_read(dnode_end_t *dn, uint64_t blkid, void **buf,
 											dn->endian)
 				<< SPA_MINBLOCKSHIFT;
 			*buf = malloc(size);
-			if (*buf) {
+			if (!*buf) {
 				err = ZFS_ERR_OUT_OF_MEMORY;
 				break;
 			}
@@ -807,7 +800,6 @@ zap_leaf_array_get(zap_leaf_phys_t *l, zfs_endian_t endian, int blksft,
 	return ZFS_ERR_NONE;
 }
 
-
 /*
  * Given a zap_leaf_phys_t, walk thru the zap leaf chunks to get the
  * value for the property "name".
@@ -873,7 +865,6 @@ zap_leaf_lookup(zap_leaf_phys_t *l, zfs_endian_t endian,
 	printf("couldn't find '%s'\n", name);
 	return ZFS_ERR_FILE_NOT_FOUND;
 }
-
 
 /* Verify if this is a fat zap header block */
 static int
@@ -1024,7 +1015,6 @@ fzap_iterate(dnode_end_t *zap_dnode, zap_phys_t *zap,
 	return 0;
 }
 
-
 /*
  * Read in the data of a zap object and find the value for a matching
  * property name.
@@ -1098,7 +1088,6 @@ zap_iterate(dnode_end_t *zap_dnode,
 	free(zapbuf);
 	return 0;
 }
-
 
 /*
  * Get the dnode of an object number from the metadnode of an object set.
@@ -1294,7 +1283,6 @@ dnode_get_path(dnode_end_t *mdn, const char *path_in, dnode_end_t *dn,
 	return err;
 }
 
-
 /*
  * Given a MOS metadnode, get the metadnode of a given filesystem name (fsname),
  * e.g. pool/rootfs, or a given object number (obj), e.g. the object number
@@ -1429,7 +1417,6 @@ dnode_get_fullpath(const char *fullpath, dnode_end_t *mdn,
 			   fsname, snapname, filename);
 	}
 
-
 	err = get_filesystem_dnode(&(data->mos), fsname, dn, data);
 
 	if (err) {
@@ -1559,6 +1546,10 @@ nvlist_find_value(char *nvlist, char *name, int valtype, char **val,
 	return 0;
 }
 
+int is_word_aligned_ptr(void *ptr) {
+	return ((uintptr_t)ptr & (sizeof(void *) - 1)) == 0;
+}
+
 int
 zfs_nvlist_lookup_uint64(char *nvlist, char *name, uint64_t *out)
 {
@@ -1572,6 +1563,20 @@ zfs_nvlist_lookup_uint64(char *nvlist, char *name, uint64_t *out)
 	if (size < sizeof(uint64_t)) {
 		printf("invalid uint64\n");
 		return ZFS_ERR_BAD_FS;
+	}
+
+	/* On arm64, calling be64_to_cpu() on a value stored at a memory address
+	 * that's not 8-byte aligned causes the CPU to reset. Avoid that by copying the
+	 * value somewhere else if needed.
+	 */
+	if (!is_word_aligned_ptr((void *)nvpair)) {
+		uint64_t *alignedptr = malloc(sizeof(uint64_t));
+		if (!alignedptr)
+			return 0;
+		memcpy(alignedptr, nvpair, sizeof(uint64_t));
+		*out = be64_to_cpu(*alignedptr);
+		free(alignedptr);
+		return 1;
 	}
 
 	*out = be64_to_cpu(*(uint64_t *) nvpair);
@@ -1617,6 +1622,11 @@ zfs_nvlist_lookup_nvlist(char *nvlist, char *name)
 							  &size, 0);
 	if (!found)
 		return 0;
+
+	/* Allocate 12 bytes in addition to the nvlist size: One uint32 before the
+	 * nvlist to hold the encoding method, and two zero uint32's after the
+	 * nvlist as the NULL terminator.
+	 */
 	ret = calloc(1, size + 3 * sizeof(uint32_t));
 	if (!ret)
 		return 0;
@@ -1765,7 +1775,7 @@ check_pool_label(struct zfs_data *data)
 		return ZFS_ERR_BAD_FS;
 	}
 
-	if (version > SPA_VERSION) {
+	if (!is_supported_spa_version(version)) {
 		free(nvlist);
 		printf("SPA version too new %llu > %llu\n",
 			   (unsigned long long) version,
@@ -2112,7 +2122,7 @@ zfs_read(zfs_file_t file, char *buf, uint64_t len)
 		 * Find requested blkid and the offset within that block.
 		 */
 		uint64_t blkid = file->offset + red;
-		blkid = do_div(blkid, blksz);
+		uint64_t blkoff = do_div(blkid, blksz);
 		free(data->file_buf);
 		data->file_buf = 0;
 
@@ -2127,8 +2137,7 @@ zfs_read(zfs_file_t file, char *buf, uint64_t len)
 
 		movesize = min(length, data->file_end - (int)file->offset - red);
 
-		memmove(buf, data->file_buf + file->offset + red
-				- data->file_start, movesize);
+		memmove(buf, data->file_buf + blkoff, movesize);
 		buf += movesize;
 		length -= movesize;
 		red += movesize;
@@ -2308,7 +2317,6 @@ zfs_ls(device_t device, const char *path,
 			zfs_unmount(data);
 			return err;
 		}
-
 
 		zap_iterate(&dn, iterate_zap_fs, data);
 

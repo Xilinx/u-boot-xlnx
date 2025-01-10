@@ -3,7 +3,6 @@
  * Copyright (C) 2020 Texas Instruments Incorporated - https://www.ti.com/
  * Pratyush Yadav <p.yadav@ti.com>
  */
-#include <common.h>
 #include <dm.h>
 #include <mux.h>
 #include <mux-internal.h>
@@ -80,7 +79,7 @@ static int dm_test_mux_emul_default_state(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_mux_emul_default_state, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_mux_emul_default_state, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 static int dm_test_mux_emul_select_deselect(struct unit_test_state *uts)
 {
@@ -103,4 +102,4 @@ static int dm_test_mux_emul_select_deselect(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_mux_emul_select_deselect, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_mux_emul_select_deselect, UTF_SCAN_PDATA | UTF_SCAN_FDT);

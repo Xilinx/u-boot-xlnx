@@ -9,6 +9,8 @@
 #ifndef __CACHE_H
 #define __CACHE_H
 
+#include <config.h>
+
 #if defined(CONFIG_MCF520x) || defined(CONFIG_MCF523x) || \
     defined(CONFIG_MCF52x2)
 #define CFG_CF_V2
@@ -134,7 +136,6 @@
 #define CF_ACR_SP		(1 << 3)
 #endif				/* CONFIG_CF_V4 */
 
-
 #ifndef CFG_SYS_CACHE_ICACR
 #define CFG_SYS_CACHE_ICACR	0
 #endif
@@ -183,7 +184,6 @@
 
 #ifndef __ASSEMBLY__		/* put C only stuff in this section */
 
-void icache_invalid(void);
 void dcache_invalid(void);
 
 #endif

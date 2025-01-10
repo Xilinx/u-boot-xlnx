@@ -11,7 +11,6 @@
  */
 
 #define LOG_CATEGORY UCLASS_SPI
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/device_compat.h>
@@ -110,6 +109,9 @@
 #define SR_RF_FULL			BIT(4)
 #define SR_TX_ERR			BIT(5)
 #define SR_DCOL				BIT(6)
+
+/* Bit field in RISR */
+#define RISR_INT_RXOI			BIT(3)
 
 #define RX_TIMEOUT			1000		/* timeout in ms */
 
@@ -217,7 +219,7 @@ static int dw_spi_dwc_init(struct udevice *bus, struct dw_spi_priv *priv)
 
 static int request_gpio_cs(struct udevice *bus)
 {
-#if CONFIG_IS_ENABLED(DM_GPIO) && !defined(CONFIG_SPL_BUILD)
+#if CONFIG_IS_ENABLED(DM_GPIO) && !defined(CONFIG_XPL_BUILD)
 	struct dw_spi_priv *priv = dev_get_priv(bus);
 	int ret;
 
@@ -316,7 +318,6 @@ __weak int dw_spi_get_clk(struct udevice *bus, ulong *rate)
 
 err_rate:
 	clk_disable(&priv->clk);
-	clk_free(&priv->clk);
 
 	return -EINVAL;
 }
@@ -481,7 +482,7 @@ static int poll_transfer(struct dw_spi_priv *priv)
  */
 __weak void external_cs_manage(struct udevice *dev, bool on)
 {
-#if CONFIG_IS_ENABLED(DM_GPIO) && !defined(CONFIG_SPL_BUILD)
+#if CONFIG_IS_ENABLED(DM_GPIO) && !defined(CONFIG_XPL_BUILD)
 	struct dw_spi_priv *priv = dev_get_priv(dev->parent);
 
 	if (!dm_gpio_is_valid(&priv->cs_gpio))
@@ -588,7 +589,7 @@ static int dw_spi_exec_op(struct spi_slave *slave, const struct spi_mem_op *op)
 	struct dw_spi_priv *priv = dev_get_priv(bus);
 	u8 op_len = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
 	u8 op_buf[op_len];
-	u32 cr0;
+	u32 cr0, sts;
 
 	if (read)
 		priv->tmode = CTRLR0_TMOD_EPROMREAD;
@@ -632,12 +633,21 @@ static int dw_spi_exec_op(struct spi_slave *slave, const struct spi_mem_op *op)
 	 * them to fail because we are not reading/writing the fifo fast enough.
 	 */
 	if (read) {
-		priv->rx = op->data.buf.in;
+		void *prev_rx = priv->rx = op->data.buf.in;
 		priv->rx_end = priv->rx + op->data.nbytes;
 
 		dw_write(priv, DW_SPI_SER, 1 << spi_chip_select(slave->dev));
-		while (priv->rx != priv->rx_end)
+		while (priv->rx != priv->rx_end) {
 			dw_reader(priv);
+			if (prev_rx == priv->rx) {
+				sts = dw_read(priv, DW_SPI_RISR);
+				if (sts & RISR_INT_RXOI) {
+					dev_err(bus, "FIFO overflow on Rx\n");
+					return -EIO;
+				}
+			}
+			prev_rx = priv->rx;
+		}
 	} else {
 		u32 val;
 
@@ -729,10 +739,6 @@ static int dw_spi_remove(struct udevice *bus)
 
 #if CONFIG_IS_ENABLED(CLK)
 	ret = clk_disable(&priv->clk);
-	if (ret)
-		return ret;
-
-	clk_free(&priv->clk);
 	if (ret)
 		return ret;
 #endif

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /* Copyright (C) 2019 Stephan Gerhold */
 
-#include <common.h>
 #include <dm.h>
 #include <generic-phy.h>
 #include <dm/device_compat.h>
@@ -92,14 +91,6 @@ static const struct musb_platform_ops ux500_musb_ops = {
 	.disable	= ux500_musb_disable,
 };
 
-int dm_usb_gadget_handle_interrupts(struct udevice *dev)
-{
-	struct ux500_glue *glue = dev_get_priv(dev);
-
-	glue->mdata.host->isr(0, glue->mdata.host);
-	return 0;
-}
-
 static int ux500_musb_probe(struct udevice *dev)
 {
 #ifdef CONFIG_USB_MUSB_HOST
@@ -156,6 +147,19 @@ static int ux500_musb_remove(struct udevice *dev)
 	return 0;
 }
 
+static int ux500_gadget_handle_interrupts(struct udevice *dev)
+{
+	struct ux500_glue *glue = dev_get_priv(dev);
+
+	glue->mdata.host->isr(0, glue->mdata.host);
+
+	return 0;
+}
+
+static const struct usb_gadget_generic_ops ux500_gadget_ops = {
+	.handle_interrupts	= ux500_gadget_handle_interrupts,
+};
+
 static const struct udevice_id ux500_musb_ids[] = {
 	{ .compatible = "stericsson,db8500-musb" },
 	{ }
@@ -165,15 +169,14 @@ U_BOOT_DRIVER(ux500_musb) = {
 	.name		= "ux500-musb",
 #ifdef CONFIG_USB_MUSB_HOST
 	.id		= UCLASS_USB,
+	.ops		= &musb_usb_ops,
 #else
 	.id		= UCLASS_USB_GADGET_GENERIC,
+	.ops		= &ux500_gadget_ops,
 #endif
 	.of_match	= ux500_musb_ids,
 	.probe		= ux500_musb_probe,
 	.remove		= ux500_musb_remove,
-#ifdef CONFIG_USB_MUSB_HOST
-	.ops		= &musb_usb_ops,
-#endif
 	.plat_auto	= sizeof(struct usb_plat),
 	.priv_auto	= sizeof(struct ux500_glue),
 };

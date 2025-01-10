@@ -24,7 +24,8 @@
 		power-domains = <&k3_pds 61 TI_SCI_PD_EXCLUSIVE>,
 				<&k3_pds 135 TI_SCI_PD_EXCLUSIVE>;
 		resets = <&k3_reset 135 0>;
-		clocks = <&k3_clks 61 0>;
+		clocks = <&k3_clks 61 0>, <&k3_clks 135 0>;
+		clock-names = "gtc", "core";
 		assigned-clocks = <&k3_clks 61 0>, <&k3_clks 135 0>;
 		assigned-clock-parents = <&k3_clks 61 2>;
 		assigned-clock-rates = <200000000>, <1250000000>;
@@ -54,12 +55,7 @@
 	ti,secure-host;
 };
 
-&mcu_esm {
-	bootph-pre-ram;
-};
-
 &secure_proxy_sa3 {
-	bootph-pre-ram;
 	/* We require this for boot handshake */
 	status = "okay";
 };
@@ -73,14 +69,65 @@
 	};
 };
 
-&main_esm {
-	bootph-pre-ram;
-};
-
 &main_pktdma {
 	ti,sci = <&dm_tifs>;
 };
 
 &main_bcdma {
 	ti,sci = <&dm_tifs>;
+};
+
+&binman {
+	tiboot3-am62x-gp-evm.bin {
+		filename = "tiboot3-am62x-gp-evm.bin";
+		symlink = "tiboot3.bin";
+		ti-secure-rom {
+			content = <&u_boot_spl_unsigned>, <&ti_fs_gp>,
+				<&combined_tifs_cfg_gp>, <&combined_dm_cfg_gp>;
+			combined;
+			dm-data;
+			content-sbl = <&u_boot_spl_unsigned>;
+			load = <0x43c00000>;
+			content-sysfw = <&ti_fs_gp>;
+			load-sysfw = <0x40000>;
+			content-sysfw-data = <&combined_tifs_cfg_gp>;
+			load-sysfw-data = <0x67000>;
+			content-dm-data = <&combined_dm_cfg_gp>;
+			load-dm-data = <0x43c3a800>;
+			sw-rev = <1>;
+			keyfile = "ti-degenerate-key.pem";
+		};
+		u_boot_spl_unsigned: u-boot-spl {
+			no-expanded;
+		};
+		ti_fs_gp: ti-fs-gp.bin {
+			filename = "ti-sysfw/ti-fs-firmware-am62x-gp.bin";
+			type = "blob-ext";
+			optional;
+		};
+		combined_tifs_cfg_gp: combined-tifs-cfg-gp.bin {
+			filename = "combined-tifs-cfg.bin";
+			type = "blob-ext";
+		};
+		combined_dm_cfg_gp: combined-dm-cfg-gp.bin {
+			filename = "combined-dm-cfg.bin";
+			type = "blob-ext";
+		};
+
+	};
+};
+
+#include "k3-binman-capsule-r5.dtsi"
+
+// Capsule update GUIDs in string form.  See beagleplay.h
+#define BEAGLEPLAY_TIBOOT3_IMAGE_GUID_STR "0e225a09-f720-4d57-9120-e28f737f5a5e"
+
+&capsule_tiboot3 {
+	efi-capsule {
+		image-guid = BEAGLEPLAY_TIBOOT3_IMAGE_GUID_STR;
+
+		blob {
+			filename = "tiboot3-am62x-gp-evm.bin";
+		};
+	};
 };

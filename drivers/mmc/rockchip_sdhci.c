@@ -5,7 +5,6 @@
  * Rockchip SD Host Controller Interface
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/ofnode.h>
@@ -71,7 +70,6 @@
 #define DLL_RXCLK_NO_INVERTER		BIT(29)
 #define DLL_RXCLK_ORI_GATE		BIT(31)
 #define DLL_TXCLK_TAPNUM_DEFAULT	0x10
-#define DLL_TXCLK_TAPNUM_90_DEGREES	0x9
 #define DLL_TXCLK_TAPNUM_FROM_SW	BIT(24)
 #define DLL_TXCLK_NO_INVERTER		BIT(29)
 #define DLL_STRBIN_TAPNUM_DEFAULT	0x4
@@ -232,7 +230,7 @@ static int rk3399_emmc_get_phy(struct udevice *dev)
 
 	grf_base = syscon_get_first_range(ROCKCHIP_SYSCON_GRF);
 	if (IS_ERR_OR_NULL(grf_base)) {
-		printf("%s Get syscon grf failed", __func__);
+		printf("%s: Get syscon grf failed\n", __func__);
 		return -ENODEV;
 	}
 	grf_phy_offset = ofnode_read_u32_default(phy_node, "reg", 0);
@@ -314,8 +312,10 @@ static int rk3568_sdhci_config_dll(struct sdhci_host *host, u32 clock, bool enab
 	int val, ret;
 	u32 extra, txclk_tapnum;
 
-	if (!enable)
+	if (!enable) {
+		sdhci_writel(host, 0, DWCMSHC_EMMC_DLL_CTRL);
 		return 0;
+	}
 
 	if (clock >= 100 * MHz) {
 		/* reset DLL */
@@ -390,6 +390,8 @@ static int rk3568_sdhci_config_dll(struct sdhci_host *host, u32 clock, bool enab
 static int rk3568_sdhci_set_ios_post(struct sdhci_host *host)
 {
 	struct mmc *mmc = host->mmc;
+	struct rockchip_sdhc_plat *plat = dev_get_plat(mmc->dev);
+	struct mmc_config *cfg = &plat->cfg;
 	u32 reg;
 
 	reg = sdhci_readw(host, SDHCI_HOST_CONTROL2);
@@ -435,6 +437,20 @@ static int rk3568_sdhci_set_ios_post(struct sdhci_host *host)
 		reg &= ~DWCMSHC_ENHANCED_STROBE;
 
 	sdhci_writew(host, reg, DWCMSHC_EMMC_EMMC_CTRL);
+
+	/*
+	 * Reading more than 4 blocks with a single CMD18 command in PIO mode
+	 * triggers Data End Bit Error using a slower mode than HS200. Limit to
+	 * reading max 4 blocks in one command when using PIO mode.
+	 */
+	if (!(host->flags & USE_DMA)) {
+		if (mmc->selected_mode == MMC_HS_200 ||
+		    mmc->selected_mode == MMC_HS_400 ||
+		    mmc->selected_mode == MMC_HS_400_ES)
+			cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
+		else
+			cfg->b_max = 4;
+	}
 
 	return 0;
 }
@@ -555,20 +571,19 @@ static int rockchip_sdhci_probe(struct udevice *dev)
 	struct rockchip_sdhc *priv = dev_get_priv(dev);
 	struct mmc_config *cfg = &plat->cfg;
 	struct sdhci_host *host = &priv->host;
-	struct clk clk;
+	struct clk *clk = &priv->emmc_clk;
 	int ret;
 
 	host->max_clk = cfg->f_max;
-	ret = clk_get_by_index(dev, 0, &clk);
+	ret = clk_get_by_index(dev, 0, clk);
 	if (!ret) {
-		ret = clk_set_rate(&clk, host->max_clk);
+		ret = clk_set_rate(clk, host->max_clk);
 		if (IS_ERR_VALUE(ret))
 			printf("%s clk set rate fail!\n", __func__);
-	} else {
+	} else if (ret != -ENOSYS) {
 		printf("%s fail to get clk\n", __func__);
 	}
 
-	priv->emmc_clk = clk;
 	priv->dev = dev;
 
 	if (data->get_phy) {
@@ -593,19 +608,9 @@ static int rockchip_sdhci_probe(struct udevice *dev)
 	 * Disable use of DMA and force use of PIO mode in SPL to fix an issue
 	 * where loading part of TF-A into SRAM using DMA silently fails.
 	 */
-	if (IS_ENABLED(CONFIG_SPL_BUILD) &&
+	if (IS_ENABLED(CONFIG_XPL_BUILD) &&
 	    dev_read_bool(dev, "u-boot,spl-fifo-mode"))
 		host->flags &= ~USE_DMA;
-
-	/*
-	 * Reading more than 4 blocks with a single CMD18 command in PIO mode
-	 * triggers Data End Bit Error on RK3568 and RK3588. Limit to reading
-	 * max 4 blocks in one command when using PIO mode.
-	 */
-	if (!(host->flags & USE_DMA) &&
-	    (device_is_compatible(dev, "rockchip,rk3568-dwcmshc") ||
-	     device_is_compatible(dev, "rockchip,rk3588-dwcmshc")))
-		cfg->b_max = 4;
 
 	return sdhci_probe(dev);
 }
@@ -648,7 +653,7 @@ static const struct sdhci_data rk3568_data = {
 	.config_dll = rk3568_sdhci_config_dll,
 	.flags = FLAG_INVERTER_FLAG_IN_RXCLK,
 	.hs200_txclk_tapnum = DLL_TXCLK_TAPNUM_DEFAULT,
-	.hs400_txclk_tapnum = DLL_TXCLK_TAPNUM_DEFAULT,
+	.hs400_txclk_tapnum = 0x8,
 };
 
 static const struct sdhci_data rk3588_data = {
@@ -656,7 +661,7 @@ static const struct sdhci_data rk3588_data = {
 	.set_clock = rk3568_sdhci_set_clock,
 	.config_dll = rk3568_sdhci_config_dll,
 	.hs200_txclk_tapnum = DLL_TXCLK_TAPNUM_DEFAULT,
-	.hs400_txclk_tapnum = DLL_TXCLK_TAPNUM_90_DEGREES,
+	.hs400_txclk_tapnum = 0x9,
 };
 
 static const struct udevice_id sdhci_ids[] = {

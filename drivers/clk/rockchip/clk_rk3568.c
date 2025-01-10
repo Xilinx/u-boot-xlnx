@@ -4,7 +4,6 @@
  * Author: Elaine Zhang <zhangqing@rock-chips.com>
  */
 
-#include <common.h>
 #include <bitfield.h>
 #include <clk-uclass.h>
 #include <dm.h>
@@ -13,7 +12,6 @@
 #include <asm/arch-rockchip/cru_rk3568.h>
 #include <asm/arch-rockchip/clock.h>
 #include <asm/arch-rockchip/hardware.h>
-#include <asm/io.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
 #include <dt-bindings/clock/rk3568-cru.h>
@@ -93,7 +91,7 @@ static struct rockchip_pll_clock rk3568_pll_clks[] = {
 		     RK3568_PMU_MODE, 2, 10, 0, rk3568_pll_rates),
 };
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static ulong
 rk3568_pmu_pll_set_rate(struct rk3568_clk_priv *priv,
 			ulong pll_id, ulong rate)
@@ -1528,28 +1526,20 @@ static ulong rk3568_sfc_set_clk(struct rk3568_clk_priv *priv, ulong rate)
 	struct rk3568_cru *cru = priv->cru;
 	int src_clk;
 
-	switch (rate) {
-	case OSC_HZ:
-		src_clk = SCLK_SFC_SEL_24M;
-		break;
-	case 50 * MHz:
-		src_clk = SCLK_SFC_SEL_50M;
-		break;
-	case 75 * MHz:
-		src_clk = SCLK_SFC_SEL_75M;
-		break;
-	case 100 * MHz:
-		src_clk = SCLK_SFC_SEL_100M;
-		break;
-	case 125 * MHz:
-		src_clk = SCLK_SFC_SEL_125M;
-		break;
-	case 150 * MHz:
+	if (rate >= 150 * MHz)
 		src_clk = SCLK_SFC_SEL_150M;
-		break;
-	default:
+	else if (rate >= 125 * MHz)
+		src_clk = SCLK_SFC_SEL_125M;
+	else if (rate >= 100 * MHz)
+		src_clk = SCLK_SFC_SEL_100M;
+	else if (rate >= 75 * MHz)
+		src_clk = SCLK_SFC_SEL_75M;
+	else if (rate >= 50 * MHz)
+		src_clk = SCLK_SFC_SEL_50M;
+	else if (rate >= OSC_HZ)
+		src_clk = SCLK_SFC_SEL_24M;
+	else
 		return -ENOENT;
-	}
 
 	rk_clrsetreg(&cru->clksel_con[28],
 		     SCLK_SFC_SEL_MASK,
@@ -1717,7 +1707,7 @@ static ulong rk3568_emmc_set_bclk(struct rk3568_clk_priv *priv, ulong rate)
 	return rk3568_emmc_get_bclk(priv);
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static ulong rk3568_aclk_vop_get_clk(struct rk3568_clk_priv *priv)
 {
 	struct rk3568_cru *cru = priv->cru;
@@ -2418,10 +2408,12 @@ static ulong rk3568_clk_get_rate(struct clk *clk)
 	case BCLK_EMMC:
 		rate = rk3568_emmc_get_bclk(priv);
 		break;
+	case CLK_USB3OTG0_REF:
+	case CLK_USB3OTG1_REF:
 	case TCLK_EMMC:
 		rate = OSC_HZ;
 		break;
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	case ACLK_VOP:
 		rate = rk3568_aclk_vop_get_clk(priv);
 		break;
@@ -2597,10 +2589,12 @@ static ulong rk3568_clk_set_rate(struct clk *clk, ulong rate)
 	case BCLK_EMMC:
 		ret = rk3568_emmc_set_bclk(priv, rate);
 		break;
+	case CLK_USB3OTG0_REF:
+	case CLK_USB3OTG1_REF:
 	case TCLK_EMMC:
 		ret = OSC_HZ;
 		break;
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	case ACLK_VOP:
 		ret = rk3568_aclk_vop_set_clk(priv, rate);
 		break;
@@ -2900,7 +2894,7 @@ static void rk3568_clk_init(struct rk3568_clk_priv *priv)
 			priv->gpll_hz = GPLL_HZ;
 	}
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	ret = rk3568_bus_set_clk(priv, ACLK_BUS, 150000000);
 	if (ret < 0)
 		printf("Fail to set the ACLK_BUS clock.\n");

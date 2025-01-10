@@ -2,36 +2,21 @@
 
 #include "rk356x-u-boot.dtsi"
 
-/ {
-	chosen {
-		stdout-path = &uart2;
-	};
-};
-
 &gpio0 {
-	bootph-all;
+	bootph-pre-ram;
 };
 
 &sdhci {
 	cap-mmc-highspeed;
-	mmc-ddr-1_8v;
 	pinctrl-names = "default";
 	pinctrl-0 = <&emmc_bus8 &emmc_clk &emmc_cmd &emmc_datastrobe>;
 };
 
 &sfc {
-	bootph-pre-ram;
-	u-boot,spl-sfc-no-dma;
-
 	flash@0 {
 		bootph-pre-ram;
+		bootph-some-ram;
 	};
-};
-
-&uart2 {
-	bootph-all;
-	clock-frequency = <24000000>;
-	status = "okay";
 };
 
 /*
@@ -47,5 +32,5 @@
 };
 
 &vcc_sd_h {
-	bootph-all;
+	bootph-pre-ram;
 };

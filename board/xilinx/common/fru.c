@@ -3,7 +3,6 @@
  * (C) Copyright 2019 - 2020 Xilinx, Inc.
  */
 
-#include <common.h>
 #include <command.h>
 #include <fdtdec.h>
 #include <malloc.h>
@@ -85,4 +84,4 @@ U_BOOT_CMD(
 	fru, 8, 1, do_fru,
 	"FRU table info",
 	fru_help_text
-)
+);

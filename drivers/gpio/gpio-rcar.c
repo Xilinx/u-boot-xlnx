@@ -3,7 +3,6 @@
  * Copyright (C) 2017 Marek Vasut <marek.vasut@gmail.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <malloc.h>
@@ -165,7 +164,6 @@ static int rcar_gpio_probe(struct udevice *dev)
 	}
 
 	ret = clk_enable(&clk);
-	clk_free(&clk);
 	if (ret) {
 		dev_err(dev, "Failed to enable GPIO bank clock\n");
 		return ret;

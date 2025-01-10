@@ -8,7 +8,6 @@
  *
  * (C) Copyright 2008 Atmel Corporation
  */
-#include <common.h>
 #include <dm.h>
 #include <env.h>
 #include <env_internal.h>
@@ -17,7 +16,7 @@
 #include <spi_flash.h>
 #include <search.h>
 #include <errno.h>
-#include <uuid.h>
+#include <u-boot/uuid.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <dm/device-internal.h>
@@ -38,6 +37,15 @@ static ulong env_new_offset	= CONFIG_ENV_OFFSET_REDUND;
 #endif /* CONFIG_ENV_OFFSET_REDUND */
 
 DECLARE_GLOBAL_DATA_PTR;
+
+__weak int spi_get_env_dev(void)
+{
+#ifdef CONFIG_ENV_SPI_BUS
+	return CONFIG_ENV_SPI_BUS;
+#else
+	return 0;
+#endif
+}
 
 static int setup_flash_device(struct spi_flash **env_flash)
 {
@@ -211,8 +219,10 @@ static int env_sf_save(void)
 		saved_size = sect_size - CONFIG_ENV_SIZE;
 		saved_offset = CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE;
 		saved_buffer = malloc(saved_size);
-		if (!saved_buffer)
+		if (!saved_buffer) {
+			ret = -ENOMEM;
 			goto done;
+		}
 
 		ret = spi_flash_read(env_flash, saved_offset,
 			saved_size, saved_buffer);
@@ -319,7 +329,7 @@ done:
 
 __weak void *env_sf_get_env_addr(void)
 {
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	return (void *)CONFIG_ENV_ADDR;
 #else
 	return NULL;

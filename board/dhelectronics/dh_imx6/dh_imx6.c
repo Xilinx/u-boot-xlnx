@@ -5,9 +5,7 @@
  * Copyright (C) 2017 Marek Vasut <marex@denx.de>
  */
 
-#include <common.h>
 #include <dm.h>
-#include <eeprom.h>
 #include <image.h>
 #include <init.h>
 #include <net.h>
@@ -32,6 +30,7 @@
 #include <fuse.h>
 #include <i2c_eeprom.h>
 #include <mmc.h>
+#include <power/regulator.h>
 #include <usb.h>
 #include <linux/delay.h>
 #include <usb/ehci-ci.h>
@@ -90,6 +89,9 @@ int dh_setup_mac_address(void)
 	unsigned char enetaddr[6];
 
 	if (dh_mac_is_in_env("ethaddr"))
+		return 0;
+
+	if (dh_get_mac_is_enabled("ethernet0"))
 		return 0;
 
 	if (!dh_imx_get_mac_from_fuse(enetaddr))

@@ -77,6 +77,15 @@
 	#define BOOTENV_DEV_NAME_USB_DFU(devtypeu, devtypel, instance)
 #endif
 
+#ifdef CONFIG_CMD_MMC
+	#define BOOT_TARGET_MMC(func) \
+		func(MMC, mmc, 0) \
+		func(MMC, mmc, 1) \
+		func(MMC, mmc, 2)
+#else
+	#define BOOT_TARGET_MMC(func)
+#endif
+
 #ifdef CONFIG_CMD_USB
 #define BOOT_TARGET_DEVICES_USB(func) func(USB, usb, 0)
 #else
@@ -95,18 +104,27 @@
 	#define BOOT_TARGET_SCSI(func)
 #endif
 
+#if defined(CONFIG_CMD_DHCP) && defined(CONFIG_CMD_PXE)
+	#define BOOT_TARGET_PXE(func) func(PXE, pxe, na)
+	#define BOOT_TARGET_DHCP(func) func(DHCP, dhcp, na)
+#elif defined(CONFIG_CMD_DHCP)
+	#define BOOT_TARGET_PXE(func)
+	#define BOOT_TARGET_DHCP(func) func(DHCP, dhcp, na)
+#else
+	#define BOOT_TARGET_PXE(func)
+	#define BOOT_TARGET_DHCP(func)
+#endif
+
 #ifndef BOOT_TARGET_DEVICES
 #define BOOT_TARGET_DEVICES(func) \
 	func(ROMUSB, romusb, na)  \
 	func(USB_DFU, usbdfu, na)  \
-	func(MMC, mmc, 0) \
-	func(MMC, mmc, 1) \
-	func(MMC, mmc, 2) \
+	BOOT_TARGET_MMC(func) \
 	BOOT_TARGET_DEVICES_USB(func) \
 	BOOT_TARGET_NVME(func) \
 	BOOT_TARGET_SCSI(func) \
-	func(PXE, pxe, na) \
-	func(DHCP, dhcp, na)
+	BOOT_TARGET_PXE(func) \
+	BOOT_TARGET_DHCP(func)
 #endif
 
 #define BOOTM_SIZE		__stringify(0x1700000)
@@ -119,6 +137,12 @@
 #define RAMDISK_ADDR_R		__stringify(0x13000000)
 
 #include <config_distro_bootcmd.h>
+
+#ifdef CONFIG_OF_UPSTREAM
+#define FDTFILE_NAME		CONFIG_DEFAULT_DEVICE_TREE ".dtb"
+#else
+#define FDTFILE_NAME		"amlogic/" CONFIG_DEFAULT_DEVICE_TREE ".dtb"
+#endif
 
 #ifndef CFG_EXTRA_ENV_SETTINGS
 #define CFG_EXTRA_ENV_SETTINGS \
@@ -133,10 +157,9 @@
 	"pxefile_addr_r=" PXEFILE_ADDR_R "\0" \
 	"fdtoverlay_addr_r=" FDTOVERLAY_ADDR_R "\0" \
 	"ramdisk_addr_r=" RAMDISK_ADDR_R "\0" \
-	"fdtfile=amlogic/" CONFIG_DEFAULT_DEVICE_TREE ".dtb\0" \
+	"fdtfile=" FDTFILE_NAME "\0" \
 	"dfu_alt_info=fitimage ram " KERNEL_ADDR_R " 0x4000000 \0" \
 	BOOTENV
 #endif
-
 
 #endif /* __MESON64_CONFIG_H */

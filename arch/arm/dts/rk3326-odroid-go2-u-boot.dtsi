@@ -48,18 +48,22 @@
 
 &gpio0 {
 	bootph-all;
+	gpio-ranges = <&pinctrl 0 0 32>;
 };
 
 &gpio1 {
 	bootph-all;
+	gpio-ranges = <&pinctrl 0 32 32>;
 };
 
 &gpio2 {
 	bootph-all;
+	gpio-ranges = <&pinctrl 0 64 32>;
 };
 
 &gpio3 {
 	bootph-all;
+	gpio-ranges = <&pinctrl 0 96 32>;
 };
 
 &grf {
@@ -72,6 +76,21 @@
 
 &pmugrf {
 	bootph-all;
+};
+
+&rk817 {
+	regulators {
+		vcc_cam: LDO_REG9 {
+			regulator-name = "vcc_cam";
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
+
+			regulator-state-mem {
+				regulator-off-in-suspend;
+				regulator-suspend-microvolt = <3000000>;
+			};
+		};
+	};
 };
 
 &saradc {

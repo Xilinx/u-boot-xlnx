@@ -5,7 +5,6 @@
  */
 
 #include <blk.h>
-#include <common.h>
 #include <dm.h>
 #include <fwu.h>
 #include <fwu_mdata.h>
@@ -93,6 +92,10 @@ static int dm_test_fwu_mdata_read(struct unit_test_state *uts)
 	struct udevice *dev;
 	struct fwu_mdata mdata = { 0 };
 
+	ut_assertok(setup_blk_device(uts));
+	ut_assertok(populate_mmc_disk_image(uts));
+	ut_assertok(write_mmc_blk_device(uts));
+
 	/*
 	 * Trigger lib/fwu_updates/fwu.c fwu_boottime_checks()
 	 * to populate g_dev global pointer in that library.
@@ -100,9 +103,7 @@ static int dm_test_fwu_mdata_read(struct unit_test_state *uts)
 	event_notify_null(EVT_MAIN_LOOP);
 
 	ut_assertok(uclass_first_device_err(UCLASS_FWU_MDATA, &dev));
-	ut_assertok(setup_blk_device(uts));
-	ut_assertok(populate_mmc_disk_image(uts));
-	ut_assertok(write_mmc_blk_device(uts));
+	ut_assertok(fwu_init());
 
 	ut_assertok(fwu_get_mdata(&mdata));
 
@@ -110,7 +111,7 @@ static int dm_test_fwu_mdata_read(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_fwu_mdata_read, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_fwu_mdata_read, UTF_SCAN_FDT);
 
 static int dm_test_fwu_mdata_write(struct unit_test_state *uts)
 {
@@ -118,18 +119,19 @@ static int dm_test_fwu_mdata_write(struct unit_test_state *uts)
 	struct udevice *dev;
 	struct fwu_mdata mdata = { 0 };
 
+	ut_assertok(setup_blk_device(uts));
+	ut_assertok(populate_mmc_disk_image(uts));
+	ut_assertok(write_mmc_blk_device(uts));
+
 	/*
 	 * Trigger lib/fwu_updates/fwu.c fwu_boottime_checks()
 	 * to populate g_dev global pointer in that library.
 	 */
 	event_notify_null(EVT_MAIN_LOOP);
 
-	ut_assertok(setup_blk_device(uts));
-	ut_assertok(populate_mmc_disk_image(uts));
-	ut_assertok(write_mmc_blk_device(uts));
-
 	ut_assertok(uclass_first_device_err(UCLASS_FWU_MDATA, &dev));
 
+	ut_assertok(fwu_init());
 	ut_assertok(fwu_get_mdata(&mdata));
 
 	active_idx = (mdata.active_index + 1) % CONFIG_FWU_NUM_BANKS;
@@ -140,4 +142,4 @@ static int dm_test_fwu_mdata_write(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_fwu_mdata_write, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_fwu_mdata_write, UTF_SCAN_FDT);

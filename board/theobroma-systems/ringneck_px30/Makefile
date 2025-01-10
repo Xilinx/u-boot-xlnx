@@ -5,3 +5,6 @@
 #
 
 obj-y	+= ringneck-px30.o
+ifneq ($(CONFIG_XPL_BUILD),y)
+obj-y	+= ../common/common.o
+endif

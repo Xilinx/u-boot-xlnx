@@ -23,6 +23,8 @@
  * MA 02111-1307 USA
  */
 
+#include <linux/types.h>
+#include <mach/cpu.h>
 #include <asm/arch/system.h>
 
 #define DMC_OFFSET	0x10000
@@ -58,7 +60,6 @@ enum l2_cache_params {
 	CACHE_ECC_AND_PARITY = (1 << 21),
 	CACHE_ENABLE_FORCE_L2_LOGIC = (1 << 27)
 };
-
 
 #if !defined(CONFIG_SYS_L2CACHE_OFF) && defined(CONFIG_EXYNOS5420)
 /*

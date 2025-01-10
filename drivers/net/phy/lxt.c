@@ -5,7 +5,6 @@
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
  */
-#include <common.h>
 #include <phy.h>
 
 /* LXT971 Status 2 registers */
@@ -15,7 +14,6 @@
 #define MIIM_LXT971_SR2_10FDX     0x0200  /*  10 Mbit full duplex selected */
 #define MIIM_LXT971_SR2_100HDX    0x4000  /* 100 Mbit half duplex selected */
 #define MIIM_LXT971_SR2_100FDX    0x4200  /* 100 Mbit full duplex selected */
-
 
 /* LXT971 */
 static int lxt971_parse_status(struct phy_device *phydev)

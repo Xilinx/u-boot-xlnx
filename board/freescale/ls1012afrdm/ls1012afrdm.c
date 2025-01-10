@@ -3,7 +3,7 @@
  * Copyright 2017-2018, 2021 NXP
  */
 
-#include <common.h>
+#include <config.h>
 #include <fdt_support.h>
 #include <i2c.h>
 #include <asm/cache.h>
@@ -140,7 +140,7 @@ int dram_init(void)
 #endif
 	mmdc_init(&mparam);
 
-#if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
+#if !defined(CONFIG_SPL) || defined(CONFIG_XPL_BUILD)
 	/* This will break-before-make MMU for DDR */
 	update_early_mmu_table();
 #endif

@@ -5,7 +5,6 @@
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  * author Andy Fleming
  */
-#include <common.h>
 #include <phy.h>
 
 #define MIIM_DM9161_SCR                0x10
@@ -21,7 +20,6 @@
 /* DM9161 10BT Configuration/Status */
 #define MIIM_DM9161_10BTCSR    0x12
 #define MIIM_DM9161_10BTCSR_INIT       0x7800
-
 
 /* Davicom DM9161E */
 static int dm9161_config(struct phy_device *phydev)

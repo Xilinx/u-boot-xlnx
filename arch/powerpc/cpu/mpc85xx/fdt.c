@@ -6,7 +6,7 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
 #include <clock_legacy.h>
 #include <env.h>
 #include <log.h>
@@ -427,7 +427,6 @@ static inline void ft_fixup_cache(void *blob)
 
 	ft_fixup_l2cache(blob);
 }
-
 
 void fdt_add_enet_stashing(void *fdt)
 {

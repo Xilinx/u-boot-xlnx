@@ -7,8 +7,7 @@
 #ifndef __FDT_SUPPORT_H
 #define __FDT_SUPPORT_H
 
-#if (defined(CONFIG_OF_LIBFDT) || defined(CONFIG_OF_CONTROL)) && \
-	!defined(USE_HOSTCC)
+#if !defined(USE_HOSTCC)
 
 #include <asm/u-boot.h>
 #include <linux/libfdt.h>
@@ -56,7 +55,17 @@ int fdt_chosen(void *fdt);
 /**
  * Add initrd information to the FDT before booting the OS.
  *
- * @param fdt		FDT address in memory
+ * Adds linux,initrd-start and linux,initrd-end properties to the /chosen node,
+ * creating it if necessary.
+ *
+ * A memory reservation for the ramdisk is added to the FDT, or an existing one
+ * (with matching @initrd_start) updated.
+ *
+ * If @initrd_start == @initrd_end this function does nothing and returns 0.
+ *
+ * @fdt: Pointer to FDT in memory
+ * @initrd_start: Start of ramdisk
+ * @initrd_end: End of ramdisk
  * Return: 0 if ok, or -FDT_ERR_... on error
  */
 int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end);
@@ -193,7 +202,8 @@ int ft_board_setup(void *blob, struct bd_info *bd);
  *
  * This function is called if CONFIG_BOARD_RNG_SEED is set, and must
  * be provided by the board. It should return, via @buf, some suitable
- * seed value to pass to the kernel.
+ * seed value to pass to the kernel. Seed size could be set in a decimal
+ * environment variable rng_seed_size and it defaults to 64 bytes.
  *
  * @param buf         A struct abuf for returning the seed and its size.
  * @return            0 if ok, negative on error.
@@ -233,13 +243,23 @@ int ft_system_setup(void *blob, struct bd_info *bd);
 void set_working_fdt_addr(ulong addr);
 
 /**
- * shrink down the given blob to minimum size + some extrasize if required
+ * fdt_shrink_to_minimum() - shrink FDT while allowing for some margin
+ *
+ * Shrink down the given blob to 'minimum' size + some extrasize.
+ *
+ * The new size is enough to hold the existing contents plus @extrasize bytes,
+ * plus 5 memory reservations. Also, the end of the FDT is aligned to a 4KB
+ * boundary, so it might end up up to 4KB larger than needed.
+ *
+ * If there is an existing memory reservation for @blob in the FDT, it is
+ * updated for the new size.
  *
  * @param blob		FDT blob to update
  * @param extrasize	additional bytes needed
  * Return: 0 if ok, or -FDT_ERR_... on error
  */
 int fdt_shrink_to_minimum(void *blob, uint extrasize);
+
 int fdt_increase_size(void *fdt, int add_len);
 
 int fdt_delete_disabled_nodes(void *blob);
@@ -404,6 +424,8 @@ int arch_fixup_memory_node(void *blob);
 int fdt_setup_simplefb_node(void *fdt, int node, u64 base_address, u32 width,
 			    u32 height, u32 stride, const char *format);
 
+int fdt_add_fb_mem_rsv(void *blob);
+
 int fdt_overlay_apply_verbose(void *fdt, void *fdto);
 
 int fdt_valid(struct fdt_header **blobp);
@@ -418,7 +440,7 @@ int fdt_valid(struct fdt_header **blobp);
  */
 int fdt_get_cells_len(const void *blob, char *nr_cells_name);
 
-#endif /* ifdef CONFIG_OF_LIBFDT */
+#endif /* !USE_HOSTCC */
 
 #ifdef USE_HOSTCC
 int fdtdec_get_int(const void *blob, int node, const char *prop_name,
@@ -442,4 +464,14 @@ void fdt_fixup_board_enet(void *blob);
 #ifdef CONFIG_CMD_PSTORE
 void fdt_fixup_pstore(void *blob);
 #endif
+
+/**
+ * fdt_kaslrseed() - create a 'kaslr-seed' node in chosen
+ *
+ * @blob:	fdt blob
+ * @overwrite:	do not overwrite existing non-zero node unless true
+ * Return:	0 if OK, -ve on error
+ */
+int fdt_kaslrseed(void *blob, bool overwrite);
+
 #endif /* ifndef __FDT_SUPPORT_H */

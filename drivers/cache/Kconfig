@@ -22,11 +22,11 @@ config L2X0_CACHE
 	  ARMv7(32-bit) devices. The driver configures the cache settings
 	  found in the device tree.
 
-config V5L2_CACHE
-	bool "Andes V5L2 cache driver"
+config ANDES_L2_CACHE
+	bool "Andes L2 cache driver"
 	select CACHE
 	help
-	  Support Andes V5L2 cache controller in AE350 platform.
+	  Support Andes L2 cache controller in AE350 platform.
 	  It will configure tag and data ram timing control from the
 	  device tree and enable L2 cache.
 
@@ -44,5 +44,12 @@ config SIFIVE_CCACHE
 	help
 	  This driver is for SiFive Composable L2/L3 cache. It enables cache
 	  ways of composable cache.
+
+config SIFIVE_PL2
+	bool "SiFive private L2 cache"
+	select CACHE
+	help
+	  This driver is for SiFive Private L2 cache. It configures registers
+	  to enable the clock gating feature.
 
 endmenu

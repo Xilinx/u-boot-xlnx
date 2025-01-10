@@ -3,7 +3,7 @@
  * Copyright (C) 2019-20 Sean Anderson <seanga2@gmail.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <clk.h>
 #include <dm.h>
 #include <fdt_support.h>
@@ -32,7 +32,6 @@ static int sram_init(void)
 			continue;
 
 		ret = clk_enable(&clk);
-		clk_free(&clk);
 		if (ret)
 			return ret;
 	}

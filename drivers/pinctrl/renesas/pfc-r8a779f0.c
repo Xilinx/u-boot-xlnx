@@ -7,7 +7,6 @@
  * This file is based on the drivers/pinctrl/renesas/pfc-r8a779a0.c
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <dm/pinctrl.h>
@@ -654,7 +653,6 @@ static const unsigned int i2c5_pins[] = {
 static const unsigned int i2c5_mux[] = {
 	SDA5_MARK, SCL5_MARK,
 };
-
 
 /* - INTC-EX ---------------------------------------------------------------- */
 static const unsigned int intc_ex_irq0_pins[] = {

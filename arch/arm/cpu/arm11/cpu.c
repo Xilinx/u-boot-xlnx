@@ -14,7 +14,6 @@
  * CPU specific code
  */
 
-#include <common.h>
 #include <command.h>
 #include <cpu_func.h>
 #include <irq_func.h>
@@ -116,4 +115,16 @@ void enable_caches(void)
 	dcache_enable();
 #endif
 }
+#endif
+
+#if !CONFIG_IS_ENABLED(SYS_ICACHE_OFF)
+/* Invalidate entire I-cache */
+void invalidate_icache_all(void)
+{
+	unsigned long i = 0;
+
+	asm ("mcr p15, 0, %0, c7, c5, 0" : : "r" (i));
+}
+#else
+void invalidate_icache_all(void) {}
 #endif

@@ -4,13 +4,14 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
 #include <autoboot.h>
 #include <bootretry.h>
 #include <cli.h>
 #include <command.h>
 #include <console.h>
 #include <env.h>
+#include <errno.h>
 #include <fdtdec.h>
 #include <hash.h>
 #include <log.h>
@@ -167,6 +168,9 @@ static int passwd_abort_sha256(uint64_t etime)
 		sha_env_str = AUTOBOOT_STOP_STR_SHA256;
 
 	presskey = malloc_cache_aligned(DELAY_STOP_STR_MAX_LENGTH);
+	if (!presskey)
+		return -ENOMEM;
+
 	c = strstr(sha_env_str, ":");
 	if (c && (c - sha_env_str < DELAY_STOP_STR_MAX_LENGTH)) {
 		/* preload presskey with salt */

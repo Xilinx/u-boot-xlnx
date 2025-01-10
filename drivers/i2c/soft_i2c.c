@@ -15,7 +15,7 @@
  * Please see doc/driver-model/i2c-howto.rst for instructions.
  */
 
-#include <common.h>
+#include <config.h>
 #if defined(CONFIG_AT91FAMILY)
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
@@ -96,7 +96,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define I2C_ACK		0		/* PD_SDA level to ack a byte */
 #define I2C_NOACK	1		/* PD_SDA level to noack a byte */
 
-
 #ifdef DEBUG_I2C
 #define PRINTD(fmt,args...)	do {	\
 		printf (fmt ,##args);	\
@@ -108,16 +107,13 @@ DECLARE_GLOBAL_DATA_PTR;
 /*-----------------------------------------------------------------------
  * Local functions
  */
-#if !defined(CONFIG_SYS_I2C_INIT_BOARD)
 static void  send_reset	(void);
-#endif
 static void  send_start	(void);
 static void  send_stop	(void);
 static void  send_ack	(int);
 static int   write_byte	(uchar byte);
 static uchar read_byte	(int);
 
-#if !defined(CONFIG_SYS_I2C_INIT_BOARD)
 /*-----------------------------------------------------------------------
  * Send a reset sequence consisting of 9 clocks with the data signal high
  * to clock any confused device back into an idle state.  Also send a
@@ -145,7 +141,6 @@ static void send_reset(void)
 	send_stop();
 	I2C_TRISTATE;
 }
-#endif
 
 /*-----------------------------------------------------------------------
  * START: High -> Low on SDA while SCL is High
@@ -278,12 +273,6 @@ static uchar read_byte(int ack)
  */
 static void soft_i2c_init(struct i2c_adapter *adap, int speed, int slaveaddr)
 {
-#if defined(CONFIG_SYS_I2C_INIT_BOARD)
-	/* call board specific i2c bus reset routine before accessing the   */
-	/* environment, which might be in a chip on that bus. For details   */
-	/* about this problem see doc/I2C_Edge_Conditions.                  */
-	i2c_init_board();
-#else
 	/*
 	 * WARNING: Do NOT save speed in a static variable: if the
 	 * I2C routines are called before RAM is initialized (to read
@@ -291,7 +280,6 @@ static void soft_i2c_init(struct i2c_adapter *adap, int speed, int slaveaddr)
 	 * system will crash.
 	 */
 	send_reset ();
-#endif
 }
 
 /*-----------------------------------------------------------------------

@@ -12,7 +12,7 @@
 #define CFG_SYS_UBOOT_BASE	\
 	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 /* malloc f used before GD_FLG_FULL_MALLOC_INIT set */
 #define CFG_MALLOC_F_ADDR		0x930000
 /* For RAW image gives a error info not panic */
@@ -37,15 +37,11 @@
 #define CFG_EXTRA_ENV_SETTINGS \
 	BOOTENV \
 	MEM_LAYOUT_ENV_SETTINGS \
-	"boot_file=Image\0" \
 	"boot_script_dhcp=boot.scr\0" \
 	"console=ttymxc0\0" \
-	"fdt_addr=0x43000000\0" \
 	"fdt_board=dev\0" \
 	"initrd_addr=0x43800000\0" \
 	"initrd_high=0xffffffffffffffff\0" \
-	"setup=setenv setupargs console=tty1 console=${console},${baudrate} " \
-		"consoleblank=0 earlycon\0" \
 	"update_uboot=askenv confirm Did you load flash.bin (y/N)?; " \
 		"if test \"$confirm\" = \"y\"; then " \
 		"setexpr blkcnt ${filesize} + 0x1ff && setexpr blkcnt " \
@@ -62,10 +58,9 @@
 #define CFG_SYS_SDRAM_BASE           0x40000000
 
 /* SDRAM configuration */
-#define PHYS_SDRAM                      0x40000000
-#define PHYS_SDRAM_SIZE			SZ_2G /* 2GB DDR */
-
-/* USB Configs */
-#define CFG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
+#define PHYS_SDRAM                   0x40000000
+#define PHYS_SDRAM_SIZE              (long)(SZ_2G + SZ_1G)
+#define PHYS_SDRAM_2                 0x100000000
+#define PHYS_SDRAM_2_SIZE            (long)(SZ_1G)
 
 #endif /* __VERDIN_IMX8MM_H */

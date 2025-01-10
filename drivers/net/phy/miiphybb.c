@@ -12,7 +12,6 @@
  * channel.
  */
 
-#include <common.h>
 #include <ioports.h>
 #include <ppc_asm.tmpl>
 #include <miiphy.h>
@@ -279,7 +278,6 @@ int bb_miiphy_read(struct mii_dev *miidev, int addr, int devad, int reg)
 
 	return rdreg;
 }
-
 
 /*****************************************************************************
  *

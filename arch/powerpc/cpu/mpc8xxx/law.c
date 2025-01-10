@@ -6,7 +6,6 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
 #include <display_options.h>
 #include <asm/bitops.h>
 #include <asm/global_data.h>
@@ -31,7 +30,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define LAWBAR_ADDR(x) ((u32 *)LAW_BASE + 8 * x)
 #define LAWBAR_SHIFT 12
 #endif
-
 
 static inline phys_addr_t get_law_base_addr(int idx)
 {
@@ -80,7 +78,7 @@ void disable_law(u8 idx)
 }
 
 #if !defined(CONFIG_NAND_SPL) && \
-	(!defined(CONFIG_SPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
+	(!defined(CONFIG_XPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
 static int get_law_entry(u8 i, struct law_entry *e)
 {
 	u32 lawar;
@@ -111,7 +109,7 @@ int set_next_law(phys_addr_t addr, enum law_size sz, enum law_trgt_if id)
 }
 
 #if !defined(CONFIG_NAND_SPL) && \
-	(!defined(CONFIG_SPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
+	(!defined(CONFIG_XPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
 int set_last_law(phys_addr_t addr, enum law_size sz, enum law_trgt_if id)
 {
 	u32 idx;
@@ -131,7 +129,7 @@ int set_last_law(phys_addr_t addr, enum law_size sz, enum law_trgt_if id)
 	return idx;
 }
 
-struct law_entry find_law(phys_addr_t addr)
+struct law_entry find_law_by_addr_id(phys_addr_t addr, enum law_trgt_if id)
 {
 	struct law_entry entry;
 	int i;
@@ -145,6 +143,9 @@ struct law_entry find_law(phys_addr_t addr)
 		u64 upper;
 
 		if (!get_law_entry(i, &entry))
+			continue;
+
+		if (id != -1 && id != entry.trgt_id)
 			continue;
 
 		upper = entry.addr + (2ull << entry.size);

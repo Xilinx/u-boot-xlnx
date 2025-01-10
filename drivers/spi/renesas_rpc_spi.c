@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Renesas RCar Gen3 RPC QSPI driver
+ * Renesas R-Car Gen3 RPC QSPI driver
  *
  * Copyright (C) 2018 Marek Vasut <marek.vasut@gmail.com>
  */
 
-#include <common.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <clk.h>
@@ -146,6 +145,12 @@
 #define RPC_PHYCNT_WBUF		BIT(2)
 #define RPC_PHYCNT_MEM(v)	(((v) & 0x3) << 0)
 
+#define RPCIF_PHYOFFSET1	0x0080	/* R/W */
+#define RPCIF_PHYOFFSET1_DDRTMG(v) (((v) & 0x3) << 28)
+
+#define RPCIF_PHYOFFSET2	0x0084	/* R/W */
+#define RPCIF_PHYOFFSET2_OCTTMG(v) (((v) & 0x7) << 8)
+
 #define RPC_PHYINT		0x0088	/* R/W */
 #define RPC_PHYINT_RSTEN	BIT(18)
 #define RPC_PHYINT_WPEN		BIT(17)
@@ -203,7 +208,7 @@ static void rpc_spi_flush_read_cache(struct udevice *dev)
 static u32 rpc_spi_get_strobe_delay(void)
 {
 #ifndef CONFIG_RZA1
-	u32 cpu_type = rmobile_get_cpu_type();
+	u32 cpu_type = renesas_get_cpu_type();
 
 	/*
 	 * NOTE: RPC_PHYCNT_STRTIM value:
@@ -212,10 +217,11 @@ static u32 rpc_spi_get_strobe_delay(void)
 	 *       7: On other R-Car Gen3
 	 *      15: On R-Car Gen4
 	 */
-	if (cpu_type == RMOBILE_CPU_TYPE_R8A7796 && rmobile_get_cpu_rev_integer() == 1)
+	if (cpu_type == RENESAS_CPU_TYPE_R8A7796 && renesas_get_cpu_rev_integer() == 1)
 		return RPC_PHYCNT_STRTIM(6);
-	else if (cpu_type == RMOBILE_CPU_TYPE_R8A779F0 ||
-		 cpu_type == RMOBILE_CPU_TYPE_R8A779G0)
+	else if (cpu_type == RENESAS_CPU_TYPE_R8A779F0 ||
+		 cpu_type == RENESAS_CPU_TYPE_R8A779G0 ||
+		 cpu_type == RENESAS_CPU_TYPE_R8A779H0)
 		return RPC_PHYCNT_STRTIM2(15);
 	else
 #endif
@@ -226,6 +232,12 @@ static int rpc_spi_claim_bus(struct udevice *dev, bool manual)
 {
 	struct udevice *bus = dev->parent;
 	struct rpc_spi_priv *priv = dev_get_priv(bus);
+
+	setbits_le32(priv->regs + RPCIF_PHYOFFSET1,
+		     RPCIF_PHYOFFSET1_DDRTMG(3));
+	clrsetbits_le32(priv->regs + RPCIF_PHYOFFSET2,
+			RPCIF_PHYOFFSET2_OCTTMG(7),
+			RPCIF_PHYOFFSET2_OCTTMG(4));
 
 	/* NOTE: The 0x260 are undocumented bits, but they must be set. */
 	writel(RPC_PHYCNT_CAL | rpc_spi_get_strobe_delay() | 0x260,
@@ -277,24 +289,24 @@ static int rpc_spi_mem_exec_op(struct spi_slave *spi,
 		writel(RPC_DRCMR_CMD(op->cmd.opcode), priv->regs + RPC_DRCMR);
 		smenr |= RPC_DRENR_CDE;
 
-		writel(0, priv->regs + RPC_DREAR);
 		if (op->addr.nbytes == 4) {
 			writel(RPC_DREAR_EAV(offset >> 25) | RPC_DREAR_EAC(1),
 			       priv->regs + RPC_DREAR);
 			smenr |= RPC_DRENR_ADE(0xF);
 		} else if (op->addr.nbytes == 3) {
+			writel(0, priv->regs + RPC_DREAR);
 			smenr |= RPC_DRENR_ADE(0x7);
 		} else {
+			writel(0, priv->regs + RPC_DREAR);
 			smenr |= RPC_DRENR_ADE(0);
 		}
 
-		writel(0, priv->regs + RPC_DRDMCR);
-		if (op->dummy.nbytes) {
-			writel(8 * op->dummy.nbytes - 1, priv->regs + RPC_DRDMCR);
+		if (op->dummy.nbytes)
 			smenr |= RPC_DRENR_DME;
-		}
 
+		writel(8 * op->dummy.nbytes - 1, priv->regs + RPC_DRDMCR);
 		writel(0, priv->regs + RPC_DROPR);
+		writel(0, priv->regs + RPC_DRDRENR);
 		writel(smenr, priv->regs + RPC_DRENR);
 
 		memcpy_fromio(din, (void *)(priv->extr + offset), op->data.nbytes);
@@ -453,6 +465,7 @@ static const struct dm_spi_ops rpc_spi_ops = {
 static const struct udevice_id rpc_spi_ids[] = {
 	{ .compatible = "renesas,r7s72100-rpc-if" },
 	{ .compatible = "renesas,rcar-gen3-rpc-if" },
+	{ .compatible = "renesas,rcar-gen4-rpc-if" },
 	{ }
 };
 

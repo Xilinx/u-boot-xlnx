@@ -23,7 +23,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <cpu_func.h>
 #include <log.h>
 #include <malloc.h>
@@ -31,7 +30,7 @@
 #include <mmc.h>
 #include <part.h>
 #include <i2c.h>
-#if defined(CONFIG_OMAP54XX) || defined(CONFIG_OMAP44XX)
+#if defined(CONFIG_OMAP54XX)
 #include <palmas.h>
 #endif
 #include <asm/cache.h>
@@ -60,8 +59,8 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* simplify defines to OMAP_HSMMC_USE_GPIO */
-#if (defined(CONFIG_OMAP_GPIO) && !defined(CONFIG_SPL_BUILD)) || \
-	(defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_GPIO))
+#if (defined(CONFIG_OMAP_GPIO) && !defined(CONFIG_XPL_BUILD)) || \
+	(defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_GPIO))
 #define OMAP_HSMMC_USE_GPIO
 #else
 #undef OMAP_HSMMC_USE_GPIO
@@ -271,8 +270,7 @@ static unsigned char mmc_board_init(struct mmc *mmc)
 		&prcm_base->iclken1_core);
 #endif
 
-#if (defined(CONFIG_OMAP54XX) || defined(CONFIG_OMAP44XX)) &&\
-	!CONFIG_IS_ENABLED(DM_REGULATOR)
+#if defined(CONFIG_OMAP54XX) && !CONFIG_IS_ENABLED(DM_REGULATOR)
 	/* PBIAS config needed for MMC1 only */
 	if (mmc_get_blk_desc(mmc)->devnum == 0)
 		vmmc_pbias_config(LDO_VOLT_3V3);
@@ -542,8 +540,7 @@ static int omap_hsmmc_set_signal_voltage(struct mmc *mmc)
 
 #if CONFIG_IS_ENABLED(DM_REGULATOR)
 	return omap_hsmmc_set_io_regulator(mmc, mv);
-#elif (defined(CONFIG_OMAP54XX) || defined(CONFIG_OMAP44XX)) && \
-	defined(CONFIG_PALMAS_POWER)
+#elif defined(CONFIG_OMAP54XX) && defined(CONFIG_PALMAS_POWER)
 	if (mmc_get_blk_desc(mmc)->devnum == 0)
 		vmmc_pbias_config(palmas_ldo_volt);
 	return 0;
@@ -577,7 +574,7 @@ static uint32_t omap_hsmmc_set_capabilities(struct mmc *mmc)
 	return val;
 }
 
-#ifdef MMC_SUPPORTS_TUNING
+#if CONFIG_IS_ENABLED(MMC_SUPPORTS_TUNING)
 static void omap_hsmmc_disable_tuning(struct mmc *mmc)
 {
 	struct hsmmc *mmc_base;
@@ -666,7 +663,7 @@ static int omap_hsmmc_execute_tuning(struct udevice *dev, uint opcode)
 	while (phase_delay <= MAX_PHASE_DELAY) {
 		omap_hsmmc_set_dll(mmc, phase_delay);
 
-		cur_match = !mmc_send_tuning(mmc, opcode, NULL);
+		cur_match = !mmc_send_tuning(mmc, opcode);
 
 		if (cur_match) {
 			if (prev_match) {
@@ -731,7 +728,7 @@ static int omap_hsmmc_execute_tuning(struct udevice *dev, uint opcode)
 	 */
 	for (i = 3; i <= 10; i++) {
 		omap_hsmmc_set_dll(mmc, phase_delay + i);
-		if (mmc_send_tuning(mmc, opcode, NULL)) {
+		if (mmc_send_tuning(mmc, opcode)) {
 			if (temperature < 10000)
 				phase_delay += i + 6;
 			else if (temperature < 20000)
@@ -749,7 +746,7 @@ static int omap_hsmmc_execute_tuning(struct udevice *dev, uint opcode)
 
 	for (i = 2; i >= -10; i--) {
 		omap_hsmmc_set_dll(mmc, phase_delay + i);
-		if (mmc_send_tuning(mmc, opcode, NULL)) {
+		if (mmc_send_tuning(mmc, opcode)) {
 			if (temperature < 10000)
 				phase_delay += i + 12;
 			else if (temperature < 20000)
@@ -906,8 +903,7 @@ static void mmc_reset_controller_fsm(struct hsmmc *mmc_base, u32 bit)
 	 * 3. Wait until the SRC (SRD) bit returns to 0x0
 	 *    (reset procedure is completed).
 	 */
-#if defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX) || \
-	defined(CONFIG_AM33XX) || defined(CONFIG_AM43XX)
+#if defined(CONFIG_OMAP54XX) || defined(CONFIG_AM33XX) || defined(CONFIG_AM43XX)
 	if (!(readl(&mmc_base->sysctl) & bit)) {
 		start = get_timer(0);
 		while (!(readl(&mmc_base->sysctl) & bit)) {
@@ -1518,7 +1514,7 @@ static const struct dm_mmc_ops omap_hsmmc_ops = {
 	.get_cd		= omap_hsmmc_getcd,
 	.get_wp		= omap_hsmmc_getwp,
 #endif
-#ifdef MMC_SUPPORTS_TUNING
+#if CONFIG_IS_ENABLED(MMC_SUPPORTS_TUNING)
 	.execute_tuning = omap_hsmmc_execute_tuning,
 #endif
 	.wait_dat0	= omap_hsmmc_wait_dat0,
@@ -1557,7 +1553,7 @@ int omap_mmc_init(int dev_index, uint host_caps_mask, uint f_max, int cd_gpio,
 #ifdef OMAP_HSMMC2_BASE
 	case 1:
 		priv->base_addr = (struct hsmmc *)OMAP_HSMMC2_BASE;
-#if (defined(CONFIG_OMAP44XX) || defined(CONFIG_OMAP54XX) || \
+#if (defined(CONFIG_OMAP54XX) || \
 	defined(CONFIG_DRA7XX) || defined(CONFIG_AM33XX) || \
 	defined(CONFIG_AM43XX) || defined(CONFIG_ARCH_KEYSTONE)) && \
 		defined(CONFIG_HSMMC2_8BIT)

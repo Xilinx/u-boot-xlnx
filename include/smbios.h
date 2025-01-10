@@ -8,7 +8,7 @@
 #ifndef _SMBIOS_H_
 #define _SMBIOS_H_
 
-#include <dm/ofnode.h>
+#include <linux/types.h>
 
 /* SMBIOS spec version implemented */
 #define SMBIOS_MAJOR_VER	3
@@ -75,14 +75,10 @@ struct __packed smbios3_entry {
 	/** @reserved: reserved */
 	u8 reserved;
 	/** maximum size of SMBIOS table */
-	u32 max_struct_size;
+	u32 table_maximum_size;
 	/** @struct_table_address: 64-bit physical starting address */
 	u64 struct_table_address;
 };
-
-/* These two structures should use the same amount of 16-byte-aligned space */
-static_assert(ALIGN(16, sizeof(struct smbios_entry)) ==
-	      ALIGN(16, sizeof(struct smbios3_entry)));
 
 /* BIOS characteristics */
 #define BIOS_CHARACTERISTICS_PCI_SUPPORTED	(1 << 7)
@@ -109,7 +105,35 @@ struct __packed smbios_type0 {
 	u8 bios_minor_release;
 	u8 ec_major_release;
 	u8 ec_minor_release;
+	u16 extended_bios_rom_size;
 	char eos[SMBIOS_STRUCT_EOS_BYTES];
+};
+
+/**
+ * enum smbios_wakeup_type - wake-up type
+ *
+ * These constants are used for the Wake-Up Type field in the SMBIOS
+ * System Information (Type 1) structure.
+ */
+enum smbios_wakeup_type {
+	/** @SMBIOS_WAKEUP_TYPE_RESERVED: Reserved */
+	SMBIOS_WAKEUP_TYPE_RESERVED,
+	/** @SMBIOS_WAKEUP_TYPE_OTHER: Other */
+	SMBIOS_WAKEUP_TYPE_OTHER,
+	/** @SMBIOS_WAKEUP_TYPE_UNKNOWN: Unknown */
+	SMBIOS_WAKEUP_TYPE_UNKNOWN,
+	/** @SMBIOS_WAKEUP_TYPE_APM_TIMER: APM Timer */
+	SMBIOS_WAKEUP_TYPE_APM_TIMER,
+	/** @SMBIOS_WAKEUP_TYPE_MODEM_RING: Modem Ring */
+	SMBIOS_WAKEUP_TYPE_MODEM_RING,
+	/** @SMBIOS_WAKEUP_TYPE_LAN_REMOTE: LAN Remote */
+	SMBIOS_WAKEUP_TYPE_LAN_REMOTE,
+	/** @SMBIOS_WAKEUP_TYPE_POWER_SWITCH: Power Switch */
+	SMBIOS_WAKEUP_TYPE_POWER_SWITCH,
+	/** @SMBIOS_WAKEUP_TYPE_PCI_PME: PCI PME# */
+	SMBIOS_WAKEUP_TYPE_PCI_PME,
+	/** @SMBIOS_WAKEUP_TYPE_AC_POWER_RESTORED: AC Power Restored */
+	SMBIOS_WAKEUP_TYPE_AC_POWER_RESTORED,
 };
 
 struct __packed smbios_type1 {
@@ -143,6 +167,7 @@ struct __packed smbios_type2 {
 	u8 chassis_location;
 	u16 chassis_handle;
 	u8 board_type;
+	u8 number_contained_objects;
 	char eos[SMBIOS_STRUCT_EOS_BYTES];
 };
 
@@ -330,10 +355,10 @@ int smbios_update_version_full(void *smbios_tab, const char *version);
  * This function clear the device dependent parameters such as
  * serial number for the measurement.
  *
- * @entry: pointer to a struct smbios_entry
+ * @entry: pointer to a struct smbios3_entry
  * @header: pointer to a struct smbios_header
  */
-void smbios_prepare_measurement(const struct smbios_entry *entry,
+void smbios_prepare_measurement(const struct smbios3_entry *entry,
 				struct smbios_header *header);
 
 #endif /* _SMBIOS_H_ */

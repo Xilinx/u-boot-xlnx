@@ -6,7 +6,6 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <dm.h>
 #include <bootdev.h>
 #include <bootflow.h>
@@ -39,7 +38,6 @@ int bootdev_add_bootflow(struct bootflow *bflow)
 	struct bootflow *new;
 	int ret;
 
-	assert(bflow->dev);
 	ret = bootstd_get_priv(&std);
 	if (ret)
 		return ret;
@@ -173,8 +171,10 @@ int bootdev_find_in_blk(struct udevice *dev, struct udevice *blk,
 	 */
 	iter->max_part = MAX_PART_PER_BOOTDEV;
 
-	/* If this is the whole disk, check if we have bootable partitions */
-	if (!iter->part) {
+	if (iter->flags & BOOTFLOWIF_SINGLE_PARTITION) {
+		/* a particular partition was specified, scan it without checking */
+	} else if (!iter->part) {
+		/* This is the whole disk, check if we have bootable partitions */
 		iter->first_bootable = part_get_bootable(desc);
 		log_debug("checking bootable=%d\n", iter->first_bootable);
 	} else if (allow_any_part) {
@@ -434,6 +434,9 @@ int bootdev_find_by_label(const char *label, struct udevice **devp,
 	struct uclass *uc;
 	enum uclass_id id;
 
+	if (!CONFIG_IS_ENABLED(BLK))
+		return -ENOSYS;
+
 	ret = label_to_uclass(label, &seq, &method_flags);
 	if (ret < 0)
 		return log_msg_ret("uc", ret);
@@ -640,6 +643,7 @@ int bootdev_next_prio(struct bootflow_iter *iter, struct udevice **devp)
 	*devp = NULL;
 	log_debug("next prio %d: dev=%p/%s\n", iter->cur_prio, dev,
 		  dev ? dev->name : "none");
+	found = false;
 	do {
 		/*
 		 * Don't probe devices here since they may not be of the
@@ -682,13 +686,13 @@ int bootdev_next_prio(struct bootflow_iter *iter, struct udevice **devp)
 			}
 		} else {
 			ret = device_probe(dev);
-			if (ret) {
+			if (ret)
 				log_debug("Device '%s' failed to probe\n",
 					  dev->name);
-				dev = NULL;
-			}
+			else
+				found = true;
 		}
-	} while (!dev);
+	} while (!found);
 
 	*devp = dev;
 
@@ -701,7 +705,36 @@ int bootdev_setup_iter(struct bootflow_iter *iter, const char *label,
 	struct udevice *bootstd, *dev = NULL;
 	bool show = iter->flags & BOOTFLOWIF_SHOW;
 	int method_flags;
+	char buf[32];
 	int ret;
+
+	if (label) {
+		const char *end = strchr(label, ':');
+
+		if (end) {
+			size_t len = (size_t)(end - label);
+			const char *part = end + 1;
+
+			if (len + 1 > sizeof(buf)) {
+				log_err("label \"%s\" is way too long\n", label);
+				return -EINVAL;
+			}
+
+			memcpy(buf, label, len);
+			buf[len] = '\0';
+			label = buf;
+
+			unsigned long tmp;
+
+			if (strict_strtoul(part, 0, &tmp)) {
+				log_err("Invalid partition number: %s\n", part);
+				return -EINVAL;
+			}
+
+			iter->flags |= BOOTFLOWIF_SINGLE_PARTITION;
+			iter->part = tmp;
+		}
+	}
 
 	ret = uclass_first_device_err(UCLASS_BOOTSTD, &bootstd);
 	if (ret) {

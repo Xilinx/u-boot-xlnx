@@ -7,7 +7,6 @@
  *	Copyright (C) 2012-2013 Jonas Gorski <jogo@openwrt.org>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <log.h>
@@ -295,7 +294,7 @@ static int bcm63xx_hsspi_xfer_dummy_cs(struct udevice *dev, unsigned int data_by
 
 	/* transfer loop */
 	while (data_bytes > 0) {
-		size_t curr_step = min(step_size, data_bytes);
+		size_t curr_step = min(step_size, (size_t)data_bytes);
 		int ret;
 
 		/* copy tx data */
@@ -581,16 +580,12 @@ static int bcm63xx_hsspi_probe(struct udevice *dev)
 	if (ret < 0 && ret != -ENOSYS)
 		return ret;
 
-	clk_free(&clk);
-
 	/* get clock rate */
 	ret = clk_get_by_name(dev, "pll", &clk);
 	if (ret < 0 && ret != -ENOSYS)
 		return ret;
 
 	priv->clk_rate = clk_get_rate(&clk);
-
-	clk_free(&clk);
 
 	/* perform reset */
 	ret = reset_get_by_index(dev, 0, &rst_ctl);

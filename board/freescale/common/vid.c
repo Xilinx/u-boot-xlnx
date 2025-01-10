@@ -5,12 +5,13 @@
  * Copyright 2020 Stephen Carlson <stcarlso@linux.microsoft.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <env.h>
 #include <i2c.h>
 #include <irq_func.h>
 #include <log.h>
+#include <vsprintf.h>
 #include <asm/io.h>
 #ifdef CONFIG_FSL_LSCH2
 #include <asm/arch/immap_lsch2.h>
@@ -793,4 +794,4 @@ U_BOOT_CMD(
 	vdd_read, 1, 0, do_vdd_read,
 	"read VDD",
 	" - Read the voltage specified in mV"
-)
+);

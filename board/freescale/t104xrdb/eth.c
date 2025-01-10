@@ -3,7 +3,7 @@
  * Copyright 2014 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
+#include <config.h>
 #include <net.h>
 #include <netdev.h>
 #include <asm/fsl_serdes.h>
@@ -83,7 +83,6 @@ int board_eth_init(struct bd_info *bis)
 					 miiphy_get_dev_by_name(
 							DEFAULT_FM_MDIO_NAME));
 	}
-
 
 	cpu_eth_init(bis);
 #endif

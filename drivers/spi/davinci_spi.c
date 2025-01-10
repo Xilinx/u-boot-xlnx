@@ -8,7 +8,7 @@
  * Copyright (C) 2007 Atmel Corporation
  */
 
-#include <common.h>
+#include <config.h>
 #include <log.h>
 #include <spi.h>
 #include <malloc.h>
@@ -129,9 +129,6 @@ static int davinci_spi_read(struct davinci_spi_slave *ds, unsigned int len,
 	while (readl(&ds->regs->buf) & SPIBUF_TXFULL_MASK)
 		;
 
-	/* preload the TX buffer to avoid clock starvation */
-	writel(data1_reg_val, &ds->regs->dat1);
-
 	/* keep reading 1 byte until only 1 byte left */
 	while ((len--) > 1)
 		*rxp++ = davinci_spi_xfer_data(ds, data1_reg_val);
@@ -158,12 +155,6 @@ static int davinci_spi_write(struct davinci_spi_slave *ds, unsigned int len,
 	/* wait till TXFULL is deasserted */
 	while (readl(&ds->regs->buf) & SPIBUF_TXFULL_MASK)
 		;
-
-	/* preload the TX buffer to avoid clock starvation */
-	if (len > 2) {
-		writel(data1_reg_val | *txp++, &ds->regs->dat1);
-		len--;
-	}
 
 	/* keep writing 1 byte until only 1 byte left */
 	while ((len--) > 1)
@@ -206,7 +197,6 @@ static int davinci_spi_read_write(struct davinci_spi_slave *ds, unsigned
 
 	return 0;
 }
-
 
 static int __davinci_spi_claim_bus(struct davinci_spi_slave *ds, int cs)
 {

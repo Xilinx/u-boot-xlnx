@@ -5,15 +5,23 @@
 Note: This test doesn't rely on boardenv_* configuration value but they can
 change test behavior.
 
+For example:
+
 # Setup env__saveenv_test_skip to True if saveenv test is not possible or
 # desired and should be skipped.
 env__saveenv_test_skip = True
+
+# Setup env__saveenv_test to set the bootmode if 'modeboot' u-boot environment
+# variable is not set. Test will be skipped if bootmode is not set in both
+# places i.e, boardenv and modeboot u-boot environment variable
+env__saveenv_test = {
+    'bootmode': 'qspiboot',
+}
 
 # This test will be also skipped if the bootmode is detected to JTAG.
 """
 
 import pytest
-import re
 import random
 import ipaddress
 import string
@@ -24,13 +32,16 @@ def setup_saveenv_env(u_boot_console):
     if u_boot_console.config.env.get('env__saveenv_test_skip', False):
         pytest.skip('saveenv test is not enabled')
 
-    output = u_boot_console.run_command('print modeboot')
-    m = re.search('modeboot=(.+?)boot', output)
-    if not m:
-        pytest.skip('bootmode cannnot be determined')
+    output = u_boot_console.run_command('echo $modeboot')
+    if output:
+        bootmode = output
+    else:
+        f = u_boot_console.config.env.get('env__saveenv_test', None)
+        if not f:
+            pytest.skip('bootmode cannot be determined')
+        bootmode = f.get('bootmode', 'jtagboot')
 
-    bootmode = m.group(1)
-    if bootmode == 'jtag':
+    if 'jtag' in bootmode:
         pytest.skip('skipping saveenv test due to jtag bootmode')
 
 # Check return code
@@ -61,6 +72,7 @@ def set_env(u_boot_console, var_name, var_value):
     check_env(u_boot_console, var_name, var_value)
 
 @pytest.mark.buildconfigspec('cmd_saveenv')
+@pytest.mark.buildconfigspec('hush_parser')
 def test_saveenv(u_boot_console):
     """Test the saveenv command in non-JTAG bootmode.
     It saves the U-Boot environment in persistent storage.
@@ -99,7 +111,7 @@ def test_saveenv(u_boot_console):
     set_env(u_boot_console, 'uuid_var', uuid_str)
 
     # Set env for random string including special characters
-    sc = "!#%&\()*+,-./:;<=>?@[\\]^_`{|}~"
+    sc = "!#%&()*+,-./:;<=>?@[\\]^_`{|}~"
     rand_str = ''.join(
         random.choices(' ' + string.ascii_letters + sc + string.digits, k=300)
     )

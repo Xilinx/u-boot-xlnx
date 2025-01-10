@@ -6,7 +6,6 @@
  * Part of this source has been derived from the Linux USB
  * project.
  */
-#include <common.h>
 #include <console.h>
 #include <dm.h>
 #include <env.h>
@@ -15,6 +14,7 @@
 #include <malloc.h>
 #include <memalign.h>
 #include <stdio_dev.h>
+#include <time.h>
 #include <watchdog.h>
 #include <asm/byteorder.h>
 #ifdef CONFIG_SANDBOX
@@ -22,6 +22,18 @@
 #endif
 
 #include <usb.h>
+
+/*
+ * USB vendor and product IDs used for quirks.
+ */
+#define USB_VENDOR_ID_APPLE	0x05ac
+#define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_2021			0x029c
+#define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021	0x029a
+#define USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021		0x029f
+
+#define USB_VENDOR_ID_KEYCHRON	0x3434
+
+#define USB_HID_QUIRK_POLL_NO_REPORT_IDLE	BIT(0)
 
 /*
  * If overwrite_console returns 1, the stdin, stderr and stdout
@@ -106,6 +118,8 @@ struct usb_kbd_pdata {
 	unsigned long	last_report;
 	struct int_queue *intq;
 
+	uint32_t	ifnum;
+
 	uint32_t	repeat_delay;
 
 	uint32_t	usb_in_pointer;
@@ -122,6 +136,11 @@ extern int __maybe_unused net_busy_flag;
 
 /* The period of time between two calls of usb_kbd_testc(). */
 static unsigned long kbd_testc_tms;
+
+int usb_kbd_remove_for_test(void)
+{
+	return console_remove_by_name(DEVNAME);
+}
 
 /* Puts character in the queue and sets up the in and out pointer. */
 static void usb_kbd_put_queue(struct usb_kbd_pdata *data, u8 c)
@@ -150,8 +169,8 @@ static void usb_kbd_put_queue(struct usb_kbd_pdata *data, u8 c)
  */
 static void usb_kbd_setled(struct usb_device *dev)
 {
-	struct usb_interface *iface = &dev->config.if_desc[0];
 	struct usb_kbd_pdata *data = dev->privptr;
+	struct usb_interface *iface = &dev->config.if_desc[data->ifnum];
 	ALLOC_ALIGN_BUFFER(uint32_t, leds, 1, USB_DMA_MINALIGN);
 
 	*leds = data->flags & USB_KBD_LEDMASK;
@@ -365,7 +384,7 @@ static inline void usb_kbd_poll_for_event(struct usb_device *dev)
 #if defined(CONFIG_SYS_USB_EVENT_POLL_VIA_CONTROL_EP)
 	struct usb_interface *iface;
 	struct usb_kbd_pdata *data = dev->privptr;
-	iface = &dev->config.if_desc[0];
+	iface = &dev->config.if_desc[data->ifnum];
 	usb_get_report(dev, iface->desc.bInterfaceNumber,
 		       1, 0, data->new, USB_KBD_BOOT_REPORT_SIZE);
 	if (memcmp(data->old, data->new, USB_KBD_BOOT_REPORT_SIZE)) {
@@ -404,7 +423,7 @@ static int usb_kbd_testc(struct stdio_dev *sdev)
 	 */
 	unsigned long poll_delay = CONFIG_SYS_HZ / 50;
 
-#ifdef CONFIG_CMD_NET
+#if defined(CONFIG_CMD_NET) && !defined(CONFIG_NET_LWIP)
 	/*
 	 * If net_busy_flag is 1, NET transfer is running,
 	 * then we check key-pressed every second (first check may be
@@ -464,6 +483,7 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
 	struct usb_interface *iface;
 	struct usb_endpoint_descriptor *ep;
 	struct usb_kbd_pdata *data;
+	unsigned int quirks = 0;
 	int epNum;
 
 	if (dev->descriptor.bNumConfigurations != 1)
@@ -496,6 +516,15 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
 
 	debug("USB KBD: found interrupt EP: 0x%x\n", ep->bEndpointAddress);
 
+	switch (dev->descriptor.idVendor) {
+	case USB_VENDOR_ID_APPLE:
+	case USB_VENDOR_ID_KEYCHRON:
+		quirks |= USB_HID_QUIRK_POLL_NO_REPORT_IDLE;
+		break;
+	default:
+		break;
+	}
+
 	data = malloc(sizeof(struct usb_kbd_pdata));
 	if (!data) {
 		printf("USB KBD: Error allocating private data\n");
@@ -508,6 +537,8 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
 	/* allocate input buffer aligned and sized to USB DMA alignment */
 	data->new = memalign(USB_DMA_MINALIGN,
 		roundup(USB_KBD_BOOT_REPORT_SIZE, USB_DMA_MINALIGN));
+
+	data->ifnum = ifnum;
 
 	/* Insert private data into USB device structure */
 	dev->privptr = data;
@@ -534,6 +565,14 @@ static int usb_kbd_probe_dev(struct usb_device *dev, unsigned int ifnum)
 	usb_set_idle(dev, iface->desc.bInterfaceNumber, 0, 0);
 #endif
 
+	/*
+	 * Apple and Keychron keyboards do not report the device state. Reports
+	 * are only returned during key presses.
+	 */
+	if (quirks & USB_HID_QUIRK_POLL_NO_REPORT_IDLE) {
+		debug("USB KBD: quirk: skip testing device state\n");
+		return 1;
+	}
 	debug("USB KBD: enable interrupt pipe...\n");
 #ifdef CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE
 	data->intq = create_int_queue(dev, data->intpipe, 1,
@@ -561,17 +600,24 @@ static int probe_usb_keyboard(struct usb_device *dev)
 {
 	char *stdinname;
 	struct stdio_dev usb_kbd_dev;
+	unsigned int ifnum;
+	unsigned int max_ifnum = min((unsigned int)USB_MAX_ACTIVE_INTERFACES,
+				     (unsigned int)dev->config.no_of_if);
 	int error;
 
 	/* Try probing the keyboard */
-	if (usb_kbd_probe_dev(dev, 0) != 1)
+	for (ifnum = 0; ifnum < max_ifnum; ifnum++) {
+		if (usb_kbd_probe_dev(dev, ifnum) == 1)
+			break;
+	}
+	if (ifnum >= max_ifnum)
 		return -ENOENT;
 
 	/* Register the keyboard */
 	debug("USB KBD: register.\n");
 	memset(&usb_kbd_dev, 0, sizeof(struct stdio_dev));
 	strcpy(usb_kbd_dev.name, DEVNAME);
-	usb_kbd_dev.flags =  DEV_FLAGS_INPUT;
+	usb_kbd_dev.flags = DEV_FLAGS_INPUT | DEV_FLAGS_DM;
 	usb_kbd_dev.getc = usb_kbd_getc;
 	usb_kbd_dev.tstc = usb_kbd_testc;
 	usb_kbd_dev.priv = (void *)dev;
@@ -601,71 +647,6 @@ static int probe_usb_keyboard(struct usb_device *dev)
 
 	return 0;
 }
-
-#if !CONFIG_IS_ENABLED(DM_USB)
-/* Search for keyboard and register it if found. */
-int drv_usb_kbd_init(void)
-{
-	int error, i;
-
-	debug("%s: Probing for keyboard\n", __func__);
-	/* Scan all USB Devices */
-	for (i = 0; i < USB_MAX_DEVICE; i++) {
-		struct usb_device *dev;
-
-		/* Get USB device. */
-		dev = usb_get_dev_index(i);
-		if (!dev)
-			break;
-
-		if (dev->devnum == -1)
-			continue;
-
-		error = probe_usb_keyboard(dev);
-		if (!error)
-			return 1;
-		if (error && error != -ENOENT)
-			return error;
-	}
-
-	/* No USB Keyboard found */
-	return -1;
-}
-
-/* Deregister the keyboard. */
-int usb_kbd_deregister(int force)
-{
-#if CONFIG_IS_ENABLED(SYS_STDIO_DEREGISTER)
-	struct stdio_dev *dev;
-	struct usb_device *usb_kbd_dev;
-	struct usb_kbd_pdata *data;
-
-	dev = stdio_get_by_name(DEVNAME);
-	if (dev) {
-		usb_kbd_dev = (struct usb_device *)dev->priv;
-		data = usb_kbd_dev->privptr;
-#if CONFIG_IS_ENABLED(CONSOLE_MUX)
-		if (iomux_replace_device(stdin, DEVNAME, force ? "nulldev" : ""))
-			return 1;
-#endif
-		if (stdio_deregister_dev(dev, force) != 0)
-			return 1;
-#ifdef CONFIG_SYS_USB_EVENT_POLL_VIA_INT_QUEUE
-		destroy_int_queue(usb_kbd_dev, data->intq);
-#endif
-		free(data->new);
-		free(data);
-	}
-
-	return 0;
-#else
-	return 1;
-#endif
-}
-
-#endif
-
-#if CONFIG_IS_ENABLED(DM_USB)
 
 static int usb_kbd_probe(struct udevice *dev)
 {
@@ -731,9 +712,19 @@ static const struct usb_device_id kbd_id_table[] = {
 		.bInterfaceSubClass = USB_SUB_HID_BOOT,
 		.bInterfaceProtocol = USB_PROT_HID_KEYBOARD,
 	},
+	{
+		USB_DEVICE(USB_VENDOR_ID_APPLE,
+			   USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_2021),
+	},
+	{
+		USB_DEVICE(USB_VENDOR_ID_APPLE,
+			   USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_FINGERPRINT_2021),
+	},
+	{
+		USB_DEVICE(USB_VENDOR_ID_APPLE,
+			   USB_DEVICE_ID_APPLE_MAGIC_KEYBOARD_NUMPAD_2021),
+	},
 	{ }		/* Terminating entry */
 };
 
 U_BOOT_USB_DEVICE(usb_kbd, kbd_id_table);
-
-#endif

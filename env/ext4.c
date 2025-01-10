@@ -18,7 +18,6 @@
  * Manjunatha C Achar <a.manjunatha@samsung.com>
  */
 
-#include <common.h>
 #include <part.h>
 
 #include <command.h>
@@ -32,6 +31,7 @@
 #include <ext4fs.h>
 #include <mmc.h>
 #include <scsi.h>
+#include <virtio.h>
 #include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -77,7 +77,7 @@ static int env_ext4_save_buffer(env_t *env_new)
 	dev = dev_desc->devnum;
 	ext4fs_set_blk_dev(dev_desc, &info);
 
-	if (!ext4fs_mount(info.size)) {
+	if (!ext4fs_mount()) {
 		printf("\n** Unable to use %s %s for saveenv **\n",
 		       ifname, dev_and_part);
 		return 1;
@@ -151,6 +151,10 @@ static int env_ext4_load(void)
 	if (!strcmp(ifname, "scsi"))
 		scsi_scan(true);
 #endif
+#if defined(CONFIG_VIRTIO)
+	if (!strcmp(ifname, "virtio"))
+		virtio_init();
+#endif
 
 	part = blk_get_device_part_str(ifname, dev_and_part,
 				       &dev_desc, &info, 1);
@@ -160,7 +164,7 @@ static int env_ext4_load(void)
 	dev = dev_desc->devnum;
 	ext4fs_set_blk_dev(dev_desc, &info);
 
-	if (!ext4fs_mount(info.size)) {
+	if (!ext4fs_mount()) {
 		printf("\n** Unable to use %s %s for loading the env **\n",
 		       ifname, dev_and_part);
 		goto err_env_relocate;

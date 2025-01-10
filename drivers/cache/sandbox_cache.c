@@ -3,7 +3,6 @@
  * Copyright (C) 2019 Intel Corporation <www.intel.com>
  */
 
-#include <common.h>
 #include <cache.h>
 #include <dm.h>
 #include <errno.h>
@@ -27,7 +26,6 @@ static int snadbox_disable(struct udevice *dev)
 {
 	return 0;
 }
-
 
 static const struct cache_ops sandbox_cache_ops = {
 	.get_info	= sandbox_get_info,

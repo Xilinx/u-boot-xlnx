@@ -11,10 +11,8 @@
 
 #include <asm/global_data.h>
 #include <linux/math64.h>
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
-#include <common.h>
 #include <log.h>
 #include <spi.h>
 #include <malloc.h>
@@ -27,9 +25,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/printk.h>
-
-/* linux/include/time.h */
-#define NSEC_PER_SEC	1000000000L
+#include <linux/time.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 

@@ -4,7 +4,6 @@
  * Copyright 2014 Rockchip Inc.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <display.h>
 #include <dm.h>
@@ -17,7 +16,6 @@
 #include <reset.h>
 #include <syscon.h>
 #include <asm/gpio.h>
-#include <asm/io.h>
 #include <asm/arch-rockchip/clock.h>
 #include <asm/arch-rockchip/hardware.h>
 #include <asm/arch-rockchip/edp_rk3288.h>
@@ -73,7 +71,6 @@ static void rk_edp_init_refclk(struct rk3288_edp *regs, enum rockchip_dp_types c
 	if (chip_type == RK3288_DP)
 		reg ^= REF_CLK_MASK;
 	writel(reg, &regs->pll_reg_1);
-
 
 	writel(LDO_OUTPUT_V_SEL_145 | KVCO_DEFALUT | CHG_PUMP_CUR_SEL_5US |
 	       V2L_CUR_SEL_1MA, &regs->pll_reg_2);
@@ -315,7 +312,6 @@ static int rk_edp_dpcd_write(struct rk3288_edp *regs, u32 addr, u8 *values,
 {
 	return rk_edp_dpcd_transfer(regs, addr, values, size, DPCD_WRITE);
 }
-
 
 static int rk_edp_link_power_up(struct rk_edp_priv *edp)
 {
@@ -1095,20 +1091,16 @@ static int rk_edp_probe(struct udevice *dev)
 
 	if (edp_data->chip_type == RK3288_DP) {
 		ret = clk_get_by_index(dev, 1, &clk);
-		if (ret >= 0) {
+		if (ret >= 0)
 			ret = clk_set_rate(&clk, 0);
-			clk_free(&clk);
-		}
 		if (ret) {
 			debug("%s: Failed to set EDP clock: ret=%d\n", __func__, ret);
 			return ret;
 		}
 	}
 	ret = clk_get_by_index(uc_plat->src_dev, 0, &clk);
-	if (ret >= 0) {
+	if (ret >= 0)
 		ret = clk_set_rate(&clk, 192000000);
-		clk_free(&clk);
-	}
 	if (ret < 0) {
 		debug("%s: Failed to set clock in source device '%s': ret=%d\n",
 		      __func__, uc_plat->src_dev->name, ret);

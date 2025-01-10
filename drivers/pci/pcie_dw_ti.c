@@ -3,7 +3,6 @@
  * Copyright (C) 2018 Texas Instruments, Inc
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <pci.h>
@@ -46,7 +45,6 @@ DECLARE_GLOBAL_DATA_PTR;
 /* Offsets from App base */
 #define PCIE_CMD_STATUS			0x04
 #define LTSSM_EN_VAL			BIT(0)
-
 
 #define AM654_PCIE_DEV_TYPE_MASK	0x3
 #define EP				0x0

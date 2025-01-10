@@ -3,7 +3,6 @@
  * Copyright (C) 2015 Google, Inc
  */
 
-#include <common.h>
 #include <dm.h>
 #include <sysreset.h>
 #include <asm/state.h>
@@ -27,8 +26,8 @@ static int dm_test_sysreset_base(struct unit_test_state *uts)
 	/* Device 1 is the warm sysreset device */
 	ut_assertok(uclass_get_device(UCLASS_SYSRESET, 1, &dev));
 	ut_asserteq(-EACCES, sysreset_request(dev, SYSRESET_WARM));
-	ut_asserteq(-ENOSYS, sysreset_request(dev, SYSRESET_COLD));
-	ut_asserteq(-ENOSYS, sysreset_request(dev, SYSRESET_POWER));
+	ut_asserteq(-EPROTONOSUPPORT, sysreset_request(dev, SYSRESET_COLD));
+	ut_asserteq(-EPROTONOSUPPORT, sysreset_request(dev, SYSRESET_POWER));
 
 	state->sysreset_allowed[SYSRESET_WARM] = true;
 	ut_asserteq(-EINPROGRESS, sysreset_request(dev, SYSRESET_WARM));
@@ -36,7 +35,7 @@ static int dm_test_sysreset_base(struct unit_test_state *uts)
 
 	/* Device 2 is the cold sysreset device */
 	ut_assertok(uclass_get_device(UCLASS_SYSRESET, 2, &dev));
-	ut_asserteq(-ENOSYS, sysreset_request(dev, SYSRESET_WARM));
+	ut_asserteq(-EPROTONOSUPPORT, sysreset_request(dev, SYSRESET_WARM));
 	state->sysreset_allowed[SYSRESET_COLD] = false;
 	ut_asserteq(-EACCES, sysreset_request(dev, SYSRESET_COLD));
 	state->sysreset_allowed[SYSRESET_COLD] = true;
@@ -46,7 +45,7 @@ static int dm_test_sysreset_base(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_sysreset_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_sysreset_base, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 static int dm_test_sysreset_get_status(struct unit_test_state *uts)
 {
@@ -65,7 +64,7 @@ static int dm_test_sysreset_get_status(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_sysreset_get_status, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_sysreset_get_status, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 /* Test that we can walk through the sysreset devices */
 static int dm_test_sysreset_walk(struct unit_test_state *uts)
@@ -96,7 +95,7 @@ static int dm_test_sysreset_walk(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_sysreset_walk, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_sysreset_walk, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 static int dm_test_sysreset_get_last(struct unit_test_state *uts)
 {
@@ -115,4 +114,4 @@ static int dm_test_sysreset_get_last(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_sysreset_get_last, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_sysreset_get_last, UTF_SCAN_PDATA | UTF_SCAN_FDT);

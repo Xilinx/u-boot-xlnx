@@ -3,7 +3,6 @@
  * (C) Copyright 2017 Rockchip Electronics Co., Ltd
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <syscon.h>
@@ -19,6 +18,9 @@ static const struct udevice_id px30_syscon_ids[] = {
 U_BOOT_DRIVER(syscon_px30) = {
 	.id = UCLASS_SYSCON,
 	.name = "px30_syscon",
+#if CONFIG_IS_ENABLED(OF_REAL)
+	.bind = dm_scan_fdt_dev,
+#endif
 	.of_match = px30_syscon_ids,
 };
 

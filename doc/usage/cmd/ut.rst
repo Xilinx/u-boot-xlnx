@@ -1,10 +1,13 @@
 .. SPDX-License-Identifier: GPL-2.0+:
 
+.. index::
+   single: ut (command)
+
 ut command
 ==========
 
-Synopis
--------
+Synopsis
+--------
 
 ::
 
@@ -29,7 +32,7 @@ to run some tests on real boards.
 
 For a list of available test suites, type `ut` by itself.
 
-Each test is normally run once, although those marked with `UT_TESTF_DM` are
+Each test is normally run once, although those marked with `UTF_DM` are
 run with livetree and flattree where possible. To run a test more than once,
 use the `-r` flag.
 

@@ -4,7 +4,7 @@
  *     Texas Instruments Incorporated, <www.ti.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <init.h>
 #include <time.h>
 #include <asm/global_data.h>
@@ -48,7 +48,6 @@ unsigned long long get_ticks(void)
 
 	return (((unsigned long long)gd->arch.tbu) << 32) | gd->arch.tbl;
 }
-
 
 ulong timer_get_boot_us(void)
 {

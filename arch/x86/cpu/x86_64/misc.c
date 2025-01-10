@@ -4,7 +4,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <init.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -30,11 +29,6 @@ int misc_init_r(void)
 
 #ifndef CONFIG_SYS_COREBOOT
 int checkcpu(void)
-{
-	return 0;
-}
-
-int print_cpuinfo(void)
 {
 	return 0;
 }

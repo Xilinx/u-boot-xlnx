@@ -7,7 +7,7 @@
  *
  */
 
-#include <common.h>
+#include <efi_loader.h>
 #include <asm/io.h>
 #include <dm/uclass.h>
 #include <k3-ddrss.h>
@@ -17,14 +17,49 @@
 #include <env.h>
 
 #include "../common/board_detect.h"
+#include "../common/fdt_ops.h"
 
 #define board_is_am64x_gpevm() (board_ti_k3_is("AM64-GPEVM") || \
+				board_ti_k3_is("AM64-EVM") || \
 				board_ti_k3_is("AM64-HSEVM"))
 
 #define board_is_am64x_skevm() (board_ti_k3_is("AM64-SKEVM") || \
 				board_ti_k3_is("AM64B-SKEVM"))
 
 DECLARE_GLOBAL_DATA_PTR;
+
+struct efi_fw_image fw_images[] = {
+	{
+		.image_type_id = AM64X_SK_TIBOOT3_IMAGE_GUID,
+		.fw_name = u"AM64X_SK_TIBOOT3",
+		.image_index = 1,
+	},
+	{
+		.image_type_id = AM64X_SK_SPL_IMAGE_GUID,
+		.fw_name = u"AM64X_SK_SPL",
+		.image_index = 2,
+	},
+	{
+		.image_type_id = AM64X_SK_UBOOT_IMAGE_GUID,
+		.fw_name = u"AM64X_SK_UBOOT",
+		.image_index = 3,
+	}
+};
+
+struct efi_capsule_update_info update_info = {
+	.dfu_string = "sf 0:0=tiboot3.bin raw 0 100000;"
+	"tispl.bin raw 100000 200000;u-boot.img raw 300000 400000",
+	.num_images = ARRAY_SIZE(fw_images),
+	.images = fw_images,
+};
+
+#if IS_ENABLED(CONFIG_SET_DFU_ALT_INFO)
+void set_dfu_alt_info(char *interface, char *devstr)
+{
+	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT))
+		env_set("dfu_alt_info", update_info.dfu_string);
+}
+#endif
 
 int board_init(void)
 {
@@ -70,7 +105,7 @@ int board_fit_config_name_match(const char *name)
 }
 #endif
 
-#if defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_XPL_BUILD)
 #if CONFIG_IS_ENABLED(USB_STORAGE)
 static int fixup_usb_boot(const void *fdt_blob)
 {
@@ -181,6 +216,12 @@ int checkboard(void)
 }
 
 #ifdef CONFIG_BOARD_LATE_INIT
+static struct ti_fdt_map ti_am64_evm_fdt_map[] = {
+	{"am64x_gpevm", "k3-am642-evm.dtb"},
+	{"am64x_skevm", "k3-am642-sk.dtb"},
+	{ /* Sentinel. */ }
+};
+
 static void setup_board_eeprom_env(void)
 {
 	char *name = "am64x_gpevm";
@@ -198,6 +239,7 @@ static void setup_board_eeprom_env(void)
 
 invalid_eeprom:
 	set_board_info_env_am6(name);
+	ti_set_fdt_env(name, ti_am64_evm_fdt_map);
 }
 
 static void setup_serial(void)

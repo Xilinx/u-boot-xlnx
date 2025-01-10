@@ -7,7 +7,6 @@
  * (C) Copyright 2007 Pengutronix, Juergen Beisert <j.beisert@pengutronix.de>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <env.h>
@@ -616,8 +615,7 @@ static int fecmxc_init(struct udevice *dev)
 	if (fec->xcv_type != SEVENWIRE)
 		miiphy_restart_aneg(dev);
 #endif
-	fec_open(dev);
-	return 0;
+	return fec_open(dev);
 }
 
 /**
@@ -818,6 +816,9 @@ static int fecmxc_recv(struct udevice *dev, int flags, uchar **packetp)
 		printf("%s: error allocating packetp\n", __func__);
 		return -ENOMEM;
 	}
+
+	if (!(readl(&fec->eth->ecntrl) & FEC_ECNTRL_ETHER_EN))
+		return 0;
 
 	/* Check if any critical events have happened */
 	ievent = readl(&fec->eth->ievent);
@@ -1211,10 +1212,13 @@ static int fecmxc_set_ref_clk(struct clk *clk_ref, phy_interface_t interface)
 	else if (interface == PHY_INTERFACE_MODE_RGMII ||
 		 interface == PHY_INTERFACE_MODE_RGMII_ID ||
 		 interface == PHY_INTERFACE_MODE_RGMII_RXID ||
-		 interface == PHY_INTERFACE_MODE_RGMII_TXID)
+		 interface == PHY_INTERFACE_MODE_RGMII_TXID) {
 		freq = 125000000;
-	else
+		if (is_imx93())
+			freq = freq << 1;
+	} else {
 		return -EINVAL;
+	}
 
 	ret = clk_set_rate(clk_ref, freq);
 	if (ret < 0)
@@ -1310,7 +1314,7 @@ static int fecmxc_probe(struct udevice *dev)
 
 #ifdef CONFIG_DM_REGULATOR
 	if (priv->phy_supply) {
-		ret = regulator_set_enable(priv->phy_supply, true);
+		ret = regulator_set_enable_if_allowed(priv->phy_supply, true);
 		if (ret) {
 			printf("%s: Error enabling phy supply\n", dev->name);
 			return ret;

@@ -5,12 +5,12 @@
  * Copyright 2011 Comelit Group SpA,
  *                Luca Ceresoli <luca.ceresoli@comelit.it>
  */
-#include <common.h>
 #include <command.h>
 #include <display_options.h>
 #include <efi_loader.h>
 #include <env.h>
 #include <image.h>
+#include <led.h>
 #include <lmb.h>
 #include <log.h>
 #include <mapmem.h>
@@ -83,9 +83,6 @@ static ulong	tftp_block_wrap;
 static ulong	tftp_block_wrap_offset;
 static int	tftp_state;
 static ulong	tftp_load_addr;
-#ifdef CONFIG_LMB
-static ulong	tftp_load_size;
-#endif
 #ifdef CONFIG_TFTP_TSIZE
 /* The file size reported by the server */
 static int	tftp_tsize;
@@ -161,19 +158,15 @@ static inline int store_block(int block, uchar *src, unsigned int len)
 	ulong store_addr = tftp_load_addr + offset;
 	void *ptr;
 
-#ifdef CONFIG_LMB
-	ulong end_addr = tftp_load_addr + tftp_load_size;
-
-	if (!end_addr)
-		end_addr = ULONG_MAX;
-
-	if (store_addr < tftp_load_addr ||
-	    store_addr + len > end_addr) {
-		puts("\nTFTP error: ");
-		puts("trying to overwrite reserved memory...\n");
-		return -1;
+	if (CONFIG_IS_ENABLED(LMB)) {
+		if (store_addr < tftp_load_addr ||
+		    lmb_read_check(store_addr, len)) {
+			puts("\nTFTP error: ");
+			puts("trying to overwrite reserved memory...\n");
+			return -1;
+		}
 	}
-#endif
+
 	ptr = map_sysmem(store_addr, len);
 	memcpy(ptr, src, len);
 	unmap_sysmem(ptr);
@@ -193,6 +186,7 @@ static void new_transfer(void)
 #ifdef CONFIG_CMD_TFTPPUT
 	tftp_put_final_block_sent = 0;
 #endif
+	led_activity_blink();
 }
 
 #ifdef CONFIG_CMD_TFTPPUT
@@ -302,12 +296,13 @@ static void tftp_complete(void)
 			time_start * 1000, "/s");
 	}
 	puts("\ndone\n");
-	if (IS_ENABLED(CONFIG_CMD_BOOTEFI)) {
-		if (!tftp_put_active)
-			efi_set_bootdev("Net", "", tftp_filename,
-					map_sysmem(tftp_load_addr, 0),
-					net_boot_file_size);
-	}
+
+	led_activity_off();
+
+	if (!tftp_put_active)
+		efi_set_bootdev("Net", "", tftp_filename,
+				map_sysmem(tftp_load_addr, 0),
+				net_boot_file_size);
 	net_set_state(NETLOOP_SUCCESS);
 }
 
@@ -496,8 +491,15 @@ static void tftp_handler(uchar *pkt, unsigned dest, struct in_addr sip,
 				tftp_prev_block = tftp_cur_block;
 				tftp_cur_block = (unsigned short)(block + 1);
 				update_block_number();
-				if (ack_ok)
+				if (ack_ok) {
+					if (block == 0 &&
+					    tftp_state == STATE_SEND_WRQ){
+						/* connection's first ACK */
+						tftp_state = STATE_DATA;
+						tftp_remote_port = src;
+					}
 					tftp_send(); /* Send next data block */
+				}
 			}
 		}
 #endif
@@ -697,7 +699,6 @@ static void tftp_handler(uchar *pkt, unsigned dest, struct in_addr sip,
 	}
 }
 
-
 static void tftp_timeout_handler(void)
 {
 	if (++timeout_count > timeout_count_max) {
@@ -710,21 +711,8 @@ static void tftp_timeout_handler(void)
 	}
 }
 
-/* Initialize tftp_load_addr and tftp_load_size from image_load_addr and lmb */
 static int tftp_init_load_addr(void)
 {
-#ifdef CONFIG_LMB
-	struct lmb lmb;
-	phys_size_t max_size;
-
-	lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
-
-	max_size = lmb_get_free_size(&lmb, image_load_addr);
-	if (!max_size)
-		return -1;
-
-	tftp_load_size = max_size;
-#endif
 	tftp_load_addr = image_load_addr;
 	return 0;
 }

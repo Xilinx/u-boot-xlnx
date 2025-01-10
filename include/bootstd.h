@@ -10,6 +10,8 @@
 #define __bootstd_h
 
 #include <dm/ofnode_decl.h>
+#include <linux/list.h>
+#include <linux/types.h>
 
 struct udevice;
 
@@ -93,5 +95,14 @@ int bootstd_get_priv(struct bootstd_priv **stdp);
  * This removes all bootflows globally and across all bootdevs.
  */
 void bootstd_clear_glob(void);
+
+/**
+ * bootstd_prog_boot() - Run standard boot in a fully programmatic mode
+ *
+ * Attempts to boot without making any use of U-Boot commands
+ *
+ * Returns: -ve error value (does not return except on failure to boot)
+ */
+int bootstd_prog_boot(void);
 
 #endif

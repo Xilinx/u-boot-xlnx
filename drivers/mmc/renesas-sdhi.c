@@ -92,7 +92,7 @@ static const u8 r8a77990_calib_table[2][CALIB_TABLE_MAX] = {
 	 11, 12, 13, 15, 16, 17, 17, 18, 18, 19, 20, 22, 24, 25, 26, 26 }
 };
 
-static int rmobile_is_gen3_mmc0(struct tmio_sd_priv *priv)
+static int rcar_is_gen3_mmc0(struct tmio_sd_priv *priv)
 {
 	/* On R-Car Gen3, MMC0 is at 0xee140000 */
 	return (uintptr_t)(priv->regbase) == 0xee140000;
@@ -568,10 +568,10 @@ int renesas_sdhi_execute_tuning(struct udevice *dev, uint opcode)
 	struct mmc *mmc = upriv->mmc;
 	unsigned int tap_num;
 	unsigned int taps = 0;
-	int i, ret = 0;
-	u32 caps;
+	int i, ret = 0, sret;
+	u32 caps, reg;
 
-	/* Only supported on Renesas RCar */
+	/* Only supported on Renesas R-Car */
 	if (!(priv->caps & TMIO_SD_CAP_RCAR_UHS))
 		return -EINVAL;
 
@@ -605,15 +605,15 @@ int renesas_sdhi_execute_tuning(struct udevice *dev, uint opcode)
 		caps = priv->caps;
 		priv->caps &= ~TMIO_SD_CAP_DMA_INTERNAL;
 
-		ret = mmc_send_tuning(mmc, opcode, NULL);
+		ret = mmc_send_tuning(mmc, opcode);
 
 		priv->caps = caps;
 
 		if (ret == 0)
 			taps |= BIT(i);
 
-		ret = renesas_sdhi_compare_scc_data(priv);
-		if (ret == 0)
+		reg = renesas_sdhi_compare_scc_data(priv);
+		if (reg == 0)
 			priv->smpcmp |= BIT(i);
 
 		mdelay(1);
@@ -624,9 +624,9 @@ int renesas_sdhi_execute_tuning(struct udevice *dev, uint opcode)
 		 * eMMC.
 		 */
 		if (ret && (opcode == MMC_CMD_SEND_TUNING_BLOCK_HS200)) {
-			ret = mmc_send_stop_transmission(mmc, false);
-			if (ret < 0)
-				dev_dbg(dev, "Tuning abort fail (%d)\n", ret);
+			sret = mmc_send_stop_transmission(mmc, false);
+			if (sret < 0)
+				dev_dbg(dev, "Tuning abort fail (%d)\n", sret);
 		}
 	}
 
@@ -798,9 +798,12 @@ static int renesas_sdhi_send_cmd(struct udevice *dev, struct mmc_cmd *cmd,
 #if CONFIG_IS_ENABLED(MMC_UHS_SUPPORT) || \
     CONFIG_IS_ENABLED(MMC_HS200_SUPPORT) || \
     CONFIG_IS_ENABLED(MMC_HS400_SUPPORT)
+	struct mmc_uclass_priv *upriv = dev_get_uclass_priv(dev);
 	struct tmio_sd_priv *priv = dev_get_priv(dev);
+	struct mmc *mmc = upriv->mmc;
 
-	renesas_sdhi_check_scc_error(dev);
+	if (!mmc->tuning)
+		renesas_sdhi_check_scc_error(dev);
 
 	if (cmd->cmdidx == MMC_CMD_SEND_STATUS)
 		renesas_sdhi_adjust_hs400_mode_enable(priv);
@@ -861,6 +864,7 @@ static const struct udevice_id renesas_sdhi_match[] = {
 	{ .compatible = "renesas,sdhi-r8a77990", .data = RENESAS_GEN3_QUIRKS },
 	{ .compatible = "renesas,sdhi-r8a77995", .data = RENESAS_GEN3_QUIRKS },
 	{ .compatible = "renesas,rcar-gen4-sdhi", .data = RENESAS_GEN3_QUIRKS },
+	{ .compatible = "renesas,rzg2l-sdhi", .data = RENESAS_GEN3_QUIRKS },
 	{ /* sentinel */ }
 };
 
@@ -885,80 +889,80 @@ static void renesas_sdhi_filter_caps(struct udevice *dev)
 	struct tmio_sd_plat *plat = dev_get_plat(dev);
 
 	/* HS400 is not supported on H3 ES1.x, M3W ES1.[012], V3M, V3H ES1.x, D3 */
-	if (((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7795) &&
-	    (rmobile_get_cpu_rev_integer() <= 1)) ||
-	    ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7796) &&
-	    (rmobile_get_cpu_rev_integer() == 1) &&
-	    (rmobile_get_cpu_rev_fraction() <= 2)) ||
-	    (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77970) ||
-	    ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77980) &&
-	    (rmobile_get_cpu_rev_integer() <= 1)) ||
-	    (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77995))
+	if (((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7795) &&
+	    (renesas_get_cpu_rev_integer() <= 1)) ||
+	    ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7796) &&
+	    (renesas_get_cpu_rev_integer() == 1) &&
+	    (renesas_get_cpu_rev_fraction() <= 2)) ||
+	    (renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77970) ||
+	    ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77980) &&
+	    (renesas_get_cpu_rev_integer() <= 1)) ||
+	    (renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77995))
 		plat->cfg.host_caps &= ~MMC_MODE_HS400;
 
 	/* H3 ES2.0, ES3.0 and M3W ES1.2 and M3N bad taps */
-	if (((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7795) &&
-	    (rmobile_get_cpu_rev_integer() >= 2)) ||
-	    ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7796) &&
-	    (rmobile_get_cpu_rev_integer() == 1) &&
-	    (rmobile_get_cpu_rev_fraction() == 2)) ||
-	    (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77965))
+	if (((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7795) &&
+	    (renesas_get_cpu_rev_integer() >= 2)) ||
+	    ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7796) &&
+	    (renesas_get_cpu_rev_integer() == 1) &&
+	    (renesas_get_cpu_rev_fraction() == 2)) ||
+	    (renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77965))
 		priv->hs400_bad_tap = BIT(2) | BIT(3) | BIT(6) | BIT(7);
 
 	/* M3W ES1.x for x>2 can use HS400 with manual adjustment and taps */
-	if ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7796) &&
-	    (rmobile_get_cpu_rev_integer() == 1) &&
-	    (rmobile_get_cpu_rev_fraction() > 2)) {
+	if ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7796) &&
+	    (renesas_get_cpu_rev_integer() == 1) &&
+	    (renesas_get_cpu_rev_fraction() > 2)) {
 		priv->adjust_hs400_enable = true;
 		priv->adjust_hs400_offset = 3;
 		priv->hs400_bad_tap = BIT(1) | BIT(3) | BIT(5) | BIT(7);
 		priv->adjust_hs400_calib_table =
-			r8a7796_rev13_calib_table[!rmobile_is_gen3_mmc0(priv)];
+			r8a7796_rev13_calib_table[!rcar_is_gen3_mmc0(priv)];
 	}
 
 	/* M3W+ bad taps */
-	if ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7796) &&
-	    (rmobile_get_cpu_rev_integer() == 3))
+	if ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7796) &&
+	    (renesas_get_cpu_rev_integer() == 3))
 		priv->hs400_bad_tap = BIT(1) | BIT(3) | BIT(5) | BIT(7);
 
 	/* M3N can use HS400 with manual adjustment */
-	if (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77965) {
+	if (renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77965) {
 		priv->adjust_hs400_enable = true;
 		priv->adjust_hs400_offset = 3;
 		priv->adjust_hs400_calib_table =
-			r8a77965_calib_table[!rmobile_is_gen3_mmc0(priv)];
+			r8a77965_calib_table[!rcar_is_gen3_mmc0(priv)];
 	}
 
 	/* E3 can use HS400 with manual adjustment */
-	if (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77990) {
+	if (renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77990) {
 		priv->adjust_hs400_enable = true;
 		priv->adjust_hs400_offset = 3;
 		priv->adjust_hs400_calib_table =
-			r8a77990_calib_table[!rmobile_is_gen3_mmc0(priv)];
+			r8a77990_calib_table[!rcar_is_gen3_mmc0(priv)];
 	}
 
 	/* H3 ES1.x, ES2.0 and M3W ES1.[0123] uses 4 tuning taps */
-	if (((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7795) &&
-	    (rmobile_get_cpu_rev_integer() <= 2)) ||
-	    ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7796) &&
-	    (rmobile_get_cpu_rev_integer() == 1) &&
-	    (rmobile_get_cpu_rev_fraction() <= 3)))
+	if (((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7795) &&
+	    (renesas_get_cpu_rev_integer() <= 2)) ||
+	    ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7796) &&
+	    (renesas_get_cpu_rev_integer() == 1) &&
+	    (renesas_get_cpu_rev_fraction() <= 3)))
 		priv->nrtaps = 4;
 	else
 		priv->nrtaps = 8;
 #endif
 	/* H3 ES1.x and M3W ES1.0 uses bit 17 for DTRAEND */
-	if (((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7795) &&
-	    (rmobile_get_cpu_rev_integer() <= 1)) ||
-	    ((rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A7796) &&
-	    (rmobile_get_cpu_rev_integer() == 1) &&
-	    (rmobile_get_cpu_rev_fraction() == 0)))
+	if (((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7795) &&
+	    (renesas_get_cpu_rev_integer() <= 1)) ||
+	    ((renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A7796) &&
+	    (renesas_get_cpu_rev_integer() == 1) &&
+	    (renesas_get_cpu_rev_fraction() == 0)))
 		priv->read_poll_flag = TMIO_SD_DMA_INFO1_END_RD;
 	else
 		priv->read_poll_flag = TMIO_SD_DMA_INFO1_END_RD2;
 
 	/* V3M handles SD0H differently than other Gen3 SoCs */
-	if (rmobile_get_cpu_type() == RMOBILE_CPU_TYPE_R8A77970)
+	if (renesas_get_cpu_type() == RENESAS_CPU_TYPE_R8A77970)
 		priv->needs_clkh_fallback = true;
 	else
 		priv->needs_clkh_fallback = false;
@@ -979,19 +983,19 @@ static int rzg2l_sdhi_setup(struct udevice *dev)
 	ret = clk_get_by_name(dev, "cd", &imclk2);
 	if (ret < 0) {
 		dev_err(dev, "failed to get imclk2 (chip detect clk)\n");
-		goto err_get_imclk2;
+		return ret;
 	}
 
 	ret = clk_get_by_name(dev, "aclk", &aclk);
 	if (ret < 0) {
 		dev_err(dev, "failed to get aclk\n");
-		goto err_get_aclk;
+		return ret;
 	}
 
 	ret = clk_enable(&imclk2);
 	if (ret < 0) {
 		dev_err(dev, "failed to enable imclk2 (chip detect clk)\n");
-		goto err_imclk2;
+		return ret;
 	}
 
 	ret = clk_enable(&aclk);
@@ -1026,11 +1030,6 @@ err_get_reset:
 	clk_disable(&aclk);
 err_aclk:
 	clk_disable(&imclk2);
-err_imclk2:
-	clk_free(&aclk);
-err_get_aclk:
-	clk_free(&imclk2);
-err_get_imclk2:
 	return ret;
 }
 
@@ -1071,7 +1070,7 @@ static int renesas_sdhi_probe(struct udevice *dev)
 		ret = clk_set_rate(&priv->clkh, 800000000);
 		if (ret < 0) {
 			dev_err(dev, "failed to set rate for SDnH clock (%d)\n", ret);
-			goto err_clk;
+			return ret;
 		}
 	}
 
@@ -1079,13 +1078,13 @@ static int renesas_sdhi_probe(struct udevice *dev)
 	ret = clk_set_rate(&priv->clk, 200000000);
 	if (ret < 0) {
 		dev_err(dev, "failed to set rate for SDn clock (%d)\n", ret);
-		goto err_clkh;
+		return ret;
 	}
 
 	ret = clk_enable(&priv->clk);
 	if (ret) {
 		dev_err(dev, "failed to enable SDn clock (%d)\n", ret);
-		goto err_clkh;
+		return ret;
 	}
 
 	if (device_is_compatible(dev, "renesas,sdhi-r9a07g044"))
@@ -1107,10 +1106,6 @@ static int renesas_sdhi_probe(struct udevice *dev)
 
 err_tmio_probe:
 	clk_disable(&priv->clk);
-err_clkh:
-	clk_free(&priv->clkh);
-err_clk:
-	clk_free(&priv->clk);
 	return ret;
 }
 

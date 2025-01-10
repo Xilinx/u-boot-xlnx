@@ -6,6 +6,9 @@
 #ifndef __I2C_EEPROM
 #define __I2C_EEPROM
 
+#include <linux/errno.h>
+#include <linux/types.h>
+
 struct udevice;
 
 struct i2c_eeprom_ops {

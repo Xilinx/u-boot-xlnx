@@ -47,12 +47,24 @@ struct os_mem_hdr {
 
 ssize_t os_read(int fd, void *buf, size_t count)
 {
-	return read(fd, buf, count);
+	ssize_t ret;
+
+	ret = read(fd, buf, count);
+	if (ret == -1)
+		return -errno;
+
+	return ret;
 }
 
 ssize_t os_write(int fd, const void *buf, size_t count)
 {
-	return write(fd, buf, count);
+	ssize_t ret;
+
+	ret = write(fd, buf, count);
+	if (ret == -1)
+		return -errno;
+
+	return ret;
 }
 
 int os_printf(const char *fmt, ...)
@@ -69,6 +81,8 @@ int os_printf(const char *fmt, ...)
 
 off_t os_lseek(int fd, off_t offset, int whence)
 {
+	off_t ret;
+
 	if (whence == OS_SEEK_SET)
 		whence = SEEK_SET;
 	else if (whence == OS_SEEK_CUR)
@@ -77,7 +91,11 @@ off_t os_lseek(int fd, off_t offset, int whence)
 		whence = SEEK_END;
 	else
 		os_exit(1);
-	return lseek(fd, offset, whence);
+	ret = lseek(fd, offset, whence);
+	if (ret == -1)
+		return -errno;
+
+	return ret;
 }
 
 int os_open(const char *pathname, int os_flags)
@@ -109,7 +127,7 @@ int os_open(const char *pathname, int os_flags)
 	 */
 	flags |= O_CLOEXEC;
 
-	return open(pathname, flags, 0777);
+	return open(pathname, flags, 0644);
 }
 
 int os_close(int fd)
@@ -188,7 +206,7 @@ int os_read_file(const char *fname, void **bufp, int *sizep)
 	fd = os_open(fname, OS_O_RDONLY);
 	if (fd < 0) {
 		printf("Cannot open file '%s'\n", fname);
-		goto err;
+		return -EIO;
 	}
 	size = os_filesize(fd);
 	if (size < 0) {
@@ -285,6 +303,23 @@ int os_persistent_file(char *buf, int maxsize, const char *fname)
 		return -ENOENT;
 
 	return 0;
+}
+
+int os_mktemp(char *fname, off_t size)
+{
+	int fd;
+
+	fd = mkostemp(fname, O_CLOEXEC);
+	if (fd < 0)
+		return -errno;
+
+	if (unlink(fname) < 0)
+		return -errno;
+
+	if (ftruncate(fd, size))
+		return -errno;
+
+	return fd;
 }
 
 /* Restore tty state when we exit */
@@ -729,7 +764,7 @@ int os_write_ram_buf(const char *fname)
 	struct sandbox_state *state = state_get_current();
 	int fd, ret;
 
-	fd = open(fname, O_CREAT | O_WRONLY, 0777);
+	fd = open(fname, O_CREAT | O_WRONLY, 0644);
 	if (fd < 0)
 		return -ENOENT;
 	ret = write(fd, state->ram_buf, state->ram_size);
@@ -774,7 +809,7 @@ static int make_exec(char *fname, const void *data, int size)
 	if (write(fd, data, size) < 0)
 		return -EIO;
 	close(fd);
-	if (chmod(fname, 0777))
+	if (chmod(fname, 0755))
 		return -ENOEXEC;
 
 	return 0;
@@ -791,7 +826,7 @@ static int make_exec(char *fname, const void *data, int size)
  * @count: Number of arguments in @add_args
  * Return: 0 if OK, -ENOMEM if out of memory
  */
-static int add_args(char ***argvp, char *add_args[], int count)
+static int add_args(char ***argvp, const char *add_args[], int count)
 {
 	char **argv, **ap;
 	int argc;
@@ -842,7 +877,7 @@ static int os_jump_to_file(const char *fname, bool delete_it)
 	struct sandbox_state *state = state_get_current();
 	char mem_fname[30];
 	int fd, err;
-	char *extra_args[5];
+	const char *extra_args[5];
 	char **argv = state->argv;
 	int argc;
 #ifdef DEBUG
@@ -947,7 +982,7 @@ int os_find_u_boot(char *fname, int maxlen, bool use_img,
 	p = strstr(fname, subdir);
 	if (p) {
 		if (*next_prefix)
-			/* e.g. ".../tpl/u-boot-spl"  to "../spl/u-boot-spl" */
+			/* e.g. ".../tpl/u-boot-spl"  to ".../spl/u-boot-spl" */
 			memcpy(p + 1, next_prefix, strlen(next_prefix));
 		else
 			/* e.g. ".../spl/u-boot" to ".../u-boot" */
@@ -1088,7 +1123,6 @@ void os_relaunch(char *argv[])
 	execv(argv[0], argv);
 	os_exit(1);
 }
-
 
 #ifdef CONFIG_FUZZ
 static void *fuzzer_thread(void * ptr)

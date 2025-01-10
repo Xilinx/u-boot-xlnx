@@ -11,7 +11,6 @@
  * Copyright (C) 2012 Jamie Lentin
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <log.h>
@@ -33,7 +32,7 @@ static int poweroff_gpio_request(struct udevice *dev, enum sysreset_t type)
 	int r;
 
 	if (type != SYSRESET_POWER_OFF)
-		return -ENOSYS;
+		return -EPROTONOSUPPORT;
 
 	debug("GPIO poweroff\n");
 

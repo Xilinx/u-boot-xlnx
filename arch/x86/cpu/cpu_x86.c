@@ -3,11 +3,11 @@
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
  */
 
-#include <common.h>
 #include <cpu.h>
 #include <dm.h>
 #include <errno.h>
 #include <asm/cpu.h>
+#include <asm/cpu_x86.h>
 #include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;

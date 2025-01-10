@@ -3,7 +3,6 @@
  * Copyright 2022 NXP
  */
 
-#include <common.h>
 #include <command.h>
 #include <errno.h>
 #include <imx_container.h>
@@ -625,6 +624,54 @@ static int do_ahab_return_lifecycle(struct cmd_tbl *cmdtp, int flag, int argc, c
 	return CMD_RET_SUCCESS;
 }
 
+static int do_ahab_derive(struct cmd_tbl *cmdtp, int flag, int argc,
+			  char *const argv[])
+{
+	ulong key;
+	size_t key_size;
+	char seed[] = "_ELE_AHAB_SEED_";
+
+	if (argc != 3)
+		return CMD_RET_USAGE;
+
+	key = hextoul(argv[1], NULL);
+	key_size = simple_strtoul(argv[2], NULL, 10);
+	if (key_size != 16 && key_size != 32) {
+		printf("key size can only be 16 or 32\n");
+		return CMD_RET_FAILURE;
+	}
+
+	if (ele_derive_huk((u8 *)key, key_size, seed, sizeof(seed))) {
+		printf("Error in AHAB derive\n");
+		return CMD_RET_FAILURE;
+	}
+
+	return CMD_RET_SUCCESS;
+}
+
+static int do_ahab_commit(struct cmd_tbl *cmdtp, int flag, int argc,
+			  char *const argv[])
+{
+	u32 index;
+	u32 resp;
+	u32 info_type;
+
+	if (argc < 2)
+		return CMD_RET_USAGE;
+
+	index = simple_strtoul(argv[1], NULL, 16);
+	printf("Commit index is 0x%x\n", index);
+
+	if (ele_commit(index, &resp, &info_type)) {
+		printf("Error in AHAB commit\n");
+		return -EIO;
+	}
+
+	printf("Ahab commit succeeded. Information type is 0x%x\n", info_type);
+
+	return 0;
+}
+
 U_BOOT_CMD(auth_cntr, CONFIG_SYS_MAXARGS, 1, do_authenticate,
 	   "autenticate OS container via AHAB",
 	   "addr\n"
@@ -656,4 +703,16 @@ U_BOOT_CMD(ahab_return_lifecycle, CONFIG_SYS_MAXARGS, 1, do_ahab_return_lifecycl
 	   "Return lifecycle to OEM field return via signed message block",
 	   "addr\n"
 	   "addr - Return lifecycle message block signed by OEM SRK\n"
+);
+
+U_BOOT_CMD(ahab_derive, CONFIG_SYS_MAXARGS, 3, do_ahab_derive,
+	   "Derive the hardware unique key",
+	   "addr [16|32]\n"
+	   "Store at addr the derivation of the HUK on 16 or 32 bytes.\n"
+);
+
+U_BOOT_CMD(ahab_commit, CONFIG_SYS_MAXARGS, 1, do_ahab_commit,
+	   "commit into the fuses any new SRK revocation and FW version information\n"
+	   "that have been found into the NXP (ELE FW) and OEM containers",
+	   ""
 );

@@ -9,7 +9,6 @@
  * Copyright (C) Nalin Dahyabhai <bigfun@pobox.com>
  */
 
-#include <common.h>
 #include <edid.h>
 #include <errno.h>
 #include <fdtdec.h>
@@ -268,7 +267,6 @@ int edid_get_timing(u8 *buf, int buf_size, struct display_timing *timing,
 	return edid_get_timing_validate(buf, buf_size, timing,
 					panel_bits_per_colourp, NULL, NULL);
 }
-
 
 /**
  * Snip the tailing whitespace/return of a string.

@@ -494,11 +494,17 @@ point into the image.
 For example, say SPL is at the start of the image and linked to start at address
 80108000. If U-Boot's image-pos is 0x8000 then binman will write an image-pos
 for U-Boot of 80110000 into the SPL binary, since it assumes the image is loaded
-to 80108000, with SPL at 80108000 and U-Boot at 80110000.
+to 80108000, with SPL at 80108000 and U-Boot at 80110000. In other words, the
+positions are calculated relative to the start address of the image to which
+they are being written.
 
 For x86 devices (with the end-at-4gb property) this base address is not added
 since it is assumed that images are XIP and the offsets already include the
 address.
+
+For non-x86 cases where the symbol is used as a flash offset, the symbols-base
+property can be set to that offset (e.g. 0), so that the unadjusted image-pos
+is written into the image.
 
 While U-Boot's symbol updating is handled automatically by the u-boot-spl
 entry type (and others), it is possible to use this feature with any blob. To
@@ -711,6 +717,13 @@ missing-msg:
     information about what needs to be fixed. See missing-blob-help for the
     message for each tag.
 
+assume-size:
+    Sets the assumed size of a blob entry if it is missing. This allows for a
+    check that the rest of the image fits into the available space, even when
+    the contents are not available. If the entry is missing, Binman will use
+    this assumed size for the entry size, including creating a fake file of that
+    size if requested.
+
 no-expanded:
     By default binman substitutes entries with expanded versions if available,
     so that a `u-boot` entry type turns into `u-boot-expanded`, for example. The
@@ -733,6 +746,17 @@ insert-template:
     include in the current (target) node. For each node, its subnodes and their
     properties are brought into the target node. See Templates_ below for
     more information.
+
+symbols-base:
+    When writing symbols into a binary, the value of that symbol is assumed to
+    be relative to the base address of the binary. This allow the binary to be
+    loaded in memory at its base address, so that symbols point into the binary
+    correctly. In some cases the binary is in fact not yet in memory, but must
+    be read from storage. In this case there is no base address for the symbols.
+    This property can be set to 0 to indicate this. Other values for
+    symbols-base are allowed, but care must be taken that the code which uses
+    the symbol is aware of the base being used. If omitted, the binary's base
+    address is used.
 
 The attributes supported for images and sections are described below. Several
 are similar to those for entries.
@@ -1204,7 +1228,7 @@ Templates provide a simple way to handle this::
 
         spi-image {
             filename = "image-spi.bin";
-            insert-template = <&fit>;
+            insert-template = <&common_part>;
 
             /* things specific to SPI follow */
             footer {
@@ -1217,7 +1241,7 @@ Templates provide a simple way to handle this::
 
         mmc-image {
             filename = "image-mmc.bin";
-            insert-template = <&fit>;
+            insert-template = <&common_part>;
 
             /* things specific to MMC follow */
             footer {
@@ -2060,7 +2084,7 @@ don't have access to the blobs.
 If the blobs are in a different directory, you can specify this with the `-I`
 option.
 
-For U-Boot, you can use set the BINMAN_INDIRS environment variable to provide a
+For U-Boot, you can set the BINMAN_INDIRS environment variable to provide a
 space-separated list of directories to search for binary blobs::
 
    BINMAN_INDIRS="odroid-c4/fip/g12a \
@@ -2075,12 +2099,15 @@ Code coverage
 -------------
 
 Binman is a critical tool and is designed to be very testable. Entry
-implementations target 100% test coverage. Run 'binman test -T' to check this.
+implementations target 100% test coverage. Run ``binman test -T`` to check this.
 
 To enable Python test coverage on Debian-type distributions (e.g. Ubuntu)::
 
    $ sudo apt-get install python-coverage python3-coverage python-pytest
 
+You can also check the coverage provided by a single test, e.g.::
+
+   binman test -T testSimple
 
 Exit status
 -----------
@@ -2166,6 +2193,11 @@ all available CPUs to run.
 Use '-P 1' to disable this. It is automatically disabled when code coverage is
 being used (-T) since they are incompatible.
 
+
+Writing tests
+-------------
+
+See :doc:`../binman_tests`.
 
 Debugging tests
 ---------------

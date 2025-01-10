@@ -45,6 +45,19 @@ ulong simple_strtoul(const char *cp, char **endp, unsigned int base);
 unsigned long hextoul(const char *cp, char **endp);
 
 /**
+ * hex_strtoull - convert a string in hex to an unsigned long long
+ *
+ * @cp: The string to be converted
+ * @endp: Updated to point to the first character not converted
+ * Return: value decoded from string (0 if invalid)
+ *
+ * Converts a hex string to an unsigned long long. If there are invalid
+ * characters at the end these are ignored. In the worst case, if all characters
+ * are invalid, 0 is returned
+ */
+unsigned long long hextoull(const char *cp, char **endp);
+
+/**
  * dec_strtoul - convert a string in decimal to an unsigned long
  *
  * @cp: The string to be converted
@@ -217,23 +230,6 @@ char *simple_itoa(ulong val);
  * Return: string containing the hexecimal representation of @val
  */
 char *simple_xtoa(ulong num);
-
-/**
- * Format a string and place it in a buffer
- *
- * @buf: The buffer to place the result into
- * @size: The size of the buffer, including the trailing null space
- * @fmt: The format string to use
- * @...: Arguments for the format string
- * Return: the number of characters which would be
- * generated for the given input, excluding the trailing null,
- * as per ISO C99.  If the return is greater than or equal to
- * @size, the resulting string is truncated.
- *
- * See the vsprintf() documentation for format string extensions over C99.
- */
-int snprintf(char *buf, size_t size, const char *fmt, ...)
-		__attribute__ ((format (__printf__, 3, 4)));
 
 /**
  * Format a string and place it in a buffer

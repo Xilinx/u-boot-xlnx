@@ -6,7 +6,6 @@
 
 #define LOG_CATEGORY UCLASS_IDE
 
-#include <common.h>
 #include <ata.h>
 #include <blk.h>
 #include <bootdev.h>
@@ -790,7 +789,6 @@ static ulong ide_read(struct udevice *dev, lbaint_t blknr, lbaint_t blkcnt,
 		if (!c)
 			pwrsave = 1;
 	}
-
 
 	while (blkcnt-- > 0) {
 		c = ide_wait(device, IDE_TIME_OUT);

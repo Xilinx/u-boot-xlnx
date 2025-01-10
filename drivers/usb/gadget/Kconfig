@@ -17,6 +17,7 @@ menuconfig USB_GADGET
 	bool "USB Gadget Support"
 	depends on DM
 	select DM_USB
+	imply CMD_BIND
 	help
 	   USB is a master/slave protocol, organized with one master
 	   host (such as a PC) controlling up to 127 peripheral devices.
@@ -69,12 +70,21 @@ config USB_GADGET_PRODUCT_NUM
 	hex "Product ID of the USB device"
 	default 0x701a if ARCH_TEGRA
 	default 0x1010 if ARCH_SUNXI
-	default 0x310a if ROCKCHIP_RK3036
+	default 0x110a if ROCKCHIP_RV1108
+	default 0x110b if ROCKCHIP_RV1126
 	default 0x300a if ROCKCHIP_RK3066
+	default 0x301a if ROCKCHIP_RK3036
+	default 0x310b if ROCKCHIP_RK3188
 	default 0x310c if ROCKCHIP_RK3128
-	default 0x320a if ROCKCHIP_RK3229 || ROCKCHIP_RK3288
-	default 0x330a if ROCKCHIP_RK3328
+	default 0x320a if ROCKCHIP_RK3288
+	default 0x320b if ROCKCHIP_RK322X
+	default 0x320c if ROCKCHIP_RK3328
+	default 0x330a if ROCKCHIP_RK3368
 	default 0x330c if ROCKCHIP_RK3399
+	default 0x330d if ROCKCHIP_PX30
+	default 0x330e if ROCKCHIP_RK3308
+	default 0x350a if ROCKCHIP_RK3568
+	default 0x350b if ROCKCHIP_RK3588
 	default 0x0
 	help
 	  Product ID of the USB device emulated, reported to the host device.
@@ -103,6 +113,15 @@ config USB_GADGET_DWC2_OTG
 	  integrated into many SoCs. Select this option if you want the
 	  driver to operate in Peripheral mode. This option requires
 	  USB_GADGET to be enabled.
+
+config USB_RENESAS_USBHS
+	bool "Renesas R-Car USB2.0 HS controller (gadget mode)"
+	select USB_GADGET_DUALSPEED
+	help
+	  The Renesas R-Car USB 2.0 high-speed gadget controller
+	  integrated into Salvator and Kingfisher boards. Select this
+	  option if you want the driver to operate in Peripheral mode.
+	  This option requires USB_GADGET to be enabled.
 
 if USB_GADGET_DWC2_OTG
 
@@ -214,7 +233,7 @@ endif # USB_GADGET_DOWNLOAD
 
 config USB_ETHER
 	bool "USB Ethernet Gadget"
-	depends on NET
+	depends on NET || NET_LWIP
 	default y if ARCH_SUNXI && USB_MUSB_GADGET
 	help
 	  Creates an Ethernet network device through a USB peripheral
@@ -313,7 +332,8 @@ config SPL_DFU
 	bool "Support DFU (Device Firmware Upgrade) in SPL"
 	select SPL_HASH
 	select SPL_DFU_NO_RESET
-	depends on SPL_RAM_SUPPORT
+	select SPL_RAM_SUPPORT
+	depends on DFU_OVER_USB
 	help
 	  This feature enables the DFU (Device Firmware Upgrade) in SPL with
 	  RAM memory device support. The ROM code will load and execute

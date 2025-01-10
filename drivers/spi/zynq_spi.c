@@ -6,7 +6,6 @@
  * Xilinx Zynq PS SPI controller driver (master mode only)
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <log.h>
@@ -53,7 +52,6 @@ struct zynq_spi_regs {
 	u32 txdr;	/* 0x1C */
 	u32 rxdr;	/* 0x20 */
 };
-
 
 /* zynq spi platform data */
 struct zynq_spi_plat {

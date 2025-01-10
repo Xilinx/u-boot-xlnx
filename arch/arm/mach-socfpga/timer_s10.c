@@ -4,7 +4,6 @@
  *
  */
 
-#include <common.h>
 #include <init.h>
 #include <div64.h>
 #include <asm/io.h>
@@ -15,7 +14,7 @@
  */
 int timer_init(void)
 {
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	int enable = 0x3;	/* timer enable + output signal masked */
 	int loadval = ~0;
 

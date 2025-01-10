@@ -4,6 +4,7 @@
 import pytest
 import u_boot_utils
 import test_net
+import re
 
 """
 Note: This test relies on boardenv_* containing configuration values to define
@@ -23,7 +24,14 @@ env__net_tftp_bootable_file = {
     'pattern': 'Linux',
     'config': 'config@2',
     'timeout': 50000,
+    'check_type': 'boot_error',
+    'check_pattern': 'ERROR',
 }
+
+# False or omitted if a TFTP boot test should be tested.
+# If TFTP boot testing is not possible or desired, set this variable to True.
+# For example: If FIT image is not proper to boot
+env__tftp_boot_test_skip = False
 
 # Here is the example of FIT image configurations:
 configurations {
@@ -63,7 +71,14 @@ env__net_pxe_bootable_file = {
     'exp_str_local': 'missing environment variable: localcmd',
     'empty_label': '4',
     'exp_str_empty': 'No kernel given, skipping boot',
+    'check_type': 'boot_error',
+    'check_pattern': 'ERROR',
 }
+
+# False if a PXE boot test should be tested.
+# If PXE boot testing is not possible or desired, set this variable to True.
+# For example: If pxe configuration file is not proper to boot
+env__pxe_boot_test_skip = False
 
 # Here is the example of pxe configuration file ordered based on the execution
 # flow:
@@ -102,20 +117,27 @@ env__net_pxe_bootable_file = {
         initrd rootfs.cpio.gz.u-boot
 """
 
+def setup_networking(u_boot_console):
+    test_net.test_net_dhcp(u_boot_console)
+    if not test_net.net_set_up:
+        test_net.test_net_setup_static(u_boot_console)
+
 def setup_tftpboot_boot(u_boot_console):
     f = u_boot_console.config.env.get('env__net_tftp_bootable_file', None)
     if not f:
         pytest.skip('No TFTP bootable file to read')
 
-    test_net.test_net_dhcp(u_boot_console)
-    test_net.test_net_setup_static(u_boot_console)
-
+    setup_networking(u_boot_console)
     addr = f.get('addr', None)
     if not addr:
         addr = u_boot_utils.find_ram_base(u_boot_console)
 
     fn = f['fn']
-    output = u_boot_console.run_command('tftpboot %x %s' % (addr, fn))
+    timeout = f.get('timeout', 50000)
+
+    with u_boot_console.temporary_timeout(timeout):
+        output = u_boot_console.run_command('tftpboot %x %s' % (addr, fn))
+
     expected_text = 'Bytes transferred = '
     sz = f.get('size', None)
     if sz:
@@ -128,12 +150,13 @@ def setup_tftpboot_boot(u_boot_console):
         assert expected_crc in output
 
     pattern = f.get('pattern')
+    chk_type = f.get('check_type', 'boot_error')
+    chk_pattern = re.compile(f.get('check_pattern', 'ERROR'))
     config = f.get('config', None)
-    timeout = f.get('timeout', 50000)
 
-    return addr, pattern, timeout, config
+    return addr, timeout, pattern, chk_type, chk_pattern, config
 
-@pytest.mark.buildconfigspec('cmd_net')
+@pytest.mark.buildconfigspec('cmd_tftpboot')
 def test_net_tftpboot_boot(u_boot_console):
     """Boot the loaded image
 
@@ -144,19 +167,26 @@ def test_net_tftpboot_boot(u_boot_console):
     The details of the file to download are provided by the boardenv_* file;
     see the comment at the beginning of this file.
     """
-    addr, pattern, timeout, imcfg = setup_tftpboot_boot(u_boot_console)
-    with u_boot_console.temporary_timeout(timeout):
+    if u_boot_console.config.env.get('env__tftp_boot_test_skip', True):
+        pytest.skip('TFTP boot test is not enabled!')
+
+    addr, timeout, pattern, chk_type, chk_pattern, imcfg = setup_tftpboot_boot(
+        u_boot_console
+    )
+
+    if imcfg:
+        bootcmd = 'bootm %x#%s' % (addr, imcfg)
+    else:
+        bootcmd = 'bootm %x' % addr
+
+    with u_boot_console.enable_check(
+        chk_type, chk_pattern
+    ), u_boot_console.temporary_timeout(timeout):
         try:
             # wait_for_prompt=False makes the core code not wait for the U-Boot
             # prompt code to be seen, since it won't be on a successful kernel
             # boot
-            u_boot_console.run_command('bootm %x'% addr, wait_for_prompt=False)
-            # You might want to expand wait_for() with options to add extra bad
-            # patterns which immediately indicate a failed boot, or add a new
-            # "with object" function u_boot_console.enable_check() that can
-            # cause extra patterns like the U-Boot console prompt, U-Boot boot
-            # error messages, kernel boot error messages, etc. to fail the
-            # wait_for().
+            u_boot_console.run_command(bootcmd, wait_for_prompt=False)
 
             # Wait for boot log pattern
             u_boot_console.wait_for(pattern)
@@ -167,42 +197,18 @@ def test_net_tftpboot_boot(u_boot_console):
             u_boot_console.drain_console()
             u_boot_console.cleanup_spawn()
 
-@pytest.mark.buildconfigspec('cmd_net')
-def test_net_tftpboot_boot_config(u_boot_console):
-    """Boot the loaded image from FIT image configuration
-
-    A boot file (fit image) is downloaded from the TFTP server and booted using
-    bootm command with the custom fit configuration, its boot log pattern are
-    validated.
-
-    The details of the file to download are provided by the boardenv_* file;
-    see the comment at the beginning of this file.
-    """
-    addr, pattern, timeout, imcfg = setup_tftpboot_boot(u_boot_console)
-    response = u_boot_console.run_command('imi %x' % addr)
-    if not imcfg or not imcfg in response:
-        pytest.skip('The custom configuration not found')
-
-    with u_boot_console.temporary_timeout(timeout):
-        try:
-            u_boot_console.run_command(
-                'bootm %x#%s' % (addr, imcfg), wait_for_prompt=False
-            )
-            u_boot_console.wait_for(pattern)
-        finally:
-            u_boot_console.drain_console()
-            u_boot_console.cleanup_spawn()
-
 def setup_pxe_boot(u_boot_console):
     f = u_boot_console.config.env.get('env__net_pxe_bootable_file', None)
     if not f:
         pytest.skip('No PXE bootable file to read')
 
-    test_net.test_net_dhcp(u_boot_console)
-    test_net.test_net_setup_static(u_boot_console)
-    return f
+    setup_networking(u_boot_console)
+    bootfile = u_boot_console.run_command('echo $bootfile')
+    if not bootfile:
+        bootfile = '<NULL>'
 
-@pytest.mark.buildconfigspec('cmd_net')
+    return f, bootfile
+
 @pytest.mark.buildconfigspec('cmd_pxe')
 def test_net_pxe_boot(u_boot_console):
     """Test the pxe boot command.
@@ -213,11 +219,16 @@ def test_net_pxe_boot(u_boot_console):
     The details of the file to download are provided by the boardenv_* file;
     see the comment at the beginning of this file.
     """
+    if u_boot_console.config.env.get('env__pxe_boot_test_skip', True):
+        pytest.skip('PXE boot test is not enabled!')
 
-    f = setup_pxe_boot(u_boot_console)
+    f, bootfile = setup_pxe_boot(u_boot_console)
     addr = f.get('addr', None)
     timeout = f.get('timeout', u_boot_console.p.timeout)
     fn = f['fn']
+
+    if addr:
+        u_boot_console.run_command('setenv pxefile_addr_r %x' % addr)
 
     with u_boot_console.temporary_timeout(timeout):
         output = u_boot_console.run_command('pxe get')
@@ -228,15 +239,20 @@ def test_net_pxe_boot(u_boot_console):
         expected_text += '%d' % sz
     assert 'TIMEOUT' not in output
     assert expected_text in output
-    assert "Config file 'default.boot' found" in output
+    assert f"Config file '{bootfile}' found" in output
 
     pattern = f.get('pattern')
+    chk_type = f.get('check_type', 'boot_error')
+    chk_pattern = re.compile(f.get('check_pattern', 'ERROR'))
+
     if not addr:
         pxe_boot_cmd = 'pxe boot'
     else:
         pxe_boot_cmd = 'pxe boot %x' % addr
 
-    with u_boot_console.temporary_timeout(timeout):
+    with u_boot_console.enable_check(
+        chk_type, chk_pattern
+    ), u_boot_console.temporary_timeout(timeout):
         try:
             u_boot_console.run_command(pxe_boot_cmd, wait_for_prompt=False)
             u_boot_console.wait_for(pattern)
@@ -244,7 +260,6 @@ def test_net_pxe_boot(u_boot_console):
             u_boot_console.drain_console()
             u_boot_console.cleanup_spawn()
 
-@pytest.mark.buildconfigspec('cmd_net')
 @pytest.mark.buildconfigspec('cmd_pxe')
 def test_net_pxe_boot_config(u_boot_console):
     """Test the pxe boot command by selecting different combination of labels
@@ -255,8 +270,10 @@ def test_net_pxe_boot_config(u_boot_console):
     The details of the file to download are provided by the boardenv_* file;
     see the comment at the beginning of this file.
     """
+    if u_boot_console.config.env.get('env__pxe_boot_test_skip', True):
+        pytest.skip('PXE boot test is not enabled!')
 
-    f = setup_pxe_boot(u_boot_console)
+    f, bootfile = setup_pxe_boot(u_boot_console)
     addr = f.get('addr', None)
     timeout = f.get('timeout', u_boot_console.p.timeout)
     fn = f['fn']
@@ -264,6 +281,9 @@ def test_net_pxe_boot_config(u_boot_console):
     empty_label = f['empty_label']
     exp_str_local = f['exp_str_local']
     exp_str_empty = f['exp_str_empty']
+
+    if addr:
+        u_boot_console.run_command('setenv pxefile_addr_r %x' % addr)
 
     with u_boot_console.temporary_timeout(timeout):
         output = u_boot_console.run_command('pxe get')
@@ -274,15 +294,20 @@ def test_net_pxe_boot_config(u_boot_console):
         expected_text += '%d' % sz
     assert 'TIMEOUT' not in output
     assert expected_text in output
-    assert "Config file 'default.boot' found" in output
+    assert f"Config file '{bootfile}' found" in output
 
     pattern = f.get('pattern')
+    chk_type = f.get('check_type', 'boot_error')
+    chk_pattern = re.compile(f.get('check_pattern', 'ERROR'))
+
     if not addr:
         pxe_boot_cmd = 'pxe boot'
     else:
         pxe_boot_cmd = 'pxe boot %x' % addr
 
-    with u_boot_console.temporary_timeout(timeout):
+    with u_boot_console.enable_check(
+        chk_type, chk_pattern
+    ), u_boot_console.temporary_timeout(timeout):
         try:
             u_boot_console.run_command(pxe_boot_cmd, wait_for_prompt=False)
 
@@ -314,7 +339,6 @@ def test_net_pxe_boot_config(u_boot_console):
             u_boot_console.drain_console()
             u_boot_console.cleanup_spawn()
 
-@pytest.mark.buildconfigspec('cmd_net')
 @pytest.mark.buildconfigspec('cmd_pxe')
 def test_net_pxe_boot_config_invalid(u_boot_console):
     """Test the pxe boot command by selecting invalid label
@@ -325,13 +349,18 @@ def test_net_pxe_boot_config_invalid(u_boot_console):
     The details of the file to download are provided by the boardenv_* file;
     see the comment at the beginning of this file.
     """
+    if u_boot_console.config.env.get('env__pxe_boot_test_skip', True):
+        pytest.skip('PXE boot test is not enabled!')
 
-    f = setup_pxe_boot(u_boot_console)
+    f, bootfile = setup_pxe_boot(u_boot_console)
     addr = f.get('addr', None)
     timeout = f.get('timeout', u_boot_console.p.timeout)
     fn = f['fn']
     invalid_label = f['invalid_label']
     exp_str_invalid = f['exp_str_invalid']
+
+    if addr:
+        u_boot_console.run_command('setenv pxefile_addr_r %x' % addr)
 
     with u_boot_console.temporary_timeout(timeout):
         output = u_boot_console.run_command('pxe get')
@@ -342,7 +371,7 @@ def test_net_pxe_boot_config_invalid(u_boot_console):
         expected_text += '%d' % sz
     assert 'TIMEOUT' not in output
     assert expected_text in output
-    assert "Config file 'default.boot' found" in output
+    assert f"Config file '{bootfile}' found" in output
 
     pattern = f.get('pattern')
     if not addr:

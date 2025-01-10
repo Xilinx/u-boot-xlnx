@@ -100,7 +100,7 @@ to add environment variables.
 
 Board maintainers are encouraged to migrate to the text-based environment as it
 is easier to maintain. The distro-board script still requires the old-style
-environments, so use :doc:`../develop/bootstd` instead.
+environments, so use :doc:`/develop/bootstd/index` instead.
 
 
 List of environment variables
@@ -189,6 +189,10 @@ bootm_size
 
 bootstopkeysha256, bootdelaykey, bootstopkey
     See README.autoboot
+
+button_cmd_0, button_cmd_0_name ... button_cmd_N, button_cmd_N_name
+    Used to map commands to run when a button is held during boot.
+    See CONFIG_BUTTON_CMD.
 
 updatefile
     Location of the software update file on a TFTP server, used
@@ -319,6 +323,11 @@ netretry
     Useful on scripts which control the retry operation
     themselves.
 
+rng_seed_size
+    Size of random value added to device-tree node /chosen/rng-seed.
+    This variable is given as a decimal number.
+    If unset, 64 bytes is used as the default.
+
 silent_linux
     If set then Linux will be told to boot silently, by
     adding 'console=' to its command line. If "yes" it will be
@@ -361,6 +370,19 @@ tftpwindowsize
     window size as described by RFC 7440.
     This means the count of blocks we can receive before
     sending ack to server.
+
+usb_ignorelist
+    Ignore USB devices to prevent binding them to an USB device driver. This can
+    be used to ignore devices are for some reason undesirable or causes crashes
+    u-boot's USB stack.
+    An example for undesired behavior is the keyboard emulation of security keys
+    like Yubikeys. U-boot currently supports only a single USB keyboard device
+    so try to probe an useful keyboard device. The default environment blocks
+    Yubico devices as common devices emulating keyboards.
+    Devices are matched by idVendor and idProduct. The variable contains a comma
+    separated list of idVendor:idProduct pairs as hexadecimal numbers joined
+    by a colon. '*' functions as a wildcard for idProduct to block all devices
+    with the specified idVendor.
 
 vlan
     When set to a value < 4095 the traffic over
@@ -477,12 +499,12 @@ Automatically updated variables
 -------------------------------
 
 The following environment variables may be used and automatically
-updated by the network boot commands ("bootp" and "rarpboot"),
+updated by the network boot commands ("bootp", "dhcp" and "rarpboot"),
 depending the information provided by your boot server:
 
-=========  ===================================================
+========== ===================================================================
 Variable   Notes
-=========  ===================================================
+========== ===================================================================
 bootfile   see above
 dnsip      IP address of your Domain Name Server
 dnsip2     IP address of your secondary Domain Name Server
@@ -492,7 +514,10 @@ ipaddr     See above
 netmask    Subnet Mask
 rootpath   Pathname of the root filesystem on the NFS server
 serverip   see above
-=========  ===================================================
+ipaddrN    IP address for interface N (>0) (NET_LWIP dhcp only)
+netmaskN   Subnet mask for interface N (>0) (NET_LWIP dhcp only)
+gatewayipN IP address of the Gateway for interface N (>0) (NET_LWIP dhcp only)
+========== ===================================================================
 
 
 Special environment variables

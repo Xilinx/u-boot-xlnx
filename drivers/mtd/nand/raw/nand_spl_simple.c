@@ -4,8 +4,9 @@
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
 #include <nand.h>
+#include <system-constants.h>
 #include <asm/io.h>
 #include <linux/mtd/nand_ecc.h>
 #include <linux/mtd/rawnand.h>
@@ -18,7 +19,6 @@ static struct nand_chip nand_chip;
 					CFG_SYS_NAND_ECCSIZE)
 #define ECCTOTAL	(ECCSTEPS * CFG_SYS_NAND_ECCBYTES)
 
-
 #if (CONFIG_SYS_NAND_PAGE_SIZE <= 512)
 /*
  * NAND command for small page NAND devices (512)
@@ -27,7 +27,7 @@ static int nand_command(int block, int page, uint32_t offs,
 	u8 cmd)
 {
 	struct nand_chip *this = mtd_to_nand(mtd);
-	int page_addr = page + block * CONFIG_SYS_NAND_PAGE_COUNT;
+	int page_addr = page + block * SYS_NAND_BLOCK_PAGES;
 
 	while (!this->dev_ready(mtd))
 		;
@@ -59,7 +59,7 @@ static int nand_command(int block, int page, uint32_t offs,
 	u8 cmd)
 {
 	struct nand_chip *this = mtd_to_nand(mtd);
-	int page_addr = page + block * CONFIG_SYS_NAND_PAGE_COUNT;
+	int page_addr = page + block * SYS_NAND_BLOCK_PAGES;
 	void (*hwctrl)(struct mtd_info *mtd, int cmd,
 			unsigned int ctrl) = this->cmd_ctrl;
 
@@ -152,7 +152,6 @@ static int nand_read_page(int block, int page, uchar *dst)
 	for (i = 0; i < ECCTOTAL; i++)
 		ecc_code[i] = oob_data[nand_ecc_pos[i]];
 
-
 	for (i = 0; eccsteps; eccsteps--, i += eccbytes, p += eccsize) {
 		this->ecc.hwctl(mtd, NAND_ECC_READ);
 		this->read_buf(mtd, p, eccsize);
@@ -224,6 +223,11 @@ void nand_init(void)
 
 	if (nand_chip.select_chip)
 		nand_chip.select_chip(mtd, 0);
+}
+
+unsigned int nand_page_size(void)
+{
+	return nand_to_mtd(&nand_chip)->writesize;
 }
 
 /* Unselect after operation */

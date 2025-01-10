@@ -8,6 +8,8 @@
 #ifndef AT91_COMMON_H
 #define AT91_COMMON_H
 
+#include <linux/types.h>
+
 void at91_can_hw_init(void);
 void at91_gmac_hw_init(void);
 void at91_macb_hw_init(void);
@@ -26,7 +28,7 @@ void at91_pllb_init(u32 pllar);
 void at91_mck_init(u32 mckr);
 void at91_mck_init_down(u32 mckr);
 void at91_pmc_init(void);
-void mem_init(void);
+void at91_mem_init(void);
 void at91_phy_reset(void);
 void at91_sdram_hw_init(void);
 void at91_mck_init(u32 mckr);

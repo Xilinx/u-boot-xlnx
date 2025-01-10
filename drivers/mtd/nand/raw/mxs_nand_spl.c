@@ -4,7 +4,6 @@
  * Copyright 2019 NXP
  * Author: Tim Harvey <tharvey@gateworks.com>
  */
-#include <common.h>
 #include <log.h>
 #include <nand.h>
 #include <malloc.h>
@@ -293,6 +292,11 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
 int nand_default_bbt(struct mtd_info *mtd)
 {
 	return 0;
+}
+
+unsigned int nand_page_size(void)
+{
+	return nand_to_mtd(&nand_chip)->writesize;
 }
 
 void nand_deselect(void)

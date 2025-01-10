@@ -124,6 +124,7 @@ enum serial_stop {
 enum serial_chip_type {
 	SERIAL_CHIP_UNKNOWN = -1,
 	SERIAL_CHIP_16550_COMPATIBLE,
+	SERIAL_CHIP_PL01X,
 };
 
 enum adr_space_type {
@@ -298,9 +299,11 @@ struct dm_serial_ops {
 struct serial_dev_priv {
 	struct stdio_dev *sdev;
 
-	char *buf;
-	int rd_ptr;
-	int wr_ptr;
+#if CONFIG_IS_ENABLED(SERIAL_RX_BUFFER)
+	char buf[CONFIG_SERIAL_RX_BUFFER_SIZE];
+	uint rd_ptr;
+	uint wr_ptr;
+#endif
 };
 
 /* Access the serial operations for a device */

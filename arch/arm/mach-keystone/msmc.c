@@ -6,7 +6,6 @@
  *     Texas Instruments Incorporated, <www.ti.com>
  */
 
-#include <common.h>
 #include <asm/arch/msmc.h>
 
 struct mpax {
@@ -53,7 +52,6 @@ struct msms_regs {
 	struct mpax sms[16][8];
 	struct mpax ses[16][8];
 };
-
 
 void msmc_share_all_segments(int priv_id)
 {

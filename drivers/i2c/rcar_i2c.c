@@ -11,7 +11,6 @@
  *   Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <i2c.h>
@@ -54,7 +53,6 @@
  */
 #define RCAR_I2C_ICFBSCR		0x38
 #define RCAR_I2C_ICFBSCR_TCYC17		0x0f /* 17*Tcyc */
-
 
 enum rcar_i2c_type {
 	RCAR_I2C_TYPE_GEN2,

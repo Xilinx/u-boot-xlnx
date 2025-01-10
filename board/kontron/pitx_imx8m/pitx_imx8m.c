@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 
 #include "pitx_misc.h"
-#include <common.h>
 #include <efi.h>
 #include <efi_loader.h>
 #include <init.h>
@@ -84,7 +83,6 @@ int board_phys_sdram_size(phys_size_t *memsize)
 
 	return 0;
 }
-
 
 #ifdef CONFIG_FEC_MXC
 #define FEC_RST_PAD IMX_GPIO_NR(1, 11)

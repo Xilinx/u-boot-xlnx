@@ -5,7 +5,6 @@
  * Authors: Igor Grinberg <grinberg@compulab.co.il>
  */
 
-#include <common.h>
 #include <bmp_layout.h>
 #include <command.h>
 #include <env.h>
@@ -216,7 +215,7 @@ static int splash_init_virtio(void)
 	}
 }
 
-#ifdef CONFIG_CMD_UBIFS
+#if defined(CONFIG_CMD_UBIFS) && !defined(CONFIG_XPL_BUILD)
 static int splash_mount_ubifs(struct splash_location *location)
 {
 	int res;

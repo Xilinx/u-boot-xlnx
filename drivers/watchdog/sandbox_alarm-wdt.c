@@ -1,4 +1,3 @@
-#include <common.h>
 #include <dm.h>
 #include <os.h>
 #include <wdt.h>
@@ -56,7 +55,6 @@ static int alarm_wdt_expire_now(struct udevice *dev, ulong flags)
 
 	return 0;
 }
-
 
 static const struct wdt_ops alarm_wdt_ops = {
 	.start = alarm_wdt_start,

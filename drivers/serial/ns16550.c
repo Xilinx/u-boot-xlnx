@@ -5,7 +5,7 @@
  */
 
 #include <clock_legacy.h>
-#include <common.h>
+#include <config.h>
 #include <clk.h>
 #include <dm.h>
 #include <errno.h>
@@ -227,8 +227,7 @@ static void ns16550_setbrg(struct ns16550 *com_port, int baud_divisor)
 
 void ns16550_init(struct ns16550 *com_port, int baud_divisor)
 {
-#if (defined(CONFIG_SPL_BUILD) && \
-		(defined(CONFIG_OMAP34XX) || defined(CONFIG_OMAP44XX)))
+#if defined(CONFIG_XPL_BUILD) && defined(CONFIG_OMAP34XX)
 	/*
 	 * On some OMAP3/OMAP4 devices when UART3 is configured for boot mode
 	 * before SPL starts only THRE bit is set. We have to empty the
@@ -291,9 +290,9 @@ void ns16550_putc(struct ns16550 *com_port, char c)
 	serial_out(c, &com_port->thr);
 
 	/*
-	 * Call watchdog_reset() upon newline. This is done here in putc
+	 * Call schedule() upon newline. This is done here in putc
 	 * since the environment code uses a single puts() to print the complete
-	 * environment upon "printenv". So we can't put this watchdog call
+	 * environment upon "printenv". So we can't put this schedule call
 	 * in puts().
 	 */
 	if (c == '\n')
@@ -304,7 +303,7 @@ void ns16550_putc(struct ns16550 *com_port, char c)
 char ns16550_getc(struct ns16550 *com_port)
 {
 	while ((serial_in(&com_port->lsr) & UART_LSR_DR) == 0) {
-#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_USB_TTY)
+#if !defined(CONFIG_XPL_BUILD) && defined(CONFIG_USB_TTY)
 		extern void usbtty_poll(void);
 		usbtty_poll();
 #endif
@@ -390,9 +389,9 @@ static int ns16550_serial_putc(struct udevice *dev, const char ch)
 	serial_out(ch, &com_port->thr);
 
 	/*
-	 * Call watchdog_reset() upon newline. This is done here in putc
+	 * Call schedule() upon newline. This is done here in putc
 	 * since the environment code uses a single puts() to print the complete
-	 * environment upon "printenv". So we can't put this watchdog call
+	 * environment upon "printenv". So we can't put this schedule call
 	 * in puts().
 	 */
 	if (ch == '\n')
@@ -474,7 +473,7 @@ static int ns16550_serial_getinfo(struct udevice *dev,
 	struct ns16550_plat *plat = com_port->plat;
 
 	/* save code size */
-	if (!spl_in_proper())
+	if (!not_xpl())
 		return -ENOSYS;
 
 	info->type = SERIAL_CHIP_16550_COMPATIBLE;
@@ -556,7 +555,7 @@ int ns16550_serial_of_to_plat(struct udevice *dev)
 	struct clk clk;
 	int err;
 
-	addr = spl_in_proper() ? dev_read_addr_size(dev, &size) :
+	addr = not_xpl() ? dev_read_addr_size(dev, &size) :
 		dev_read_addr(dev);
 	err = ns16550_serial_assign_base(plat, addr, size);
 	if (err && !device_is_on_pci_bus(dev))
@@ -566,19 +565,19 @@ int ns16550_serial_of_to_plat(struct udevice *dev)
 	plat->reg_shift = dev_read_u32_default(dev, "reg-shift", 0);
 	plat->reg_width = dev_read_u32_default(dev, "reg-io-width", 1);
 
-	err = clk_get_by_index(dev, 0, &clk);
-	if (!err) {
-		err = clk_get_rate(&clk);
-		if (!IS_ERR_VALUE(err))
-			plat->clock = err;
-	} else if (err != -ENOENT && err != -ENODEV && err != -ENOSYS) {
-		debug("ns16550 failed to get clock\n");
-		return err;
-	}
-
 	if (!plat->clock)
-		plat->clock = dev_read_u32_default(dev, "clock-frequency",
-						   CFG_SYS_NS16550_CLK);
+		plat->clock = dev_read_u32_default(dev, "clock-frequency", 0);
+	if (!plat->clock) {
+		err = clk_get_by_index(dev, 0, &clk);
+		if (!err) {
+			err = clk_get_rate(&clk);
+			if (!IS_ERR_VALUE(err))
+				plat->clock = err;
+		} else if (err != -ENOENT && err != -ENODEV && err != -ENOSYS) {
+			debug("ns16550 failed to get clock\n");
+			return err;
+		}
+	}
 	if (!plat->clock)
 		plat->clock = CFG_SYS_NS16550_CLK;
 	if (!plat->clock) {

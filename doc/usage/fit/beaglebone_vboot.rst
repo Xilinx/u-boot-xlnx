@@ -67,18 +67,20 @@ a. Set up the environment variable to point to your toolchain. You will need
 
        export CROSS_COMPILE=arm-linux-gnueabi-
 
-b. Configure and build U-Boot with verified boot enabled::
+b. Configure and build U-Boot with verified boot enabled. Note that we use the
+am335x_evm target since it covers all boards based on the AM335x evaluation
+board::
 
     export UBOOT=/path/to/u-boot
     cd $UBOOT
     # You can add -j10 if you have 10 CPUs to make it faster
-    make O=b/am335x_boneblack_vboot am335x_boneblack_vboot_config all
-    export UOUT=$UBOOT/b/am335x_boneblack_vboot
+    make O=b/am335x_evm am335x_evm_config all
+    export UOUT=$UBOOT/b/am335x_evm
 
 c. You will now have a U-Boot image::
 
-    file b/am335x_boneblack_vboot/u-boot-dtb.img
-    b/am335x_boneblack_vboot/u-boot-dtb.img: u-boot legacy uImage,
+    file b/am335x_evm/u-boot-dtb.img
+    b/am335x_evm/u-boot-dtb.img: u-boot legacy uImage,
       U-Boot 2014.07-rc2-00065-g2f69f8, Firmware/ARM, Firmware Image
       (Not compressed), 395375 bytes, Sat May 31 16:19:04 2014,
       Load Address: 0x80800000, Entry Point: 0x00000000,
@@ -145,7 +147,7 @@ Put this into a file in that directory called sign.its::
                 load = <0x80008000>;
                 entry = <0x80008000>;
                 hash-1 {
-                    algo = "sha1";
+                    algo = "sha256";
                 };
             };
             fdt-1 {
@@ -155,7 +157,7 @@ Put this into a file in that directory called sign.its::
                 arch = "arm";
                 compression = "none";
                 hash-1 {
-                    algo = "sha1";
+                    algo = "sha256";
                 };
             };
         };
@@ -165,7 +167,7 @@ Put this into a file in that directory called sign.its::
                 kernel = "kernel";
                 fdt = "fdt-1";
                 signature-1 {
-                    algo = "sha1,rsa2048";
+                    algo = "sha256,rsa2048";
                     key-name-hint = "dev";
                     sign-images = "fdt", "kernel";
                 };
@@ -227,8 +229,8 @@ You should see something like this::
       OS:           Linux
       Load Address: 0x80008000
       Entry Point:  0x80008000
-      Hash algo:    sha1
-      Hash value:   c94364646427e10f423837e559898ef02c97b988
+      Hash algo:    sha256
+      Hash value:   51b2adf9c1016ed46f424d85dcc6c34c46a20b9bee7227e06a6b6320ca5d35c1
      Image 1 (fdt-1)
       Description:  beaglebone-black
       Created:      Sun Jun  1 12:50:30 2014
@@ -236,8 +238,8 @@ You should see something like this::
       Compression:  uncompressed
       Data Size:    31547 Bytes = 30.81 kB = 0.03 MB
       Architecture: ARM
-      Hash algo:    sha1
-      Hash value:   cb09202f889d824f23b8e4404b781be5ad38a68d
+      Hash algo:    sha256
+      Hash value:   807d5842a04132261ba092373bd40c78991bc7ce173d1175cd976ec37858e7cd
      Default Configuration: 'conf-1'
      Configuration 0 (conf-1)
       Description:  unavailable
@@ -255,11 +257,11 @@ You can also run fit_check_sign to check it::
 
 which results in::
 
-    Verifying Hash Integrity ... sha1,rsa2048:dev+
+    Verifying Hash Integrity ... sha256,rsa2048:dev+
     ## Loading kernel from FIT Image at 7fc6ee469000 ...
        Using 'conf-1' configuration
        Verifying Hash Integrity ...
-    sha1,rsa2048:dev+
+    sha256,rsa2048:dev+
     OK
 
        Trying 'kernel' kernel subimage
@@ -272,10 +274,10 @@ which results in::
          OS:           Linux
          Load Address: 0x80008000
          Entry Point:  0x80008000
-         Hash algo:    sha1
-         Hash value:   c94364646427e10f423837e559898ef02c97b988
+         Hash algo:    sha256
+         Hash value:   51b2adf9c1016ed46f424d85dcc6c34c46a20b9bee7227e06a6b6320ca5d35c1
        Verifying Hash Integrity ...
-    sha1+
+    sha256+
     OK
 
     Unimplemented compression type 4
@@ -288,10 +290,10 @@ which results in::
          Compression:  uncompressed
          Data Size:    31547 Bytes = 30.81 kB = 0.03 MB
          Architecture: ARM
-         Hash algo:    sha1
-         Hash value:   cb09202f889d824f23b8e4404b781be5ad38a68d
+         Hash algo:    sha256
+         Hash value:   807d5842a04132261ba092373bd40c78991bc7ce173d1175cd976ec37858e7cd
        Verifying Hash Integrity ...
-    sha1+
+    sha256+
     OK
 
        Loading Flat Device Tree ... OK
@@ -303,14 +305,14 @@ which results in::
     Signature check OK
 
 
-At the top, you see "sha1,rsa2048:dev+". This means that it checked an RSA key
-of size 2048 bits using SHA1 as the hash algorithm. The key name checked was
+At the top, you see "sha256,rsa2048:dev+". This means that it checked an RSA key
+of size 2048 bits using SHA256 as the hash algorithm. The key name checked was
 'dev' and the '+' means that it verified. If it showed '-' that would be bad.
 
 Once the configuration is verified it is then possible to rely on the hashes
 in each image referenced by that configuration. So fit_check_sign goes on to
 load each of the images. We have a kernel and an FDT but no ramkdisk. In each
-case fit_check_sign checks the hash and prints sha1+ meaning that the SHA1
+case fit_check_sign checks the hash and prints sha256+ meaning that the SHA256
 hash verified. This means that none of the images has been tampered with.
 
 There is a test in test/vboot which uses U-Boot's sandbox build to verify that
@@ -328,11 +330,11 @@ This tells us that the kernel starts at byte offset 168 (decimal) in image.fit
 and extends for about 7MB. Try changing a byte at 0x2000 (say) and run
 fit_check_sign again. You should see something like::
 
-    Verifying Hash Integrity ... sha1,rsa2048:dev+
+    Verifying Hash Integrity ... sha256,rsa2048:dev+
     ## Loading kernel from FIT Image at 7f5a39571000 ...
        Using 'conf-1' configuration
        Verifying Hash Integrity ...
-    sha1,rsa2048:dev+
+    sha256,rsa2048:dev+
     OK
 
        Trying 'kernel' kernel subimage
@@ -345,10 +347,10 @@ fit_check_sign again. You should see something like::
          OS:           Linux
          Load Address: 0x80008000
          Entry Point:  0x80008000
-         Hash algo:    sha1
-         Hash value:   c94364646427e10f423837e559898ef02c97b988
+         Hash algo:    sha256
+         Hash value:   51b2adf9c1016ed46f424d85dcc6c34c46a20b9bee7227e06a6b6320ca5d35c1
        Verifying Hash Integrity ...
-    sha1 error
+    sha256 error
     Bad hash value for 'hash-1' hash node in 'kernel' image node
     Bad Data Hash
 
@@ -361,10 +363,10 @@ fit_check_sign again. You should see something like::
          Compression:  uncompressed
          Data Size:    31547 Bytes = 30.81 kB = 0.03 MB
          Architecture: ARM
-         Hash algo:    sha1
-         Hash value:   cb09202f889d824f23b8e4404b781be5ad38a68d
+         Hash algo:    sha256
+         Hash value:   807d5842a04132261ba092373bd40c78991bc7ce173d1175cd976ec37858e7cd
        Verifying Hash Integrity ...
-    sha1+
+    sha256+
     OK
 
        Loading Flat Device Tree ... OK
@@ -419,13 +421,13 @@ need to change the hash to match. Let's simulate that by changing a byte of
 the hash::
 
     fdtget -tx image.fit /images/kernel/hash-1 value
-    c9436464 6427e10f 423837e5 59898ef0 2c97b988
-    fdtput -tx image.fit /images/kernel/hash-1 value c9436464 6427e10f 423837e5 59898ef0 2c97b981
+    51b2adf9 c1016ed4 6f424d85 dcc6c34c 46a20b9b ee7227e0 6a6b6320 ca5d35c1
+    fdtput -tx image.fit /images/kernel/hash-1 value 51b2adf9 c1016ed4 6f424d85 dcc6c34c 46a20b9b ee7227e0 6a6b6320 ca5d35c8
 
 Now check it again::
 
     $UOUT/tools/fit_check_sign -f image.fit -k am335x-boneblack-pubkey.dtb
-    Verifying Hash Integrity ... sha1,rsa2048:devrsa_verify_with_keynode: RSA failed to verify: -13
+    Verifying Hash Integrity ... sha256,rsa2048:devrsa_verify_with_keynode: RSA failed to verify: -13
     rsa_verify_with_keynode: RSA failed to verify: -13
     -
     Failed to verify required signature 'key-dev'
@@ -446,7 +448,7 @@ running the mkimage link again. Then::
     fdtput -p image.fit /configurations/conf-1/signature-1 value fred
     $UOUT/tools/fit_check_sign -f image.fit -k am335x-boneblack-pubkey.dtb
     Verifying Hash Integrity ... -
-    sha1,rsa2048:devrsa_verify_with_keynode: RSA failed to verify: -13
+    sha256,rsa2048:devrsa_verify_with_keynode: RSA failed to verify: -13
     rsa_verify_with_keynode: RSA failed to verify: -13
     -
     Failed to verify required signature 'key-dev'
@@ -466,7 +468,7 @@ the private key that you signed with so that it can verify any kernels that
 you sign::
 
     cd $UBOOT
-    make O=b/am335x_boneblack_vboot EXT_DTB=${WORK}/am335x-boneblack-pubkey.dtb
+    make O=b/am335x_evm EXT_DTB=${WORK}/am335x-boneblack-pubkey.dtb
 
 Here we are overriding the normal device tree file with our one, which
 contains the public key.
@@ -528,7 +530,7 @@ You should then see something like this::
     U-Boot# bootm 82000000
     ## Loading kernel from FIT Image at 82000000 ...
        Using 'conf-1' configuration
-       Verifying Hash Integrity ... sha1,rsa2048:dev+ OK
+       Verifying Hash Integrity ... sha256,rsa2048:dev+ OK
        Trying 'kernel' kernel subimage
          Description:  unavailable
          Created:      2014-06-01  19:32:54 UTC
@@ -540,9 +542,9 @@ You should then see something like this::
          OS:           Linux
          Load Address: 0x80008000
          Entry Point:  0x80008000
-         Hash algo:    sha1
-         Hash value:   c94364646427e10f423837e559898ef02c97b988
-       Verifying Hash Integrity ... sha1+ OK
+         Hash algo:    sha256
+         Hash value:   51b2adf9c1016ed46f424d85dcc6c34c46a20b9bee7227e06a6b6320ca5d35c1
+       Verifying Hash Integrity ... sha256+ OK
     ## Loading fdt from FIT Image at 82000000 ...
        Using 'conf-1' configuration
        Trying 'fdt-1' fdt subimage
@@ -553,9 +555,9 @@ You should then see something like this::
          Data Start:   0x8276e2ec
          Data Size:    31547 Bytes = 30.8 KiB
          Architecture: ARM
-         Hash algo:    sha1
-         Hash value:   cb09202f889d824f23b8e4404b781be5ad38a68d
-       Verifying Hash Integrity ... sha1+ OK
+         Hash algo:    sha256
+         Hash value:   807d5842a04132261ba092373bd40c78991bc7ce173d1175cd976ec37858e7cd
+       Verifying Hash Integrity ... sha256+ OK
        Booting using the fdt blob at 0x8276e2ec
        Uncompressing Kernel Image ... OK
        Loading Device Tree to 8fff5000, end 8ffffb3a ... OK
@@ -597,13 +599,10 @@ Further Improvements
 
 Several of the steps here can be easily automated. In particular it would be
 capital if signing and packaging a kernel were easy, perhaps a simple make
-target in the kernel.
+target in the kernel. A starting point for this is the 'make image.fit' target
+for ARM64 in Linux from v6.9 onwards.
 
 Some mention of how to use multiple .dtb files in a FIT might be useful.
-
-U-Boot's verified boot mechanism has not had a robust and independent security
-review. Such a review should look at the implementation and its resistance to
-attacks.
 
 Perhaps the verified boot feature could be integrated into the Amstrom
 distribution.

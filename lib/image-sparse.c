@@ -35,7 +35,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <blk.h>
 #include <image-sparse.h>
 #include <div64.h>
@@ -212,7 +211,7 @@ int write_sparse_image(struct sparse_storage *info,
 
 			blks = write_sparse_chunk_raw(info, blk, blkcnt,
 						      data, response);
-			if (blks < 0)
+			if (IS_ERR_VALUE(blks))
 				return -1;
 
 			blk += blks;

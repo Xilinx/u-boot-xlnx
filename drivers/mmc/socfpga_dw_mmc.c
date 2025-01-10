@@ -3,7 +3,6 @@
  * (C) Copyright 2013 Altera Corporation <www.altera.com>
  */
 
-#include <common.h>
 #include <log.h>
 #include <asm/arch/clock_manager.h>
 #include <asm/arch/secure_reg_helper.h>
@@ -62,7 +61,7 @@ static int socfpga_dwmci_clksel(struct dwmci_host *host)
 	debug("%s: drvsel %d smplsel %d\n", __func__,
 	      priv->drvsel, priv->smplsel);
 
-#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_ATF)
+#if !defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_ATF)
 	int ret;
 
 	ret = socfpga_secure_reg_write32(SOCFPGA_SECURE_REG_SYSMGR_SOC64_SDMMC,
@@ -99,7 +98,6 @@ static int socfpga_dwmmc_get_clk_rate(struct udevice *dev)
 
 	host->bus_hz = clk_get_rate(&clk);
 
-	clk_free(&clk);
 #else
 	/* Fixed clock divide by 4 which due to the SDMMC wrapper */
 	host->bus_hz = cm_get_mmc_controller_clk_hz();
@@ -136,8 +134,8 @@ static int socfpga_dwmmc_of_to_plat(struct udevice *dev)
 	 * We only have one dwmmc block on gen5 SoCFPGA.
 	 */
 	host->dev_index = 0;
-	host->fifoth_val = MSIZE(0x2) |
-		RX_WMARK(fifo_depth / 2 - 1) | TX_WMARK(fifo_depth / 2);
+
+	host->fifo_depth = fifo_depth;
 	priv->drvsel = fdtdec_get_uint(gd->fdt_blob, dev_of_offset(dev),
 				       "drvsel", 3);
 	priv->smplsel = fdtdec_get_uint(gd->fdt_blob, dev_of_offset(dev),

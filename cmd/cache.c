@@ -7,22 +7,11 @@
 /*
  * Cache support: switch on or off, get status
  */
-#include <common.h>
 #include <command.h>
 #include <cpu_func.h>
 #include <linux/compiler.h>
 
 static int parse_argv(const char *);
-
-void __weak invalidate_icache_all(void)
-{
-	/* please define arch specific invalidate_icache_all */
-	puts("No arch specific invalidate_icache_all available!\n");
-}
-
-__weak void noncached_set_region(void)
-{
-}
 
 static int do_icache(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
@@ -53,12 +42,6 @@ static int do_icache(struct cmd_tbl *cmdtp, int flag, int argc,
 	return 0;
 }
 
-void __weak flush_dcache_all(void)
-{
-	puts("No arch specific flush_dcache_all available!\n");
-	/* please define arch specific flush_dcache_all */
-}
-
 static int do_dcache(struct cmd_tbl *cmdtp, int flag, int argc,
 		     char *const argv[])
 {
@@ -70,7 +53,9 @@ static int do_dcache(struct cmd_tbl *cmdtp, int flag, int argc,
 			break;
 		case 1:
 			dcache_enable();
+#ifdef CONFIG_SYS_NONCACHED_MEMORY
 			noncached_set_region();
+#endif
 			break;
 		case 2:
 			flush_dcache_all();
@@ -100,7 +85,6 @@ static int parse_argv(const char *s)
 
 	return -1;
 }
-
 
 U_BOOT_CMD(
 	icache,   2,   1,     do_icache,

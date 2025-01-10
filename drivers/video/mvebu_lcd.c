@@ -5,7 +5,6 @@
  * Initialization of LCD interface and setup of SPLASH screen image
  */
 
-#include <common.h>
 #include <dm.h>
 #include <part.h>
 #include <video.h>
@@ -334,7 +333,6 @@ static void mvebu_lcd_register_init(struct mvebu_lcd_info *lcd_info,
 	 * LCD_SPU_SRAM_PARA1 register: 01A4 - Cursor control/Power settings
 	 */
 	writel(0x00000000, regs + MVEBU_LCD_SPU_SRAM_PARA1);
-
 
 	/* Clock settings in the at 01A8 and in the range F0A0 see below */
 

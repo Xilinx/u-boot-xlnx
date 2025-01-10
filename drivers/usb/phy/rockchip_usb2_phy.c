@@ -3,7 +3,6 @@
  * Copyright 2016 Rockchip Electronics Co., Ltd
  */
 
-#include <common.h>
 #include <hang.h>
 #include <log.h>
 #include <asm/global_data.h>
@@ -72,7 +71,6 @@ static void property_enable(struct dwc2_plat_otg_data *pdata,
 
 	writel(val, pdata->regs_phy + reg->offset);
 }
-
 
 void otg_phy_init(struct dwc2_udc *dev)
 {

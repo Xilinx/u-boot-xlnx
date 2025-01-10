@@ -11,7 +11,6 @@
 
 #define LOG_CATEGORY UCLASS_NORTHBRIDGE
 
-#include <common.h>
 #include <dm.h>
 #include <dt-structs.h>
 #include <log.h>
@@ -256,7 +255,7 @@ static int apl_hostbridge_of_to_plat(struct udevice *dev)
 
 static int apl_hostbridge_probe(struct udevice *dev)
 {
-	if (spl_phase() == PHASE_TPL)
+	if (xpl_phase() == PHASE_TPL)
 		return apl_hostbridge_early_init(dev);
 
 	return 0;

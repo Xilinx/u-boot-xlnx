@@ -64,14 +64,13 @@
 #include <linux/mfd/syscon/atmel-smc.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/mtd/mtd.h>
+#include <linux/time.h>
 #include <mach/at91_sfr.h>
 #include <nand.h>
 #include <regmap.h>
 #include <syscon.h>
 
 #include "pmecc.h"
-
-#define NSEC_PER_SEC    1000000000L
 
 #define ATMEL_HSMC_NFC_CFG			0x0
 #define ATMEL_HSMC_NFC_CFG_SPARESIZE(x)		(((x) / 4) << 24)
@@ -350,40 +349,6 @@ static int atmel_nfc_wait(struct atmel_hsmc_nand_controller *nc, bool poll,
 	}
 
 	return ret;
-}
-
-static void iowrite8_rep(void *addr, const uint8_t *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		writeb(buf[i], addr);
-}
-
-static void ioread8_rep(void *addr, uint8_t *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		buf[i] = readb(addr);
-}
-
-static void ioread16_rep(void *addr, void *buf, int len)
-{
-	int i;
-	u16 *p = (u16 *)buf;
-
-	for (i = 0; i < len; i++)
-		p[i] = readw(addr);
-}
-
-static void iowrite16_rep(void *addr, const void *buf, int len)
-{
-	int i;
-	u16 *p = (u16 *)buf;
-
-	for (i = 0; i < len; i++)
-		writew(p[i], addr);
 }
 
 static u8 atmel_nand_read_byte(struct mtd_info *mtd)
@@ -1064,11 +1029,15 @@ static int atmel_nand_pmecc_init(struct nand_chip *chip)
 		req.ecc.strength = ATMEL_PMECC_MAXIMIZE_ECC_STRENGTH;
 	else if (chip->ecc.strength)
 		req.ecc.strength = chip->ecc.strength;
+	else if (chip->ecc_strength_ds)
+		req.ecc.strength = chip->ecc_strength_ds;
 	else
 		req.ecc.strength = ATMEL_PMECC_MAXIMIZE_ECC_STRENGTH;
 
 	if (chip->ecc.size)
 		req.ecc.sectorsize = chip->ecc.size;
+	else if (chip->ecc_step_ds)
+		req.ecc.sectorsize = chip->ecc_step_ds;
 	else
 		req.ecc.sectorsize = ATMEL_PMECC_SECTOR_SIZE_AUTO;
 
@@ -1302,7 +1271,7 @@ static int atmel_smc_nand_prepare_smcconf(struct atmel_nand *nand,
 		return ret;
 
 	/*
-	 * The write cycle timing is directly matching tWC, but is also
+	 * The read cycle timing is directly matching tRC, but is also
 	 * dependent on the setup and hold timings we calculated earlier,
 	 * which gives:
 	 *
@@ -1463,8 +1432,6 @@ static int atmel_nand_setup_data_interface(struct mtd_info *mtd, int csline,
 
 	return nc->caps->ops->setup_data_interface(nand, csline, conf);
 }
-
-#define NAND_KEEP_TIMINGS       0x00800000
 
 static void atmel_nand_init(struct atmel_nand_controller *nc,
 			    struct atmel_nand *nand)
@@ -2034,10 +2001,8 @@ atmel_hsmc_nand_controller_remove(struct atmel_nand_controller *nc)
 
 	hsmc_nc = container_of(nc, struct atmel_hsmc_nand_controller, base);
 
-	if (hsmc_nc->clk) {
+	if (hsmc_nc->clk)
 		clk_disable_unprepare(hsmc_nc->clk);
-		devm_clk_put(nc->dev, hsmc_nc->clk);
-	}
 
 	return 0;
 }

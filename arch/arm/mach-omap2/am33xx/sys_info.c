@@ -11,7 +11,6 @@
  *      Syed Mohammed Khasim <khasim@ti.com>
  */
 
-#include <common.h>
 #include <init.h>
 #include <asm/io.h>
 #include <asm/arch/sys_proto.h>
@@ -74,7 +73,6 @@ u32 get_sys_clk_index(void)
 		return ((ind & CTRL_SYSBOOT_15_14_MASK) >>
 			CTRL_SYSBOOT_15_14_SHIFT);
 }
-
 
 #ifdef CONFIG_DISPLAY_CPUINFO
 static char *cpu_revs[] = {

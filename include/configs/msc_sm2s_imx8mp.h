@@ -18,10 +18,9 @@
 
 #if defined(CONFIG_CMD_NET)
 #define CFG_FEC_MXC_PHYADDR          1
-#define PHY_ANEG_TIMEOUT 20000
 #endif
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 #define BOOT_TARGET_DEVICES(func) \
 	func(MMC, mmc, 1) \
 	func(MMC, mmc, 2)
@@ -36,10 +35,10 @@
 	"kernel_addr_r=" __stringify(CONFIG_SYS_LOAD_ADDR) "\0" \
 	"image=Image\0" \
 	"console=ttymxc1,115200\0" \
-	"fdt_addr_r=0x43000000\0"			\
+	"fdt_addr_r=0x48600000\0"			\
 	"boot_fdt=try\0" \
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
-	"initrd_addr=0x43800000\0"		\
+	"initrd_addr=0x48680000\0"		\
 	"bootm_size=0x10000000\0" \
 	"mmcpart=1\0" \
 	"mmcroot=/dev/mmcblk1p2 rootwait rw\0" \
@@ -54,8 +53,6 @@
 #define PHYS_SDRAM_SIZE			0x80000000 /* 2GB DDR */
 #define PHYS_SDRAM_2			0xc0000000
 #define PHYS_SDRAM_2_SIZE		0x0
-
-#define CFG_MXC_UART_BASE		UART2_BASE_ADDR
 
 #define CFG_SYS_FSL_USDHC_NUM	2
 #define CFG_SYS_FSL_ESDHC_ADDR	0

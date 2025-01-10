@@ -157,6 +157,20 @@ config ASPEED_GPIO
 	  is found in the AST2400, AST2500 and AST2600 BMC SoCs and
 	  provides access to over 200 GPIOs on each chip.
 
+config ASPEED_SGPIO
+	bool "Aspeed SGPIO Driver"
+	help
+	  Say yes here to support the Aspeed serial GPIO driver. The controller
+	  is found in the AST2400, AST2500 and AST2600 BMC SoCs and
+	  provides access to generate serial GPIO signal.
+
+config ASPEED_G7_GPIO
+	bool "Aspeed G7 GPIO Driver"
+	help
+	  Say yes here to support the Aspeed G7 GPIO driver. The controller
+	  is found in the AST2700 BMC SoCs and provides access to over 200
+	  GPIOs on each chip.
+
 config DA8XX_GPIO
 	bool "DA8xx GPIO Driver"
 	help
@@ -238,6 +252,15 @@ config MAX7320_GPIO
 	 original maxim device has 8 push/pull outputs,
 	 some clones offers 16bit.
 
+config MAX77663_GPIO
+	bool "MAX77663 GPIO cell of PMIC driver"
+	depends on DM_GPIO && DM_PMIC_MAX77663
+	help
+	  GPIO driver for MAX77663 PMIC from Maxim Semiconductor.
+	  MAX77663 PMIC has 8 pins that can be configured as GPIOs
+	  and 3 GPIO-like pins dedicated for power/reset buttons
+	  and LID sensor.
+
 config MCP230XX_GPIO
 	bool "MCP230XX GPIO driver"
 	depends on DM
@@ -247,6 +270,9 @@ config MCP230XX_GPIO
 	   - MCP23008
 	   - MCP23017
 	   - MCP23018
+	   - MCP23S08
+	   - MCP23S17
+	   - MCP23S18
 
 config MSCC_SGPIO
 	bool "Microsemi Serial GPIO driver"
@@ -289,6 +315,15 @@ config NPCM_GPIO
 	  Support GPIO controllers on Nuvovon NPCM SoCs.
 	  NPCM7xx/NPCM8xx contain 8 GPIO banks, each bank contains 32 pins.
 
+config NPCM_SGPIO
+	bool "Nuvoton NPCM SGPIO driver"
+	depends on DM_GPIO
+	help
+	  Support Nuvoton BMC NPCM7xx/NPCM8xx sgpio driver support.
+	  Nuvoton NPCM SGPIO module is combine serial to parallel IC (HC595)
+	  and parallel to serial IC (HC165).
+	  BMC can use this driver to increase 64 GPI pins and 64 GPO pins to use.
+
 config OMAP_GPIO
 	bool "TI OMAP GPIO driver"
 	depends on ARCH_OMAP2PLUS
@@ -309,12 +344,11 @@ config CMD_PCA953X
 config QCOM_PMIC_GPIO
 	bool "Qualcomm generic PMIC GPIO/keypad driver"
 	depends on DM_GPIO && PMIC_QCOM
+	select BUTTON
 	help
 	  Support for GPIO pins and power/reset buttons found on
 	  Qualcomm SoCs PMIC.
-	  Default name for GPIO bank is "pm8916".
-	  Power and reset buttons are placed in "pwkey_qcom" bank and
-          have gpio numbers 0 and 1 respectively.
+	  The GPIO bank is called "pmic"
 
 config PCF8575_GPIO
 	bool "PCF8575 I2C GPIO Expander driver"
@@ -324,10 +358,10 @@ config PCF8575_GPIO
 	 chips are from NXP and TI.
 
 config RCAR_GPIO
-	bool "Renesas RCar GPIO driver"
-	depends on DM_GPIO && ARCH_RMOBILE
+	bool "Renesas R-Car GPIO driver"
+	depends on DM_GPIO && ARCH_RENESAS
 	help
-	  This driver supports the GPIO banks on Renesas RCar SoCs.
+	  This driver supports the GPIO banks on Renesas R-Car SoCs.
 
 config RZA1_GPIO
 	bool "Renesas RZ/A1 GPIO driver"
@@ -425,6 +459,13 @@ config VYBRID_GPIO
 	depends on DM
 	help
 	  Say yes here to support Vybrid vf610 GPIOs.
+
+config PALMAS_GPIO
+	bool "TI PALMAS series PMICs GPIO"
+	depends on DM_GPIO && PMIC_PALMAS
+	help
+	  Select this option to enable GPIO driver for the TI PALMAS
+	  series chip family.
 
 config PIC32_GPIO
 	bool "Microchip PIC32 GPIO driver"
@@ -621,7 +662,7 @@ config NOMADIK_GPIO
 
 config ZYNQMP_GPIO_MODEPIN
 	bool "ZynqMP gpio modepin"
-	depends on DM_GPIO
+	depends on DM_GPIO && ZYNQMP_FIRMWARE
 	help
 	  This config enables the ZynqMP gpio modepin driver. ZynqMP modepin
 	  driver will set and get the status of PS_MODE pins. These modepins
@@ -647,13 +688,6 @@ config SLG7XL45106_I2C_GPO
 	   8-bit gpo expander, all gpo lines are controlled by writing
 	   value into data register.
 
-config TURRIS_OMNIA_MCU
-	bool "Turris Omnia MCU GPIO driver"
-	depends on DM_GPIO
-	default y if TARGET_TURRIS_OMNIA
-	help
-	   Support for GPIOs on MCU connected to Turris Omnia via i2c.
-
 config FTGPIO010
 	bool "Faraday Technology FTGPIO010 driver"
 	depends on DM_GPIO
@@ -672,5 +706,11 @@ config RZG2L_GPIO
 	help
 	  Support the gpio functionality of the pin function controller (PFC)
 	  on the Renesas RZ/G2L SoC family.
+
+config SPL_ADP5585_GPIO
+	bool "ADP5585 GPIO driver in SPL"
+	depends on SPL_DM_GPIO && SPL_I2C
+	help
+	  Support ADP5585 GPIO expander in SPL.
 
 endif

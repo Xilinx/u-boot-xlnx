@@ -9,7 +9,6 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <clock_legacy.h>
 #include <ppc_asm.tmpl>
@@ -625,7 +624,6 @@ int get_clocks(void)
 	if(gd->cpu_clk != 0) return (0);
 	else return (1);
 }
-
 
 /********************************************
  * get_bus_freq

@@ -6,22 +6,28 @@
  * Copyright 2010-2011 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
+#include <dm.h>
 #include <abuf.h>
 #include <env.h>
 #include <log.h>
 #include <mapmem.h>
 #include <net.h>
+#include <rng.h>
 #include <stdio_dev.h>
+#include <dm/device_compat.h>
 #include <dm/ofnode.h>
 #include <linux/ctype.h>
 #include <linux/types.h>
 #include <asm/global_data.h>
+#include <asm/unaligned.h>
 #include <linux/libfdt.h>
 #include <fdt_support.h>
 #include <exports.h>
 #include <fdtdec.h>
 #include <version.h>
+#include <video.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 /**
  * fdt_getprop_u32_default_node - Return a node's property or a default
@@ -270,6 +276,47 @@ int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end)
 	return 0;
 }
 
+int fdt_kaslrseed(void *fdt, bool overwrite)
+{
+	int len, err, nodeoffset;
+	struct udevice *dev;
+	const u64 *orig;
+	u64 data = 0;
+
+	err = fdt_check_header(fdt);
+	if (err < 0)
+		return err;
+
+	/* find or create "/chosen" node. */
+	nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
+	if (nodeoffset < 0)
+		return nodeoffset;
+
+	/* return without error if we are not overwriting and existing non-zero node */
+	orig = fdt_getprop(fdt, nodeoffset, "kaslr-seed", &len);
+	if (orig && len == sizeof(*orig))
+		data = fdt64_to_cpu(*orig);
+	if (data && !overwrite) {
+		debug("not overwriting existing kaslr-seed\n");
+		return 0;
+	}
+	err = uclass_get_device(UCLASS_RNG, 0, &dev);
+	if (err) {
+		printf("No RNG device\n");
+		return err;
+	}
+	err = dm_rng_read(dev, &data, sizeof(data));
+	if (err) {
+		dev_err(dev, "dm_rng_read failed: %d\n", err);
+		return err;
+	}
+	err = fdt_setprop(fdt, nodeoffset, "kaslr-seed", &data, sizeof(data));
+	if (err < 0)
+		printf("WARNING: could not set kaslr-seed %s.\n", fdt_strerror(err));
+
+	return err;
+}
+
 /**
  * board_fdt_chosen_bootargs - boards may override this function to use
  *                             alternative kernel command line arguments
@@ -296,6 +343,15 @@ int fdt_chosen(void *fdt)
 	nodeoffset = fdt_find_or_add_subnode(fdt, 0, "chosen");
 	if (nodeoffset < 0)
 		return nodeoffset;
+
+	/* if DM_RNG enabled automatically inject kaslr-seed node unless:
+	 * CONFIG_MEASURED_BOOT enabled: as dt modifications break measured boot
+	 * CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT enabled: as that implementation does not use dm yet
+	 */
+	if (IS_ENABLED(CONFIG_DM_RNG) &&
+	    !IS_ENABLED(CONFIG_MEASURED_BOOT) &&
+	    !IS_ENABLED(CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT))
+		fdt_kaslrseed(fdt, false);
 
 	if (IS_ENABLED(CONFIG_BOARD_RNG_SEED) && !board_rng_seed(&buf)) {
 		err = fdt_setprop(fdt, nodeoffset, "rng-seed",
@@ -421,13 +477,13 @@ static int fdt_pack_reg(const void *fdt, void *buf, u64 *address, u64 *size,
 
 	for (i = 0; i < n; i++) {
 		if (address_cells == 2)
-			*(fdt64_t *)p = cpu_to_fdt64(address[i]);
+			put_unaligned_be64(address[i], p);
 		else
 			*(fdt32_t *)p = cpu_to_fdt32(address[i]);
 		p += 4 * address_cells;
 
 		if (size_cells == 2)
-			*(fdt64_t *)p = cpu_to_fdt64(size[i]);
+			put_unaligned_be64(size[i], p);
 		else
 			*(fdt32_t *)p = cpu_to_fdt32(size[i]);
 		p += 4 * size_cells;
@@ -667,7 +723,6 @@ int fdt_record_loadable(void *blob, u32 index, const char *name,
 	return node;
 }
 
-/* Resize the fdt to its actual size + a bit of padding */
 int fdt_shrink_to_minimum(void *blob, uint extrasize)
 {
 	int i;
@@ -2042,6 +2097,24 @@ int fdt_setup_simplefb_node(void *fdt, int node, u64 base_address, u32 width,
 
 	return 0;
 }
+
+#if CONFIG_IS_ENABLED(VIDEO)
+int fdt_add_fb_mem_rsv(void *blob)
+{
+	struct fdt_memory mem;
+
+	/* nothing to do when the frame buffer is not defined */
+	if (gd->video_bottom == gd->video_top)
+		return 0;
+
+	/* reserved with no-map tag the video buffer */
+	mem.start = gd->video_bottom;
+	mem.end = gd->video_top - 1;
+
+	return fdtdec_add_reserved_memory(blob, "framebuffer", &mem, NULL, 0, NULL,
+					  FDTDEC_RESERVED_MEMORY_NO_MAP);
+}
+#endif
 
 /*
  * Update native-mode in display-timings from display environment variable.

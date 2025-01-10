@@ -19,7 +19,7 @@
  * should not rely on the ECC validity.
  */
 
-#include <common.h>
+#include <config.h>
 #include <nand.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -152,7 +152,7 @@ static void lpc32xx_nand_init(void)
 		&lpc32xx_nand_mlc_registers->time_reg);
 }
 
-#if !defined(CONFIG_SPL_BUILD)
+#if !defined(CONFIG_XPL_BUILD)
 
 /**
  * lpc32xx_cmd_ctrl - write command to either cmd or data register
@@ -606,7 +606,7 @@ void board_nand_init(void)
 		pr_err("nand_register returned %i", ret);
 }
 
-#else /* defined(CONFIG_SPL_BUILD) */
+#else /* defined(CONFIG_XPL_BUILD) */
 
 void nand_init(void)
 {
@@ -765,4 +765,9 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
 	return 0;
 }
 
-#endif /* CONFIG_SPL_BUILD */
+unsigned int nand_page_size(void)
+{
+	return BYTES_PER_PAGE;
+}
+
+#endif /* CONFIG_XPL_BUILD */

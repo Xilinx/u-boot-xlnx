@@ -8,10 +8,12 @@
 
 #define LOG_CATEGORY	LOGC_EXPO
 
-#include <common.h>
 #include <expo.h>
 #include <menu.h>
+#include <log.h>
 #include <video_console.h>
+#include <linux/errno.h>
+#include <linux/string.h>
 #include "scene_internal.h"
 
 int scene_textline(struct scene *scn, const char *name, uint id, uint max_chars,
@@ -85,7 +87,8 @@ int scene_textline_calc_dims(struct scene_obj_textline *tline)
 	return 0;
 }
 
-int scene_textline_arrange(struct scene *scn, struct scene_obj_textline *tline)
+int scene_textline_arrange(struct scene *scn, struct expo_arrange_info *arr,
+			   struct scene_obj_textline *tline)
 {
 	const bool open = tline->obj.flags & SCENEOF_OPEN;
 	bool point;

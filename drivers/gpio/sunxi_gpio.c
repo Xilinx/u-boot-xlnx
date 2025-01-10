@@ -9,7 +9,6 @@
  * Tom Cubie <tangliang@allwinnertech.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <fdtdec.h>
@@ -158,7 +157,6 @@ void sunxi_gpio_set_pull_bank(void *bank_base, int pin_offset, u32 val)
 			0x3U << offset, val << offset);
 }
 
-
 /* =========== Non-DM code, used by the SPL. ============ */
 
 #if !CONFIG_IS_ENABLED(DM_GPIO)
@@ -247,7 +245,7 @@ int sunxi_name_to_gpio(const char *name)
 {
 	unsigned int gpio;
 	int ret;
-#if !defined CONFIG_SPL_BUILD && defined CONFIG_AXP_GPIO
+#if !defined CONFIG_XPL_BUILD && defined CONFIG_AXP_GPIO
 	char lookup[8];
 
 	if (strcasecmp(name, "AXP0-VBUS-ENABLE") == 0) {

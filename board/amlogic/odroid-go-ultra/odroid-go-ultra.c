@@ -3,7 +3,7 @@
  * Copyright (C) 2023 Neil Armstrong <neil.armstrong@linaro.org>
  */
 
-#include <common.h>
+#include <log.h>
 #include <asm/arch/boot.h>
 #include <power/regulator.h>
 
@@ -16,7 +16,5 @@ int mmc_get_env_dev(void)
 
 int board_init(void)
 {
-	regulators_enable_boot_on(_DEBUG);
-
 	return 0;
 }

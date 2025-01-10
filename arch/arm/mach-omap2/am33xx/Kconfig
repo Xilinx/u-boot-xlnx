@@ -105,15 +105,6 @@ config TARGET_CHILIBOARD
 	select DM_SERIAL
 	imply CMD_DM
 
-config TARGET_DRACO
-	bool "Support draco"
-	select BOARD_LATE_INIT
-	select DM
-	select DM_GPIO
-	select DM_SERIAL
-	select FACTORYSET
-	imply CMD_DM
-
 config TARGET_ETAMIN
 	bool "Support etamin"
 	select BOARD_LATE_INIT
@@ -213,6 +204,7 @@ config TARGET_AM43XX_EVM
 	imply DM_I2C
 	imply DM_SPI
 	imply DM_SPI_FLASH
+	imply MTD
 	imply SPL_ENV_SUPPORT
 	imply SPL_FS_EXT4
 	imply SPL_FS_FAT

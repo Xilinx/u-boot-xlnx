@@ -5,7 +5,7 @@
  * Copyright (C) 2011
  * Heiko Schocher, DENX Software Engineering, hs@denx.de.
  */
-#include <common.h>
+#include <config.h>
 #include <init.h>
 #include <nand.h>
 #include <ns16550.h>
@@ -145,7 +145,6 @@ static int da850_pll_init(struct davinci_pllc_regs *reg, unsigned long pllmult)
 	 * mode
 	 */
 	setbits_le32(&reg->pllctl, PLLCTL_PLLEN);
-
 
 	/*
 	 * clear EMIFA and EMIFB clock source settings, let them

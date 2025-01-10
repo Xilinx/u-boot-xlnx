@@ -17,7 +17,6 @@
 #define CFG_SYS_FSL_ESDHC_ADDR      0
 #define CFG_SYS_FSL_USDHC_NUM       2
 
-
 /* Ethernet Configs */
 #define CFG_FEC_MXC_PHYADDR         0
 
@@ -114,12 +113,6 @@
 /* NAND stuff */
 #define CFG_SYS_NAND_BASE           0x40000000
 #define CFG_SYS_NAND_U_BOOT_START	CONFIG_TEXT_BASE
-
-/* USB Configs */
-#ifdef CONFIG_CMD_USB
-#define CFG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CFG_MXC_USB_FLAGS		0
-#endif
 
 /* Falcon Mode */
 

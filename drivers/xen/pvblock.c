@@ -7,7 +7,6 @@
 #define LOG_CATEGORY UCLASS_PVBLOCK
 
 #include <blk.h>
-#include <common.h>
 #include <dm.h>
 #include <dm/device-internal.h>
 #include <malloc.h>
@@ -79,7 +78,7 @@ struct blkfront_plat {
 };
 
 /**
- * struct blkfront_aiocb - AIO сontrol block
+ * struct blkfront_aiocb - AIO control block
  * @aio_dev: Blockfront device
  * @aio_buf: Memory buffer, which must be sector-aligned for
  *	     @aio_dev sector
@@ -632,7 +631,8 @@ static ulong pvblock_iop(struct udevice *udev, lbaint_t blknr,
 			memcpy(blk_dev->bounce_buffer, buffer, desc->blksz);
 
 		aiocb.aio_nbytes = unaligned ? desc->blksz :
-			min((size_t)(BLKIF_MAX_SEGMENTS_PER_REQUEST * PAGE_SIZE),
+			min((size_t)((BLKIF_MAX_SEGMENTS_PER_REQUEST - 1)
+					* PAGE_SIZE),
 			    (size_t)(blocks_todo * desc->blksz));
 
 		blkfront_io(&aiocb, write);

@@ -87,7 +87,6 @@
  *
  ****************************************************************************/
 
-#include <common.h>
 #include <asm/ptrace.h>
 
 #include <kgdb.h>
@@ -446,7 +445,6 @@ handle_exception (struct pt_regs *regs)
 				kgdb_error(KGDBERR_BADPARAMS);
 			}
 			break;
-
 
 		case 'k':    /* kill the program, actually return to monitor */
 			kd.extype = KGDBEXIT_KILL;

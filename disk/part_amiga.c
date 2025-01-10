@@ -4,12 +4,12 @@
  * Hans-Joerg Frieden, Hyperion Entertainment
  * Hans-JoergF@hyperion-entertainment.com
  */
-#include <common.h>
 #include <command.h>
 #include <env.h>
 #include <ide.h>
 #include "part_amiga.h"
 #include <part.h>
+#include <vsprintf.h>
 
 #undef AMIGA_DEBUG
 
@@ -303,7 +303,6 @@ static int part_get_info_amiga(struct blk_desc *desc, int part,
     info->size  = (g->high_cyl - g->low_cyl + 1) * g->block_per_track * g->surfaces - 1;
     info->blksz = rdb.block_bytes;
     bcpl_strcpy((char *)info->name, p->drive_name);
-
 
     disk_type = g->dos_type;
 

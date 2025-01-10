@@ -4,7 +4,6 @@
  * Peng Fan <peng.fan@nxp.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <clk-uclass.h>
 #include <dm.h>
@@ -15,97 +14,139 @@
 
 #include "clk.h"
 
-static const char *pll_ref_sels[] = { "clock-osc-24m", "dummy", "dummy", "dummy", };
-static const char *dram_pll_bypass_sels[] = {"dram_pll", "dram_pll_ref_sel", };
-static const char *arm_pll_bypass_sels[] = {"arm_pll", "arm_pll_ref_sel", };
-static const char *sys_pll1_bypass_sels[] = {"sys_pll1", "sys_pll1_ref_sel", };
-static const char *sys_pll2_bypass_sels[] = {"sys_pll2", "sys_pll2_ref_sel", };
-static const char *sys_pll3_bypass_sels[] = {"sys_pll3", "sys_pll3_ref_sel", };
+static const char * const pll_ref_sels[] = { "clock-osc-24m", "dummy", "dummy", "dummy", };
+static const char * const dram_pll_bypass_sels[] = {"dram_pll", "dram_pll_ref_sel", };
+static const char * const arm_pll_bypass_sels[] = {"arm_pll", "arm_pll_ref_sel", };
+static const char * const sys_pll1_bypass_sels[] = {"sys_pll1", "sys_pll1_ref_sel", };
+static const char * const sys_pll2_bypass_sels[] = {"sys_pll2", "sys_pll2_ref_sel", };
+static const char * const sys_pll3_bypass_sels[] = {"sys_pll3", "sys_pll3_ref_sel", };
 
-static const char *imx8mm_a53_sels[] = {"clock-osc-24m", "arm_pll_out", "sys_pll2_500m", "sys_pll2_1000m",
-					"sys_pll1_800m", "sys_pll1_400m", "audio_pll1_out", "sys_pll3_out", };
+static const char * const imx8mm_arm_core_sels[] = {"arm_a53_src", "arm_pll_out", };
 
-static const char *imx8mm_ahb_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_800m", "sys_pll1_400m",
-					"sys_pll2_125m", "sys_pll3_out", "audio_pll1_out", "video_pll1_out", };
+static const char * const imx8mm_a53_sels[] = {"clock-osc-24m", "arm_pll_out", "sys_pll2_500m",
+					       "sys_pll2_1000m", "sys_pll1_800m", "sys_pll1_400m",
+					       "audio_pll1_out", "sys_pll3_out", };
 
-#ifndef CONFIG_SPL_BUILD
-static const char *imx8mm_enet_axi_sels[] = {"clock-osc-24m", "sys_pll1_266m", "sys_pll1_800m", "sys_pll2_250m",
-					     "sys_pll2_200m", "audio_pll1_out", "video_pll1_out", "sys_pll3_out", };
+static const char * const imx8mm_ahb_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_800m",
+					       "sys_pll1_400m", "sys_pll2_125m", "sys_pll3_out",
+					       "audio_pll1_out", "video_pll1_out", };
 
-static const char *imx8mm_enet_ref_sels[] = {"clock-osc-24m", "sys_pll2_125m", "sys_pll2_50m", "sys_pll2_100m",
-					     "sys_pll1_160m", "audio_pll1_out", "video_pll1_out", "clk_ext4", };
+#ifndef CONFIG_XPL_BUILD
+static const char * const imx8mm_enet_axi_sels[] = {"clock-osc-24m", "sys_pll1_266m", "sys_pll1_800m",
+						    "sys_pll2_250m", "sys_pll2_200m", "audio_pll1_out",
+						    "video_pll1_out", "sys_pll3_out", };
 
-static const char *imx8mm_enet_timer_sels[] = {"clock-osc-24m", "sys_pll2_100m", "audio_pll1_out", "clk_ext1", "clk_ext2",
-					       "clk_ext3", "clk_ext4", "video_pll1_out", };
+static const char * const imx8mm_enet_ref_sels[] = {"clock-osc-24m", "sys_pll2_125m", "sys_pll2_50m",
+						    "sys_pll2_100m", "sys_pll1_160m", "audio_pll1_out",
+						    "video_pll1_out", "clk_ext4", };
 
-static const char *imx8mm_enet_phy_sels[] = {"clock-osc-24m", "sys_pll2_50m", "sys_pll2_125m", "sys_pll2_200m",
-					     "sys_pll2_500m", "video_pll1_out", "audio_pll2_out", };
+static const char * const imx8mm_enet_timer_sels[] = {"clock-osc-24m", "sys_pll2_100m", "audio_pll1_out",
+						      "clk_ext1", "clk_ext2", "clk_ext3",
+						      "clk_ext4", "video_pll1_out", };
+
+static const char * const imx8mm_enet_phy_sels[] = {"clock-osc-24m", "sys_pll2_50m", "sys_pll2_125m",
+						    "sys_pll2_200m", "sys_pll2_500m", "video_pll1_out",
+						    "audio_pll2_out", };
 #endif
 
-static const char *imx8mm_nand_usdhc_sels[] = {"clock-osc-24m", "sys_pll1_266m", "sys_pll1_800m", "sys_pll2_200m",
-					       "sys_pll1_133m", "sys_pll3_out", "sys_pll2_250m", "audio_pll1_out", };
+static const char * const imx8mm_nand_usdhc_sels[] = {"clock-osc-24m", "sys_pll1_266m", "sys_pll1_800m",
+						      "sys_pll2_200m", "sys_pll1_133m", "sys_pll3_out",
+						      "sys_pll2_250m", "audio_pll1_out", };
 
-static const char *imx8mm_usb_bus_sels[] = {"clock-osc-24m", "sys_pll2_500m", "sys_pll1_800m", "sys_pll2_100m",
-					    "sys_pll2_200m", "clk_ext2", "clk_ext4", "audio_pll2_out", };
+static const char * const imx8mm_usb_bus_sels[] = {"clock-osc-24m", "sys_pll2_500m", "sys_pll1_800m",
+						   "sys_pll2_100m", "sys_pll2_200m", "clk_ext2",
+						   "clk_ext4", "audio_pll2_out", };
 
-static const char *imx8mm_usdhc1_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m", "sys_pll2_500m",
-					   "sys_pll3_out", "sys_pll1_266m", "audio_pll2_out", "sys_pll1_100m", };
+static const char * const imx8mm_usdhc1_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m",
+						  "sys_pll2_500m", "sys_pll3_out", "sys_pll1_266m",
+						  "audio_pll2_out", "sys_pll1_100m", };
 
-static const char *imx8mm_usdhc2_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m", "sys_pll2_500m",
-					   "sys_pll3_out", "sys_pll1_266m", "audio_pll2_out", "sys_pll1_100m", };
+static const char * const imx8mm_usdhc2_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m",
+						  "sys_pll2_500m", "sys_pll3_out", "sys_pll1_266m",
+						  "audio_pll2_out", "sys_pll1_100m", };
 
-static const char *imx8mm_i2c1_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m", "sys_pll3_out", "audio_pll1_out",
-					 "video_pll1_out", "audio_pll2_out", "sys_pll1_133m", };
+static const char * const imx8mm_i2c1_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m",
+						"sys_pll3_out", "audio_pll1_out", "video_pll1_out",
+						"audio_pll2_out", "sys_pll1_133m", };
 
-static const char *imx8mm_i2c2_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m", "sys_pll3_out", "audio_pll1_out",
-					 "video_pll1_out", "audio_pll2_out", "sys_pll1_133m", };
+static const char * const imx8mm_i2c2_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m",
+						"sys_pll3_out", "audio_pll1_out", "video_pll1_out",
+						"audio_pll2_out", "sys_pll1_133m", };
 
-static const char *imx8mm_i2c3_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m", "sys_pll3_out", "audio_pll1_out",
-					 "video_pll1_out", "audio_pll2_out", "sys_pll1_133m", };
+static const char * const imx8mm_i2c3_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m",
+						"sys_pll3_out", "audio_pll1_out", "video_pll1_out",
+						"audio_pll2_out", "sys_pll1_133m", };
 
-static const char *imx8mm_i2c4_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m", "sys_pll3_out", "audio_pll1_out",
-					 "video_pll1_out", "audio_pll2_out", "sys_pll1_133m", };
+static const char * const imx8mm_i2c4_sels[] = {"clock-osc-24m", "sys_pll1_160m", "sys_pll2_50m",
+						"sys_pll3_out", "audio_pll1_out", "video_pll1_out",
+						"audio_pll2_out", "sys_pll1_133m", };
 
-#ifndef CONFIG_SPL_BUILD
-static const char *imx8mm_pwm1_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
-					 "sys_pll3_out", "clk_ext1", "sys_pll1_80m", "video_pll1_out", };
+#if CONFIG_IS_ENABLED(PCIE_DW_IMX)
+static const char * const imx8mm_pcie1_ctrl_sels[] = {"clock-osc-24m", "sys_pll2_250m", "sys_pll2_200m",
+						      "sys_pll1_266m", "sys_pll1_800m", "sys_pll2_500m",
+						      "sys_pll2_333m", "sys_pll3_out", };
 
-static const char *imx8mm_pwm2_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
-					 "sys_pll3_out", "clk_ext1", "sys_pll1_80m", "video_pll1_out", };
+static const char * const imx8mm_pcie1_phy_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll2_500m",
+						     "clk_ext1", "clk_ext2", "clk_ext3",
+						     "clk_ext4", "sys_pll1_400m", };
 
-static const char *imx8mm_pwm3_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
-					 "sys_pll3_out", "clk_ext2", "sys_pll1_80m", "video_pll1_out", };
-
-static const char *imx8mm_pwm4_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m", "sys_pll1_40m",
-					 "sys_pll3_out", "clk_ext2", "sys_pll1_80m", "video_pll1_out", };
+static const char * const imx8mm_pcie1_aux_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll2_50m",
+						     "sys_pll3_out", "sys_pll2_100m", "sys_pll1_80m",
+						     "sys_pll1_160m", "sys_pll1_200m", };
 #endif
 
-static const char *imx8mm_wdog_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_160m", "vpu_pll_out",
-					 "sys_pll2_125m", "sys_pll3_out", "sys_pll1_80m", "sys_pll2_166m", };
+#ifndef CONFIG_XPL_BUILD
+static const char * const imx8mm_pwm1_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m",
+						"sys_pll1_40m", "sys_pll3_out", "clk_ext1",
+						"sys_pll1_80m", "video_pll1_out", };
 
-static const char *imx8mm_usdhc3_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m", "sys_pll2_500m",
-					   "sys_pll3_out", "sys_pll1_266m", "audio_pll2_clk", "sys_pll1_100m", };
+static const char * const imx8mm_pwm2_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m",
+						"sys_pll1_40m", "sys_pll3_out", "clk_ext1",
+						"sys_pll1_80m", "video_pll1_out", };
+
+static const char * const imx8mm_pwm3_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m",
+						"sys_pll1_40m", "sys_pll3_out", "clk_ext2",
+						"sys_pll1_80m", "video_pll1_out", };
+
+static const char * const imx8mm_pwm4_sels[] = {"clock-osc-24m", "sys_pll2_100m", "sys_pll1_160m",
+						"sys_pll1_40m", "sys_pll3_out", "clk_ext2",
+						"sys_pll1_80m", "video_pll1_out", };
+#endif
+
+static const char * const imx8mm_wdog_sels[] = {"clock-osc-24m", "sys_pll1_133m", "sys_pll1_160m",
+						"vpu_pll_out", "sys_pll2_125m", "sys_pll3_out",
+						"sys_pll1_80m", "sys_pll2_166m", };
+
+static const char * const imx8mm_usdhc3_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll1_800m",
+						  "sys_pll2_500m", "sys_pll3_out", "sys_pll1_266m",
+						  "audio_pll2_clk", "sys_pll1_100m", };
 
 #if CONFIG_IS_ENABLED(NXP_FSPI)
-static const char *imx8mm_qspi_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll2_333m", "sys_pll2_500m",
-					   "audio_pll2_out", "sys_pll1_266m", "sys_pll3_out", "sys_pll1_100m", };
+static const char * const imx8mm_qspi_sels[] = {"clock-osc-24m", "sys_pll1_400m", "sys_pll2_333m",
+						"sys_pll2_500m", "audio_pll2_out", "sys_pll1_266m",
+						"sys_pll3_out", "sys_pll1_100m", };
 #endif
 
-static const char *imx8mm_usb_core_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m", "sys_pll2_100m",
-					     "sys_pll2_200m", "clk_ext2", "clk_ext3", "audio_pll2_out", };
+static const char * const imx8mm_usb_core_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m",
+						    "sys_pll2_100m", "sys_pll2_200m", "clk_ext2",
+						    "clk_ext3", "audio_pll2_out", };
 
-static const char *imx8mm_usb_phy_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m", "sys_pll2_100m",
-					     "sys_pll2_200m", "clk_ext2", "clk_ext3", "audio_pll2_out", };
+static const char * const imx8mm_usb_phy_sels[] = {"clock-osc-24m", "sys_pll1_100m", "sys_pll1_40m",
+						   "sys_pll2_100m", "sys_pll2_200m", "clk_ext2",
+						   "clk_ext3", "audio_pll2_out", };
 
 #if CONFIG_IS_ENABLED(DM_SPI)
-static const char *imx8mm_ecspi1_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m", "sys_pll1_160m",
-					   "sys_pll1_800m", "sys_pll3_out", "sys_pll2_250m", "audio_pll2_out", };
+static const char * const imx8mm_ecspi1_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m",
+						  "sys_pll1_160m", "sys_pll1_800m", "sys_pll3_out",
+						  "sys_pll2_250m", "audio_pll2_out", };
 
-static const char *imx8mm_ecspi2_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m", "sys_pll1_160m",
-					   "sys_pll1_800m", "sys_pll3_out", "sys_pll2_250m", "audio_pll2_out", };
+static const char * const imx8mm_ecspi2_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m",
+						  "sys_pll1_160m", "sys_pll1_800m", "sys_pll3_out",
+						  "sys_pll2_250m", "audio_pll2_out", };
 
-static const char *imx8mm_ecspi3_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m", "sys_pll1_160m",
-					   "sys_pll1_800m", "sys_pll3_out", "sys_pll2_250m", "audio_pll2_out", };
+static const char * const imx8mm_ecspi3_sels[] = {"clock-osc-24m", "sys_pll2_200m", "sys_pll1_40m",
+						  "sys_pll1_160m", "sys_pll1_800m", "sys_pll3_out",
+						  "sys_pll2_250m", "audio_pll2_out", };
 #endif
 
 static int imx8mm_clk_probe(struct udevice *dev)
@@ -256,6 +297,17 @@ static int imx8mm_clk_probe(struct udevice *dev)
 		imx8m_clk_composite("usb_bus", imx8mm_usb_bus_sels, base + 0x8b80));
 
 	/* IP */
+#if CONFIG_IS_ENABLED(PCIE_DW_IMX)
+	clk_dm(IMX8MM_CLK_PCIE1_CTRL,
+	       imx8m_clk_composite("pcie1_ctrl", imx8mm_pcie1_ctrl_sels,
+				   base + 0xa300));
+	clk_dm(IMX8MM_CLK_PCIE1_PHY,
+	       imx8m_clk_composite("pcie1_phy", imx8mm_pcie1_phy_sels,
+				   base + 0xa380));
+	clk_dm(IMX8MM_CLK_PCIE1_AUX,
+	       imx8m_clk_composite("pcie1_aux", imx8mm_pcie1_aux_sels,
+				   base + 0xa400));
+#endif
 	clk_dm(IMX8MM_CLK_USDHC1,
 	       imx8m_clk_composite("usdhc1", imx8mm_usdhc1_sels,
 				   base + 0xac00));
@@ -305,7 +357,7 @@ static int imx8mm_clk_probe(struct udevice *dev)
 		imx_clk_gate4("usb1_ctrl_root_clk", "usb_bus", base + 0x44d0, 0));
 
 	/* clks not needed in SPL stage */
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	clk_dm(IMX8MM_CLK_ENET_AXI,
 	       imx8m_clk_composite("enet_axi", imx8mm_enet_axi_sels,
 				   base + 0x8880));
@@ -339,6 +391,11 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	       imx_clk_gate4("pwm4_root_clk", "pwm4", base + 0x42b0, 0));
 #endif
 
+#if CONFIG_IS_ENABLED(PCIE_DW_IMX)
+	clk_dm(IMX8MM_CLK_PCIE1_ROOT,
+	       imx_clk_gate4("pcie1_root_clk", "pcie1_ctrl", base + 0x4250, 0));
+#endif
+
 #if CONFIG_IS_ENABLED(DM_SPI)
 	clk_dm(IMX8MM_CLK_ECSPI1,
 	       imx8m_clk_composite("ecspi1", imx8mm_ecspi1_sels, base + 0xb280));
@@ -361,6 +418,12 @@ static int imx8mm_clk_probe(struct udevice *dev)
 	clk_dm(IMX8MM_CLK_QSPI_ROOT,
 	       imx_clk_gate4("qspi_root_clk", "qspi", base + 0x42f0, 0));
 #endif
+
+	clk_dm(IMX8MM_CLK_ARM,
+	       imx_clk_mux2_flags("arm_core", base + 0x9880, 24, 1,
+				  imx8mm_arm_core_sels,
+				  ARRAY_SIZE(imx8mm_arm_core_sels),
+				  CLK_IS_CRITICAL));
 
 	return 0;
 }

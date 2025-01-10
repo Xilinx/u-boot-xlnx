@@ -5,7 +5,6 @@
  *
  */
 #define DEBUG
-#include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
 #include <log.h>
@@ -38,7 +37,7 @@ static ulong vexpress_osc_clk_get_rate(struct clk *clk)
 	return data;
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static ulong vexpress_osc_clk_set_rate(struct clk *clk, ulong rate)
 {
 	int err;
@@ -65,7 +64,7 @@ static ulong vexpress_osc_clk_set_rate(struct clk *clk, ulong rate)
 
 static struct clk_ops vexpress_osc_clk_ops = {
 	.get_rate = vexpress_osc_clk_get_rate,
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	.set_rate = vexpress_osc_clk_set_rate,
 #endif
 };

@@ -15,11 +15,11 @@
  * Pavel Bartusek <pba@sysgo.com>
  */
 
-#include <common.h>
 #include <config.h>
 #include <command.h>
 #include <env.h>
 #include <part.h>
+#include <stdio.h>
 #include <vsprintf.h>
 
 enum cmd_part_info {
@@ -308,9 +308,9 @@ U_BOOT_CMD(
 #ifdef CONFIG_PARTITION_TYPE_GUID
 	"part type <interface> <dev>:<part>\n"
 	"    - print partition type\n"
-#endif
 	"part type <interface> <dev>:<part> <varname>\n"
 	"    - set environment variable to partition type\n"
+#endif
 	"part set <interface> <dev> type\n"
 	"    - set partition type for a device\n"
 	"part types\n"

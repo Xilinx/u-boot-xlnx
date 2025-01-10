@@ -3,7 +3,6 @@
  * Copyright 2016 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <fsl_ddr_sdram.h>
 #include <fsl_ddr_dimm_params.h>
 #include <asm/global_data.h>
@@ -114,7 +113,7 @@ int fsl_initdram(void)
 {
 	phys_size_t dram_size;
 
-#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_SPL) && !defined(CONFIG_XPL_BUILD)
 	gd->ram_size = fsl_ddr_sdram_size();
 
 	return 0;

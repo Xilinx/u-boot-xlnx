@@ -4,7 +4,6 @@
  * Lukasz Majewski, DENX Software Engineering, lukma@denx.de
  */
 
-#include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
 #include <log.h>
@@ -129,6 +128,10 @@ static int imx6q_clk_probe(struct udevice *dev)
 	       imx_clk_gate2("i2c1", "ipg_per", base + 0x70, 6));
 	clk_dm(IMX6QDL_CLK_I2C2,
 	       imx_clk_gate2("i2c2", "ipg_per", base + 0x70, 8));
+	clk_dm(IMX6QDL_CLK_I2C3,
+	       imx_clk_gate2("i2c3", "ipg_per", base + 0x70, 10));
+	clk_dm(IMX6QDL_CLK_PWM1,
+	       imx_clk_gate2("pwm1", "ipg_per", base + 0x78, 16));
 
 	clk_dm(IMX6QDL_CLK_ENET, imx_clk_gate2("enet", "ipg", base + 0x6c, 10));
 	clk_dm(IMX6QDL_CLK_ENET_REF,

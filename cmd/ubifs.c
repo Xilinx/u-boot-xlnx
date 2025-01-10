@@ -4,18 +4,17 @@
  * Stefan Roese, DENX Software Engineering, sr@denx.de.
  */
 
-
 /*
  * UBIFS command support
  */
 
 #undef DEBUG
 
-#include <common.h>
 #include <config.h>
 #include <command.h>
 #include <log.h>
 #include <ubifs_uboot.h>
+#include <vsprintf.h>
 
 static int ubifs_initialized;
 static int ubifs_mounted;

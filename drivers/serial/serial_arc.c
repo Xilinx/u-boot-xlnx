@@ -7,7 +7,6 @@
  *
  */
 
-#include <common.h>
 #include <dm.h>
 #include <serial.h>
 #include <asm/global_data.h>
@@ -24,7 +23,6 @@ struct arc_serial_regs {
 	unsigned int baudl;
 	unsigned int baudh;
 };
-
 
 struct arc_serial_plat {
 	struct arc_serial_regs *reg;

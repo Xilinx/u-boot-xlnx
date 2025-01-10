@@ -3,7 +3,6 @@
  * Copyright (c) 2016 Google, Inc
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <pch.h>
@@ -607,7 +606,7 @@ static int broadwell_pch_probe(struct udevice *dev)
 			return broadwell_pch_early_init(dev);
 		else
 			return broadwell_pch_init(dev);
-	} else if (IS_ENABLED(CONFIG_SPL) && !IS_ENABLED(CONFIG_SPL_BUILD)) {
+	} else if (IS_ENABLED(CONFIG_SPL) && !IS_ENABLED(CONFIG_XPL_BUILD)) {
 		return broadwell_pch_init(dev);
 	} else {
 		return 0;

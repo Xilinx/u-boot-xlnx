@@ -10,7 +10,7 @@
 #ifndef __DFU_ENTITY_H_
 #define __DFU_ENTITY_H_
 
-#include <common.h>
+#include <linux/errno.h>
 #include <linux/list.h>
 #include <mmc.h>
 #include <spi_flash.h>
@@ -24,6 +24,7 @@ enum dfu_device_type {
 	DFU_DEV_SF,
 	DFU_DEV_MTD,
 	DFU_DEV_VIRT,
+	DFU_DEV_SCSI,
 };
 
 enum dfu_layout {
@@ -99,7 +100,24 @@ struct virt_internal_data {
 	int dev_num;
 };
 
+struct scsi_internal_data {
+	int lun;
+
+	/* RAW programming */
+	unsigned int lba_start;
+	unsigned int lba_size;
+	unsigned int lba_blk_size;
+
+	/* FAT/EXT */
+	unsigned int dev; // Always 0???
+	unsigned int part;
+};
+
+#if defined(CONFIG_DFU_NAME_MAX_SIZE)
+#define DFU_NAME_SIZE			CONFIG_DFU_NAME_MAX_SIZE
+#else
 #define DFU_NAME_SIZE			32
+#endif
 #ifndef DFU_DEFAULT_POLL_TIMEOUT
 #define DFU_DEFAULT_POLL_TIMEOUT 0
 #endif
@@ -122,6 +140,7 @@ struct dfu_entity {
 		struct ram_internal_data ram;
 		struct sf_internal_data sf;
 		struct virt_internal_data virt;
+		struct scsi_internal_data scsi;
 	} data;
 
 	int (*get_medium_size)(struct dfu_entity *dfu, u64 *size);
@@ -512,7 +531,20 @@ static inline int dfu_fill_entity_virt(struct dfu_entity *dfu, char *devstr,
 }
 #endif
 
+#if CONFIG_IS_ENABLED(DFU_SCSI)
+int dfu_fill_entity_scsi(struct dfu_entity *dfu, char *devstr,
+			 char **argv, int argc);
+#else
+static inline int dfu_fill_entity_scsi(struct dfu_entity *dfu, char *devstr,
+				       char **argv, int argc)
+{
+	puts("SCSI support not available!\n");
+	return -1;
+}
+#endif
+
 extern bool dfu_reinit_needed;
+extern bool dfu_alt_info_changed;
 
 #if CONFIG_IS_ENABLED(DFU_WRITE_ALT)
 /**

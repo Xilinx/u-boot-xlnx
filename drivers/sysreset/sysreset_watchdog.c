@@ -3,7 +3,6 @@
  * Copyright (C) 2017 Álvaro Fernández Rojas <noltari@gmail.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/device-internal.h>
 #include <errno.h>
@@ -29,7 +28,7 @@ static int wdt_reboot_request(struct udevice *dev, enum sysreset_t type)
 			return ret;
 		break;
 	default:
-		return -ENOSYS;
+		return -EPROTONOSUPPORT;
 	}
 
 	return -EINPROGRESS;

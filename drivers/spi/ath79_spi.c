@@ -3,7 +3,6 @@
  * Copyright (C) 2015-2016 Wills Wang <wills.wang@live.com>
  */
 
-#include <common.h>
 #include <clock_legacy.h>
 #include <spi.h>
 #include <dm.h>
@@ -133,7 +132,6 @@ static int ath79_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 	return 0;
 }
-
 
 static int ath79_spi_set_speed(struct udevice *bus, uint speed)
 {

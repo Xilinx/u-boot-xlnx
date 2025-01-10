@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /* (C) Copyright 2019 CompuLab, Ltd. <www.compulab.co.il> */
 
-#include <common.h>
+#include <config.h>
 #include <i2c.h>
 #include <linux/kernel.h>
 #include <asm/arch/imx8mq_pins.h>
@@ -10,7 +10,7 @@
 #include <asm/setup.h>
 #include <linux/delay.h>
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 
 #define CFG_SYS_I2C_EEPROM_ADDR_P1	0x51
 

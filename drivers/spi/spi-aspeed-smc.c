@@ -12,7 +12,6 @@
 
 #include <asm/io.h>
 #include <clk.h>
-#include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <linux/bitops.h>
@@ -961,7 +960,6 @@ static int aspeed_spi_ctrl_init(struct udevice *bus)
 		return 0;
 	}
 
-
 	ret = aspeed_spi_read_fixed_decoded_ranges(bus);
 	if (ret != 0)
 		return ret;
@@ -1148,7 +1146,6 @@ static int apseed_spi_of_to_plat(struct udevice *bus)
 	}
 
 	plat->hclk_rate = clk_get_rate(&hclk);
-	clk_free(&hclk);
 
 	dev_dbg(bus, "ctrl_base = 0x%x, ahb_base = 0x%p, size = 0x%llx\n",
 		(u32)priv->regs, plat->ahb_base, (fdt64_t)plat->ahb_sz);

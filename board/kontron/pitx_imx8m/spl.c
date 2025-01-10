@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 
-#include <common.h>
+#include <config.h>
 #include <errno.h>
 #include <fsl_esdhc_imx.h>
 #include <hang.h>
@@ -27,7 +27,6 @@ extern struct dram_timing_info dram_timing_2gb;
 extern struct dram_timing_info dram_timing_4gb;
 
 DECLARE_GLOBAL_DATA_PTR;
-
 
 static void spl_dram_init(void)
 {
@@ -88,7 +87,6 @@ int board_mmc_getcd(struct mmc *mmc)
 
 	return 0;
 }
-
 
 #define USDHC_PAD_CTRL	(PAD_CTL_DSE6 | PAD_CTL_HYS | PAD_CTL_PUE | \
 			 PAD_CTL_FSEL2)

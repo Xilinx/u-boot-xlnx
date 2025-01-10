@@ -22,7 +22,8 @@
 				<&k3_pds 135 TI_SCI_PD_EXCLUSIVE>,
 				<&k3_pds 137 TI_SCI_PD_EXCLUSIVE>;
 		resets = <&k3_reset 135 0>;
-		clocks = <&k3_clks 61 0>;
+		clocks = <&k3_clks 61 0>, <&k3_clks 135 0>;
+		clock-names = "gtc", "core";
 		assigned-clocks = <&k3_clks 61 0>, <&k3_clks 135 0>;
 		assigned-clock-parents = <&k3_clks 61 2>;
 		assigned-clock-rates = <200000000>, <1000000000>;
@@ -47,18 +48,6 @@
 		mbox-names = "tx", "rx";
 		bootph-pre-ram;
 	};
-};
-
-&main_esm {
-	bootph-pre-ram;
-};
-
-&cbass_mcu {
-	bootph-pre-ram;
-};
-
-&mcu_esm {
-	bootph-pre-ram;
 };
 
 &dmsc {
@@ -102,4 +91,9 @@
 	/delete-property/ assigned-clocks;
 	/delete-property/ assigned-clock-parents;
 	/delete-property/ power-domains;
+};
+
+&ospi0 {
+	reg = <0x00 0x0fc40000 0x00 0x100>,
+ 	      <0x00 0x60000000 0x00 0x8000000>;
 };

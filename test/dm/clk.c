@@ -3,7 +3,6 @@
  * Copyright (C) 2015 Google, Inc
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <log.h>
@@ -47,8 +46,7 @@ static int dm_test_clk_base(struct unit_test_state *uts)
 
 	return 0;
 }
-
-DM_TEST(dm_test_clk_base, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk_base, UTF_SCAN_FDT);
 
 static int dm_test_clk(struct unit_test_state *uts)
 {
@@ -182,22 +180,13 @@ static int dm_test_clk(struct unit_test_state *uts)
 						   SANDBOX_CLK_ID_I2C));
 	ut_asserteq(1, sandbox_clk_query_requested(dev_clk,
 						   SANDBOX_CLK_ID_UART2));
-	ut_assertok(sandbox_clk_test_free(dev_test));
-	ut_asserteq(0, sandbox_clk_query_requested(dev_clk,
-						   SANDBOX_CLK_ID_SPI));
-	ut_asserteq(0, sandbox_clk_query_requested(dev_clk,
-						   SANDBOX_CLK_ID_I2C));
-	ut_asserteq(0, sandbox_clk_query_requested(dev_clk,
-						   SANDBOX_CLK_ID_UART2));
 
 	ut_asserteq(1, sandbox_clk_query_requested(dev_clk,
 						   SANDBOX_CLK_ID_UART1));
 	ut_assertok(device_remove(dev_test, DM_REMOVE_NORMAL));
-	ut_asserteq(0, sandbox_clk_query_requested(dev_clk,
-						   SANDBOX_CLK_ID_UART1));
 	return 0;
 }
-DM_TEST(dm_test_clk, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk, UTF_SCAN_FDT);
 
 static int dm_test_clk_bulk(struct unit_test_state *uts)
 {
@@ -235,4 +224,4 @@ static int dm_test_clk_bulk(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_clk_bulk, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk_bulk, UTF_SCAN_FDT);

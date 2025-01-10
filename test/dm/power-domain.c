@@ -3,7 +3,6 @@
  * Copyright (c) 2016, NVIDIA CORPORATION.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <malloc.h>
 #include <dm/test.h>
@@ -46,4 +45,4 @@ static int dm_test_power_domain(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_power_domain, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_power_domain, UTF_SCAN_FDT);

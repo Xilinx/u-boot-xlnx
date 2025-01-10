@@ -3,7 +3,7 @@
  * Copyright 2009-2011 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
+#include <config.h>
 #include <env.h>
 #include <log.h>
 #include <time.h>
@@ -481,7 +481,6 @@ static void wait_for_rstdone(unsigned int bank)
 	if (!(rstctl & SRDS_RSTCTL_RSTDONE))
 		printf("SERDES: timeout resetting bank %u\n", bank + 1);
 }
-
 
 static void __soc_serdes_init(void)
 {

@@ -10,10 +10,6 @@
 #define __CONFIG_J721S2_EVM_H
 
 #include <linux/sizes.h>
-#include <config_distro_bootcmd.h>
-
-/* DDR Configuration */
-#define CFG_SYS_SDRAM_BASE1		0x880000000
 
 /* SPL Loader Configuration */
 #if defined(CONFIG_TARGET_J721S2_A72_EVM)

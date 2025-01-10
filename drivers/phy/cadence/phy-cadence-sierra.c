@@ -11,7 +11,6 @@
  * Jean-Jacques Hiblot <jjhiblot@ti.com>
  *
  */
-#include <common.h>
 #include <clk.h>
 #include <linux/delay.h>
 #include <linux/clk-provider.h>
@@ -1127,7 +1126,7 @@ static int cdns_sierra_phy_probe(struct udevice *dev)
 
 	sp->autoconf = dev_read_bool(dev, "cdns,autoconf");
 
-	dev_info(dev, "sierra probed\n");
+	dev_dbg(dev, "sierra probed\n");
 	return 0;
 
 clk_disable:

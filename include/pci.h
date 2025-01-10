@@ -272,7 +272,6 @@
 #define  PCI_X_CMD_MAX_SPLIT    0x0030  /* Max Outstanding Split Transactions */
 #define  PCI_X_CMD_VERSION(x)   (((x) >> 12) & 3) /* Version */
 
-
 /* Slot Identification */
 
 #define PCI_SID_ESR		2	/* Expansion Slot Register */
@@ -520,6 +519,7 @@
 
 #ifndef __ASSEMBLY__
 
+#include <linux/types.h>
 #include <dm/pci.h>
 
 #ifdef CONFIG_SYS_PCI_64BIT
@@ -1354,6 +1354,7 @@ pci_addr_t dm_pci_phys_to_bus(struct udevice *dev, phys_addr_t addr, size_t len,
  * type 1 functions.
  * Can also be used on type 0 functions that support Enhanced Allocation for
  * 32b/64b BARs.  Note that duplicate BEI entries are not supported.
+ * Can also be used on 64b bars on type 0 functions.
  *
  * @dev:	Device to check
  * @bar:	Bar register offset (PCI_BASE_ADDRESS_...)

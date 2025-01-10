@@ -9,6 +9,7 @@ config UBI_SILENCE_MSG
 
 config MTD_UBI
 	bool "Enable UBI - Unsorted block images"
+	depends on MTD
 	select RBTREE
 	select MTD_PARTITIONS
 	help
@@ -112,6 +113,12 @@ config MTD_UBI_FM_DEBUG
 	default 0
 	help
 	  Enable UBI fastmap debug
+
+config UBI_BLOCK
+	bool "Enable UBI block device support"
+	depends on BLK
+	help
+	  Enable UBI block device support using blk_ops abstraction.
 
 endif # MTD_UBI
 endmenu # "Enable UBI - Unsorted block images"

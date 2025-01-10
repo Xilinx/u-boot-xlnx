@@ -1,6 +1,6 @@
-if STM32MP15x
+if STM32MP15X
 
-config STM32MP15x_STM32IMAGE
+config STM32MP15X_STM32IMAGE
 	bool "Support STM32 image for generated U-Boot image"
 	depends on TFABOOT
 	help
@@ -11,7 +11,7 @@ choice
 	prompt "STM32MP15x board select"
 	optional
 
-config TARGET_ST_STM32MP15x
+config TARGET_ST_STM32MP15X
 	bool "STMicroelectronics STM32MP15x boards"
 	imply BOOTSTAGE
 	imply CMD_BOOTSTAGE
@@ -77,22 +77,6 @@ config TARGET_ICORE_STM32MP1
 
 endchoice
 
-config STM32MP15_PWR
-	bool "Enable driver for STM32MP15x PWR"
-	depends on DM_REGULATOR && DM_PMIC
-	default y
-	help
-		This config enables implementation of driver-model pmic and
-		regulator uclass features for access to STM32MP15x PWR.
-
-config SPL_STM32MP15_PWR
-	bool "Enable driver for STM32MP15x PWR in SPL"
-	depends on SPL && SPL_DM_REGULATOR && SPL_DM_PMIC
-	default y
-	help
-		This config enables implementation of driver-model pmic and
-		regulator uclass features for access to STM32MP15x PWR in SPL.
-
 config TEXT_BASE
 	default 0xC0100000
 
@@ -101,9 +85,6 @@ config PRE_CON_BUF_ADDR
 
 config PRE_CON_BUF_SZ
 	default 4096
-
-config BOOTSTAGE_STASH_ADDR
-	default 0xC3000000
 
 if BOOTCOUNT_GENERIC
 config SYS_BOOTCOUNT_SINGLEWORD

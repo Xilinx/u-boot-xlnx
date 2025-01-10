@@ -4,7 +4,7 @@
  * Copyright 2021 NXP
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <fdt_support.h>
 #include <hang.h>
@@ -138,7 +138,7 @@ int dram_init(void)
 #endif
 
 	gd->ram_size = CFG_SYS_SDRAM_SIZE;
-#if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
+#if !defined(CONFIG_SPL) || defined(CONFIG_XPL_BUILD)
 	/* This will break-before-make MMU for DDR */
 	update_early_mmu_table();
 #endif
@@ -146,7 +146,6 @@ int dram_init(void)
 	return 0;
 }
 #endif
-
 
 int board_early_init_f(void)
 {

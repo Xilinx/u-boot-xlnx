@@ -8,7 +8,6 @@
 
 #ifndef CONFIG_CLK_MPC83XX
 
-#include <common.h>
 #include <clock_legacy.h>
 #include <mpc83xx.h>
 #include <command.h>
@@ -457,7 +456,7 @@ int get_clocks(void)
 #if defined(CONFIG_ARCH_MPC837X)
 	gd->arch.sata_clk = sata_clk;
 #endif
-	gd->pci_clk = pci_sync_in;
+	gd->arch.pci_clk = pci_sync_in;
 	gd->cpu_clk = gd->arch.core_clk;
 	gd->bus_clk = gd->arch.csb_clk;
 	return 0;

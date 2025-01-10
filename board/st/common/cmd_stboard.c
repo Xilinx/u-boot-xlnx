@@ -9,7 +9,7 @@
  * - "Commercial Product Name" (CPN): type of product board (DKX, EVX)
  *   associated to the board ID "MBxxxx"
  * - "Finished Good" or "Finish Good" (FG):
- *   effective content of the product without chip STM32MP1xx (LCD, Wifi,…)
+ *   effective content of the product without chip STM32MP1xx (LCD, Wifi,...)
  * - BOM: cost variant for same FG (for example, several provider of the same
  *   component)
  *
@@ -29,8 +29,7 @@
  *   Board: MB<Board> Var<VarCPN>.<VarFG> Rev.<Revision>-<BOM>
  */
 
-#ifndef CONFIG_SPL_BUILD
-#include <common.h>
+#ifndef CONFIG_XPL_BUILD
 #include <command.h>
 #include <console.h>
 #include <misc.h>
@@ -49,7 +48,9 @@ static bool check_stboard(u16 board)
 		0x1298,
 		0x1341,
 		0x1497,
+		0x1605, /* stm32mp25xx-dk */
 		0x1635,
+		0x1936, /* stm32mp25xx-ev1 */
 	};
 
 	for (i = 0; i < ARRAY_SIZE(st_board_id); i++)

@@ -6,7 +6,6 @@
  */
 
 #include <clk.h>
-#include <common.h>
 #include <memalign.h>
 #include <wait_bit.h>
 #include <asm/io.h>
@@ -207,7 +206,8 @@ int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
 	return 0;
 }
 
-int cadence_qspi_versal_flash_reset(struct udevice *dev)
+#if !CONFIG_IS_ENABLED(DM_GPIO)
+int cadence_qspi_flash_reset(struct udevice *dev)
 {
 	/* CRP WPROT */
 	writel(0, WPROT_CRP);
@@ -249,6 +249,7 @@ int cadence_qspi_versal_flash_reset(struct udevice *dev)
 
 	return 0;
 }
+#endif
 
 void cadence_qspi_apb_enable_linear_mode(bool enable)
 {

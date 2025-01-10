@@ -6,7 +6,7 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
 #include <display_options.h>
 #include <init.h>
 #include <asm/bitops.h>
@@ -45,7 +45,7 @@ __weak void init_tlbs(void)
 }
 
 #if !defined(CONFIG_NAND_SPL) && \
-	(!defined(CONFIG_SPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
+	(!defined(CONFIG_XPL_BUILD) || !CONFIG_IS_ENABLED(INIT_MINIMAL))
 void read_tlbcam_entry(int idx, u32 *valid, u32 *tsize, unsigned long *epn,
 		       phys_addr_t *rpn)
 {
@@ -313,7 +313,7 @@ unsigned int setup_ddr_tlbs_phys(phys_addr_t p_addr,
 		print_size(memsize > CFG_MAX_MEM_MAPPED ?
 			   memsize - CFG_MAX_MEM_MAPPED + size : size,
 			   " of DDR memory left unmapped in U-Boot\n");
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 		puts("       ");
 #endif
 	}
@@ -353,6 +353,5 @@ void clear_ddr_tlbs(unsigned int memsize_in_meg)
 {
 	clear_ddr_tlbs_phys(CFG_SYS_DDR_SDRAM_BASE, memsize_in_meg);
 }
-
 
 #endif /* not SPL */

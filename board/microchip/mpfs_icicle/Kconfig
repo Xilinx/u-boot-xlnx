@@ -24,6 +24,8 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply SMP
 	imply CLK_CCF
 	imply CLK_MPFS
+	imply REGMAP
+	imply SYSCON
 	imply SYS_NS16550
 	imply CMD_DHCP
 	imply CMD_EXT2
@@ -50,12 +52,12 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply CMD_I2C
 	imply DM_I2C
 	imply SYS_I2C_MICROCHIP
+	imply MTD
 	imply SPI
 	imply DM_SPI
 	imply MICROCHIP_COREQSPI
 	imply MTD_SPI_NAND
 	imply CMD_MTD
-	imply MTD_PARTITIONS
 	imply CMD_MTDPARTS
 
 endif

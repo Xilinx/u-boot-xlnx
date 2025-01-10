@@ -3,10 +3,11 @@
  * Copyright (C) 2012 Michal Simek <monstr@monstr.eu>
  * Copyright (C) 2012 Xilinx, Inc. All rights reserved.
  */
-#include <common.h>
+#include <config.h>
 #include <cpu_func.h>
 #include <init.h>
 #include <zynqpl.h>
+#include <linux/errno.h>
 #include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/arch/clk.h>
@@ -51,7 +52,7 @@ static const struct {
 int arch_cpu_init(void)
 {
 	zynq_slcr_unlock();
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	/* Device config APB, unlock the PCAP */
 	writel(0x757BDF0D, &devcfg_base->unlock);
 	writel(0xFFFFFFFF, &devcfg_base->rom_shadow);

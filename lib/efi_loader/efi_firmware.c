@@ -6,7 +6,6 @@
  *			Author: AKASHI Takahiro
  */
 
-#include <common.h>
 #include <charset.h>
 #include <dfu.h>
 #include <efi_loader.h>
@@ -207,18 +206,10 @@ void efi_firmware_fill_version_info(struct efi_firmware_image_descriptor *image_
 {
 	u16 varname[13]; /* u"FmpStateXXXX" */
 	efi_status_t ret;
-	efi_uintn_t size;
-	struct fmp_state var_state = { 0 };
-
-	efi_create_indexed_name(varname, sizeof(varname), "FmpState",
-				fw_array->image_index);
-	size = sizeof(var_state);
-	ret = efi_get_variable_int(varname, &fw_array->image_type_id,
-				   NULL, &size, &var_state, NULL);
-	if (ret == EFI_SUCCESS)
-		image_info->version = var_state.fw_version;
-	else
-		image_info->version = 0;
+	efi_uintn_t size, expected_size;
+	uint num_banks = 1;
+	uint active_index = 0;
+	struct fmp_state *var_state;
 
 	efi_firmware_get_lsv_from_dtb(fw_array->image_index,
 				      &fw_array->image_type_id,
@@ -227,6 +218,84 @@ void efi_firmware_fill_version_info(struct efi_firmware_image_descriptor *image_
 	image_info->version_name = NULL; /* not supported */
 	image_info->last_attempt_version = 0;
 	image_info->last_attempt_status = LAST_ATTEMPT_STATUS_SUCCESS;
+	image_info->version = 0;
+
+	/* get the fw_version */
+	efi_create_indexed_name(varname, sizeof(varname), "FmpState",
+				fw_array->image_index);
+	if (IS_ENABLED(CONFIG_FWU_MULTI_BANK_UPDATE)) {
+		ret = fwu_get_active_index(&active_index);
+		if (ret)
+			return;
+
+		num_banks = CONFIG_FWU_NUM_BANKS;
+	}
+
+	size = num_banks * sizeof(*var_state);
+	expected_size = size;
+	var_state = calloc(1, size);
+	if (!var_state)
+		return;
+
+	ret = efi_get_variable_int(varname, &fw_array->image_type_id,
+				   NULL, &size, var_state, NULL);
+	if (ret == EFI_SUCCESS && expected_size == size)
+		image_info->version = var_state[active_index].fw_version;
+
+	free(var_state);
+}
+
+/**
+ * efi_gen_capsule_guids - generate GUIDs for the images
+ *
+ * Generate the image_type_id for each image in the update_info.images array
+ * using the first compatible from the device tree and a salt
+ * UUID defined at build time.
+ *
+ * Returns:		status code
+ */
+static efi_status_t efi_gen_capsule_guids(void)
+{
+	int ret, i;
+	struct uuid namespace;
+	const char *compatible; /* Full array including null bytes */
+	struct efi_fw_image *fw_array;
+
+	fw_array = update_info.images;
+	/* Check if we need to run (there are images and we didn't already generate their IDs) */
+	if (!update_info.num_images ||
+	    memchr_inv(&fw_array[0].image_type_id, 0, sizeof(fw_array[0].image_type_id)))
+		return EFI_SUCCESS;
+
+	ret = uuid_str_to_bin(CONFIG_EFI_CAPSULE_NAMESPACE_GUID,
+			      (unsigned char *)&namespace, UUID_STR_FORMAT_GUID);
+	if (ret) {
+		log_debug("%s: EFI_CAPSULE_NAMESPACE_GUID is invalid: %d\n", __func__, ret);
+		return EFI_INVALID_PARAMETER;
+	}
+
+	compatible = ofnode_read_string(ofnode_root(), "compatible");
+	if (!compatible) {
+		log_debug("%s: model or compatible not defined\n", __func__);
+		return EFI_INVALID_PARAMETER;
+	}
+
+	for (i = 0; i < update_info.num_images; i++) {
+		if (!fw_array[i].fw_name) {
+			log_err("fw_name is not defined. Not generating capsule GUIDs\n");
+			return EFI_INVALID_PARAMETER;
+		}
+		gen_v5_guid(&namespace,
+			    &fw_array[i].image_type_id,
+			    compatible, strlen(compatible),
+			    fw_array[i].fw_name, u16_strlen(fw_array[i].fw_name) * sizeof(uint16_t),
+			    NULL);
+
+		log_debug("Image %ls UUID %pUl\n", fw_array[i].fw_name,
+			  &fw_array[i].image_type_id);
+	}
+
+	return EFI_SUCCESS;
 }
 
 /**
@@ -256,7 +325,7 @@ static efi_status_t efi_fill_image_desc_array(
 {
 	size_t total_size;
 	struct efi_fw_image *fw_array;
-	int i;
+	int i, ret;
 
 	total_size = sizeof(*image_info) * update_info.num_images;
 
@@ -266,6 +335,10 @@ static efi_status_t efi_fill_image_desc_array(
 		return EFI_BUFFER_TOO_SMALL;
 	}
 	*image_info_size = total_size;
+
+	ret = efi_gen_capsule_guids();
+	if (ret != EFI_SUCCESS)
+		return ret;
 
 	fw_array = update_info.images;
 	*descriptor_count = update_info.num_images;
@@ -362,8 +435,11 @@ efi_status_t efi_firmware_set_fmp_state_var(struct fmp_state *state, u8 image_in
 {
 	u16 varname[13]; /* u"FmpStateXXXX" */
 	efi_status_t ret;
+	uint num_banks = 1;
+	uint update_bank = 0;
+	efi_uintn_t size;
 	efi_guid_t *image_type_id;
-	struct fmp_state var_state = { 0 };
+	struct fmp_state *var_state;
 
 	image_type_id = efi_firmware_get_image_type_id(image_index);
 	if (!image_type_id)
@@ -372,19 +448,44 @@ efi_status_t efi_firmware_set_fmp_state_var(struct fmp_state *state, u8 image_in
 	efi_create_indexed_name(varname, sizeof(varname), "FmpState",
 				image_index);
 
+	if (IS_ENABLED(CONFIG_FWU_MULTI_BANK_UPDATE)) {
+		ret = fwu_plat_get_update_index(&update_bank);
+		if (ret)
+			return EFI_INVALID_PARAMETER;
+
+		num_banks = CONFIG_FWU_NUM_BANKS;
+	}
+
+	size = num_banks * sizeof(*var_state);
+	var_state = malloc(size);
+	if (!var_state)
+		return EFI_OUT_OF_RESOURCES;
+
+	/*
+	 * GetVariable may fail, EFI_NOT_FOUND is returned if FmpState
+	 * variable has not been set yet.
+	 */
+	ret = efi_get_variable_int(varname, image_type_id, NULL, &size,
+				   var_state, NULL);
+	if (ret != EFI_SUCCESS)
+		memset(var_state, 0, num_banks * sizeof(*var_state));
+
 	/*
 	 * Only the fw_version is set here.
 	 * lowest_supported_version in FmpState variable is ignored since
 	 * it can be tampered if the file based EFI variable storage is used.
 	 */
-	var_state.fw_version = state->fw_version;
+	var_state[update_bank].fw_version = state->fw_version;
 
+	size = num_banks * sizeof(*var_state);
 	ret = efi_set_variable_int(varname, image_type_id,
 				   EFI_VARIABLE_READ_ONLY |
 				   EFI_VARIABLE_NON_VOLATILE |
 				   EFI_VARIABLE_BOOTSERVICE_ACCESS |
 				   EFI_VARIABLE_RUNTIME_ACCESS,
-				   sizeof(var_state), &var_state, false);
+				   size, var_state, false);
+
+	free(var_state);
 
 	return ret;
 }
@@ -611,6 +712,7 @@ efi_status_t EFIAPI efi_firmware_raw_set_image(
 	u16 **abort_reason)
 {
 	int ret;
+	u8 dfu_alt_num;
 	efi_status_t status;
 	struct fmp_state state = { 0 };
 
@@ -625,19 +727,25 @@ efi_status_t EFIAPI efi_firmware_raw_set_image(
 	if (status != EFI_SUCCESS)
 		return EFI_EXIT(status);
 
+	/*
+	 * dfu_alt_num is assigned from 0 while image_index starts from 1.
+	 * dfu_alt_num is calculated by (image_index - 1) when multi bank update
+	 * is not used.
+	 */
+	dfu_alt_num = image_index - 1;
 	if (IS_ENABLED(CONFIG_FWU_MULTI_BANK_UPDATE)) {
 		/*
 		 * Based on the value of update bank, derive the
 		 * image index value.
 		 */
-		ret = fwu_get_image_index(&image_index);
+		ret = fwu_get_dfu_alt_num(image_index, &dfu_alt_num);
 		if (ret) {
 			log_debug("Unable to get FWU image_index\n");
 			return EFI_EXIT(EFI_DEVICE_ERROR);
 		}
 	}
 
-	if (dfu_write_by_alt(image_index - 1, (void *)image, image_size,
+	if (dfu_write_by_alt(dfu_alt_num, (void *)image, image_size,
 			     NULL, NULL))
 		return EFI_EXIT(EFI_DEVICE_ERROR);
 

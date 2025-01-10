@@ -10,10 +10,6 @@
 #include <bouncebuf.h>
 #include <linux/dma-direction.h>
 
-/* Fix this to the maximum */
-#define SCSI_MAX_DEVICE \
-	(CONFIG_SYS_SCSI_MAX_SCSI_ID * CONFIG_SYS_SCSI_MAX_LUN)
-
 struct udevice;
 
 /**
@@ -99,7 +95,6 @@ struct scsi_cmd {
 #define	M_X_WIDE_REQ	(0x03)
 #define	M_X_PPR_REQ	(0x04)
 
-
 /*
 **	Status
 */
@@ -134,7 +129,6 @@ struct scsi_cmd {
 #define SENSE_ABORTED_COMMAND	0xB
 #define SENSE_VOLUME_OVERFLOW	0xD
 #define SENSE_MISCOMPARE			0xE
-
 
 #define SCSI_CHANGE_DEF	0x40		/* Change Definition (Optional) */
 #define SCSI_COMPARE		0x39		/* Compare (O) */
@@ -354,11 +348,6 @@ int scsi_scan(bool verbose);
  * @verbose:	true to show information about each device found
  */
 int scsi_scan_dev(struct udevice *dev, bool verbose);
-
-#ifndef CONFIG_DM_SCSI
-void scsi_low_level_init(int busdevfunc);
-void scsi_init(void);
-#endif
 
 #define SCSI_IDENTIFY					0xC0  /* not used */
 

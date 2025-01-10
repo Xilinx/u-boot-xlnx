@@ -3,10 +3,8 @@
  * (C) Copyright 2021 Rockchip Electronics Co., Ltd
  */
 
-#include <common.h>
 #include <dm.h>
 #include <asm/armv8/mmu.h>
-#include <asm/io.h>
 #include <asm/arch-rockchip/bootrom.h>
 #include <asm/arch-rockchip/grf_rk3568.h>
 #include <asm/arch-rockchip/hardware.h>
@@ -28,6 +26,8 @@
 #define PMU_BASE_ADDR		0xfdd90000
 #define PMU_NOC_AUTO_CON0	(0x70)
 #define PMU_NOC_AUTO_CON1	(0x74)
+#define PMU_PWR_GATE_SFTCON	(0xa0)
+#define PMU_PD_VO_DWN_ENA	BIT(7)
 #define EDP_PHY_GRF_BASE	0xfdcb0000
 #define EDP_PHY_GRF_CON0	(EDP_PHY_GRF_BASE + 0x00)
 #define EDP_PHY_GRF_CON10	(EDP_PHY_GRF_BASE + 0x28)
@@ -107,7 +107,7 @@ void board_debug_uart_init(void)
 
 int arch_cpu_init(void)
 {
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	/*
 	 * When perform idle operation, corresponding clock can
 	 * be opened or gated automatically.
@@ -132,6 +132,10 @@ int arch_cpu_init(void)
 	writel(0x3f3f0707, GRF_BASE + GRF_GPIO1C_DS_1);
 	writel(0x3f3f0707, GRF_BASE + GRF_GPIO1C_DS_2);
 	writel(0x3f3f0707, GRF_BASE + GRF_GPIO1C_DS_3);
+
+	/* Enable VO power domain for display */
+	writel((PMU_PD_VO_DWN_ENA << 16),
+	       PMU_BASE_ADDR + PMU_PWR_GATE_SFTCON);
 #endif
 	return 0;
 }

@@ -9,7 +9,7 @@
 
 #define LOG_CATEGORY UCLASS_FPGA
 
-#include <common.h>		/* core U-Boot definitions */
+#include <config.h>		/* core U-Boot definitions */
 #include <console.h>
 #include <log.h>
 #include <ACEX1K.h>		/* ACEX device family */
@@ -78,7 +78,6 @@ int ACEX1K_info( Altera_desc *desc )
 {
 	return FPGA_SUCCESS;
 }
-
 
 /* ------------------------------------------------------------------------- */
 /* ACEX1K Passive Serial Generic Implementation                                  */

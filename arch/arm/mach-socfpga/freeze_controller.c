@@ -3,8 +3,7 @@
  *  Copyright (C) 2013 Altera Corporation <www.altera.com>
  */
 
-
-#include <common.h>
+#include <config.h>
 #include <asm/io.h>
 #include <asm/arch/clock_manager.h>
 #include <asm/arch/freeze_controller.h>

@@ -2,13 +2,9 @@
 
 #include "rk356x-u-boot.dtsi"
 
-/ {
-	chosen {
-		stdout-path = &uart2;
+&sfc {
+	flash@0 {
+		bootph-pre-ram;
+		bootph-some-ram;
 	};
-};
-
-&uart2 {
-	bootph-pre-ram;
-	clock-frequency = <24000000>;
 };

@@ -5,7 +5,6 @@
  * Copyright (C) 2021 Rockchip Electronics Co., Ltd.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <dm/lists.h>
@@ -68,12 +67,15 @@ struct rockchip_combphy_grfcfg {
 };
 
 struct rockchip_combphy_cfg {
+	unsigned int num_phys;
+	unsigned int phy_ids[3];
 	const struct rockchip_combphy_grfcfg *grfcfg;
 	int (*combphy_cfg)(struct rockchip_combphy_priv *priv);
 };
 
 struct rockchip_combphy_priv {
 	u32 mode;
+	int id;
 	void __iomem *mmio;
 	struct udevice *dev;
 	struct regmap *pipe_grf;
@@ -226,7 +228,7 @@ static int rockchip_combphy_xlate(struct phy *phy, struct ofnode_phandle_args *a
 	return 0;
 }
 
-static const struct phy_ops rochchip_combphy_ops = {
+static const struct phy_ops rockchip_combphy_ops = {
 	.init = rockchip_combphy_init,
 	.exit = rockchip_combphy_exit,
 	.of_xlate = rockchip_combphy_xlate,
@@ -271,8 +273,13 @@ static int rockchip_combphy_probe(struct udevice *udev)
 {
 	struct rockchip_combphy_priv *priv = dev_get_priv(udev);
 	const struct rockchip_combphy_cfg *phy_cfg;
+	fdt_addr_t addr = dev_read_addr(udev);
+	if (addr == FDT_ADDR_T_NONE) {
+		dev_err(udev, "No valid device address found\n");
+		return -EINVAL;
+	}
 
-	priv->mmio = (void __iomem *)dev_read_addr(udev);
+	priv->mmio = (void __iomem *)addr;
 	if (IS_ERR(priv->mmio))
 		return PTR_ERR(priv->mmio);
 
@@ -280,6 +287,20 @@ static int rockchip_combphy_probe(struct udevice *udev)
 	if (!phy_cfg) {
 		dev_err(udev, "No OF match data provided\n");
 		return -EINVAL;
+	}
+
+	/* Find the phy-id based on the device's I/O-address */
+	priv->id = -ENODEV;
+	for (int id = 0; id < phy_cfg->num_phys; id++) {
+		if (addr == phy_cfg->phy_ids[id]) {
+			priv->id = id;
+			break;
+		}
+	}
+
+	if (priv->id == -ENODEV) {
+		dev_err(udev, "Failed to find PHY ID\n");
+		return -ENODEV;
 	}
 
 	priv->dev = udev;
@@ -422,6 +443,12 @@ static const struct rockchip_combphy_grfcfg rk3568_combphy_grfcfgs = {
 };
 
 static const struct rockchip_combphy_cfg rk3568_combphy_cfgs = {
+	.num_phys = 3,
+	.phy_ids = {
+		0xfe820000,
+		0xfe830000,
+		0xfe840000,
+	},
 	.grfcfg		= &rk3568_combphy_grfcfgs,
 	.combphy_cfg	= rk3568_combphy_cfg,
 };
@@ -437,8 +464,14 @@ static int rk3588_combphy_cfg(struct rockchip_combphy_priv *priv)
 		param_write(priv->phy_grf, &cfg->con1_for_pcie, true);
 		param_write(priv->phy_grf, &cfg->con2_for_pcie, true);
 		param_write(priv->phy_grf, &cfg->con3_for_pcie, true);
-		param_write(priv->pipe_grf, &cfg->pipe_pcie1l0_sel, true);
-		param_write(priv->pipe_grf, &cfg->pipe_pcie1l1_sel, true);
+		switch (priv->id) {
+		case 1:
+			param_write(priv->pipe_grf, &cfg->pipe_pcie1l0_sel, true);
+			break;
+		case 2:
+			param_write(priv->pipe_grf, &cfg->pipe_pcie1l1_sel, true);
+			break;
+		}
 		break;
 	case PHY_TYPE_USB3:
 		param_write(priv->phy_grf, &cfg->pipe_txcomp_sel, false);
@@ -516,6 +549,12 @@ static const struct rockchip_combphy_grfcfg rk3588_combphy_grfcfgs = {
 };
 
 static const struct rockchip_combphy_cfg rk3588_combphy_cfgs = {
+	.num_phys = 3,
+	.phy_ids = {
+		0xfee00000,
+		0xfee10000,
+		0xfee20000,
+	},
 	.grfcfg		= &rk3588_combphy_grfcfgs,
 	.combphy_cfg	= rk3588_combphy_cfg,
 };
@@ -536,7 +575,7 @@ U_BOOT_DRIVER(rockchip_naneng_combphy) = {
 	.name		= "naneng-combphy",
 	.id		= UCLASS_PHY,
 	.of_match	= rockchip_combphy_ids,
-	.ops		= &rochchip_combphy_ops,
+	.ops		= &rockchip_combphy_ops,
 	.probe		= rockchip_combphy_probe,
 	.priv_auto	= sizeof(struct rockchip_combphy_priv),
 };

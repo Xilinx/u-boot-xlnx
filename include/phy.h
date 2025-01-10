@@ -9,6 +9,7 @@
 #ifndef _PHY_H
 #define _PHY_H
 
+#include <asm-generic/gpio.h>
 #include <log.h>
 #include <phy_interface.h>
 #include <dm/ofnode.h>
@@ -51,20 +52,11 @@ struct udevice;
 				 PHY_100BT_FEATURES | \
 				 PHY_DEFAULT_FEATURES)
 
-#define PHY_100BT1_FEATURES	(SUPPORTED_TP | \
-				 SUPPORTED_MII | \
-				 SUPPORTED_100baseT_Full)
-
 #define PHY_GBIT_FEATURES	(PHY_BASIC_FEATURES | \
 				 PHY_1000BT_FEATURES)
 
 #define PHY_10G_FEATURES	(PHY_GBIT_FEATURES | \
 				SUPPORTED_10000baseT_Full)
-
-#ifndef PHY_ANEG_TIMEOUT
-#define PHY_ANEG_TIMEOUT	4000
-#endif
-
 
 struct phy_device;
 
@@ -80,6 +72,12 @@ struct mii_dev {
 	int (*reset)(struct mii_dev *bus);
 	struct phy_device *phymap[PHY_MAX_ADDR];
 	u32 phy_mask;
+	/** @reset_delay_us: Bus GPIO reset pulse width in microseconds */
+	int reset_delay_us;
+	/** @reset_post_delay_us: Bus GPIO reset deassert delay in microseconds */
+	int reset_post_delay_us;
+	/** @reset_gpiod: Bus Reset GPIO descriptor pointer */
+	struct gpio_desc reset_gpiod;
 };
 
 /* struct phy_driver: a structure which defines PHY behavior
@@ -179,6 +177,15 @@ struct fixed_link {
  * @return: 0 if OK, -ve on error
  */
 int phy_reset(struct phy_device *phydev);
+
+/**
+ * phy_gpio_reset() - Resets the specified PHY using GPIO reset
+ * Toggles the optional PHY reset GPIO
+ *
+ * @dev:	PHY udevice to reset
+ * @return: 0 if OK, -ve on error
+ */
+int phy_gpio_reset(struct udevice *dev);
 
 /**
  * phy_find_by_mask() - Searches for a PHY on the specified MDIO bus

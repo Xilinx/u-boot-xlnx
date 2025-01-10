@@ -6,13 +6,12 @@
  * (C) Copyright 2012
  * Ilya Yanok <ilya.yanok@gmail.com>
  */
-#include <common.h>
 #include <env.h>
 #include <errno.h>
 #include <image.h>
 #include <log.h>
-#include <mapmem.h>
 #include <spl.h>
+#include <spl_load.h>
 #include <net.h>
 #include <linux/libfdt.h>
 
@@ -29,8 +28,7 @@ static ulong spl_net_load_read(struct spl_load_info *load, ulong sector,
 static int spl_net_load_image(struct spl_image_info *spl_image,
 			      struct spl_boot_device *bootdev)
 {
-	struct legacy_img_hdr *header = map_sysmem(image_load_addr,
-						   sizeof(*header));
+	struct spl_load_info load;
 	int rv;
 
 	env_init();
@@ -49,27 +47,8 @@ static int spl_net_load_image(struct spl_image_info *spl_image,
 		return rv;
 	}
 
-	if (IS_ENABLED(CONFIG_SPL_LOAD_FIT) &&
-	    image_get_magic(header) == FDT_MAGIC) {
-		struct spl_load_info load;
-
-		debug("Found FIT\n");
-		load.bl_len = 1;
-		load.read = spl_net_load_read;
-		rv = spl_load_simple_fit(spl_image, &load, 0, header);
-	} else {
-		debug("Legacy image\n");
-
-		rv = spl_parse_image_header(spl_image, bootdev, header);
-		if (rv)
-			return rv;
-
-		memcpy(map_sysmem(spl_image->load_addr, spl_image->size),
-		       map_sysmem(image_load_addr, spl_image->size),
-		       spl_image->size);
-	}
-
-	return rv;
+	spl_load_init(&load, spl_net_load_read, NULL, 1);
+	return spl_load(spl_image, bootdev, &load, 0, 0);
 }
 #endif
 

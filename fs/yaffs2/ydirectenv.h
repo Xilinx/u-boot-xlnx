@@ -20,15 +20,12 @@
 #ifndef __YDIRECTENV_H__
 #define __YDIRECTENV_H__
 
-#include <common.h>
 #include <malloc.h>
 #include <linux/compat.h>
 
 #include "yaffs_osglue.h"
 
 void yaffs_bug_fn(const char *file_name, int line_no);
-
-
 
 #define YCHAR char
 #define YUCHAR unsigned char
@@ -46,7 +43,6 @@ void yaffs_bug_fn(const char *file_name, int line_no);
 #define yaffs_strncmp(a, b, c)	strncmp(a, b, c)
 #endif
 
-
 void yaffs_qsort(void *aa, size_t n, size_t es,
 		int (*cmp)(const void *, const void *));
 
@@ -62,7 +58,6 @@ void yaffs_qsort(void *aa, size_t n, size_t es,
 	if (yaffs_trace_mask & (msk)) \
 		printf("yaffs: " fmt "\n", ##__VA_ARGS__); \
 } while (0)
-
 
 #define YAFFS_LOSTNFOUND_NAME		"lost+found"
 #define YAFFS_LOSTNFOUND_PREFIX		"obj"

@@ -4,7 +4,6 @@
  * Copyright 2021 NXP
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <init.h>
 #include <net.h>
@@ -224,7 +223,6 @@ void enable_caches(void)
 	set_cr(get_cr() | CR_C);
 }
 #endif /* #if !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
-
 
 uint get_svr(void)
 {

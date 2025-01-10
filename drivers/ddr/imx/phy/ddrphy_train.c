@@ -3,7 +3,6 @@
  * Copyright 2018 NXP
  */
 
-#include <common.h>
 #include <log.h>
 #include <linux/kernel.h>
 #include <asm/arch/ddr.h>
@@ -78,7 +77,6 @@ int ddr_cfg_phy(struct dram_timing_info *dram_timing)
 			get_trained_CDD(i);
 
 		dwc_ddrphy_apb_wr(0xd0000, 0x1);
-
 
 		fsp_msg++;
 	}

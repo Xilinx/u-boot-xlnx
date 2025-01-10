@@ -8,7 +8,6 @@
  *   Abdellatif El Khlifi <abdellatif.elkhlifi@arm.com>
  */
 
-#include <common.h>
 #include <string.h>
 #include <asm/sandbox_arm_ffa.h>
 #include <dm/test.h>
@@ -29,5 +28,4 @@ static int dm_test_armffa_cmd(struct unit_test_state *uts)
 
 	return 0;
 }
-
-DM_TEST(dm_test_armffa_cmd, UT_TESTF_SCAN_FDT | UT_TESTF_CONSOLE_REC);
+DM_TEST(dm_test_armffa_cmd, UTF_SCAN_FDT | UTF_CONSOLE);

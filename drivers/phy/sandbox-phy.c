@@ -4,7 +4,6 @@
  * Written by Jean-Jacques Hiblot  <jjhiblot@ti.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <generic-phy.h>
 
@@ -73,6 +72,18 @@ static int sandbox_phy_exit(struct phy *phy)
 	return 0;
 }
 
+static int
+sandbox_phy_set_mode(struct phy *phy, enum phy_mode mode, int submode)
+{
+	if (submode)
+		return -EOPNOTSUPP;
+
+	if (mode != PHY_MODE_USB_HOST)
+		return -EINVAL;
+
+	return 0;
+}
+
 static int sandbox_phy_bind(struct udevice *dev)
 {
 	if (dev_get_driver_data(dev) != DRIVER_DATA)
@@ -97,6 +108,7 @@ static struct phy_ops sandbox_phy_ops = {
 	.power_off = sandbox_phy_power_off,
 	.init = sandbox_phy_init,
 	.exit = sandbox_phy_exit,
+	.set_mode = sandbox_phy_set_mode,
 };
 
 static const struct udevice_id sandbox_phy_ids[] = {

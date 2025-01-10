@@ -3,7 +3,6 @@
  * Copyright 2013 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <init.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
@@ -214,7 +213,6 @@ static void setup_iomux_nfc(void)
 	imx_iomux_v3_setup_multiple_pads(nfc_pads, ARRAY_SIZE(nfc_pads));
 }
 #endif
-
 
 static void setup_iomux_qspi(void)
 {

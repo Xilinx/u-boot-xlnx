@@ -7,13 +7,15 @@
 
 #define LOG_CATEGORY LOGC_EFI
 
-#include <common.h>
 #include <efi_loader.h>
 #include <log.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <smbios.h>
 #include <linux/sizes.h>
+#include <asm/global_data.h>
+
+DECLARE_GLOBAL_DATA_PTR;
 
 const efi_guid_t smbios3_guid = SMBIOS3_TABLE_GUID;
 
@@ -58,7 +60,9 @@ static int install_smbios_table(void)
 	ulong addr;
 	void *buf;
 
-	if (!IS_ENABLED(CONFIG_GENERATE_SMBIOS_TABLE) || IS_ENABLED(CONFIG_X86))
+	if (!IS_ENABLED(CONFIG_GENERATE_SMBIOS_TABLE) ||
+	    IS_ENABLED(CONFIG_X86) ||
+	    IS_ENABLED(CONFIG_QFW_SMBIOS))
 		return 0;
 
 	/* Align the table to a 4KB boundary to keep EFI happy */

@@ -13,11 +13,11 @@
  *	    Vikas Sajjan <vikas.sajjan@samsung.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <log.h>
 #include <asm/byteorder.h>
 #include <usb.h>
+#include <watchdog.h>
 #include <asm/unaligned.h>
 #include <linux/bug.h>
 #include <linux/errno.h>
@@ -674,6 +674,9 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 		reset_ep(udev, ep_index);
 
 	ring = virt_dev->eps[ep_index].ring;
+	if (!ring)
+		return -EINVAL;
+
 	/*
 	 * How much data is (potentially) left before the 64KB boundary?
 	 * XHCI Spec puts restriction( TABLE 49 and 6.4.1 section of XHCI Spec)
@@ -787,6 +790,8 @@ int xhci_bulk_tx(struct usb_device *udev, unsigned long pipe,
 		/* Calculate length for next transfer */
 		addr += trb_buff_len;
 		trb_buff_len = min((length - running_total), TRB_MAX_BUFF_SIZE);
+
+		schedule();
 	} while (running_total < length);
 
 	giveback_first_trb(udev, ep_index, start_cycle, start_trb);
@@ -858,6 +863,8 @@ int xhci_ctrl_tx(struct usb_device *udev, unsigned long pipe,
 	ep_index = usb_pipe_ep_index(pipe);
 
 	ep_ring = virt_dev->eps[ep_index].ring;
+	if (!ep_ring)
+		return -EINVAL;
 
 	/*
 	 * Check to see if the max packet size for the default control

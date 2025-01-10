@@ -6,7 +6,6 @@
  * Keerthy <j-keerthy@ti.com>
  */
 
-#include <common.h>
 #include <fdtdec.h>
 #include <errno.h>
 #include <dm.h>
@@ -310,7 +309,6 @@ static int buck_get_enable(struct udevice *dev)
 {
 	bool enable = false;
 	int ret;
-
 
 	ret = lp873x_buck_enable(dev, PMIC_OP_GET, &enable);
 	if (ret)

@@ -3,7 +3,6 @@
  * Copyright (C) 2021 Mark Kettenis <kettenis@openbsd.org>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/test.h>
 #include <dm/uclass-internal.h>
@@ -39,7 +38,7 @@ static int dm_test_iommu(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_iommu, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_iommu, UTF_SCAN_FDT);
 
 static int dm_test_iommu_noiommu(struct unit_test_state *uts)
 {
@@ -67,7 +66,7 @@ static int dm_test_iommu_noiommu(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_iommu_noiommu, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_iommu_noiommu, UTF_SCAN_FDT);
 
 static int dm_test_iommu_pci(struct unit_test_state *uts)
 {
@@ -82,7 +81,7 @@ static int dm_test_iommu_pci(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_iommu_pci, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_iommu_pci, UTF_SCAN_FDT);
 
 static int dm_test_iommu_pci_noiommu(struct unit_test_state *uts)
 {
@@ -97,4 +96,4 @@ static int dm_test_iommu_pci_noiommu(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_iommu_pci_noiommu, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_iommu_pci_noiommu, UTF_SCAN_FDT);

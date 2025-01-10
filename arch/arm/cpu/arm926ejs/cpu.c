@@ -12,7 +12,6 @@
  * CPU specific code
  */
 
-#include <common.h>
 #include <command.h>
 #include <cpu_func.h>
 #include <irq_func.h>
@@ -44,7 +43,6 @@ int cleanup_before_linux (void)
 	 */
 
 	disable_interrupts();
-
 
 	/* turn off I/D-cache */
 	icache_disable();

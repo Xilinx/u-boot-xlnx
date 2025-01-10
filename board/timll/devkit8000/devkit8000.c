@@ -15,7 +15,7 @@
  *	Syed Mohammed Khasim <khasim@ti.com>
  *
  */
-#include <common.h>
+#include <config.h>
 #include <dm.h>
 #include <env.h>
 #include <init.h>
@@ -147,7 +147,7 @@ void board_mmc_power_init(void)
 }
 #endif
 
-#if defined(CONFIG_DRIVER_DM9000) & !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_DRIVER_DM9000) & !defined(CONFIG_XPL_BUILD)
 /*
  * Routine: board_eth_init
  * Description: Setting up the Ethernet hardware.

@@ -5,7 +5,6 @@
  * Peng Fan <peng.fan@nxp.com>
  */
 
-#include <common.h>
 #include <command.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
@@ -18,6 +17,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <log.h>
+#include <phy.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -35,12 +35,14 @@ static struct imx_intpll_rate_table imx9_intpll_tbl[] = {
 static struct imx_fracpll_rate_table imx9_fracpll_tbl[] = {
 	FRAC_PLL_RATE(1000000000U, 1, 166, 4, 2, 3), /* 1000Mhz */
 	FRAC_PLL_RATE(933000000U, 1, 155, 4, 1, 2), /* 933Mhz */
+	FRAC_PLL_RATE(800000000U, 1, 200, 6, 0, 1), /* 800Mhz */
 	FRAC_PLL_RATE(700000000U, 1, 145, 5, 5, 6), /* 700Mhz */
 	FRAC_PLL_RATE(484000000U, 1, 121, 6, 0, 1),
 	FRAC_PLL_RATE(445333333U, 1, 167, 9, 0, 1),
 	FRAC_PLL_RATE(466000000U, 1, 155, 8, 1, 3), /* 466Mhz */
 	FRAC_PLL_RATE(400000000U, 1, 200, 12, 0, 1), /* 400Mhz */
 	FRAC_PLL_RATE(300000000U, 1, 150, 12, 0, 1),
+	FRAC_PLL_RATE(233000000U, 1, 174, 18, 3, 4), /* 233Mhz */
 };
 
 /* return in khz */
@@ -603,7 +605,7 @@ void init_clk_usdhc(u32 index)
 {
 	u32 div;
 
-	if (IS_ENABLED(CONFIG_IMX9_LOW_DRIVE_MODE))
+	if (is_voltage_mode(VOLT_LOW_DRIVE))
 		div = 3; /* 266.67 Mhz */
 	else
 		div = 2; /* 400 Mhz */
@@ -639,7 +641,7 @@ void enable_usboh3_clk(unsigned char enable)
 	}
 }
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 void dram_pll_init(ulong pll_val)
 {
 	configure_fracpll(DRAM_PLL_CLK, pll_val);
@@ -700,8 +702,7 @@ void set_arm_core_max_clk(void)
 
 #endif
 
-#if IS_ENABLED(CONFIG_IMX9_LOW_DRIVE_MODE)
-struct imx_clk_setting imx_clk_settings[] = {
+struct imx_clk_setting imx_clk_ld_settings[] = {
 	/* Set A55 clk to 500M */
 	{ARM_A55_CLK_ROOT, SYS_PLL_PFD0, 2},
 	/* Set A55 periphal to 200M */
@@ -728,7 +729,7 @@ struct imx_clk_setting imx_clk_settings[] = {
 	/* NIC_APB to 133M */
 	{NIC_APB_CLK_ROOT, SYS_PLL_PFD1_DIV2, 3}
 };
-#else
+
 struct imx_clk_setting imx_clk_settings[] = {
 	/*
 	 * Set A55 clk to 500M. This clock root is normally used as intermediate
@@ -762,9 +763,18 @@ struct imx_clk_setting imx_clk_settings[] = {
 	/* NIC_APB to 133M */
 	{NIC_APB_CLK_ROOT, SYS_PLL_PFD1_DIV2, 3}
 };
-#endif
 
-int clock_init(void)
+void bus_clock_init_low_drive(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(imx_clk_ld_settings); i++) {
+		ccm_clk_root_cfg(imx_clk_ld_settings[i].clk_root,
+				 imx_clk_ld_settings[i].src, imx_clk_ld_settings[i].div);
+	}
+}
+
+void bus_clock_init(void)
 {
 	int i;
 
@@ -772,9 +782,11 @@ int clock_init(void)
 		ccm_clk_root_cfg(imx_clk_settings[i].clk_root,
 				 imx_clk_settings[i].src, imx_clk_settings[i].div);
 	}
+}
 
-	if (IS_ENABLED(CONFIG_IMX9_LOW_DRIVE_MODE))
-		set_arm_clk(MHZ(900));
+int clock_init_early(void)
+{
+	int i;
 
 	/* allow for non-secure access */
 	for (i = 0; i < OSCPLL_END; i++)
@@ -788,6 +800,19 @@ int clock_init(void)
 
 	for (i = 0; i < SHARED_GPR_NUM; i++)
 		ccm_shared_gpr_tz_access(i, true, false, false);
+
+	return 0;
+}
+
+/* Set bus and A55 core clock per voltage mode */
+int clock_init_late(void)
+{
+	if (is_voltage_mode(VOLT_LOW_DRIVE)) {
+		bus_clock_init_low_drive();
+		set_arm_core_max_clk();
+	} else {
+		bus_clock_init();
+	}
 
 	return 0;
 }
@@ -832,6 +857,63 @@ u32 imx_get_fecclk(void)
 	return ccm_clk_root_get_rate(WAKEUP_AXI_CLK_ROOT);
 }
 
+#if defined(CONFIG_IMX93) && defined(CONFIG_DWC_ETH_QOS)
+static int imx93_eqos_interface_init(struct udevice *dev, phy_interface_t interface_type)
+{
+	struct blk_ctrl_wakeupmix_regs *bctrl =
+		(struct blk_ctrl_wakeupmix_regs *)BLK_CTRL_WAKEUPMIX_BASE_ADDR;
+
+	clrbits_le32(&bctrl->eqos_gpr,
+		     BCTRL_GPR_ENET_QOS_INTF_MODE_MASK |
+		     BCTRL_GPR_ENET_QOS_CLK_GEN_EN);
+
+	switch (interface_type) {
+	case PHY_INTERFACE_MODE_MII:
+		setbits_le32(&bctrl->eqos_gpr,
+			     BCTRL_GPR_ENET_QOS_INTF_SEL_MII |
+			     BCTRL_GPR_ENET_QOS_CLK_GEN_EN);
+		break;
+	case PHY_INTERFACE_MODE_RMII:
+		setbits_le32(&bctrl->eqos_gpr,
+			     BCTRL_GPR_ENET_QOS_INTF_SEL_RMII |
+			     BCTRL_GPR_ENET_QOS_CLK_GEN_EN);
+		break;
+	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_ID:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		setbits_le32(&bctrl->eqos_gpr,
+			     BCTRL_GPR_ENET_QOS_INTF_SEL_RGMII |
+			     BCTRL_GPR_ENET_QOS_CLK_GEN_EN);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#else
+static int imx93_eqos_interface_init(struct udevice *dev, phy_interface_t interface_type)
+{
+	return 0;
+}
+#endif
+
+int board_interface_eth_init(struct udevice *dev, phy_interface_t interface_type)
+{
+	if (IS_ENABLED(CONFIG_IMX93) &&
+	    IS_ENABLED(CONFIG_DWC_ETH_QOS) &&
+	    device_is_compatible(dev, "nxp,imx93-dwmac-eqos"))
+		return imx93_eqos_interface_init(dev, interface_type);
+
+	if (IS_ENABLED(CONFIG_IMX93) &&
+	    IS_ENABLED(CONFIG_FEC_MXC) &&
+	    device_is_compatible(dev, "fsl,imx93-fec"))
+		return 0;
+
+	return -EINVAL;
+}
+
 int set_clk_enet(enum enet_freq type)
 {
 	u32 div;
@@ -869,7 +951,7 @@ int set_clk_enet(enum enet_freq type)
 /*
  * Dump some clockes.
  */
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 int do_showclocks(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
 {
 	u32 freq;

@@ -4,7 +4,6 @@
  * (C) Copyright 2019 Neil Armstrong <narmstrong@baylibre.com>
  */
 
-#include <common.h>
 #include <init.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
@@ -126,13 +125,6 @@ static const char *socinfo_to_soc_id(u32 socinfo)
 	return "Unknown";
 }
 
-static void print_board_model(void)
-{
-	const char *model;
-	model = fdt_getprop(gd->fdt_blob, 0, "model", NULL);
-	printf("Model: %s\n", model ? model : "Unknown");
-}
-
 static unsigned int get_socinfo(void)
 {
 	struct regmap *regmap;
@@ -168,12 +160,9 @@ static unsigned int get_socinfo(void)
 	return socinfo;
 }
 
-int show_board_info(void)
+int checkboard(void)
 {
 	unsigned int socinfo;
-
-	/* print board information */
-	print_board_model();
 
 	socinfo = get_socinfo();
 	if (!socinfo)

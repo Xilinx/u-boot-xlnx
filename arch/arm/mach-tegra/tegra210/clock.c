@@ -6,10 +6,10 @@
 
 /* Tegra210 Clock control functions */
 
-#include <common.h>
 #include <errno.h>
 #include <init.h>
 #include <log.h>
+#include <time.h>
 #include <asm/cache.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -1264,6 +1264,21 @@ int tegra_plle_enable(void)
 	writel(value, NV_PA_CLK_RST_BASE + PLLE_SS_CNTL);
 
 	return 0;
+}
+
+struct clk_pll_simple *clock_get_simple_pll(enum clock_id clkid)
+{
+	struct clk_rst_ctlr *clkrst =
+			(struct clk_rst_ctlr *)NV_PA_CLK_RST_BASE;
+
+	switch (clkid) {
+	case CLOCK_ID_XCPU:
+	case CLOCK_ID_EPCI:
+	case CLOCK_ID_SFROM32KHZ:
+		return &clkrst->crc_pll_simple[clkid - CLOCK_ID_FIRST_SIMPLE];
+	default:
+		return NULL;
+	}
 }
 
 struct periph_clk_init periph_clk_init_table[] = {

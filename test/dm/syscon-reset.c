@@ -3,7 +3,6 @@
  * Copyright (C) 2020 Sean Anderson <seanga2@gmail.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/test.h>
 #include <regmap.h>
@@ -56,4 +55,4 @@ static int dm_test_syscon_reset(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_syscon_reset, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_syscon_reset, UTF_SCAN_FDT);

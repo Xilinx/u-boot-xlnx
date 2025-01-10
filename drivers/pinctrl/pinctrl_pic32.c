@@ -4,7 +4,6 @@
  * Copyright (c) 2015 Microchip Technology Inc.
  * Written by Purna Chandra Mandal <purna.mandal@microchip.com>
  */
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <log.h>
@@ -114,7 +113,6 @@ struct pic32_reg_in_mux {
 /* output mux register offset */
 #define PPS_OUT(__port, __pin) \
 	(((__port) * PIC32_PINS_PER_PORT + (__pin)) << 2)
-
 
 struct pic32_pinctrl_priv {
 	struct pic32_reg_in_mux *mux_in; /* mux input function */

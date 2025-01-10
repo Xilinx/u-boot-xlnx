@@ -11,7 +11,6 @@
 /* The DEBUG define must be before common to enable debugging */
 /*#define DEBUG*/
 
-#include <common.h>
 #include <flash.h>
 #include <log.h>
 #include <asm/processor.h>
@@ -86,12 +85,10 @@ enum uaddr {
 	MTD_UADDR_UNNECESSARY,		/* Does not require any address */
 };
 
-
 struct unlock_addr {
 	u32 addr1;
 	u32 addr2;
 };
-
 
 /*
  * I don't like the fact that the first entry in unlock_addrs[]
@@ -139,7 +136,6 @@ static const struct unlock_addr  unlock_addrs[] = {
 		.addr2 = 0x0000
 	}
 };
-
 
 struct amd_flash_info {
 	const __u16 mfr_id;

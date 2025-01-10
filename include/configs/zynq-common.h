@@ -44,7 +44,7 @@
 
 /* Boot configuration */
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 #define BOOTENV
 #else
 
@@ -167,7 +167,7 @@
 	BOOT_TARGET_DEVICES_DHCP(func)
 
 #include <config_distro_bootcmd.h>
-#endif /* CONFIG_SPL_BUILD */
+#endif /* CONFIG_XPL_BUILD */
 
 /* Default environment */
 #ifndef CFG_EXTRA_ENV_SETTINGS
@@ -184,7 +184,6 @@
 
 #define CFG_SYS_INIT_RAM_ADDR	0xFFFF0000
 #define CFG_SYS_INIT_RAM_SIZE	0x2000
-
 
 /* Extend size of kernel image for uncompression */
 

@@ -3,7 +3,6 @@
  * Copyright (c) 2020 Nicolas Saenz Julienne <nsaenzjulienne@suse.de>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <mapmem.h>
 #include <phys2bus.h>
@@ -34,4 +33,4 @@ static int dm_test_phys_to_bus(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_phys_to_bus, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_phys_to_bus, UTF_SCAN_PDATA | UTF_SCAN_FDT);

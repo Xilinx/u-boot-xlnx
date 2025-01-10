@@ -131,7 +131,13 @@ An attached disk can be emulated in RISC-V virt machine by adding::
     -drive if=none,file=riscv64.img,format=raw,id=mydisk \
     -device ide-hd,drive=mydisk,bus=ahci.0
 
-You will have to run 'scsi scan' to use it.
+or alternatively attach an emulated UFS::
+
+    -device ufs,id=ufs0 \
+    -drive if=none,file=test.img,format=raw,id=lun0 \
+    -device ufs-lu,drive=lun0,bus=ufs0
+
+You will have to run 'scsi scan' to use them.
 
 A video console can be emulated in RISC-V virt machine by removing "-nographic"
 and adding::
@@ -165,3 +171,8 @@ The following settings provide a debug UART for the virt machine::
     CONFIG_DEBUG_UART_NS16550=y
     CONFIG_DEBUG_UART_BASE=0x10000000
     CONFIG_DEBUG_UART_CLOCK=3686400
+
+To provide a debug UART in main U-Boot the SBI DBCN extension can be used
+instead::
+
+    CONFIG_DEBUG_SBI_CONSOLE=y

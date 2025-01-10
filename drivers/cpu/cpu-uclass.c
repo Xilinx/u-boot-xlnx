@@ -6,7 +6,6 @@
 
 #define LOG_CATEGORY UCLASS_CPU
 
-#include <common.h>
 #include <cpu.h>
 #include <dm.h>
 #include <errno.h>
@@ -103,6 +102,16 @@ int cpu_get_vendor(const struct udevice *dev, char *buf, int size)
 		return -ENOSYS;
 
 	return ops->get_vendor(dev, buf, size);
+}
+
+int cpu_release_core(const struct udevice *dev, phys_addr_t addr)
+{
+	struct cpu_ops *ops = cpu_get_ops(dev);
+
+	if (!ops->release_core)
+		return -ENOSYS;
+
+	return ops->release_core(dev, addr);
 }
 
 U_BOOT_DRIVER(cpu_bus) = {

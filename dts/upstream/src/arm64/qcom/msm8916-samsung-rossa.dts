@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+/dts-v1/;
+
+#include "msm8916-samsung-rossa-common.dtsi"
+
+/ {
+	model = "Samsung Galaxy Core Prime LTE";
+	compatible = "samsung,rossa", "qcom,msm8916";
+	chassis-type = "handset";
+};
+
+&battery {
+	charge-term-current-microamp = <150000>;
+	constant-charge-current-max-microamp = <700000>;
+	constant-charge-voltage-max-microvolt = <4400000>;
+};
+
+&mpss_mem {
+	/* Firmware for rossa needs more space */
+	reg = <0x0 0x86800000 0x0 0x5800000>;
+};

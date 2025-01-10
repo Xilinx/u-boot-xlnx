@@ -5,7 +5,7 @@
  * Copyright (C) 2013-2017, ISEE 2007 SL - http://www.isee.biz/
  */
 
-#include <common.h>
+#include <config.h>
 #include <env.h>
 #include <errno.h>
 #include <init.h>
@@ -68,7 +68,7 @@ static int get_board_revision(void)
 	return revision;
 }
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 /* PN H5TQ4G63AFR is equivalent to MT41K256M16HA125*/
 static const struct ddr_data ddr3_igep0034_data = {
 	.datardsratio0 = MT41K256M16HA125E_RD_DQS,

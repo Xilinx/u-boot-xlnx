@@ -46,7 +46,7 @@
  *   mvebu_mbus_del_window().
  */
 
-#include <common.h>
+#include <config.h>
 #include <malloc.h>
 #include <linux/bitops.h>
 #include <linux/errno.h>
@@ -275,7 +275,6 @@ static int mvebu_mbus_alloc_window(phys_addr_t base, size_t size,
 							       size, remap,
 							       target, attr);
 	}
-
 
 	for (win = 0; win < MVEBU_MBUS_NUM_WINS; win++)
 		if (mvebu_mbus_window_is_free(win))

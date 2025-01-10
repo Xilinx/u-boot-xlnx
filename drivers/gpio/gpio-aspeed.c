@@ -6,12 +6,10 @@
  *
  * Implementation extracted from the Linux kernel and adapted for u-boot.
  */
-#include <common.h>
 #include <asm/io.h>
 #include <asm/gpio.h>
 
 #include <config.h>
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <asm/io.h>

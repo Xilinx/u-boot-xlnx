@@ -7,7 +7,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <cpu_func.h>
 #include <env.h>
 #include <malloc.h>
@@ -101,7 +100,6 @@ static int _ftmac100_init(struct ftmac100_data *priv, unsigned char enetaddr[6])
 
 	/* set the ethernet address */
 	ftmac100_set_mac(priv, enetaddr);
-
 
 	/* disable all interrupts */
 

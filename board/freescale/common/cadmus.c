@@ -3,9 +3,9 @@
  * Copyright 2004, 2011 Freescale Semiconductor.
  */
 
-
-#include <common.h>
+#include <config.h>
 #include <clock_legacy.h>
+#include <linux/types.h>
 
 /*
  * CADMUS Board System Registers
@@ -26,7 +26,6 @@ typedef struct cadmus_reg {
     u_char cm_reserved[248];	/* Total 256 bytes */
 } cadmus_reg_t;
 
-
 unsigned int
 get_board_version(void)
 {
@@ -34,7 +33,6 @@ get_board_version(void)
 
 	return cadmus->cm_ver;
 }
-
 
 unsigned long
 get_board_sys_clk(void)
@@ -53,7 +51,6 @@ get_board_sys_clk(void)
 	}
 }
 
-
 unsigned int
 get_pci_slot(void)
 {
@@ -64,7 +61,6 @@ get_pci_slot(void)
 	 */
 	return ((cadmus->cm_csr >> 6) & 0x3) + 1;
 }
-
 
 unsigned int
 get_pci_dual(void)

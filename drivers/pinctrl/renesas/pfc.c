@@ -11,7 +11,6 @@
 
 #define DRV_NAME "sh-pfc"
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <dm/device_compat.h>
@@ -45,6 +44,7 @@ enum sh_pfc_model {
 	SH_PFC_R8A779A0,
 	SH_PFC_R8A779F0,
 	SH_PFC_R8A779G0,
+	SH_PFC_R8A779H0,
 };
 
 struct sh_pfc_pin_config {
@@ -947,7 +947,6 @@ static int sh_pfc_map_pins(struct sh_pfc *pfc, struct sh_pfc_pinctrl *pmx)
 	return 0;
 }
 
-
 static int sh_pfc_pinctrl_probe(struct udevice *dev)
 {
 	struct sh_pfc_pinctrl_priv *priv = dev_get_priv(dev);
@@ -1041,6 +1040,10 @@ static int sh_pfc_pinctrl_probe(struct udevice *dev)
 #ifdef CONFIG_PINCTRL_PFC_R8A779G0
 	if (model == SH_PFC_R8A779G0)
 		priv->pfc.info = &r8a779g0_pinmux_info;
+#endif
+#ifdef CONFIG_PINCTRL_PFC_R8A779H0
+	if (model == SH_PFC_R8A779H0)
+		priv->pfc.info = &r8a779h0_pinmux_info;
 #endif
 
 	priv->pmx.pfc = &priv->pfc;
@@ -1169,6 +1172,12 @@ static const struct udevice_id sh_pfc_pinctrl_ids[] = {
 	{
 		.compatible = "renesas,pfc-r8a779g0",
 		.data = SH_PFC_R8A779G0,
+	},
+#endif
+#ifdef CONFIG_PINCTRL_PFC_R8A779H0
+	{
+		.compatible = "renesas,pfc-r8a779h0",
+		.data = SH_PFC_R8A779H0,
 	},
 #endif
 

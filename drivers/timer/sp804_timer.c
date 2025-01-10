@@ -4,7 +4,6 @@
  * Copyright (C) 2022 Arm Ltd.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <init.h>
@@ -29,7 +28,6 @@ DECLARE_GLOBAL_DATA_PTR;
 #define SP804_CTRL_TIMER_PRESCALE_MASK	(3U << SP804_CTRL_TIMER_PRESCALE_SHIFT)
 #define SP804_CTRL_TIMER_32BIT		(1U << 1)
 #define SP804_CTRL_ONESHOT		(1U << 0)
-
 
 struct sp804_timer_plat {
 	uintptr_t base;

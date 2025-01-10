@@ -16,7 +16,6 @@
 #include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <fdt_support.h>
@@ -172,14 +171,12 @@ struct emac_eth_dev {
 	struct udevice *phy_reg;
 };
 
-
 struct sun8i_eth_pdata {
 	struct eth_pdata eth_pdata;
 	u32 reset_delays[3];
 	int tx_delay_ps;
 	int rx_delay_ps;
 };
-
 
 static int sun8i_mdio_read(struct mii_dev *bus, int addr, int devad, int reg)
 {
@@ -833,11 +830,8 @@ static int sun8i_emac_eth_of_to_plat(struct udevice *dev)
 	priv->use_internal_phy = false;
 
 	offset = fdtdec_lookup_phandle(gd->fdt_blob, node, "phy-handle");
-	if (offset < 0) {
-		debug("%s: Cannot find PHY address\n", __func__);
-		return -EINVAL;
-	}
-	priv->phyaddr = fdtdec_get_int(gd->fdt_blob, offset, "reg", -1);
+	if (offset >= 0)
+		priv->phyaddr = fdtdec_get_int(gd->fdt_blob, offset, "reg", -1);
 
 	pdata->phy_interface = dev_read_phy_mode(dev);
 	debug("phy interface %d\n", pdata->phy_interface);
@@ -896,6 +890,11 @@ static const struct emac_variant emac_variant_r40 = {
 	.syscon_offset		= 0x164,
 };
 
+static const struct emac_variant emac_variant_v3s = {
+	.syscon_offset		= 0x30,
+	.soc_has_internal_phy	= true,
+};
+
 static const struct emac_variant emac_variant_a64 = {
 	.syscon_offset		= 0x30,
 	.support_rmii		= true,
@@ -913,6 +912,8 @@ static const struct udevice_id sun8i_emac_eth_ids[] = {
 	  .data = (ulong)&emac_variant_h3 },
 	{ .compatible = "allwinner,sun8i-r40-gmac",
 	  .data = (ulong)&emac_variant_r40 },
+	{ .compatible = "allwinner,sun8i-v3s-emac",
+	  .data = (ulong)&emac_variant_v3s },
 	{ .compatible = "allwinner,sun50i-a64-emac",
 	  .data = (ulong)&emac_variant_a64 },
 	{ .compatible = "allwinner,sun50i-h6-emac",

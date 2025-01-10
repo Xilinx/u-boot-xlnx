@@ -6,7 +6,6 @@
  */
 
 #include <charset.h>
-#include <common.h>
 #include <command.h>
 #include <efi_loader.h>
 #include <efi_variable.h>
@@ -16,7 +15,7 @@
 #include <malloc.h>
 #include <mapmem.h>
 #include <rtc.h>
-#include <uuid.h>
+#include <u-boot/uuid.h>
 #include <linux/kernel.h>
 
 /*

@@ -3,7 +3,6 @@
  * (c) 2015 Paul Thacker <paul.thacker@microchip.com>
  *
  */
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <malloc.h>
@@ -155,7 +154,6 @@ static int pic32_uart_probe(struct udevice *dev)
 	if (ret < 0)
 		return ret;
 	priv->uartclk = clk_get_rate(&clk);
-	clk_free(&clk);
 
 	/* initialize serial */
 	return pic32_serial_init(priv->base, priv->uartclk, CONFIG_BAUDRATE);

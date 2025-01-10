@@ -144,7 +144,7 @@ patman.py.  For reference, the useful ones (at the moment) shown below
     process_tags: False
     verbose: True
     smtp_server: /path/to/sendmail
-    patchwork_server: https://patchwork.ozlabs.org
+    patchwork_url: https://patchwork.ozlabs.org
 
 If you want to adjust settings (or aliases) that affect just a single
 project you can add a section that looks like [project_settings] or
@@ -248,9 +248,9 @@ Series-links: [id | version:id]...
 
 Series-patchwork-url: url
     This allows specifying the Patchwork URL for a branch. This overrides
-    both the setting files and the command-line argument. The URL should
-    include the protocol and web site, with no trailing slash, for example
-    'https://patchwork.ozlabs.org/project'
+    both the setting files ("patchwork_url") and the command-line argument.
+    The URL should include the protocol and web site, with no trailing slash,
+    for example 'https://patchwork.ozlabs.org/project'
 
 Cover-letter:
     Sets the cover letter contents for the series. The first line
@@ -280,7 +280,7 @@ Series-notes:
 
 Commit-notes:
     Similar, but for a single commit (patch). These notes will appear
-    immediately below the --- cut in the patch file::
+    immediately below the ``---`` cut in the patch file::
 
         Commit-notes:
         blah blah
@@ -350,7 +350,20 @@ Cover-changes: n
         - This line will only appear in the cover letter
         <blank line>
 
-Patch-cc: Their Name <email>
+Commit-added-in: n
+    Add a change noting the version this commit was added in. This is
+    equivalent to::
+
+        Commit-changes: n
+        - New
+
+        Cover-changes: n
+        - <commit subject>
+
+    It is a convenient shorthand for suppressing the '(no changes in vN)'
+    message.
+
+Patch-cc / Commit-cc: Their Name <email>
     This copies a single patch to another email address. Note that the
     Cc: used by git send-email is ignored by patman, but will be
     interpreted by git send-email if you use it.

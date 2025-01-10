@@ -8,7 +8,7 @@
  * Copyright (C) 2012 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
-#include <common.h>
+#include <config.h>
 #include <init.h>
 #include <asm/global_data.h>
 #include <asm/immap.h>
@@ -73,7 +73,6 @@ int dram_init(void)
 	setbits_be32(&sdp->sdcr, MCF_SDRAMC_SDCR_IREF);
 	*((volatile unsigned long *)CFG_SYS_SDRAM_BASE) = 0xa5a59696;
 	*((volatile unsigned long *)CFG_SYS_SDRAM_BASE) = 0xa5a59696;
-
 
 	out_be32(&sdp->sdmr, 0x018d0000);
 	*((volatile unsigned long *)CFG_SYS_SDRAM_BASE) = 0xa5a59696;

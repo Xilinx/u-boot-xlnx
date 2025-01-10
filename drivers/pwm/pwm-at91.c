@@ -9,16 +9,15 @@
  * Based on drivers/pwm/pwm-atmel.c from Linux.
  */
 #include <clk.h>
-#include <common.h>
 #include <div64.h>
 #include <dm.h>
 #include <linux/bitops.h>
 #include <linux/io.h>
+#include <linux/time.h>
 #include <pwm.h>
 
 #define PERIOD_BITS 16
 #define PWM_MAX_PRES 10
-#define NSEC_PER_SEC 1000000000L
 
 #define PWM_ENA 0x04
 #define PWM_CHANNEL_OFFSET 0x20

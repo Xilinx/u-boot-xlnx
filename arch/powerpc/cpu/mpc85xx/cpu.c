@@ -9,7 +9,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <cpu_func.h>
 #include <clock_legacy.h>
 #include <display_options.h>
@@ -298,7 +297,6 @@ int checkcpu (void)
 	return 0;
 }
 
-
 /* ------------------------------------------------------------------------- */
 
 int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
@@ -338,7 +336,6 @@ int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	return 1;
 }
 
-
 /*
  * Get timebase clock frequency
  */
@@ -348,38 +345,6 @@ __weak unsigned long get_tbclk(void)
 
 	return (gd->bus_clk + (tbclk_div >> 1)) / tbclk_div;
 }
-
-
-#ifndef CONFIG_WDT
-#if defined(CONFIG_WATCHDOG)
-#define WATCHDOG_MASK (TCR_WP(63) | TCR_WRC(3) | TCR_WIE)
-void
-init_85xx_watchdog(void)
-{
-	mtspr(SPRN_TCR, (mfspr(SPRN_TCR) & ~WATCHDOG_MASK) |
-	      TCR_WP(CFG_WATCHDOG_PRESC) | TCR_WRC(CFG_WATCHDOG_RC));
-}
-
-void
-reset_85xx_watchdog(void)
-{
-	/*
-	 * Clear TSR(WIS) bit by writing 1
-	 */
-	mtspr(SPRN_TSR, TSR_WIS);
-}
-
-void
-watchdog_reset(void)
-{
-	int re_enable = disable_interrupts();
-
-	reset_85xx_watchdog();
-	if (re_enable)
-		enable_interrupts();
-}
-#endif	/* CONFIG_WATCHDOG */
-#endif
 
 /*
  * Initializes on-chip MMC controllers.

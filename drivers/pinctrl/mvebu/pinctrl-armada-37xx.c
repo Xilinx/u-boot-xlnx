@@ -16,7 +16,6 @@
  * https://spdx.org/licenses
  */
 
-#include <common.h>
 #include <config.h>
 #include <dm.h>
 #include <malloc.h>
@@ -729,7 +728,6 @@ static int armada_37xx_pinctrl_probe(struct udevice *dev)
 			   sizeof(struct armada_37xx_pmx_func), GFP_KERNEL);
 	if (!info->funcs)
 		return -ENOMEM;
-
 
 	ret = armada_37xx_fill_group(info);
 	if (ret)

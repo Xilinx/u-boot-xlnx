@@ -4,7 +4,6 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
 #include <command.h>
 #include <log.h>
 #include <net.h>
@@ -46,7 +45,6 @@ void rarp_receive(struct ip_udp_hdr *ip, unsigned len)
 	}
 }
 
-
 /*
  *	Timeout on BOOTP request.
  */
@@ -60,7 +58,6 @@ static void rarp_timeout_handler(void)
 		rarp_request();
 	}
 }
-
 
 void rarp_request(void)
 {

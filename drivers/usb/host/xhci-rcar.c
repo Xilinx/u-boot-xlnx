@@ -2,10 +2,9 @@
 /*
  * Copyright (C) 2017 Marek Vasut <marek.vasut@gmail.com>
  *
- * Renesas RCar USB HOST xHCI Controller
+ * Renesas R-Car USB HOST xHCI Controller
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <fdtdec.h>
@@ -90,7 +89,7 @@ static int xhci_rcar_probe(struct udevice *dev)
 	ret = clk_enable(&plat->clk);
 	if (ret) {
 		dev_err(dev, "Failed to enable USB3 clock\n");
-		goto err_clk;
+		return ret;
 	}
 
 	ctx->hcd = (struct xhci_hccr *)plat->hcd_base;
@@ -114,8 +113,6 @@ static int xhci_rcar_probe(struct udevice *dev)
 
 err_fw:
 	clk_disable(&plat->clk);
-err_clk:
-	clk_free(&plat->clk);
 	return ret;
 }
 
@@ -127,7 +124,6 @@ static int xhci_rcar_deregister(struct udevice *dev)
 	ret = xhci_deregister(dev);
 
 	clk_disable(&plat->clk);
-	clk_free(&plat->clk);
 
 	return ret;
 }

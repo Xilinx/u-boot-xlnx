@@ -1,10 +1,13 @@
 .. SPDX-License-Identifier: GPL-2.0+:
 
+.. index::
+   single: mtrr (command)
+
 mtrr command
 ============
 
-Synopis
--------
+Synopsis
+--------
 
     mtrr [list]
     mtrr set <reg> <type> <start> <size>

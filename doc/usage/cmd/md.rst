@@ -1,10 +1,13 @@
 .. SPDX-License-Identifier: GPL-2.0+:
 
+.. index::
+   single: md (command)
+
 md command
 ==========
 
-Synopis
--------
+Synopsis
+--------
 
 ::
 

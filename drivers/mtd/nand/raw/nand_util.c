@@ -18,7 +18,6 @@
  * Copyright 2010 Freescale Semiconductor
  */
 
-#include <common.h>
 #include <command.h>
 #include <log.h>
 #include <watchdog.h>
@@ -276,7 +275,6 @@ int nand_get_lock_status(struct mtd_info *mtd, loff_t offset)
 	/* select the NAND device */
 	chipnr = (int)(offset >> chip->chip_shift);
 	chip->select_chip(mtd, chipnr);
-
 
 	if ((offset & (mtd->writesize - 1)) != 0) {
 		printf("nand_get_lock_status: "

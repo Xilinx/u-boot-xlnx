@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Renesas RCar Gen3 CPG MSSR driver
+ * Renesas R-Car Gen3 CPG MSSR driver
  *
  * Copyright (C) 2017 Marek Vasut <marek.vasut@gmail.com>
  *
@@ -10,7 +10,6 @@
  * Copyright (C) 2016 Glider bvba
  */
 
-#include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
 #include <dm/device-internal.h>
@@ -70,7 +69,7 @@ static int gen3_clk_get_parent(struct gen3_clk_priv *priv, struct clk *clk,
 			return ret;
 
 		if (core->type == CLK_TYPE_GEN3_MDSEL) {
-			shift = priv->cpg_mode & BIT(core->offset) ? 16 : 0;
+			shift = priv->cpg_mode & BIT(core->offset) ? 0 : 16;
 			parent->dev = clk->dev;
 			parent->id = core->parent >> shift;
 			parent->id &= 0xffff;
@@ -307,13 +306,19 @@ static u64 gen3_clk_get_rate64(struct clk *clk)
 						gen4_pll_config->pll6_div,
 						"PLL6");
 
+	case CLK_TYPE_GEN4_PLL7:
+		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
+						0, gen4_pll_config->pll7_mult,
+						gen4_pll_config->pll7_div,
+						"PLL7");
+
 	case CLK_TYPE_FF:
 		return gen3_clk_get_rate64_pll_mul_reg(priv, &parent,
 						0, core->mult, core->div,
 						"FIXED");
 
 	case CLK_TYPE_GEN3_MDSEL:
-		shift = priv->cpg_mode & BIT(core->offset) ? 16 : 0;
+		shift = priv->cpg_mode & BIT(core->offset) ? 0 : 16;
 		div = (core->div >> shift) & 0xffff;
 		rate = gen3_clk_get_rate64(&parent) / div;
 		debug("%s[%i] PE clk: parent=%i div=%u => rate=%llu\n",
@@ -574,23 +579,24 @@ int gen3_cpg_bind(struct udevice *parent)
 	struct cpg_mssr_info *info =
 		(struct cpg_mssr_info *)dev_get_driver_data(parent);
 	struct udevice *cdev, *rdev;
-	struct driver *drv;
+	struct driver *cdrv, *rdrv;
 	int ret;
 
-	drv = lists_driver_lookup_name("clk_gen3");
-	if (!drv)
+	cdrv = lists_driver_lookup_name("clk_gen3");
+	if (!cdrv)
 		return -ENOENT;
 
-	ret = device_bind_with_driver_data(parent, drv, "clk_gen3", (ulong)info,
+
+	rdrv = lists_driver_lookup_name("rst_gen3");
+	if (!rdrv)
+		return -ENOENT;
+
+	ret = device_bind_with_driver_data(parent, cdrv, "clk_gen3", (ulong)info,
 					   dev_ofnode(parent), &cdev);
 	if (ret)
 		return ret;
 
-	drv = lists_driver_lookup_name("rst_gen3");
-	if (!drv)
-		return -ENOENT;
-
-	ret = device_bind_with_driver_data(parent, drv, "rst_gen3", (ulong)cdev,
+	ret = device_bind_with_driver_data(parent, rdrv, "rst_gen3", (ulong)cdev,
 					   dev_ofnode(parent), &rdev);
 	if (ret)
 		device_unbind(cdev);

@@ -5,7 +5,6 @@
  * from the Linux AX88179_178a driver
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <usb.h>
@@ -174,9 +173,10 @@
 #define USB_BULK_SEND_TIMEOUT 5000
 #define USB_BULK_RECV_TIMEOUT 5000
 
-#define AX_RX_URB_SIZE 1024 * 0x12
+#define AX_RX_URB_SIZE 1024 * 0x1a
 #define BLK_FRAME_SIZE 0x200
 #define PHY_CONNECT_TIMEOUT 5000
+#define PHY_RESET_TIMEOUT 500
 
 #define TIMEOUT_RESOLUTION 50	/* ms */
 
@@ -193,10 +193,10 @@
 static const struct {
 	unsigned char ctrl, timer_l, timer_h, size, ifg;
 } AX88179_BULKIN_SIZE[] =	{
-	{7, 0x4f, 0,	0x02, 0xff},
-	{7, 0x20, 3,	0x03, 0xff},
-	{7, 0xae, 7,	0x04, 0xff},
-	{7, 0xcc, 0x4c, 0x04, 8},
+	{7, 0x4f, 0,	0x12, 0xff},
+	{7, 0x20, 3,	0x16, 0xff},
+	{7, 0xae, 7,	0x18, 0xff},
+	{7, 0xcc, 0x4c, 0x18, 8},
 };
 
 /* driver private */
@@ -286,6 +286,26 @@ static int asix_write_mac(struct ueth_data *dev, uint8_t *enetaddr)
 	return ret;
 }
 
+static int asix_reset_phy(struct ueth_data *dev)
+{
+	u16 bmcr;
+	u32 t;
+
+	/* Reset the PHY */
+	bmcr = BMCR_RESET;
+	asix_write_cmd(dev, AX_ACCESS_PHY, 0x03, MII_BMCR, 2, &bmcr);
+
+	for (t = 0; t < PHY_RESET_TIMEOUT; t += TIMEOUT_RESOLUTION) {
+		asix_read_cmd(dev, AX_ACCESS_PHY, 0x03, MII_BMCR, 2, &bmcr);
+		if (!(bmcr & BMCR_RESET))
+			return 0;
+		mdelay(TIMEOUT_RESOLUTION);
+	}
+
+	debug("Reset PHY timeout\n");
+	return -ETIMEDOUT;
+}
+
 static int asix_basic_reset(struct ueth_data *dev,
 			struct asix_private *dev_priv)
 {
@@ -312,7 +332,7 @@ static int asix_basic_reset(struct ueth_data *dev,
 	memcpy(tmp, &AX88179_BULKIN_SIZE[0], 5);
 	asix_write_cmd(dev, AX_ACCESS_MAC, AX_RX_BULKIN_QCTRL, 5, 5, tmp);
 
-	dev_priv->rx_urb_size = 128 * 20;
+	dev_priv->rx_urb_size = 1024 * 20;
 
 	/* Water Level configuration */
 	*tmp = 0x34;
@@ -345,13 +365,21 @@ static int asix_basic_reset(struct ueth_data *dev,
 		 AX_MEDIUM_GIGAMODE | AX_MEDIUM_JUMBO_EN;
 	asix_write_cmd(dev, AX_ACCESS_MAC, AX_MEDIUM_STATUS_MODE, 2, 2, tmp16);
 
+	asix_reset_phy(dev);
+
 	u16 adv = 0;
-	adv = ADVERTISE_ALL | ADVERTISE_CSMA | ADVERTISE_LPACK |
-	      ADVERTISE_NPAGE | ADVERTISE_PAUSE_ASYM | ADVERTISE_PAUSE_CAP;
+	adv = ADVERTISE_ALL | ADVERTISE_CSMA |
+	      ADVERTISE_PAUSE_ASYM | ADVERTISE_PAUSE_CAP;
 	asix_write_cmd(dev, AX_ACCESS_PHY, 0x03, MII_ADVERTISE, 2, &adv);
 
 	adv = ADVERTISE_1000FULL;
 	asix_write_cmd(dev, AX_ACCESS_PHY, 0x03, MII_CTRL1000, 2, &adv);
+
+	/* Restart auto-negotiation */
+	u16 bmcr = 0;
+	asix_read_cmd(dev, AX_ACCESS_PHY, 0x03, MII_BMCR, 2, &bmcr);
+	bmcr |= BMCR_ANENABLE | BMCR_ANRESTART;
+	asix_write_cmd(dev, AX_ACCESS_PHY, 0x03, MII_BMCR, 2, &bmcr);
 
 	return 0;
 }
@@ -392,7 +420,6 @@ static int asix_init_common(struct ueth_data *dev,
 {
 	u8 buf[2], tmp[5], link_sts;
 	u16 *tmp16, mode;
-
 
 	tmp16 = (u16 *)buf;
 
@@ -629,6 +656,12 @@ static int ax88179_eth_probe(struct udevice *dev)
 
 	usb_dev = priv->ueth.pusb_dev;
 	priv->maxpacketsize = usb_dev->epmaxpacketout[AX_ENDPOINT_OUT];
+
+	ret = asix_basic_reset(&priv->ueth, priv);
+	if (ret) {
+		printf("Failed to reset ethernet device\n");
+		return ret;
+	}
 
 	/* Get the MAC address */
 	ret = asix_read_mac(&priv->ueth, pdata->enetaddr);

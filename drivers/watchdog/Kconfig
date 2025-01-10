@@ -4,6 +4,7 @@ config WATCHDOG
 	bool "Enable U-Boot watchdog reset"
 	depends on !HW_WATCHDOG
 	select CYCLIC
+	imply SPL_CYCLIC if SPL
 	help
 	  This option enables U-Boot watchdog support where U-Boot is using
 	  watchdog_reset function to service watchdog device in U-Boot. Enable
@@ -130,6 +131,12 @@ config WDT_AT91
 	  Select this to enable Microchip watchdog timer, which can be found on
 	  some AT91 devices.
 
+config WDT_ATCWDT200
+	bool "Andes watchdog timer support"
+	depends on WDT
+	help
+	  Select this to enable Andes ATCWDT200 watchdog timer
+
 config WDT_BCM6345
 	bool "BCM6345 watchdog timer support"
 	depends on WDT && (ARCH_BMIPS || BCM6856 || \
@@ -162,6 +169,19 @@ config WDT_CORTINA
 	  This driver support all CPU ISAs supported by Cortina
 	  Access CAxxxx SoCs.
 
+config WDT_DA9063
+	bool "DA9063 watchdog timer support"
+	depends on WDT && DM_PMIC_DA9063
+	help
+	  Enable support for the watchdog timer in Dialog DA9063.
+
+config WDT_DAVINCI
+	bool "DaVinci watchdog timer support"
+	depends on WDT
+	help
+	  Select this to enable the watchdog timer for DaVinci SoCs such as the
+	  OMAP-L138.
+
 config WDT_GPIO
 	bool "External gpio watchdog support"
 	depends on WDT
@@ -170,6 +190,15 @@ config WDT_GPIO
 	  Support for external watchdog fed by toggling a gpio. See
 	  doc/device-tree-bindings/watchdog/gpio-wdt.txt for
 	  information on how to describe the watchdog in device tree.
+
+config SPL_WDT_GPIO
+	bool "External gpio watchdog support in SPL"
+	depends on SPL_WDT
+	depends on SPL_DM_GPIO
+	depends on SPL_OF_REAL
+	default WDT_GPIO
+	help
+	  Support for external watchdog fed by toggling a gpio in SPL.
 
 config WDT_MAX6370
 	bool "MAX6370 watchdog timer support"
@@ -402,6 +431,7 @@ config WDT_ARM_SMC
 config SPL_WDT
 	bool "Enable driver model for watchdog timer drivers in SPL"
 	depends on SPL_DM
+	select SPL_CYCLIC if CYCLIC
 	help
 	  Enable driver model for watchdog timer in SPL.
 	  This is similar to CONFIG_WDT in U-Boot.

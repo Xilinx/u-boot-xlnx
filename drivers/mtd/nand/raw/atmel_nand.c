@@ -10,8 +10,9 @@
  *     (C) Copyright 2012 ATMEL, Hong Xu
  */
 
-#include <common.h>
+#include <config.h>
 #include <log.h>
+#include <system-constants.h>
 #include <asm/gpio.h>
 #include <asm/arch/gpio.h>
 #include <dm/device_compat.h>
@@ -1250,7 +1251,7 @@ static int at91_nand_ready(struct mtd_info *mtd)
 }
 #endif
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 /* The following code is for SPL */
 static struct mtd_info *mtd;
 static struct nand_chip nand_chip;
@@ -1258,7 +1259,7 @@ static struct nand_chip nand_chip;
 static int nand_command(int block, int page, uint32_t offs, u8 cmd)
 {
 	struct nand_chip *this = mtd_to_nand(mtd);
-	int page_addr = page + block * CONFIG_SYS_NAND_PAGE_COUNT;
+	int page_addr = page + block * SYS_NAND_BLOCK_PAGES;
 	void (*hwctrl)(struct mtd_info *mtd, int cmd,
 			unsigned int ctrl) = this->cmd_ctrl;
 
@@ -1359,7 +1360,7 @@ int spl_nand_erase_one(int block, int page)
 	if (nand_chip.select_chip)
 		nand_chip.select_chip(mtd, 0);
 
-	page_addr = page + block * CONFIG_SYS_NAND_PAGE_COUNT;
+	page_addr = page + block * SYS_NAND_BLOCK_PAGES;
 	hwctrl(mtd, NAND_CMD_ERASE1, NAND_CTRL_CLE | NAND_CTRL_CHANGE);
 	/* Row address */
 	hwctrl(mtd, (page_addr & 0xff), NAND_CTRL_ALE | NAND_CTRL_CHANGE);
@@ -1451,6 +1452,11 @@ void nand_init(void)
 		nand_chip.select_chip(mtd, 0);
 }
 
+unsigned int nand_page_size(void)
+{
+	return nand_to_mtd(&nand_chip)->writesize;
+}
+
 void nand_deselect(void)
 {
 	if (nand_chip.select_chip)
@@ -1520,4 +1526,4 @@ void board_nand_init(void)
 		if (atmel_nand_chip_init(i, base_addr[i]))
 			log_err("atmel_nand: Fail to initialize #%d chip", i);
 }
-#endif /* CONFIG_SPL_BUILD */
+#endif /* CONFIG_XPL_BUILD */

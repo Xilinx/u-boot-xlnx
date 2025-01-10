@@ -4,7 +4,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <i2s.h>
 #include <asm/test.h>
@@ -30,4 +29,4 @@ static int dm_test_i2s(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_i2s, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_i2s, UTF_SCAN_PDATA | UTF_SCAN_FDT);

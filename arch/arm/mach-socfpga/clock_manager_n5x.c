@@ -4,7 +4,6 @@
  *
  */
 
-#include <common.h>
 #include <asm/arch/clock_manager.h>
 #include <asm/arch/system_manager.h>
 #include <asm/global_data.h>
@@ -35,8 +34,6 @@ static ulong cm_get_rate_dm(u32 id)
 		return 0;
 
 	rate = clk_get_rate(&clk);
-
-	clk_free(&clk);
 
 	if ((rate == (unsigned long)-ENXIO) ||
 	    (rate == (unsigned long)-EIO)) {

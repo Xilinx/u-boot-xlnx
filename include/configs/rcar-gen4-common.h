@@ -9,7 +9,7 @@
 #ifndef __RCAR_GEN4_COMMON_H
 #define __RCAR_GEN4_COMMON_H
 
-#include <asm/arch/rmobile.h>
+#include <asm/arch/renesas.h>
 
 /* Console */
 #define CFG_SYS_BAUDRATE_TABLE	{ 38400, 115200, 921600, 1843200 }
@@ -21,7 +21,6 @@
 #define CFG_MAX_MEM_MAPPED		(0x80000000u - DRAM_RSV_SIZE)
 
 /* PHY needs a longer autoneg timeout */
-#define PHY_ANEG_TIMEOUT		20000
 
 /* Environment setting */
 #define CFG_EXTRA_ENV_SETTINGS					\

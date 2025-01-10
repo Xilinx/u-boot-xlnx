@@ -6,7 +6,6 @@
  * Padmarao Begari <padmarao.begari@microchip.com>
  * Conor Dooley <conor.dooley@microchip.com>
  */
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <i2c.h>
@@ -182,8 +181,6 @@ static int mpfs_i2c_init(struct mpfs_i2c_bus *bus, struct udevice *dev)
 	clk_rate = clk_get_rate(&bus->i2c_clk);
 	if (!clk_rate)
 		return -EINVAL;
-
-	clk_free(&bus->i2c_clk);
 
 	divisor = clk_rate / bus->clk_rate;
 

@@ -5,7 +5,6 @@
  * Copyright (C) 2012 Atmel Corporation
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <log.h>
 #include <malloc.h>
@@ -61,8 +60,6 @@ static int at91_hlcdc_enable_clk(struct udevice *dev)
 	}
 
 	priv->clk_rate = clk_rate;
-
-	clk_free(&clk);
 
 	return 0;
 }

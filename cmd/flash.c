@@ -7,10 +7,10 @@
 /*
  * FLASH support
  */
-#include <common.h>
 #include <command.h>
 #include <log.h>
-#include <uuid.h>
+#include <vsprintf.h>
+#include <u-boot/uuid.h>
 
 #if defined(CONFIG_CMD_MTDPARTS)
 #include <jffs2/jffs2.h>

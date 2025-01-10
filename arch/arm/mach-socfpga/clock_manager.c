@@ -3,7 +3,6 @@
  *  Copyright (C) 2013-2017 Altera Corporation <www.altera.com>
  */
 
-#include <common.h>
 #include <asm/arch/clock_manager.h>
 #include <asm/arch/system_manager.h>
 #include <asm/global_data.h>
@@ -100,7 +99,7 @@ unsigned int cm_get_qspi_controller_clk_hz(void)
 }
 #endif
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static int do_showclocks(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {

@@ -11,8 +11,9 @@
  *  Richard Purdie <rpurdie@openedhand.com>
  */
 
-#include <common.h>
+#include <linux/kernel.h>
 #include <linux/lzo.h>
+#include <linux/string.h>
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 #include "lzodefs.h"
@@ -29,7 +30,6 @@ static const unsigned char lzop_magic[] = {
 };
 
 #define HEADER_HAS_FILTER	0x00000800L
-
 
 bool lzop_is_valid_header(const unsigned char *src)
 {

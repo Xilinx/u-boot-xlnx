@@ -6,7 +6,6 @@
  *		Xingyu Wu <xingyu.wu@starfivetech.com>
  */
 
-#include <common.h>
 #include <asm/io.h>
 #include <malloc.h>
 #include <clk-uclass.h>
@@ -349,10 +348,10 @@ struct clk *starfive_jh7110_pll(const char *name, const char *parent_name,
 		return ERR_PTR(ret);
 	}
 
-	if (IS_ENABLED(CONFIG_SPL_BUILD) && pll->type == PLL0)
+	if (IS_ENABLED(CONFIG_XPL_BUILD) && pll->type == PLL0)
 		jh7110_pllx_set_rate(clk, 1000000000);
 
-	if (IS_ENABLED(CONFIG_SPL_BUILD) && pll->type == PLL2)
+	if (IS_ENABLED(CONFIG_XPL_BUILD) && pll->type == PLL2)
 		jh7110_pllx_set_rate(clk, 1188000000);
 
 	return clk;

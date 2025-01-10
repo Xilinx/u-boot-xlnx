@@ -3,7 +3,6 @@
  * Copyright (C) 2015 Google, Inc
  */
 
-#include <common.h>
 #include <console.h>
 #include <dm.h>
 #include <part.h>
@@ -34,7 +33,7 @@ static int dm_test_usb_base(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_usb_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_usb_base, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 /*
  * Test that we can use the flash stick. This is more of a functional test. It
@@ -83,7 +82,7 @@ static int dm_test_usb_flash(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_usb_flash, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_usb_flash, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 /* test that we can handle multiple storage devices */
 static int dm_test_usb_multi(struct unit_test_state *uts)
@@ -99,7 +98,7 @@ static int dm_test_usb_multi(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_usb_multi, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_usb_multi, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 /* test that we have an associated ofnode with the usb device */
 static int dm_test_usb_fdt_node(struct unit_test_state *uts)
@@ -121,7 +120,7 @@ static int dm_test_usb_fdt_node(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_usb_fdt_node, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_usb_fdt_node, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 static int count_usb_devices(void)
 {
@@ -165,7 +164,7 @@ static int dm_test_usb_stop(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_usb_stop, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_usb_stop, UTF_SCAN_PDATA | UTF_SCAN_FDT);
 
 /**
  * dm_test_usb_keyb() - test USB keyboard driver
@@ -424,7 +423,6 @@ static int dm_test_usb_keyb(struct unit_test_state *uts)
 		{0x00, 0x00, "\0"}
 	};
 
-
 	state_set_skip_delays(true);
 	ut_assertok(usb_init());
 
@@ -457,4 +455,4 @@ static int dm_test_usb_keyb(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_usb_keyb, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_usb_keyb, UTF_SCAN_PDATA | UTF_SCAN_FDT);

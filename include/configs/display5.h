@@ -119,7 +119,6 @@
 	"run tftp_mmc_rootfs;" \
 	"run tftp_mmc_rootfs_bkp;" \
 
-
 #define TFTP_UPDATE_RECOVERY_SWU_KERNEL \
 	"tftp_sf_fitImg_SWU=" \
 	    "if tftp ${loadaddr} ${kernel_file}; then " \
@@ -288,5 +287,4 @@
 /* The 0x120000 value corresponds to above SPI-NOR memory MAP */
 #endif
 
-#define CFG_MXC_USB_PORTSC           (PORT_PTS_UTMI | PORT_PTS_PTW)
 #endif /* __CONFIG_H */

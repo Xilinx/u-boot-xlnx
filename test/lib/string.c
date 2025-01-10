@@ -9,7 +9,6 @@
  * This has to be considered in testing.
  */
 
-#include <common.h>
 #include <command.h>
 #include <log.h>
 #include <test/lib.h>
@@ -94,7 +93,6 @@ static int lib_memset(struct unit_test_state *uts)
 	}
 	return 0;
 }
-
 LIB_TEST(lib_memset, 0);
 
 /**
@@ -158,7 +156,6 @@ static int lib_memcpy(struct unit_test_state *uts)
 	}
 	return 0;
 }
-
 LIB_TEST(lib_memcpy, 0);
 
 /**
@@ -193,7 +190,6 @@ static int lib_memmove(struct unit_test_state *uts)
 	}
 	return 0;
 }
-
 LIB_TEST(lib_memmove, 0);
 
 /** lib_memdup() - unit test for memdup() */

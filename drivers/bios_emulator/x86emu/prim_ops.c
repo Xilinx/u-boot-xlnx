@@ -97,8 +97,6 @@
 *
 ****************************************************************************/
 
-#include <common.h>
-
 #define PRIM_OPS_NO_REDEFINE_ASM
 #include "x86emu/x86emui.h"
 
@@ -120,7 +118,6 @@ static u32 x86emu_parity_tab[8] =
 #define XOR2(x)	    (((x) ^ ((x)>>1)) & 0x1)
 
 /*----------------------------- Implementation ----------------------------*/
-
 
 /*--------- Side effects helper functions -------*/
 

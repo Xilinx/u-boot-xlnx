@@ -7,5 +7,6 @@ Qualcomm
    :maxdepth: 2
 
    dragonboard410c
-   sdm845
-   qcs404
+   rb3gen2
+   board
+   debugging

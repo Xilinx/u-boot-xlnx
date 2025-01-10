@@ -7,7 +7,6 @@
 /*
  * Boot support
  */
-#include <common.h>
 #include <command.h>
 #include <iomux.h>
 #include <stdio_dev.h>
@@ -47,7 +46,6 @@ static int do_coninfo(struct cmd_tbl *cmd, int flag, int argc,
 	}
 	return 0;
 }
-
 
 /***************************************************/
 

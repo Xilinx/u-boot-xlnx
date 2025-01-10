@@ -9,8 +9,9 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
 #include <asm/mmu.h>
+#include <asm/ppc.h>
 
 struct fsl_e_tlb_entry tlb_table[] = {
 	/* TLB 0 - for temp stack in cache */
@@ -26,7 +27,6 @@ struct fsl_e_tlb_entry tlb_table[] = {
 	SET_TLB_ENTRY(0, CFG_SYS_INIT_RAM_ADDR + 12 * 1024 , CFG_SYS_INIT_RAM_ADDR + 12 * 1024,
 		      MAS3_SX|MAS3_SW|MAS3_SR, 0,
 		      0, 0, BOOKE_PAGESZ_4K, 0),
-
 
 	/*
 	 * TLB 1:	64M	Non-cacheable, guarded

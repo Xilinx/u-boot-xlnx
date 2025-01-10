@@ -4,17 +4,18 @@
  * Author: Teresa Remmet <t.remmet@phytec.de>
  */
 
-#include <common.h>
-#include <asm/mach-imx/mxc_i2c.h>
-#include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
 #include <i2c.h>
 #include <u-boot/crc.h>
+#include <malloc.h>
+#include <extension_board.h>
 
 #include "phytec_som_detection.h"
 
 struct phytec_eeprom_data eeprom_data;
+
+#if IS_ENABLED(CONFIG_PHYTEC_SOM_DETECTION)
 
 int phytec_eeprom_data_setup_fallback(struct phytec_eeprom_data *data,
 				      int bus_num, int addr, int addr_fallback)
@@ -46,15 +47,9 @@ int phytec_eeprom_data_setup(struct phytec_eeprom_data *data,
 	return ret;
 }
 
-int phytec_eeprom_data_init(struct phytec_eeprom_data *data,
-			    int bus_num, int addr)
+int phytec_eeprom_read(u8 *data, int bus_num, int addr, int size, int offset)
 {
-	int ret, i;
-	unsigned int crc;
-	int *ptr;
-
-	if (!data)
-		data = &eeprom_data;
+	int ret;
 
 #if CONFIG_IS_ENABLED(DM_I2C)
 	struct udevice *dev;
@@ -65,48 +60,215 @@ int phytec_eeprom_data_init(struct phytec_eeprom_data *data,
 		return ret;
 	}
 
-	ret = dm_i2c_read(dev, 0, (uint8_t *)data,
-			  sizeof(struct phytec_eeprom_data));
+	ret = dm_i2c_read(dev, offset, (uint8_t *)data, size);
 	if (ret) {
-		pr_err("%s: Unable to read EEPROM data\n", __func__);
+		pr_err("%s: Unable to read EEPROM data: %i\n", __func__, ret);
 		return ret;
 	}
 #else
 	i2c_set_bus_num(bus_num);
-	ret = i2c_read(addr, 0, 2, (uint8_t *)data,
-		       sizeof(struct phytec_eeprom_data));
+	ret = i2c_read(addr, offset, 2, (uint8_t *)data, size);
 #endif
+	return ret;
+}
 
-	if (data->api_rev == 0xff) {
-		pr_err("%s: EEPROM is not flashed. Prototype?\n", __func__);
-		return -EINVAL;
-	}
+int phytec_eeprom_data_init_v2(struct phytec_eeprom_data *data)
+{
+	unsigned int crc;
 
-	ptr = (int *)data;
-	for (i = 0; i < sizeof(struct phytec_eeprom_data); i += sizeof(ptr))
-		if (*ptr != 0x0)
-			break;
+	if (!data)
+		return -1;
 
-	if (i == sizeof(struct phytec_eeprom_data)) {
-		pr_err("%s: EEPROM data is all zero. Erased?\n", __func__);
-		return -EINVAL;
-	}
-
-	/* We are done here for early revisions */
-	if (data->api_rev <= PHYTEC_API_REV1)
-		return 0;
-
-	crc = crc8(0, (const unsigned char *)data,
-		   sizeof(struct phytec_eeprom_data));
+	crc = crc8(0, (const unsigned char *)&data->payload, PHYTEC_API2_DATA_LEN);
 	debug("%s: crc: %x\n", __func__, crc);
 
 	if (crc) {
-		pr_err("%s: CRC mismatch. EEPROM data is not usable\n",
+		pr_err("%s: CRC mismatch. EEPROM data is not usable.\n",
 		       __func__);
 		return -EINVAL;
 	}
 
 	return 0;
+}
+
+#if IS_ENABLED(CONFIG_PHYTEC_SOM_DETECTION_BLOCKS)
+
+int phytec_eeprom_data_init_v3_block(struct phytec_eeprom_data *data,
+				     struct phytec_api3_block_header *header,
+				     u8 *payload)
+{
+	struct phytec_api3_element *element = NULL;
+	struct phytec_api3_element *list_iterator;
+
+	if (!header)
+		return -1;
+	if (!payload)
+		return -1;
+
+	debug("%s: block type: %i\n", __func__, header->block_type);
+	switch (header->block_type) {
+	case PHYTEC_API3_BLOCK_MAC:
+		element = phytec_blocks_init_mac(header, payload);
+		break;
+	default:
+		debug("%s: Unknown block type %i\n", __func__,
+		      header->block_type);
+	}
+	if (!element)
+		return -1;
+
+	if (!data->payload.block_head) {
+		data->payload.block_head = element;
+		return 0;
+	}
+
+	list_iterator = data->payload.block_head;
+	while (list_iterator && list_iterator->next)
+		list_iterator = list_iterator->next;
+	list_iterator->next = element;
+
+	return 0;
+}
+
+int phytec_eeprom_data_init_v3(struct phytec_eeprom_data *data,
+			       int bus_num, int addr)
+{
+	int ret, i;
+	struct phytec_api3_header header;
+	unsigned int crc;
+	u8 *payload;
+	int block_addr;
+	struct phytec_api3_block_header *block_header;
+
+	if (!data)
+		return -1;
+
+	ret = phytec_eeprom_read((uint8_t *)&header, bus_num, addr,
+				 PHYTEC_API3_DATA_HEADER_LEN,
+				 PHYTEC_API2_DATA_LEN);
+	if (ret) {
+		pr_err("%s: Failed to read API v3 data header.\n", __func__);
+		goto err;
+	}
+
+	crc = crc8(0, (const unsigned char *)&header,
+		   PHYTEC_API3_DATA_HEADER_LEN);
+	debug("%s: crc: %x\n", __func__, crc);
+	if (crc) {
+		pr_err("%s: CRC mismatch. API3 header is unusable.\n",
+		       __func__);
+		goto err;
+	}
+
+	debug("%s: data length: %i\n", __func__, header.data_length);
+	payload = malloc(header.data_length);
+	if (!payload) {
+		pr_err("%s: Unable to allocate memory\n", __func__);
+		goto err_payload;
+	}
+
+	ret = phytec_eeprom_read(payload, bus_num, addr, header.data_length,
+				 PHYTEC_API3_DATA_HEADER_LEN +
+				 PHYTEC_API2_DATA_LEN);
+	if (ret) {
+		pr_err("%s: Failed to read API v3 data payload.\n", __func__);
+		goto err_payload;
+	}
+
+	block_addr = 0;
+	debug("%s: block count: %i\n", __func__, header.block_count);
+	for (i = 0; i < header.block_count; i++) {
+		debug("%s: block_addr: %i\n", __func__, block_addr);
+		block_header = (struct phytec_api3_block_header *)
+			&payload[block_addr];
+		crc = crc8(0, (const unsigned char *)block_header,
+			   PHYTEC_API3_BLOCK_HEADER_LEN);
+
+		debug("%s: crc: %x\n", __func__, crc);
+		if (crc) {
+			pr_err("%s: CRC mismatch. API3 block header is unusable\n",
+			       __func__);
+			goto err_payload;
+		}
+
+		ret = phytec_eeprom_data_init_v3_block(data, block_header,
+			&payload[block_addr + PHYTEC_API3_BLOCK_HEADER_LEN]);
+		/* Ignore failed block initialization and continue. */
+		if (ret)
+			debug("%s: Unable to create block with index %i.\n",
+			      __func__, i);
+
+		block_addr = block_header->next_block;
+	}
+
+	free(payload);
+	return 0;
+err_payload:
+	free(payload);
+err:
+	return -1;
+}
+
+#else
+
+inline int phytec_eeprom_data_init_v3(struct phytec_eeprom_data *data,
+				      int bus_num, int addr)
+{
+	return 0;
+}
+
+#endif
+
+int phytec_eeprom_data_init(struct phytec_eeprom_data *data,
+			    int bus_num, int addr)
+{
+	int ret, i;
+	u8 *ptr;
+
+	if (!data)
+		data = &eeprom_data;
+
+	ret = phytec_eeprom_read((u8 *)data, bus_num, addr,
+				 PHYTEC_API2_DATA_LEN, 0);
+	if (ret)
+		goto err;
+	data->payload.block_head = NULL;
+
+	if (data->payload.api_rev == 0xff) {
+		pr_err("%s: EEPROM is not flashed. Prototype?\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	ptr = (u8 *)data;
+	for (i = 0; i < PHYTEC_API2_DATA_LEN; ++i)
+		if (ptr[i] != 0x0)
+			break;
+
+	if (i == PHYTEC_API2_DATA_LEN) {
+		pr_err("%s: EEPROM data is all zero. Erased?\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (data->payload.api_rev >= PHYTEC_API_REV2) {
+		ret = phytec_eeprom_data_init_v2(data);
+		if (ret)
+			goto err;
+	}
+
+	if (IS_ENABLED(CONFIG_PHYTEC_SOM_DETECTION_BLOCKS))
+		if (data->payload.api_rev >= PHYTEC_API_REV3) {
+			ret = phytec_eeprom_data_init_v3(data, bus_num, addr);
+			if (ret)
+				goto err;
+		}
+
+	data->valid = true;
+	return 0;
+err:
+	data->valid = false;
+	return ret;
 }
 
 void __maybe_unused phytec_print_som_info(struct phytec_eeprom_data *data)
@@ -118,10 +280,10 @@ void __maybe_unused phytec_print_som_info(struct phytec_eeprom_data *data)
 	if (!data)
 		data = &eeprom_data;
 
-	if (data->api_rev < PHYTEC_API_REV2)
+	if (!data->valid || data->payload.api_rev < PHYTEC_API_REV2)
 		return;
 
-	api2 = &data->data.data_api2;
+	api2 = &data->payload.data.data_api2;
 
 	/* Calculate PCB subrevision */
 	pcb_sub_rev = api2->pcb_sub_opt_rev & 0x0f;
@@ -159,7 +321,8 @@ void __maybe_unused phytec_print_som_info(struct phytec_eeprom_data *data)
 			sub_som_type2 = 2;
 			break;
 		default:
-			break;
+			pr_err("%s: Invalid SoM type: %i", __func__, api2->som_type);
+			return;
 		};
 
 		printf("SoM: %s-%03u-%s-%03u ",
@@ -179,10 +342,13 @@ char * __maybe_unused phytec_get_opt(struct phytec_eeprom_data *data)
 	if (!data)
 		data = &eeprom_data;
 
-	if (data->api_rev < PHYTEC_API_REV2)
-		opt = data->data.data_api0.opt;
+	if (!data->valid)
+		return NULL;
+
+	if (data->payload.api_rev < PHYTEC_API_REV2)
+		opt = data->payload.data.data_api0.opt;
 	else
-		opt = data->data.data_api2.opt;
+		opt = data->payload.data.data_api2.opt;
 
 	return opt;
 }
@@ -194,10 +360,111 @@ u8 __maybe_unused phytec_get_rev(struct phytec_eeprom_data *data)
 	if (!data)
 		data = &eeprom_data;
 
-	if (data->api_rev < PHYTEC_API_REV2)
+	if (!data->valid || data->payload.api_rev < PHYTEC_API_REV2)
 		return PHYTEC_EEPROM_INVAL;
 
-	api2 = &data->data.data_api2;
+	api2 = &data->payload.data.data_api2;
 
 	return api2->pcb_rev;
 }
+
+u8 __maybe_unused phytec_get_som_type(struct phytec_eeprom_data *data)
+{
+	if (!data)
+		data = &eeprom_data;
+
+	if (!data->valid || data->payload.api_rev < PHYTEC_API_REV2)
+		return PHYTEC_EEPROM_INVAL;
+
+	return data->payload.data.data_api2.som_type;
+}
+
+#if IS_ENABLED(CONFIG_CMD_EXTENSION)
+struct extension *phytec_add_extension(const char *name, const char *overlay,
+				       const char *other)
+{
+	struct extension *extension;
+
+	if (strlen(overlay) > sizeof(extension->overlay)) {
+		pr_err("Overlay name %s is longer than %lu.\n", overlay,
+		       sizeof(extension->overlay));
+		return NULL;
+	}
+
+	extension = calloc(1, sizeof(struct extension));
+	snprintf(extension->name, sizeof(extension->name), name);
+	snprintf(extension->overlay, sizeof(extension->overlay), overlay);
+	snprintf(extension->other, sizeof(extension->other), other);
+	snprintf(extension->owner, sizeof(extension->owner), "PHYTEC");
+
+	return extension;
+}
+#endif /* IS_ENABLED(CONFIG_CMD_EXTENSION) */
+
+struct phytec_api3_element *
+	__maybe_unused phytec_get_block_head(struct phytec_eeprom_data *data)
+{
+	if (!data)
+		data = &eeprom_data;
+	if (!data->valid)
+		return NULL;
+
+	return data->payload.block_head;
+}
+
+#else
+
+inline int phytec_eeprom_data_setup(struct phytec_eeprom_data *data,
+				    int bus_num, int addr)
+{
+	return PHYTEC_EEPROM_INVAL;
+}
+
+inline int phytec_eeprom_data_setup_fallback(struct phytec_eeprom_data *data,
+					     int bus_num, int addr,
+					     int addr_fallback)
+{
+	return PHYTEC_EEPROM_INVAL;
+}
+
+inline int phytec_eeprom_data_init(struct phytec_eeprom_data *data,
+				   int bus_num, int addr)
+{
+	return PHYTEC_EEPROM_INVAL;
+}
+
+inline void __maybe_unused phytec_print_som_info(struct phytec_eeprom_data *data)
+{
+}
+
+inline char *__maybe_unused phytec_get_opt(struct phytec_eeprom_data *data)
+{
+	return NULL;
+}
+
+u8 __maybe_unused phytec_get_rev(struct phytec_eeprom_data *data)
+{
+	return PHYTEC_EEPROM_INVAL;
+}
+
+u8 __maybe_unused phytec_get_som_type(struct phytec_eeprom_data *data)
+{
+	return PHYTEC_EEPROM_INVAL;
+}
+
+inline struct phytec_api3_element * __maybe_unused
+	phytec_get_block_head(struct phytec_eeprom_data *data)
+{
+	return NULL;
+}
+
+#if IS_ENABLED(CONFIG_CMD_EXTENSION)
+inline struct extension *phytec_add_extension(const char *name,
+					      const char *overlay,
+					      const char *other)
+{
+	return NULL;
+}
+#endif /* IS_ENABLED(CONFIG_CMD_EXTENSION) */
+
+#endif /* IS_ENABLED(CONFIG_PHYTEC_SOM_DETECTION) */

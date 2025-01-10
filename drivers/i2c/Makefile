@@ -2,15 +2,15 @@
 #
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-obj-$(CONFIG_$(SPL_)DM_I2C) += i2c-uclass.o
-ifdef CONFIG_$(SPL_)ACPIGEN
-obj-$(CONFIG_$(SPL_)DM_I2C) += acpi_i2c.o
+obj-$(CONFIG_$(XPL_)DM_I2C) += i2c-uclass.o
+ifdef CONFIG_$(XPL_)ACPIGEN
+obj-$(CONFIG_$(XPL_)DM_I2C) += acpi_i2c.o
 endif
-obj-$(CONFIG_$(SPL_)DM_I2C_GPIO) += i2c-gpio.o
-obj-$(CONFIG_$(SPL_)I2C_CROS_EC_TUNNEL) += cros_ec_tunnel.o
-obj-$(CONFIG_$(SPL_)I2C_CROS_EC_LDO) += cros_ec_ldo.o
+obj-$(CONFIG_$(XPL_)DM_I2C_GPIO) += i2c-gpio.o
+obj-$(CONFIG_$(XPL_)I2C_CROS_EC_TUNNEL) += cros_ec_tunnel.o
+obj-$(CONFIG_$(XPL_)I2C_CROS_EC_LDO) += cros_ec_ldo.o
 
-obj-$(CONFIG_$(SPL_)SYS_I2C_LEGACY) += i2c_core.o
+obj-$(CONFIG_$(XPL_)SYS_I2C_LEGACY) += i2c_core.o
 obj-$(CONFIG_SYS_I2C_ASPEED) += ast_i2c.o
 obj-$(CONFIG_SYS_I2C_AST2600) += ast2600_i2c.o
 obj-$(CONFIG_SYS_I2C_AT91) += at91_i2c.o
@@ -20,6 +20,7 @@ obj-$(CONFIG_SYS_I2C_DAVINCI) += davinci_i2c.o
 obj-$(CONFIG_SYS_I2C_DW) += designware_i2c.o
 obj-$(CONFIG_SYS_I2C_DW_PCI) += designware_i2c_pci.o
 obj-$(CONFIG_SYS_I2C_FSL) += fsl_i2c.o
+obj-$(CONFIG_SYS_I2C_GENI) += geni_i2c.o
 obj-$(CONFIG_SYS_I2C_IHS) += ihs_i2c.o
 obj-$(CONFIG_SYS_I2C_INTEL) += intel_i2c.o
 obj-$(CONFIG_SYS_I2C_IMX_LPI2C) += imx_lpi2c.o
@@ -40,6 +41,7 @@ obj-$(CONFIG_SYS_I2C_QUP) += qup_i2c.o
 obj-$(CONFIG_SYS_I2C_RCAR_I2C) += rcar_i2c.o
 obj-$(CONFIG_SYS_I2C_RCAR_IIC) += rcar_iic.o
 obj-$(CONFIG_SYS_I2C_ROCKCHIP) += rk_i2c.o
+obj-$(CONFIG_SYS_I2C_RZ_RIIC) += rz_riic.o
 obj-$(CONFIG_SYS_I2C_S3C24X0) += s3c24x0_i2c.o exynos_hs_i2c.o
 obj-$(CONFIG_SYS_I2C_SANDBOX) += sandbox_i2c.o i2c-emul-uclass.o
 obj-$(CONFIG_SYS_I2C_SH) += sh_i2c.o
@@ -55,4 +57,4 @@ obj-$(CONFIG_SYS_I2C_VERSATILE) += i2c-versatile.o
 obj-$(CONFIG_SYS_I2C_XILINX_XIIC) += xilinx_xiic.o
 obj-$(CONFIG_TEGRA186_BPMP_I2C) += tegra186_bpmp_i2c.o
 
-obj-$(CONFIG_$(SPL_)I2C_MUX) += muxes/
+obj-$(CONFIG_$(XPL_)I2C_MUX) += muxes/

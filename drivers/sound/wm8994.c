@@ -3,7 +3,6 @@
  * Copyright (C) 2012 Samsung Electronics
  * R. Chandrasekar <rcsekar@samsung.com>
  */
-#include <common.h>
 #include <audio_codec.h>
 #include <dm.h>
 #include <div64.h>
@@ -580,7 +579,6 @@ static int wm8994_init_volume_aif2_dac1(struct wm8994_priv *priv)
 	ret = wm8994_bic_or(priv, WM8994_AIF2_DAC_FILTERS_1,
 			    WM8994_AIF2DAC_MUTE_MASK, 0);
 
-
 	ret |= wm8994_bic_or(priv, WM8994_AIF2_DAC_LEFT_VOLUME,
 			     WM8994_AIF2DAC_VU_MASK | WM8994_AIF2DACL_VOL_MASK,
 			     WM8994_AIF2DAC_VU | 0xff);
@@ -588,7 +586,6 @@ static int wm8994_init_volume_aif2_dac1(struct wm8994_priv *priv)
 	ret |= wm8994_bic_or(priv, WM8994_AIF2_DAC_RIGHT_VOLUME,
 			     WM8994_AIF2DAC_VU_MASK | WM8994_AIF2DACR_VOL_MASK,
 			     WM8994_AIF2DAC_VU | 0xff);
-
 
 	ret |= wm8994_bic_or(priv, WM8994_DAC1_LEFT_VOLUME,
 			     WM8994_DAC1_VU_MASK | WM8994_DAC1L_VOL_MASK |

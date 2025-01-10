@@ -8,7 +8,6 @@
  * (C) Copyright 2017 Adaptrum, Inc.
  * Written by Alexandru Gagniuc <alex.g@adaptrum.com> for Adaptrum, Inc.
  */
-#include <common.h>
 #include <dm.h>
 #include <env.h>
 #include <errno.h>
@@ -228,7 +227,6 @@ int ksz9021_phy_extended_read(struct phy_device *phydev, int regnum)
 	phy_write(phydev, MDIO_DEVAD_NONE, MII_KSZ9021_EXTENDED_CTRL, regnum);
 	return phy_read(phydev, MDIO_DEVAD_NONE, MII_KSZ9021_EXTENDED_DATAR);
 }
-
 
 static int ksz9021_phy_extread(struct phy_device *phydev, int addr, int devaddr,
 			       int regnum)

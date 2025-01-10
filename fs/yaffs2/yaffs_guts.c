@@ -41,8 +41,6 @@
 static int yaffs_wr_data_obj(struct yaffs_obj *in, int inode_chunk,
 			     const u8 *buffer, int n_bytes, int use_reserve);
 
-
-
 /* Function to calculate chunk and offset */
 
 void yaffs_addr_to_chunk(struct yaffs_dev *dev, loff_t addr,
@@ -354,7 +352,6 @@ static int yaffs_verify_chunk_written(struct yaffs_dev *dev,
 
 	return retval;
 }
-
 
 int yaffs_check_alloc_available(struct yaffs_dev *dev, int n_chunks)
 {
@@ -1989,7 +1986,6 @@ static struct yaffs_obj *yaffs_create_fake_dir(struct yaffs_dev *dev,
 
 }
 
-
 static void yaffs_init_tnodes_and_objs(struct yaffs_dev *dev)
 {
 	int i;
@@ -2233,8 +2229,6 @@ struct yaffs_obj *yaffs_link_obj(struct yaffs_obj *parent, const YCHAR * name,
 
 }
 
-
-
 /*---------------------- Block Management and Page Allocation -------------*/
 
 static void yaffs_deinit_blocks(struct yaffs_dev *dev)
@@ -2292,7 +2286,6 @@ static int yaffs_init_blocks(struct yaffs_dev *dev)
 	if (!dev->chunk_bits)
 		goto alloc_error;
 
-
 	memset(dev->block_info, 0, n_blocks * sizeof(struct yaffs_block_info));
 	memset(dev->chunk_bits, 0, dev->chunk_bit_stride * n_blocks);
 	return YAFFS_OK;
@@ -2301,7 +2294,6 @@ alloc_error:
 	yaffs_deinit_blocks(dev);
 	return YAFFS_FAIL;
 }
-
 
 void yaffs_block_became_dirty(struct yaffs_dev *dev, int block_no)
 {
@@ -3036,8 +3028,6 @@ static int yaffs_wr_data_obj(struct yaffs_obj *in, int inode_chunk,
 
 }
 
-
-
 static int yaffs_do_xattrib_mod(struct yaffs_obj *obj, int set,
 				const YCHAR *name, const void *value, int size,
 				int flags)
@@ -3395,7 +3385,6 @@ int yaffs_update_oh(struct yaffs_obj *in, const YCHAR *name, int force,
 					  in->my_dev->param.chunks_per_block);
 		bi->has_shrink_hdr = 1;
 	}
-
 
 	return new_chunk_id;
 }
@@ -3803,7 +3792,6 @@ int yaffs_flush_file(struct yaffs_obj *in, int update_time, int data_sync)
 	return (yaffs_update_oh(in, NULL, 0, 0, 0, NULL) >= 0) ?
 				YAFFS_OK : YAFFS_FAIL;
 }
-
 
 /* yaffs_del_file deletes the whole file data
  * and the inode associated with the file.
@@ -4306,7 +4294,6 @@ static void yaffs_empty_l_n_f(struct yaffs_dev *dev)
 	yaffs_del_dir_contents(dev->lost_n_found);
 }
 
-
 struct yaffs_obj *yaffs_find_by_name(struct yaffs_obj *directory,
 				     const YCHAR *name)
 {
@@ -4465,13 +4452,12 @@ loff_t yaffs_get_obj_length(struct yaffs_obj *obj)
 int yaffs_get_obj_link_count(struct yaffs_obj *obj)
 {
 	int count = 0;
-	struct list_head *i;
 
 	if (!obj->unlinked)
 		count++;	/* the object itself */
 
-	list_for_each(i, &obj->hard_links)
-	    count++;		/* add the hard links; */
+	/* add the hard links; */
+	count += list_count_nodes(&obj->hard_links);
 
 	return count;
 }

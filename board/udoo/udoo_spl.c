@@ -6,7 +6,6 @@
  * Based on board/wandboard/spl.c
  */
 
-#include <common.h>
 #include <init.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/imx-regs.h>
@@ -24,7 +23,7 @@
 #include <asm/arch/sys_proto.h>
 #include <spl.h>
 
-#if defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_XPL_BUILD)
 #include <asm/arch/mx6-ddr.h>
 
 /*

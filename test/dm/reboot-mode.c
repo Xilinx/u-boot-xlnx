@@ -3,7 +3,6 @@
  * (C) 2018 Theobroma Systems Design und Consulting GmbH
  */
 
-#include <common.h>
 #include <dm.h>
 #include <reboot-mode/reboot-mode.h>
 #include <env.h>
@@ -40,9 +39,8 @@ static int dm_test_reboot_mode_gpio(struct unit_test_state *uts)
 
 	return 0;
 }
-
 DM_TEST(dm_test_reboot_mode_gpio,
-	UT_TESTF_PROBE_TEST | UT_TESTF_SCAN_FDT | UT_TESTF_FLAT_TREE);
+	UTF_PROBE_TEST | UTF_SCAN_FDT | UTF_FLAT_TREE);
 
 static int dm_test_reboot_mode_rtc(struct unit_test_state *uts)
 {
@@ -66,6 +64,5 @@ static int dm_test_reboot_mode_rtc(struct unit_test_state *uts)
 
 	return 0;
 }
-
 DM_TEST(dm_test_reboot_mode_rtc,
-	UT_TESTF_PROBE_TEST | UT_TESTF_SCAN_FDT | UT_TESTF_FLAT_TREE);
+	UTF_PROBE_TEST | UTF_SCAN_FDT | UTF_FLAT_TREE);

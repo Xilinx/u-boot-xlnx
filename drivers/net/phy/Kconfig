@@ -11,7 +11,7 @@ config MV88E6352_SWITCH
 
 menuconfig PHYLIB
 	bool "Ethernet PHY (physical media interface) support"
-	depends on NET
+	depends on NET || NET_LWIP
 	help
 	  Enable Ethernet PHY (physical media interface) support.
 
@@ -22,6 +22,12 @@ config PHY_ADDR_ENABLE
 	default y if ARCH_SUNXI
 	help
 	  Select this if you want to control which phy address is used
+
+config PHY_ANEG_TIMEOUT
+	int "PHY auto-negotiation timeout"
+	default 4000
+	help
+	  Default PHY auto-negotiation timeout.
 
 if PHY_ADDR_ENABLE
 config PHY_ADDR
@@ -362,6 +368,7 @@ config PHY_FIXED
 
 config PHY_NCSI
 	bool "NC-SI based PHY"
+	depends on NET
 
 endif #PHYLIB
 

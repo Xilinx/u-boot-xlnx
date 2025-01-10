@@ -316,7 +316,7 @@ static inline const char *event_spy_id(struct evspy_info *spy)
 	__used ll_entry_declare(struct evspy_info, _type ## _3_ ## _func, \
 		evspy_info) = _ESPY_REC(_type, _func)
 
-/* Simple spy with no function arguemnts */
+/* Simple spy with no function arguments */
 #define EVENT_SPY_SIMPLE(_type, _func) \
 	__used ll_entry_declare(struct evspy_info_simple, \
 		_type ## _3_ ## _func, \
@@ -385,7 +385,7 @@ static inline int event_notify_null(enum event_t type)
 int event_uninit(void);
 
 /**
- * event_uninit() - Set up dynamic events
+ * event_init() - Set up dynamic events
  *
  * Init a list of dynamic event handlers, so that these can be added as
  * needed

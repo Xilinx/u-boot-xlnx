@@ -3,7 +3,6 @@
  * Copyright (C) 2019, STMicroelectronics - All Rights Reserved
  */
 
-#include <common.h>
 #include <command.h>
 #include <console.h>
 #include <log.h>
@@ -19,8 +18,8 @@
  * STM32MP13x: 0b111111 = 0x3F for OTP_SECURED closed device
  */
 #define STM32_OTP_CLOSE_ID		0
-#define STM32_OTP_STM32MP13x_CLOSE_MASK	0x3F
-#define STM32_OTP_STM32MP15x_CLOSE_MASK	BIT(6)
+#define STM32_OTP_STM32MP13X_CLOSE_MASK	0x3F
+#define STM32_OTP_STM32MP15X_CLOSE_MASK	BIT(6)
 
 /* PKH is the first element of the key list */
 #define STM32KEY_PKH 0
@@ -61,29 +60,29 @@ static u8 stm32key_index;
 
 static u8 get_key_nb(void)
 {
-	if (IS_ENABLED(CONFIG_STM32MP13x))
+	if (IS_ENABLED(CONFIG_STM32MP13X))
 		return ARRAY_SIZE(stm32mp13_list);
 
-	if (IS_ENABLED(CONFIG_STM32MP15x))
+	if (IS_ENABLED(CONFIG_STM32MP15X))
 		return ARRAY_SIZE(stm32mp15_list);
 }
 
 static const struct stm32key *get_key(u8 index)
 {
-	if (IS_ENABLED(CONFIG_STM32MP13x))
+	if (IS_ENABLED(CONFIG_STM32MP13X))
 		return &stm32mp13_list[index];
 
-	if (IS_ENABLED(CONFIG_STM32MP15x))
+	if (IS_ENABLED(CONFIG_STM32MP15X))
 		return &stm32mp15_list[index];
 }
 
 static u32 get_otp_close_mask(void)
 {
-	if (IS_ENABLED(CONFIG_STM32MP13x))
-		return STM32_OTP_STM32MP13x_CLOSE_MASK;
+	if (IS_ENABLED(CONFIG_STM32MP13X))
+		return STM32_OTP_STM32MP13X_CLOSE_MASK;
 
-	if (IS_ENABLED(CONFIG_STM32MP15x))
-		return STM32_OTP_STM32MP15x_CLOSE_MASK;
+	if (IS_ENABLED(CONFIG_STM32MP15X))
+		return STM32_OTP_STM32MP15X_CLOSE_MASK;
 }
 
 static int get_misc_dev(struct udevice **dev)
@@ -420,12 +419,12 @@ static int do_stm32key_close(struct cmd_tbl *cmdtp, int flag, int argc, char *co
 	return CMD_RET_SUCCESS;
 }
 
-static char stm32key_help_text[] =
+U_BOOT_LONGHELP(stm32key,
 	"list : list the supported key with description\n"
 	"stm32key select [<key>] : Select the key identified by <key> or display the key used for read/fuse command\n"
 	"stm32key read [<addr> | -a ] : Read the curent key at <addr> or current / all (-a) key in OTP\n"
 	"stm32key fuse [-y] <addr> : Fuse the current key at addr in OTP\n"
-	"stm32key close [-y] : Close the device\n";
+	"stm32key close [-y] : Close the device\n");
 
 U_BOOT_CMD_WITH_SUBCMDS(stm32key, "Manage key on STM32", stm32key_help_text,
 	U_BOOT_SUBCMD_MKENT(list, 1, 0, do_stm32key_list),

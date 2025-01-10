@@ -13,7 +13,6 @@
  * Copyright 2017-2019 NXP
  */
 
-#include <common.h>
 #include <clk.h>
 #include <cpu_func.h>
 #include <dm.h>
@@ -31,6 +30,7 @@
 #include <linux/errno.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/sizes.h>
+#include <linux/time.h>
 #include <linux/types.h>
 #include <linux/math64.h>
 
@@ -52,8 +52,6 @@
 #endif
 
 #define	MXS_NAND_BCH_TIMEOUT			10000
-#define	USEC_PER_SEC				1000000
-#define	NSEC_PER_SEC				1000000000L
 
 #define TO_CYCLES(duration, period) DIV_ROUND_UP_ULL(duration, period)
 
@@ -278,7 +276,6 @@ static inline int mxs_nand_calc_ecc_for_large_oob(struct bch_geometry *geo,
 			/ (geo->gf_len * geo->ecc_chunk_count);
 	max_ecc = min(round_down(max_ecc, 2),
 				nand_info->max_ecc_strength_supported);
-
 
 	/* search a supported ecc strength that makes bbm */
 	/* located in data chunk  */

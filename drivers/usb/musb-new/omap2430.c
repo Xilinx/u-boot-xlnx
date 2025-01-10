@@ -8,7 +8,6 @@
  *
  * This file is part of the Inventra Controller Driver for Linux.
  */
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <serial.h>
@@ -22,7 +21,6 @@
 #include <asm/omap_common.h>
 #include <asm/omap_musb.h>
 #include <twl4030.h>
-#include <twl6030.h>
 #include "linux-compat.h"
 #include "musb_core.h"
 #include "omap2430.h"
@@ -46,16 +44,6 @@ static inline void omap2430_low_level_init(struct musb *musb)
 	l &= ~ENABLEFORCE;	/* disable MSTANDBY */
 	musb_writel(musb->mregs, OTG_FORCESTDBY, l);
 }
-
-#ifdef CONFIG_DM_USB_GADGET
-int dm_usb_gadget_handle_interrupts(struct udevice *dev)
-{
-	struct musb_host_data *host = dev_get_priv(dev);
-
-	host->host->isr(0, host->host);
-	return 0;
-}
-#endif
 
 static int omap2430_musb_init(struct musb *musb)
 {
@@ -115,17 +103,6 @@ static int omap2430_musb_enable(struct musb *musb)
 				__PRETTY_FUNCTION__);
 	}
 #endif
-
-#ifdef CONFIG_TWL6030_POWER
-	twl6030_usb_device_settings();
-#endif
-
-#ifdef CONFIG_OMAP44XX
-	u32 *usbotghs_control = (u32 *)((*ctrl)->control_usbotghs_ctrl);
-	*usbotghs_control = USBOTGHS_CONTROL_AVALID |
-		USBOTGHS_CONTROL_VBUSVALID | USBOTGHS_CONTROL_IDDIG;
-#endif
-
 	return 0;
 }
 
@@ -274,6 +251,21 @@ static int omap2430_musb_remove(struct udevice *dev)
 	return 0;
 }
 
+#ifndef CONFIG_USB_MUSB_HOST
+static int omap2340_gadget_handle_interrupts(struct udevice *dev)
+{
+	struct musb_host_data *host = dev_get_priv(dev);
+
+	host->host->isr(0, host->host);
+
+	return 0;
+}
+
+static const struct usb_gadget_generic_ops omap2340_gadget_ops = {
+	.handle_interrupts	= omap2340_gadget_handle_interrupts,
+};
+#endif
+
 static const struct udevice_id omap2430_musb_ids[] = {
 	{ .compatible = "ti,omap3-musb" },
 	{ .compatible = "ti,omap4-musb" },
@@ -286,6 +278,7 @@ U_BOOT_DRIVER(omap2430_musb) = {
 	.id		= UCLASS_USB,
 #else
 	.id		= UCLASS_USB_GADGET_GENERIC,
+	.ops		= &omap2340_gadget_ops,
 #endif
 	.of_match = omap2430_musb_ids,
 	.of_to_plat = omap2430_musb_of_to_plat,

@@ -4,11 +4,12 @@
  * Stefano Babic, DENX Software Engineering, <sbabic@denx.de>
  */
 
-
 #ifndef __ASM_ARCH_IMX_GPIO_H
 #define __ASM_ARCH_IMX_GPIO_H
 
 #if !(defined(__KERNEL_STRICT_NAMES) || defined(__ASSEMBLY__))
+#include <linux/types.h>
+
 /* GPIO registers */
 struct gpio_regs {
 	u32 gpio_dr;	/* data */

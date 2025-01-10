@@ -4,7 +4,6 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
 #include <command.h>
 #include <hang.h>
 #include <malloc.h>
@@ -636,7 +635,6 @@ static int fec_start(struct udevice *dev)
 
 	return 0;
 }
-
 
 static void fec_stop(struct udevice *dev)
 {

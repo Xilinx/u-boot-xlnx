@@ -6,7 +6,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <bootmeth.h>
 #include <dm.h>
 #include <image.h>
@@ -86,4 +85,4 @@ static int vbe_simple_test_base(struct unit_test_state *uts)
 
 	return 0;
 }
-BOOTSTD_TEST(vbe_simple_test_base, UT_TESTF_DM | UT_TESTF_SCAN_FDT);
+BOOTSTD_TEST(vbe_simple_test_base, UTF_DM | UTF_SCAN_FDT);

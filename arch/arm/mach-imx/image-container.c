@@ -3,7 +3,7 @@
  * Copyright 2019 NXP
  */
 
-#include <common.h>
+#include <config.h>
 #include <errno.h>
 #include <imx_container.h>
 #include <log.h>
@@ -205,7 +205,7 @@ static unsigned long get_boot_device_offset(void *dev, int dev_type)
 		} else {
 			u8 part = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
 
-			if (part == 1 || part == 2) {
+			if (part == EMMC_BOOT_PART_BOOT1 || part == EMMC_BOOT_PART_BOOT2) {
 				if (is_imx8qxp() && is_soc_rev(CHIP_REV_B))
 					offset = CONTAINER_HDR_MMCSD_OFFSET;
 				else
@@ -262,7 +262,7 @@ static int get_imageset_end(void *dev, int dev_type)
 }
 
 #ifdef CONFIG_SPL_SPI_LOAD
-unsigned long spl_spi_get_uboot_offs(struct spi_flash *flash)
+unsigned int spl_spi_get_uboot_offs(struct spi_flash *flash)
 {
 	int end;
 
@@ -294,15 +294,15 @@ int spl_mmc_emmc_boot_partition(struct mmc *mmc)
 	int part;
 
 	part = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
-	if (part == 1 || part == 2) {
+	if (part == EMMC_BOOT_PART_BOOT1 || part == EMMC_BOOT_PART_BOOT2) {
 		unsigned long sec_set_off = 0;
 		bool sec_boot = false;
 
 		sec_boot = check_secondary_cnt_set(&sec_set_off);
 		if (sec_boot)
-			part = (part == 1) ? 2 : 1;
-	} else if (part == 7) {
-		part = 0;
+			part = (part == EMMC_BOOT_PART_BOOT1) ? EMMC_HWPART_BOOT2 : EMMC_HWPART_BOOT1;
+	} else if (part == EMMC_BOOT_PART_USER) {
+		part = EMMC_HWPART_DEFAULT;
 	}
 
 	return part;

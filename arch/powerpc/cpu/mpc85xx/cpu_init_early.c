@@ -3,8 +3,9 @@
  * Copyright 2009-2012 Freescale Semiconductor, Inc
  */
 
-#include <common.h>
+#include <asm/ppc.h>
 #include <system-constants.h>
+#include <linux/types.h>
 #include <asm-offsets.h>
 #include <asm/global_data.h>
 #include <asm/processor.h>
@@ -178,7 +179,7 @@ void cpu_init_early_f(void *fdt)
 	invalidate_tlb(1);
 
 #if defined(CONFIG_SYS_PPC_E500_DEBUG_TLB) && \
-	!(CONFIG_IS_ENABLED(INIT_MINIMAL) && defined(CONFIG_SPL_BUILD)) && \
+	!(CONFIG_IS_ENABLED(INIT_MINIMAL) && defined(CONFIG_XPL_BUILD)) && \
 	!defined(CONFIG_NAND_SPL)
 	disable_tlb(CONFIG_SYS_PPC_E500_DEBUG_TLB);
 #endif

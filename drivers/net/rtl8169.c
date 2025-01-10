@@ -39,7 +39,6 @@
  * 26 August 2006 Mihai Georgian <u-boot@linuxnotincluded.org.uk>
  * Modified to use le32_to_cpu and cpu_to_le32 properly
  */
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <errno.h>
@@ -737,7 +736,6 @@ static void rtl8169_hw_start(struct udevice *dev)
 	RTL_W32(TxConfig, (TX_DMA_BURST << TxDMAShift) |
 				(InterFrameGap << TxInterFrameGapShift));
 
-
 	tpc->cur_rx = 0;
 
 	RTL_W32(TxDescStartAddrLow, dm_pci_mem_to_phys(dev,
@@ -1031,7 +1029,6 @@ static int rtl_init(unsigned long dev_ioaddr, const char *name,
 		     (RTL_R32(TBICSR) & TBILinkOK) ? "OK" : "Failed");
 #endif
 	}
-
 
 	tpc->RxDescArray = rtl_alloc_descs(NUM_RX_DESC);
 	if (!tpc->RxDescArray)

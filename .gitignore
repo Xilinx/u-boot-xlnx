@@ -10,6 +10,7 @@
 *.a
 *.asn1.[ch]
 *.bin
+*.bin[_.]*
 *.cfgout
 *.cover
 *.dtb
@@ -17,23 +18,27 @@
 *.dtb.S
 *.elf
 *.exe
+*.fit
 *.gcda
 *.gcno
 *.i
 *.img
+*.itb
 *.lex.c
 *.lst
+*.map
 *.mod.c
 *.mbx
 *.o
 *.o.*
 *.order
 *.patch
+*.pem
 *.s
 *.su
 *.swp
 *.tab.[ch]
-
+*.ti-*
 # Build tree
 /build*
 
@@ -63,6 +68,16 @@ fit-dtb.blob*
 /spl/
 /tpl/
 /defconfig
+/generated_defconfig
+/Test*
+/capsule.*.efi-capsule
+/capsule*.map
+/keep-syms-lto.*
+/*imx8mimage*
+/*imx8mcst*
+/drivers/video/u_boot_logo.S
+/test/overlay/test-fdt-overlay.dtbo.S
+/test/overlay/test-fdt-overlay-stacked.dtbo.S
 
 #
 # Generated include files
@@ -71,6 +86,8 @@ fit-dtb.blob*
 /include/config.h
 /include/config/
 /include/generated/
+/include/bmp_logo.h
+/include/bmp_logo_data.h
 
 # stgit generated dirs
 patches-*

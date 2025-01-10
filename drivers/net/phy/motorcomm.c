@@ -6,13 +6,13 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <malloc.h>
 #include <phy.h>
 #include <linux/bitfield.h>
 
 #define PHY_ID_YT8511				0x0000010a
 #define PHY_ID_YT8531				0x4f51e91b
+#define PHY_ID_YT8821				0x4f51ea19
 #define PHY_ID_MASK				GENMASK(31, 0)
 
 /* Extended Register's Address Offset Register */
@@ -22,6 +22,12 @@
 #define YTPHY_PAGE_DATA			0x1F
 
 #define YTPHY_SYNCE_CFG_REG			0xA012
+
+#define YT8531_PAD_DRIVE_STRENGTH_CFG_REG		0xA010
+#define YT8531_RGMII_RXC_DS_MASK		GENMASK(15, 13)
+#define YT8531_RGMII_RXD_DS_HI_MASK		BIT(12)		/* Bit 2 of rxd_ds */
+#define YT8531_RGMII_RXD_DS_LOW_MASK		GENMASK(5, 4)	/* Bit 1/0 of rxd_ds */
+#define YT8531_RGMII_RX_DS_DEFAULT		0x3
 
 #define YTPHY_DTS_OUTPUT_CLK_DIS		0
 #define YTPHY_DTS_OUTPUT_CLK_25M		25000000
@@ -97,8 +103,12 @@
 #define YTPHY_SPECIFIC_STATUS_REG		0x11
 #define YTPHY_DUPLEX_MASK			BIT(13)
 #define YTPHY_DUPLEX_SHIFT			13
-#define YTPHY_SPEED_MODE_MASK			GENMASK(15, 14)
-#define YTPHY_SPEED_MODE_SHIFT			14
+#define YTPHY_SPEED_MASK			((0x3 << 14) | BIT(9))
+#define YTPHY_SPEED_10M				((0x0 << 14))
+#define YTPHY_SPEED_100M			((0x1 << 14))
+#define YTPHY_SPEED_1000M			((0x2 << 14))
+#define YTPHY_SPEED_10G				((0x3 << 14))
+#define YTPHY_SPEED_2500M			((0x0 << 14) | BIT(9))
 
 #define YT8531_EXTREG_SLEEP_CONTROL1_REG	0x27
 #define YT8531_ESC1R_SLEEP_SW			BIT(15)
@@ -114,6 +124,10 @@
 #define YT8531_CCR_RXC_DLY_EN			BIT(8)
 #define YT8531_CCR_RXC_DLY_1_900_NS		1900
 
+#define YT8531_CCR_CFG_LDO_MASK		GENMASK(5, 4)
+#define YT8531_CCR_CFG_LDO_3V3			0x0
+#define YT8531_CCR_CFG_LDO_1V8			0x2
+
 /* bits in struct ytphy_plat_priv->flag */
 #define TX_CLK_ADJ_ENABLED			BIT(0)
 #define AUTO_SLEEP_DISABLED			BIT(1)
@@ -121,6 +135,91 @@
 #define TX_CLK_10_INVERTED			BIT(3)
 #define TX_CLK_100_INVERTED			BIT(4)
 #define TX_CLK_1000_INVERTED			BIT(5)
+
+#define YT8821_SDS_EXT_CSR_CTRL_REG		0x23
+#define YT8821_SDS_EXT_CSR_VCO_LDO_EN		BIT(15)
+#define YT8821_SDS_EXT_CSR_VCO_BIAS_LPF_EN	BIT(8)
+
+#define YT8821_UTP_EXT_PI_CTRL_REG		0x56
+#define YT8821_UTP_EXT_PI_RST_N_FIFO		BIT(5)
+#define YT8821_UTP_EXT_PI_TX_CLK_SEL_AFE	BIT(4)
+#define YT8821_UTP_EXT_PI_RX_CLK_3_SEL_AFE	BIT(3)
+#define YT8821_UTP_EXT_PI_RX_CLK_2_SEL_AFE	BIT(2)
+#define YT8821_UTP_EXT_PI_RX_CLK_1_SEL_AFE	BIT(1)
+#define YT8821_UTP_EXT_PI_RX_CLK_0_SEL_AFE	BIT(0)
+
+#define YT8821_UTP_EXT_VCT_CFG6_CTRL_REG	0x97
+#define YT8821_UTP_EXT_FECHO_AMP_TH_HUGE	GENMASK(15, 8)
+
+#define YT8821_UTP_EXT_ECHO_CTRL_REG		0x336
+#define YT8821_UTP_EXT_TRACE_LNG_GAIN_THR_1000	GENMASK(14, 8)
+
+#define YT8821_UTP_EXT_GAIN_CTRL_REG		0x340
+#define YT8821_UTP_EXT_TRACE_MED_GAIN_THR_1000	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_RPDN_CTRL_REG		0x34E
+#define YT8821_UTP_EXT_RPDN_BP_FFE_LNG_2500	BIT(15)
+#define YT8821_UTP_EXT_RPDN_BP_FFE_SHT_2500	BIT(7)
+#define YT8821_UTP_EXT_RPDN_IPR_SHT_2500	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_TH_20DB_2500_CTRL_REG	0x36A
+#define YT8821_UTP_EXT_TH_20DB_2500		GENMASK(15, 0)
+
+#define YT8821_UTP_EXT_TRACE_CTRL_REG		0x372
+#define YT8821_UTP_EXT_TRACE_LNG_GAIN_THE_2500	GENMASK(14, 8)
+#define YT8821_UTP_EXT_TRACE_MED_GAIN_THE_2500	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_ALPHA_IPR_CTRL_REG	0x374
+#define YT8821_UTP_EXT_ALPHA_SHT_2500		GENMASK(14, 8)
+#define YT8821_UTP_EXT_IPR_LNG_2500		GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_PLL_CTRL_REG		0x450
+#define YT8821_UTP_EXT_PLL_SPARE_CFG		GENMASK(7, 0)
+
+#define YT8821_UTP_EXT_DAC_IMID_CH_2_3_CTRL_REG	0x466
+#define YT8821_UTP_EXT_DAC_IMID_CH_3_10_ORG	GENMASK(14, 8)
+#define YT8821_UTP_EXT_DAC_IMID_CH_2_10_ORG	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_DAC_IMID_CH_0_1_CTRL_REG	0x467
+#define YT8821_UTP_EXT_DAC_IMID_CH_1_10_ORG	GENMASK(14, 8)
+#define YT8821_UTP_EXT_DAC_IMID_CH_0_10_ORG	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_DAC_IMSB_CH_2_3_CTRL_REG	0x468
+#define YT8821_UTP_EXT_DAC_IMSB_CH_3_10_ORG	GENMASK(14, 8)
+#define YT8821_UTP_EXT_DAC_IMSB_CH_2_10_ORG	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_DAC_IMSB_CH_0_1_CTRL_REG	0x469
+#define YT8821_UTP_EXT_DAC_IMSB_CH_1_10_ORG	GENMASK(14, 8)
+#define YT8821_UTP_EXT_DAC_IMSB_CH_0_10_ORG	GENMASK(6, 0)
+
+#define YT8821_UTP_EXT_MU_COARSE_FR_CTRL_REG	0x4B3
+#define YT8821_UTP_EXT_MU_COARSE_FR_F_FFE	GENMASK(14, 12)
+#define YT8821_UTP_EXT_MU_COARSE_FR_F_FBE	GENMASK(10, 8)
+
+#define YT8821_UTP_EXT_MU_FINE_FR_CTRL_REG	0x4B5
+#define YT8821_UTP_EXT_MU_FINE_FR_F_FFE		GENMASK(14, 12)
+#define YT8821_UTP_EXT_MU_FINE_FR_F_FBE		GENMASK(10, 8)
+
+#define YT8821_UTP_EXT_VGA_LPF1_CAP_CTRL_REG	0x4D2
+#define YT8821_UTP_EXT_VGA_LPF1_CAP_OTHER	GENMASK(7, 4)
+#define YT8821_UTP_EXT_VGA_LPF1_CAP_2500	GENMASK(3, 0)
+
+#define YT8821_UTP_EXT_VGA_LPF2_CAP_CTRL_REG	0x4D3
+#define YT8821_UTP_EXT_VGA_LPF2_CAP_OTHER	GENMASK(7, 4)
+#define YT8821_UTP_EXT_VGA_LPF2_CAP_2500	GENMASK(3, 0)
+
+#define YT8821_UTP_EXT_TXGE_NFR_FR_THP_CTRL_REG	0x660
+#define YT8821_UTP_EXT_NFR_TX_ABILITY		BIT(3)
+
+#define YT8821_CHIP_MODE_FORCE_BX2500		1
+
+/* chip config register */
+#define YTPHY_CCR_MODE_SEL_MASK			GENMASK(2, 0)
+
+#define YTPHY_REG_SPACE_SELECT_REG		0xA000
+#define YTPHY_RSSR_SPACE_MASK			BIT(1)
+#define YTPHY_RSSR_FIBER_SPACE			(0x1 << 1)
+#define YTPHY_RSSR_UTP_SPACE			(0x0 << 1)
 
 struct ytphy_plat_priv {
 	u32 rx_delay_ps;
@@ -224,6 +323,17 @@ static int ytphy_modify_ext(struct phy_device *phydev, u16 regnum, u16 mask,
 	return phy_modify(phydev, MDIO_DEVAD_NONE, YTPHY_PAGE_DATA, mask, set);
 }
 
+static int ytphy_read_ext(struct phy_device *phydev, u16 regnum)
+{
+	int ret;
+
+	ret = phy_write(phydev, MDIO_DEVAD_NONE, YTPHY_PAGE_SELECT, regnum);
+	if (ret < 0)
+		return ret;
+
+	return phy_read(phydev, MDIO_DEVAD_NONE, YTPHY_PAGE_DATA);
+}
+
 static int ytphy_rgmii_clk_delay_config(struct phy_device *phydev)
 {
 	struct ytphy_plat_priv	*priv = phydev->priv;
@@ -275,15 +385,15 @@ static int yt8531_parse_status(struct phy_device *phydev)
 	if (val < 0)
 		return val;
 
-	speed_mode = (val & YTPHY_SPEED_MODE_MASK) >> YTPHY_SPEED_MODE_SHIFT;
+	speed_mode = (val & YTPHY_SPEED_MASK);
 	switch (speed_mode) {
-	case 2:
+	case YTPHY_SPEED_1000M:
 		speed = SPEED_1000;
 		break;
-	case 1:
+	case YTPHY_SPEED_100M:
 		speed = SPEED_100;
 		break;
-	default:
+	case YTPHY_SPEED_10M:
 		speed = SPEED_10;
 		break;
 	}
@@ -425,6 +535,111 @@ static int yt8511_config(struct phy_device *phydev)
 	return 0;
 }
 
+/**
+ * struct ytphy_ldo_vol_map - map a current value to a register value
+ * @vol: ldo voltage
+ * @ds:  value in the register
+ * @cur: value in device configuration
+ */
+struct ytphy_ldo_vol_map {
+	u32 vol;
+	u32 ds;
+	u32 cur;
+};
+
+static const struct ytphy_ldo_vol_map yt8531_ldo_vol[] = {
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 0, .cur = 1200},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 1, .cur = 2100},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 2, .cur = 2700},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 3, .cur = 2910},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 4, .cur = 3110},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 5, .cur = 3600},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 6, .cur = 3970},
+	{.vol = YT8531_CCR_CFG_LDO_1V8, .ds = 7, .cur = 4350},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 0, .cur = 3070},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 1, .cur = 4080},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 2, .cur = 4370},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 3, .cur = 4680},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 4, .cur = 5020},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 5, .cur = 5450},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 6, .cur = 5740},
+	{.vol = YT8531_CCR_CFG_LDO_3V3, .ds = 7, .cur = 6140},
+};
+
+static u32 yt8531_get_ldo_vol(struct phy_device *phydev)
+{
+	u32 val;
+
+	val = ytphy_read_ext(phydev, YT8531_CHIP_CONFIG_REG);
+	val = FIELD_GET(YT8531_CCR_CFG_LDO_MASK, val);
+
+	return val <= YT8531_CCR_CFG_LDO_1V8 ? val : YT8531_CCR_CFG_LDO_1V8;
+}
+
+static int yt8531_get_ds_map(struct phy_device *phydev, u32 cur)
+{
+	u32 vol;
+	int i;
+
+	vol = yt8531_get_ldo_vol(phydev);
+	for (i = 0; i < ARRAY_SIZE(yt8531_ldo_vol); i++) {
+		if (yt8531_ldo_vol[i].vol == vol && yt8531_ldo_vol[i].cur == cur)
+			return yt8531_ldo_vol[i].ds;
+	}
+
+	return -EINVAL;
+}
+
+static int yt8531_set_ds(struct phy_device *phydev)
+{
+	u32 ds_field_low, ds_field_hi, val;
+	int ret, ds;
+
+	/* set rgmii rx clk driver strength */
+	if (!ofnode_read_u32(phydev->node, "motorcomm,rx-clk-drv-microamp", &val)) {
+		ds = yt8531_get_ds_map(phydev, val);
+		if (ds < 0) {
+			pr_warn("No matching current value was found.");
+			return -EINVAL;
+		}
+	} else {
+		ds = YT8531_RGMII_RX_DS_DEFAULT;
+	}
+
+	ret = ytphy_modify_ext(phydev,
+			       YT8531_PAD_DRIVE_STRENGTH_CFG_REG,
+			       YT8531_RGMII_RXC_DS_MASK,
+			       FIELD_PREP(YT8531_RGMII_RXC_DS_MASK, ds));
+	if (ret < 0)
+		return ret;
+
+	/* set rgmii rx data driver strength */
+	if (!ofnode_read_u32(phydev->node, "motorcomm,rx-data-drv-microamp", &val)) {
+		ds = yt8531_get_ds_map(phydev, val);
+		if (ds < 0) {
+			pr_warn("No matching current value was found.");
+			return -EINVAL;
+		}
+	} else {
+		ds = YT8531_RGMII_RX_DS_DEFAULT;
+	}
+
+	ds_field_hi = FIELD_GET(BIT(2), ds);
+	ds_field_hi = FIELD_PREP(YT8531_RGMII_RXD_DS_HI_MASK, ds_field_hi);
+
+	ds_field_low = FIELD_GET(GENMASK(1, 0), ds);
+	ds_field_low = FIELD_PREP(YT8531_RGMII_RXD_DS_LOW_MASK, ds_field_low);
+
+	ret = ytphy_modify_ext(phydev,
+			       YT8531_PAD_DRIVE_STRENGTH_CFG_REG,
+			       YT8531_RGMII_RXD_DS_LOW_MASK | YT8531_RGMII_RXD_DS_HI_MASK,
+			       ds_field_low | ds_field_hi);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 static int yt8531_config(struct phy_device *phydev)
 {
 	struct ytphy_plat_priv	*priv = phydev->priv;
@@ -487,6 +702,10 @@ static int yt8531_config(struct phy_device *phydev)
 			return ret;
 	}
 
+	ret = yt8531_set_ds(phydev);
+	if (ret < 0)
+		return ret;
+
 	return 0;
 }
 
@@ -499,6 +718,398 @@ static int yt8531_probe(struct phy_device *phydev)
 		return -ENOMEM;
 
 	phydev->priv = priv;
+
+	return 0;
+}
+
+static int ytphy_save_page(struct phy_device *phydev)
+{
+	int old_page;
+
+	old_page = ytphy_read_ext(phydev, YTPHY_REG_SPACE_SELECT_REG);
+	if (old_page < 0)
+		return old_page;
+
+	if ((old_page & YTPHY_RSSR_SPACE_MASK) == YTPHY_RSSR_FIBER_SPACE)
+		return YTPHY_RSSR_FIBER_SPACE;
+
+	return YTPHY_RSSR_UTP_SPACE;
+};
+
+static int ytphy_restore_page(struct phy_device *phydev, int page,
+			      int ret)
+{
+	int mask = YTPHY_RSSR_SPACE_MASK;
+	int set;
+	int r;
+
+	if ((page & YTPHY_RSSR_SPACE_MASK) == YTPHY_RSSR_FIBER_SPACE)
+		set = YTPHY_RSSR_FIBER_SPACE;
+	else
+		set = YTPHY_RSSR_UTP_SPACE;
+
+	r = ytphy_modify_ext(phydev, YTPHY_REG_SPACE_SELECT_REG, mask,
+			     set);
+	if (ret >= 0 && r < 0)
+		ret = r;
+
+	return ret;
+};
+
+static int ytphy_write_ext(struct phy_device *phydev, u16 regnum,
+			   u16 val)
+{
+	int ret;
+
+	ret = phy_write(phydev, MDIO_DEVAD_NONE,
+			YTPHY_PAGE_SELECT, regnum);
+	if (ret < 0)
+		return ret;
+
+	return phy_write(phydev, MDIO_DEVAD_NONE, YTPHY_PAGE_DATA, val);
+}
+
+static int yt8821_probe(struct phy_device *phydev)
+{
+	phydev->advertising = PHY_GBIT_FEATURES |
+				SUPPORTED_2500baseX_Full |
+				SUPPORTED_Pause |
+				SUPPORTED_Asym_Pause;
+	phydev->supported = phydev->advertising;
+
+	return 0;
+}
+
+static int yt8821_serdes_init(struct phy_device *phydev)
+{
+	int old_page;
+	u16 mask;
+	u16 set;
+	int ret;
+
+	old_page = ytphy_save_page(phydev);
+	if (old_page < 0)
+		return old_page;
+
+	ret = ytphy_modify_ext(phydev, YTPHY_REG_SPACE_SELECT_REG,
+			       YTPHY_RSSR_SPACE_MASK,
+			       YTPHY_RSSR_FIBER_SPACE);
+	if (ret < 0)
+		goto err_restore_page;
+
+	ret = phy_modify(phydev, MDIO_DEVAD_NONE, MII_BMCR,
+			 BMCR_ANENABLE, 0);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_SDS_EXT_CSR_VCO_LDO_EN |
+		YT8821_SDS_EXT_CSR_VCO_BIAS_LPF_EN;
+	set = YT8821_SDS_EXT_CSR_VCO_LDO_EN;
+	ret = ytphy_modify_ext(phydev, YT8821_SDS_EXT_CSR_CTRL_REG, mask,
+			       set);
+
+err_restore_page:
+	return ytphy_restore_page(phydev, old_page, ret);
+}
+
+static int yt8821_utp_init(struct phy_device *phydev)
+{
+	int old_page;
+	u16 mask;
+	u16 save;
+	u16 set;
+	int ret;
+
+	old_page = ytphy_save_page(phydev);
+	if (old_page < 0)
+		return old_page;
+
+	ret = ytphy_modify_ext(phydev, YTPHY_REG_SPACE_SELECT_REG,
+			       YTPHY_RSSR_SPACE_MASK,
+			       YTPHY_RSSR_UTP_SPACE);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_RPDN_BP_FFE_LNG_2500 |
+		YT8821_UTP_EXT_RPDN_BP_FFE_SHT_2500 |
+		YT8821_UTP_EXT_RPDN_IPR_SHT_2500;
+	set = YT8821_UTP_EXT_RPDN_BP_FFE_LNG_2500 |
+		YT8821_UTP_EXT_RPDN_BP_FFE_SHT_2500;
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_RPDN_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_VGA_LPF1_CAP_OTHER |
+		YT8821_UTP_EXT_VGA_LPF1_CAP_2500;
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_VGA_LPF1_CAP_CTRL_REG,
+			       mask, 0);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_VGA_LPF2_CAP_OTHER |
+		YT8821_UTP_EXT_VGA_LPF2_CAP_2500;
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_VGA_LPF2_CAP_CTRL_REG,
+			       mask, 0);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_TRACE_LNG_GAIN_THE_2500 |
+		YT8821_UTP_EXT_TRACE_MED_GAIN_THE_2500;
+	set = FIELD_PREP(YT8821_UTP_EXT_TRACE_LNG_GAIN_THE_2500, 0x5a) |
+		FIELD_PREP(YT8821_UTP_EXT_TRACE_MED_GAIN_THE_2500, 0x3c);
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_TRACE_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_IPR_LNG_2500;
+	set = FIELD_PREP(YT8821_UTP_EXT_IPR_LNG_2500, 0x6c);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_ALPHA_IPR_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_TRACE_LNG_GAIN_THR_1000;
+	set = FIELD_PREP(YT8821_UTP_EXT_TRACE_LNG_GAIN_THR_1000, 0x2a);
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_ECHO_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_TRACE_MED_GAIN_THR_1000;
+	set = FIELD_PREP(YT8821_UTP_EXT_TRACE_MED_GAIN_THR_1000, 0x22);
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_GAIN_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_TH_20DB_2500;
+	set = FIELD_PREP(YT8821_UTP_EXT_TH_20DB_2500, 0x8000);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_TH_20DB_2500_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_MU_COARSE_FR_F_FFE |
+		YT8821_UTP_EXT_MU_COARSE_FR_F_FBE;
+	set = FIELD_PREP(YT8821_UTP_EXT_MU_COARSE_FR_F_FFE, 0x7) |
+		FIELD_PREP(YT8821_UTP_EXT_MU_COARSE_FR_F_FBE, 0x7);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_MU_COARSE_FR_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_MU_FINE_FR_F_FFE |
+		YT8821_UTP_EXT_MU_FINE_FR_F_FBE;
+	set = FIELD_PREP(YT8821_UTP_EXT_MU_FINE_FR_F_FFE, 0x2) |
+		FIELD_PREP(YT8821_UTP_EXT_MU_FINE_FR_F_FBE, 0x2);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_MU_FINE_FR_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	/* save YT8821_UTP_EXT_PI_CTRL_REG's val for use later */
+	ret = ytphy_read_ext(phydev, YT8821_UTP_EXT_PI_CTRL_REG);
+	if (ret < 0)
+		goto err_restore_page;
+
+	save = ret;
+
+	mask = YT8821_UTP_EXT_PI_TX_CLK_SEL_AFE |
+		YT8821_UTP_EXT_PI_RX_CLK_3_SEL_AFE |
+		YT8821_UTP_EXT_PI_RX_CLK_2_SEL_AFE |
+		YT8821_UTP_EXT_PI_RX_CLK_1_SEL_AFE |
+		YT8821_UTP_EXT_PI_RX_CLK_0_SEL_AFE;
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_PI_CTRL_REG,
+			       mask, 0);
+	if (ret < 0)
+		goto err_restore_page;
+
+	/* restore YT8821_UTP_EXT_PI_CTRL_REG's val */
+	ret = ytphy_write_ext(phydev, YT8821_UTP_EXT_PI_CTRL_REG, save);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_FECHO_AMP_TH_HUGE;
+	set = FIELD_PREP(YT8821_UTP_EXT_FECHO_AMP_TH_HUGE, 0x38);
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_VCT_CFG6_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_NFR_TX_ABILITY;
+	set = YT8821_UTP_EXT_NFR_TX_ABILITY;
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_TXGE_NFR_FR_THP_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_PLL_SPARE_CFG;
+	set = FIELD_PREP(YT8821_UTP_EXT_PLL_SPARE_CFG, 0xe9);
+	ret = ytphy_modify_ext(phydev, YT8821_UTP_EXT_PLL_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_DAC_IMID_CH_3_10_ORG |
+		YT8821_UTP_EXT_DAC_IMID_CH_2_10_ORG;
+	set = FIELD_PREP(YT8821_UTP_EXT_DAC_IMID_CH_3_10_ORG, 0x64) |
+		FIELD_PREP(YT8821_UTP_EXT_DAC_IMID_CH_2_10_ORG, 0x64);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_DAC_IMID_CH_2_3_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_DAC_IMID_CH_1_10_ORG |
+		YT8821_UTP_EXT_DAC_IMID_CH_0_10_ORG;
+	set = FIELD_PREP(YT8821_UTP_EXT_DAC_IMID_CH_1_10_ORG, 0x64) |
+		FIELD_PREP(YT8821_UTP_EXT_DAC_IMID_CH_0_10_ORG, 0x64);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_DAC_IMID_CH_0_1_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_DAC_IMSB_CH_3_10_ORG |
+		YT8821_UTP_EXT_DAC_IMSB_CH_2_10_ORG;
+	set = FIELD_PREP(YT8821_UTP_EXT_DAC_IMSB_CH_3_10_ORG, 0x64) |
+		FIELD_PREP(YT8821_UTP_EXT_DAC_IMSB_CH_2_10_ORG, 0x64);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_DAC_IMSB_CH_2_3_CTRL_REG,
+			       mask, set);
+	if (ret < 0)
+		goto err_restore_page;
+
+	mask = YT8821_UTP_EXT_DAC_IMSB_CH_1_10_ORG |
+		YT8821_UTP_EXT_DAC_IMSB_CH_0_10_ORG;
+	set = FIELD_PREP(YT8821_UTP_EXT_DAC_IMSB_CH_1_10_ORG, 0x64) |
+		FIELD_PREP(YT8821_UTP_EXT_DAC_IMSB_CH_0_10_ORG, 0x64);
+	ret = ytphy_modify_ext(phydev,
+			       YT8821_UTP_EXT_DAC_IMSB_CH_0_1_CTRL_REG,
+			       mask, set);
+
+err_restore_page:
+	return ytphy_restore_page(phydev, old_page, ret);
+}
+
+static int yt8821_auto_sleep_config(struct phy_device *phydev,
+				    bool enable)
+{
+	int old_page;
+	int ret;
+
+	old_page = ytphy_save_page(phydev);
+	if (old_page < 0)
+		return old_page;
+
+	ret = ytphy_modify_ext(phydev, YTPHY_REG_SPACE_SELECT_REG,
+			       YTPHY_RSSR_SPACE_MASK,
+			       YTPHY_RSSR_UTP_SPACE);
+	if (ret < 0)
+		goto err_restore_page;
+
+	ret = ytphy_modify_ext(phydev,
+			       YT8531_EXTREG_SLEEP_CONTROL1_REG,
+			       YT8531_ESC1R_SLEEP_SW,
+			       enable ? 1 : 0);
+
+err_restore_page:
+	return ytphy_restore_page(phydev, old_page, ret);
+}
+
+static int yt8821_soft_reset(struct phy_device *phydev)
+{
+	return ytphy_modify_ext(phydev, YT8531_CHIP_CONFIG_REG,
+				YT8531_CCR_SW_RST, 0);
+}
+
+static int yt8821_config(struct phy_device *phydev)
+{
+	u8 mode = YT8821_CHIP_MODE_FORCE_BX2500;
+	int ret;
+	u16 set;
+
+	set = FIELD_PREP(YTPHY_CCR_MODE_SEL_MASK, mode);
+	ret = ytphy_modify_ext(phydev,
+			       YT8531_CHIP_CONFIG_REG,
+			       YTPHY_CCR_MODE_SEL_MASK,
+			       set);
+	if (ret < 0)
+		return ret;
+
+	ret = yt8821_serdes_init(phydev);
+	if (ret < 0)
+		return ret;
+
+	ret = yt8821_utp_init(phydev);
+	if (ret < 0)
+		return ret;
+
+	ret = yt8821_auto_sleep_config(phydev, false);
+	if (ret < 0)
+		return ret;
+
+	return yt8821_soft_reset(phydev);
+}
+
+static void yt8821_parse_status(struct phy_device *phydev, int val)
+{
+	int speed_mode;
+	int speed;
+
+	speed_mode = val & YTPHY_SPEED_MASK;
+	switch (speed_mode) {
+	case YTPHY_SPEED_2500M:
+		speed = SPEED_2500;
+		break;
+	case YTPHY_SPEED_1000M:
+		speed = SPEED_1000;
+		break;
+	case YTPHY_SPEED_100M:
+		speed = SPEED_100;
+		break;
+	case YTPHY_SPEED_10M:
+		speed = SPEED_10;
+		break;
+	}
+
+	phydev->speed = speed;
+	phydev->duplex = FIELD_GET(YTPHY_DUPLEX_MASK, val);
+}
+
+static int yt8821_startup(struct phy_device *phydev)
+{
+	u16 val;
+	int ret;
+
+	ret = ytphy_modify_ext(phydev, YTPHY_REG_SPACE_SELECT_REG,
+			       YTPHY_RSSR_SPACE_MASK,
+			       YTPHY_RSSR_UTP_SPACE);
+	if (ret)
+		return ret;
+
+	ret = genphy_update_link(phydev);
+	if (ret)
+		return ret;
+
+	ret = phy_read(phydev, MDIO_DEVAD_NONE,
+		       YTPHY_SPECIFIC_STATUS_REG);
+	if (ret < 0)
+		return ret;
+
+	val = ret;
+
+	if (phydev->link)
+		yt8821_parse_status(phydev, val);
 
 	return 0;
 }
@@ -522,4 +1133,15 @@ U_BOOT_PHY_DRIVER(motorcomm8531) = {
 	.config        = &yt8531_config,
 	.startup       = &yt8531_startup,
 	.shutdown      = &genphy_shutdown,
+};
+
+U_BOOT_PHY_DRIVER(motorcomm8821) = {
+	.name		= "YT8821 2.5G Ethernet",
+	.uid		= PHY_ID_YT8821,
+	.mask		= PHY_ID_MASK,
+	.mmds		= (MDIO_MMD_PMAPMD | MDIO_MMD_PCS | MDIO_MMD_AN),
+	.probe		= &yt8821_probe,
+	.config		= &yt8821_config,
+	.startup	= &yt8821_startup,
+	.shutdown	= &genphy_shutdown,
 };

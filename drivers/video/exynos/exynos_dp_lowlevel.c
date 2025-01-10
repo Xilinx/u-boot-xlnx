@@ -6,7 +6,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <log.h>
 #include <linux/delay.h>
 #include <linux/err.h>
@@ -65,7 +64,6 @@ void exynos_dp_enable_video_mute(struct exynos_dp *dp_regs, unsigned int enable)
 
 	return;
 }
-
 
 static void exynos_dp_init_analog_param(struct exynos_dp *dp_regs)
 {

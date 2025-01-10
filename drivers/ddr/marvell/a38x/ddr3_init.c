@@ -41,7 +41,8 @@ int ddr3_init(void)
 	mv_ddr_pre_training_soc_config(ddr_type);
 
 	/* Set log level for training library */
-	mv_ddr_user_log_level_set(DEBUG_BLOCK_ALL);
+	if (!IS_ENABLED(CONFIG_DDR_IMMUTABLE_DEBUG_SETTINGS))
+		mv_ddr_user_log_level_set(DEBUG_BLOCK_ALL);
 
 	mv_ddr_early_init();
 
@@ -74,7 +75,6 @@ int ddr3_init(void)
 #endif
 	}
 
-
 	status = ddr3_silicon_post_init();
 	if (MV_OK != status) {
 		printf("DDR3 Post Init - FAILED 0x%x\n", status);
@@ -87,7 +87,6 @@ int ddr3_init(void)
 		printf("%s Training Sequence - FAILED\n", ddr_type);
 		return status;
 	}
-
 
 	/* Post MC/PHY initializations */
 	mv_ddr_post_training_soc_config(ddr_type);

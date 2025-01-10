@@ -2,9 +2,9 @@
 # This Dockerfile is used to build an image containing basic stuff to be used
 # to build U-Boot and run our test suites.
 
-FROM ubuntu:jammy-20230804
-MAINTAINER Tom Rini <trini@konsulko.com>
-LABEL Description=" This image is for building U-Boot inside a container"
+FROM ubuntu:jammy-20240808
+LABEL org.opencontainers.image.authors="Tom Rini <trini@konsulko.com>"
+LABEL org.opencontainers.image.description=" This image is for building U-Boot inside a container"
 
 # Make sure apt is happy
 ENV DEBIAN_FRONTEND=noninteractive
@@ -12,7 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Add LLVM repository
 RUN apt-get update && apt-get install -y gnupg2 wget xz-utils && rm -rf /var/lib/apt/lists/*
 RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-RUN echo deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-16 main | tee /etc/apt/sources.list.d/llvm.list
+RUN echo deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main | tee /etc/apt/sources.list.d/llvm.list
 
 # Manually install the kernel.org "Crosstool" based toolchains for gcc-13.2.0
 RUN wget -O - https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/13.2.0/x86_64-gcc-13.2.0-nolibc-aarch64-linux.tar.xz | tar -C /opt -xJ
@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y \
 	bison \
 	build-essential \
 	cgpt \
-	clang-16 \
+	clang-17 \
 	coreutils \
 	cpio \
 	curl \
@@ -116,6 +116,7 @@ RUN apt-get update && apt-get install -y \
 	virtualenv \
 	vboot-kernel-utils \
 	vboot-utils \
+	xilinx-bootgen \
 	xxd \
 	zip \
 	&& rm -rf /var/lib/apt/lists/*
@@ -178,13 +179,26 @@ RUN git clone git://git.savannah.gnu.org/grub.git /tmp/grub && \
 
 RUN git clone https://gitlab.com/qemu-project/qemu.git /tmp/qemu && \
 	cd /tmp/qemu && \
-	git checkout v8.0.3 && \
+	git checkout v8.2.0 && \
 	# config user.name and user.email to make 'git am' happy
 	git config user.name u-boot && \
 	git config user.email u-boot@denx.de && \
+	git format-patch 0c7ffc977195~..0c7ffc977195 && \
+	git am 0001-hw-net-cadence_gem-Fix-MDIO_OP_xxx-values.patch && \
+	git cherry-pick d3c79c3974 && \
 	./configure --prefix=/opt/qemu --target-list="aarch64-softmmu,arm-softmmu,i386-softmmu,m68k-softmmu,mips-softmmu,mips64-softmmu,mips64el-softmmu,mipsel-softmmu,ppc-softmmu,riscv32-softmmu,riscv64-softmmu,sh4-softmmu,x86_64-softmmu,xtensa-softmmu" && \
 	make -j$(nproc) all install && \
 	rm -rf /tmp/qemu
+
+# Build fiptool
+RUN git clone https://git.trustedfirmware.org/TF-A/trusted-firmware-a.git /tmp/tf-a && \
+	cd /tmp/tf-a/ && \
+	git checkout v2.10.0 && \
+	cd tools/fiptool && \
+	make && \
+	mkdir -p /usr/local/bin && \
+	cp fiptool /usr/local/bin && \
+	rm -rf /tmp/tf-a
 
 # Build genimage (required by some targets to generate disk images)
 RUN wget -O - https://github.com/pengutronix/genimage/releases/download/v14/genimage-14.tar.xz | tar -C /tmp -xJ && \
@@ -229,6 +243,20 @@ RUN mkdir /tmp/trace && \
     sudo make install && \
     rm -rf /tmp/trace
 
+# Build coreboot
+RUN wget -O - https://coreboot.org/releases/coreboot-24.08.tar.xz | tar -C /tmp -xJ && \
+    cd /tmp/coreboot-24.08 && \
+    make crossgcc-i386 CPUS=$(nproc) && \
+    make -C payloads/coreinfo olddefconfig && \
+    make -C payloads/coreinfo && \
+    make olddefconfig && \
+    echo CONFIG_GENERIC_LINEAR_FRAMEBUFFER=y | tee -a .config && \
+    echo CONFIG_USE_OPTION_TABLE=y | tee -a .config && \
+    make olddefconfig && \
+    make -j $(nproc) && \
+    sudo mkdir /opt/coreboot && \
+    sudo cp build/coreboot.rom build/cbfstool /opt/coreboot/
+
 # Create our user/group
 RUN echo uboot ALL=NOPASSWD: ALL > /etc/sudoers.d/uboot
 RUN useradd -m -U uboot
@@ -238,12 +266,14 @@ USER uboot:uboot
 # COPY / ADD directives don't work as we need them to.
 RUN wget -O /tmp/pytest-requirements.txt https://source.denx.de/u-boot/u-boot/-/raw/master/test/py/requirements.txt
 RUN wget -O /tmp/sphinx-requirements.txt https://source.denx.de/u-boot/u-boot/-/raw/master/doc/sphinx/requirements.txt
+RUN wget -O /tmp/buildman-requirements.txt https://source.denx.de/u-boot/u-boot/-/raw/master/tools/buildman/requirements.txt
 RUN virtualenv -p /usr/bin/python3 /tmp/venv && \
 	. /tmp/venv/bin/activate && \
 	pip install -r /tmp/pytest-requirements.txt \
-		-r /tmp/sphinx-requirements.txt && \
+		-r /tmp/sphinx-requirements.txt \
+		-r /tmp/buildman-requirements.txt && \
 	deactivate && \
-	rm -rf /tmp/venv /tmp/pytest-requirements.txt /tmp/sphinx-requirements.txt
+	rm -rf /tmp/venv /tmp/*-requirements.txt
 
 # Create the buildman config file
 RUN /bin/echo -e "[toolchain]\nroot = /usr" > ~/.buildman

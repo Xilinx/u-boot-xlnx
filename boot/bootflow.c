@@ -6,7 +6,6 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <bootdev.h>
 #include <bootflow.h>
 #include <bootmeth.h>
@@ -217,6 +216,9 @@ static int iter_incr(struct bootflow_iter *iter)
 		}
 	}
 
+	if (iter->flags & BOOTFLOWIF_SINGLE_PARTITION)
+		return BF_NO_MORE_DEVICES;
+
 	/* No more bootmeths; start at the first one, and... */
 	iter->cur_method = 0;
 	iter->method = iter->method_order[iter->cur_method];
@@ -361,7 +363,7 @@ static int bootflow_check(struct bootflow_iter *iter, struct bootflow *bflow)
 	}
 
 	/* Unless there is nothing more to try, move to the next device */
-	else if (ret != BF_NO_MORE_PARTS && ret != -ENOSYS) {
+	if (ret != BF_NO_MORE_PARTS && ret != -ENOSYS) {
 		log_debug("Bootdev '%s' part %d method '%s': Error %d\n",
 			  dev->name, iter->part, iter->method->name, ret);
 		/*
@@ -371,10 +373,8 @@ static int bootflow_check(struct bootflow_iter *iter, struct bootflow *bflow)
 		if (iter->flags & BOOTFLOWIF_ALL)
 			return log_msg_ret("all", ret);
 	}
-	if (ret)
-		return log_msg_ret("check", ret);
 
-	return 0;
+	return log_msg_ret("check", ret);
 }
 
 int bootflow_scan_first(struct udevice *dev, const char *label,
@@ -570,6 +570,18 @@ int bootflow_iter_check_blk(const struct bootflow_iter *iter)
 
 	log_debug("uclass %d: %s\n", id, uclass_get_name(id));
 	if (id != UCLASS_ETH && id != UCLASS_BOOTSTD && id != UCLASS_QFW)
+		return 0;
+
+	return -ENOTSUPP;
+}
+
+int bootflow_iter_check_mmc(const struct bootflow_iter *iter)
+{
+	const struct udevice *media = dev_get_parent(iter->dev);
+	enum uclass_id id = device_get_uclass_id(media);
+
+	log_debug("uclass %d: %s\n", id, uclass_get_name(id));
+	if (id == UCLASS_MMC)
 		return 0;
 
 	return -ENOTSUPP;
@@ -924,11 +936,15 @@ int bootflow_cmdline_auto(struct bootflow *bflow, const char *arg)
 		return ret;
 
 	*buf = '\0';
-	if (!strcmp("earlycon", arg)) {
+	if (!strcmp("earlycon", arg) && info.type == SERIAL_CHIP_16550_COMPATIBLE) {
 		snprintf(buf, sizeof(buf),
 			 "uart8250,mmio32,%#lx,%dn8", info.addr,
 			 info.baudrate);
-	} else if (!strcmp("console", arg)) {
+	} else if (!strcmp("earlycon", arg) && info.type == SERIAL_CHIP_PL01X) {
+		snprintf(buf, sizeof(buf),
+			 "pl011,mmio32,%#lx,%dn8", info.addr,
+			 info.baudrate);
+	} else if (!strcmp("console", arg) && info.type == SERIAL_CHIP_16550_COMPATIBLE) {
 		snprintf(buf, sizeof(buf),
 			 "ttyS0,%dn8", info.baudrate);
 	}

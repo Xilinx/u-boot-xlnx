@@ -3,7 +3,6 @@
  * Copyright (C) 2015 Alexey Brodkin <abrodkin@synopsys.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <log.h>
@@ -51,7 +50,7 @@ static int ohci_usb_probe(struct udevice *dev)
 		goto reset_err;
 	}
 
-	err = generic_setup_phy(dev, &priv->phy, 0);
+	err = generic_setup_phy(dev, &priv->phy, 0, PHY_MODE_USB_HOST, 0);
 	if (err)
 		goto reset_err;
 

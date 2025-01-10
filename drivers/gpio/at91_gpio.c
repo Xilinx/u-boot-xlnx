@@ -8,7 +8,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <malloc.h>
@@ -602,8 +601,6 @@ static int at91_gpio_probe(struct udevice *dev)
 	ret = clk_enable(&clk);
 	if (ret)
 		return ret;
-
-	clk_free(&clk);
 
 #if CONFIG_IS_ENABLED(OF_CONTROL)
 	plat->base_addr = dev_read_addr(dev);

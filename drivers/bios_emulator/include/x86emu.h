@@ -42,7 +42,6 @@
 #define __X86EMU_X86EMU_H
 
 #include <asm/types.h>
-#include <common.h>
 #include <pci.h>
 #include <asm/io.h>
 #define X86API
@@ -55,7 +54,7 @@ typedef u16 X86EMU_pioAddr;
 
 #if defined(CONFIG_ARM)
 #define GAS_LINE_COMMENT	"@"
-#elif defined(CONFIG_MIPS) || defined(CONFIG_PPC) || defined(CONFIG_X86)
+#elif defined(CONFIG_MIPS) || defined(CONFIG_PPC) || defined(CONFIG_X86) || defined(CONFIG_RISCV)
 #define GAS_LINE_COMMENT	"#"
 #elif defined (CONFIG_SH)
 #define GAS_LINE_COMMENT	"!"

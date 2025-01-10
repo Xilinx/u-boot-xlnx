@@ -1,7 +1,5 @@
-menu "Command line interface"
-
-config CMDLINE
-	bool "Support U-Boot commands"
+menuconfig CMDLINE
+	bool "Command line interface"
 	default y
 	help
 	  Enable U-Boot's command-line functions. This provides a means
@@ -11,9 +9,10 @@ config CMDLINE
 	  Depending on the number of commands enabled, this can add
 	  substantially to the size of U-Boot.
 
+if CMDLINE
+
 config HUSH_PARSER
 	bool "Use hush shell"
-	depends on CMDLINE
 	help
 	  This option enables the "hush" shell (from Busybox) as command line
 	  interpreter, thus enabling powerful command line syntax like
@@ -23,9 +22,33 @@ config HUSH_PARSER
 	  If disabled, you get the old, much simpler behaviour with a somewhat
 	  smaller memory footprint.
 
+menu "Hush flavor to use"
+depends on HUSH_PARSER
+
+config HUSH_OLD_PARSER
+	bool "Use hush old parser"
+	default y
+	help
+	  This option enables the old flavor of hush based on hush Busybox from
+	  2005.
+
+	  It is actually the default U-Boot shell when decided to use hush as shell.
+
+config HUSH_MODERN_PARSER
+	bool "Use hush modern parser"
+	help
+	  This option enables the new flavor of hush based on hush upstream
+	  Busybox.
+
+	  This parser is experimental and not well tested.
+
+config HUSH_SELECTABLE
+	bool
+	default y if HUSH_OLD_PARSER && HUSH_MODERN_PARSER
+endmenu
+
 config CMDLINE_EDITING
 	bool "Enable command line editing"
-	depends on CMDLINE
 	default y
 	help
 	  Enable editing and History functions for interactive command line
@@ -40,15 +63,13 @@ config CMDLINE_PS_SUPPORT
 
 config AUTO_COMPLETE
 	bool "Enable auto complete using TAB"
-	depends on CMDLINE
 	default y
 	help
 	  Enable auto completion of commands using TAB.
 
 config SYS_LONGHELP
 	bool "Enable long help messages"
-	depends on CMDLINE
-	default y if CMDLINE
+	default y
 	help
 	  Defined when you want long help messages included
 	  Do not set this option when short of memory.
@@ -73,26 +94,11 @@ config SYS_PROMPT_HUSH_PS2
 
 config SYS_MAXARGS
 	int "Maximum number arguments accepted by commands"
-	default 16
-
-config SYS_CBSIZE
-	int "Console input buffer size"
-	default 2048 if ARCH_TEGRA || ARCH_VERSAL || ARCH_ZYNQ || ARCH_ZYNQMP || \
-		RCAR_GEN3 || TARGET_SOCFPGA_SOC64
-	default 512 if ARCH_MX5 || ARCH_MX6 || ARCH_MX7 || FSL_LSCH2 || \
-		FSL_LSCH3 || X86
-	default 256 if M68K || PPC
-	default 1024
-
-config SYS_PBSIZE
-	int "Buffer size for console output"
-	default 1024 if ARCH_SUNXI
-	default 1044
+	default 64
 
 config SYS_XTRACE
 	bool "Command execution tracer"
-	depends on CMDLINE
-	default y if CMDLINE
+	default y
 	help
 	  This option enables the possiblity to print all commands before
 	  executing them and after all variables are evaluated (similar
@@ -183,9 +189,21 @@ config CMD_HISTORY
 	  Show the command-line history, i.e. a list of commands that are in
 	  the history buffer.
 
+config CMD_HISTORY_USE_CALLOC
+	bool "dynamically allocate memory"
+	default y
+	depends on CMD_HISTORY
+	help
+	  Saying Y to this will use calloc to get the space for history
+	  storing. Otherwise the history buffer will be an uninitialized
+	  static array directly, without the memory allocation, and it is
+	  writable after relocation to RAM. If u-boot is running from ROM
+	  all the time or unsure, say Y to this.
+
 config CMD_LICENSE
 	bool "license"
 	select BUILD_BIN2C
+	depends on GZIP
 	help
 	  Print GPL license text
 
@@ -202,6 +220,13 @@ config CMD_REGINFO
 	depends on PPC
 	help
 	  Register dump
+
+config CMD_TCPM
+	bool "tcpm"
+	depends on TYPEC_TCPM
+	help
+	  Show voltage and current negotiated via USB PD as well as the
+	  current state of the Type C Port Manager (TCPM) state machine.
 
 config CMD_TLV_EEPROM
 	bool "tlv_eeprom"
@@ -225,6 +250,12 @@ config CMD_SBI
 	help
 	  Display information about the SBI implementation.
 
+config CMD_SMBIOS
+	bool "smbios"
+	depends on SMBIOS
+	help
+	  Display the SMBIOS information.
+
 endmenu
 
 menu "Boot commands"
@@ -247,7 +278,7 @@ config CMD_BOOTM_PRE_LOAD
        depends on CMD_BOOTM
        depends on IMAGE_PRE_LOAD
        help
-         Enable support of stage pre-load for the bootm command.
+	 Enable support of stage pre-load for the bootm command.
 	 This stage allow to check or modify the image provided
 	 to the bootm command.
 
@@ -284,7 +315,7 @@ config CMD_BOOTMETH
 	depends on BOOTSTD
 	default y if BOOTSTD_FULL
 	help
-	  Support listing available bootmethds (methods used to boot an
+	  Support listing available bootmeths (methods used to boot an
 	  Operating System), as well as selecting the order that the bootmeths
 	  are used.
 
@@ -292,10 +323,17 @@ config CMD_BOOTMETH
 
 config BOOTM_EFI
 	bool "Support booting UEFI FIT images"
-	depends on CMD_BOOTEFI && CMD_BOOTM && FIT
+	depends on EFI_BINARY_EXEC && CMD_BOOTM && FIT
 	default y
 	help
 	  Support booting UEFI FIT images via the bootm command.
+
+config BOOTM_ELF
+	bool "Support booting ELF images"
+	depends on CMD_BOOTM && LIB_ELF
+	default y if LIB_ELF
+	help
+	  Support booting ELF images via the bootm command.
 
 config CMD_BOOTZ
 	bool "bootz"
@@ -304,7 +342,7 @@ config CMD_BOOTZ
 
 config CMD_BOOTI
 	bool "booti"
-	depends on ARM64 || RISCV
+	depends on ARM64 || RISCV || SANDBOX
 	default y
 	help
 	  Boot an AArch64 Linux Kernel image from memory.
@@ -357,6 +395,13 @@ config CMD_SEAMA
 	help
 	  Support reading NAND Seattle Image (SEAMA) images.
 
+config CMD_UPL
+	bool "upl - Universal Payload Specification"
+	help
+	  Provides commands to deal with UPL payloads and handoff information.
+	  U-Boot supports generating and accepting handoff information. The
+	  mkimage tool will eventually support creating payloads.
+
 config CMD_VBE
 	bool "vbe - Verified Boot for Embedded"
 	depends on BOOTMETH_VBE
@@ -374,17 +419,6 @@ config BOOTM_VXWORKS
 	help
 	  Support booting VxWorks images via the bootm command.
 
-config SYS_BOOTM_LEN
-	hex "Maximum size of a decompresed OS image"
-	depends on CMD_BOOTM || CMD_BOOTI || CMD_BOOTZ || \
-		   LEGACY_IMAGE_FORMAT || SPL_LEGACY_IMAGE_FORMAT
-	default 0x4000000 if PPC || ARM64
-	default 0x1000000 if X86 || ARCH_MX6 || ARCH_MX7
-	default 0x800000
-	help
-	  This is the maximum size of the buffer that is used to decompress the OS
-	  image in to, if passing a compressed image to bootm/booti/bootz.
-
 config CMD_BOOTEFI
 	bool "bootefi"
 	depends on EFI_LOADER
@@ -392,22 +426,28 @@ config CMD_BOOTEFI
 	help
 	  Boot an EFI image from memory.
 
-config CMD_BOOTEFI_HELLO_COMPILE
-	bool "Compile a standard EFI hello world binary for testing"
-	depends on CMD_BOOTEFI && !CPU_V7M
+if CMD_BOOTEFI
+config CMD_BOOTEFI_BINARY
+	bool "Allow booting an EFI binary directly"
+	depends on EFI_BINARY_EXEC
 	default y
 	help
-	  This compiles a standard EFI hello world application with U-Boot so
-	  that it can be used with the test/py testing framework. This is useful
-	  for testing that EFI is working at a basic level, and for bringing
-	  up EFI support on a new architecture.
+	  Select this option to enable direct execution of binary at 'bootefi'.
+	  This subcommand will allow you to load the UEFI binary using
+	  other U-Boot commands or external methods and then run it.
 
-	  No additional space will be required in the resulting U-Boot binary
-	  when this option is enabled.
+config CMD_BOOTEFI_BOOTMGR
+	bool "UEFI Boot Manager command"
+	depends on EFI_BOOTMGR
+	default y
+	help
+	  Select this option to enable the 'bootmgr' subcommand of 'bootefi'.
+	  This subcommand will allow you to select the UEFI binary to be booted
+	  via UEFI variables Boot####, BootOrder, and BootNext.
 
 config CMD_BOOTEFI_HELLO
 	bool "Allow booting a standard EFI hello world for testing"
-	depends on CMD_BOOTEFI_HELLO_COMPILE
+	depends on CMD_BOOTEFI_BINARY && BOOTEFI_HELLO_COMPILE
 	default y if CMD_BOOTEFI_SELFTEST
 	help
 	  This adds a standard EFI hello world application to U-Boot so that
@@ -415,7 +455,8 @@ config CMD_BOOTEFI_HELLO
 	  for testing that EFI is working at a basic level, and for bringing
 	  up EFI support on a new architecture.
 
-source lib/efi_selftest/Kconfig
+source "lib/efi_selftest/Kconfig"
+endif
 
 config CMD_BOOTMENU
 	bool "bootmenu"
@@ -452,11 +493,27 @@ config CMD_CEDIT
 	  loading and saving of configuration as well as showing an editor.
 
 config CMD_ELF
-	bool "bootelf, bootvx"
+	bool "bootelf"
 	default y
 	select LIB_ELF
 	help
-	  Boot an ELF/vxWorks image from the memory.
+	  Boot an ELF image from memory.
+
+config CMD_ELF_BOOTVX
+	bool "bootvx"
+	default y
+	depends on CMD_ELF
+	help
+	  Boot a vxWorks image from memory
+
+config CMD_ELF_FDT_SETUP
+	bool "Flattened Device Tree setup in bootelf cmd"
+	depends on CMD_ELF
+	select OF_LIBFDT
+	help
+	  Do FDT setup in bootelf command optionally by param -d, which
+	  allows to bring additional system info (e.g. /memory node) to
+	  the Operating System or application.
 
 config CMD_FDT
 	bool "Flattened Device Tree utility commands"
@@ -497,6 +554,7 @@ config CMD_IMI
 
 config CMD_IMLS
 	bool "imls"
+	depends on MTD_NOR_FLASH || FLASH_CFI_DRIVER
 	help
 	  List all images found in flash
 
@@ -505,6 +563,16 @@ config CMD_XIMG
 	default y
 	help
 	  Extract a part of a multi-image.
+
+config SYS_XIMG_LEN
+	hex "imxtract max gunzip size"
+	default 0x800000
+	depends on CMD_XIMG && GZIP
+	help
+	  This provides the size of the commad-line argument area
+	  used by imxtract for extracting pieces of FIT image.
+	  It should be large enough to fit uncompressed size of
+	  FIT piece we are extracting.
 
 config CMD_SPL
 	bool "spl export - Export boot information for Falcon boot"
@@ -559,6 +627,8 @@ config THOR_RESET_OFF
 
 config CMD_ZBOOT
 	bool "zboot - x86 boot command"
+	depends on ZBOOT
+	default y
 	help
 	  With x86 machines it is common to boot a bzImage file which
 	  contains both a kernel and a setup.bin file. The latter includes
@@ -567,7 +637,7 @@ config CMD_ZBOOT
 
 	  Consider using FIT in preference to this since it supports directly
 	  booting both 32- and 64-bit kernels, as well as secure boot.
-	  Documentation is available in doc/uImage.FIT/x86-fit-boot.txt
+	  Documentation is available in doc/usage/fit/x86-fit-boot.rst.
 
 endmenu
 
@@ -687,7 +757,8 @@ config CMD_BINOP
 
 config CMD_BLOBLIST
 	bool "bloblist"
-	default y if BLOBLIST
+	depends on BLOBLIST
+	default y
 	help
 	  Show information about the bloblist, a collection of binary blobs
 	  held in memory that persist between SPL and U-Boot. In the case of
@@ -709,6 +780,7 @@ config CRC32_VERIFY
 
 config CMD_EEPROM
 	bool "eeprom - EEPROM subsystem"
+	depends on DM_I2C || SYS_I2C_LEGACY
 	help
 	  (deprecated, needs conversion to driver model)
 	  Provides commands to read and write EEPROM (Electrically Erasable
@@ -747,9 +819,16 @@ config CMD_EEPROM_LAYOUT
 			types of eeprom fields. Can be used for defining
 			custom layouts.
 
+config EEPROM_LAYOUT_VERSIONS
+	bool "Support specifying eeprom layout version"
+	depends on CMD_EEPROM_LAYOUT
+	help
+	  Support specifying eeprom layout version in the 'eeprom' command
+	  via the -l option.
+
 config EEPROM_LAYOUT_HELP_STRING
 	  string "Tells user what layout names are supported"
-	  depends on CMD_EEPROM_LAYOUT
+	  depends on EEPROM_LAYOUT_VERSIONS
 	  default "<not defined>"
 	  help
 	    Help printed with the LAYOUT VERSIONS part of the 'eeprom'
@@ -775,7 +854,7 @@ config SYS_EEPROM_SIZE
 
 config SYS_EEPROM_PAGE_WRITE_BITS
 	int "Number of bits used to address bytes in a single page"
-	depends on CMD_EEPROM
+	depends on CMD_EEPROM || ENV_IS_IN_EEPROM
 	default 8
 	help
 	  The EEPROM page size is 2^SYS_EEPROM_PAGE_WRITE_BITS.
@@ -794,6 +873,7 @@ config LOOPW
 config CMD_MD5SUM
 	bool "md5sum"
 	select MD5
+	select HASH
 	help
 	  Compute MD5 checksum.
 
@@ -805,8 +885,20 @@ config MD5SUM_VERIFY
 
 config CMD_MEMINFO
 	bool "meminfo"
+	default y if SANDBOX
 	help
 	  Display memory information.
+
+config CMD_MEMINFO_MAP
+	bool "- with memory map"
+	depends on CMD_MEMINFO
+	default y if SANDBOX
+	help
+	  Shows a memory map, in addition to just the DRAM size. This allows
+	  seeing where U-Boot's memory area is, at the top of DRAM, as well as
+	  detail about each piece of it.
+
+	  See doc/usage/cmd/meminfo.rst for more information.
 
 config CMD_MEMORY
 	bool "md, mm, nm, mw, cp, cmp, base, loop"
@@ -840,9 +932,9 @@ config CMD_MX_CYCLIC
 	bool "Enable cyclic md/mw commands"
 	depends on CMD_MEMORY
 	help
-          Add the "mdc" and "mwc" memory commands. These are cyclic
-          "md/mw" commands.
-          Examples:
+	  Add the "mdc" and "mwc" memory commands. These are cyclic
+	  "md/mw" commands.
+	  Examples:
 
 	  => mdc.b 10 4 500
 	  This command will print 4 bytes (10,11,12,13) each 500 ms.
@@ -966,8 +1058,8 @@ config CMD_ARMFFA
 		- Displaying the arm_ffa device info
 
 config CMD_ARMFLASH
-	#depends on FLASH_CFI_DRIVER
 	bool "armflash"
+	depends on FLASH_CFI_DRIVER
 	help
 	  ARM Ltd reference designs flash partition access
 
@@ -981,7 +1073,6 @@ config CMD_ADC
 
 config CMD_BCB
 	bool "bcb"
-	depends on MMC
 	depends on PARTITIONS
 	help
 	  Read/modify/write the fields of Bootloader Control Block, usually
@@ -999,7 +1090,7 @@ config CMD_BCB
 config CMD_BIND
 	bool "bind/unbind - Bind or unbind a device to/from a driver"
 	depends on DM
-	default y if USB_ETHER
+	imply CMD_DM
 	help
 	  Bind or unbind a device to/from a driver from the command line.
 	  This is useful in situations where a device may be handled by several
@@ -1007,13 +1098,10 @@ config CMD_BIND
 	  gadget driver from the command line.
 
 config CMD_CLK
-	bool "clk - Show clock frequencies"
+	bool "clk - Show and set clock frequencies"
+	depends on CLK
 	help
-	  (deprecated)
-	  Shows clock frequences by calling a sock_clk_dump() hook function.
-	  This is depreated in favour of using the CLK uclass and accessing
-	  clock values from associated drivers. However currently no command
-	  exists for this.
+	  Show and set clock frequencies managed by CLK uclass drivers.
 
 config CMD_DEMO
 	bool "demo - Demonstration commands for driver model"
@@ -1061,7 +1149,7 @@ config CMD_FASTBOOT
 config CMD_FLASH
 	bool "flinfo, erase, protect"
 	default y
-	depends on MTD || FLASH_CFI_DRIVER || MTD_NOR_FLASH
+	depends on FLASH_CFI_DRIVER || MTD_NOR_FLASH
 	help
 	  NOR flash support.
 	    flinfo - print FLASH memory information
@@ -1111,6 +1199,7 @@ config CMD_FPGA_LOAD_SECURE
 
 config CMD_FPGAD
 	bool "fpgad - dump FPGA registers"
+	depends on GDSYS_LEGACY_DRIVERS
 	help
 	  (legacy, needs conversion to driver model)
 	  Provides a way to dump FPGA registers by calling the board-specific
@@ -1151,13 +1240,6 @@ config CMD_GPT
 	help
 	  Enable the 'gpt' command to ready and write GPT style partition
 	  tables.
-
-config RANDOM_UUID
-	bool "GPT Random UUID generation"
-	select LIB_UUID
-	help
-	  Enable the generation of partitions with random UUIDs if none
-	  are provided.
 
 config CMD_GPT_RENAME
 	bool "GPT partition renaming commands"
@@ -1335,6 +1417,15 @@ config CMD_MMC_SWRITE
 	  Enable support for the "mmc swrite" command to write Android sparse
 	  images to eMMC.
 
+config MMC_SPEED_MODE_SET
+	bool "set speed mode using mmc command"
+	help
+	  Enable setting speed mode using mmc rescan and mmc dev commands.
+	  The speed mode is provided as the last argument in these commands
+	  and is indicated using the index from enum bus_mode in
+	  include/mmc.h. A speed mode can be set only if it has already
+	  been enabled in the device tree.
+
 endif
 
 config CMD_CLONE
@@ -1347,11 +1438,19 @@ config CMD_CLONE
 
 config CMD_OPTEE_RPMB
 	bool "Enable read/write support on RPMB via OPTEE"
-	depends on SUPPORT_EMMC_RPMB && OPTEE
+	depends on (SUPPORT_EMMC_RPMB && OPTEE) || SANDBOX_TEE
+	default y if SANDBOX_TEE
+	select OPTEE_TA_AVB if SANDBOX_TEE
 	help
 	  Enable the commands for reading, writing persistent named values
 	  in the Replay Protection Memory Block partition in eMMC by
 	  using Persistent Objects in OPTEE
+
+config CMD_OPTEE
+	bool "Enable OP-TEE commands"
+	depends on OPTEE
+	help
+	 OP-TEE commands support.
 
 config CMD_MTD
 	bool "mtd"
@@ -1359,6 +1458,13 @@ config CMD_MTD
 	select MTD_PARTITIONS
 	help
 	  MTD commands support.
+
+config CMD_MTD_OTP
+	bool "mtd otp"
+	depends on CMD_MTD
+	select HEXDUMP
+	help
+	  MTD commands for OTP access.
 
 config CMD_MUX
 	bool "mux"
@@ -1414,6 +1520,7 @@ config USE_ONENAND_BOARD_INIT
 
 config CMD_OSD
 	bool "osd"
+	depends on OSD
 	help
 	  Enable the 'osd' command which allows to query information from and
 	  write text data to a on-screen display (OSD) device; a virtual device
@@ -1544,12 +1651,13 @@ config CMD_TEMPERATURE
 
 config CMD_TSI148
 	bool "tsi148 - Command to access tsi148 device"
+	depends on DM_PCI_COMPAT
 	help
 	  This provides various sub-commands to initialise and configure the
 	  Turndra tsi148 device. See the command help for full details.
 
 config CMD_UFS
-	bool "Enable UFS - Universal Flash Subsystem commands"
+	bool "ufs - Universal Flash Storage commands"
 	depends on UFS
 	help
 	  "This provides commands to initialise and configure universal flash
@@ -1557,6 +1665,7 @@ config CMD_UFS
 
 config CMD_UNIVERSE
 	bool "universe - Command to set up the Turndra Universe controller"
+	depends on DM_PCI_COMPAT
 	help
 	  This allows setting up the VMEbus provided by this controller.
 	  See the command help for full details.
@@ -1569,6 +1678,7 @@ config CMD_USB
 
 config CMD_USB_SDP
 	bool "sdp"
+	depends on USB_GADGET_DOWNLOAD
 	select USB_FUNCTION_SDP
 	help
 	  Enables the command "sdp" which is used to have U-Boot emulating the
@@ -1593,9 +1703,8 @@ config CMD_ROCKUSB
 
 config CMD_USB_MASS_STORAGE
 	bool "UMS usb mass storage"
-	depends on USB_GADGET_DOWNLOAD
+	depends on BLK && USB_GADGET_DOWNLOAD
 	select USB_FUNCTION_MASS_STORAGE
-	depends on BLK && USB_GADGET
 	help
 	  Enables the command "ums" and the USB mass storage support to the
 	  export a block device: U-Boot, the USB device, acts as a simple
@@ -1691,26 +1800,15 @@ config CMD_XXD
 
 endmenu
 
-menu "Android support commands"
-
-config CMD_AB_SELECT
-	bool "ab_select"
-	depends on ANDROID_AB
-	help
-	  On Android devices with more than one boot slot (multiple copies of
-	  the kernel and system images) this provides a command to select which
-	  slot should be used to boot from and register the boot attempt. This
-	  is used by the new A/B update model where one slot is updated in the
-	  background while running from the other slot.
-
-endmenu
-
-if NET
+if NET || NET_LWIP
 
 menuconfig CMD_NET
 	bool "Network commands"
 	default y
-	imply NETDEVICES
+
+endif
+
+if NET
 
 if CMD_NET
 
@@ -1720,12 +1818,6 @@ config CMD_BOOTP
 	help
 	  bootp - boot image via network using BOOTP/TFTP protocol
 
-config CMD_DHCP
-	bool "dhcp"
-	depends on CMD_BOOTP
-	help
-	  Boot image via network using DHCP/TFTP protocol
-
 config CMD_DHCP6
 	bool "dhcp6"
 	depends on IPV6
@@ -1734,6 +1826,23 @@ config CMD_DHCP6
 
 	  Will perform 4-message exchange with DHCPv6 server, requesting
 	  the minimum required options to TFTP boot. Complies with RFC 8415.
+
+if CMD_DHCP6
+
+config DHCP6_PXE_CLIENTARCH
+	hex
+	default 0x16 if ARM64
+	default 0x15 if ARM
+	default 0xFF
+
+config DHCP6_PXE_DHCP_OPTION
+	bool "Request & store 'pxe_configfile' from DHCP6 server"
+
+config DHCP6_ENTERPRISE_ID
+	int "Enterprise ID to send in DHCPv6 Vendor Class Option"
+	default 0
+
+endif
 
 config BOOTP_MAY_FAIL
 	bool "Allow for the BOOTP/DHCP server to not be found"
@@ -1852,29 +1961,6 @@ config BOOTP_VCI_STRING
 	default "U-Boot.arm" if ARM
 	default "U-Boot"
 
-if CMD_DHCP6
-
-config DHCP6_PXE_CLIENTARCH
-	hex
-	default 0x16 if ARM64
-	default 0x15 if ARM
-	default 0xFF
-
-config DHCP6_PXE_DHCP_OPTION
-	bool "Request & store 'pxe_configfile' from DHCP6 server"
-
-config DHCP6_ENTERPRISE_ID
-	int "Enterprise ID to send in DHCPv6 Vendor Class Option"
-	default 0
-
-endif
-
-config CMD_TFTPBOOT
-	bool "tftpboot"
-	default y
-	help
-	  tftpboot - load file via network using TFTP protocol
-
 config CMD_TFTPPUT
 	bool "tftp put"
 	depends on CMD_TFTPBOOT
@@ -1926,12 +2012,78 @@ config SYS_DISABLE_AUTOLOAD
 	  is complete.  Enable this option to disable this behavior and instead
 	  require files to be loaded over the network by subsequent commands.
 
-config CMD_WGET
-	bool "wget"
-	select PROT_TCP
+config CMD_PING6
+	bool "ping6"
+	depends on IPV6
+	default y if (CMD_PING && IPV6)
 	help
-	  wget is a simple command to download kernel, or other files,
-	  from a http server over TCP.
+	  Send ICMPv6 ECHO_REQUEST to network host
+
+config CMD_CDP
+	bool "cdp"
+	help
+	  The cdp command is used to announce the U-Boot device in the network
+	  and to retrieve configuration data including the VLAN id using the
+	  proprietary Cisco Discovery Protocol (CDP).
+
+config CMD_SNTP
+	bool "sntp"
+	select PROT_UDP
+	help
+	  Synchronize RTC via network
+
+config CMD_LINK_LOCAL
+	bool "linklocal"
+	select LIB_RAND
+	help
+	  Acquire a network IP address using the link-local protocol
+
+config CMD_NCSI
+	bool "ncsi"
+	depends on PHY_NCSI
+	help
+	  Manually configure the attached NIC via NC-SI.
+	  Normally this happens automatically before other network
+	  operations.
+
+config IPV6_ROUTER_DISCOVERY
+	bool "Do IPv6 router discovery"
+	depends on IPV6
+	help
+	  Will automatically perform router solicitation on first IPv6
+	  network operation
+endif  # if CMD_NET
+
+config CMD_ETHSW
+	bool "ethsw"
+	help
+	  Allow control of L2 Ethernet switch commands. These are supported
+	  by the vsc9953 Ethernet driver at present. Sub-commands allow
+	  operations such as enabling / disabling a port and
+	  viewing/maintaining the filtering database (FDB)
+
+config CMD_WOL
+	bool "wol"
+	help
+	  Wait for wake-on-lan Magic Packet
+
+endif  # if NET
+
+if NET || NET_LWIP
+
+if CMD_NET
+
+config CMD_DHCP
+	bool "dhcp"
+	select PROT_DHCP_LWIP if NET_LWIP
+	help
+	  Boot image via network using DHCP/TFTP protocol
+
+config CMD_DNS
+	bool "dns"
+	select PROT_DNS_LWIP if NET_LWIP
+	help
+	  Lookup the IP of a hostname
 
 config CMD_MII
 	bool "mii"
@@ -1958,74 +2110,57 @@ config CMD_MDIO
 
 config CMD_PING
 	bool "ping"
+	select PROT_RAW_LWIP if NET_LWIP
 	help
 	  Send ICMP ECHO_REQUEST to network host
 
-config CMD_PING6
-	bool "ping6"
-	depends on IPV6
-	default y if (CMD_PING && IPV6)
+config CMD_TFTPBOOT
+	bool "tftp"
+	select PROT_UDP_LWIP if NET_LWIP
+	default y
 	help
-	  Send ICMPv6 ECHO_REQUEST to network host
+	  tftpboot - load file via network using TFTP protocol
 
-config CMD_CDP
-	bool "cdp"
+config CMD_WGET
+	bool "wget"
+	depends on CMD_NET
+	default y if SANDBOX
+	select PROT_TCP if NET
+	select PROT_TCP_LWIP if NET_LWIP
+	select PROT_DNS_LWIP if NET_LWIP
 	help
-	  Perform CDP network configuration
+	  wget is a simple command to download kernel, or other files,
+	  from a http server over TCP.
 
-config CMD_SNTP
-	bool "sntp"
-	select PROT_UDP
+config WGET_HTTPS
+	bool "wget https"
+	depends on CMD_WGET
+	depends on PROT_TCP_LWIP
+	depends on MBEDTLS_LIB
+        select SHA256
+        select RSA
+        select ASYMMETRIC_KEY_TYPE
+        select ASYMMETRIC_PUBLIC_KEY_SUBTYPE
+        select X509_CERTIFICATE_PARSER
+        select PKCS7_MESSAGE_PARSER
+	select MBEDTLS_LIB_CRYPTO
+	select MBEDTLS_LIB_TLS
+	select RSA_VERIFY_WITH_PKEY
+	select X509_CERTIFICATE_PARSER
+	select PKCS7_MESSAGE_PARSER
 	help
-	  Synchronize RTC via network
+	  Enable TLS over http for wget.
 
-config CMD_DNS
-	bool "dns"
-	help
-	  Lookup the IP of a hostname
-
-config CMD_LINK_LOCAL
-	bool "linklocal"
-	select LIB_RAND
-	help
-	  Acquire a network IP address using the link-local protocol
-
-config CMD_NCSI
-	bool "ncsi"
-	depends on PHY_NCSI
-	help
-	  Manually configure the attached NIC via NC-SI.
-	  Normally this happens automatically before other network
-	  operations.
-
-config IPV6_ROUTER_DISCOVERY
-	bool "Do IPv6 router discovery"
-	depends on IPV6
-	help
-	  Will automatically perform router solicitation on first IPv6
-	  network operation
-endif
-
-config CMD_ETHSW
-	bool "ethsw"
-	help
-	  Allow control of L2 Ethernet switch commands. These are supported
-	  by the vsc9953 Ethernet driver at present. Sub-commands allow
-	  operations such as enabling / disabling a port and
-	  viewing/maintaining the filtering database (FDB)
+endif  # if CMD_NET
 
 config CMD_PXE
 	bool "pxe"
 	select PXE_UTILS
+	imply CMD_TFTPBOOT
 	help
 	  Boot image via network using PXE protocol
 
-config CMD_WOL
-	bool "wol"
-	help
-	  Wait for wake-on-lan Magic Packet
-
-endif
+endif  # if NET || NET_LWIP
 
 menu "Misc commands"
 
@@ -2093,12 +2228,12 @@ config CMD_BLKMAP
 
 	  Example use-cases:
 	  - Treat a region of RAM as a block device, i.e. a RAM disk. This let's
-            you extract files from filesystem images stored in RAM (perhaps as a
-            result of a TFTP transfer).
+	    you extract files from filesystem images stored in RAM (perhaps as a
+	    result of a TFTP transfer).
 	  - Create a virtual partition on an existing device. This let's you
-            access filesystems that aren't stored at an exact partition
-            boundary. A common example is a filesystem image embedded in an FIT
-            image.
+	    access filesystems that aren't stored at an exact partition
+	    boundary. A common example is a filesystem image embedded in an FIT
+	    image.
 
 config CMD_BUTTON
 	bool "button"
@@ -2142,7 +2277,7 @@ config CMD_EFIDEBUG
 config CMD_EFICONFIG
 	bool "eficonfig - provide menu-driven uefi variables maintenance interface"
 	default y if !HAS_BOARD_SIZE_LIMIT
-	depends on CMD_BOOTEFI_BOOTMGR
+	depends on EFI_BOOTMGR
 	select MENU
 	help
 	  Enable the 'eficonfig' command which provides the menu-driven UEFI
@@ -2182,6 +2317,7 @@ config CMD_DATE
 config CMD_RTC
 	bool "rtc"
 	depends on DM_RTC
+	default y if X86
 	help
 	  Enable the 'rtc' command for low-level access to RTC devices.
 
@@ -2257,6 +2393,8 @@ config CMD_SYSBOOT
 config CMD_QFW
 	bool "qfw"
 	select QFW
+	default y if TARGET_QEMU_ARM_32BIT || TARGET_QEMU_ARM_64BIT || \
+		TARGET_QEMU_X86 || TARGET_QEMU_X86_64
 	help
 	  This provides access to the QEMU firmware interface.  The main
 	  feature is to allow easy loading of files passed to qemu-system
@@ -2370,6 +2508,7 @@ config CMD_VIDCONSOLE
 config CMD_SELECT_FONT
 	bool "select font size"
 	depends on VIDEO
+	default y if CONSOLE_TRUETYPE
 	help
 	  Enabling this will provide 'font' command.
 	  Allows font selection at runtime.
@@ -2563,7 +2702,6 @@ config CMD_CROS_EC
 config CMD_SCMI
 	bool "Enable scmi command"
 	depends on SCMI_FIRMWARE
-	default n
 	help
 	  This command provides user interfaces to several SCMI (System
 	  Control and Management Interface) protocols available on Arm
@@ -2683,6 +2821,7 @@ config JFFS2_PART_SIZE
 config CMD_MTDPARTS
 	bool "MTD partition support"
 	depends on MTD
+	select MTD_PARTITIONS
 	help
 	  MTD partitioning tool support.
 	  It is strongly encouraged to avoid using this command
@@ -2724,15 +2863,6 @@ config MTDPARTS_DEFAULT
 	  Defines a default MTD partitioning scheme in the Linux MTD command
 	  line partitions format
 
-config CMD_REISER
-	bool "reiser - Access to reiserfs filesystems"
-	help
-	  This provides two commands which operate on a resierfs filesystem,
-	  commonly used some years ago:
-
-	    reiserls - list files
-	    reiserload - load a file
-
 config CMD_YAFFS2
 	bool "yaffs2 - Access of YAFFS2 filesystem"
 	depends on YAFFS2
@@ -2767,6 +2897,17 @@ config CMD_CBSYSINFO
 	  This provides information about the coreboot sysinfo table stored in
 	  memory by coreboot before jumping to U-Boot. It can be useful for
 	  debugging the beaaviour of coreboot or U-Boot.
+
+config CMD_CBCMOS
+	bool "cbcmos"
+	depends on X86
+	default y if SYS_COREBOOT
+	help
+	  This provides information options to check the CMOS RAM checksum,
+	  if present, as well as to update it.
+
+	  It is useful when coreboot CMOS-RAM settings must be examined or
+	  updated.
 
 config CMD_CYCLIC
 	bool "cyclic - Show information about cyclic functions"
@@ -2837,8 +2978,8 @@ config CMD_TRACE
 	  Enables a command to control using of function tracing within
 	  U-Boot. This allows recording of call traces including timing
 	  information. The command can write data to memory for exporting
-	  for analysis (e.g. using bootchart). See doc/README.trace for full
-	  details.
+	  for analysis (e.g. using bootchart). See doc/develop/trace.rst
+	  for full details.
 
 config CMD_AVB
 	bool "avb - Android Verified Boot 2.0 operations"
@@ -2883,7 +3024,7 @@ config CMD_UBI_RENAME
        bool "Enable rename"
        depends on CMD_UBI
        help
-         Enable a "ubi" command to rename ubi volume:
+	 Enable a "ubi" command to rename ubi volume:
 	   ubi rename <oldname> <newname>
 
 config CMD_UBIFS
@@ -2895,20 +3036,11 @@ config CMD_UBIFS
 	help
 	  UBIFS is a file system for flash devices which works on top of UBI.
 
-config MMC_SPEED_MODE_SET
-	bool "set speed mode using mmc command"
-	depends on CMD_MMC
-	help
-	  Enable setting speed mode using mmc rescan and mmc dev commands.
-	  The speed mode is provided as the last argument in these commands
-	  and is indicated using the index from enum bus_mode in
-	  include/mmc.h. A speed mode can be set only if it has already
-	  been enabled in the device tree.
-
 config CMD_MESON
 	bool "Amlogic Meson commands"
 	depends on ARCH_MESON
 	default y
 	help
 	  Enable useful commands for the Meson Soc family developed by Amlogic Inc.
-endmenu
+
+endif

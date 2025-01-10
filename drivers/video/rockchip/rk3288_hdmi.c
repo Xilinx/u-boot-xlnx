@@ -3,7 +3,6 @@
  * Copyright (c) 2017 Theobroma Systems Design und Consulting GmbH
  */
 
-#include <common.h>
 #include <clk.h>
 #include <display.h>
 #include <dm.h>
@@ -14,7 +13,6 @@
 #include <regmap.h>
 #include <syscon.h>
 #include <asm/gpio.h>
-#include <asm/io.h>
 #include <asm/arch-rockchip/clock.h>
 #include <asm/arch-rockchip/hardware.h>
 #include <asm/arch-rockchip/grf_rk3288.h>
@@ -67,10 +65,8 @@ static int rk3288_clk_config(struct udevice *dev)
 	 * monitor wants
 	 */
 	ret = clk_get_by_index(uc_plat->src_dev, 0, &clk);
-	if (ret >= 0) {
+	if (ret >= 0)
 		ret = clk_set_rate(&clk, 384000000);
-		clk_free(&clk);
-	}
 	if (ret < 0) {
 		debug("%s: Failed to set clock in source device '%s': ret=%d\n",
 		      __func__, uc_plat->src_dev->name, ret);

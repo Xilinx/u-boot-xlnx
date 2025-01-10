@@ -23,7 +23,7 @@
  * environment. After that, we use a hash table.
  */
 
-#include <common.h>
+#include <config.h>
 #include <cli.h>
 #include <command.h>
 #include <console.h>
@@ -49,21 +49,7 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 #define	MAX_ENV_SIZE	(1 << 20)	/* 1 MiB */
 
-/*
- * This variable is incremented on each do_env_set(), so it can
- * be used via env_get_id() as an indication, if the environment
- * has changed or not. So it is possible to reread an environment
- * variable only if the environment was changed ... done so for
- * example in NetInitLoop()
- */
-static int env_id = 1;
-
-int env_get_id(void)
-{
-	return env_id;
-}
-
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 /*
  * Command interface: print one or all environment variables
  *
@@ -196,121 +182,23 @@ DONE:
 	return 0;
 }
 #endif
-#endif /* CONFIG_SPL_BUILD */
+#endif /* CONFIG_XPL_BUILD */
 
-/*
- * Set a new environment variable,
- * or replace or delete an existing one.
- */
-static int _do_env_set(int flag, int argc, char *const argv[], int env_flag)
-{
-	int   i, len;
-	char  *name, *value, *s;
-	struct env_entry e, *ep;
-
-	debug("Initial value for argc=%d\n", argc);
-
-#if !IS_ENABLED(CONFIG_SPL_BUILD) && IS_ENABLED(CONFIG_CMD_NVEDIT_EFI)
-	if (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'e')
-		return do_env_set_efi(NULL, flag, --argc, ++argv);
-#endif
-
-	while (argc > 1 && **(argv + 1) == '-') {
-		char *arg = *++argv;
-
-		--argc;
-		while (*++arg) {
-			switch (*arg) {
-			case 'f':		/* force */
-				env_flag |= H_FORCE;
-				break;
-			default:
-				return CMD_RET_USAGE;
-			}
-		}
-	}
-	debug("Final value for argc=%d\n", argc);
-	name = argv[1];
-
-	if (strchr(name, '=')) {
-		printf("## Error: illegal character '='"
-		       "in variable name \"%s\"\n", name);
-		return 1;
-	}
-
-	env_id++;
-
-	/* Delete only ? */
-	if (argc < 3 || argv[2] == NULL) {
-		int rc = hdelete_r(name, &env_htab, env_flag);
-
-		/* If the variable didn't exist, don't report an error */
-		return rc && rc != -ENOENT ? 1 : 0;
-	}
-
-	/*
-	 * Insert / replace new value
-	 */
-	for (i = 2, len = 0; i < argc; ++i)
-		len += strlen(argv[i]) + 1;
-
-	value = malloc(len);
-	if (value == NULL) {
-		printf("## Can't malloc %d bytes\n", len);
-		return 1;
-	}
-	for (i = 2, s = value; i < argc; ++i) {
-		char *v = argv[i];
-
-		while ((*s++ = *v++) != '\0')
-			;
-		*(s - 1) = ' ';
-	}
-	if (s != value)
-		*--s = '\0';
-
-	e.key	= name;
-	e.data	= value;
-	hsearch_r(e, ENV_ENTER, &ep, &env_htab, env_flag);
-	free(value);
-	if (!ep) {
-		printf("## Error inserting \"%s\" variable, errno=%d\n",
-			name, errno);
-		return 1;
-	}
-
-	return 0;
-}
-
-int env_set(const char *varname, const char *varvalue)
-{
-	const char * const argv[4] = { "setenv", varname, varvalue, NULL };
-
-	/* before import into hashtable */
-	if (!(gd->flags & GD_FLG_ENV_READY))
-		return 1;
-
-	if (varvalue == NULL || varvalue[0] == '\0')
-		return _do_env_set(0, 2, (char * const *)argv, H_PROGRAMMATIC);
-	else
-		return _do_env_set(0, 3, (char * const *)argv, H_PROGRAMMATIC);
-}
-
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static int do_env_set(struct cmd_tbl *cmdtp, int flag, int argc,
 		      char *const argv[])
 {
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
-	return _do_env_set(flag, argc, argv, H_INTERACTIVE);
+	return env_do_env_set(flag, argc, argv, H_INTERACTIVE);
 }
 
 /*
  * Prompt for environment variable
  */
 #if defined(CONFIG_CMD_ASKENV)
-int do_env_ask(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+static int do_env_ask(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	char message[CONFIG_SYS_CBSIZE];
 	int i, len, pos, size;
@@ -381,7 +269,7 @@ int do_env_ask(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	}
 
 	/* Continue calling setenv code */
-	return _do_env_set(flag, len, local_args, H_INTERACTIVE);
+	return env_do_env_set(flag, len, local_args, H_INTERACTIVE);
 }
 #endif
 
@@ -424,8 +312,8 @@ static int print_active_callback(struct env_entry *entry)
 /*
  * Print the callbacks available and what they are bound to
  */
-int do_env_callback(struct cmd_tbl *cmdtp, int flag, int argc,
-		    char *const argv[])
+static int do_env_callback(struct cmd_tbl *cmdtp, int flag, int argc,
+			   char *const argv[])
 {
 	struct env_clbk_tbl *clbkp;
 	int i;
@@ -493,7 +381,7 @@ static int print_active_flags(struct env_entry *entry)
 /*
  * Print the flags available and what variables have flags
  */
-int do_env_flags(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+static int do_env_flags(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	/* Print the available variable types */
 	printf("Available variable type flags (position %d):\n",
@@ -561,12 +449,12 @@ static int do_env_edit(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (buffer[0] == '\0') {
 		const char * const _argv[3] = { "setenv", argv[1], NULL };
 
-		return _do_env_set(0, 2, (char * const *)_argv, H_INTERACTIVE);
+		return env_do_env_set(0, 2, (char * const *)_argv, H_INTERACTIVE);
 	} else {
 		const char * const _argv[4] = { "setenv", argv[1], buffer,
 			NULL };
 
-		return _do_env_set(0, 3, (char * const *)_argv, H_INTERACTIVE);
+		return env_do_env_set(0, 3, (char * const *)_argv, H_INTERACTIVE);
 	}
 }
 #endif /* CONFIG_CMD_EDITENV */
@@ -615,9 +503,9 @@ static int do_env_select(struct cmd_tbl *cmdtp, int flag, int argc,
 }
 #endif
 
-#endif /* CONFIG_SPL_BUILD */
+#endif /* CONFIG_XPL_BUILD */
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static int do_env_default(struct cmd_tbl *cmdtp, int flag,
 			  int argc, char *const argv[])
 {
@@ -679,7 +567,7 @@ static int do_env_delete(struct cmd_tbl *cmdtp, int flag,
 	}
 	debug("Final value for argc=%d\n", argc);
 
-	env_id++;
+	env_inc_id();
 
 	while (--argc > 0) {
 		char *name = *++argv;
@@ -1401,4 +1289,4 @@ U_BOOT_CMD_COMPLETE(
 	var_complete
 );
 #endif
-#endif /* CONFIG_SPL_BUILD */
+#endif /* CONFIG_XPL_BUILD */

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
-#include <common.h>
 #include <fs_internal.h>
 #include <log.h>
-#include <uuid.h>
+#include <u-boot/uuid.h>
 #include <memalign.h>
 #include "kernel-shared/btrfs_tree.h"
 #include "common/rbtree-utils.h"
@@ -69,7 +68,6 @@ static int check_tree_block(struct btrfs_fs_info *fs_info,
 						    fs_devices->fsid,
 						    btrfs_header_fsid(),
 						    BTRFS_FSID_SIZE);
-
 
 		if (fsid_match) {
 			ret = 0;

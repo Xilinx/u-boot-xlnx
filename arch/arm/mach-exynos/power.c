@@ -4,7 +4,7 @@
  * Donghwa Lee <dh09.lee@samsung.com>
  */
 
-#include <common.h>
+#include <mach/cpu.h>
 #include <asm/io.h>
 #include <asm/arch/power.h>
 
@@ -19,7 +19,6 @@ static void exynos4_mipi_phy_control(unsigned int dev_index,
 		addr = (unsigned int)&pmu->mipi_phy0_control;
 	else
 		addr = (unsigned int)&pmu->mipi_phy1_control;
-
 
 	cfg = readl(addr);
 	if (enable)
@@ -173,7 +172,6 @@ void set_ps_hold_ctrl(void)
 	if (cpu_is_exynos5())
 		exynos5_set_ps_hold_ctrl();
 }
-
 
 static void exynos5_set_xclkout(void)
 {

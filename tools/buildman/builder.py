@@ -22,6 +22,7 @@ from buildman import toolchain
 from patman import gitutil
 from u_boot_pylib import command
 from u_boot_pylib import terminal
+from u_boot_pylib import tools
 from u_boot_pylib.terminal import tprint
 
 # This indicates an new int or hex Kconfig property with no default
@@ -33,7 +34,7 @@ from u_boot_pylib.terminal import tprint
 # Error in reading or end of file.
 # <<
 # which indicates that BREAK_ME has an empty default
-RE_NO_DEFAULT = re.compile(b'\((\w+)\) \[] \(NEW\)')
+RE_NO_DEFAULT = re.compile(br'\((\w+)\) \[] \(NEW\)')
 
 # Symbol types which appear in the bloat feature (-B). Others are silently
 # dropped when reading in the 'nm' output
@@ -256,14 +257,15 @@ class Builder:
     def __init__(self, toolchains, base_dir, git_dir, num_threads, num_jobs,
                  gnu_make='make', checkout=True, show_unknown=True, step=1,
                  no_subdirs=False, full_path=False, verbose_build=False,
-                 mrproper=False, per_board_out_dir=False,
-                 config_only=False, squash_config_y=False,
-                 warnings_as_errors=False, work_in_output=False,
-                 test_thread_exceptions=False, adjust_cfg=None,
-                 allow_missing=False, no_lto=False, reproducible_builds=False,
-                 force_build=False, force_build_failures=False,
-                 force_reconfig=False, in_tree=False,
-                 force_config_on_failure=False, make_func=None):
+                 mrproper=False, fallback_mrproper=False,
+                 per_board_out_dir=False, config_only=False,
+                 squash_config_y=False, warnings_as_errors=False,
+                 work_in_output=False, test_thread_exceptions=False,
+                 adjust_cfg=None, allow_missing=False, no_lto=False,
+                 reproducible_builds=False, force_build=False,
+                 force_build_failures=False, force_reconfig=False,
+                 in_tree=False, force_config_on_failure=False, make_func=None,
+                 dtc_skip=False):
         """Create a new Builder object
 
         Args:
@@ -283,6 +285,7 @@ class Builder:
                 PATH
             verbose_build: Run build with V=1 and don't use 'make -s'
             mrproper: Always run 'make mrproper' when configuring
+            fallback_mrproper: Run 'make mrproper' and retry on build failure
             per_board_out_dir: Build in a separate persistent directory per
                 board rather than a thread-specific directory
             config_only: Only configure each build, don't build it
@@ -311,6 +314,7 @@ class Builder:
             force_config_on_failure (bool): Reconfigure the build before
                 retrying a failed build
             make_func (function): Function to call to run 'make'
+            dtc_skip (bool): True to skip building dtc and use the system one
         """
         self.toolchains = toolchains
         self.base_dir = base_dir
@@ -352,6 +356,13 @@ class Builder:
         self.force_reconfig = force_reconfig
         self.in_tree = in_tree
         self.force_config_on_failure = force_config_on_failure
+        self.fallback_mrproper = fallback_mrproper
+        if dtc_skip:
+            self.dtc = shutil.which('dtc')
+            if not self.dtc:
+                raise ValueError('Cannot find dtc')
+        else:
+            self.dtc = None
 
         if not self.squash_config_y:
             self.config_filenames += EXTRA_CONFIG_FILENAMES
@@ -363,9 +374,9 @@ class Builder:
 
         self._re_function = re.compile('(.*): In function.*')
         self._re_files = re.compile('In file included from.*')
-        self._re_warning = re.compile('(.*):(\d*):(\d*): warning: .*')
+        self._re_warning = re.compile(r'(.*):(\d*):(\d*): warning: .*')
         self._re_dtb_warning = re.compile('(.*): Warning .*')
-        self._re_note = re.compile('(.*):(\d*):(\d*): note: this is the location of the previous.*')
+        self._re_note = re.compile(r'(.*):(\d*):(\d*): note: this is the location of the previous.*')
         self._re_migration_warning = re.compile(r'^={21} WARNING ={22}\n.*\n=+\n',
                                                 re.MULTILINE | re.DOTALL)
 
@@ -404,6 +415,22 @@ class Builder:
 
     def signal_handler(self, signal, frame):
         sys.exit(1)
+
+    def make_environment(self, toolchain):
+        """Create the environment to use for building
+
+        Args:
+            toolchain (Toolchain): Toolchain to use for building
+
+        Returns:
+            dict:
+                key (str): Variable name
+                value (str): Variable value
+        """
+        env = toolchain.MakeEnvironment(self.full_path)
+        if self.dtc:
+            env[b'DTC'] = tools.to_bytes(self.dtc)
+        return env
 
     def set_display_options(self, show_errors=False, show_sizes=False,
                           show_detail=False, show_bloat=False,
@@ -480,7 +507,7 @@ class Builder:
         Args:
             commit: Commit object that is being built
             brd: Board object that is being built
-            stage: Stage that we are at (mrproper, config, build)
+            stage: Stage that we are at (mrproper, config, oldconfig, build)
             cwd: Directory where make should be run
             args: Arguments to pass to make
             kwargs: Arguments to pass to command.run_pipe()

@@ -4,7 +4,6 @@
  * Mario Six, Guntermann & Drunck GmbH, mario.six@gdsys.cc
  */
 
-#include <common.h>
 #include <hexdump.h>
 #include <test/lib.h>
 #include <test/test.h>
@@ -32,7 +31,6 @@ static int lib_test_hex_to_bin(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_test_hex_to_bin, 0);
 
 static int lib_test_hex2bin(struct unit_test_state *uts)
@@ -62,7 +60,6 @@ static int lib_test_hex2bin(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_test_hex2bin, 0);
 
 static int lib_test_bin2hex(struct unit_test_state *uts)
@@ -92,5 +89,4 @@ static int lib_test_bin2hex(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_test_bin2hex, 0);

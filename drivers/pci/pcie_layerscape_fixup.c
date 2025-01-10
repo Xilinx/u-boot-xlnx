@@ -5,7 +5,6 @@
  * Layerscape PCIe driver
  */
 
-#include <common.h>
 #include <dm.h>
 #include <init.h>
 #include <log.h>
@@ -503,7 +502,6 @@ static void fdt_fixup_pcie_ls(void *blob)
 	pci_dev_t bdf;
 	struct extra_iommu_entry *entries;
 	int i, cnt, nodeoffset;
-
 
 	/* Scan all known buses */
 	for (pci_find_first_device(&dev);

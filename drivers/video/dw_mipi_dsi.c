@@ -9,7 +9,6 @@
  * the Linux Kernel driver drivers/gpu/drm/bridge/synopsys/dw-mipi-dsi.c.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dsi_host.h>
 #include <dm.h>
@@ -22,6 +21,7 @@
 #include <linux/bitops.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
+#include <linux/time.h>
 #include <video_bridge.h>
 
 #define HWVER_131			0x31333100	/* IP version 1.31 */
@@ -213,8 +213,6 @@
 
 #define PHY_STATUS_TIMEOUT_US		10000
 #define CMD_PKT_STATUS_TIMEOUT_US	20000
-
-#define MSEC_PER_SEC			1000
 
 struct dw_mipi_dsi {
 	struct mipi_dsi_host dsi_host;

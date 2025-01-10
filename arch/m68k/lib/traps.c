@@ -7,12 +7,13 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
+#include <config.h>
+#include <cpu_func.h>
 #include <init.h>
 #include <watchdog.h>
 #include <command.h>
 #include <asm/processor.h>
 #include <asm/ptrace.h>
-
 
 extern void _exc_handler(void);
 extern void _int_handler(void);
@@ -64,4 +65,10 @@ int arch_initr_trap(void)
 	trap_init(CFG_SYS_SDRAM_BASE);
 
 	return 0;
+}
+
+void reset_cpu(void)
+{
+	/* TODO: Refactor all the do_reset calls to be reset_cpu() instead */
+	do_reset(NULL, 0, 0, NULL);
 }

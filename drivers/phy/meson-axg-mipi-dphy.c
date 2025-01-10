@@ -7,7 +7,6 @@
  * Author: Neil Armstrong <narmstrong@baylibre.com>
  */
 
-#include <common.h>
 #include <log.h>
 #include <malloc.h>
 #include <asm/io.h>
@@ -25,6 +24,7 @@
 #include <linux/bitops.h>
 #include <linux/compat.h>
 #include <linux/bitfield.h>
+#include <linux/time.h>
 
 /* [31] soft reset for the phy.
  *		1: reset. 0: dessert the reset.
@@ -169,8 +169,6 @@
 #define MIPI_DSI_ULPS_CHECK				0x38
 #define MIPI_DSI_TEST_CTRL0				0x3c
 #define MIPI_DSI_TEST_CTRL1				0x40
-
-#define NSEC_PER_MSEC	1000000L
 
 struct phy_meson_axg_mipi_dphy_priv {
 	struct regmap *regmap;
@@ -370,7 +368,6 @@ int meson_axg_mipi_dphy_probe(struct udevice *dev)
 	ret = clk_enable(&priv->clk);
 	if (ret && ret != -ENOSYS && ret != -ENOTSUPP) {
 		pr_err("failed to enable PHY clock\n");
-		clk_free(&priv->clk);
 		return ret;
 	}
 #endif

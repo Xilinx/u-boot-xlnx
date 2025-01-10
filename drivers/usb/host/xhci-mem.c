@@ -13,7 +13,6 @@
  *	    Vikas Sajjan <vikas.sajjan@samsung.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <log.h>
@@ -52,7 +51,6 @@ void xhci_inval_cache(uintptr_t addr, u32 len)
 	invalidate_dcache_range(addr & ~(CACHELINE_SIZE - 1),
 				ALIGN(addr + len, CACHELINE_SIZE));
 }
-
 
 /**
  * frees the "segment" pointer passed

@@ -5,11 +5,12 @@
  * Peng Fan <peng.fan@nxp.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
-#include <asm/arch/clock.h>
-#include <asm/arch/sys_proto.h>
 #include <asm/arch/ccm_regs.h>
+#include <asm/arch/clock.h>
+#include <asm/arch/imx-regs.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/global_data.h>
 #include <linux/iopoll.h>
 

@@ -48,7 +48,7 @@ RE_TAG = re.compile('^(Tested-by|Acked-by|Reviewed-by|Patch-cc|Fixes): (.*)')
 RE_COMMIT = re.compile('^commit ([0-9a-f]*)$')
 
 # We detect these since checkpatch doesn't always do it
-RE_SPACE_BEFORE_TAB = re.compile('^[+].* \t')
+RE_SPACE_BEFORE_TAB = re.compile(r'^[+].* \t')
 
 # Match indented lines for changes
 RE_LEADING_WHITESPACE = re.compile(r'^\s')
@@ -475,6 +475,13 @@ class PatchStream:
             elif name == 'changes':
                 self.in_change = 'Commit'
                 self.change_version = self._parse_version(value, line)
+            elif name == 'cc':
+                self.commit.add_cc(value.split(','))
+            elif name == 'added-in':
+                version = self._parse_version(value, line)
+                self.commit.add_change(version, '- New')
+                self.series.AddChange(version, None, '- %s' %
+                                      self.commit.subject)
             else:
                 self._add_warn('Line %d: Ignoring Commit-%s' %
                                (self.linenum, name))

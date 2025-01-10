@@ -4,7 +4,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <efi.h>
 #include <efi_api.h>
@@ -17,6 +16,7 @@
 #include <asm/e820.h>
 #include <asm/global_data.h>
 #include <asm/post.h>
+#include <asm/u-boot-x86.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -142,11 +142,6 @@ int arch_cpu_init(void)
 int checkcpu(void)
 {
 	return 0;
-}
-
-int print_cpuinfo(void)
-{
-	return default_print_cpuinfo();
 }
 
 /* Find any available tables and copy them to a safe place */

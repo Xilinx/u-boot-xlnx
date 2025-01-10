@@ -5,7 +5,6 @@
  * Copyright (C) 2019 Marek Vasut <marek.vasut@gmail.com>
  */
 
-#include <common.h>
 #include <clock_legacy.h>
 #include <malloc.h>
 #include <asm/global_data.h>
@@ -49,8 +48,6 @@ static int ostm_probe(struct udevice *dev)
 		return ret;
 
 	uc_priv->clock_rate = clk_get_rate(&clk);
-
-	clk_free(&clk);
 #else
 	uc_priv->clock_rate = get_board_sys_clk() / 2;
 #endif

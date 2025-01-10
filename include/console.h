@@ -73,7 +73,7 @@ int console_record_reset_enable(void);
  * @str: Place to put string
  * @maxlen: Maximum length of @str including nul terminator
  * Return: length of string returned, or -ENOSPC if the console buffer was
- *	overflowed by the output
+ *	overflowed by the output, or -ENOENT if there was nothing to read
  */
 int console_record_readline(char *str, int maxlen);
 
@@ -83,6 +83,13 @@ int console_record_readline(char *str, int maxlen);
  * Return: available bytes (0 if empty)
  */
 int console_record_avail(void);
+
+/**
+ * console_record_isempty() - Returns if console output is empty
+ *
+ * Return: true if empty
+ */
+bool console_record_isempty(void);
 
 /**
  * console_in_puts() - Write a string to the console input buffer
@@ -131,6 +138,12 @@ static inline int console_in_puts(const char *str)
 	return 0;
 }
 
+static inline bool console_record_isempty(void)
+{
+	/* Always empty */
+	return true;
+}
+
 #endif /* !CONFIG_CONSOLE_RECORD */
 
 /**
@@ -155,6 +168,24 @@ int console_announce_r(void);
  * @s: String to output
  */
 void console_puts_select_stderr(bool serial_only, const char *s);
+
+/**
+ * console_clear() - Clear the console
+ *
+ * Uses an ANSI sequence to clear the display, failing back to clearing the
+ * video display directly if !CONFIG_VIDEO_ANSI
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int console_clear(void);
+
+/**
+ * console_remove_by_name() - Remove a console by its stdio name
+ *
+ * This must only be used in tests. It removes any use of the named stdio device
+ * from the console tables.
+ */
+int console_remove_by_name(const char *name);
 
 /*
  * CONSOLE multiplexing.

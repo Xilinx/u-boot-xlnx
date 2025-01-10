@@ -12,6 +12,7 @@ config BUTTON
 config BUTTON_ADC
 	bool "Button adc"
 	depends on BUTTON
+	depends on ADC
 	help
 	  Enable support for buttons which are connected to Analog to Digital
 	  Converter device. The ADC driver must use driver model. Buttons are
@@ -26,5 +27,14 @@ config BUTTON_GPIO
 	  GPIOs may be on the SoC or some other device which provides GPIOs.
 	  The GPIO driver must used driver model. Buttons are configured using
 	  the device tree.
+
+config BUTTON_QCOM_PMIC
+	bool "Qualcomm power button"
+	depends on BUTTON
+	depends on PMIC_QCOM
+	help
+	  Enable support for the power and "resin" (usually volume down) buttons
+	  on Qualcomm SoCs. These will be configured as the Enter and Down keys
+	  respectively, allowing navigation of bootmenu with buttons on device.
 
 endmenu

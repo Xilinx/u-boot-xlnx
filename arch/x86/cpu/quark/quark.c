@@ -3,7 +3,6 @@
  * Copyright (C) 2015, Bin Meng <bmeng.cn@gmail.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <event.h>
 #include <init.h>
@@ -19,6 +18,7 @@
 #include <asm/arch/device.h>
 #include <asm/arch/msg_port.h>
 #include <asm/arch/quark.h>
+#include <asm/u-boot-x86.h>
 #include <linux/delay.h>
 
 static void quark_setup_mtrr(void)
@@ -264,12 +264,6 @@ EVENT_SPY_SIMPLE(EVT_DM_POST_INIT_F, quark_pcie_early_init);
 int checkcpu(void)
 {
 	return 0;
-}
-
-int print_cpuinfo(void)
-{
-	post_code(POST_CPU_INFO);
-	return default_print_cpuinfo();
 }
 
 static void quark_pcie_init(void)

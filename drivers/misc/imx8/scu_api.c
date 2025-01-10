@@ -5,7 +5,6 @@
  * Peng Fan <peng.fan@nxp.com>
  */
 
-#include <common.h>
 #include <hang.h>
 #include <malloc.h>
 #include <asm/global_data.h>
@@ -880,6 +879,28 @@ void sc_pm_reboot(sc_ipc_t ipc, sc_pm_reset_type_t type)
 	RPC_SIZE(&msg) = 2U;
 
 	misc_call(dev, SC_TRUE, &msg, size, &msg, size);
+}
+
+int sc_pm_reset_reason(sc_ipc_t ipc, sc_pm_reset_reason_t *reason)
+{
+	struct udevice *dev = gd->arch.scu_dev;
+	struct sc_rpc_msg_s msg;
+	int size = sizeof(struct sc_rpc_msg_s);
+	int ret;
+
+	RPC_VER(&msg) = SC_RPC_VERSION;
+	RPC_SVC(&msg) = (u8)SC_RPC_SVC_PM;
+	RPC_FUNC(&msg) = (u8)PM_FUNC_RESET_REASON;
+	RPC_SIZE(&msg) = 1U;
+
+	ret = misc_call(dev, SC_FALSE, &msg, size, &msg, size);
+	if (ret)
+		printf("%s: res:%d\n", __func__, RPC_U8(&msg, 0U));
+
+	if (reason)
+		*reason = RPC_U8(&msg, 0U);
+
+	return ret;
 }
 
 int sc_pm_get_resource_power_mode(sc_ipc_t ipc, sc_rsrc_t resource,

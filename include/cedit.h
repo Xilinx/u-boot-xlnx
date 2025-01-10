@@ -7,12 +7,16 @@
 #ifndef __CEDIT_H
 #define __CEDIT_H
 
+#include <stdbool.h>
 #include <dm/ofnode_decl.h>
+#include <linux/types.h>
 
 struct abuf;
 struct expo;
 struct scene;
+struct udevice;
 struct video_priv;
+struct udevice;
 
 enum {
 	/* size increment for writing FDT */

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0+
 
-#include <common.h>
 #include <exports.h>
 
 /*
@@ -21,7 +20,6 @@
  * This may be modified such thread_yield may be called in syscalls, and
  * timer interrupts.
  */
-
 
 #define MAX_THREADS 8
 
@@ -55,7 +53,6 @@ struct lthread {
 };
 static volatile struct lthread lthreads[MAX_THREADS];
 static volatile int current_tid = MASTER_THREAD;
-
 
 static uchar dbg = 0;
 
@@ -162,7 +159,6 @@ static int testthread (void *name)
 
 	return *(int *) name + 1;
 }
-
 
 static void sched_init (void)
 {

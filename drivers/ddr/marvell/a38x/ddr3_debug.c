@@ -7,18 +7,21 @@
 #include "mv_ddr_training_db.h"
 #include "mv_ddr_regs.h"
 
+#if !defined(CONFIG_DDR_IMMUTABLE_DEBUG_SETTINGS)
 u8 is_reg_dump = 0;
 u8 debug_pbs = DEBUG_LEVEL_ERROR;
+#endif
 
 /*
  * API to change flags outside of the lib
  */
-#if defined(SILENT_LIB)
+#if defined(SILENT_LIB) || defined(CONFIG_DDR_IMMUTABLE_DEBUG_SETTINGS)
 void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
 {
 	/* do nothing */
 }
-#else /* SILENT_LIB */
+#else /* !SILENT_LIB && !CONFIG_DDR_IMMUTABLE_DEBUG_SETTINGS */
+
 /* Debug flags for other Training modules */
 u8 debug_training_static = DEBUG_LEVEL_ERROR;
 u8 debug_training = DEBUG_LEVEL_ERROR;
@@ -104,7 +107,7 @@ void ddr3_hws_set_log_level(enum ddr_lib_debug_block block, u8 level)
 #endif /* CONFIG_DDR4 */
 	}
 }
-#endif /* SILENT_LIB */
+#endif /* !SILENT_LIB && !CONFIG_DDR_IMMUTABLE_DEBUG_SETTINGS */
 
 #if defined(DDR_VIEWER_TOOL)
 static char *convert_freq(enum mv_ddr_freq freq);
@@ -114,16 +117,14 @@ u32 ctrl_adll[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
 u32 ctrl_adll1[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
 u32 ctrl_level_phase[MAX_CS_NUM * MAX_INTERFACE_NUM * MAX_BUS_NUM];
 #endif /* EXCLUDE_SWITCH_DEBUG */
+
+static u8 is_validate_window_per_if = 0;
+static u8 is_validate_window_per_pup = 0;
+static u8 sweep_cnt = 1;
+static u8 is_run_leveling_sweep_tests;
 #endif /* DDR_VIEWER_TOOL */
 
 struct hws_tip_config_func_db config_func_info[MAX_DEVICE_NUM];
-u8 is_default_centralization = 0;
-u8 is_tune_result = 0;
-u8 is_validate_window_per_if = 0;
-u8 is_validate_window_per_pup = 0;
-u8 sweep_cnt = 1;
-u32 is_bist_reset_bit = 1;
-u8 is_run_leveling_sweep_tests;
 
 static struct hws_xsb_info xsb_info[MAX_DEVICE_NUM];
 
@@ -398,6 +399,15 @@ int ddr3_tip_print_log(u32 dev_num, u32 mem_addr)
 		ddr3_tip_reg_dump(dev_num);
 	}
 #endif /* DDR_VIEWER_TOOL */
+
+	/* return early if we won't print anything anyway */
+	if (
+#if defined(SILENT_LIB)
+	    1 ||
+#endif
+	    debug_training < DEBUG_LEVEL_INFO) {
+		return MV_OK;
+	}
 
 	for (if_id = 0; if_id <= MAX_INTERFACE_NUM - 1; if_id++) {
 		VALIDATE_IF_ACTIVE(tm->if_act_mask, if_id);

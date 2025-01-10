@@ -3,7 +3,6 @@
  * Copyright (C) 2018 Linaro Limited
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
@@ -216,5 +215,4 @@ out:
 
 	return rc;
 }
-
-DM_TEST(dm_test_tee, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_tee, UTF_SCAN_FDT);

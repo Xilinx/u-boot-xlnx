@@ -117,7 +117,7 @@ def test_efi_eficonfig(u_boot_console, efi_eficonfig_data):
         press_up_down_enter_and_wait(0, 0, True, 'Quit')
 
         # Press the enter key to select 'Description:' entry, then enter Description
-        press_up_down_enter_and_wait(0, 0, True, 'enter description:')
+        press_up_down_enter_and_wait(0, 0, True, 'Enter description:')
         # Send Description user input, press ENTER key to complete
         send_user_input_and_wait('test 1', 'Quit')
 
@@ -166,7 +166,7 @@ def test_efi_eficonfig(u_boot_console, efi_eficonfig_data):
         press_up_down_enter_and_wait(0, 0, True, 'Quit')
 
         # Press the enter key to select 'Description:' entry, then enter Description
-        press_up_down_enter_and_wait(0, 0, True, 'enter description:')
+        press_up_down_enter_and_wait(0, 0, True, 'Enter description:')
         # Send Description user input, press ENTER key to complete
         send_user_input_and_wait('test 2', 'Quit')
 
@@ -224,7 +224,7 @@ def test_efi_eficonfig(u_boot_console, efi_eficonfig_data):
 
         # Change the Boot Order
         press_up_down_enter_and_wait(0, 2, True, None)
-        # Check the curren BootOrder
+        # Check the current BootOrder
         for i in ('test 2', 'test 1', 'host 0:1', 'Save', 'Quit'):
             u_boot_console.p.expect([i])
         # move 'test 2' to the second entry
@@ -269,7 +269,7 @@ def test_efi_eficonfig(u_boot_console, efi_eficonfig_data):
         u_boot_console.run_command('eficonfig', wait_for_prompt=False)
         # Select 'Edit Boot Option'
         press_up_down_enter_and_wait(0, 1, True, None)
-        # Check the curren BootOrder
+        # Check the current BootOrder
         for i in ('test 1', 'Quit'):
             u_boot_console.p.expect([i])
         press_up_down_enter_and_wait(0, 0, True, None)
@@ -278,7 +278,7 @@ def test_efi_eficonfig(u_boot_console, efi_eficonfig_data):
             u_boot_console.p.expect([i])
 
         # Press the enter key to select 'Description:' entry, then enter Description
-        press_up_down_enter_and_wait(0, 0, True, 'enter description:')
+        press_up_down_enter_and_wait(0, 0, True, 'Enter description:')
         # Send Description user input, press ENTER key to complete
         send_user_input_and_wait('test 3', 'Quit')
 
@@ -326,7 +326,7 @@ def test_efi_eficonfig(u_boot_console, efi_eficonfig_data):
 
         # Select 'Delete Boot Option'
         press_up_down_enter_and_wait(0, 3, True, None)
-        # Check the curren BootOrder
+        # Check the current BootOrder
         for i in ('test 3', 'Quit'):
             u_boot_console.p.expect([i])
 

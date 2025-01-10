@@ -4,7 +4,6 @@
  * Copyright 2020 ASPEED Technology Inc.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <misc.h>
@@ -63,8 +62,6 @@ static int ast2500_reset_status(struct reset_ctl *reset_ctl)
 
 	return !!status;
 }
-
-
 
 static int ast2500_reset_probe(struct udevice *dev)
 {

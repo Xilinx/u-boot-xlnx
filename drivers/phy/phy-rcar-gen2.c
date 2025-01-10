@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Renesas RCar Gen2 USB PHY driver
+ * Renesas R-Car Gen2 USB PHY driver
  *
  * Copyright (C) 2018 Marek Vasut <marek.vasut@gmail.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <div64.h>
 #include <dm.h>
@@ -172,7 +171,6 @@ static int rcar_gen2_phy_remove(struct udevice *dev)
 	struct rcar_gen2_phy *priv = dev_get_priv(dev);
 
 	clk_disable(&priv->clk);
-	clk_free(&priv->clk);
 
 	return 0;
 }

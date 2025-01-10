@@ -7,7 +7,6 @@
  *	Suman Anna <s-anna@ti.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
@@ -22,6 +21,7 @@
 #include <linux/sizes.h>
 #include <linux/soc/ti/ti_sci_protocol.h>
 #include "ti_sci_proc.h"
+#include <mach/security.h>
 
 #define KEYSTONE_RPROC_LOCAL_ADDRESS_MASK	(SZ_16M - 1)
 
@@ -56,6 +56,7 @@ struct k3_dsp_boot_data {
  * @data:		Pointer to DSP specific boot data structure
  * @mem:		Array of available memories
  * @num_mem:		Number of available memories
+ * @in_use: flag to tell if the core is already in use.
  */
 struct k3_dsp_privdata {
 	struct reset_ctl dsp_rst;
@@ -63,6 +64,7 @@ struct k3_dsp_privdata {
 	struct k3_dsp_boot_data *data;
 	struct k3_dsp_mem *mem;
 	int num_mems;
+	bool in_use;
 };
 
 /*
@@ -126,7 +128,15 @@ static int k3_dsp_load(struct udevice *dev, ulong addr, ulong size)
 	struct k3_dsp_privdata *dsp = dev_get_priv(dev);
 	struct k3_dsp_boot_data *data = dsp->data;
 	u32 boot_vector;
+	void *image_addr = (void *)addr;
 	int ret;
+
+	if (dsp->in_use) {
+		dev_err(dev,
+			"Invalid op: Trying to load/start on already running core %d\n",
+			dsp->tsp.proc_id);
+		return -EINVAL;
+	}
 
 	dev_dbg(dev, "%s addr = 0x%lx, size = 0x%lx\n", __func__, addr, size);
 	ret = ti_sci_proc_request(&dsp->tsp);
@@ -139,6 +149,8 @@ static int k3_dsp_load(struct udevice *dev, ulong addr, ulong size)
 			dsp->tsp.proc_id);
 		goto proc_release;
 	}
+
+	ti_secure_image_post_process(&image_addr, &size);
 
 	ret = rproc_elf_load_image(dev, addr, size);
 	if (ret < 0) {
@@ -195,6 +207,7 @@ static int k3_dsp_start(struct udevice *dev)
 			ti_sci_proc_power_domain_off(&dsp->tsp);
 	}
 
+	dsp->in_use = true;
 proc_release:
 	ti_sci_proc_release(&dsp->tsp);
 
@@ -207,6 +220,7 @@ static int k3_dsp_stop(struct udevice *dev)
 
 	dev_dbg(dev, "%s\n", __func__);
 
+	dsp->in_use = false;
 	ti_sci_proc_request(&dsp->tsp);
 	reset_assert(&dsp->dsp_rst);
 	ti_sci_proc_power_domain_off(&dsp->tsp);
@@ -327,7 +341,9 @@ static int k3_dsp_of_get_memories(struct udevice *dev)
 
 	for (i = 0; i < dsp->num_mems; i++) {
 		/* C71 cores only have a L1P Cache, there are no L1P SRAMs */
-		if (device_is_compatible(dev, "ti,j721e-c71-dsp") &&
+		if (((device_is_compatible(dev, "ti,j721e-c71-dsp")) ||
+		    (device_is_compatible(dev, "ti,j721s2-c71-dsp")) ||
+		    (device_is_compatible(dev, "ti,am62a-c7xv-dsp"))) &&
 		    !strcmp(mem_names[i], "l1pram")) {
 			dsp->mem[i].bus_addr = FDT_ADDR_T_NONE;
 			dsp->mem[i].dev_addr = FDT_ADDR_T_NONE;
@@ -335,7 +351,14 @@ static int k3_dsp_of_get_memories(struct udevice *dev)
 			dsp->mem[i].size = 0;
 			continue;
 		}
-
+		if (device_is_compatible(dev, "ti,am62a-c7xv-dsp") &&
+		    !strcmp(mem_names[i], "l1dram")) {
+			dsp->mem[i].bus_addr = FDT_ADDR_T_NONE;
+			dsp->mem[i].dev_addr = FDT_ADDR_T_NONE;
+			dsp->mem[i].cpu_addr = NULL;
+			dsp->mem[i].size = 0;
+			continue;
+		}
 		dsp->mem[i].bus_addr = dev_read_addr_size_name(dev, mem_names[i],
 					  (fdt_addr_t *)&dsp->mem[i].size);
 		if (dsp->mem[i].bus_addr == FDT_ADDR_T_NONE) {
@@ -446,6 +469,8 @@ static const struct k3_dsp_boot_data c71_data = {
 static const struct udevice_id k3_dsp_ids[] = {
 	{ .compatible = "ti,j721e-c66-dsp", .data = (ulong)&c66_data, },
 	{ .compatible = "ti,j721e-c71-dsp", .data = (ulong)&c71_data, },
+	{ .compatible = "ti,j721s2-c71-dsp", .data = (ulong)&c71_data, },
+	{ .compatible = "ti,am62a-c7xv-dsp", .data = (ulong)&c71_data, },
 	{}
 };
 

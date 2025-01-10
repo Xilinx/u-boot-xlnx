@@ -7,7 +7,6 @@
 /*
  * Boot support
  */
-#include <common.h>
 #include <command.h>
 #include <stdio_dev.h>
 #include <serial.h>
@@ -66,7 +65,6 @@ int do_terminal(struct cmd_tbl *cmd, int flag, int argc, char *const argv[])
 	}
 	return 0;
 }
-
 
 /***************************************************/
 

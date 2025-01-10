@@ -8,8 +8,9 @@
 
 #include <blk.h>
 #include <efi.h>
+#include <fwu_mdata.h>
 #include <mtd.h>
-#include <uuid.h>
+#include <u-boot/uuid.h>
 
 #include <linux/types.h>
 
@@ -26,30 +27,69 @@ struct fwu_mtd_image_info {
 	char uuidbuf[UUID_STR_LEN + 1];
 };
 
+struct fwu_mdata_mtd_priv {
+	struct mtd_info *mtd;
+	char pri_label[50];
+	char sec_label[50];
+	u32 pri_offset;
+	u32 sec_offset;
+	struct fwu_mtd_image_info *fwu_mtd_images;
+};
+
+struct fwu_data {
+	uint32_t crc32;
+	uint32_t version;
+	uint32_t active_index;
+	uint32_t previous_active_index;
+	uint32_t metadata_size;
+	uint32_t boot_index;
+	uint32_t num_banks;
+	uint32_t num_images;
+	uint8_t  bank_state[4];
+	bool     trial_state;
+
+	struct fwu_mdata *fwu_mdata;
+
+	struct fwu_image_entry fwu_images[CONFIG_FWU_NUM_IMAGES_PER_BANK];
+};
+
 struct fwu_mdata_ops {
 	/**
 	 * read_mdata() - Populate the asked FWU metadata copy
 	 * @dev: FWU metadata device
 	 * @mdata: Output FWU mdata read
 	 * @primary: If primary or secondary copy of metadata is to be read
+	 * @size: Size in bytes of the metadata to be read
 	 *
 	 * Return: 0 if OK, -ve on error
 	 */
-	int (*read_mdata)(struct udevice *dev, struct fwu_mdata *mdata, bool primary);
+	int (*read_mdata)(struct udevice *dev, struct fwu_mdata *mdata,
+			  bool primary, uint32_t size);
 
 	/**
 	 * write_mdata() - Write the given FWU metadata copy
 	 * @dev: FWU metadata device
 	 * @mdata: Copy of the FWU metadata to write
 	 * @primary: If primary or secondary copy of metadata is to be written
+	 * @size: Size in bytes of the metadata to be written
 	 *
 	 * Return: 0 if OK, -ve on error
 	 */
-	int (*write_mdata)(struct udevice *dev, struct fwu_mdata *mdata, bool primary);
+	int (*write_mdata)(struct udevice *dev, struct fwu_mdata *mdata,
+			   bool primary, uint32_t size);
 };
 
-#define FWU_MDATA_VERSION	0x1
 #define FWU_IMAGE_ACCEPTED	0x1
+
+#define FWU_BANK_INVALID	(uint8_t)0xFF
+#define FWU_BANK_VALID		(uint8_t)0xFE
+#define FWU_BANK_ACCEPTED	(uint8_t)0xFC
+
+enum {
+	PRIMARY_PART = 1,
+	SECONDARY_PART,
+	BOTH_PARTS,
+};
 
 /*
 * GUID value defined in the FWU specification for identification
@@ -80,12 +120,14 @@ struct fwu_mdata_ops {
 /**
  * fwu_read_mdata() - Wrapper around fwu_mdata_ops.read_mdata()
  */
-int fwu_read_mdata(struct udevice *dev, struct fwu_mdata *mdata, bool primary);
+int fwu_read_mdata(struct udevice *dev, struct fwu_mdata *mdata,
+		   bool primary, uint32_t size);
 
 /**
  * fwu_write_mdata() - Wrapper around fwu_mdata_ops.write_mdata()
  */
-int fwu_write_mdata(struct udevice *dev, struct fwu_mdata *mdata, bool primary);
+int fwu_write_mdata(struct udevice *dev, struct fwu_mdata *mdata,
+		    bool primary, uint32_t size);
 
 /**
  * fwu_get_mdata() - Read, verify and return the FWU metadata
@@ -122,21 +164,18 @@ int fwu_get_active_index(uint *active_idxp);
 int fwu_set_active_index(uint active_idx);
 
 /**
- * fwu_get_image_index() - Get the Image Index to be used for capsule update
- * @image_index: The Image Index for the image
- *
- * The FWU multi bank update feature computes the value of image_index at
- * runtime, based on the bank to which the image needs to be written to.
- * Derive the image_index value for the image.
+ * fwu_get_dfu_alt_num() - Get the dfu_alt_num to be used for capsule update
+ * @image_index:	The Image Index for the image
+ * @alt_num:		pointer to store dfu_alt_num
  *
  * Currently, the capsule update driver uses the DFU framework for
  * the updates. This function gets the DFU alt number which is to
- * be used as the Image Index
+ * be used for capsule update.
  *
  * Return: 0 if OK, -ve on error
  *
  */
-int fwu_get_image_index(u8 *image_index);
+int fwu_get_dfu_alt_num(u8 image_index, u8 *alt_num);
 
 /**
  * fwu_revert_boot_index() - Revert the active index in the FWU metadata
@@ -282,5 +321,111 @@ int fwu_gen_alt_info_from_mtd(char *buf, size_t len, struct mtd_info *mtd);
  * Return: 0 if OK, -ve on error
  */
 int fwu_mtd_get_alt_num(efi_guid_t *image_guid, u8 *alt_num, const char *mtd_dev);
+
+/**
+ * fwu_mdata_copies_allocate() - Allocate memory for metadata
+ * @mdata_size: Size of the metadata structure
+ *
+ * Allocate memory for storing both the copies of the FWU metadata. The
+ * copies are then used as a cache for storing FWU metadata contents.
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int fwu_mdata_copies_allocate(u32 mdata_size);
+
+/**
+ * fwu_get_dev() - Return the FWU metadata device
+ *
+ * Return the pointer to the FWU metadata device.
+ *
+ * Return: Pointer to the FWU metadata dev
+ */
+struct udevice *fwu_get_dev(void);
+
+/**
+ * fwu_get_data() - Return the version agnostic FWU structure
+ *
+ * Return the pointer to the version agnostic FWU structure.
+ *
+ * Return: Pointer to the FWU data structure
+ */
+struct fwu_data *fwu_get_data(void);
+
+/**
+ * fwu_sync_mdata() - Update given meta-data partition(s) with the copy provided
+ * @data: FWU Data structure
+ * @part: Bitmask of FWU metadata partitions to be written to
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int fwu_sync_mdata(struct fwu_mdata *mdata, int part);
+
+/**
+ * fwu_populate_mdata_image_info() - Populate the image information
+ * of the metadata
+ * @data: Version agnostic FWU metadata information
+ *
+ * Populate the image information in the FWU metadata by copying it
+ * from the version agnostic structure. This is done before the
+ * metadata gets written to the storage media.
+ *
+ * Return: None
+ */
+void fwu_populate_mdata_image_info(struct fwu_data *data);
+
+/**
+ * fwu_get_mdata_size() - Get the FWU metadata size
+ * @mdata_size: Size of the metadata structure
+ *
+ * Get the size of the FWU metadata from the structure. This is later used
+ * to allocate memory for the structure.
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int fwu_get_mdata_size(uint32_t *mdata_size);
+
+/**
+ * fwu_state_machine_updates() - Update FWU state of the platform
+ * @trial_state: Is platform transitioning into Trial State
+ * @update_index: Bank number to which images have been updated
+ *
+ * On successful completion of updates, transition the platform to
+ * either Trial State or Regular State.
+ *
+ * To transition the platform to Trial State, start the
+ * TrialStateCtr counter, followed by setting the value of bank_state
+ * field of the metadata to Valid state(applicable only in version 2
+ * of metadata).
+ *
+ * In case, the platform is to transition directly to Regular State,
+ * update the bank_state field of the metadata to Accepted
+ * state(applicable only in version 2 of metadata).
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int fwu_state_machine_updates(bool trial_state, uint32_t update_index);
+
+/**
+ * fwu_init() - FWU specific initialisations
+ *
+ * Carry out some FWU specific initialisations including allocation
+ * of memory for the metadata copies, and reading the FWU metadata
+ * copies into the allocated memory. The metadata fields are then
+ * copied into a version agnostic structure.
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int fwu_init(void);
+
+/**
+ * fwu_bank_accepted() - Has the bank been accepted
+ * @data: Version agnostic FWU metadata information
+ * @bank: Update bank to check
+ *
+ * Check in the given bank if all the images have been accepted.
+ *
+ * Return: true if all images accepted, false otherwise
+ */
+bool fwu_bank_accepted(struct fwu_data *data, uint32_t bank);
 
 #endif /* _FWU_H_ */

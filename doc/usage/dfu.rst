@@ -6,11 +6,11 @@ Device Firmware Upgrade (DFU)
 Overview
 --------
 
-The Device Firmware Upgrade (DFU) allows to download and upload firmware
-to/from U-Boot connected over USB.
+Device Firmware Upgrade (DFU) enables the download and upload of firmware
+to/from U-Boot while connected over USB.
 
 U-Boot follows the Universal Serial Bus Device Class Specification for
-Device Firmware Upgrade Version 1.1 the USB forum (DFU v1.1 in www.usb.org).
+Device Firmware Upgrade Version 1.1 from the USB forum (DFU v1.1 in www.usb.org).
 
 U-Boot implements this DFU capability (CONFIG_DFU) with the command dfu
 (cmd/dfu.c / CONFIG_CMD_DFU) based on:
@@ -22,6 +22,7 @@ U-Boot implements this DFU capability (CONFIG_DFU) with the command dfu
 Today the supported DFU backends are:
 
 - MMC (RAW or FAT / EXT2 / EXT3 / EXT4 file system / SKIP / SCRIPT)
+- SCSI (UFS, RAW partition, FAT / EXT2 / EXT3 / EXT4 file system / SKIP / SCRIPT)
 - NAND
 - RAM
 - SF (serial flash)
@@ -43,7 +44,7 @@ target (for example OTP), only based on the weak functions:
 Configuration Options
 ---------------------
 
-The following configuration option are relevant for device firmware upgrade:
+The following configuration options are relevant to device firmware upgrade:
 
 * CONFIG_DFU
 * CONFIG_DFU_OVER_USB
@@ -51,6 +52,7 @@ The following configuration option are relevant for device firmware upgrade:
 * CONFIG_DFU_MTD
 * CONFIG_DFU_NAND
 * CONFIG_DFU_RAM
+* CONFIG_DFU_SCSI
 * CONFIG_DFU_SF
 * CONFIG_DFU_SF_PART
 * CONFIG_DFU_TIMEOUT
@@ -60,7 +62,7 @@ The following configuration option are relevant for device firmware upgrade:
 Environment variables
 ---------------------
 
-The dfu command uses 3 environments variables:
+The dfu command uses 3 environment variables:
 
 dfu_alt_info
     The DFU setting for the USB download gadget with a semicolon separated
@@ -90,17 +92,17 @@ Commands
 --------
 
 dfu <USB_controller> [<interface> <dev>] list
-    list the alternate device defined in *dfu_alt_info*
+    List the alternate device defined in *dfu_alt_info*.
 
 dfu <USB_controller> [<interface> <dev>] [<timeout>]
-    start the dfu stack on the USB instance with the selected medium
+    Start the dfu stack on the USB instance with the selected medium
     backend and use the *dfu_alt_info* variable to configure the
-    alternate setting and link each one with the medium
-    The dfu command continue until receive a ^C in console or
-    a DFU detach transaction from HOST. If CONFIG_DFU_TIMEOUT option
-    is enabled and <timeout> parameter is present in the command line,
+    alternate setting and link each one with the medium.
+    The dfu command continues until it receives a ^C in the console or
+    a DFU detach transaction from the HOST. If the CONFIG_DFU_TIMEOUT option
+    is enabled and a <timeout> parameter is present in the command line,
     the DFU operation will be aborted automatically after <timeout>
-    seconds of waiting remote to initiate DFU session.
+    seconds of waiting for the remote to initiate a DFU session.
 
 The possible values of <interface> are (with <USB controller> = 0 in the dfu
 command example)
@@ -139,11 +141,11 @@ mmc
 
         u-boot raw 0x80 0x800;uImage ext4 0 2
 
-    If don't want to flash given image file to storage, use "skip" type
-    entity.
+    If you don't want to flash the given image file to storage, use the "skip"
+    type entity.
 
-    - It can be used to protect flashing wrong image for the specific board.
-    - Especailly, this layout will be useful when thor protocol is used,
+    - It can be used to protect from flashing the wrong image for the specific board.
+    - Especially, this layout will be useful when the thor protocol is used,
       which performs flashing in batch mode, where more than one file is
       processed.
 
@@ -153,19 +155,49 @@ mmc
 
         u-boot-<board1>.bin raw 0x80 0x800; u-boot-<board2>.bin skip 0 0
 
-    When flashing new system image requires do some more complex things
-    than just writing data to the storage medium, one can use 'script'
-    type. Data written to such entity will be executed as a command list
-    in the u-boot's shell. This for example allows to re-create partition
-    layout and even set new *dfu_alt_info* for the newly created paritions.
-    Such script would look like::
+    When flashing a new system image requires you to do some more complex
+    things than just writing data to the storage medium, one can use 'script'
+    type. Data written to such an entity will be executed as a command list
+    in the u-boot's shell. This for example allows you to re-create a partition
+    layout and even set a new *dfu_alt_info* for the newly created partitions.
+    Such a script would look like::
 
         setenv dfu_alt_info ...
         setenv mbr_parts ...
         mbr write ...
 
-    Please note that this means that user will be able to execute any
+    Please note that this means the user will be able to execute any
     arbitrary commands just like in the u-boot's shell.
+
+scsi
+    for UFS storage::
+
+        dfu 0 scsi <dev>
+
+    each element in *dfu_alt_info* being
+
+    * <name> raw <offset> <size>     raw access to SCSI LUN
+    * <name> part <part_id>          raw access to partition
+    * <name> fat <part_id>           file in FAT partition
+    * <name> ext4 <part_id>          file in EXT4 partition
+    * <name> skip 0 0                ignore flashed data
+    * <name> script 0 0              execute commands in shell
+
+    with
+
+    size
+        is the size of the access area (hexadecimal without "0x")
+        or 0 which means whole device
+    partid
+        is the GPT or DOS partition index.
+    dev
+        is the SCSI LU (Logical Unit) index (decimal only)
+
+    A value of environment variable *dfu_alt_info* for UFS could be::
+
+        u-boot part 4;bl2 raw 0x1e 0x1d
+
+    See mmc section above for details on the skip and script types.
 
 nand
     raw slc nand device::
@@ -216,8 +248,8 @@ sf
     each element in *dfu_alt_info* being either of:
 
     * <name> raw <offset> <size>  raw access to sf device
-    * <name> part <dev_id> <part_id>  raw acces to partition
-    * <name> partubi <dev_id> <part_id>  raw acces to ubi partition
+    * <name> part <dev_id> <part_id>  raw access to partition
+    * <name> partubi <dev_id> <part_id>  raw access to ubi partition
 
     with
 
@@ -278,6 +310,7 @@ alternate list separated by '&' with the same format for each <alt>::
     mmc <dev>=<alt1>;....;<altN>
     nand <dev>=<alt1>;....;<altN>
     ram <dev>=<alt1>;....;<altN>
+    scsi <dev>=<alt1>;....;<altN>
     sf <dev>=<alt1>;....;<altN>
     mtd <dev>=<alt1>;....;<altN>
     virt <dev>=<alt1>;....;<altN>
@@ -288,17 +321,17 @@ Callbacks
 The weak callback functions can be implemented to manage specific behavior
 
 dfu_initiated_callback
-   called when the DFU transaction is started, used to initiase the device
+   called when the DFU transaction is started, used to initialize the device
 
 dfu_flush_callback
     called at the end of the DFU write after DFU manifestation, used to manage
-    the device when DFU transaction is closed
+    the device when the DFU transaction is closed
 
 Host tools
 ----------
 
 When U-Boot runs the dfu stack, the DFU host tools can be used
-to send/receive firmwares on each configurated alternate.
+to send/receive firmware images on each configured alternate.
 
 For example dfu-util is a host side implementation of the DFU 1.1
 specifications(http://dfu-util.sourceforge.net/) which works with U-Boot.
@@ -409,8 +442,8 @@ Same example with MTD backend
 
 Example 3
 
-firmware located in SD Card (mmc) and virtual partition on OTP and PMIC not
-volatile memory
+firmware located in SD Card (mmc) and virtual partition on OTP and PMIC
+non-volatile memory
 
 - alternate 1 (alt=1) for scard
 - alternate 2 (alt=2) for OTP (virtual)

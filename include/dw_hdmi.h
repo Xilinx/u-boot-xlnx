@@ -309,7 +309,6 @@ enum {
 	HDMI_FC_INVIDCONF_IN_I_P_INTERLACED = 0x1,
 	HDMI_FC_INVIDCONF_IN_I_P_PROGRESSIVE = 0x0,
 
-
 	/* fc_aviconf0-fc_aviconf3 field values */
 	HDMI_FC_AVICONF0_PIX_FMT_MASK = 0x03,
 	HDMI_FC_AVICONF0_PIX_FMT_RGB = 0x00,
@@ -534,6 +533,14 @@ struct hdmi_data_info {
 	struct hdmi_vmode video_mode;
 };
 
+struct dw_hdmi;
+
+struct dw_hdmi_phy_ops {
+	int (*phy_set)(struct dw_hdmi *hdmi, uint mpixelclock);
+	void (*read_hpd)(struct dw_hdmi *hdmi, bool hdp_status);
+	void (*setup_hpd)(struct dw_hdmi *hdmi);
+};
+
 struct dw_hdmi {
 	ulong ioaddr;
 	const struct hdmi_mpll_config *mpll_cfg;
@@ -543,8 +550,8 @@ struct dw_hdmi {
 	u8 reg_io_width;
 	struct hdmi_data_info hdmi_data;
 	struct udevice *ddc_bus;
+	const struct dw_hdmi_phy_ops *ops;
 
-	int (*phy_set)(struct dw_hdmi *hdmi, uint mpixelclock);
 	void (*write_reg)(struct dw_hdmi *hdmi, u8 val, int offset);
 	u8 (*read_reg)(struct dw_hdmi *hdmi, int offset);
 };
@@ -556,5 +563,6 @@ void dw_hdmi_phy_init(struct dw_hdmi *hdmi);
 int dw_hdmi_enable(struct dw_hdmi *hdmi, const struct display_timing *edid);
 int dw_hdmi_read_edid(struct dw_hdmi *hdmi, u8 *buf, int buf_size);
 void dw_hdmi_init(struct dw_hdmi *hdmi);
+int dw_hdmi_detect_hpd(struct dw_hdmi *hdmi);
 
 #endif

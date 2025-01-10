@@ -5,7 +5,6 @@
  * Generic reset driver for x86 processor
  */
 
-#include <common.h>
 #include <dm.h>
 #include <efi_loader.h>
 #include <pch.h>
@@ -87,7 +86,7 @@ static int x86_sysreset_request(struct udevice *dev, enum sysreset_t type)
 			return ret;
 		return -EINPROGRESS;
 	default:
-		return -ENOSYS;
+		return -EPROTONOSUPPORT;
 	}
 
 	outb(value, IO_PORT_RESET);

@@ -3,7 +3,6 @@
  * Copyright (C) 2012 Samsung Electronics
  */
 
-#include <common.h>
 #include <config.h>
 #include <init.h>
 #include <log.h>
@@ -313,7 +312,7 @@ static void setup_global_data(gd_t *gdp)
 	memzero((void *)gd, sizeof(gd_t));
 	gd->flags |= GD_FLG_RELOC;
 	gd->baudrate = CONFIG_BAUDRATE;
-	gd->have_console = 1;
+	gd->flags |= GD_FLG_HAVE_CONSOLE;
 }
 
 void board_init_f(unsigned long bootflag)

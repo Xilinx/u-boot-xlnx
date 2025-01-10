@@ -7,11 +7,13 @@
 
 #include <config.h>
 #include <command.h>
-#include <common.h>
 #include <env.h>
 #include <malloc.h>
+#include <time.h>
 #include <env_internal.h>
+#include <vsprintf.h>
 #include <linux/delay.h>
+#include <linux/errno.h>
 #include <linux/types.h>
 #include <api_public.h>
 #include <u-boot/crc.h>
@@ -178,7 +180,6 @@ static int API_get_timer(va_list ap)
 	return 0;
 }
 
-
 /*****************************************************************************
  *
  * pseudo signature:
@@ -228,7 +229,6 @@ static int API_dev_enum(va_list ap)
 	return 0;
 }
 
-
 static int API_dev_open(va_list ap)
 {
 	struct device_info *di;
@@ -259,7 +259,6 @@ static int API_dev_open(va_list ap)
 
 	return err;
 }
-
 
 static int API_dev_close(va_list ap)
 {
@@ -294,7 +293,6 @@ static int API_dev_close(va_list ap)
 
 	return err;
 }
-
 
 /*
  * pseudo signature:
@@ -373,7 +371,6 @@ static int API_dev_write(va_list ap)
 
 	return err;
 }
-
 
 /*
  * pseudo signature:
@@ -459,7 +456,6 @@ static int API_dev_read(va_list ap)
 
 	return 0;
 }
-
 
 /*
  * pseudo signature:

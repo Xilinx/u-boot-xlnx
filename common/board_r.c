@@ -9,7 +9,7 @@
  * Marius Groeger <mgroeger@sysgo.de>
  */
 
-#include <common.h>
+#include <config.h>
 #include <api.h>
 #include <bootstage.h>
 #include <cpu_func.h>
@@ -22,6 +22,7 @@
 #include <hang.h>
 #include <image.h>
 #include <irq_func.h>
+#include <lmb.h>
 #include <log.h>
 #include <net.h>
 #include <asm/cache.h>
@@ -31,6 +32,7 @@
 #include <command.h>
 #include <console.h>
 #include <dm.h>
+#include <efi_loader.h>
 #include <env.h>
 #include <env_internal.h>
 #include <fdtdec.h>
@@ -39,6 +41,7 @@
 #include <initcall.h>
 #include <kgdb.h>
 #include <irq_func.h>
+#include <led.h>
 #include <malloc.h>
 #include <mapmem.h>
 #include <miiphy.h>
@@ -61,10 +64,8 @@
 #include <dm/ofnode.h>
 #include <linux/compiler.h>
 #include <linux/err.h>
-#include <efi_loader.h>
 #include <wdt.h>
 #include <asm-generic/gpio.h>
-#include <efi_loader.h>
 #include <relocate.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -151,6 +152,15 @@ static int initr_reloc_global_data(void)
 	 */
 	gd->env_addr += gd->reloc_off;
 #endif
+
+	/*
+	 * For CONFIG_OF_EMBED case the FDT is embedded into ELF, available by
+	 * __dtb_dt_begin. After U-boot ELF self-relocation to RAM top address
+	 * it is worth to update fdt_blob in global_data
+	 */
+	if (IS_ENABLED(CONFIG_OF_EMBED))
+		gd->fdt_blob = dtb_dt_embedded();
+
 #ifdef CONFIG_EFI_LOADER
 	/*
 	 * On the ARM architecture gd is mapped to a fixed register (r9 or x18).
@@ -192,7 +202,7 @@ static int initr_malloc(void)
 	ulong start;
 
 #if CONFIG_IS_ENABLED(SYS_MALLOC_F)
-	debug("Pre-reloc malloc() used %#lx bytes (%ld KB)\n", gd->malloc_ptr,
+	debug("Pre-reloc malloc() used %#x bytes (%d KB)\n", gd->malloc_ptr,
 	      gd->malloc_ptr / 1024);
 #endif
 	/* The malloc area is immediately below the monitor copy in DRAM */
@@ -202,8 +212,7 @@ static int initr_malloc(void)
 	 */
 	start = gd->relocaddr - TOTAL_MALLOC_LEN;
 	gd_set_malloc_start(start);
-	mem_malloc_init((ulong)map_sysmem(start, TOTAL_MALLOC_LEN),
-			TOTAL_MALLOC_LEN);
+	mem_malloc_init(start, TOTAL_MALLOC_LEN);
 	return 0;
 }
 
@@ -230,8 +239,7 @@ static int initr_dm(void)
 
 	oftree_reset();
 
-	/* Save the pre-reloc driver model and start a new one */
-	gd->dm_root_f = gd->dm_root;
+	/* Drop the pre-reloc driver model and start a new one */
 	gd->dm_root = NULL;
 #ifdef CONFIG_TIMER
 	gd->timer = NULL;
@@ -288,12 +296,9 @@ static int initr_announce(void)
 	return 0;
 }
 
-static int initr_binman(void)
+static int __maybe_unused initr_binman(void)
 {
 	int ret;
-
-	if (!CONFIG_IS_ENABLED(BINMAN_FDT))
-		return 0;
 
 	ret = binman_init();
 	if (ret)
@@ -460,30 +465,30 @@ static int initr_malloc_bootparams(void)
 }
 #endif
 
-#if defined(CONFIG_LED_STATUS)
 static int initr_status_led(void)
 {
-#if defined(CONFIG_LED_STATUS_BOOT)
-	status_led_set(CONFIG_LED_STATUS_BOOT, CONFIG_LED_STATUS_BLINKING);
-#else
 	status_led_init();
-#endif
+
 	return 0;
 }
-#endif
 
-#if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
-static int initr_scsi(void)
+static int initr_boot_led_blink(void)
 {
-	puts("SCSI:  ");
-	scsi_init();
-	puts("\n");
+	status_led_boot_blink();
+
+	led_boot_blink();
 
 	return 0;
 }
-#endif
 
-#ifdef CONFIG_CMD_NET
+static int initr_boot_led_on(void)
+{
+	led_boot_on();
+
+	return 0;
+}
+
+#if defined(CONFIG_CMD_NET)
 static int initr_net(void)
 {
 	puts("Net:   ");
@@ -522,6 +527,14 @@ int initr_mem(void)
 }
 #endif
 
+static int initr_lmb(void)
+{
+	if (CONFIG_IS_ENABLED(LMB))
+		return lmb_init();
+	else
+		return 0;
+}
+
 static int dm_announce(void)
 {
 	int device_count;
@@ -533,6 +546,8 @@ static int dm_announce(void)
 		       uclass_count);
 		if (CONFIG_IS_ENABLED(OF_REAL))
 			printf(", devicetree: %s", fdtdec_get_srcname());
+		if (CONFIG_IS_ENABLED(UPL))
+			printf(", universal payload active");
 		printf("\n");
 		if (IS_ENABLED(CONFIG_OF_HAS_PRIOR_STAGE) &&
 		    (gd->fdt_src == FDTSRC_SEPARATE ||
@@ -622,10 +637,13 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_CLOCKS
 	set_cpu_clk_info, /* Setup clock information */
 #endif
+	initr_lmb,
 #ifdef CONFIG_EFI_LOADER
 	efi_memory_init,
 #endif
+#ifdef CONFIG_BINMAN_FDT
 	initr_binman,
+#endif
 #ifdef CONFIG_FSP_VERSION2
 	arch_fsp_init_r,
 #endif
@@ -725,16 +743,11 @@ static init_fnc_t init_sequence_r[] = {
 #if defined(CONFIG_MICROBLAZE) || defined(CONFIG_M68K)
 	timer_init,		/* initialize timer */
 #endif
-#if defined(CONFIG_LED_STATUS)
 	initr_status_led,
-#endif
+	initr_boot_led_blink,
 	/* PPC has a udelay(20) here dating from 2002. Why? */
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init,
-#endif
-#if defined(CONFIG_SCSI) && !defined(CONFIG_DM_SCSI)
-	INIT_FUNC_WATCHDOG_RESET
-	initr_scsi,
 #endif
 #ifdef CONFIG_BITBANGMII
 	bb_miiphy_init,
@@ -742,7 +755,7 @@ static init_fnc_t init_sequence_r[] = {
 #ifdef CONFIG_PCI_ENDPOINT
 	pci_ep_init,
 #endif
-#ifdef CONFIG_CMD_NET
+#if defined(CONFIG_CMD_NET)
 	INIT_FUNC_WATCHDOG_RESET
 	initr_net,
 #endif
@@ -754,6 +767,7 @@ static init_fnc_t init_sequence_r[] = {
 #if defined(CFG_PRAM)
 	initr_mem,
 #endif
+	initr_boot_led_on,
 	run_main_loop,
 };
 

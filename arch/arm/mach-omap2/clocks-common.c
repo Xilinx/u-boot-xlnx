@@ -12,7 +12,6 @@
  *	Santosh Shilimkar <santosh.shilimkar@ti.com>
  *	Rajendra Nayak <rnayak@ti.com>
  */
-#include <common.h>
 #include <hang.h>
 #include <i2c.h>
 #include <init.h>
@@ -25,7 +24,7 @@
 #include <asm/omap_gpio.h>
 #include <asm/emif.h>
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 /*
  * printing to console doesn't work unless
  * this code is executed from SPL
@@ -896,7 +895,6 @@ void do_disable_clocks(u32 const *clk_domains,
 			    u8 wait_for_disable)
 {
 	u32 i, max = 100;
-
 
 	/* Clock modules that need to be put in SW_DISABLE */
 	for (i = 0; (i < max) && clk_modules_disable[i]; i++)

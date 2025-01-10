@@ -16,6 +16,47 @@
 	compatible = "xlnx,zynqmp-scm-ve-p-a2112-00-revA",
 		     "xlnx,zynqmp-scm-ve-p-a2112-00", "xlnx,zynqmp";
 	model = "ZynqMP SCM VE-P-A2112-00 revA";
+
+	sys-clk-0 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_hsdp>;
+	};
+	sys-clk-1 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_usb3>;
+	};
+	sys-clk-2 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_qsfp>;
+	};
+	sys-clk-3 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_lpddr5_c0>;
+	};
+	sys-clk-4 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_ddr5_udimm>;
+	};
+	sys-clk-5 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_xpl7_ps_refclk>;
+	};
+	sys-clk-6 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_lpddr5_c1>;
+	};
+	sys-clk-7 {
+		status = "okay";
+		compatible = "xlnx,fclk";
+		clocks = <&xp_hdmi_frl_clk>;
+	};
 };
 
 &i2c0 { /* I2C_SCK C30/C31 - MIO 66/67 */
@@ -475,11 +516,11 @@
 	};
 
 	/* i2c_main_4 u150 - ltc4316 - translator from SC (J146 - disabling) */
-	xp_xpl7_ps_refclk: clock-generator@55 { /* u39 - oe J78 - origin addr 0x50 FIXME not marked properly */
+	xp_xpl7_ps_refclk: clock-generator@55 { /* u39 - oe J107 - origin addr 0x50 FIXME not marked properly */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x55>;
-		clock-frequency = <320000000>;
+		clock-frequency = <33333333>;
 		clock-output-names = "ps_refclk";
 	};
 
@@ -490,6 +531,15 @@
 		reg = <0x59>;
 		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c1";
+	};
+
+	/* i2c_main_6 u1927 - ltc4316 - translator from SC */
+	xp_hdmi_frl_clk: clock-generator@5a { /* u1928 - origin addr 0x50 FIXME not marked properly */
+		#clock-cells = <0>;
+		compatible = "renesas,proxo-xp";
+		reg = <0x5a>;
+		clock-frequency = <400000000>;
+		clock-output-names = "hdmi_frl_clk";
 	};
 
 	/* ucd_pmbus u1906 - repeater from SC (J1950 - disabling) */

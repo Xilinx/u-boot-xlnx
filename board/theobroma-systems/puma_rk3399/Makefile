@@ -5,3 +5,6 @@
 #
 
 obj-y	+= puma-rk3399.o
+ifneq ($(CONFIG_XPL_BUILD),y)
+obj-y	+= ../common/common.o
+endif

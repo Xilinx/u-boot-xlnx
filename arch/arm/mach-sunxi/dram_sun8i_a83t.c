@@ -7,7 +7,6 @@
  * (C) Copyright 2015      Vishnu Patekar <vishnupatekar0510@gmail.com>
  * (C) Copyright 2015      Hans de Goede <hdegoede@redhat.com>
  */
-#include <common.h>
 #include <errno.h>
 #include <init.h>
 #include <asm/io.h>
@@ -284,7 +283,6 @@ static int mctl_channel_init(struct dram_para *para)
 	clrsetbits_le32(MX_UPD2, 0xfff << 16, 0x50 << 16);
 	writel(0x0, MCTL_PROTECT);
 	udelay(100);
-
 
 	/* Set ODT */
 	if (IS_ENABLED(CONFIG_DRAM_ODT_EN))

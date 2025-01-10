@@ -13,6 +13,7 @@
 #define __ASM_ME_COMMON_H
 
 #include <linux/compiler.h>
+#include <linux/string.h>
 #include <linux/types.h>
 #include <pci.h>
 
@@ -219,7 +220,6 @@ struct me_fw_version {
 	u16 recovery_build_number;
 	u16 recovery_hot_fix;
 } __packed;
-
 
 #define HECI_EOP_STATUS_SUCCESS       0x0
 #define HECI_EOP_PERFORM_GLOBAL_RESET 0x1

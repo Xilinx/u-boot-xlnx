@@ -2,7 +2,6 @@
 /*
  * Copyright (C) 2019 Intel Corporation <www.intel.com>
  */
-#include <common.h>
 #include <command.h>
 #include <dm.h>
 
@@ -62,7 +61,6 @@ static int l2x0_probe(struct udevice *dev)
 
 	return 0;
 }
-
 
 static const struct udevice_id l2x0_ids[] = {
 	{ .compatible = "arm,pl310-cache" },

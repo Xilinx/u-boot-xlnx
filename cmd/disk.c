@@ -3,7 +3,6 @@
  * (C) Copyright 2000-2011
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
-#include <common.h>
 #include <bootstage.h>
 #include <command.h>
 #include <cpu_func.h>
@@ -40,8 +39,8 @@ int common_diskboot(struct cmd_tbl *cmdtp, const char *intf, int argc,
 
 	bootstage_mark(BOOTSTAGE_ID_IDE_BOOT_DEVICE);
 
-	part = blk_get_device_part_str(intf, (argc == 3) ? argv[2] : NULL,
-					&dev_desc, &info, 1);
+	part = blk_get_device_part_str(intf, cmd_arg2(argc, argv),
+				       &dev_desc, &info, 1);
 	if (part < 0) {
 		bootstage_error(BOOTSTAGE_ID_IDE_TYPE);
 		return 1;

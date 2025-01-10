@@ -6,7 +6,7 @@
  * Authors: Dipen Dudhat <Dipen.Dudhat@freescale.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <malloc.h>
 #include <nand.h>
@@ -1011,7 +1011,6 @@ static int fsl_ifc_chip_init(int devnum, u8 *addr)
 
 		priv->bufnum_mask = 0;
 		break;
-
 
 	default:
 		printf("ifc nand: bad csor %#x: bad page size\n", csor);

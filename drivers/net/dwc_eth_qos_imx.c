@@ -3,7 +3,6 @@
  * Copyright 2022 NXP
  */
 
-#include <common.h>
 #include <clk.h>
 #include <cpu_func.h>
 #include <dm.h>
@@ -48,6 +47,12 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
+	ret = eqos_get_base_addr_dt(dev);
+	if (ret) {
+		dev_dbg(dev, "eqos_get_base_addr_dt failed: %d", ret);
+		goto err_probe;
+	}
+
 	interface = eqos->config->interface(dev);
 
 	if (interface == PHY_INTERFACE_MODE_NA) {
@@ -70,30 +75,24 @@ static int eqos_probe_resources_imx(struct udevice *dev)
 	ret = clk_get_by_name(dev, "ptp_ref", &eqos->clk_ptp_ref);
 	if (ret) {
 		dev_dbg(dev, "clk_get_by_name(ptp_ref) failed: %d", ret);
-		goto err_free_clk_master_bus;
+		goto err_probe;
 	}
 
 	ret = clk_get_by_name(dev, "tx", &eqos->clk_tx);
 	if (ret) {
 		dev_dbg(dev, "clk_get_by_name(tx) failed: %d", ret);
-		goto err_free_clk_ptp_ref;
+		goto err_probe;
 	}
 
 	ret = clk_get_by_name(dev, "pclk", &eqos->clk_ck);
 	if (ret) {
 		dev_dbg(dev, "clk_get_by_name(pclk) failed: %d", ret);
-		goto err_free_clk_tx;
+		goto err_probe;
 	}
 
 	debug("%s: OK\n", __func__);
 	return 0;
 
-err_free_clk_tx:
-	clk_free(&eqos->clk_tx);
-err_free_clk_ptp_ref:
-	clk_free(&eqos->clk_ptp_ref);
-err_free_clk_master_bus:
-	clk_free(&eqos->clk_master_bus);
 err_probe:
 
 	debug("%s: returns %d\n", __func__, ret);
@@ -102,16 +101,7 @@ err_probe:
 
 static int eqos_remove_resources_imx(struct udevice *dev)
 {
-	struct eqos_priv *eqos = dev_get_priv(dev);
-
 	debug("%s(dev=%p):\n", __func__, dev);
-
-	clk_free(&eqos->clk_ck);
-	clk_free(&eqos->clk_tx);
-	clk_free(&eqos->clk_ptp_ref);
-	clk_free(&eqos->clk_master_bus);
-
-	debug("%s: OK\n", __func__);
 	return 0;
 }
 
@@ -181,6 +171,9 @@ static int eqos_set_tx_clk_speed_imx(struct udevice *dev)
 	ulong rate;
 	int ret;
 
+	if (device_is_compatible(dev, "nxp,imx93-dwmac-eqos"))
+		return 0;
+
 	debug("%s(dev=%p):\n", __func__, dev);
 
 	if (eqos->phy->interface == PHY_INTERFACE_MODE_RMII)
@@ -223,6 +216,27 @@ static int eqos_get_enetaddr_imx(struct udevice *dev)
 	return 0;
 }
 
+static void eqos_fix_soc_reset_imx(struct udevice *dev)
+{
+	struct eqos_priv *eqos = dev_get_priv(dev);
+
+	if (IS_ENABLED(CONFIG_IMX93)) {
+		/*
+		 * Workaround for ERR051683 in i.MX93
+		 * The i.MX93 requires speed configuration bits to be set to
+		 * complete the reset procedure in RMII mode.
+		 * See b536f32b5b03 ("net: stmmac: dwmac-imx: use platform
+		 * specific reset for imx93 SoCs") in linux
+		 */
+		if (eqos->config->interface(dev) == PHY_INTERFACE_MODE_RMII) {
+			udelay(200);
+			setbits_le32(&eqos->mac_regs->configuration,
+				     EQOS_MAC_CONFIGURATION_PS |
+				     EQOS_MAC_CONFIGURATION_FES);
+		}
+	}
+}
+
 static struct eqos_ops eqos_imx_ops = {
 	.eqos_inval_desc = eqos_inval_desc_generic,
 	.eqos_flush_desc = eqos_flush_desc_generic,
@@ -239,6 +253,7 @@ static struct eqos_ops eqos_imx_ops = {
 	.eqos_set_tx_clk_speed = eqos_set_tx_clk_speed_imx,
 	.eqos_get_enetaddr = eqos_get_enetaddr_imx,
 	.eqos_get_tick_clk_rate = eqos_get_tick_clk_rate_imx,
+	.eqos_fix_soc_reset = eqos_fix_soc_reset_imx,
 };
 
 struct eqos_config __maybe_unused eqos_imx_config = {

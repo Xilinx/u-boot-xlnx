@@ -76,7 +76,7 @@ class TestEfiCapsuleFirmwareRaw:
             self, u_boot_config, u_boot_console, efi_capsule_data):
         """ Test Case 2
         Update U-Boot and U-Boot environment on SPI Flash but with OsIndications unset
-        No update should happen
+        No update should happen unless CONFIG_EFI_IGNORE_OSINDICATIONS is set
         0x100000-0x150000: U-Boot binary (but dummy)
         0x150000-0x200000: U-Boot environment (but dummy)
         """
@@ -91,16 +91,27 @@ class TestEfiCapsuleFirmwareRaw:
         # reboot
         u_boot_console.restart_uboot()
 
+        ignore_os_indications = u_boot_config.buildconfig.get(
+            'config_efi_ignore_osindications')
+        need_reboot = True if ignore_os_indications else False
+
+        capsule_auth = u_boot_config.buildconfig.get(
+            'config_efi_capsule_authenticate')
+
         capsule_early = u_boot_config.buildconfig.get(
             'config_efi_capsule_on_disk_early')
         with u_boot_console.log.section('Test Case 2-b, after reboot'):
             if not capsule_early:
-                exec_manual_update(u_boot_console, disk_img, capsule_files, False)
+                exec_manual_update(u_boot_console, disk_img, capsule_files, need_reboot)
 
-            check_file_exist(u_boot_console, disk_img, capsule_files)
+            if not ignore_os_indications:
+                check_file_exist(u_boot_console, disk_img, capsule_files)
 
-            verify_content(u_boot_console, '100000', 'u-boot:Old')
-            verify_content(u_boot_console, '150000', 'u-boot-env:Old')
+            expected = 'u-boot:New' if (ignore_os_indications and not capsule_auth) else 'u-boot:Old'
+            verify_content(u_boot_console, '100000', expected)
+
+            expected = 'u-boot-env:New' if (ignore_os_indications and not capsule_auth) else 'u-boot-env:Old'
+            verify_content(u_boot_console, '150000', expected)
 
     def test_efi_capsule_fw3(
             self, u_boot_config, u_boot_console, efi_capsule_data):
@@ -134,10 +145,10 @@ class TestEfiCapsuleFirmwareRaw:
                 'efidebug capsule esrt'])
 
             # ensure that SANDBOX_UBOOT_ENV_IMAGE_GUID is in the ESRT.
-            assert '5A7021F5-FEF2-48B4-AABA-832E777418C0' in ''.join(output)
+            assert '9E339473-C2EB-530A-A69B-0CD6BBBED40E' in ''.join(output)
 
             # ensure that SANDBOX_UBOOT_IMAGE_GUID is in the ESRT.
-            assert '09D7CF52-0720-4710-91D1-08469B7FE9C8' in ''.join(output)
+            assert '985F2937-7C2E-5E9A-8A5E-8E063312964B' in ''.join(output)
 
             check_file_removed(u_boot_console, disk_img, capsule_files)
 
@@ -188,12 +199,12 @@ class TestEfiCapsuleFirmwareRaw:
                 verify_content(u_boot_console, '150000', 'u-boot-env:Old')
             else:
                 # ensure that SANDBOX_UBOOT_IMAGE_GUID is in the ESRT.
-                assert '09D7CF52-0720-4710-91D1-08469B7FE9C8' in ''.join(output)
+                assert '985F2937-7C2E-5E9A-8A5E-8E063312964B' in ''.join(output)
                 assert 'ESRT: fw_version=5' in ''.join(output)
                 assert 'ESRT: lowest_supported_fw_version=3' in ''.join(output)
 
                 # ensure that SANDBOX_UBOOT_ENV_IMAGE_GUID is in the ESRT.
-                assert '5A7021F5-FEF2-48B4-AABA-832E777418C0' in ''.join(output)
+                assert '9E339473-C2EB-530A-A69B-0CD6BBBED40E' in ''.join(output)
                 assert 'ESRT: fw_version=10' in ''.join(output)
                 assert 'ESRT: lowest_supported_fw_version=7' in ''.join(output)
 

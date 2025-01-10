@@ -5,7 +5,6 @@
  * Copyright (C) 2014 - 2015 Xilinx, Inc.
  */
 
-#include <common.h>
 #include <malloc.h>
 #include <asm/io.h>
 #include <linux/delay.h>
@@ -408,7 +407,6 @@ static int arasan_nand_read_page(struct mtd_info *mtd, u8 *buf, u32 size)
 
 		for (i = 0; i < pktsize/4; i++)
 			bufptr[i] = readl(&info->reg->buf_dataport);
-
 
 		bufptr += pktsize/4;
 

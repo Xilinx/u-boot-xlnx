@@ -5,7 +5,6 @@
  * Copyright (c) 2013 Google, Inc
  */
 
-#include <common.h>
 #include <console.h>
 #include <malloc.h>
 #ifdef CONFIG_SANDBOX
@@ -60,9 +59,11 @@ static int readline_check(struct unit_test_state *uts)
 		ut_fail(uts, __FILE__, __LINE__, __func__,
 			"Console record buffer too small - increase CONFIG_CONSOLE_RECORD_OUT_SIZE");
 		return ret;
+	} else if (ret == -ENOENT) {
+		strcpy(uts->actual_str, "<no-more-output>");
 	}
 
-	return 0;
+	return ret;
 }
 
 int ut_check_console_line(struct unit_test_state *uts, const char *fmt, ...)
@@ -80,8 +81,8 @@ int ut_check_console_line(struct unit_test_state *uts, const char *fmt, ...)
 		return -EOVERFLOW;
 	}
 	ret = readline_check(uts);
-	if (ret < 0)
-		return ret;
+	if (ret == -ENOENT)
+		return 1;
 
 	return strcmp(uts->expect_str, uts->actual_str);
 }
@@ -119,6 +120,33 @@ int ut_check_skipline(struct unit_test_state *uts)
 		return ret;
 
 	return 0;
+}
+
+int ut_check_skip_to_linen(struct unit_test_state *uts, const char *fmt, ...)
+{
+	va_list args;
+	int len;
+	int ret;
+
+	va_start(args, fmt);
+	len = vsnprintf(uts->expect_str, sizeof(uts->expect_str), fmt, args);
+	va_end(args);
+	if (len >= sizeof(uts->expect_str)) {
+		ut_fail(uts, __FILE__, __LINE__, __func__,
+			"unit_test_state->expect_str too small");
+		return -EOVERFLOW;
+	}
+	while (1) {
+		if (!console_record_avail())
+			return -ENOENT;
+		ret = readline_check(uts);
+		if (ret < 0)
+			return ret;
+
+		if (!strncmp(uts->expect_str, uts->actual_str,
+			     strlen(uts->expect_str)))
+			return 0;
+	}
 }
 
 int ut_check_skip_to_line(struct unit_test_state *uts, const char *fmt, ...)

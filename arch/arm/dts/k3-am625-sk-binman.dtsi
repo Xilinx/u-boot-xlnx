@@ -137,14 +137,22 @@
 	};
 };
 
+#include "k3-binman-capsule-r5.dtsi"
+
+// Capsule update GUIDs in string form.  See am62x_evm.h
+#define AM62X_SK_TIBOOT3_IMAGE_GUID_STR "abcb83d2-9cb6-4351-b8f1-6494bbe3700a"
+
+&capsule_tiboot3 {
+	efi-capsule {
+		image-guid = AM62X_SK_TIBOOT3_IMAGE_GUID_STR;
+	};
+};
+
 #endif
 
 #ifdef CONFIG_TARGET_AM625_A53_EVM
 
-#define SPL_NODTB "spl/u-boot-spl-nodtb.bin"
-#define SPL_AM625_SK_DTB "spl/dts/k3-am625-sk.dtb"
-
-#define UBOOT_NODTB "u-boot-nodtb.bin"
+#define SPL_AM625_SK_DTB "spl/dts/ti/k3-am625-sk.dtb"
 #define AM625_SK_DTB "u-boot.dtb"
 
 &binman {
@@ -152,81 +160,117 @@
 		filename = "ti-dm.bin";
 		blob-ext {
 			filename = "ti-dm/am62xx/ipc_echo_testb_mcu1_0_release_strip.xer5f";
+			optional;
 		};
 	};
+
+	tifsstub-hs {
+		filename = "tifsstub.bin_hs";
+		ti-secure-rom {
+			content = <&tifsstub_hs_cert>;
+			core = "secure";
+			load = <0x40000>;
+			sw-rev = <CONFIG_K3_X509_SWRV>;
+			keyfile = "custMpk.pem";
+			countersign;
+			tifsstub;
+		};
+		tifsstub_hs_cert: tifsstub-hs-cert.bin {
+			filename = "ti-sysfw/ti-fs-stub-firmware-am62x-hs-cert.bin";
+			type = "blob-ext";
+			optional;
+		};
+		tifsstub_hs_enc: tifsstub-hs-enc.bin {
+			filename = "ti-sysfw/ti-fs-stub-firmware-am62x-hs-enc.bin";
+			type = "blob-ext";
+			optional;
+		};
+	};
+
+	tifsstub-fs {
+		filename = "tifsstub.bin_fs";
+		tifsstub_fs_cert: tifsstub-fs-cert.bin {
+			filename = "ti-sysfw/ti-fs-stub-firmware-am62x-hs-cert.bin";
+			type = "blob-ext";
+			optional;
+		};
+		tifsstub_fs_enc: tifsstub-fs-enc.bin {
+			filename = "ti-sysfw/ti-fs-stub-firmware-am62x-hs-enc.bin";
+			type = "blob-ext";
+			optional;
+		};
+
+	};
+
+	tifsstub-gp {
+		filename = "tifsstub.bin_gp";
+		ti-secure-rom {
+			content = <&tifsstub_gp>;
+			core = "secure";
+			load = <0x60000>;
+			sw-rev = <CONFIG_K3_X509_SWRV>;
+			keyfile = "ti-degenerate-key.pem";
+			tifsstub;
+		};
+		tifsstub_gp: tifsstub-gp.bin {
+			filename = "ti-sysfw/ti-fs-stub-firmware-am62x-gp.bin";
+			type = "blob-ext";
+			optional;
+		};
+	};
+
 	ti-spl {
-		filename = "tispl.bin";
-		pad-byte = <0xff>;
+		insert-template = <&ti_spl_template>;
 
 		fit {
-			description = "Configuration to load ATF and SPL";
-			#address-cells = <1>;
-
 			images {
 
-				atf {
-					description = "ARM Trusted Firmware";
+				tifsstub-hs {
+					description = "TIFSSTUB";
 					type = "firmware";
-					arch = "arm64";
+					arch = "arm32";
 					compression = "none";
-					os = "arm-trusted-firmware";
-					load = <CONFIG_K3_ATF_LOAD_ADDR>;
-					entry = <CONFIG_K3_ATF_LOAD_ADDR>;
-					ti-secure {
-						content = <&atf>;
-						keyfile = "custMpk.pem";
-					};
-					atf: atf-bl31 {
+					os = "tifsstub-hs";
+					load = <0x9dc00000>;
+					entry = <0x9dc00000>;
+					blob-ext {
+						filename = "tifsstub.bin_hs";
 					};
 				};
 
-				tee {
-					description = "OP-TEE";
-					type = "tee";
-					arch = "arm64";
+				tifsstub-fs {
+					description = "TIFSSTUB";
+					type = "firmware";
+					arch = "arm32";
 					compression = "none";
-					os = "tee";
-					load = <0x9e800000>;
-					entry = <0x9e800000>;
-					ti-secure {
-						content = <&tee>;
-						keyfile = "custMpk.pem";
+					os = "tifsstub-fs";
+					load = <0x9dc00000>;
+					entry = <0x9dc00000>;
+					blob-ext {
+						filename = "tifsstub.bin_fs";
 					};
-					tee: tee-os {
+				};
+
+				tifsstub-gp {
+					description = "TIFSSTUB";
+					type = "firmware";
+					arch = "arm32";
+					compression = "none";
+					os = "tifsstub-gp";
+					load = <0x9dc00000>;
+					entry = <0x9dc00000>;
+					blob-ext {
+						filename = "tifsstub.bin_gp";
 					};
 				};
 
 				dm {
-					description = "DM binary";
-					type = "firmware";
-					arch = "arm32";
-					compression = "none";
-					os = "DM";
-					load = <0x89000000>;
-					entry = <0x89000000>;
 					ti-secure {
 						content = <&dm>;
 						keyfile = "custMpk.pem";
 					};
-					dm: blob-ext {
+					dm: ti-dm {
 						filename = "ti-dm.bin";
-					};
-				};
-
-				spl {
-					description = "SPL (64-bit)";
-					type = "standalone";
-					os = "U-Boot";
-					arch = "arm64";
-					compression = "none";
-					load = <CONFIG_SPL_TEXT_BASE>;
-					entry = <CONFIG_SPL_TEXT_BASE>;
-					ti-secure {
-						content = <&u_boot_spl_nodtb>;
-						keyfile = "custMpk.pem";
-					};
-					u_boot_spl_nodtb: blob-ext {
-						filename = SPL_NODTB;
 					};
 				};
 
@@ -253,7 +297,8 @@
 				conf-0 {
 					description = "k3-am625-sk";
 					firmware = "atf";
-					loadables = "tee", "dm", "spl";
+					loadables = "tee", "tifsstub-hs", "tifsstub-fs",
+					"tifsstub-gp", "dm", "spl";
 					fdt = "fdt-0";
 				};
 			};
@@ -263,29 +308,12 @@
 
 &binman {
 	u-boot {
-		filename = "u-boot.img";
-		pad-byte = <0xff>;
+		insert-template = <&u_boot_template>;
 
 		fit {
-			description = "FIT image with multiple configurations";
-
 			images {
 				uboot {
-					description = "U-Boot for AM625 board";
-					type = "firmware";
-					os = "u-boot";
-					arch = "arm";
-					compression = "none";
-					load = <CONFIG_TEXT_BASE>;
-					ti-secure {
-						content = <&u_boot_nodtb>;
-						keyfile = "custMpk.pem";
-					};
-					u_boot_nodtb: u-boot-nodtb {
-					};
-					hash {
-						algo = "crc32";
-					};
+					description = "U-Boot for AM625 Board";
 				};
 
 				fdt-0 {
@@ -323,64 +351,53 @@
 
 &binman {
 	ti-spl_unsigned {
-		filename = "tispl.bin_unsigned";
-		pad-byte = <0xff>;
+		insert-template = <&ti_spl_unsigned_template>;
 
 		fit {
-			description = "Configuration to load ATF and SPL";
-			#address-cells = <1>;
-
 			images {
 
-				atf {
-					description = "ARM Trusted Firmware";
+				tifsstub-hs {
+					description = "tifsstub";
 					type = "firmware";
-					arch = "arm64";
+					arch = "arm32";
 					compression = "none";
-					os = "arm-trusted-firmware";
-					load = <CONFIG_K3_ATF_LOAD_ADDR>;
-					entry = <CONFIG_K3_ATF_LOAD_ADDR>;
-					atf-bl31 {
-						filename = "bl31.bin";
+					os = "tifsstub-hs";
+					load = <0x9dc00000>;
+					entry = <0x9dc00000>;
+					blob-ext {
+						filename = "tifsstub.bin_hs";
 					};
 				};
 
-				tee {
-					description = "OP-TEE";
-					type = "tee";
-					arch = "arm64";
+				tifsstub-fs {
+					description = "tifsstub";
+					type = "firmware";
+					arch = "arm32";
 					compression = "none";
-					os = "tee";
-					load = <0x9e800000>;
-					entry = <0x9e800000>;
-					tee-os {
-						filename = "tee-raw.bin";
+					os = "tifsstub-fs";
+					load = <0x9dc00000>;
+					entry = <0x9dc00000>;
+					blob-ext {
+						filename = "tifsstub.bin_fs";
+					};
+				};
+
+				tifsstub-gp {
+					description = "tifsstub";
+					type = "firmware";
+					arch = "arm32";
+					compression = "none";
+					os = "tifsstub-gp";
+					load = <0x9dc00000>;
+					entry = <0x9dc00000>;
+					blob-ext {
+						filename = "tifsstub.bin_gp";
 					};
 				};
 
 				dm {
-					description = "DM binary";
-					type = "firmware";
-					arch = "arm32";
-					compression = "none";
-					os = "DM";
-					load = <0x89000000>;
-					entry = <0x89000000>;
-					blob-ext {
+					ti-dm {
 						filename = "ti-dm.bin";
-					};
-				};
-
-				spl {
-					description = "SPL (64-bit)";
-					type = "standalone";
-					os = "U-Boot";
-					arch = "arm64";
-					compression = "none";
-					load = <CONFIG_SPL_TEXT_BASE>;
-					entry = <CONFIG_SPL_TEXT_BASE>;
-					blob {
-						filename = "spl/u-boot-spl-nodtb.bin";
 					};
 				};
 
@@ -401,7 +418,8 @@
 				conf-0 {
 					description = "k3-am625-sk";
 					firmware = "atf";
-					loadables = "tee", "dm", "spl";
+					loadables = "tee", "tifsstub-hs", "tifsstub-fs",
+						  "tifsstub-gp", "dm", "spl";
 					fdt = "fdt-0";
 				};
 			};
@@ -411,26 +429,12 @@
 
 &binman {
 	u-boot_unsigned {
-		filename = "u-boot.img_unsigned";
-		pad-byte = <0xff>;
+		insert-template = <&u_boot_unsigned_template>;
 
 		fit {
-			description = "FIT image with multiple configurations";
-
 			images {
 				uboot {
-					description = "U-Boot for AM625 board";
-					type = "firmware";
-					os = "u-boot";
-					arch = "arm";
-					compression = "none";
-					load = <CONFIG_TEXT_BASE>;
-					blob {
-						filename = UBOOT_NODTB;
-					};
-					hash {
-						algo = "crc32";
-					};
+					description = "U-Boot for AM625 Board";
 				};
 
 				fdt-0 {
@@ -460,4 +464,23 @@
 		};
 	};
 };
+
+#include "k3-binman-capsule.dtsi"
+
+// Capsule update GUIDs in string form.  See am62x_evm.h
+#define AM62X_SK_SPL_IMAGE_GUID_STR "aee355fc-bf97-4264-8c82-437255efdc1d"
+#define AM62X_SK_UBOOT_IMAGE_GUID_STR "28ab8c6c-fca8-41d3-8ea1-5f171b7d2929"
+
+&capsule_tispl {
+	efi-capsule {
+		image-guid = AM62X_SK_SPL_IMAGE_GUID_STR;
+	};
+};
+
+&capsule_uboot {
+	efi-capsule {
+		image-guid = AM62X_SK_UBOOT_IMAGE_GUID_STR;
+	};
+};
+
 #endif

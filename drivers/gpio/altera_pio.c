@@ -4,7 +4,6 @@
  * Copyright (C) 2011  Missing Link Electronics
  *                     Joachim Foerster <joachim@missinglinkelectronics.com>
  */
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <malloc.h>
@@ -59,7 +58,6 @@ static int altera_pio_get_value(struct udevice *dev, unsigned pin)
 
 	return !!(readl(&regs->data) & (1 << pin));
 }
-
 
 static int altera_pio_set_value(struct udevice *dev, unsigned pin, int val)
 {

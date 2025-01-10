@@ -3,7 +3,6 @@
  * Copyright (C) 2017 Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <sysreset.h>
 #include <linux/errno.h>
@@ -25,7 +24,7 @@ static int psci_sysreset_request(struct udevice *dev, enum sysreset_t type)
 		psci_sys_poweroff();
 		break;
 	default:
-		return -ENOSYS;
+		return -EPROTONOSUPPORT;
 	}
 
 	return -EINPROGRESS;

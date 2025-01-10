@@ -28,8 +28,8 @@ Some of the available tests are:
 
      - test/image/test-imagetools.sh - multi-file images
      - test/py/tests/test-fit.py     - FIT images
-  - tracing: test/trace/test-trace.sh tests the tracing system (see
-      README.trace)
+  - tracing: test/trace/test-trace.sh tests the tracing system
+    (see :doc:`trace`).
   - verified boot: test/py/tests/test_vboot.py
 
 If you change or enhance any U-Boot subsystem, you should write or expand a
@@ -278,7 +278,7 @@ Whatever sandbox build is used, which tests are present is determined by which
 source files are built. For sandbox_spl, the of_platdata tests are built
 because of the build rule in test/dm/Makefile::
 
-   ifeq ($(CONFIG_SPL_BUILD),y)
+   ifeq ($(CONFIG_XPL_BUILD),y)
    obj-$(CONFIG_SPL_OF_PLATDATA) += of_platdata.o
    else
    ...other tests for non-spl

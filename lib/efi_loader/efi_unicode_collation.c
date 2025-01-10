@@ -5,7 +5,6 @@
  * Copyright (c) 2018 Heinrich Schuchardt <xypron.glpk@gmx.de>
  */
 
-#include <common.h>
 #include <charset.h>
 #include <cp1250.h>
 #include <cp437.h>
@@ -257,7 +256,7 @@ static void EFIAPI efi_fat_to_str(struct efi_unicode_collation_protocol *this,
 	for (i = 0; i < fat_size; ++i) {
 		c = (unsigned char)fat[i];
 		if (c > 0x80)
-			c = codepage[c - 0x80];
+			c = codepage[c - 0x60];
 		string[i] = c;
 		if (!c)
 			break;
@@ -267,7 +266,7 @@ static void EFIAPI efi_fat_to_str(struct efi_unicode_collation_protocol *this,
 }
 
 /**
- * efi_fat_to_str() - convert a utf-16 string to legal characters for a FAT
+ * efi_str_to_fat() - convert a utf-16 string to legal characters for a FAT
  *                    file name in an OEM code page
  *
  * @this:	unicode collation protocol instance

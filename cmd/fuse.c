@@ -8,11 +8,11 @@
  * Martha Marx <mmarx@silicontkx.com>
  */
 
-#include <common.h>
 #include <command.h>
 #include <console.h>
 #include <fuse.h>
 #include <mapmem.h>
+#include <vsprintf.h>
 #include <linux/errno.h>
 
 static int strtou32(const char *str, unsigned int base, u32 *result)
@@ -44,7 +44,7 @@ static int confirm_prog(void)
 static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
 		   char *const argv[])
 {
-	const char *op = argc >= 2 ? argv[1] : NULL;
+	const char *op = cmd_arg1(argc, argv);
 	int confirmed = argc >= 3 && !strcmp(argv[2], "-y");
 	u32 bank, word, cnt, val, cmp;
 	ulong addr;

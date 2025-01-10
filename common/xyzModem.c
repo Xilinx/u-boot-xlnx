@@ -21,12 +21,13 @@
  *
  *==========================================================================
  */
-#include <common.h>
 #include <xyzModem.h>
 #include <stdarg.h>
+#include <time.h>
 #include <u-boot/crc.h>
 #include <watchdog.h>
 #include <env.h>
+#include <vsprintf.h>
 
 /* Assumption - run xyzModem protocol over the console port */
 
@@ -60,7 +61,6 @@ static struct
 #define xyzModem_MAX_RETRIES             20
 #define xyzModem_MAX_RETRIES_WITH_CRC    10
 #define xyzModem_CAN_COUNT                3	/* Wait for 3 CAN before quitting */
-
 
 typedef int cyg_int32;
 static int
@@ -176,7 +176,6 @@ parse_num (char *s, unsigned long *val, char **es, char *delim)
   return true;
 }
 
-
 #if defined(DEBUG) && !CONFIG_IS_ENABLED(USE_TINY_PRINTF)
 /*
  * Note: this debug setup works by storing the strings in a fixed buffer
@@ -281,6 +280,7 @@ xyzModem_get_hdr (void)
 	    {
 	    case SOH:
 	      xyz.total_SOH++;
+	      fallthrough;
 	    case STX:
 	      if (c == STX)
 		xyz.total_STX++;

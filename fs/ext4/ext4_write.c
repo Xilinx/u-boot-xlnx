@@ -20,8 +20,6 @@
  * ext4write : Based on generic ext4 protocol.
  */
 
-
-#include <common.h>
 #include <blk.h>
 #include <log.h>
 #include <malloc.h>
@@ -747,7 +745,6 @@ void ext4fs_deinit(void)
 		fs->inode_bmaps = NULL;
 	}
 
-
 	free(fs->gdtable);
 	fs->gdtable = NULL;
 	/*
@@ -847,6 +844,7 @@ int ext4fs_write(const char *fname, const char *buffer,
 {
 	int ret = 0;
 	struct ext2_inode *file_inode = NULL;
+	struct ext2_inode *existing_file_inode = NULL;
 	unsigned char *inode_buffer = NULL;
 	int parent_inodeno;
 	int inodeno;
@@ -868,6 +866,7 @@ int ext4fs_write(const char *fname, const char *buffer,
 	ALLOC_CACHE_ALIGN_BUFFER(char, filename, 256);
 	bool store_link_in_inode = false;
 	memset(filename, 0x00, 256);
+	int missing_feat;
 
 	if (type != FILETYPE_REG && type != FILETYPE_SYMLINK)
 		return -1;
@@ -881,8 +880,15 @@ int ext4fs_write(const char *fname, const char *buffer,
 		return -1;
 	}
 
-	if (le32_to_cpu(fs->sb->feature_ro_compat) & EXT4_FEATURE_RO_COMPAT_METADATA_CSUM) {
-		printf("Unsupported feature metadata_csum found, not writing.\n");
+	missing_feat = le32_to_cpu(fs->sb->feature_incompat) & ~EXT4_FEATURE_INCOMPAT_SUPP;
+	if (missing_feat) {
+		log_err("Unsupported features found %08x, not writing.\n", missing_feat);
+		return -1;
+	}
+
+	missing_feat = le32_to_cpu(fs->sb->feature_ro_compat) & ~EXT4_FEATURE_RO_COMPAT_SUPP;
+	if (missing_feat) {
+		log_err("Unsupported RO compat features found %08x, not writing.\n", missing_feat);
 		return -1;
 	}
 
@@ -900,6 +906,15 @@ int ext4fs_write(const char *fname, const char *buffer,
 	/* check if the filename is already present in root */
 	existing_file_inodeno = ext4fs_filename_unlink(filename);
 	if (existing_file_inodeno != -1) {
+		existing_file_inode = (struct ext2_inode *)zalloc(fs->inodesz);
+		if (!existing_file_inode)
+			goto fail;
+		ret = ext4fs_iget(existing_file_inodeno, existing_file_inode);
+		if (ret) {
+			free(existing_file_inode);
+			goto fail;
+		}
+
 		ret = ext4fs_delete_file(existing_file_inodeno);
 		fs->first_pass_bbmap = 0;
 		fs->curr_blkno = 0;
@@ -948,9 +963,15 @@ int ext4fs_write(const char *fname, const char *buffer,
 			sizebytes = 0;
 		}
 	} else {
-		file_inode->mode = cpu_to_le16(S_IFREG | S_IRWXU | S_IRGRP |
-					       S_IROTH | S_IXGRP | S_IXOTH);
+		if (existing_file_inode) {
+			file_inode->mode = existing_file_inode->mode;
+		} else {
+			file_inode->mode = cpu_to_le16(S_IFREG | S_IRWXU | S_IRGRP |
+						       S_IROTH | S_IXGRP | S_IXOTH);
+		}
 	}
+	if (existing_file_inode)
+		free(existing_file_inode);
 	/* ToDo: Update correct time */
 	file_inode->mtime = cpu_to_le32(timestamp);
 	file_inode->atime = cpu_to_le32(timestamp);

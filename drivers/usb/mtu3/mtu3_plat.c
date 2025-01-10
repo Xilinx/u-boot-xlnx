@@ -5,7 +5,6 @@
  * Author: Chunfeng Yun <chunfeng.yun@mediatek.com>
  */
 
-#include <common.h>
 #include <dm/lists.h>
 #include <linux/iopoll.h>
 
@@ -224,15 +223,6 @@ static const struct udevice_id ssusb_of_match[] = {
 };
 
 #if CONFIG_IS_ENABLED(DM_USB_GADGET)
-int dm_usb_gadget_handle_interrupts(struct udevice *dev)
-{
-	struct mtu3 *mtu = dev_get_priv(dev);
-
-	mtu3_irq(0, mtu);
-
-	return 0;
-}
-
 static int mtu3_gadget_probe(struct udevice *dev)
 {
 	struct ssusb_mtk *ssusb = dev_to_ssusb(dev->parent);
@@ -251,10 +241,24 @@ static int mtu3_gadget_remove(struct udevice *dev)
 	return 0;
 }
 
+static int mtu3_gadget_handle_interrupts(struct udevice *dev)
+{
+	struct mtu3 *mtu = dev_get_priv(dev);
+
+	mtu3_irq(0, mtu);
+
+	return 0;
+}
+
+static const struct usb_gadget_generic_ops mtu3_gadget_ops = {
+	.handle_interrupts	= mtu3_gadget_handle_interrupts,
+};
+
 U_BOOT_DRIVER(mtu3_peripheral) = {
 	.name = "mtu3-peripheral",
 	.id = UCLASS_USB_GADGET_GENERIC,
 	.of_match = ssusb_of_match,
+	.ops = &mtu3_gadget_ops,
 	.probe = mtu3_gadget_probe,
 	.remove = mtu3_gadget_remove,
 	.priv_auto	= sizeof(struct mtu3),
@@ -262,7 +266,7 @@ U_BOOT_DRIVER(mtu3_peripheral) = {
 #endif
 
 #if defined(CONFIG_SPL_USB_HOST) || \
-	(!defined(CONFIG_SPL_BUILD) && defined(CONFIG_USB_HOST))
+	(!defined(CONFIG_XPL_BUILD) && defined(CONFIG_USB_HOST))
 static int mtu3_host_probe(struct udevice *dev)
 {
 	struct ssusb_mtk *ssusb = dev_to_ssusb(dev->parent);
@@ -330,7 +334,7 @@ static int mtu3_glue_bind(struct udevice *parent)
 #endif
 
 #if defined(CONFIG_SPL_USB_HOST) || \
-	(!defined(CONFIG_SPL_BUILD) && defined(CONFIG_USB_HOST))
+	(!defined(CONFIG_XPL_BUILD) && defined(CONFIG_USB_HOST))
 	case USB_DR_MODE_HOST:
 		dev_dbg(parent, "%s: dr_mode: host\n", __func__);
 		driver = "mtu3-host";

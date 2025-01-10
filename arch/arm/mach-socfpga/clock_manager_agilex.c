@@ -5,7 +5,6 @@
  */
 
 #include <clk.h>
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
@@ -36,8 +35,6 @@ static ulong cm_get_rate_dm(u32 id)
 		return 0;
 
 	rate = clk_get_rate(&clk);
-
-	clk_free(&clk);
 
 	if ((rate == (unsigned long)-ENOSYS) ||
 	    (rate == (unsigned long)-ENXIO) ||

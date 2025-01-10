@@ -42,6 +42,11 @@
 	};
 };
 
+&ttc0 {
+	status = "okay";
+	#pwm-cells = <3>;
+};
+
 &ospi { /* PMC MIO0-10, 12, U43 MT35XU01G */
 	status = "okay";
 	bus-num = <2>;

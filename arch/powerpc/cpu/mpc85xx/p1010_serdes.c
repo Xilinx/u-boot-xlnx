@@ -5,7 +5,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <log.h>
 #include <asm/io.h>
 #include <asm/immap_85xx.h>
@@ -29,7 +28,6 @@ static const u8 serdes2_cfg_tbl[][SRDS2_MAX_LANES] = {
 	[0x02] = {SATA1, SATA2},
 	[0x03] = {PCIE1, PCIE2},
 };
-
 
 int is_serdes_configured(enum srds_prtcl device)
 {

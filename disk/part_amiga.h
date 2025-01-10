@@ -7,7 +7,6 @@
 
 #ifndef _DISK_PART_AMIGA_H
 #define _DISK_PART_AMIGA_H
-#include <common.h>
 
 #if CONFIG_IS_ENABLED(ISO_PARTITION)
 /* Make the buffers bigger if ISO partition support is enabled -- CD-ROMS
@@ -16,7 +15,6 @@
 #else
 #define DEFAULT_SECTOR_SIZE	512
 #endif
-
 
 #define AMIGA_BLOCK_LIMIT 16
 
@@ -102,7 +100,6 @@ struct bootcode_block
     u32   next;
     u32   load_data[123];
 };
-
 
 #define AMIGA_ID_RDISK                  0x5244534B
 #define AMIGA_ID_PART                   0x50415254

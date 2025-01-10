@@ -7,7 +7,6 @@
 /*
  * Boot support
  */
-#include <common.h>
 #include <command.h>
 #include <mapmem.h>
 #include <fat.h>
@@ -15,7 +14,7 @@
 #include <part.h>
 #include <asm/cache.h>
 
-int do_fat_size(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+static int do_fat_size(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	return do_size(cmdtp, flag, argc, argv, FS_TYPE_FAT);
 }
@@ -32,7 +31,6 @@ int do_fat_fsload(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {
 	return do_load(cmdtp, flag, argc, argv, FS_TYPE_FAT);
 }
-
 
 U_BOOT_CMD(
 	fatload,	7,	0,	do_fat_fsload,

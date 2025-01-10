@@ -5,7 +5,6 @@
 
 #define LOG_CATEGORY LOGC_EFI
 
-#include <common.h>
 #include <dm.h>
 #include <efi_loader.h>
 #include <efi_rng.h>
@@ -92,7 +91,7 @@ back:
 }
 
 /**
- * rng_getrng() - get random value
+ * getrng() - get random value
  *
  * This function implement the GetRng() service of the EFI random number
  * generator protocol. See the UEFI spec for details.

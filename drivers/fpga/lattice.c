@@ -10,7 +10,6 @@
  * Copyright 2009 Lattice Semiconductor Corp.
  */
 
-#include <common.h>
 #include <log.h>
 #include <malloc.h>
 #include <fpga.h>
@@ -35,7 +34,6 @@ extern unsigned short g_iHEAPSize;
 extern unsigned short g_usIntelDataIndex;
 extern unsigned short g_usIntelBufferSize;
 extern char *const g_szSupportedVersions[];
-
 
 /*
  * ispVMDelay

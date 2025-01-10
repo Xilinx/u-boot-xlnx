@@ -85,6 +85,20 @@ example, to find boards which enabled CONFIG_SCSI but not CONFIG_BLK::
     3 matches
     pg_wcom_seli8_defconfig highbank_defconfig pg_wcom_expu1_defconfig
 
+It is also possible to search for particular values. For example, this finds all
+boards with an empty string for `CONFIG_DEFAULT_FDT_FILE`::
+
+    ./tools/qconfig.py -f DEFAULT_FDT_FILE=\"\"
+    1092 matches
+    ...
+
+This finds boards which have a value for SYS_MAXARGS other than 64::
+
+    ./tools/qconfig.py -f ~SYS_MAXARGS=64
+    cfg CONFIG_SYS_MAXARGS
+    281 matches
+    ...
+
 
 Finding implied CONFIGs
 -----------------------
@@ -212,7 +226,7 @@ Available options
    Look for moved config options in spl/include/autoconf.mk instead of
    include/autoconf.mk.  This is useful for moving options for SPL build
    because SPL related options (mostly prefixed with CONFIG_SPL\_) are
-   sometimes blocked by CONFIG_SPL_BUILD ifdef conditionals.
+   sometimes blocked by CONFIG_XPL_BUILD ifdef conditionals.
 
  -j, --jobs
    Specify the number of threads to run simultaneously.  If not specified,

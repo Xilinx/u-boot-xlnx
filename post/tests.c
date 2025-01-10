@@ -4,7 +4,8 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
+#include <linux/kernel.h>
 
 #include <post.h>
 
@@ -41,7 +42,6 @@ extern int memory_regions_post_test(int flags);
 extern int sysmon_init_f (void);
 
 extern void sysmon_reloc (void);
-
 
 struct post_test post_list[] =
 {

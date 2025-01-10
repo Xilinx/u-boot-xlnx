@@ -3,14 +3,13 @@
  * (C) Copyright 2015 Google, Inc
  */
 
-#include <common.h>
 #include <hang.h>
 #include <led.h>
 #include <log.h>
 #include <asm/global_data.h>
 #include <dm/ofnode.h>
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 static int setup_led(void)
 {
 #ifdef CONFIG_SPL_LED

@@ -6,13 +6,13 @@
  *	    Igor Grinberg <grinberg@compulab.co.il>
  */
 
-#include <common.h>
-#include <eeprom.h>
 #include <i2c.h>
+#include <vsprintf.h>
 #include <eeprom_layout.h>
 #include <eeprom_field.h>
 #include <asm/setup.h>
 #include <linux/kernel.h>
+#include <linux/string.h>
 #include "eeprom.h"
 
 #define EEPROM_LAYOUT_VER_OFFSET	44
@@ -34,19 +34,15 @@ static int cl_eeprom_layout; /* Implicitly LAYOUT_INVALID */
 
 static int cl_eeprom_read(uint offset, uchar *buf, int len)
 {
+	struct udevice *eeprom;
 	int res;
-	unsigned int current_i2c_bus = i2c_get_bus_num();
 
-	res = i2c_set_bus_num(cl_eeprom_bus);
-	if (res < 0)
+	res = i2c_get_chip_for_busnum(cl_eeprom_bus, CONFIG_SYS_I2C_EEPROM_ADDR,
+				      CONFIG_SYS_I2C_EEPROM_ADDR_LEN, &eeprom);
+	if (res)
 		return res;
 
-	res = i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR, offset,
-			CONFIG_SYS_I2C_EEPROM_ADDR_LEN, buf, len);
-
-	i2c_set_bus_num(current_i2c_bus);
-
-	return res;
+	return dm_i2c_read(eeprom, offset, (uint8_t *)buf, len);
 }
 
 static int cl_eeprom_setup(uint eeprom_bus)

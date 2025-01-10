@@ -4,15 +4,12 @@
  * Copyright (c) 2022 Edgeble AI Technologies Pvt. Ltd.
  */
 
-#include <common.h>
 #include <spl.h>
 #include <asm/armv8/mmu.h>
-#include <asm/io.h>
 #include <asm/arch-rockchip/bootrom.h>
+#include <asm/arch-rockchip/grf_rk3588.h>
 #include <asm/arch-rockchip/hardware.h>
 #include <asm/arch-rockchip/ioc_rk3588.h>
-
-DECLARE_GLOBAL_DATA_PTR;
 
 #define FIREWALL_DDR_BASE		0xfe030000
 #define FW_DDR_MST5_REG			0x54
@@ -27,21 +24,31 @@ DECLARE_GLOBAL_DATA_PTR;
 #define FW_SYSM_MST26_REG		0xa8
 #define FW_SYSM_MST27_REG		0xac
 
-#define PMU1_IOC_BASE			0xfd5f0000
-#define PMU2_IOC_BASE			0xfd5f4000
-
-#define BUS_IOC_BASE			0xfd5f8000
 #define BUS_IOC_GPIO2A_IOMUX_SEL_L	0x40
 #define BUS_IOC_GPIO2B_IOMUX_SEL_L	0x48
 #define BUS_IOC_GPIO2D_IOMUX_SEL_L	0x58
 #define BUS_IOC_GPIO2D_IOMUX_SEL_H	0x5c
 #define BUS_IOC_GPIO3A_IOMUX_SEL_L	0x60
 
+#define SYS_GRF_FORCE_JTAG		BIT(14)
+
+/**
+ * Boot-device identifiers used by the BROM on RK3588 when device is booted
+ * from SPI flash. IOMUX used for SPI flash affect the value used by the BROM
+ * and not the type of SPI flash used.
+ */
+enum {
+	BROM_BOOTSOURCE_FSPI_M0 = 3,
+	BROM_BOOTSOURCE_FSPI_M1 = 4,
+	BROM_BOOTSOURCE_FSPI_M2 = 6,
+};
+
 const char * const boot_devices[BROM_LAST_BOOTSOURCE + 1] = {
 	[BROM_BOOTSOURCE_EMMC] = "/mmc@fe2e0000",
-	[BROM_BOOTSOURCE_SPINOR] = "/spi@fe2b0000/flash@0",
+	[BROM_BOOTSOURCE_FSPI_M0] = "/spi@fe2b0000/flash@0",
+	[BROM_BOOTSOURCE_FSPI_M1] = "/spi@fe2b0000/flash@0",
+	[BROM_BOOTSOURCE_FSPI_M2] = "/spi@fe2b0000/flash@0",
 	[BROM_BOOTSOURCE_SD] = "/mmc@fe2c0000",
-	[BROM_BOOTSOURCE_SPINOR_RK3588] = "/spi@fe2b0000/flash@0",
 };
 
 static struct mm_region rk3588_mem_map[] = {
@@ -104,7 +111,7 @@ void board_debug_uart_init(void)
 		     GPIO0B5_UART2_TX_M0 << GPIO0B5_SHIFT);
 }
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 void rockchip_stimer_init(void)
 {
 	/* If Timer already enabled, don't re-init it */
@@ -123,7 +130,10 @@ void rockchip_stimer_init(void)
 #ifndef CONFIG_TPL_BUILD
 int arch_cpu_init(void)
 {
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
+#ifdef CONFIG_ROCKCHIP_DISABLE_FORCE_JTAG
+	static struct rk3588_sysgrf * const sys_grf = (void *)SYS_GRF_BASE;
+#endif
 	int secure_reg;
 
 	/* Set the SDMMC eMMC crypto_ns FSPI access secure area */
@@ -158,6 +168,11 @@ int arch_cpu_init(void)
 	secure_reg = readl(FIREWALL_SYSMEM_BASE + FW_SYSM_MST27_REG);
 	secure_reg &= 0xffff0000;
 	writel(secure_reg, FIREWALL_SYSMEM_BASE + FW_SYSM_MST27_REG);
+
+#ifdef CONFIG_ROCKCHIP_DISABLE_FORCE_JTAG
+	/* Disable JTAG exposed on SDMMC */
+	rk_clrreg(&sys_grf->soc_con[6], SYS_GRF_FORCE_JTAG);
+#endif
 #endif
 
 	return 0;

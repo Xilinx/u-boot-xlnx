@@ -42,12 +42,7 @@
 # define PARTS_DEFAULT
 #endif
 
-/* Console I/O Buffer Size */
-
 /* Ethernet driver */
-#if defined(CONFIG_ZYNQ_GEM)
-# define PHY_ANEG_TIMEOUT       20000
-#endif
 
 #define ENV_MEM_LAYOUT_SETTINGS \
 	"fdt_addr_r=0x40000000\0" \
@@ -184,11 +179,12 @@
 #ifndef CFG_EXTRA_ENV_SETTINGS
 #define CFG_EXTRA_ENV_SETTINGS \
 	ENV_MEM_LAYOUT_SETTINGS \
+	"usb_pgood_delay=1000\0" \
 	BOOTENV
 #endif
 
 /* SPL can't handle all huge variables - define just DFU */
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_DFU)
+#if defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_DFU)
 #undef CFG_EXTRA_ENV_SETTINGS
 # define CFG_EXTRA_ENV_SETTINGS \
 	"dfu_alt_info_ram=uboot.bin ram 0x8000000 0x1000000;" \
@@ -203,10 +199,6 @@
 # define CFG_SYS_SPI_ARGS_OFFS	0xa0000
 # define CFG_SYS_SPI_ARGS_SIZE	0xa0000
 #endif
-
-/* u-boot is like dtb */
-
-/* ATF is my kernel image */
 
 #ifdef CONFIG_SPL_SYS_MALLOC_SIMPLE
 # error "Disable CONFIG_SPL_SYS_MALLOC_SIMPLE. Full malloc needs to be used"

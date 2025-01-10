@@ -4,7 +4,7 @@
  * Scott McNutt <smcnutt@psyent.com>
  */
 
-#include <common.h>
+#include <bootm.h>
 #include <cpu_func.h>
 #include <env.h>
 #include <image.h>
@@ -16,9 +16,9 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define NIOS_MAGIC 0x534f494e /* enable command line and initrd passing */
 
-int do_bootm_linux(int flag, int argc, char *const argv[],
-		   struct bootm_headers *images)
+int do_bootm_linux(int flag, struct bootm_info *bmi)
 {
+	struct bootm_headers *images = bmi->images;
 	void (*kernel)(int, int, int, char *) = (void *)images->ep;
 	char *commandline = env_get("bootargs");
 	ulong initrd_start = images->rd_start;
@@ -29,8 +29,9 @@ int do_bootm_linux(int flag, int argc, char *const argv[],
 	if (images->ft_len)
 		of_flat_tree = images->ft_addr;
 #endif
-	if (!of_flat_tree && argc > 1)
-		of_flat_tree = (char *)hextoul(argv[1], NULL);
+	/* TODO: Clean this up - the DT should already be set up */
+	if (!of_flat_tree && bmi->argc > 1)
+		of_flat_tree = (char *)hextoul(bmi->argv[1], NULL);
 	if (of_flat_tree)
 		initrd_end = (ulong)of_flat_tree;
 
@@ -62,17 +63,4 @@ int do_bootm_linux(int flag, int argc, char *const argv[],
 	/* does not return */
 
 	return 1;
-}
-
-static ulong get_sp(void)
-{
-	ulong ret;
-
-	asm("mov %0, sp" : "=r"(ret) : );
-	return ret;
-}
-
-void arch_lmb_reserve(struct lmb *lmb)
-{
-	arch_lmb_reserve_generic(lmb, get_sp(), gd->ram_top, 4096);
 }

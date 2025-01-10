@@ -4,7 +4,6 @@
  * Eddie James <eajames@linux.ibm.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <malloc.h>
@@ -35,7 +34,7 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 	ret = clk_enable(&clk);
 	if (ret) {
 		debug("%s: clock enable failed %d\n", __func__, ret);
-		goto free;
+		return ret;
 	}
 
 	host->name = dev->name;
@@ -66,8 +65,6 @@ static int aspeed_sdhci_probe(struct udevice *dev)
 
 err:
 	clk_disable(&clk);
-free:
-	clk_free(&clk);
 	return ret;
 }
 
@@ -95,7 +92,6 @@ U_BOOT_DRIVER(aspeed_sdhci_drv) = {
 	.priv_auto	= sizeof(struct sdhci_host),
 	.plat_auto	= sizeof(struct aspeed_sdhci_plat),
 };
-
 
 static int aspeed_sdc_probe(struct udevice *parent)
 {

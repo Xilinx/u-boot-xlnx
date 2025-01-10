@@ -6,7 +6,6 @@
  *  Maximilian Schwerin <mvs@tigris.de>
  */
 
-#include <common.h>
 #include <command.h>
 #include <env.h>
 #include <env_internal.h>
@@ -18,11 +17,12 @@
 #include <fat.h>
 #include <mmc.h>
 #include <scsi.h>
+#include <virtio.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <linux/stddef.h>
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 /* TODO(sjg@chromium.org): Figure out why this is needed */
 # if !defined(CONFIG_TARGET_AM335X_EVM) || defined(CONFIG_SPL_OS_BOOT)
 #  define LOADENV
@@ -129,10 +129,14 @@ static int env_fat_load(void)
 	if (!strcmp(ifname, "mmc"))
 		mmc_initialize(NULL);
 #endif
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 #if defined(CONFIG_AHCI) || defined(CONFIG_SCSI)
 	if (!strcmp(CONFIG_ENV_FAT_INTERFACE, "scsi"))
 		scsi_scan(true);
+#endif
+#if defined(CONFIG_VIRTIO)
+	if (!strcmp(ifname, "virtio"))
+		virtio_init();
 #endif
 #endif
 	part = blk_get_device_part_str(ifname, dev_and_part,

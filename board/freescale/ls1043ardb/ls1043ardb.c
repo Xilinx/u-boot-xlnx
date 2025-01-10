@@ -4,7 +4,6 @@
  * Copyright 2021-2022 NXP
  */
 
-#include <common.h>
 #include <i2c.h>
 #include <init.h>
 #include <asm/global_data.h>
@@ -133,7 +132,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 
 int checkboard(void)
 {

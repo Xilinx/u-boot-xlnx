@@ -7,7 +7,6 @@
  *	Copyright (C) 2010 Tanguy Bouzeloc <tanguy.bouzeloc@efixo.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <log.h>
@@ -390,8 +389,6 @@ static int bcm63xx_spi_probe(struct udevice *dev)
 	ret = clk_enable(&clk);
 	if (ret < 0)
 		return ret;
-
-	clk_free(&clk);
 
 	/* perform reset */
 	ret = reset_get_by_index(dev, 0, &rst_ctl);

@@ -5,7 +5,6 @@
  * Copyright (C) 2011 The Chromium OS Authors. All rights reserved.
  */
 
-#include <common.h>
 #include <log.h>
 #include <asm/arch/me.h>
 
@@ -127,7 +126,6 @@ static const char *const me_progress_policy_values[] = {
 	[0x0f] = "ME cannot access the chipset descriptor region",
 	[0x10] = "Required VSCC values for flash parts do not match",
 };
-
 
 /**
  * _intel_me_status() - Check Intel Management Engine status

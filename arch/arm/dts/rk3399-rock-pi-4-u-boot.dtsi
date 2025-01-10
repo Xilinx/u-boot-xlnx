@@ -7,8 +7,10 @@
 #include "rk3399-sdram-lpddr4-100.dtsi"
 
 / {
-	chosen {
-		u-boot,spl-boot-order = "same-as-spl", &sdhci, &sdmmc;
+	leds {
+		led-0 {
+			default-state = "on";
+		};
 	};
 };
 

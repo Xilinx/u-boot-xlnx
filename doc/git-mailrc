@@ -22,7 +22,7 @@ alias apritzel       Andre Przywara <andre.przywara@arm.com>
 alias bmeng          Bin Meng <bmeng.cn@gmail.com>
 alias danielschwierzeck Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
 alias dinh           Dinh Nguyen <dinguyen@kernel.org>
-alias ehristev       Eugen Hristev <eugen.hristev@collabora.com>
+alias ehristev       Eugen Hristev <eugen.hristev@linaro.org>
 alias hs             Heiko Schocher <hs@denx.de>
 alias freenix        Peng Fan <peng.fan@nxp.com>
 alias iwamatsu       Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
@@ -66,7 +66,8 @@ alias imx            uboot, sbabic
 alias kirkwood       uboot, stroese
 alias omap           ti
 alias pxa            uboot, marex
-alias rmobile        uboot, iwamatsu
+alias renesas        uboot, marex, iwamatsu
+alias rmobile        uboot, marex, iwamatsu
 alias s3c            samsung
 alias s5pc           samsung
 alias samsung        uboot, prom

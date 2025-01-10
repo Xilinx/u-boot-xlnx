@@ -5,7 +5,6 @@
  * Graeme Russ, graeme.russ@gmail.com.
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <event.h>
 #include <fdtdec.h>
@@ -37,16 +36,6 @@ int arch_cpu_init(void)
 	timestamp_init();
 
 	return 0;
-}
-
-int checkcpu(void)
-{
-	return 0;
-}
-
-int print_cpuinfo(void)
-{
-	return default_print_cpuinfo();
 }
 
 static void board_final_init(void)
@@ -83,7 +72,9 @@ static void board_final_init(void)
 
 static int last_stage_init(void)
 {
-	if (IS_ENABLED(CONFIG_SPL_BUILD))
+	timestamp_add_to_bootstage();
+
+	if (IS_ENABLED(CONFIG_XPL_BUILD))
 		return 0;
 
 	board_final_init();

@@ -7,10 +7,10 @@
  * Author: PengPeng Chen <pengpeng.chen@cortina-access.com>
  */
 
-#include <common.h>
 #include <malloc.h>
 #include <clk.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <errno.h>
 #include <fdtdec.h>
 #include <linux/compat.h>

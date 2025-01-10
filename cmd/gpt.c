@@ -10,7 +10,6 @@
  * author: Piotr Wilczek <p.wilczek@samsung.com>
  */
 
-#include <common.h>
 #include <blk.h>
 #include <env.h>
 #include <log.h>
@@ -20,7 +19,7 @@
 #include <part_efi.h>
 #include <part.h>
 #include <exports.h>
-#include <uuid.h>
+#include <u-boot/uuid.h>
 #include <linux/ctype.h>
 #include <div64.h>
 #include <memalign.h>
@@ -117,6 +116,7 @@ static char *extract_val(const char *str, const char *key)
 		k = strsep(&v, "=");
 		if (!k)
 			break;
+		k += strspn(k, " \t");
 		if  (strcmp(k, key) == 0) {
 			new = strdup(v);
 			break;
@@ -151,6 +151,7 @@ static bool found_key(const char *str, const char *key)
 		k = strsep(&s, ",");
 		if (!k)
 			break;
+		k += strspn(k, " \t");
 		if  (strcmp(k, key) == 0) {
 			result = true;
 			break;
@@ -643,6 +644,10 @@ static int gpt_default(struct blk_desc *blk_dev_desc, const char *str_part)
 	free(str_disk_guid);
 	free(partitions);
 
+	/* initialize partition table */
+	if (blk_enabled())
+		part_init(blk_dev_desc);
+
 	return ret;
 }
 
@@ -679,7 +684,8 @@ static int gpt_verify(struct blk_desc *blk_dev_desc, const char *str_part)
 	free(str_disk_guid);
 	free(partitions);
  out:
-	free(gpt_pte);
+	if (!ret)
+		free(gpt_pte);
 	return ret;
 }
 

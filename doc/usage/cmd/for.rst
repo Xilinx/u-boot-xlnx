@@ -1,8 +1,11 @@
+.. index::
+   single: for (command)
+
 for command
 ===========
 
-Synopis
--------
+Synopsis
+--------
 
 ::
 

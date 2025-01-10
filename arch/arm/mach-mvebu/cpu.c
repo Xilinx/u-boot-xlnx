@@ -3,7 +3,7 @@
  * Copyright (C) 2014-2016 Stefan Roese <sr@denx.de>
  */
 
-#include <common.h>
+#include <config.h>
 #include <ahci.h>
 #include <cpu_func.h>
 #include <init.h>
@@ -36,7 +36,7 @@ static const struct mbus_win windows[] = {
 };
 
 /* SPI0 CS0 Flash of size MBUS_SPI_SIZE is mapped to address MBUS_SPI_BASE */
-#if CONFIG_ENV_SPI_BUS == 0 && CONFIG_ENV_SPI_CS == 0 && \
+#if defined(CONFIG_ENV_IS_IN_SPI_FLASH) && CONFIG_ENV_SPI_BUS == 0 && CONFIG_ENV_SPI_CS == 0 && \
     CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE <= MBUS_SPI_SIZE
 void *env_sf_get_env_addr(void)
 {
@@ -52,6 +52,7 @@ void lowlevel_init(void)
 	 */
 }
 
+#if defined(CONFIG_XPL_BUILD) || !defined(CONFIG_ARMADA_32BIT_SYSCON_SYSRESET)
 void reset_cpu(void)
 {
 	struct mvebu_system_registers *reg =
@@ -62,6 +63,7 @@ void reset_cpu(void)
 	while (1)
 		;
 }
+#endif
 
 u32 get_boot_device(void)
 {
@@ -547,7 +549,7 @@ static void ahci_mvebu_mbus_config(void __iomem *base)
 	int i;
 
 	/* mbus is not initialized in SPL; keep the ROM settings */
-	if (IS_ENABLED(CONFIG_SPL_BUILD))
+	if (IS_ENABLED(CONFIG_XPL_BUILD))
 		return;
 
 	dram = mvebu_mbus_dram_info();
@@ -588,15 +590,6 @@ int board_ahci_enable(void)
 
 	return 0;
 }
-
-#ifdef CONFIG_SCSI_AHCI_PLAT
-void scsi_init(void)
-{
-	printf("MVEBU SATA INIT\n");
-	board_ahci_enable();
-	ahci_init((void __iomem *)MVEBU_SATA0_BASE);
-}
-#endif
 
 #ifdef CONFIG_USB_XHCI_MVEBU
 #define USB3_MAX_WINDOWS        4

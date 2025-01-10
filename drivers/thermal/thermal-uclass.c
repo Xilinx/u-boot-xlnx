@@ -5,7 +5,6 @@
 
 #define LOG_CATEGORY UCLASS_THERMAL
 
-#include <common.h>
 #include <dm.h>
 #include <thermal.h>
 #include <errno.h>
@@ -13,7 +12,6 @@
 #include <malloc.h>
 #include <asm/io.h>
 #include <linux/list.h>
-
 
 int thermal_get_temp(struct udevice *dev, int *temp)
 {

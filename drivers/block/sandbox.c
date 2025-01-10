@@ -3,7 +3,6 @@
  * Copyright (C) 2013 Henrik Nordstrom <henrik@henriknordstrom.net>
  */
 
-#include <common.h>
 #include <blk.h>
 #include <dm.h>
 #include <fdtdec.h>
@@ -26,7 +25,7 @@ static unsigned long host_block_read(struct udevice *dev,
 	struct udevice *host_dev = dev_get_parent(dev);
 	struct host_sb_plat *plat = dev_get_plat(host_dev);
 
-	if (os_lseek(plat->fd, start * desc->blksz, OS_SEEK_SET) == -1) {
+	if (os_lseek(plat->fd, start * desc->blksz, OS_SEEK_SET) < 0) {
 		printf("ERROR: Invalid block %lx\n", start);
 		return -1;
 	}
@@ -45,7 +44,7 @@ static unsigned long host_block_write(struct udevice *dev,
 	struct udevice *host_dev = dev_get_parent(dev);
 	struct host_sb_plat *plat = dev_get_plat(host_dev);
 
-	if (os_lseek(plat->fd, start * desc->blksz, OS_SEEK_SET) == -1) {
+	if (os_lseek(plat->fd, start * desc->blksz, OS_SEEK_SET) < 0) {
 		printf("ERROR: Invalid block %lx\n", start);
 		return -1;
 	}

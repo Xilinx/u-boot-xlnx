@@ -9,7 +9,6 @@
  * This has to be considered in testing.
  */
 
-#include <common.h>
 #include <command.h>
 #include <errno.h>
 #include <test/lib.h>
@@ -42,5 +41,4 @@ static int lib_errno_str(struct unit_test_state *uts)
 
 	return 0;
 }
-
 LIB_TEST(lib_errno_str, 0);

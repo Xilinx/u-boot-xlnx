@@ -12,7 +12,6 @@
  * slb9635), so this driver provides access to locality 0 only.
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <mapmem.h>
@@ -453,7 +452,6 @@ static int tpm_tis_lpc_get_desc(struct udevice *dev, char *buf, int size)
 	return snprintf(buf, size, "1.2 TPM (%s)",
 			chip_name[chip_type]);
 }
-
 
 static const struct tpm_ops tpm_tis_lpc_ops = {
 	.open		= tpm_tis_lpc_open,

@@ -15,8 +15,6 @@
 #if defined(CONFIG_CMD_NET)
 #define CFG_FEC_MXC_PHYADDR          1
 
-#define PHY_ANEG_TIMEOUT 20000
-
 #endif
 
 #define BOOT_TARGET_DEVICES(func) \
@@ -44,7 +42,6 @@
 
 #define CFG_SYS_INIT_RAM_ADDR	0x40000000
 #define CFG_SYS_INIT_RAM_SIZE	0x80000
-
 
 /* Totally 6GB DDR */
 #define CFG_SYS_SDRAM_BASE		0x40000000

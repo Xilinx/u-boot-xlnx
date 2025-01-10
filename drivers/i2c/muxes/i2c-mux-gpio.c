@@ -10,7 +10,6 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <asm-generic/gpio.h>
-#include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <dm/devres.h>
@@ -38,7 +37,6 @@ struct i2c_mux_gpio_priv {
 	int n_gpios;
 	u32 idle;
 };
-
 
 static int i2c_mux_gpio_select(struct udevice *dev, struct udevice *bus,
 			       uint channel)

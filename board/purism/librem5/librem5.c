@@ -4,7 +4,6 @@
  * Copyright 2021 Purism
  */
 
-#include <common.h>
 #include <malloc.h>
 #include <errno.h>
 #include <asm/io.h>
@@ -43,8 +42,8 @@ uint board_mmc_get_env_part(struct mmc *mmc)
 {
 	uint part = EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config);
 
-	if (part == 7)
-		part = 0;
+	if (part == EMMC_BOOT_PART_USER)
+		part = EMMC_HWPART_DEFAULT;
 	return part;
 }
 #endif
@@ -399,21 +398,46 @@ int board_init(void)
 int board_late_init(void)
 {
 	if (IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG)) {
-		u32 rev;
+		/*
+		 * Use the r4 dtb by default as those are the most
+		 * widespread devices.
+		 */
+		u32 rev, dtb_rev = 4;
 		char rev_str[3];
+		char fdt_str[50];
 
 		env_set("board_name", "librem5");
 		if (fuse_read(9, 0, &rev)) {
 			env_set("board_rev", BOARD_REV_ERROR);
 		} else if (rev == 0) {
+			/*
+			 * If the fuses aren't burnt we should use either the
+			 * r2 or r3 DTB. The latter makes more sense as there
+			 * are far more r3 devices out there.
+			 */
+			dtb_rev = 3;
 			env_set("board_rev", BOARD_REV_UNKNOWN);
 		} else if (rev > 0) {
+			if (rev == 1)
+				dtb_rev = 2;
+			else if (rev < dtb_rev)
+				dtb_rev = rev;
+			/*
+			 * FCC-approved devices report '5' as their board
+			 * revision but use the r4 DTB as the PCB's are
+			 * functionally identical.
+			 */
+			else if (rev == 5)
+				dtb_rev = 4;
 			sprintf(rev_str, "%u", rev);
 			env_set("board_rev", rev_str);
 		}
 
 		printf("Board name: %s\n", env_get("board_name"));
 		printf("Board rev:  %s\n", env_get("board_rev"));
+
+		sprintf(fdt_str, "freescale/imx8mq-librem5-r%u.dtb", dtb_rev);
+		env_set("fdtfile", fdt_str);
 	}
 
 	if (is_usb_boot()) {

@@ -10,7 +10,7 @@
 #include <asm/arch/sys_proto.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
-#include <common.h>
+#include <config.h>
 #include <env.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -79,7 +79,7 @@ int dram_init(void)
 	return 0;
 }
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 #include <asm/arch/mx6-ddr.h>
 #include <linux/libfdt.h>
 #include <spl.h>
@@ -210,4 +210,4 @@ void board_init_f(ulong dummy)
 	/* DDR initialization */
 	spl_dram_init();
 }
-#endif /* CONFIG_SPL_BUILD */
+#endif /* CONFIG_XPL_BUILD */

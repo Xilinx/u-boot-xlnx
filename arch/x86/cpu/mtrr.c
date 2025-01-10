@@ -16,7 +16,6 @@
  * since the MTRR registers are sometimes in flux.
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <log.h>
 #include <sort.h>
@@ -88,7 +87,7 @@ void mtrr_read_all(struct mtrr_info *info)
 	}
 }
 
-void mtrr_write_all(struct mtrr_info *info)
+static void mtrr_write_all(struct mtrr_info *info)
 {
 	int reg_count = mtrr_get_var_count();
 	struct mtrr_state state;

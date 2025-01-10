@@ -8,7 +8,6 @@
 
 #ifdef CONFIG_GDSYS_LEGACY_DRIVERS
 
-#include <common.h>
 #include <asm/io.h>
 #include <errno.h>
 #include <i2c.h>
@@ -136,7 +135,6 @@ void dp501_powerdown(u8 addr)
 {
 	dp501_setbits(addr, 0x0a, 0x30); /* power down encoder, standby mode */
 }
-
 
 int dp501_probe(unsigned screen, bool power)
 {

@@ -8,7 +8,6 @@
  * MPC8xx Internal Memory Map Functions
  */
 
-#include <common.h>
 #include <command.h>
 #include <asm/global_data.h>
 
@@ -16,6 +15,7 @@
 #include <asm/cpm_8xx.h>
 #include <asm/iopin_8xx.h>
 #include <asm/io.h>
+#include <asm/ppc.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -205,7 +205,6 @@ static int do_iopset(struct cmd_tbl *cmdtp, int flag, int argc,
 	pin = simple_strtol(argv[2], NULL, 10);
 	if (pin > 31)
 		rcode = 1;
-
 
 	switch (argv[3][0]) {
 	case 'd':

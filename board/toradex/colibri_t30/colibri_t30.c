@@ -4,7 +4,6 @@
  *  Stefan Agner <stefan@agner.ch>
  */
 
-#include <common.h>
 #include <env.h>
 #include <init.h>
 #include <asm/arch/gp_padctrl.h>
@@ -24,13 +23,6 @@ int arch_misc_init(void)
 	if (readl(NV_PA_BASE_SRAM + NVBOOTINFOTABLE_BOOTTYPE) ==
 	    NVBOOTTYPE_RECOVERY)
 		printf("USB recovery mode\n");
-
-	return 0;
-}
-
-int checkboard(void)
-{
-	puts("Model: Toradex Colibri T30 1GB\n");
 
 	return 0;
 }

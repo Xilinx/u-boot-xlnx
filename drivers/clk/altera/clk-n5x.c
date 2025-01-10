@@ -3,7 +3,6 @@
  * Copyright (C) 2020-2022 Intel Corporation <www.intel.com>
  */
 
-#include <common.h>
 #include <asm/arch/clock_manager.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
@@ -53,7 +52,7 @@ static void clk_basic_init(struct udevice *dev,
 	if (!cfg)
 		return;
 
-#if IS_ENABLED(CONFIG_SPL_BUILD)
+#if IS_ENABLED(CONFIG_XPL_BUILD)
 	/* Always force clock manager into boot mode before any configuration */
 	clk_write_ctrl(plat,
 		       CM_REG_READL(plat, CLKMGR_CTRL) | CLKMGR_CTRL_BOOTMODE);

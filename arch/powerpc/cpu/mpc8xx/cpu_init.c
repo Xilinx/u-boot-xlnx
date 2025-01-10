@@ -4,7 +4,6 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
 #include <init.h>
 #include <watchdog.h>
 
@@ -92,6 +91,12 @@ void cpu_init_f(immap_t __iomem *immr)
 		clrsetbits_be32(&immr->im_clkrst.car_plprcr, ~PLPRCR_MFACT_MSK,
 				CONFIG_SYS_PLPRCR);
 #endif
+
+	/* Set SDMA configuration register */
+	if (IS_ENABLED(CONFIG_MPC885))
+		out_be32(&immr->im_siu_conf.sc_sdcr, 0x0040);
+	else
+		out_be32(&immr->im_siu_conf.sc_sdcr, 0x0001);
 
 	/*
 	 * Memory Controller:

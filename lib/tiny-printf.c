@@ -8,7 +8,6 @@
  * Copyright (C) 2004,2008  Kustaa Nyholm
  */
 
-#include <common.h>
 #include <log.h>
 #include <serial.h>
 #include <stdarg.h>
@@ -270,7 +269,8 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 				}
 				break;
 			case 'p':
-				if (CONFIG_IS_ENABLED(NET) || _DEBUG) {
+				if (CONFIG_IS_ENABLED(NET) ||
+				    CONFIG_IS_ENABLED(NET_LWIP) || _DEBUG) {
 					pointer(info, fmt, va_arg(va, void *));
 					/*
 					 * Skip this because it pulls in _ctype which is
@@ -366,16 +366,15 @@ int sprintf(char *buf, const char *fmt, ...)
 {
 	struct printf_info info;
 	va_list va;
-	int ret;
 
 	va_start(va, fmt);
 	info.outstr = buf;
 	info.putc = putc_outstr;
-	ret = _vprintf(&info, fmt, va);
+	_vprintf(&info, fmt, va);
 	va_end(va);
 	*info.outstr = '\0';
 
-	return ret;
+	return info.outstr - buf;
 }
 
 #if CONFIG_IS_ENABLED(LOG)
@@ -383,14 +382,13 @@ int sprintf(char *buf, const char *fmt, ...)
 int vsnprintf(char *buf, size_t size, const char *fmt, va_list va)
 {
 	struct printf_info info;
-	int ret;
 
 	info.outstr = buf;
 	info.putc = putc_outstr;
-	ret = _vprintf(&info, fmt, va);
+	_vprintf(&info, fmt, va);
 	*info.outstr = '\0';
 
-	return ret;
+	return info.outstr - buf;
 }
 #endif
 
@@ -399,16 +397,15 @@ int snprintf(char *buf, size_t size, const char *fmt, ...)
 {
 	struct printf_info info;
 	va_list va;
-	int ret;
 
 	va_start(va, fmt);
 	info.outstr = buf;
 	info.putc = putc_outstr;
-	ret = _vprintf(&info, fmt, va);
+	_vprintf(&info, fmt, va);
 	va_end(va);
 	*info.outstr = '\0';
 
-	return ret;
+	return info.outstr - buf;
 }
 
 void print_grouped_ull(unsigned long long int_val, int digits)

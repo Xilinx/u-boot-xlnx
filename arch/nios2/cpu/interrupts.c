@@ -7,7 +7,6 @@
  * Scott McNutt <smcnutt@psyent.com>
  */
 
-#include <common.h>
 #include <command.h>
 #include <irq_func.h>
 #include <asm/nios2.h>
@@ -99,7 +98,6 @@ void irq_install_handler(int irq, interrupt_handler_t *hdlr, void *arg)
 	if (flag) enable_interrupts();
 }
 
-
 int interrupt_init(void)
 {
 	int i;
@@ -114,7 +112,6 @@ int interrupt_init(void)
 	enable_interrupts();
 	return (0);
 }
-
 
 /*************************************************************************/
 #if defined(CONFIG_CMD_IRQ)

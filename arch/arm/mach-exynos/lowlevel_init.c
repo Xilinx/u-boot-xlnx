@@ -23,7 +23,6 @@
  * MA 02111-1307 USA
  */
 
-#include <common.h>
 #include <config.h>
 #include <debug_uart.h>
 #include <asm/system.h>
@@ -222,8 +221,8 @@ int do_lowlevel_init(void)
 	if (actions & DO_CLOCKS) {
 		system_clock_init();
 #ifdef CONFIG_DEBUG_UART
-#if (defined(CONFIG_SPL_BUILD) && defined(CONFIG_SPL_SERIAL)) || \
-    !defined(CONFIG_SPL_BUILD)
+#if (defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_SERIAL)) || \
+    !defined(CONFIG_XPL_BUILD)
 		exynos_pinmux_config(PERIPH_ID_UART3, PINMUX_FLAG_NONE);
 		debug_uart_init();
 #endif

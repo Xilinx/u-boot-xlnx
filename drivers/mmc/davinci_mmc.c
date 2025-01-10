@@ -6,7 +6,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <mmc.h>
@@ -473,7 +472,6 @@ int davinci_mmc_init(struct bd_info *bis, struct davinci_mmc *host)
 	return 0;
 }
 #else
-
 
 static int davinci_mmc_probe(struct udevice *dev)
 {

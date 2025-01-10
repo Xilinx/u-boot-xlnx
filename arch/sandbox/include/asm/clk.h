@@ -6,7 +6,6 @@
 #ifndef __SANDBOX_CLK_H
 #define __SANDBOX_CLK_H
 
-#include <common.h>
 #include <clk.h>
 #include <dt-structs.h>
 #include <linux/clk-provider.h>
@@ -182,14 +181,6 @@ int sandbox_clk_test_disable(struct udevice *dev, int id);
  * @return:	0 if OK, or a negative error code.
  */
 int sandbox_clk_test_disable_bulk(struct udevice *dev);
-/**
- * sandbox_clk_test_free - Ask the sandbox clock test device to free its
- * clocks.
- *
- * @dev:	The sandbox clock test (client) device.
- * @return:	0 if OK, or a negative error code.
- */
-int sandbox_clk_test_free(struct udevice *dev);
 /**
  * sandbox_clk_test_release_bulk - Ask the sandbox clock test device to release
  * all clocks in it's clock bulk struct.

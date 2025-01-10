@@ -3,7 +3,6 @@
  * Copyright 2018 NXP
  */
 
-#include <common.h>
 #include <errno.h>
 #include <log.h>
 #include <asm/io.h>
@@ -147,6 +146,10 @@ void ddrphy_init_set_dfi_clk(unsigned int drate)
 		break;
 	case 1066:
 		dram_pll_init(MHZ(266));
+		dram_disable_bypass();
+		break;
+	case 933:
+		dram_pll_init(MHZ(233));
 		dram_disable_bypass();
 		break;
 	case 667:

@@ -3,7 +3,6 @@
  * Copyright (C) 2012 Sughosh Ganu <urwithsughosh@gmail.com>
  */
 
-#include <common.h>
 #include <malloc.h>
 #include <asm/io.h>
 #include <clk.h>
@@ -115,7 +114,6 @@ static int ohci_da8xx_probe(struct udevice *dev)
 			err = clk_enable(&priv->clocks[i]);
 			if (err) {
 				dev_err(dev, "failed to enable clock %d\n", i);
-				clk_free(&priv->clocks[i]);
 				goto clk_err;
 			}
 			priv->clock_count++;

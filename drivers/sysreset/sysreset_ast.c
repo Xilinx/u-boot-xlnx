@@ -3,7 +3,6 @@
  * (C) Copyright 2016 Google, Inc
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <log.h>
@@ -34,7 +33,7 @@ static int ast_sysreset_request(struct udevice *dev, enum sysreset_t type)
 		return -EPROTONOSUPPORT;
 	}
 
-#if !defined(CONFIG_SPL_BUILD)
+#if !defined(CONFIG_XPL_BUILD)
 	ret = wdt_expire_now(wdt, reset_mode);
 	if (ret) {
 		debug("Sysreset failed: %d", ret);

@@ -6,7 +6,7 @@
  * Based on CAAM driver in drivers/crypto/caam in Linux
  */
 
-#include <common.h>
+#include <config.h>
 #include <cpu_func.h>
 #include <linux/kernel.h>
 #include <log.h>
@@ -654,7 +654,7 @@ static int rng_init(uint8_t sec_idx, ccsr_sec_t *sec)
 		ret = instantiate_rng(sec_idx, sec, gen_sk);
 		/*
 		 * entropy delay is calculated via self-test method.
-		 * self-test are run across different volatge, temp.
+		 * self-test are run across different voltage, temp.
 		 * if worst case value for ent_dly is identified,
 		 * loop can be skipped for that platform.
 		 */
@@ -672,6 +672,21 @@ static int rng_init(uint8_t sec_idx, ccsr_sec_t *sec)
 
 	return ret;
 }
+
+#if CONFIG_IS_ENABLED(FSL_CAAM_JR_NTZ_ACCESS)
+static void jr_setown_non_trusted(ccsr_sec_t *sec)
+{
+	u32 jrown_ns;
+	int i;
+
+	/* Set ownership of job rings to non-TrustZone mode */
+	for (i = 0; i < ARRAY_SIZE(sec->jrliodnr); i++) {
+		jrown_ns = sec_in32(&sec->jrliodnr[i].ms);
+		jrown_ns |= JROWN_NS | JRMID_NS;
+		sec_out32(&sec->jrliodnr[i].ms, jrown_ns);
+	}
+}
+#endif
 
 int sec_init_idx(uint8_t sec_idx)
 {
@@ -698,7 +713,7 @@ int sec_init_idx(uint8_t sec_idx)
 
 	ccsr_sec_t *sec = caam->sec;
 	uint32_t mcr = sec_in32(&sec->mcfgr);
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_IMX8M)
+#if defined(CONFIG_XPL_BUILD) && defined(CONFIG_IMX8M)
 	uint32_t jrdid_ms = 0;
 #endif
 #ifdef CONFIG_FSL_CORENET
@@ -730,14 +745,14 @@ int sec_init_idx(uint8_t sec_idx)
 	mcr |= (1 << MCFGR_PS_SHIFT);
 #endif
 	sec_out32(&sec->mcfgr, mcr);
-#if defined(CONFIG_SPL_BUILD) && defined(CONFIG_IMX8M)
+#if defined(CONFIG_XPL_BUILD) && defined(CONFIG_IMX8M)
 	jrdid_ms = JRDID_MS_TZ_OWN | JRDID_MS_PRIM_TZ | JRDID_MS_PRIM_DID;
 	sec_out32(&sec->jrliodnr[caam->jrid].ms, jrdid_ms);
 #endif
 	jr_reset();
 
 #ifdef CONFIG_FSL_CORENET
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	/*
 	 * For SPL Build, Set the Liodns in SEC JR0 for
 	 * creating PAMU entries corresponding to these.
@@ -761,6 +776,10 @@ int sec_init_idx(uint8_t sec_idx)
 #if CONFIG_IS_ENABLED(OF_CONTROL)
 init:
 #endif
+#if CONFIG_IS_ENABLED(FSL_CAAM_JR_NTZ_ACCESS)
+	jr_setown_non_trusted(sec);
+#endif
+
 	ret = jr_init(sec_idx, caam);
 	if (ret < 0) {
 		printf("SEC%u:  initialization failed\n", sec_idx);
@@ -768,7 +787,7 @@ init:
 	}
 #if CONFIG_IS_ENABLED(OF_CONTROL)
 	if (ofnode_valid(scu_node)) {
-		if (IS_ENABLED(CONFIG_DM_RNG)) {
+		if (CONFIG_IS_ENABLED(DM_RNG)) {
 			ret = device_bind_driver(NULL, "caam-rng", "caam-rng", NULL);
 			if (ret)
 				printf("Couldn't bind rng driver (%d)\n", ret);
@@ -791,7 +810,7 @@ init:
 			return -1;
 		}
 
-		if (IS_ENABLED(CONFIG_DM_RNG)) {
+		if (CONFIG_IS_ENABLED(DM_RNG)) {
 			ret = device_bind_driver(NULL, "caam-rng", "caam-rng",
 						 NULL);
 			if (ret)

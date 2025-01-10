@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0+
 
-#include <common.h>
 #include <cros_ec.h>
 #include <dm.h>
 #include <pwm.h>
@@ -57,4 +56,4 @@ static int dm_test_cros_ec_pwm(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_cros_ec_pwm, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_cros_ec_pwm, UTF_SCAN_PDATA | UTF_SCAN_FDT);

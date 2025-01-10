@@ -4,7 +4,7 @@
  *
  * This file has been created after exctracting and consolidating
  * the SDRC related content from mem.c and board.c, also created
- * generic init function (mem_init).
+ * generic init function (omap3_mem_init).
  *
  * Copyright (C) 2004-2010
  * Texas Instruments Incorporated - https://www.ti.com/
@@ -21,7 +21,6 @@
  *      Manikandan Pillai <mani.pillai@ti.com>
  */
 
-#include <common.h>
 #include <init.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
@@ -147,7 +146,7 @@ static void do_sdrc_init(u32 cs, u32 early)
 	 * then set cs_cfg to the appropriate value then try and
 	 * setup CS1.
 	 */
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	/* set/modify board-specific timings */
 	get_board_mem_timings(&timings);
 #endif
@@ -167,7 +166,7 @@ static void do_sdrc_init(u32 cs, u32 early)
 
 		writel(ENADLL | DLLPHASE_90, &sdrc_base->dlla_ctrl);
 		sdelay(0x20000);
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 		write_sdrc_timings(CS0, sdrc_actim_base0, &timings);
 		make_cs1_contiguous();
 		write_sdrc_timings(CS1, sdrc_actim_base1, &timings);
@@ -232,11 +231,11 @@ int dram_init_banksize(void)
 }
 
 /*
- * mem_init -
+ * omap3_mem_init -
  *  - Init the sdrc chip,
  *  - Selects CS0 and CS1,
  */
-void mem_init(void)
+void omap3_mem_init(void)
 {
 	/* only init up first bank here */
 	do_sdrc_init(CS0, EARLY_INIT);

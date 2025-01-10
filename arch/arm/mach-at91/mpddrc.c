@@ -7,7 +7,6 @@
  *		      Wenyou Yang <wenyou.yang@atmel.com>
  */
 
-#include <common.h>
 #include <asm/io.h>
 #include <asm/arch/atmel_mpddrc.h>
 #include <asm/arch/at91_common.h>
@@ -35,7 +34,6 @@ static int ddr2_decodtype_is_seq(const unsigned int base, u32 cr)
 
 	return 1;
 }
-
 
 int ddr2_init(const unsigned int base,
 	      const unsigned int ram_address,

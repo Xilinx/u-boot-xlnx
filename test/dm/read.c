@@ -3,7 +3,6 @@
  * Copyright (c) 2020 Nicolas Saenz Julienne <nsaenzjulienne@suse.de>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/device.h>
 #include <dm/ofnode.h>
@@ -46,4 +45,4 @@ static int dm_test_dma_ranges(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_dma_ranges, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_dma_ranges, UTF_SCAN_PDATA | UTF_SCAN_FDT);

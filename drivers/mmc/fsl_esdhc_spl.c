@@ -3,7 +3,7 @@
  * Copyright 2013 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
+#include <config.h>
 #include <cpu_func.h>
 #include <hang.h>
 #include <mmc.h>
@@ -24,7 +24,6 @@ extern uchar mmc_u_boot_offs[];
 #define ESDHC_BOOT_IMAGE_ADDR	0x50
 #define MBRDBR_BOOT_SIG_55	0x1fe
 #define MBRDBR_BOOT_SIG_AA	0x1ff
-
 
 void mmc_spl_load_image(uint32_t offs, unsigned int size, void *vdst)
 {

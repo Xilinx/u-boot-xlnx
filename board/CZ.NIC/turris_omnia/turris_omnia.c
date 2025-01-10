@@ -7,7 +7,7 @@
  *   Marvell/db-88f6820-gp by Stefan Roese <sr@denx.de>
  */
 
-#include <common.h>
+#include <config.h>
 #include <env.h>
 #include <i2c.h>
 #include <init.h>
@@ -18,18 +18,23 @@
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/soc.h>
+#include <asm/unaligned.h>
 #include <dm/uclass.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <fdt_support.h>
 #include <hexdump.h>
+#include <i2c_eeprom.h>
 #include <time.h>
+#include <turris-omnia-mcu-interface.h>
 #include <linux/bitops.h>
+#include <linux/bitrev.h>
 #include <linux/delay.h>
 #include <u-boot/crc.h>
 
 #include "../drivers/ddr/marvell/a38x/ddr3_init.h"
 #include <../serdes/a38x/high_speed_env_spec.h>
 #include "../turris_atsha_otp.h"
+#include "../turris_common.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -41,6 +46,9 @@ DECLARE_GLOBAL_DATA_PTR;
 #define OMNIA_I2C_EEPROM_CHIP_ADDR	0x54
 #define OMNIA_I2C_EEPROM_CHIP_LEN	2
 #define OMNIA_I2C_EEPROM_MAGIC		0x0341a034
+
+#define OMNIA_RESET_TO_LOWER_DDR_SPEED	9
+#define OMNIA_LOWER_DDR_SPEED		"1333H"
 
 #define A385_SYS_RSTOUT_MASK		MVEBU_REGISTER(0x18260)
 #define   A385_SYS_RSTOUT_MASK_WD	BIT(10)
@@ -58,46 +66,6 @@ DECLARE_GLOBAL_DATA_PTR;
 
 #define A385_WD_RSTOUT_UNMASK		MVEBU_REGISTER(0x20704)
 #define   A385_WD_RSTOUT_UNMASK_GLOBAL	BIT(8)
-
-enum mcu_commands {
-	CMD_GET_STATUS_WORD	= 0x01,
-	CMD_GET_RESET		= 0x09,
-	CMD_GET_FW_VERSION_APP	= 0x0a,
-	CMD_WATCHDOG_STATE	= 0x0b,
-	CMD_GET_FW_VERSION_BOOT	= 0x0e,
-
-	/* available if STS_FEATURES_SUPPORTED bit set in status word */
-	CMD_GET_FEATURES	= 0x10,
-
-	/* available if EXT_CMD bit set in features */
-	CMD_EXT_CONTROL		= 0x12,
-};
-
-enum status_word_bits {
-	STS_MCU_TYPE_MASK	= GENMASK(1, 0),
-	STS_MCU_TYPE_STM32	= 0,
-	STS_MCU_TYPE_GD32	= 1,
-	STS_MCU_TYPE_MKL	= 2,
-	STS_MCU_TYPE_UNKN	= 3,
-	STS_FEATURES_SUPPORTED	= BIT(2),
-	CARD_DET_STSBIT		= 0x0010,
-	MSATA_IND_STSBIT	= 0x0020,
-};
-
-/* CMD_GET_FEATURES */
-enum features_e {
-	FEAT_PERIPH_MCU		= BIT(0),
-	FEAT_EXT_CMDS		= BIT(1),
-};
-
-/* CMD_EXT_CONTROL */
-enum ext_ctl_e {
-	EXT_CTL_nRES_LAN	= BIT(1),
-	EXT_CTL_nRES_PHY	= BIT(2),
-	EXT_CTL_nPERST0		= BIT(3),
-	EXT_CTL_nPERST1		= BIT(4),
-	EXT_CTL_nPERST2		= BIT(5),
-};
 
 /*
  * Those values and defines are taken from the Marvell U-Boot version
@@ -172,6 +140,155 @@ static int omnia_mcu_write(u8 cmd, const void *buf, int len)
 	return dm_i2c_write(chip, cmd, buf, len);
 }
 
+static int omnia_mcu_get_sts_and_features(u16 *psts, u32 *pfeatures)
+{
+	u16 sts, feat16;
+	int ret;
+
+	ret = omnia_mcu_read(CMD_GET_STATUS_WORD, &sts, sizeof(sts));
+	if (ret)
+		return ret;
+
+	if (psts)
+		*psts = sts;
+
+	if (!pfeatures)
+		return 0;
+
+	if (sts & STS_FEATURES_SUPPORTED) {
+		/* try read 32-bit features */
+		ret = omnia_mcu_read(CMD_GET_FEATURES, pfeatures,
+				     sizeof(*pfeatures));
+		if (ret) {
+			/* try read 16-bit features */
+			ret = omnia_mcu_read(CMD_GET_FEATURES, &feat16,
+					     sizeof(&feat16));
+			if (ret)
+				return ret;
+
+			*pfeatures = feat16;
+		} else {
+			if (*pfeatures & FEAT_FROM_BIT_16_INVALID)
+				*pfeatures &= GENMASK(15, 0);
+		}
+	} else {
+		*pfeatures = 0;
+	}
+
+	return 0;
+}
+
+static int omnia_mcu_get_sts(u16 *sts)
+{
+	return omnia_mcu_get_sts_and_features(sts, NULL);
+}
+
+static bool omnia_mcu_has_feature(u32 feature)
+{
+	u32 features;
+
+	if (omnia_mcu_get_sts_and_features(NULL, &features))
+		return false;
+
+	return feature & features;
+}
+
+static u32 omnia_mcu_crc32(const void *p, size_t len)
+{
+	u32 val, crc = 0;
+
+	compiletime_assert(!(len % 4), "length has to be a multiple of 4");
+
+	while (len) {
+		val = bitrev32(get_unaligned_le32(p));
+		crc = crc32(crc, (void *)&val, 4);
+		p += 4;
+		len -= 4;
+	}
+
+	return ~bitrev32(crc);
+}
+
+static int omnia_mcu_get_reset(void)
+{
+	u8 reset_status;
+	int ret;
+
+	ret = omnia_mcu_read(CMD_GET_RESET, &reset_status, 1);
+	if (ret) {
+		printf("omnia_mcu_read failed: %i, reset status unknown!\n", ret);
+		return ret;
+	}
+
+	return reset_status;
+}
+
+/* Can only be called after relocation, since it needs cleared BSS */
+static int omnia_mcu_board_info(char *serial, u8 *mac, char *version)
+{
+	static u8 reply[17];
+	static bool cached;
+
+	if (!cached) {
+		u8 csum;
+		int ret;
+
+		ret = omnia_mcu_read(CMD_BOARD_INFO_GET, reply, sizeof(reply));
+		if (ret)
+			return ret;
+
+		if (reply[0] != 16)
+			return -EBADMSG;
+
+		csum = reply[16];
+		reply[16] = 0;
+
+		if ((omnia_mcu_crc32(&reply[1], 16) & 0xff) != csum)
+			return -EBADMSG;
+
+		cached = true;
+	}
+
+	if (serial) {
+		const char *serial_env;
+
+		serial_env = env_get("serial#");
+		if (serial_env && strlen(serial_env) == 16) {
+			strcpy(serial, serial_env);
+		} else {
+			sprintf(serial, "%016llX",
+				get_unaligned_le64(&reply[1]));
+			env_set("serial#", serial);
+		}
+	}
+
+	if (mac)
+		memcpy(mac, &reply[9], ETH_ALEN);
+
+	if (version)
+		sprintf(version, "%u", reply[15]);
+
+	return 0;
+}
+
+static int omnia_mcu_get_board_public_key(char pub_key[static 67])
+{
+	u8 reply[34];
+	int ret;
+
+	ret = omnia_mcu_read(CMD_CRYPTO_GET_PUBLIC_KEY, reply, sizeof(reply));
+	if (ret)
+		return ret;
+
+	if (reply[0] != 33)
+		return -EBADMSG;
+
+	bin2hex(pub_key, &reply[1], 33);
+	pub_key[66] = '\0';
+
+	return 0;
+}
+
 static void enable_a385_watchdog(unsigned int timeout_minutes)
 {
 	struct sar_freq_modes sar_freq;
@@ -219,7 +336,7 @@ static bool disable_mcu_watchdog(void)
 
 	puts("Disabling MCU watchdog... ");
 
-	ret = omnia_mcu_write(CMD_WATCHDOG_STATE, "\x00", 1);
+	ret = omnia_mcu_write(CMD_SET_WATCHDOG_STATE, "\x00", 1);
 	if (ret) {
 		printf("omnia_mcu_write failed: %i\n", ret);
 		return false;
@@ -233,7 +350,7 @@ static bool disable_mcu_watchdog(void)
 static bool omnia_detect_sata(const char *msata_slot)
 {
 	int ret;
-	u16 stsword;
+	u16 sts;
 
 	puts("MiniPCIe/mSATA card detection... ");
 
@@ -249,24 +366,24 @@ static bool omnia_detect_sata(const char *msata_slot)
 		}
 	}
 
-	ret = omnia_mcu_read(CMD_GET_STATUS_WORD, &stsword, sizeof(stsword));
+	ret = omnia_mcu_get_sts(&sts);
 	if (ret) {
 		printf("omnia_mcu_read failed: %i, defaulting to MiniPCIe card\n",
 		       ret);
 		return false;
 	}
 
-	if (!(stsword & CARD_DET_STSBIT)) {
+	if (!(sts & STS_CARD_DET)) {
 		puts("none\n");
 		return false;
 	}
 
-	if (stsword & MSATA_IND_STSBIT)
+	if (sts & STS_MSATA_IND)
 		puts("mSATA\n");
 	else
 		puts("MiniPCIe\n");
 
-	return stsword & MSATA_IND_STSBIT ? true : false;
+	return sts & STS_MSATA_IND;
 }
 
 static bool omnia_detect_wwan_usb3(const char *wwan_slot)
@@ -330,23 +447,60 @@ struct omnia_eeprom {
 	u32 ramsize;
 	char region[4];
 	u32 crc;
+
+	/* second part (only considered if crc2 is not all-ones) */
+	char ddr_speed[5];
+	u8 old_ddr_training;
+	u8 reserved[38];
+	u32 crc2;
 };
+
+static bool is_omnia_eeprom_second_part_valid(const struct omnia_eeprom *oep)
+{
+	return oep->crc2 != 0xffffffff;
+}
+
+static void make_omnia_eeprom_second_part_invalid(struct omnia_eeprom *oep)
+{
+	oep->crc2 = 0xffffffff;
+}
+
+static bool check_eeprom_crc(const void *buf, size_t size, u32 expected,
+			     const char *name)
+{
+	u32 crc;
+
+	crc = crc32(0, buf, size);
+	if (crc != expected) {
+		printf("bad %s EEPROM CRC (stored %08x, computed %08x)\n",
+		       name, expected, crc);
+		return false;
+	}
+
+	return true;
+}
+
+static struct udevice *omnia_get_eeprom(void)
+{
+	return omnia_get_i2c_chip("EEPROM", OMNIA_I2C_EEPROM_CHIP_ADDR,
+				  OMNIA_I2C_EEPROM_CHIP_LEN);
+}
 
 static bool omnia_read_eeprom(struct omnia_eeprom *oep)
 {
-	struct udevice *chip;
-	u32 crc;
+	struct udevice *eeprom = omnia_get_eeprom();
 	int ret;
 
-	chip = omnia_get_i2c_chip("EEPROM", OMNIA_I2C_EEPROM_CHIP_ADDR,
-				  OMNIA_I2C_EEPROM_CHIP_LEN);
-
-	if (!chip)
+	if (!eeprom)
 		return false;
 
-	ret = dm_i2c_read(chip, 0, (void *)oep, sizeof(*oep));
+	if (IS_ENABLED(CONFIG_XPL_BUILD))
+		ret = dm_i2c_read(eeprom, 0, (void *)oep, sizeof(*oep));
+	else
+		ret = i2c_eeprom_read(eeprom, 0, (void *)oep, sizeof(*oep));
+
 	if (ret) {
-		printf("dm_i2c_read failed: %i, cannot read EEPROM\n", ret);
+		printf("cannot read EEPROM: %d\n", ret);
 		return false;
 	}
 
@@ -356,17 +510,48 @@ static bool omnia_read_eeprom(struct omnia_eeprom *oep)
 		return false;
 	}
 
-	crc = crc32(0, (void *)oep, sizeof(*oep) - 4);
-	if (crc != oep->crc) {
-		printf("bad EEPROM CRC (stored %08x, computed %08x)\n",
-		       oep->crc, crc);
+	if (!check_eeprom_crc(oep, offsetof(struct omnia_eeprom, crc), oep->crc,
+			      "first"))
 		return false;
-	}
+
+	if (is_omnia_eeprom_second_part_valid(oep) &&
+	    !check_eeprom_crc(oep, offsetof(struct omnia_eeprom, crc2),
+			      oep->crc2, "second"))
+		make_omnia_eeprom_second_part_invalid(oep);
 
 	return true;
 }
 
-static int omnia_get_ram_size_gb(void)
+static void omnia_eeprom_set_lower_ddr_speed(void)
+{
+	struct udevice *eeprom = omnia_get_eeprom();
+	struct omnia_eeprom oep;
+	int ret;
+
+	if (!eeprom || !omnia_read_eeprom(&oep))
+		return;
+
+	puts("Setting DDR speed to " OMNIA_LOWER_DDR_SPEED " in EEPROM as requested by reset button... ");
+
+	/* check if already set */
+	if (!strncmp(oep.ddr_speed, OMNIA_LOWER_DDR_SPEED, sizeof(oep.ddr_speed)) &&
+	    (oep.old_ddr_training == 0 || oep.old_ddr_training == 0xff)) {
+		puts("was already set\n");
+		return;
+	}
+
+	strncpy(oep.ddr_speed, OMNIA_LOWER_DDR_SPEED, sizeof(oep.ddr_speed));
+	oep.old_ddr_training = 0xff;
+	oep.crc2 = crc32(0, (const void *)&oep, offsetof(struct omnia_eeprom, crc2));
+
+	ret = i2c_eeprom_write(eeprom, 0, (const void *)&oep, sizeof(oep));
+	if (ret)
+		printf("cannot write EEPROM: %d\n", ret);
+	else
+		puts("done\n");
+}
+
+int omnia_get_ram_size_gb(void)
 {
 	static int ram_size;
 	struct omnia_eeprom oep;
@@ -391,34 +576,75 @@ static int omnia_get_ram_size_gb(void)
 	return ram_size;
 }
 
+bool board_use_old_ddr3_training(void)
+{
+	struct omnia_eeprom oep;
+
+	/*
+	 * If lower DDR speed is requested by reset button, we can't use old DDR
+	 * training algorithm.
+	 */
+	if (omnia_mcu_get_reset() == OMNIA_RESET_TO_LOWER_DDR_SPEED)
+		return false;
+
+	if (!omnia_read_eeprom(&oep))
+		return false;
+
+	if (!is_omnia_eeprom_second_part_valid(&oep))
+		return false;
+
+	return oep.old_ddr_training == 1;
+}
+
+static const char *omnia_get_ddr_speed(void)
+{
+	struct omnia_eeprom oep;
+	static char speed[sizeof(oep.ddr_speed) + 1];
+
+	if (!omnia_read_eeprom(&oep))
+		return NULL;
+
+	if (!is_omnia_eeprom_second_part_valid(&oep))
+		return NULL;
+
+	if (!oep.ddr_speed[0] || oep.ddr_speed[0] == 0xff)
+		return NULL;
+
+	memcpy(&speed, &oep.ddr_speed, sizeof(oep.ddr_speed));
+	speed[sizeof(speed) - 1] = '\0';
+
+	return speed;
+}
+
 static const char * const omnia_get_mcu_type(void)
 {
-	static const char * const mcu_types[] = {
-		[STS_MCU_TYPE_STM32] = "STM32",
-		[STS_MCU_TYPE_GD32]  = "GD32",
-		[STS_MCU_TYPE_MKL]   = "MKL",
-		[STS_MCU_TYPE_UNKN]  = "unknown",
-	};
-	static const char * const mcu_types_with_perip_resets[] = {
-		[STS_MCU_TYPE_STM32] = "STM32 (with peripheral resets)",
-		[STS_MCU_TYPE_GD32]  = "GD32 (with peripheral resets)",
-		[STS_MCU_TYPE_MKL]   = "MKL (with peripheral resets)",
-		[STS_MCU_TYPE_UNKN]  = "unknown (with peripheral resets)",
-	};
-	u16 stsword, features;
+	static char result[] = "xxxxxxx (with peripheral resets)";
+	u16 sts;
 	int ret;
 
-	ret = omnia_mcu_read(CMD_GET_STATUS_WORD, &stsword, sizeof(stsword));
+	ret = omnia_mcu_get_sts(&sts);
 	if (ret)
 		return "unknown";
 
-	if (stsword & STS_FEATURES_SUPPORTED) {
-		ret = omnia_mcu_read(CMD_GET_FEATURES, &features, sizeof(features));
-		if (ret == 0 && (features & FEAT_PERIPH_MCU))
-			return mcu_types_with_perip_resets[stsword & STS_MCU_TYPE_MASK];
+	switch (sts & STS_MCU_TYPE_MASK) {
+	case STS_MCU_TYPE_STM32:
+		strcpy(result, "STM32");
+		break;
+	case STS_MCU_TYPE_GD32:
+		strcpy(result, "GD32");
+		break;
+	case STS_MCU_TYPE_MKL:
+		strcpy(result, "MKL");
+		break;
+	default:
+		strcpy(result, "unknown");
+		break;
 	}
 
-	return mcu_types[stsword & STS_MCU_TYPE_MASK];
+	if (omnia_mcu_has_feature(FEAT_PERIPH_MCU))
+		strcat(result, " (with peripheral resets)");
+
+	return result;
 }
 
 static const char * const omnia_get_mcu_version(void)
@@ -504,12 +730,93 @@ static struct mv_ddr_topology_map board_topology_map_2g = {
 	{0}				/* timing parameters */
 };
 
+static const struct omnia_ddr_speed {
+	char name[5];
+	u8 speed_bin;
+	u8 freq;
+} omnia_ddr_speeds[] = {
+	{ "1066F", SPEED_BIN_DDR_1066F, MV_DDR_FREQ_533 },
+	{ "1333H", SPEED_BIN_DDR_1333H, MV_DDR_FREQ_667 },
+	{ "1600K", SPEED_BIN_DDR_1600K, MV_DDR_FREQ_800 },
+};
+
+static const struct omnia_ddr_speed *find_ddr_speed_setting(const char *name)
+{
+	for (int i = 0; i < ARRAY_SIZE(omnia_ddr_speeds); ++i)
+		if (!strncmp(name, omnia_ddr_speeds[i].name, 5))
+			return &omnia_ddr_speeds[i];
+
+	return NULL;
+}
+
+bool omnia_valid_ddr_speed(const char *name)
+{
+	return find_ddr_speed_setting(name) != NULL;
+}
+
+void omnia_print_ddr_speeds(void)
+{
+	for (int i = 0; i < ARRAY_SIZE(omnia_ddr_speeds); ++i)
+		printf("%.5s%s", omnia_ddr_speeds[i].name,
+		       i == ARRAY_SIZE(omnia_ddr_speeds) - 1 ? "\n" : ", ");
+}
+
+static void fixup_speed_in_ddr_topology(struct mv_ddr_topology_map *topology)
+{
+	typeof(topology->interface_params[0]) *params;
+	const struct omnia_ddr_speed *setting;
+	const char *speed;
+	static bool done;
+	int reset_status;
+
+	if (done)
+		return;
+
+	done = true;
+
+	reset_status = omnia_mcu_get_reset();
+	if (reset_status == OMNIA_RESET_TO_LOWER_DDR_SPEED)
+		speed = OMNIA_LOWER_DDR_SPEED;
+	else
+		speed = omnia_get_ddr_speed();
+
+	if (!speed)
+		return;
+
+	setting = find_ddr_speed_setting(speed);
+	if (!setting) {
+		printf("Unsupported value %s for DDR3 speed in EEPROM!\n",
+		       speed);
+		return;
+	}
+
+	params = &topology->interface_params[0];
+
+	/* don't inform if we are not changing the speed from the default one */
+	if (params->speed_bin_index == setting->speed_bin)
+		return;
+
+	if (reset_status == OMNIA_RESET_TO_LOWER_DDR_SPEED)
+		printf("Fixing up DDR3 speed to %s as requested by reset button\n", speed);
+	else
+		printf("Fixing up DDR3 speed (EEPROM defines %s)\n", speed);
+
+	params->speed_bin_index = setting->speed_bin;
+	params->memory_freq = setting->freq;
+}
+
 struct mv_ddr_topology_map *mv_ddr_topology_map_get(void)
 {
+	struct mv_ddr_topology_map *topology;
+
 	if (omnia_get_ram_size_gb() == 2)
-		return &board_topology_map_2g;
+		topology = &board_topology_map_2g;
 	else
-		return &board_topology_map_1g;
+		topology = &board_topology_map_1g;
+
+	fixup_speed_in_ddr_topology(topology);
+
+	return topology;
 }
 
 static int set_regdomain(void)
@@ -529,8 +836,7 @@ static int set_regdomain(void)
 static void handle_reset_button(void)
 {
 	const char * const vars[1] = { "bootcmd_rescue", };
-	int ret;
-	u8 reset_status;
+	int reset_status;
 
 	/*
 	 * Ensure that bootcmd_rescue has always stock value, so that running
@@ -539,12 +845,12 @@ static void handle_reset_button(void)
 	 */
 	env_set_default_vars(1, (char * const *)vars, 0);
 
-	ret = omnia_mcu_read(CMD_GET_RESET, &reset_status, 1);
-	if (ret) {
-		printf("omnia_mcu_read failed: %i, reset status unknown!\n",
-		       ret);
+	reset_status = omnia_mcu_get_reset();
+	if (reset_status < 0)
 		return;
-	}
+
+	if (reset_status == OMNIA_RESET_TO_LOWER_DDR_SPEED)
+		return omnia_eeprom_set_lower_ddr_speed();
 
 	env_set_ulong("omnia_reset", reset_status);
 
@@ -695,9 +1001,6 @@ int board_early_init_f(void)
 
 void spl_board_init(void)
 {
-	u16 val;
-	int ret;
-
 	/*
 	 * If booting from UART, disable MCU watchdog in SPL, since uploading
 	 * U-Boot proper can take too much time and trigger it. Instead enable
@@ -714,12 +1017,8 @@ void spl_board_init(void)
 	 * resets then LAN eth switch is initialized automatically by bootstrap
 	 * pins when A385 is released from the reset.
 	 */
-	ret = omnia_mcu_read(CMD_GET_STATUS_WORD, &val, sizeof(val));
-	if (ret == 0 && (val & STS_FEATURES_SUPPORTED)) {
-		ret = omnia_mcu_read(CMD_GET_FEATURES, &val, sizeof(val));
-		if (ret == 0 && (val & FEAT_PERIPH_MCU))
-			initialize_switch();
-	}
+	if (omnia_mcu_has_feature(FEAT_PERIPH_MCU))
+		initialize_switch();
 }
 
 #if IS_ENABLED(CONFIG_OF_BOARD_FIXUP) || IS_ENABLED(CONFIG_OF_BOARD_SETUP)
@@ -885,11 +1184,21 @@ static int fixup_mcu_gpio_in_pcie_nodes(void *blob)
 	return 0;
 }
 
-static int fixup_mcu_gpio_in_eth_wan_node(void *blob)
+static int get_phy_wan_node_offset(const void *blob)
+{
+	u32 phy_wan_phandle;
+
+	phy_wan_phandle = fdt_getprop_u32_default(blob, "ethernet2", "phy-handle", 0);
+	if (!phy_wan_phandle)
+		return -FDT_ERR_NOTFOUND;
+
+	return fdt_node_offset_by_phandle(blob, phy_wan_phandle);
+}
+
+static int fixup_mcu_gpio_in_phy_wan_node(void *blob)
 {
 	unsigned int mcu_phandle;
-	int eth_wan_node;
-	int ret;
+	int phy_wan_node, ret;
 
 	ret = fdt_increase_size(blob, 64);
 	if (ret < 0) {
@@ -897,21 +1206,36 @@ static int fixup_mcu_gpio_in_eth_wan_node(void *blob)
 		return ret;
 	}
 
-	eth_wan_node = fdt_path_offset(blob, "ethernet2");
-	if (eth_wan_node < 0)
-		return eth_wan_node;
+	phy_wan_node = get_phy_wan_node_offset(blob);
+	if (phy_wan_node < 0)
+		return phy_wan_node;
 
 	mcu_phandle = fdt_create_phandle_by_compatible(blob, "cznic,turris-omnia-mcu");
 	if (!mcu_phandle)
 		return -FDT_ERR_NOPHANDLES;
 
-	/* insert: phy-reset-gpios = <&mcu 2 gpio GPIO_ACTIVE_LOW>; */
-	ret = insert_mcu_gpio_prop(blob, eth_wan_node, "phy-reset-gpios",
-				   mcu_phandle, 2, ilog2(EXT_CTL_nRES_PHY), GPIO_ACTIVE_LOW);
-	if (ret < 0)
-		return ret;
+	/* insert: reset-gpios = <&mcu 2 gpio GPIO_ACTIVE_LOW>; */
+	return insert_mcu_gpio_prop(blob, phy_wan_node, "reset-gpios",
+				    mcu_phandle, 2, ilog2(EXT_CTL_nRES_PHY), GPIO_ACTIVE_LOW);
+}
 
-	return 0;
+static void fixup_atsha_node(void *blob)
+{
+	int node;
+
+	if (!omnia_mcu_has_feature(FEAT_CRYPTO))
+		return;
+
+	node = fdt_node_offset_by_compatible(blob, -1, "atmel,atsha204a");
+	if (node < 0) {
+		printf("Cannot find ATSHA204A node!\n");
+		return;
+	}
+
+	if (fdt_status_disabled(blob, node) < 0)
+		printf("Cannot disable ATSHA204A node!\n");
+	else
+		debug("Disabled ATSHA204A node\n");
 }
 
 #endif
@@ -919,20 +1243,15 @@ static int fixup_mcu_gpio_in_eth_wan_node(void *blob)
 #if IS_ENABLED(CONFIG_OF_BOARD_FIXUP)
 int board_fix_fdt(void *blob)
 {
-	u16 val;
-	int ret;
-
-	ret = omnia_mcu_read(CMD_GET_STATUS_WORD, &val, sizeof(val));
-	if (ret == 0 && (val & STS_FEATURES_SUPPORTED)) {
-		ret = omnia_mcu_read(CMD_GET_FEATURES, &val, sizeof(val));
-		if (ret == 0 && (val & FEAT_PERIPH_MCU)) {
-			fixup_mcu_gpio_in_pcie_nodes(blob);
-			fixup_mcu_gpio_in_eth_wan_node(blob);
-		}
+	if (omnia_mcu_has_feature(FEAT_PERIPH_MCU)) {
+		fixup_mcu_gpio_in_pcie_nodes(blob);
+		fixup_mcu_gpio_in_phy_wan_node(blob);
 	}
 
 	fixup_msata_port_nodes(blob);
 	fixup_wwan_port_nodes(blob);
+
+	fixup_atsha_node(blob);
 
 	return 0;
 }
@@ -962,25 +1281,48 @@ int board_late_init(void)
 	return 0;
 }
 
-int show_board_info(void)
+int checkboard(void)
 {
-	char serial[17];
+	char serial[17], version[4], pub_key[67];
+	bool has_version;
 	int err;
 
-	err = turris_atsha_otp_get_serial_number(serial);
-	printf("Model: Turris Omnia\n");
 	printf("  MCU type: %s\n", omnia_get_mcu_type());
 	printf("  MCU version: %s\n", omnia_get_mcu_version());
 	printf("  RAM size: %i MiB\n", omnia_get_ram_size_gb() * 1024);
+
+	if (omnia_mcu_has_feature(FEAT_BOARD_INFO)) {
+		err = omnia_mcu_board_info(serial, NULL, version);
+		has_version = !err;
+	} else {
+		err = turris_atsha_otp_get_serial_number(serial);
+		has_version = false;
+	}
+
+	printf("  Board version: %s\n", has_version ? version : "unknown");
 	printf("  Serial Number: %s\n", !err ? serial : "unknown");
+
+	if (omnia_mcu_has_feature(FEAT_CRYPTO)) {
+		err = omnia_mcu_get_board_public_key(pub_key);
+		printf("  ECDSA Public Key: %s\n", !err ? pub_key : "unknown");
+	}
 
 	return 0;
 }
 
 int misc_init_r(void)
 {
-	turris_atsha_otp_init_mac_addresses(1);
-	turris_atsha_otp_init_serial_number();
+	if (omnia_mcu_has_feature(FEAT_BOARD_INFO)) {
+		char serial[17];
+		u8 first_mac[6];
+
+		if (!omnia_mcu_board_info(serial, first_mac, NULL))
+			turris_init_mac_addresses(1, first_mac);
+	} else {
+		turris_atsha_otp_init_mac_addresses(1);
+		turris_atsha_otp_init_serial_number();
+	}
+
 	return 0;
 }
 
@@ -1088,19 +1430,21 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	int node;
 
 	/*
-	 * U-Boot's FDT blob contains phy-reset-gpios in ethernet2
-	 * node when MCU controls all peripherals resets.
+	 * U-Boot's FDT blob contains reset-gpios in ethernet2 PHY node when MCU
+	 * controls all peripherals resets.
 	 * Fixup MCU GPIO nodes in PCIe and eth wan nodes in this case.
 	 */
-	node = fdt_path_offset(gd->fdt_blob, "ethernet2");
-	if (node >= 0 && fdt_getprop(gd->fdt_blob, node, "phy-reset-gpios", NULL)) {
+	node = get_phy_wan_node_offset(gd->fdt_blob);
+	if (node >= 0 && fdt_getprop(gd->fdt_blob, node, "reset-gpios", NULL)) {
 		fixup_mcu_gpio_in_pcie_nodes(blob);
-		fixup_mcu_gpio_in_eth_wan_node(blob);
+		fixup_mcu_gpio_in_phy_wan_node(blob);
 	}
 
 	fixup_spi_nor_partitions(blob);
 	fixup_msata_port_nodes(blob);
 	fixup_wwan_port_nodes(blob);
+
+	fixup_atsha_node(blob);
 
 	return 0;
 }

@@ -1,6 +1,5 @@
 # SPDX-License-Identifier:	GPL-2.0+
-#
-# Copyright (C) 2021 Texas Instruments Incorporated - https://www.ti.com/
 
-obj-y += clk-data.o
-obj-y += dev-data.o
+obj-$(CONFIG_OF_SYSTEM_SETUP) += am625_fdt.o
+obj-$(CONFIG_XPL_BUILD) += am625_init.o
+obj-y += boot.o

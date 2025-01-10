@@ -11,7 +11,6 @@
  *         Roger Quadros <rogerq@ti.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <dm/device-internal.h>
@@ -21,6 +20,7 @@
 #include <linux/bug.h>
 #include <linux/kernel.h>
 #include <linux/io.h>
+#include <linux/usb/gadget.h>
 #include <usb.h>
 #include <usb/xhci.h>
 
@@ -149,7 +149,7 @@ static int cdns3_core_init_role(struct cdns3 *cdns)
 
 	dr_mode = best_dr_mode;
 
-#if defined(CONFIG_SPL_USB_HOST) || !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_SPL_USB_HOST) || !defined(CONFIG_XPL_BUILD)
 	if (dr_mode == USB_DR_MODE_OTG || dr_mode == USB_DR_MODE_HOST) {
 		ret = cdns3_host_init(cdns);
 		if (ret) {
@@ -333,20 +333,28 @@ static int cdns3_probe(struct cdns3 *cdns)
 	mutex_init(&cdns->mutex);
 
 	ret = generic_phy_get_by_name(dev, "cdns3,usb2-phy", &cdns->usb2_phy);
-	if (ret)
-		dev_warn(dev, "Unable to get USB2 phy (ret %d)\n", ret);
-
-	ret = generic_phy_init(&cdns->usb2_phy);
-	if (ret)
+	if (!ret) {
+		ret = generic_phy_init(&cdns->usb2_phy);
+		if (ret) {
+			dev_err(dev, "USB2 PHY init failed: %d\n", ret);
+			return ret;
+		}
+	} else if (ret != -ENOENT && ret != -ENODATA) {
+		dev_err(dev, "Couldn't get USB2 PHY:  %d\n", ret);
 		return ret;
+	}
 
 	ret = generic_phy_get_by_name(dev, "cdns3,usb3-phy", &cdns->usb3_phy);
-	if (ret)
-		dev_warn(dev, "Unable to get USB3 phy (ret %d)\n", ret);
-
-	ret = generic_phy_init(&cdns->usb3_phy);
-	if (ret)
+	if (!ret) {
+		ret = generic_phy_init(&cdns->usb3_phy);
+		if (ret) {
+			dev_err(dev, "USB3 PHY init failed: %d\n", ret);
+			return ret;
+		}
+	} else if (ret != -ENOENT && ret != -ENODATA) {
+		dev_err(dev, "Couldn't get USB3 PHY:  %d\n", ret);
 		return ret;
+	}
 
 	ret = generic_phy_power_on(&cdns->usb2_phy);
 	if (ret)
@@ -404,7 +412,7 @@ int cdns3_bind(struct udevice *parent)
 
 	switch (dr_mode) {
 #if defined(CONFIG_SPL_USB_HOST) || \
-	(!defined(CONFIG_SPL_BUILD) && defined(CONFIG_USB_HOST))
+	(!defined(CONFIG_XPL_BUILD) && defined(CONFIG_USB_HOST))
 	case USB_DR_MODE_HOST:
 		debug("%s: dr_mode: HOST\n", __func__);
 		driver = "cdns-usb3-host";
@@ -455,19 +463,42 @@ static int cdns3_gadget_remove(struct udevice *dev)
 	return cdns3_remove(cdns);
 }
 
+static int cdns3_gadget_handle_interrupts(struct udevice *dev)
+{
+	struct cdns3 *cdns = dev_get_priv(dev);
+
+	cdns3_gadget_uboot_handle_interrupt(cdns);
+
+	return 0;
+}
+
+static const struct usb_gadget_generic_ops cdns3_gadget_ops = {
+	.handle_interrupts	= cdns3_gadget_handle_interrupts,
+};
+
 U_BOOT_DRIVER(cdns_usb3_peripheral) = {
 	.name	= "cdns-usb3-peripheral",
 	.id	= UCLASS_USB_GADGET_GENERIC,
 	.of_match = cdns3_ids,
+	.ops	= &cdns3_gadget_ops,
 	.probe = cdns3_gadget_probe,
 	.remove = cdns3_gadget_remove,
 	.priv_auto	= sizeof(struct cdns3_gadget_priv),
 	.flags = DM_FLAG_ALLOC_PRIV_DMA,
 };
+#else
+int dm_usb_gadget_handle_interrupts(struct udevice *dev)
+{
+	struct cdns3 *cdns = dev_get_priv(dev);
+
+	cdns3_gadget_uboot_handle_interrupt(cdns);
+
+	return 0;
+}
 #endif
 
 #if defined(CONFIG_SPL_USB_HOST) || \
-	(!defined(CONFIG_SPL_BUILD) && defined(CONFIG_USB_HOST))
+	(!defined(CONFIG_XPL_BUILD) && defined(CONFIG_USB_HOST))
 static int cdns3_host_probe(struct udevice *dev)
 {
 	struct cdns3_host_priv *priv = dev_get_priv(dev);

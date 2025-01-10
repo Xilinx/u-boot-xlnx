@@ -21,16 +21,13 @@
 #define CFG_MXC_UART_BASE		UART3_BASE_ADDR
 
 /* PHY needs a longer autonegotiation timeout after reset */
-#define PHY_ANEG_TIMEOUT		20000
 #define FEC_QUIRK_ENET_MAC
 
 #define CFG_EXTRA_ENV_SETTINGS						\
-	"altbootcmd=setenv devpart 2 && run bootcmd ; reset\0"		\
+	"altbootcmd=run bootcmd\0"					\
 	"bootlimit=3\0"							\
 	"devtype=mmc\0"							\
 	"devpart=1\0"							\
-	/* Give slow devices beyond USB HUB chance to come up. */	\
-	"usb_pgood_delay=2000\0"					\
 	"dmo_update_env="						\
 		"setenv dmo_update_env true ; saveenv ; saveenv\0"	\
 	"dmo_update_sf_write_data="					\
@@ -40,6 +37,11 @@
 		"run dmo_update_sf_write_data\0"			\
 	"dmo_update_sd_to_sf="						\
 		"load mmc 1:1 ${loadaddr} boot/flash.bin && "		\
-		"run dmo_update_sf_write_data\0"
+		"run dmo_update_sf_write_data\0"			\
+	"stdin=serial\0"						\
+	"stdout=serial\0"						\
+	"stderr=serial\0"						\
+	/* Give slow devices beyond USB HUB chance to come up. */	\
+	"usb_pgood_delay=2000\0"
 
 #endif

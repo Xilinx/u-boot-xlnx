@@ -48,8 +48,8 @@
 ****************************************************************************/
 
 #define __io
-#include <common.h>
 #include <asm/io.h>
+#include <pci.h>
 #include "biosemui.h"
 
 /*------------------------- Global Variables ------------------------------*/
@@ -423,7 +423,6 @@ static u32 BE_accessReg(int regOffset, u32 value, int func)
 	u16 val16;
 	u32 val32;
 
-
 	/* Decode the configuration register values for the register we wish to
 	 * access
 	 */
@@ -436,32 +435,27 @@ static u32 BE_accessReg(int regOffset, u32 value, int func)
 	if ((function == _BE_env.vgaInfo.function) &&
 	    (device == _BE_env.vgaInfo.device) &&
 	    (bus == _BE_env.vgaInfo.bus)) {
+		pci_dev_t bdf = PCI_BDF(bus, device, function);
 		switch (func) {
 		case REG_READ_BYTE:
-			pci_read_config_byte(_BE_env.vgaInfo.pcidev, regOffset,
-					     &val8);
+			pci_read_config_byte(bdf, regOffset, &val8);
 			return val8;
 		case REG_READ_WORD:
-			pci_read_config_word(_BE_env.vgaInfo.pcidev, regOffset,
-					     &val16);
+			pci_read_config_word(bdf, regOffset, &val16);
 			return val16;
 		case REG_READ_DWORD:
-			pci_read_config_dword(_BE_env.vgaInfo.pcidev, regOffset,
-					      &val32);
+			pci_read_config_dword(bdf, regOffset, &val32);
 			return val32;
 		case REG_WRITE_BYTE:
-			pci_write_config_byte(_BE_env.vgaInfo.pcidev, regOffset,
-					      value);
+			pci_write_config_byte(bdf, regOffset, value);
 
 			return 0;
 		case REG_WRITE_WORD:
-			pci_write_config_word(_BE_env.vgaInfo.pcidev, regOffset,
-					      value);
+			pci_write_config_word(bdf, regOffset, value);
 
 			return 0;
 		case REG_WRITE_DWORD:
-			pci_write_config_dword(_BE_env.vgaInfo.pcidev,
-					       regOffset, value);
+			pci_write_config_dword(bdf, regOffset, value);
 
 			return 0;
 		}

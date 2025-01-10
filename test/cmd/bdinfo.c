@@ -5,7 +5,7 @@
  * Copyright 2023 Marek Vasut <marek.vasut+renesas@mailbox.org>
  */
 
-#include <common.h>
+#include <alist.h>
 #include <console.h>
 #include <mapmem.h>
 #include <asm/global_data.h>
@@ -100,46 +100,47 @@ static int test_video_info(struct unit_test_state *uts)
 }
 
 static int lmb_test_dump_region(struct unit_test_state *uts,
-				struct lmb_region *rgn, char *name)
+				struct alist *lmb_rgn_lst, char *name)
 {
+	struct lmb_region *rgn = lmb_rgn_lst->data;
 	unsigned long long base, size, end;
 	enum lmb_flags flags;
 	int i;
 
-	ut_assert_nextline(" %s.cnt = 0x%lx / max = 0x%lx", name, rgn->cnt, rgn->max);
+	ut_assert_nextline(" %s.count = %#x", name, lmb_rgn_lst->count);
 
-	for (i = 0; i < rgn->cnt; i++) {
-		base = rgn->region[i].base;
-		size = rgn->region[i].size;
+	for (i = 0; i < lmb_rgn_lst->count; i++) {
+		base = rgn[i].base;
+		size = rgn[i].size;
 		end = base + size - 1;
-		flags = rgn->region[i].flags;
+		flags = rgn[i].flags;
 
-		ut_assert_nextline(" %s[%d]\t[0x%llx-0x%llx], 0x%08llx bytes flags: %x",
-				   name, i, base, end, size, flags);
+		if (!IS_ENABLED(CONFIG_SANDBOX) && i == 3) {
+			ut_assert_nextlinen(" %s[%d]\t[", name, i);
+			continue;
+		}
+		ut_assert_nextlinen(" %s[%d]\t[%#llx-%#llx], %#llx bytes, flags: ",
+				    name, i, base, end, size);
 	}
 
 	return 0;
 }
 
-static int lmb_test_dump_all(struct unit_test_state *uts, struct lmb *lmb)
+static int lmb_test_dump_all(struct unit_test_state *uts)
 {
+	struct lmb *lmb = lmb_get();
+
 	ut_assert_nextline("lmb_dump_all:");
-	lmb_test_dump_region(uts, &lmb->memory, "memory");
-	lmb_test_dump_region(uts, &lmb->reserved, "reserved");
+	ut_assertok(lmb_test_dump_region(uts, &lmb->free_mem, "memory"));
+	ut_assertok(lmb_test_dump_region(uts, &lmb->used_mem, "reserved"));
 
 	return 0;
 }
 
-static int bdinfo_test_move(struct unit_test_state *uts)
+static int bdinfo_check_mem(struct unit_test_state *uts)
 {
 	struct bd_info *bd = gd->bd;
 	int i;
-
-	/* Test moving the working BDINFO to a new location */
-	ut_assertok(console_record_reset_enable());
-	ut_assertok(run_commandf("bdinfo"));
-
-	ut_assertok(test_num_l(uts, "boot_params", 0));
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; ++i) {
 		if (bd->bi_dram[i].size) {
@@ -150,6 +151,15 @@ static int bdinfo_test_move(struct unit_test_state *uts)
 						bd->bi_dram[i].size));
 		}
 	}
+
+	return 0;
+}
+
+static int bdinfo_test_all(struct unit_test_state *uts)
+{
+	ut_assertok(test_num_l(uts, "boot_params", 0));
+
+	ut_assertok(bdinfo_check_mem(uts));
 
 	/* CONFIG_SYS_HAS_SRAM testing not supported */
 	ut_assertok(test_num_l(uts, "flashstart", 0));
@@ -171,12 +181,9 @@ static int bdinfo_test_move(struct unit_test_state *uts)
 	ut_assert(map_to_sysmem(gd->fdt_blob) == env_get_hex("fdtcontroladdr", 0x1234));
 	ut_assertok(test_num_l(uts, "fdt_blob",
 			       (ulong)map_to_sysmem(gd->fdt_blob)));
-	ut_assertok(test_num_l(uts, "new_fdt",
-			       (ulong)map_to_sysmem(gd->new_fdt)));
-	ut_assertok(test_num_l(uts, "fdt_size", (ulong)gd->fdt_size));
 
 	if (IS_ENABLED(CONFIG_VIDEO))
-		test_video_info(uts);
+		ut_assertok(test_video_info(uts));
 
 	/* The gd->multi_dtb_fit may not be available, hence, #if below. */
 #if CONFIG_IS_ENABLED(MULTI_DTB_FIT)
@@ -184,10 +191,7 @@ static int bdinfo_test_move(struct unit_test_state *uts)
 #endif
 
 	if (IS_ENABLED(CONFIG_LMB) && gd->fdt_blob) {
-		struct lmb lmb;
-
-		lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
-		lmb_test_dump_all(uts, &lmb);
+		ut_assertok(lmb_test_dump_all(uts));
 		if (IS_ENABLED(CONFIG_OF_REAL))
 			ut_assert_nextline("devicetree  = %s", fdtdec_get_srcname());
 	}
@@ -212,12 +216,72 @@ static int bdinfo_test_move(struct unit_test_state *uts)
 		ut_assertok(test_num_l(uts, "malloc base", gd_malloc_start()));
 	}
 
-	ut_assertok(ut_check_console_end(uts));
+	if (IS_ENABLED(CONFIG_X86))
+		ut_check_skip_to_linen(uts, " high end   =");
 
 	return 0;
 }
 
-BDINFO_TEST(bdinfo_test_move, UT_TESTF_CONSOLE_REC);
+static int bdinfo_test_full(struct unit_test_state *uts)
+{
+	/* Test BDINFO full print */
+	ut_assertok(run_commandf("bdinfo"));
+	ut_assertok(bdinfo_test_all(uts));
+	ut_assertok(run_commandf("bdinfo -a"));
+	ut_assertok(bdinfo_test_all(uts));
+	ut_assert_console_end();
+
+	return 0;
+}
+BDINFO_TEST(bdinfo_test_full, UTF_CONSOLE);
+
+static int bdinfo_test_help(struct unit_test_state *uts)
+{
+	/* Test BDINFO unknown option help text print */
+	if (!CONFIG_IS_ENABLED(GETOPT)) {
+		ut_asserteq(0, run_commandf("bdinfo -h"));
+		ut_assertok(bdinfo_test_all(uts));
+	} else {
+		ut_asserteq(1, run_commandf("bdinfo -h"));
+		ut_assert_nextlinen("bdinfo: invalid option -- h");
+		ut_assert_nextlinen("bdinfo - print Board Info structure");
+		ut_assert_nextline_empty();
+		ut_assert_nextlinen("Usage:");
+		ut_assert_nextlinen("bdinfo");
+	}
+	ut_assert_console_end();
+
+	return 0;
+}
+BDINFO_TEST(bdinfo_test_help, UTF_CONSOLE);
+
+static int bdinfo_test_memory(struct unit_test_state *uts)
+{
+	/* Test BDINFO memory layout only print */
+	ut_assertok(run_commandf("bdinfo -m"));
+	if (!CONFIG_IS_ENABLED(GETOPT))
+		ut_assertok(bdinfo_test_all(uts));
+	else
+		ut_assertok(bdinfo_check_mem(uts));
+	ut_assert_console_end();
+
+	return 0;
+}
+BDINFO_TEST(bdinfo_test_memory, UTF_CONSOLE);
+
+static int bdinfo_test_eth(struct unit_test_state *uts)
+{
+	/* Test BDINFO ethernet settings only print */
+	ut_assertok(run_commandf("bdinfo -e"));
+	if (!CONFIG_IS_ENABLED(GETOPT))
+		ut_assertok(bdinfo_test_all(uts));
+	else if (IS_ENABLED(CONFIG_CMD_NET))
+		ut_assertok(test_eth(uts));
+	ut_assert_console_end();
+
+	return 0;
+}
+BDINFO_TEST(bdinfo_test_eth, UTF_CONSOLE);
 
 int do_ut_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {

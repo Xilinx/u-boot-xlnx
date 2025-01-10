@@ -11,9 +11,9 @@
  * #defines from the assembly-language output.
  */
 
-#include <common.h>
 #include <asm-offsets.h>
 #include <asm/global_data.h>
+#include <asm/u-boot.h>
 
 #include <linux/kbuild.h>
 
@@ -44,7 +44,9 @@ int main(void)
 
 	DEFINE(GD_NEW_GD, offsetof(struct global_data, new_gd));
 
+#if CONFIG_IS_ENABLED(ENV_SUPPORT)
 	DEFINE(GD_ENV_ADDR, offsetof(struct global_data, env_addr));
+#endif
 
 	return 0;
 }

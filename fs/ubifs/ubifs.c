@@ -11,7 +11,6 @@
  *          Adrian Hunter
  */
 
-#include <common.h>
 #include <env.h>
 #include <gzip.h>
 #include <log.h>
@@ -27,6 +26,11 @@
 #include <linux/err.h>
 #include <linux/lzo.h>
 
+#if IS_ENABLED(CONFIG_ZSTD)
+#include <linux/zstd.h>
+#include <abuf.h>
+#endif
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /* compress.c */
@@ -41,6 +45,25 @@ static int gzip_decompress(const unsigned char *in, size_t in_len,
 	return zunzip(out, *out_len, (unsigned char *)in,
 		      (unsigned long *)out_len, 0, 0);
 }
+
+#if IS_ENABLED(CONFIG_ZSTD)
+static int zstd_decompress_wrapper(const unsigned char *in, size_t in_len,
+				   unsigned char *out, size_t *out_len)
+{
+	struct abuf abuf_in, abuf_out;
+	int ret;
+
+	abuf_init_set(&abuf_in, (void *)in, in_len);
+	abuf_init_set(&abuf_out, (void *)out, *out_len);
+
+	ret = zstd_decompress(&abuf_in, &abuf_out);
+	if (ret < 0)
+		return ret;
+
+	*out_len = ret;
+	return 0;
+}
+#endif
 
 /* Fake description object for the "none" compressor */
 static struct ubifs_compressor none_compr = {
@@ -71,9 +94,21 @@ static struct ubifs_compressor zlib_compr = {
 	.decompress = gzip_decompress,
 };
 
-/* All UBIFS compressors */
-struct ubifs_compressor *ubifs_compressors[UBIFS_COMPR_TYPES_CNT];
+#if IS_ENABLED(CONFIG_ZSTD)
+static struct ubifs_compressor zstd_compr = {
+	.compr_type = UBIFS_COMPR_ZSTD,
+#ifndef __UBOOT__
+	.comp_mutex = &zstd_enc_mutex,
+	.decomp_mutex = &zstd_dec_mutex,
+#endif
+	.name = "zstd",
+	.capi_name = "zstd",
+	.decompress = zstd_decompress_wrapper,
+};
+#endif
 
+/* All UBIFS compressors */
+struct ubifs_compressor *ubifs_compressors[UBIFS_COMPR_TYPES_CNT] = {NULL};
 
 #ifdef __UBOOT__
 
@@ -166,8 +201,14 @@ int ubifs_decompress(const struct ubifs_info *c, const void *in_buf,
 
 	compr = ubifs_compressors[compr_type];
 
+	if (unlikely(!compr)) {
+		ubifs_err(c, "compression type %d is not compiled in", compr_type);
+		return -EINVAL;
+	}
+
 	if (unlikely(!compr->capi_name)) {
-		ubifs_err(c, "%s compression is not compiled in", compr->name);
+		ubifs_err(c, "%s compression is not compiled in",
+			  compr->name ? compr->name : "unknown");
 		return -EINVAL;
 	}
 
@@ -232,6 +273,12 @@ int __init ubifs_compressors_init(void)
 	if (err)
 		return err;
 
+#if IS_ENABLED(CONFIG_ZSTD)
+	err = compr_init(&zstd_compr);
+	if (err)
+		return err;
+#endif
+
 	err = compr_init(&none_compr);
 	if (err)
 		return err;
@@ -272,9 +319,7 @@ static int filldir(struct ubifs_info *c, const char *name, int namlen,
 	}
 	ctime_r((time_t *)&inode->i_mtime, filetime);
 	printf("%9lld  %24.24s  ", inode->i_size, filetime);
-#ifndef __UBOOT__
 	ubifs_iput(inode);
-#endif
 
 	printf("%s\n", name);
 
@@ -510,6 +555,7 @@ static unsigned long ubifs_findfile(struct super_block *sb, char *filename)
 
 			/* We have some sort of symlink recursion, bail out */
 			if (symlink_count++ > 8) {
+				ubifs_iput(inode);
 				printf("Symlink recursion, aborting\n");
 				return 0;
 			}
@@ -521,6 +567,7 @@ static unsigned long ubifs_findfile(struct super_block *sb, char *filename)
 				 * the leading slash */
 				next = name = link_name + 1;
 				root_inum = 1;
+				ubifs_iput(inode);
 				continue;
 			}
 			/* Relative to cur dir */
@@ -528,6 +575,7 @@ static unsigned long ubifs_findfile(struct super_block *sb, char *filename)
 					link_name, next == NULL ? "" : next);
 			memcpy(symlinkpath, buf, sizeof(buf));
 			next = name = symlinkpath;
+			ubifs_iput(inode);
 			continue;
 		}
 
@@ -536,8 +584,10 @@ static unsigned long ubifs_findfile(struct super_block *sb, char *filename)
 		 */
 
 		/* Found the node!  */
-		if (!next || *next == '\0')
+		if (!next || *next == '\0') {
+			ubifs_iput(inode);
 			return inum;
+		}
 
 		root_inum = inum;
 		name = next;
@@ -567,7 +617,6 @@ int ubifs_set_blk_dev(struct blk_desc *rbdd, struct disk_partition *info)
 
 int ubifs_ls(const char *filename)
 {
-	struct ubifs_info *c = ubifs_sb->s_fs_info;
 	struct file *file;
 	struct dentry *dentry;
 	struct inode *dir;
@@ -575,7 +624,11 @@ int ubifs_ls(const char *filename)
 	unsigned long inum;
 	int ret = 0;
 
-	c->ubi = ubi_open_volume(c->vi.ubi_num, c->vi.vol_id, UBI_READONLY);
+	if (!ubifs_is_mounted()) {
+		debug("UBIFS not mounted, use ubifsmount to mount volume first!\n");
+		return -1;
+	}
+
 	inum = ubifs_findfile(ubifs_sb, (char *)filename);
 	if (!inum) {
 		ret = -1;
@@ -609,30 +662,33 @@ out_mem:
 		free(dir);
 
 out:
-	ubi_close_volume(c->ubi);
 	return ret;
 }
 
 int ubifs_exists(const char *filename)
 {
-	struct ubifs_info *c = ubifs_sb->s_fs_info;
 	unsigned long inum;
 
-	c->ubi = ubi_open_volume(c->vi.ubi_num, c->vi.vol_id, UBI_READONLY);
+	if (!ubifs_is_mounted()) {
+		debug("UBIFS not mounted, use ubifsmount to mount volume first!\n");
+		return -1;
+	}
+
 	inum = ubifs_findfile(ubifs_sb, (char *)filename);
-	ubi_close_volume(c->ubi);
 
 	return inum != 0;
 }
 
 int ubifs_size(const char *filename, loff_t *size)
 {
-	struct ubifs_info *c = ubifs_sb->s_fs_info;
 	unsigned long inum;
 	struct inode *inode;
 	int err = 0;
 
-	c->ubi = ubi_open_volume(c->vi.ubi_num, c->vi.vol_id, UBI_READONLY);
+	if (!ubifs_is_mounted()) {
+		debug("UBIFS not mounted, use ubifsmount to mount volume first!\n");
+		return -1;
+	}
 
 	inum = ubifs_findfile(ubifs_sb, (char *)filename);
 	if (!inum) {
@@ -651,7 +707,6 @@ int ubifs_size(const char *filename, loff_t *size)
 
 	ubifs_iput(inode);
 out:
-	ubi_close_volume(c->ubi);
 	return err;
 }
 
@@ -838,6 +893,11 @@ int ubifs_read(const char *filename, void *buf, loff_t offset,
 	int count;
 	int last_block_size = 0;
 
+	if (!ubifs_is_mounted()) {
+		debug("UBIFS not mounted, use ubifsmount to mount volume first!\n");
+		return -1;
+	}
+
 	*actread = 0;
 
 	if (offset & (PAGE_SIZE - 1)) {
@@ -846,7 +906,6 @@ int ubifs_read(const char *filename, void *buf, loff_t offset,
 		return -1;
 	}
 
-	c->ubi = ubi_open_volume(c->vi.ubi_num, c->vi.vol_id, UBI_READONLY);
 	/* ubifs_findfile will resolve symlinks, so we know that we get
 	 * the real file here */
 	inum = ubifs_findfile(ubifs_sb, (char *)filename);
@@ -910,7 +969,6 @@ put_inode:
 	ubifs_iput(inode);
 
 out:
-	ubi_close_volume(c->ubi);
 	return err;
 }
 
@@ -941,6 +999,5 @@ void uboot_ubifs_umount(void)
 		printf("Unmounting UBIFS volume %s!\n",
 		       ((struct ubifs_info *)(ubifs_sb->s_fs_info))->vi.name);
 		ubifs_umount(ubifs_sb->s_fs_info);
-		ubifs_sb = NULL;
 	}
 }

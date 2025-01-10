@@ -8,7 +8,6 @@
  * It uses the Exit boot service to return.
  */
 
-#include <common.h>
 #include <efi_selftest.h>
 
 static efi_guid_t loaded_image_protocol_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
@@ -40,7 +39,7 @@ static efi_status_t EFIAPI check_loaded_image_protocol
 				  NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
 	if (ret != EFI_SUCCESS) {
 		cout->output_string(cout,
-				    u"Could not open loaded image protocol");
+				    u"Could not open loaded image protocol\n");
 		return ret;
 	}
 	if ((void *)check_loaded_image_protocol <

@@ -8,7 +8,7 @@
  *  Command Processor Table
  */
 
-#include <common.h>
+#include <config.h>
 #include <compiler.h>
 #include <command.h>
 #include <console.h>
@@ -16,6 +16,7 @@
 #include <image.h>
 #include <log.h>
 #include <mapmem.h>
+#include <time.h>
 #include <asm/global_data.h>
 #include <linux/ctype.h>
 
@@ -355,10 +356,9 @@ static int find_common_prefix(char *const argv[])
 	return len;
 }
 
-static char tmp_buf[CONFIG_SYS_CBSIZE + 1];	/* copy of console I/O buffer */
-
 int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 {
+	char tmp_buf[CONFIG_SYS_CBSIZE + 1];	/* copy of console I/O buffer */
 	int n = *np, col = *colp;
 	char *argv[CONFIG_SYS_MAXARGS + 1];		/* NULL terminated	*/
 	char *cmdv[20];
@@ -466,12 +466,12 @@ int cmd_auto_complete(const char *const prompt, char *buf, int *np, int *colp)
 #endif
 
 #ifdef CMD_DATA_SIZE
-int cmd_get_data_size(char* arg, int default_size)
+int cmd_get_data_size(const char *arg, int default_size)
 {
 	/* Check for a size specification .b, .w or .l.
 	 */
 	int len = strlen(arg);
-	if (len > 2 && arg[len-2] == '.') {
+	if (len >= 2 && arg[len-2] == '.') {
 		switch (arg[len-1]) {
 		case 'b':
 			return 1;

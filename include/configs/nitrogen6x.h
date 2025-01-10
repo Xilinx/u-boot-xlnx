@@ -11,18 +11,12 @@
 
 #include "mx6_common.h"
 
-#define CFG_MXC_UART_BASE	       UART2_BASE
-
 /* MMC Configs */
 #define CFG_SYS_FSL_ESDHC_ADDR      0
 #define CFG_SYS_FSL_USDHC_NUM       2
 
 #define IMX_FEC_BASE			ENET_BASE_ADDR
 #define CFG_FEC_MXC_PHYADDR		6
-
-/* USB Configs */
-#define CFG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CFG_MXC_USB_FLAGS	0
 
 #ifdef CONFIG_CMD_MMC
 #define DISTRO_BOOT_DEV_MMC(func) func(MMC, mmc, 0) func(MMC, mmc, 1)

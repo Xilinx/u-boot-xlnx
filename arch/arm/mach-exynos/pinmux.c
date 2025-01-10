@@ -4,7 +4,6 @@
  * Abhilash Kesavan <a.kesavan@samsung.com>
  */
 
-#include <common.h>
 #include <fdtdec.h>
 #include <log.h>
 #include <asm/gpio.h>
@@ -172,7 +171,7 @@ static int exynos5420_mmc_config(int peripheral, int flags)
 		 * this same assumption.
 		 */
 		if ((peripheral == PERIPH_ID_SDMMC0) && (i == (start + 2))) {
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 			gpio_request(i, "sdmmc0_vdden");
 #endif
 			gpio_set_value(i, 1);
@@ -391,7 +390,6 @@ static void exynos5420_i2s_config(int peripheral)
 		break;
 	}
 }
-
 
 void exynos5_spi_config(int peripheral)
 {

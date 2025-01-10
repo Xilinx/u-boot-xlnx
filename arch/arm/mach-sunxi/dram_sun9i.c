@@ -10,7 +10,6 @@
  *                    Philipp Tomsich <philipp.tomsich@theobroma-systems.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <init.h>
@@ -262,7 +261,6 @@ static void mctl_sys_init(void)
 		reg_val = mctl_read_w(CCM_PLL6_DDR_REG);
 		reg_val |= ((0x1<<24)|(0x1<<30));
 		mctl_write_w(CCM_PLL6_DDR_REG, reg_val);
-
 
 		while(mctl_read_w(CCM_PLL6_DDR_REG) & (0x1<<30));
 	}

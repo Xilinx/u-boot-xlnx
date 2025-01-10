@@ -4,7 +4,6 @@
  * Copyright (C) 2013 Xilinx, Inc. All rights reserved.
  */
 #include <clk.h>
-#include <common.h>
 #include <dm.h>
 #include <init.h>
 #include <malloc.h>
@@ -44,8 +43,6 @@ int set_cpu_clk_info(void)
 			gd->bd->bi_arm_freq = rate;
 			gd->cpu_clk = clk_get_rate(&clk);
 		}
-
-		clk_free(&clk);
 	}
 	gd->bd->bi_dsp_freq = 0;
 

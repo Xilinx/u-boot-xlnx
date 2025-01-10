@@ -24,7 +24,6 @@
 
 #define LOG_CATEGORY UCLASS_PCI
 
-#include <common.h>
 #include <bios_emul.h>
 #include <bloblist.h>
 #include <bootstage.h>
@@ -36,6 +35,7 @@
 #include <pci.h>
 #include <pci_rom.h>
 #include <spl.h>
+#include <time.h>
 #include <vesa.h>
 #include <video.h>
 #include <acpi/acpi_s3.h>
@@ -379,7 +379,7 @@ int vesa_setup_video(struct udevice *dev, int (*int15_handler)(void))
 	}
 
 	/* In U-Boot proper, collect the information added by SPL (see below) */
-	if (IS_ENABLED(CONFIG_SPL_VIDEO) && spl_phase() > PHASE_SPL &&
+	if (IS_ENABLED(CONFIG_SPL_VIDEO) && xpl_phase() > PHASE_SPL &&
 	    CONFIG_IS_ENABLED(BLOBLIST)) {
 		struct video_handoff *ho;
 
@@ -425,7 +425,7 @@ int vesa_setup_video(struct udevice *dev, int (*int15_handler)(void))
 	       mode_info.vesa.bits_per_pixel);
 
 	/* In SPL, store the information for use by U-Boot proper */
-	if (spl_phase() == PHASE_SPL && CONFIG_IS_ENABLED(BLOBLIST)) {
+	if (xpl_phase() == PHASE_SPL && CONFIG_IS_ENABLED(BLOBLIST)) {
 		struct video_handoff *ho;
 
 		ho = bloblist_add(BLOBLISTT_U_BOOT_VIDEO, sizeof(*ho), 0);

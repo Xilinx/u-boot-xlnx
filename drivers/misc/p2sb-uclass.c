@@ -8,7 +8,6 @@
 
 #define LOG_CATEGORY UCLASS_P2SB
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <malloc.h>
@@ -199,7 +198,7 @@ static int p2sb_child_post_bind(struct udevice *dev)
 
 static int p2sb_post_bind(struct udevice *dev)
 {
-	if (spl_phase() > PHASE_TPL && !CONFIG_IS_ENABLED(OF_PLATDATA))
+	if (xpl_phase() > PHASE_TPL && !CONFIG_IS_ENABLED(OF_PLATDATA))
 		return dm_scan_fdt_dev(dev);
 
 	return 0;

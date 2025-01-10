@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 
-#include <common.h>
+#include <config.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <fsl_ddr_sdram.h>
@@ -98,7 +98,7 @@ int fsl_initdram(void)
 		break;
 	}
 
-	if (!IS_ENABLED(CONFIG_SPL) || IS_ENABLED(CONFIG_SPL_BUILD))
+	if (!IS_ENABLED(CONFIG_SPL) || IS_ENABLED(CONFIG_XPL_BUILD))
 		fsl_ddr_set_memctl_regs(&ddr_cfg_regs, 0, 0);
 
 	gd->ram_size = dram_size;

@@ -8,7 +8,6 @@
  */
 
 #include <clk.h>
-#include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <log.h>
@@ -648,7 +647,7 @@ static int zynq_qspi_xfer(struct udevice *dev, unsigned int bitlen,
 	priv->rx_buf = din;
 	priv->len = bitlen / 8;
 
-	debug("%s: bus:%i cs[0]:%i bitlen:%i len:%i flags:%lx\n", __func__,
+	debug("zynq_qspi_xfer: bus:%i cs[0]:%i bitlen:%i len:%i flags:%lx\n",
 	      dev_seq(bus), slave_plat->cs[0], bitlen, priv->len, flags);
 
 	/*
@@ -735,7 +734,7 @@ static int zynq_qspi_set_mode(struct udevice *bus, uint mode)
 	return 0;
 }
 
-bool update_stripe(const struct spi_mem_op *op)
+static bool update_stripe(const struct spi_mem_op *op)
 {
 	if (op->cmd.opcode == SPINOR_OP_BE_4K ||
 	    op->cmd.opcode == SPINOR_OP_CHIP_ERASE ||
@@ -820,7 +819,7 @@ static int zynq_qspi_exec_op(struct spi_slave *slave,
 
 	priv->is_parallel = false;
 	priv->is_stacked = false;
-	slave->flags &= ~SPI_XFER_MASK;
+	slave->flags &= ~SPI_XFER_LOWER;
 	spi_release_bus(slave);
 
 	return 0;

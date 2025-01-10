@@ -8,7 +8,6 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <linux/kconfig.h>
 #include <linux/stringify.h>
 
 /* place code in last 4 MiB of RAM */
@@ -27,9 +26,6 @@
 
 #define TQMA6_SPI_FLASH_SECTOR_SIZE	SZ_64K
 
-/* I2C Configs */
-#define CFG_I2C_MULTI_BUS
-
 #if !defined(CONFIG_DM_PMIC)
 #define CFG_POWER_PFUZE100_I2C_ADDR	0x08
 #define TQMA6_PFUZE100_I2C_BUS		2
@@ -37,9 +33,6 @@
 
 /* MMC Configs */
 #define CFG_SYS_FSL_ESDHC_ADDR	0
-
-/* USB Configs */
-#define CFG_MXC_USB_PORTSC	(PORT_PTS_UTMI | PORT_PTS_PTW)
 
 #if defined(CONFIG_TQMA6X_MMC_BOOT)
 

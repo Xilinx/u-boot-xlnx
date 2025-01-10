@@ -10,7 +10,6 @@
  *  Copyright (C) 1991, 1992  Linus Torvalds
  */
 
-#include <common.h>
 #include <dm.h>
 #include <efi_loader.h>
 #include <hang.h>
@@ -238,7 +237,7 @@ void *x86_get_idt(void)
 	return &idt_ptr;
 }
 
-void __do_irq(int irq)
+static void __do_irq(int irq)
 {
 	printf("Unhandled IRQ : %d\n", irq);
 }

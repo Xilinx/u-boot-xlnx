@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
  * This is from the ARM TF Project,
- * Repository: https://github.com/ARM-software/arm-trusted-firmware.git
+ * Repository: https://github.com/TrustedFirmware-A/trusted-firmware-a.git
  * File: include/common/bl_common.h
  * Portions copyright (c) 2013-2016, ARM Limited and Contributors. All rights
  * reserved.
@@ -73,6 +73,8 @@
 	(DAIF_FIQ_BIT | DAIF_IRQ_BIT | DAIF_ABT_BIT | DAIF_DBG_BIT)
 
 #ifndef __ASSEMBLY__
+
+#include <linux/types.h>
 
 /*******************************************************************************
  * Structure used for telling the next BL how much of a particular type of

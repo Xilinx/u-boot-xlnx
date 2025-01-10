@@ -7,7 +7,7 @@
  * Gleb Natapov <gnatapov@mrv.com>
  */
 
-#include <common.h>
+#include <asm/ppc.h>
 #include <irq_func.h>
 #include <asm/processor.h>
 #include <watchdog.h>
@@ -31,7 +31,6 @@ static __inline__ unsigned long get_dec (void)
 
 	return val;
 }
-
 
 static __inline__ void set_dec (unsigned long val)
 {

@@ -7,7 +7,6 @@
  *
  */
 
-#include <common.h>
 #include <dm.h>
 #include <clk.h>
 #include <init.h>
@@ -35,8 +34,6 @@ int checkboard(void)
 
 	rate = clk_get_rate(&clk);
 	printf("CPU Speed: %lu MHz\n", rate / 1000000);
-
-	clk_free(&clk);
 
 	return 0;
 }

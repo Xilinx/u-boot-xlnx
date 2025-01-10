@@ -9,10 +9,11 @@
 
 #ifdef CONFIG_FSL_IFC
 #include <config.h>
-#include <common.h>
 #include <part.h>
 #ifdef CONFIG_ARM
 #include <asm/arch/soc.h>
+#else
+#include <asm/ppc.h>
 #endif
 
 #define FSL_IFC_V1_1_0	0x01010000
@@ -31,7 +32,6 @@
 #else
 #error Neither CONFIG_SYS_FSL_IFC_LE nor CONFIG_SYS_FSL_IFC_BE is defined
 #endif
-
 
 /*
  * CSPR - Chip Select Property Register
@@ -788,7 +788,6 @@ enum ifc_nand_fir_opcodes {
  * GPCM Status Register (GPCM_STAT)
  */
 #define IFC_GPCM_STAT_BSY		0x80000000  /* GPCM is busy */
-
 
 #ifndef __ASSEMBLY__
 #include <asm/io.h>

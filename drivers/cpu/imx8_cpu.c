@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * Copyright 2019 NXP
+ * Copyright 2019, 2024 NXP
  */
 
-#include <common.h>
 #include <cpu.h>
 #include <dm.h>
 #include <thermal.h>
 #include <asm/global_data.h>
+#include <asm/ptrace.h>
 #include <asm/system.h>
 #include <firmware/imx/sci/sci.h>
 #include <asm/arch/sys_proto.h>
@@ -16,13 +16,15 @@
 #include <imx_thermal.h>
 #include <linux/bitops.h>
 #include <linux/clk-provider.h>
+#include <linux/psci.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
+#define IMX_REV_LEN	4
 struct cpu_imx_plat {
 	const char *name;
-	const char *rev;
 	const char *type;
+	char rev[IMX_REV_LEN];
 	u32 cpu_rsrc;
 	u32 cpurev;
 	u32 freq_mhz;
@@ -32,6 +34,12 @@ struct cpu_imx_plat {
 static const char *get_imx_type_str(u32 imxtype)
 {
 	switch (imxtype) {
+	case MXC_CPU_IMX8MM:
+		return "8MM";
+	case MXC_CPU_IMX8MN:
+		return "8MN";
+	case MXC_CPU_IMX8MP:
+		return "8MP";
 	case MXC_CPU_IMX8QXP:
 	case MXC_CPU_IMX8QXP_A0:
 		return "8QXP";
@@ -53,33 +61,38 @@ static const char *get_imx_type_str(u32 imxtype)
 		return "93(12)";/* iMX93 9x9 Dual core without NPU */
 	case MXC_CPU_IMX9311:
 		return "93(11)";/* iMX93 9x9 Single core without NPU */
+	case MXC_CPU_IMX9302:
+		return "93(02)";/* iMX93 900Mhz Low performance Dual core without NPU */
+	case MXC_CPU_IMX9301:
+		return "93(01)";/* iMX93 900Mhz Low performance Single core without NPU */
 	default:
 		return "??";
 	}
 }
 
-static const char *get_imx_rev_str(u32 rev)
+static void get_imx_rev_str(struct cpu_imx_plat *plat, u32 rev)
 {
-	static char revision[4];
-
 	if (IS_ENABLED(CONFIG_IMX8)) {
 		switch (rev) {
 		case CHIP_REV_A:
-			return "A";
+			plat->rev[0] = 'A';
+			break;
 		case CHIP_REV_B:
-			return "B";
+			plat->rev[0] = 'B';
+			break;
 		case CHIP_REV_C:
-			return "C";
+			plat->rev[0] = 'C';
+			break;
 		default:
-			return "?";
+			plat->rev[0] = '?';
+			break;
 		}
+		plat->rev[1] = '\0';
 	} else {
-		revision[0] = '1' + (((rev & 0xf0) - CHIP_REV_1_0) >> 4);
-		revision[1] = '.';
-		revision[2] = '0' + (rev & 0xf);
-		revision[3] = '\0';
-
-		return revision;
+		plat->rev[0] = '1' + (((rev & 0xf0) - CHIP_REV_1_0) >> 4);
+		plat->rev[1] = '.';
+		plat->rev[2] = '0' + (rev & 0xf);
+		plat->rev[3] = '\0';
 	}
 }
 
@@ -185,8 +198,6 @@ static int cpu_imx_get_desc(const struct udevice *dev, char *buf, int size)
 			ret = snprintf(buf, size, " - invalid sensor data");
 	}
 
-	snprintf(buf + ret, size - ret, "\n");
-
 	return 0;
 }
 
@@ -194,7 +205,7 @@ static int cpu_imx_get_info(const struct udevice *dev, struct cpu_info *info)
 {
 	struct cpu_imx_plat *plat = dev_get_plat(dev);
 
-	info->cpu_freq = plat->freq_mhz * 1000;
+	info->cpu_freq = plat->freq_mhz * 1000000;
 	info->features = BIT(CPU_FEAT_L1_CACHE) | BIT(CPU_FEAT_MMU);
 	return 0;
 }
@@ -237,12 +248,34 @@ static int cpu_imx_is_current(struct udevice *dev)
 	return 0;
 }
 
+static int cpu_imx_release_core(const struct udevice *dev, phys_addr_t addr)
+{
+	struct cpu_imx_plat *plat = dev_get_plat(dev);
+	struct pt_regs regs;
+
+	regs.regs[0] = PSCI_0_2_FN64_CPU_ON;
+	regs.regs[1] = plat->mpidr;
+	regs.regs[2] = addr;
+	regs.regs[3] = 0;
+
+	smc_call(&regs);
+	if (regs.regs[0]) {
+		printf("Failed to release CPU core (mpidr: 0x%x)\n", plat->mpidr);
+		return -1;
+	}
+
+	printf("Released CPU core (mpidr: 0x%x) to address 0x%llx\n", plat->mpidr, addr);
+
+	return 0;
+}
+
 static const struct cpu_ops cpu_imx_ops = {
 	.get_desc	= cpu_imx_get_desc,
 	.get_info	= cpu_imx_get_info,
 	.get_count	= cpu_imx_get_count,
 	.get_vendor	= cpu_imx_get_vendor,
 	.is_current	= cpu_imx_is_current,
+	.release_core	= cpu_imx_release_core,
 };
 
 static const struct udevice_id cpu_imx_ids[] = {
@@ -287,8 +320,8 @@ static int imx_cpu_probe(struct udevice *dev)
 	set_core_data(dev);
 	cpurev = get_cpu_rev();
 	plat->cpurev = cpurev;
-	plat->rev = get_imx_rev_str(cpurev & 0xFFF);
-	plat->type = get_imx_type_str((cpurev & 0xFF000) >> 12);
+	get_imx_rev_str(plat, cpurev & 0xFFF);
+	plat->type = get_imx_type_str((cpurev & 0x1FF000) >> 12);
 	plat->freq_mhz = imx_get_cpu_rate(dev) / 1000000;
 	plat->mpidr = dev_read_addr(dev);
 	if (plat->mpidr == FDT_ADDR_T_NONE) {

@@ -4,7 +4,6 @@
  * Alex Marginean, NXP
  */
 
-#include <common.h>
 #include <dm.h>
 #include <miiphy.h>
 #include <misc.h>
@@ -77,5 +76,4 @@ static int dm_test_mdio_mux(struct unit_test_state *uts)
 
 	return 0;
 }
-
-DM_TEST(dm_test_mdio_mux, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_mdio_mux, UTF_SCAN_FDT);

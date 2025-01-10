@@ -8,7 +8,6 @@
  */
 
 #include <config.h>
-#include <common.h>
 #include <command.h>
 #include <cpu_func.h>
 #include <init.h>
@@ -300,7 +299,6 @@ __weak int cpu_numcores(void)
 
 	return cpu->num_cores;
 }
-
 
 /*
  * Check if the given core ID is valid

@@ -18,7 +18,6 @@
  * src/arch/x86/lib/cpu.c
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <init.h>
 #include <log.h>
@@ -32,6 +31,7 @@
 #include <asm/msr.h>
 #include <asm/mtrr.h>
 #include <asm/processor-flags.h>
+#include <asm/u-boot-x86.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -263,6 +263,49 @@ static int build_vendor_name(char *vendor_name)
 }
 #endif
 
+int x86_cpu_vendor_info(char *name)
+{
+	uint cpu_device;
+
+	cpu_device = 0;
+
+	/* gcc 7.3 does not want to drop x86_vendors, so use #ifdef */
+#ifndef CONFIG_TPL_BUILD
+	*name = '\0'; /* Unset */
+
+	/* Find the id and vendor_name */
+	if (!has_cpuid()) {
+		/* Its a 486 if we can modify the AC flag */
+		if (flag_is_changeable_p(X86_EFLAGS_AC))
+			cpu_device = 0x00000400; /* 486 */
+		else
+			cpu_device = 0x00000300; /* 386 */
+		if (cpu_device == 0x00000400 && test_cyrix_52div()) {
+			/* If we ever care we can enable cpuid here */
+			memcpy(name, "CyrixInstead", 13);
+
+		/* Detect NexGen with old hypercode */
+		} else if (deep_magic_nexgen_probe()) {
+			memcpy(name, "NexGenDriven", 13);
+		}
+	} else {
+		int cpuid_level;
+
+		cpuid_level = build_vendor_name(name);
+		name[12] = '\0';
+
+		/* Intel-defined flags: level 0x00000001 */
+		if (cpuid_level >= 0x00000001)
+			cpu_device = cpuid_eax(0x00000001);
+		else
+			/* Have CPUID level 0 only unheard of */
+			cpu_device = 0x00000400;
+	}
+#endif /* CONFIG_TPL_BUILD */
+
+	return cpu_device;
+}
+
 static void identify_cpu(struct cpu_device_id *cpu)
 {
 	cpu->device = 0; /* fix gcc 4.4.4 warning */
@@ -271,7 +314,7 @@ static void identify_cpu(struct cpu_device_id *cpu)
 	 * Do a quick and dirty check to save space - Intel and AMD only and
 	 * just the vendor. This is enough for most TPL code.
 	 */
-	if (spl_phase() == PHASE_TPL) {
+	if (xpl_phase() == PHASE_TPL) {
 		struct cpuid_result result;
 
 		result = cpuid(0x00000000);
@@ -289,46 +332,19 @@ static void identify_cpu(struct cpu_device_id *cpu)
 		return;
 	}
 
-/* gcc 7.3 does not want to drop x86_vendors, so use #ifdef */
 #ifndef CONFIG_TPL_BUILD
-	char vendor_name[16];
-	int i;
+	{
+		char vendor_name[16];
+		int i;
 
-	vendor_name[0] = '\0'; /* Unset */
+		cpu->device = x86_cpu_vendor_info(vendor_name);
 
-	/* Find the id and vendor_name */
-	if (!has_cpuid()) {
-		/* Its a 486 if we can modify the AC flag */
-		if (flag_is_changeable_p(X86_EFLAGS_AC))
-			cpu->device = 0x00000400; /* 486 */
-		else
-			cpu->device = 0x00000300; /* 386 */
-		if ((cpu->device == 0x00000400) && test_cyrix_52div()) {
-			memcpy(vendor_name, "CyrixInstead", 13);
-			/* If we ever care we can enable cpuid here */
-		}
-		/* Detect NexGen with old hypercode */
-		else if (deep_magic_nexgen_probe())
-			memcpy(vendor_name, "NexGenDriven", 13);
-	} else {
-		int cpuid_level;
-
-		cpuid_level = build_vendor_name(vendor_name);
-		vendor_name[12] = '\0';
-
-		/* Intel-defined flags: level 0x00000001 */
-		if (cpuid_level >= 0x00000001) {
-			cpu->device = cpuid_eax(0x00000001);
-		} else {
-			/* Have CPUID level 0 only unheard of */
-			cpu->device = 0x00000400;
-		}
-	}
-	cpu->vendor = X86_VENDOR_UNKNOWN;
-	for (i = 0; i < ARRAY_SIZE(x86_vendors); i++) {
-		if (memcmp(vendor_name, x86_vendors[i].name, 12) == 0) {
-			cpu->vendor = x86_vendors[i].vendor;
-			break;
+		cpu->vendor = X86_VENDOR_UNKNOWN;
+		for (i = 0; i < ARRAY_SIZE(x86_vendors); i++) {
+			if (memcmp(vendor_name, x86_vendors[i].name, 12) == 0) {
+				cpu->vendor = x86_vendors[i].vendor;
+				break;
+			}
 		}
 	}
 #endif
@@ -412,12 +428,6 @@ int cpu_phys_address_size(void)
 	return 32;
 }
 
-/* Don't allow PCI region 3 to use memory in the 2-4GB memory hole */
-static void setup_pci_ram_top(void)
-{
-	gd_set_pci_ram_top(0x80000000U);
-}
-
 static void setup_mtrr(void)
 {
 	u64 mtrr_cap;
@@ -469,7 +479,6 @@ int x86_cpu_init_f(void)
 		setup_cpu_features();
 	setup_identity();
 	setup_mtrr();
-	setup_pci_ram_top();
 
 	/* Set up the i8254 timer if required */
 	if (IS_ENABLED(CONFIG_I8254_TIMER))
@@ -483,7 +492,6 @@ int x86_cpu_reinit_f(void)
 	long addr;
 
 	setup_identity();
-	setup_pci_ram_top();
 	addr = locate_coreboot_table();
 	if (addr >= 0) {
 		gd->arch.coreboot_table = addr;
@@ -491,6 +499,11 @@ int x86_cpu_reinit_f(void)
 	}
 
 	return 0;
+}
+
+void x86_get_identity_for_timer(void)
+{
+	setup_identity();
 }
 
 void x86_enable_caches(void)

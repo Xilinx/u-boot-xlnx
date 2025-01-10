@@ -3,7 +3,6 @@
  * Copyright (c) 2019 Microsemi Corporation
  */
 
-#include <common.h>
 #include <config.h>
 #include <dm.h>
 #include <malloc.h>
@@ -627,7 +626,6 @@ static int luton_probe(struct udevice *dev)
 	if (wait_for_bit_le32(priv->regs[GCB] + GCB_MISC_STAT,
 			      GCB_MISC_STAT_PHY_READY, true, 500, false))
 		return -EACCES;
-
 
 	/* Initialize miim buses */
 	memset(&miim, 0x0, sizeof(miim) * LUTON_MIIM_BUS_COUNT);

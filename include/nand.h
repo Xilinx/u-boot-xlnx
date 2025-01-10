@@ -8,10 +8,10 @@
 #ifndef _NAND_H_
 #define _NAND_H_
 
-#include <config.h>
-
 extern void nand_init(void);
+void nand_reinit(void);
 unsigned long nand_size(void);
+unsigned int nand_page_size(void);
 
 #include <linux/compat.h>
 #include <linux/mtd/mtd.h>
@@ -21,6 +21,7 @@ int nand_mtd_to_devnum(struct mtd_info *mtd);
 #if CONFIG_IS_ENABLED(SYS_NAND_SELF_INIT)
 void board_nand_init(void);
 int nand_register(int devnum, struct mtd_info *mtd);
+void nand_unregister(struct mtd_info *mtd);
 #else
 struct nand_chip;
 
@@ -56,7 +57,6 @@ static inline int nand_erase(struct mtd_info *info, loff_t off, size_t size)
 
 	return mtd_erase(info, &instr);
 }
-
 
 /*****************************************************************************
  * declarations from nand_util.c

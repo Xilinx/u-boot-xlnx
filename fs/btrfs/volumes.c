@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+
 #include <stdlib.h>
-#include <common.h>
+#include <errno.h>
 #include <fs_internal.h>
 #include "ctree.h"
 #include "disk-io.h"
@@ -254,7 +254,6 @@ static int device_list_add(struct btrfs_super_block *disk_super,
 			device->part = part;
 		}
 	}
-
 
 	if (found_transid > fs_devices->latest_trans) {
 		fs_devices->latest_devid = devid;

@@ -4,7 +4,6 @@
  * Author: Elaine Zhang <zhangqing@rock-chips.com>
  */
 
-#include <common.h>
 #include <bitfield.h>
 #include <clk-uclass.h>
 #include <dm.h>
@@ -14,7 +13,6 @@
 #include <asm/arch-rockchip/cru_rk3588.h>
 #include <asm/arch-rockchip/clock.h>
 #include <asm/arch-rockchip/hardware.h>
-#include <asm/io.h>
 #include <dm/device-internal.h>
 #include <dm/lists.h>
 #include <dt-bindings/clock/rockchip,rk3588-cru.h>
@@ -38,6 +36,7 @@ static struct rockchip_pll_rate_table rk3588_pll_rates[] = {
 	RK3588_PLL_RATE(786000000, 1, 131, 2, 0),
 	RK3588_PLL_RATE(742500000, 4, 495, 2, 0),
 	RK3588_PLL_RATE(722534400, 8, 963, 2, 24850),
+	RK3588_PLL_RATE(702000000, 3, 351, 2, 0),
 	RK3588_PLL_RATE(600000000, 2, 200, 2, 0),
 	RK3588_PLL_RATE(594000000, 2, 198, 2, 0),
 	RK3588_PLL_RATE(200000000, 3, 400, 4, 0),
@@ -66,9 +65,18 @@ static struct rockchip_pll_clock rk3588_pll_clks[] = {
 		     RK3588_MODE_CON0, 0, 15, 0, rk3588_pll_rates),
 	[PPLL] = PLL(pll_rk3588, PLL_PPLL, RK3588_PMU_PLL_CON(128),
 		     RK3588_MODE_CON0, 10, 15, 0, rk3588_pll_rates),
+#ifdef CONFIG_XPL_BUILD
+	/*
+	 * The SPLL is part of the SBUSCRU, not the main CRU and as
+	 * such only directly accessible during the SPL stage.
+	 */
+	[SPLL] = PLL(pll_rk3588, 0, RK3588_SBUSCRU_SPLL_CON(0),
+		     RK3588_SBUSCRU_MODE_CON0, 0, 15, 0, rk3588_pll_rates),
+#endif
+
 };
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 /*
  *
  * rational_best_approximation(31415, 10000,
@@ -867,7 +875,7 @@ static ulong rk3588_mmc_set_clk(struct rk3588_clk_priv *priv,
 	return rk3588_mmc_get_clk(priv, clk_id);
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static ulong rk3588_aux16m_get_clk(struct rk3588_clk_priv *priv, ulong clk_id)
 {
 	struct rk3588_cru *cru = priv->cru;
@@ -1570,6 +1578,9 @@ static ulong rk3588_clk_get_rate(struct clk *clk)
 	case DCLK_DECOM:
 		rate = rk3588_mmc_get_clk(priv, clk->id);
 		break;
+	case REF_CLK_USB3OTG0:
+	case REF_CLK_USB3OTG1:
+	case REF_CLK_USB3OTG2:
 	case TMCLK_EMMC:
 	case TCLK_WDT0:
 		rate = OSC_HZ;
@@ -1589,7 +1600,7 @@ static ulong rk3588_clk_get_rate(struct clk *clk)
 	case CLK_GPU:
 		rate = 200000000;
 		break;
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	case CLK_AUX16M_0:
 	case CLK_AUX16M_1:
 		rate = rk3588_aux16m_get_clk(priv, clk->id);
@@ -1735,6 +1746,9 @@ static ulong rk3588_clk_set_rate(struct clk *clk, ulong rate)
 	case DCLK_DECOM:
 		ret = rk3588_mmc_set_clk(priv, clk->id, rate);
 		break;
+	case REF_CLK_USB3OTG0:
+	case REF_CLK_USB3OTG1:
+	case REF_CLK_USB3OTG2:
 	case TMCLK_EMMC:
 	case TCLK_WDT0:
 		ret = OSC_HZ;
@@ -1746,7 +1760,7 @@ static ulong rk3588_clk_set_rate(struct clk *clk, ulong rate)
 	case CLK_150M_SRC:
 		ret = 0;
 		break;
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	case CLK_AUX16M_0:
 	case CLK_AUX16M_1:
 		ret = rk3588_aux16m_set_clk(priv, clk->id, rate);
@@ -1951,7 +1965,7 @@ static int rk3588_clk_probe(struct udevice *dev)
 
 	priv->sync_kernel = false;
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	rockchip_pll_set_rate(&rk3588_pll_clks[B0PLL], priv->cru,
 			      B0PLL, LPLL_HZ);
 	rockchip_pll_set_rate(&rk3588_pll_clks[B1PLL], priv->cru,
@@ -2037,8 +2051,9 @@ U_BOOT_DRIVER(rockchip_rk3588_cru) = {
 	.probe		= rk3588_clk_probe,
 };
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 #define SCRU_BASE			0xfd7d0000
+#define SBUSCRU_BASE			0xfd7d8000
 
 static ulong rk3588_scru_clk_get_rate(struct clk *clk)
 {
@@ -2113,15 +2128,28 @@ static ulong rk3588_scru_clk_set_rate(struct clk *clk, ulong rate)
 	return rk3588_scru_clk_get_rate(clk);
 }
 
+static int rk3588_scru_clk_probe(struct udevice *dev)
+{
+	int ret;
+
+	ret = rockchip_pll_set_rate(&rk3588_pll_clks[SPLL],
+				    (void *)SBUSCRU_BASE, SPLL, SPLL_HZ);
+	if (ret)
+		debug("%s setting spll rate failed %d\n", __func__, ret);
+
+	return 0;
+}
+
 static const struct clk_ops rk3588_scru_clk_ops = {
 	.get_rate = rk3588_scru_clk_get_rate,
 	.set_rate = rk3588_scru_clk_set_rate,
 };
 
 U_BOOT_DRIVER(rockchip_rk3588_scru) = {
-	.name = "rockchip_rk3588_scru",
-	.id = UCLASS_CLK,
-	.ops = &rk3588_scru_clk_ops,
+	.name	= "rockchip_rk3588_scru",
+	.id	= UCLASS_CLK,
+	.ops	= &rk3588_scru_clk_ops,
+	.probe	= rk3588_scru_clk_probe,
 };
 
 static int rk3588_scmi_spl_glue_bind(struct udevice *dev)

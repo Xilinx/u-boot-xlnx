@@ -3,7 +3,6 @@
  * Copyright 2021 Gateworks Corporation
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <hang.h>
 #include <i2c.h>
@@ -119,12 +118,28 @@ static int dm_i2c_clrsetbits(struct udevice *dev, uint reg, uint clr, uint set)
 	return dm_i2c_write(dev, reg, &val, 1);
 }
 
-static int power_init_board(void)
+static int power_init_board(struct udevice *gsc)
 {
 	const char *model = eeprom_get_model();
 	struct udevice *bus;
 	struct udevice *dev;
 	int ret;
+
+	/* Enable GSC voltage supervisor for new board models */
+	if ((!strncmp(model, "GW7100", 6) && model[10] > 'D') ||
+	    (!strncmp(model, "GW7101", 6) && model[10] > 'D') ||
+	    (!strncmp(model, "GW7200", 6) && model[10] > 'E') ||
+	    (!strncmp(model, "GW7201", 6) && model[10] > 'E') ||
+	    (!strncmp(model, "GW7300", 6) && model[10] > 'E') ||
+	    (!strncmp(model, "GW7301", 6) && model[10] > 'E') ||
+	    (!strncmp(model, "GW740", 5) && model[7] > 'B')) {
+		u8 ver;
+
+		if (!dm_i2c_read(gsc, 14, &ver, 1) && ver > 62) {
+			printf("GSC     : enabling voltage supervisor\n");
+			dm_i2c_clrsetbits(gsc, 25, 0, BIT(1));
+		}
+	}
 
 	if ((!strncmp(model, "GW71", 4)) ||
 	    (!strncmp(model, "GW72", 4)) ||
@@ -287,6 +302,7 @@ void board_init_f(ulong dummy)
 				mdelay(10);
 			}
 			pinctrl_select_state(bus, "default");
+			mdelay(10);
 		}
 	}
 	/* Wait indefiniately until the GSC probes */
@@ -298,7 +314,7 @@ void board_init_f(ulong dummy)
 	dram_sz = venice_eeprom_init(0);
 
 	/* PMIC */
-	power_init_board();
+	power_init_board(dev);
 
 	/* DDR initialization */
 	spl_dram_init(dram_sz);
@@ -350,8 +366,8 @@ unsigned long board_spl_mmc_get_uboot_raw_sector(struct mmc *mmc, unsigned long 
 {
 	if (!IS_SD(mmc)) {
 		switch (EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)) {
-		case 1:
-		case 2:
+		case EMMC_BOOT_PART_BOOT1:
+		case EMMC_BOOT_PART_BOOT2:
 			if (IS_ENABLED(CONFIG_IMX8MN) || IS_ENABLED(CONFIG_IMX8MP))
 				raw_sect -= 32 * 2;
 			break;
@@ -363,16 +379,24 @@ unsigned long board_spl_mmc_get_uboot_raw_sector(struct mmc *mmc, unsigned long 
 
 const char *spl_board_loader_name(u32 boot_device)
 {
+	static char name[16];
+	struct mmc *mmc;
+
 	switch (boot_device) {
 	/* SDHC2 */
 	case BOOT_DEVICE_MMC1:
-		return "eMMC";
+		mmc_init_device(0);
+		mmc = find_mmc_device(0);
+		mmc_init(mmc);
+		snprintf(name, sizeof(name), "eMMC %s", emmc_hwpart_names[EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)]);
+		return name;
 	/* SDHC3 */
 	case BOOT_DEVICE_MMC2:
-		return "SD card";
-	default:
-		return NULL;
+		sprintf(name, "SD card");
+		return name;
 	}
+
+	return NULL;
 }
 
 void spl_board_init(void)

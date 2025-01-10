@@ -15,7 +15,6 @@
  *	Copyright (C) 2010 Broadcom Corporation
  */
 
-#include <common.h>
 #include <clk.h>
 #include <cpu_func.h>
 #include <dm.h>
@@ -596,8 +595,6 @@ static int bcm6348_iudma_probe(struct udevice *dev)
 			pr_err("error enabling clock %d\n", i);
 			return ret;
 		}
-
-		clk_free(&clk);
 	}
 
 	/* try to perform resets */

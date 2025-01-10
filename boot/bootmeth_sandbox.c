@@ -8,7 +8,6 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <bootdev.h>
 #include <bootflow.h>
 #include <bootmeth.h>
@@ -56,7 +55,7 @@ static struct bootmeth_ops sandbox_bootmeth_ops = {
 };
 
 static const struct udevice_id sandbox_bootmeth_ids[] = {
-	{ .compatible = "u-boot,sandbox-extlinux" },
+	{ .compatible = "u-boot,sandbox-bootmeth" },
 	{ }
 };
 

@@ -73,12 +73,13 @@ General Patch Submission Rules
      cover letter why they are ignored is desired.
 
 * Send your patches as plain text messages: no HTML, no MIME, no links, no
-  compression, no attachments. Just plain text. The best way the generate
-  patches is by using the ``git format-patch`` command. Please use the
-  ``master`` branch of the mainline U-Boot git repository
-  (``https://source.denx.de/u-boot/u-boot.git``) as reference, unless (usually
-  late in a release cycle) there has been an announcement to use the ``next``
-  branch of this repository instead.
+  compression, no attachments. Just plain text. The best way to generate
+  patches is by using the ``git format-patch`` command. For a patch that is
+  fixing a bug or regression of some sort, please use the ``master`` branch of
+  the mainline U-Boot git repository located at
+  https://source.denx.de/u-boot/u-boot.git as reference. For new features, if
+  the ``next`` branch has been opened (which happens with the release of
+  ``-rc2``) that branch should be used, otherwise ``master`` is acceptable.
 
 * Make sure that your mailer does not mangle the patch by automatic changes
   like wrapping of longer lines etc.
@@ -121,7 +122,7 @@ General Patch Submission Rules
    * For new features: a description of the feature and your implementation.
 
 * Additional comments which you don't want included in U-Boot's history can be
-  included below the first "---" in the message body.
+  included below the first "``---``" in the message body.
 
 * If your description gets too long, that's a strong indication that you should
   split up your patch.
@@ -253,7 +254,7 @@ to observe the following rules.
 
 * Please make sure to keep a "change log", i.e. a description of what you have
   changed compared to previous versions of this patch. This change log should
-  be added below the "---" line in the patch, which starts the "comment
+  be added below the "``---``" line in the patch, which starts the "comment
   section", i.e. which contains text that does not get included into the
   actual commit message.
   Note: it is *not* sufficient to provide a change log in some cover letter
@@ -376,7 +377,7 @@ The following are a "rule of thumb" as to how the states are used in patchwork
 today. Not all states are used by all custodians.
 
 * New: Patch has been submitted to the list, and none of the maintainers has
-  changed it's state since.
+  changed its state since.
 
 * Under Review: A custodian is reviewing the patch currently.
 

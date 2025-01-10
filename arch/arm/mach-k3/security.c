@@ -7,7 +7,6 @@
  */
 
 #include <asm/io.h>
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <hang.h>
@@ -51,7 +50,7 @@ void ti_secure_image_check_binary(void **p_image, size_t *p_size)
 
 	if (get_device_type() == K3_DEVICE_TYPE_GP) {
 		if (ti_secure_cert_detected(*p_image)) {
-			printf("Warning: Detected image signing certificate on GP device. "
+			debug("Warning: Detected image signing certificate on GP device. "
 			       "Skipping certificate to prevent boot failure. "
 			       "This will fail if the image was also encrypted\n");
 
@@ -61,6 +60,7 @@ void ti_secure_image_check_binary(void **p_image, size_t *p_size)
 				return;
 			}
 
+			printf("Skipping authentication on GP device\n");
 			*p_image += cert_length;
 			*p_size -= cert_length;
 		}
@@ -126,7 +126,7 @@ void ti_secure_image_post_process(void **p_image, size_t *p_size)
 	 * via YMODEM. This is done to avoid disturbing the YMODEM serial
 	 * protocol transactions.
 	 */
-	if (!(IS_ENABLED(CONFIG_SPL_BUILD) &&
+	if (!(IS_ENABLED(CONFIG_XPL_BUILD) &&
 	      IS_ENABLED(CONFIG_SPL_YMODEM_SUPPORT) &&
 	      spl_boot_device() == BOOT_DEVICE_UART))
 		printf("Authentication passed\n");

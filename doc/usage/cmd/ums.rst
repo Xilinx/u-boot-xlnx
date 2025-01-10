@@ -1,5 +1,8 @@
 .. SPDX-License-Identifier: GPL-2.0+
 
+.. index::
+   single: ums (command)
+
 ums command
 ===========
 
@@ -45,7 +48,7 @@ Configuration
 -------------
 
 The ums command is only available if CONFIG_CMD_USB_MASS_STORAGE=y
-and depends on CONFIG_USB_USB_GADGET and CONFIG_BLK.
+which depends on CONFIG_USB_GADGET_DOWNLOAD and CONFIG_BLK.
 
 Return value
 ------------

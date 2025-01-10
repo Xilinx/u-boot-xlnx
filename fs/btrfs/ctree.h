@@ -9,7 +9,6 @@
 #ifndef __BTRFS_CTREE_H__
 #define __BTRFS_CTREE_H__
 
-#include <common.h>
 #include <compiler.h>
 #include <linux/rbtree.h>
 #include <linux/bug.h>
@@ -461,7 +460,6 @@ static inline u8 *btrfs_dev_extent_chunk_tree_uuid(struct btrfs_dev_extent *dev)
 	unsigned long ptr = offsetof(struct btrfs_dev_extent, chunk_tree_uuid);
 	return (u8 *)((unsigned long)dev + ptr);
 }
-
 
 /* struct btrfs_extent_item */
 BTRFS_SETGET_FUNCS(extent_refs, struct btrfs_extent_item, refs, 64);

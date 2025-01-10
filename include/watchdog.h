@@ -10,7 +10,7 @@
 #ifndef _WATCHDOG_H_
 #define _WATCHDOG_H_
 
-#include <cyclic.h>
+#include <u-boot/schedule.h> // to be removed later
 
 /*
  * Reset the watchdog timer, always returns 0
@@ -40,7 +40,4 @@ int init_func_watchdog_reset(void);
 	void hw_watchdog_init(void);
 #endif
 
-#if defined(CONFIG_MPC85xx)
-	void init_85xx_watchdog(void);
-#endif
 #endif /* _WATCHDOG_H_ */

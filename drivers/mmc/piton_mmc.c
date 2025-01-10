@@ -11,7 +11,6 @@
 
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <common.h>
 #include <div64.h>
 #include <dm.h>
 #include <errno.h>
@@ -22,7 +21,6 @@
 #include <linux/sizes.h>
 #include <log.h>
 #include <mmc.h>
-
 
 #define PITON_MMC_DUMMY_F_MAX 20000000
 #define PITON_MMC_DUMMY_F_MIN 10000000

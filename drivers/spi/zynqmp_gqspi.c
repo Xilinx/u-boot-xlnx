@@ -7,7 +7,6 @@
 
 #define LOG_CATEGORY UCLASS_SPI
 
-#include <common.h>
 #include <cpu_func.h>
 #include <log.h>
 #include <asm/arch/sys_proto.h>
@@ -871,8 +870,8 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 	priv->bus = 0;
 
 	if (priv->is_parallel) {
-		if (slave->flags & SPI_XFER_MASK)
-			priv->bus = (slave->flags & SPI_XFER_MASK) >> 8;
+		if (slave->flags & SPI_XFER_LOWER)
+			priv->bus = 1;
 		if (zynqmp_qspi_update_stripe(op))
 			priv->stripe = 1;
 	}
@@ -891,7 +890,7 @@ static int zynqmp_qspi_exec_op(struct spi_slave *slave,
 	zynqmp_qspi_chipselect(priv, 0);
 
 	priv->is_parallel = false;
-	slave->flags &= ~SPI_XFER_MASK;
+	slave->flags &= ~SPI_XFER_LOWER;
 
 	return ret;
 }

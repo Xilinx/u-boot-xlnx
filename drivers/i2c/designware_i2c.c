@@ -4,7 +4,6 @@
  * Vipin Kumar, STMicroelectronics, vipin.kumar@st.com.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <i2c.h>
@@ -770,7 +769,6 @@ int designware_i2c_of_to_plat(struct udevice *bus)
 
 	ret = clk_enable(&priv->clk);
 	if (ret && ret != -ENOSYS && ret != -ENOTSUPP) {
-		clk_free(&priv->clk);
 		dev_err(bus, "failed to enable clock\n");
 		return ret;
 	}
@@ -803,7 +801,6 @@ int designware_i2c_remove(struct udevice *dev)
 
 #if CONFIG_IS_ENABLED(CLK)
 	clk_disable(&priv->clk);
-	clk_free(&priv->clk);
 #endif
 
 	return reset_release_bulk(&priv->resets);

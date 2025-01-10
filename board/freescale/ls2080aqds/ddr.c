@@ -3,7 +3,6 @@
  * Copyright 2015 Freescale Semiconductor, Inc.
  */
 
-#include <common.h>
 #include <fsl_ddr_sdram.h>
 #include <fsl_ddr_dimm_params.h>
 #include <log.h>
@@ -46,7 +45,6 @@ void fsl_ddr_board_options(memctl_options_t *popts,
 		pbsp = rdimms[ctrl_num];
 	else
 		pbsp = udimms[ctrl_num];
-
 
 	/* Get clk_adjust, wrlvl_start, wrlvl_ctl, according to the board ddr
 	 * freqency and n_banks specified in board_specific_parameters table.
@@ -170,7 +168,7 @@ int fsl_initdram(void)
 #else
 int fsl_initdram(void)
 {
-#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_SPL) && !defined(CONFIG_XPL_BUILD)
 	gd->ram_size = fsl_ddr_sdram_size();
 #else
 	puts("Initializing DDR....using SPD\n");

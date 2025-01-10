@@ -7,7 +7,6 @@
  * This file is inspired from the Linux kernel driver drivers/net/phy/mdio-aspeed.c
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <miiphy.h>
@@ -114,6 +113,7 @@ static int aspeed_mdio_probe(struct udevice *dev)
 
 static const struct udevice_id aspeed_mdio_ids[] = {
 	{ .compatible = "aspeed,ast2600-mdio" },
+	{ .compatible = "aspeed,ast2700-mdio" },
 	{ }
 };
 

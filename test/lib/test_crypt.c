@@ -5,7 +5,6 @@
  * Unit test for crypt-style password hashing
  */
 
-#include <common.h>
 #include <test/lib.h>
 #include <test/test.h>
 #include <test/ut.h>
@@ -60,5 +59,4 @@ static int lib_crypt(struct unit_test_state *uts)
 
 	return CMD_RET_SUCCESS;
 }
-
 LIB_TEST(lib_crypt, 0);

@@ -8,7 +8,6 @@
  * Pavel Herrmann <morpheus.ibis@gmail.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <fdt_support.h>
 #include <log.h>
@@ -16,14 +15,14 @@
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <dm/device-internal.h>
+#include <dm/util.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-fdt_addr_t devfdt_get_addr_index(const struct udevice *dev, int index)
+#if CONFIG_IS_ENABLED(OF_REAL) || CONFIG_IS_ENABLED(OF_CONTROL)
+fdt_addr_t devfdt_get_addr_index_parent(const struct udevice *dev, int index,
+					int offset, int parent)
 {
-#if CONFIG_IS_ENABLED(OF_REAL)
-	int offset = dev_of_offset(dev);
-	int parent = dev_of_offset(dev->parent);
 	fdt_addr_t addr;
 
 	if (CONFIG_IS_ENABLED(OF_TRANSLATE)) {
@@ -33,19 +32,19 @@ fdt_addr_t devfdt_get_addr_index(const struct udevice *dev, int index)
 
 		na = fdt_address_cells(gd->fdt_blob, parent);
 		if (na < 1) {
-			debug("bad #address-cells\n");
+			dm_warn("bad #address-cells\n");
 			return FDT_ADDR_T_NONE;
 		}
 
 		ns = fdt_size_cells(gd->fdt_blob, parent);
 		if (ns < 0) {
-			debug("bad #size-cells\n");
+			dm_warn("bad #size-cells\n");
 			return FDT_ADDR_T_NONE;
 		}
 
 		reg = fdt_getprop(gd->fdt_blob, offset, "reg", &len);
 		if (!reg || (len <= (index * sizeof(fdt32_t) * (na + ns)))) {
-			debug("Req index out of range\n");
+			dm_warn("Req index out of range\n");
 			return FDT_ADDR_T_NONE;
 		}
 
@@ -89,6 +88,15 @@ fdt_addr_t devfdt_get_addr_index(const struct udevice *dev, int index)
 #endif
 
 	return addr;
+}
+#endif
+
+fdt_addr_t devfdt_get_addr_index(const struct udevice *dev, int index)
+{
+#if CONFIG_IS_ENABLED(OF_REAL)
+	int offset = dev_of_offset(dev);
+	int parent = fdt_parent_offset(gd->fdt_blob, offset);
+	return devfdt_get_addr_index_parent(dev, index, offset, parent);
 #else
 	return FDT_ADDR_T_NONE;
 #endif
@@ -113,14 +121,16 @@ fdt_addr_t devfdt_get_addr_size_index(const struct udevice *dev, int index,
 	 * next call to the exisiting dev_get_xxx function which handles
 	 * all config options.
 	 */
-	fdtdec_get_addr_size_auto_noparent(gd->fdt_blob, dev_of_offset(dev),
-					   "reg", index, size, false);
+	int offset = dev_of_offset(dev);
+	int parent = fdt_parent_offset(gd->fdt_blob, offset);
+	fdtdec_get_addr_size_auto_parent(gd->fdt_blob, parent, offset,
+					 "reg", index, size, false);
 
 	/*
 	 * Get the base address via the existing function which handles
 	 * all Kconfig cases
 	 */
-	return devfdt_get_addr_index(dev, index);
+	return devfdt_get_addr_index_parent(dev, index, offset, parent);
 #else
 	return FDT_ADDR_T_NONE;
 #endif

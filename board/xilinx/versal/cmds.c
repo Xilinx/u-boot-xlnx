@@ -6,10 +6,10 @@
 
 #include <cpu_func.h>
 #include <command.h>
-#include <common.h>
 #include <log.h>
 #include <memalign.h>
 #include <versalpl.h>
+#include <vsprintf.h>
 #include <zynqmp_firmware.h>
 
 static int do_versal_load_pdi(struct cmd_tbl *cmdtp, int flag, int argc,
@@ -98,4 +98,4 @@ U_BOOT_LONGHELP(versal,
 U_BOOT_CMD(versal, 4, 1, do_versal,
 	   "versal sub-system",
 	   versal_help_text
-)
+);

@@ -6,7 +6,6 @@
  */
 
 #include <autoboot.h>
-#include <common.h>
 #include <test/common.h>
 #include <test/test.h>
 #include <test/ut.h>
@@ -21,7 +20,6 @@ static int check_for_input(struct unit_test_state *uts, const char *in,
 	const char *autoboot_prompt =
 		"Enter password \"a\" in 1 seconds to stop autoboot";
 
-	console_record_reset_enable();
 	console_in_puts(in);
 
 	/* turn on keyed autoboot for the test, if possible */
@@ -92,5 +90,4 @@ static int test_autoboot(struct unit_test_state *uts)
 
 	return CMD_RET_SUCCESS;
 }
-
-COMMON_TEST(test_autoboot, 0);
+COMMON_TEST(test_autoboot, UTF_CONSOLE);

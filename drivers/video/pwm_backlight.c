@@ -6,7 +6,6 @@
 
 #define LOG_CATEGORY UCLASS_PANEL_BACKLIGHT
 
-#include <common.h>
 #include <dm.h>
 #include <backlight.h>
 #include <log.h>
@@ -250,7 +249,6 @@ static int pwm_backlight_of_to_plat(struct udevice *dev)
 	}
 	priv->cur_level = priv->default_level;
 	log_debug("done\n");
-
 
 	return 0;
 }

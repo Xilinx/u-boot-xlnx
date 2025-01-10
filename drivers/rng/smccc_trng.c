@@ -5,7 +5,6 @@
 
 #define LOG_CATEGORY UCLASS_RNG
 
-#include <common.h>
 #include <dm.h>
 #include <linker_lists.h>
 #include <log.h>
@@ -136,10 +135,6 @@ static bool smccc_trng_is_supported(void (*invoke_fn)(unsigned long a0, unsigned
 {
 	struct arm_smccc_res res;
 
-	(*invoke_fn)(ARM_SMCCC_ARCH_FEATURES, ARM_SMCCC_TRNG_VERSION, 0, 0, 0, 0, 0, 0, &res);
-	if (res.a0 == ARM_SMCCC_RET_NOT_SUPPORTED)
-		return false;
-
 	(*invoke_fn)(ARM_SMCCC_TRNG_VERSION, 0, 0, 0, 0, 0, 0, 0, &res);
 	if (res.a0 & BIT(31))
 		return false;
@@ -166,7 +161,7 @@ static int smccc_trng_probe(struct udevice *dev)
 	struct smccc_trng_priv *priv = dev_get_priv(dev);
 	struct arm_smccc_res res;
 
-	if (!(smccc_trng_is_supported(smccc->invoke_fn)))
+	if (!smccc || !(smccc_trng_is_supported(smccc->invoke_fn)))
 		return -ENODEV;
 
 	/* At least one of 64bit and 32bit interfaces is available */

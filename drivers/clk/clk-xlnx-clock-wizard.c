@@ -7,7 +7,6 @@
  * Author: Zhengxun Li <zhengxunli@mxic.com.tw>
  */
 
-#include <common.h>
 #include <clk-uclass.h>
 #include <dm.h>
 #include <div64.h>
@@ -137,7 +136,6 @@ static int clk_wzrd_probe(struct udevice *dev)
 	ret = clk_enable(&clk_in1);
 	if (ret) {
 		dev_err(dev, "failed to enable clock\n");
-		clk_free(&clk_in1);
 		return ret;
 	}
 

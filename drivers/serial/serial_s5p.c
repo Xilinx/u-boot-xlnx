@@ -117,7 +117,7 @@ static void __maybe_unused s5p_serial_baud(struct s5p_uart *uart, u8 reg_width,
 		writeb(val % 16, &uart->rest.value);
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 int s5p_serial_setbrg(struct udevice *dev, int baudrate)
 {
 	struct s5p_serial_plat *plat = dev_get_plat(dev);
@@ -257,6 +257,7 @@ static const struct dm_serial_ops s5p_serial_ops = {
 
 static const struct udevice_id s5p_serial_ids[] = {
 	{ .compatible = "samsung,exynos4210-uart",	.data = PORT_S5P },
+	{ .compatible = "samsung,exynos850-uart",	.data = PORT_S5P },
 	{ .compatible = "apple,s5l-uart",		.data = PORT_S5L },
 	{ }
 };

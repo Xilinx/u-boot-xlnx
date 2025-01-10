@@ -7,7 +7,6 @@
 #ifndef __PICO_IMX6UL_CONFIG_H
 #define __PICO_IMX6UL_CONFIG_H
 
-
 #include <asm/arch/imx-regs.h>
 #include <linux/sizes.h>
 #include "mx6_common.h"
@@ -21,10 +20,6 @@
 
 /* MMC Configs */
 #define CFG_SYS_FSL_ESDHC_ADDR	USDHC1_BASE_ADDR
-
-/* USB Configs */
-#define CFG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CFG_MXC_USB_FLAGS		0
 
 #define DFU_DEFAULT_POLL_TIMEOUT 300
 

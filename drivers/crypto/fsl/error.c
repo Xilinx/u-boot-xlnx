@@ -7,9 +7,9 @@
  * Derived from error.c file in linux drivers/crypto/caam
  */
 
-#include <common.h>
 #include <log.h>
 #include <malloc.h>
+#include <vsprintf.h>
 #include "desc.h"
 #include "jr.h"
 
@@ -25,7 +25,6 @@
 #define JRSTA_DECOERR_INDEX_SHIFT   8
 #define JRSTA_DECOERR_INDEX_MASK    0xff00
 #define JRSTA_DECOERR_ERROR_MASK    0x00ff
-
 
 static const struct {
 	u8 value;

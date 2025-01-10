@@ -67,6 +67,8 @@ struct crlapb_regs {
 
 #define crlapb_base ((struct crlapb_regs *)ZYNQMP_CRL_APB_BASEADDR)
 
+#define ZYNQMP_IOU_SECURE_SLCR 0xFF240000
+
 #define ZYNQMP_IOU_SCNTR_SECURE	0xFF260000
 #define ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_EN	0x1
 #define ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_HDBG	0x2
@@ -130,6 +132,9 @@ struct crfapb_regs {
 
 #define crfapb_base ((struct crfapb_regs *)ZYNQMP_CRF_APB_BASEADDR)
 
+#define ZYNQMP_CCI_REG_CCI_MISC_CTRL	0xFD5E0040
+#define ZYNQMP_CCI_REG_CCI_MISC_CTRL_NIDEN	BIT(1)
+
 #define ZYNQMP_APU_BASEADDR	0xFD5C0000
 
 struct apu_regs {
@@ -183,6 +188,8 @@ struct pmu_regs {
 	u32 gen_storage4; /* 0x40 */
 	u32 reserved1[1];
 	u32 gen_storage6; /* 0x48 */
+	u32 reserved2[3];
+	u32 pers_gen_storage2; /* 0x58 */
 };
 
 #define pmu_base ((struct pmu_regs *)ZYNQMP_PMU_BASEADDR)

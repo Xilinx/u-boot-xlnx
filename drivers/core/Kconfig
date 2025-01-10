@@ -56,7 +56,7 @@ config DM_WARN
 	  out - it will do nothing when called.
 
 config SPL_DM_WARN
-	bool "Enable warnings in driver model wuth SPL"
+	bool "Enable warnings in driver model in SPL"
 	depends on SPL_DM
 	help
 	  Enable this to see warnings related to driver model in SPL
@@ -87,7 +87,7 @@ config DM_STATS
 
 config SPL_DM_STATS
 	bool "Collect and show driver model stats in SPL"
-	depends on DM_SPL
+	depends on SPL_DM
 	help
 	  Enable this to collect and display memory statistics about driver
 	  model. This can help to figure out where all the memory is going and
@@ -113,7 +113,7 @@ config DM_EVENT
 	select EVENT
 	help
 	  This enables support for generating events related to driver model
-	  operations, such as prbing or removing a device. Subsystems can
+	  operations, such as probing or removing a device. Subsystems can
 	  register a 'spy' function that is called when the event occurs. Such
 	  subsystems must select this option.
 
@@ -146,6 +146,15 @@ config DM_SEQ_ALIAS
 config SPL_DM_SEQ_ALIAS
 	bool "Support numbered aliases in device tree in SPL"
 	depends on SPL_DM
+	select SPL_STRTO
+	help
+	  Most boards will have a '/aliases' node containing the path to
+	  numbered devices (e.g. serial0 = &serial0). This feature can be
+	  disabled if it is not required, to save code space in SPL.
+
+config TPL_DM_SEQ_ALIAS
+	bool "Support numbered aliases in device tree in TPL"
+	depends on TPL_DM
 	help
 	  Most boards will have a '/aliases' node containing the path to
 	  numbered devices (e.g. serial0 = &serial0). This feature can be

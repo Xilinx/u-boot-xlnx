@@ -7,7 +7,6 @@
  */
 
 #include <bouncebuf.h>
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <log.h>
@@ -80,7 +79,6 @@ static void tegra_mmc_prepare_data(struct tegra_mmc_priv *priv,
 				   struct bounce_buffer *bbstate)
 {
 	unsigned char ctrl;
-
 
 	debug("buf: %p (%p), data->blocks: %u, data->blocksize: %u\n",
 		bbstate->bounce_buffer, bbstate->user_buffer, data->blocks,
@@ -698,7 +696,7 @@ static int tegra_mmc_probe(struct udevice *dev)
 	 *  (actually 52MHz)
 	 */
 	cfg->f_min = 375000;
-	cfg->f_max = 48000000;
+	cfg->f_max = dev_read_u32_default(dev, "max-frequency", 48000000);
 
 	cfg->b_max = CONFIG_SYS_MMC_MAX_BLK_COUNT;
 

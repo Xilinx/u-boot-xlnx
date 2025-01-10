@@ -3,7 +3,6 @@
  * Copyright (C) 2019 Intel Corporation <www.intel.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dm/test.h>
 
@@ -19,4 +18,4 @@ static int dm_test_reset(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_reset, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_reset, UTF_SCAN_FDT);

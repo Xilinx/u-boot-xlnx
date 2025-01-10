@@ -1,10 +1,10 @@
-if STM32MP13x
+if STM32MP13X
 
 choice
 	prompt "STM32MP13x board select"
 	optional
 
-config TARGET_ST_STM32MP13x
+config TARGET_ST_STM32MP13X
 	bool "STMicroelectronics STM32MP13x boards"
 	imply BOOTSTAGE
 	imply CMD_BOOTSTAGE
@@ -27,9 +27,6 @@ config PRE_CON_BUF_ADDR
 
 config PRE_CON_BUF_SZ
 	default 4096
-
-config BOOTSTAGE_STASH_ADDR
-	default 0xC3000000
 
 if BOOTCOUNT_GENERIC
 config SYS_BOOTCOUNT_SINGLEWORD

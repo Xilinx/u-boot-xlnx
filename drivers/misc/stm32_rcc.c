@@ -6,7 +6,6 @@
 
 #define LOG_CATEGORY UCLASS_NOP
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <misc.h>
@@ -76,7 +75,6 @@ static int stm32_rcc_bind(struct udevice *dev)
 					    rcc_clk->soc,
 					    dev_ofnode(dev), &child);
 }
-
 
 static const struct udevice_id stm32_rcc_ids[] = {
 	{.compatible = "st,stm32f42xx-rcc", .data = (ulong)&stm32_rcc_clk_f42x },

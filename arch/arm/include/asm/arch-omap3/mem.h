@@ -463,7 +463,6 @@ enum {
 #define NET_LAN9221_GPMC_CONFIG6    0x87030000
 #define NET_LAN9221_GPMC_CONFIG7    0x00000f6c
 
-
 /* max number of GPMC Chip Selects */
 #define GPMC_MAX_CS	8
 /* max number of GPMC regs */
@@ -475,7 +474,7 @@ enum {
 #ifndef __ASSEMBLY__
 
 /* Function prototypes */
-void mem_init(void);
+void omap3_mem_init(void);
 
 u32 is_mem_sdr(void);
 u32 mem_ok(u32 cs);

@@ -5,7 +5,6 @@
  * Thomas Abraham <thomas.ab@samsung.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <asm/io.h>
@@ -16,6 +15,8 @@
 #include "pinctrl-exynos.h"
 
 #define	GPD1_OFFSET	0xc0
+#define PIN_CON		0x00	/* Offset of pin function register */
+#define PIN_PUD		0x08	/* Offset of pin pull up/down config register */
 
 static struct exynos_pinctrl_config_data serial2_conf[] = {
 	{

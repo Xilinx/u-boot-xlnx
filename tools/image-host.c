@@ -14,8 +14,10 @@
 #include <image.h>
 #include <version.h>
 
+#if CONFIG_IS_ENABLED(FIT_SIGNATURE)
 #include <openssl/pem.h>
 #include <openssl/evp.h>
+#endif
 
 /**
  * fit_set_hash_value - set hash value in requested has node
@@ -340,6 +342,28 @@ err:
 	return ret;
 }
 
+static int fit_image_read_key_iv_data(const char *keydir, const char *key_iv_name,
+				      unsigned char *key_iv_data, int expected_size)
+{
+	char filename[PATH_MAX];
+	int ret;
+
+	ret = snprintf(filename, sizeof(filename), "%s/%s%s",
+		       keydir, key_iv_name, ".bin");
+	if (ret >= sizeof(filename)) {
+		fprintf(stderr, "Can't format the key or IV filename when setting up the cipher: insufficient buffer space\n");
+		return -1;
+	}
+	if (ret < 0) {
+		fprintf(stderr, "Can't format the key or IV filename when setting up the cipher: snprintf error\n");
+		return -1;
+	}
+
+	ret = fit_image_read_data(filename, key_iv_data, expected_size);
+
+	return ret;
+}
+
 static int get_random_data(void *data, int size)
 {
 	unsigned char *tmp = data;
@@ -376,7 +400,6 @@ static int fit_image_setup_cipher(struct image_cipher_info *info,
 				  int noffset)
 {
 	char *algo_name;
-	char filename[128];
 	int ret = -1;
 
 	if (fit_image_cipher_get_algo(fit, noffset, &algo_name)) {
@@ -413,17 +436,17 @@ static int fit_image_setup_cipher(struct image_cipher_info *info,
 		goto out;
 	}
 
-	/* Read the key in the file */
-	snprintf(filename, sizeof(filename), "%s/%s%s",
-		 info->keydir, info->keyname, ".bin");
 	info->key = malloc(info->cipher->key_len);
 	if (!info->key) {
 		fprintf(stderr, "Can't allocate memory for key\n");
 		ret = -1;
 		goto out;
 	}
-	ret = fit_image_read_data(filename, (unsigned char *)info->key,
-				  info->cipher->key_len);
+
+	/* Read the key in the file */
+	ret = fit_image_read_key_iv_data(info->keydir, info->keyname,
+					 (unsigned char *)info->key,
+					 info->cipher->key_len);
 	if (ret < 0)
 		goto out;
 
@@ -436,10 +459,11 @@ static int fit_image_setup_cipher(struct image_cipher_info *info,
 
 	if (info->ivname) {
 		/* Read the IV in the file */
-		snprintf(filename, sizeof(filename), "%s/%s%s",
-			 info->keydir, info->ivname, ".bin");
-		ret = fit_image_read_data(filename, (unsigned char *)info->iv,
-					  info->cipher->iv_len);
+		ret = fit_image_read_key_iv_data(info->keydir, info->ivname,
+						 (unsigned char *)info->iv,
+						 info->cipher->iv_len);
+		if (ret < 0)
+			goto out;
 	} else {
 		/* Generate an ramdom IV */
 		ret = get_random_data((void *)info->iv, info->cipher->iv_len);
@@ -706,7 +730,7 @@ static const char *fit_config_get_image_list(const void *fit, int noffset,
 					     int *lenp, int *allow_missingp)
 {
 	static const char default_list[] = FIT_KERNEL_PROP "\0"
-			FIT_FDT_PROP;
+			FIT_FDT_PROP "\0" FIT_SCRIPT_PROP;
 	const char *prop;
 
 	/* If there is an "sign-image" property, use that */
@@ -1131,6 +1155,7 @@ static int fit_config_add_verification_data(const char *keydir,
 	return 0;
 }
 
+#if CONFIG_IS_ENABLED(FIT_SIGNATURE)
 /*
  * 0) open file (open)
  * 1) read certificate (PEM_read_X509)
@@ -1239,6 +1264,7 @@ int fit_pre_load_data(const char *keydir, void *keydest, void *fit)
  out:
 	return ret;
 }
+#endif
 
 int fit_cipher_data(const char *keydir, void *keydest, void *fit,
 		    const char *comment, int require_keys,
@@ -1307,7 +1333,7 @@ int fit_add_verification_data(const char *keydir, const char *keyfile,
 		if (ret) {
 			fprintf(stderr, "Can't add verification data for node '%s' (%s)\n",
 				fdt_get_name(fit, noffset, NULL),
-				fdt_strerror(ret));
+				strerror(-ret));
 			return ret;
 		}
 	}

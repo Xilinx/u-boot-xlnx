@@ -17,7 +17,6 @@
  * Lukasz Majewski <l.majewski@samsumg.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <log.h>
 #include <linux/bug.h>
@@ -92,7 +91,6 @@ static inline void dwc2_ep0_complete_out(void)
 		__func__, readl(&reg->out_endp[EP0_CON].doepctl));
 
 }
-
 
 static int setdma_rx(struct dwc2_ep *ep, struct dwc2_request *req)
 {
@@ -973,7 +971,6 @@ static void dwc2_udc_set_nak(struct dwc2_ep *ep)
 	return;
 }
 
-
 static void dwc2_udc_ep_set_stall(struct dwc2_ep *ep)
 {
 	u8		ep_num;
@@ -1441,7 +1438,6 @@ static void dwc2_ep0_setup(struct dwc2_udc *dev)
 		}
 	}
 
-
 	if (likely(dev->driver)) {
 		/* device-2-host (IN) or no data setup command,
 		 * process immediately */
@@ -1462,7 +1458,6 @@ static void dwc2_ep0_setup(struct dwc2_udc *dev)
 				   "\tdev->driver->setup failed (%d),"
 				    " bRequest = %d\n",
 				i, usb_ctrl->bRequest);
-
 
 		} else if (dev->req_pending) {
 			dev->req_pending = 0;

@@ -92,7 +92,6 @@ extern void _outsl_ns(volatile u32 *port, const void *buf, int nl);
 #define insl_ns(port, buf, nl)  _insl_ns((u32 *)((port)+_IO_BASE), (buf), (nl))
 #define outsl_ns(port, buf, nl) _outsl_ns((u32 *)((port)+_IO_BASE), (buf), (nl))
 
-
 #define IO_SPACE_LIMIT ~0
 
 #define memset_io(a,b,c)       memset((void __force *)(a),(b),(c))
@@ -138,26 +137,37 @@ static inline unsigned char __raw_readb(const volatile void __iomem *addr)
 {
 	return *(volatile unsigned char *)PCI_FIX_ADDR(addr);
 }
+#define __raw_readb __raw_readb
+
 static inline unsigned short __raw_readw(const volatile void __iomem *addr)
 {
 	return *(volatile unsigned short *)PCI_FIX_ADDR(addr);
 }
+#define __raw_readw __raw_readw
+
 static inline unsigned int __raw_readl(const volatile void __iomem *addr)
 {
 	return *(volatile unsigned int *)PCI_FIX_ADDR(addr);
 }
+#define __raw_readl __raw_readl
+
 static inline void __raw_writeb(unsigned char v, volatile void __iomem *addr)
 {
 	*(volatile unsigned char *)PCI_FIX_ADDR(addr) = v;
 }
+#define __raw_writeb __raw_writeb
+
 static inline void __raw_writew(unsigned short v, volatile void __iomem *addr)
 {
 	*(volatile unsigned short *)PCI_FIX_ADDR(addr) = v;
 }
+#define __raw_writew __raw_writew
+
 static inline void __raw_writel(unsigned int v, volatile void __iomem *addr)
 {
 	*(volatile unsigned int *)PCI_FIX_ADDR(addr) = v;
 }
+#define __raw_writel __raw_writel
 
 /*
  * 8, 16 and 32 bit, big and little endian I/O operations, with barrier.

@@ -9,7 +9,6 @@
  * Taken from coreboot itss.c
  */
 
-#include <common.h>
 #include <dm.h>
 #include <dt-structs.h>
 #include <irq.h>
@@ -101,7 +100,6 @@ static int restore_polarities(struct udevice *dev)
 
 	reg_start = start / IRQS_PER_IPC;
 	reg_end = DIV_ROUND_UP(end, IRQS_PER_IPC);
-
 
 	for (i = reg_start; i < reg_end; i++) {
 		u32 mask;

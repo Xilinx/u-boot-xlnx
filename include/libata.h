@@ -10,7 +10,7 @@
 #ifndef __LIBATA_H__
 #define __LIBATA_H__
 
-#include <common.h>
+#include <linux/types.h>
 
 enum {
 	/* various global constants */

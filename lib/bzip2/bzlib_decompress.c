@@ -1,5 +1,4 @@
 #include <config.h>
-#include <common.h>
 #include <watchdog.h>
 
 /*-------------------------------------------------------------*/
@@ -61,9 +60,7 @@
   For more information on these sources, see the manual.
 --*/
 
-
 #include "bzlib_private.h"
-
 
 /*---------------------------------------------------*/
 static
@@ -77,7 +74,6 @@ void makeMaps_d ( DState* s )
 	 s->nInUse++;
       }
 }
-
 
 /*---------------------------------------------------*/
 #define RETURN(rrr)                               \
@@ -143,7 +139,6 @@ void makeMaps_d ( DState* s )
       RETURN(BZ_DATA_ERROR);                      \
    lval = gPerm[zvec - gBase[zn]];                \
 }
-
 
 /*---------------------------------------------------*/
 Int32 BZ2_decompress ( DState* s )
@@ -606,7 +601,6 @@ Int32 BZ2_decompress ( DState* s )
 
       RETURN(BZ_OK);
 
-
     endhdr_2:
 
       GET_UCHAR(BZ_X_ENDHDR_2, uc);
@@ -667,7 +661,6 @@ Int32 BZ2_decompress ( DState* s )
 
    return retVal;
 }
-
 
 /*-------------------------------------------------------------*/
 /*--- end                                      decompress.c ---*/

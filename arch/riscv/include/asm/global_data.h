@@ -10,6 +10,7 @@
 #ifndef	__ASM_GBL_DATA_H
 #define __ASM_GBL_DATA_H
 
+#include <linux/types.h>
 #include <asm/smp.h>
 #include <asm/u-boot.h>
 #include <compiler.h>
@@ -32,9 +33,16 @@ struct arch_global_data {
 	ulong available_harts;
 #endif
 #endif
+#if CONFIG_IS_ENABLED(ACPI)
+	ulong table_start;		/* Start address of ACPI tables */
+	ulong table_end;		/* End address of ACPI tables */
+	ulong table_start_high;		/* Start address of high ACPI tables */
+	ulong table_end_high;		/* End address of high ACPI tables */
+#endif
 #ifdef CONFIG_SMBIOS
 	ulong smbios_start;		/* Start address of SMBIOS table */
 #endif
+	struct resume_data *resume;
 };
 
 #include <asm-generic/global_data.h>

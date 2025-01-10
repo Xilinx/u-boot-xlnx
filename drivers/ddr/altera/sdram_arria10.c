@@ -3,7 +3,6 @@
  * Copyright (C) 2017 Intel Corporation <www.intel.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <errno.h>
 #include <fdtdec.h>
@@ -645,7 +644,6 @@ static int of_sdram_firewall_setup(const void *blob)
 	/* set to default state */
 	writel(0, &socfpga_noc_fw_ddr_mpu_fpga2sdram_base->enable);
 	writel(0, &socfpga_noc_fw_ddr_l3_base->enable);
-
 
 	for (i = 0; i < ARRAY_SIZE(firewall_table); i++) {
 		sprintf(name, "%s", firewall_table[i].prop_name);

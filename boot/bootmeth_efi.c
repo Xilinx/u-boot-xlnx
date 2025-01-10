@@ -8,12 +8,12 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
-#include <common.h>
 #include <bootdev.h>
 #include <bootflow.h>
 #include <bootmeth.h>
 #include <command.h>
 #include <dm.h>
+#include <efi.h>
 #include <efi_loader.h>
 #include <fs.h>
 #include <malloc.h>
@@ -23,70 +23,13 @@
 #include <pxe_utils.h>
 #include <linux/sizes.h>
 
-#define EFI_DIRNAME	"efi/boot/"
-
-/**
- * get_efi_leafname() - Get the leaf name for the EFI file we expect
- *
- * @str: Place to put leaf name for this architecture, e.g. "bootaa64.efi".
- *	Must have at least 16 bytes of space
- * @max_len: Length of @str, must be >=16
- */
-static int get_efi_leafname(char *str, int max_len)
-{
-	const char *base;
-
-	if (max_len < 16)
-		return log_msg_ret("spc", -ENOSPC);
-	if (IS_ENABLED(CONFIG_ARM64))
-		base = "bootaa64";
-	else if (IS_ENABLED(CONFIG_ARM))
-		base = "bootarm";
-	else if (IS_ENABLED(CONFIG_X86_RUN_32BIT))
-		base = "bootia32";
-	else if (IS_ENABLED(CONFIG_X86_RUN_64BIT))
-		base = "bootx64";
-	else if (IS_ENABLED(CONFIG_ARCH_RV32I))
-		base = "bootriscv32";
-	else if (IS_ENABLED(CONFIG_ARCH_RV64I))
-		base = "bootriscv64";
-	else if (IS_ENABLED(CONFIG_SANDBOX))
-		base = "bootsbox";
-	else
-		return -EINVAL;
-
-	strcpy(str, base);
-	strcat(str, ".efi");
-
-	return 0;
-}
-
-static int get_efi_pxe_arch(void)
-{
-	/* http://www.iana.org/assignments/dhcpv6-parameters/dhcpv6-parameters.xml */
-	if (IS_ENABLED(CONFIG_ARM64))
-		return 0xb;
-	else if (IS_ENABLED(CONFIG_ARM))
-		return 0xa;
-	else if (IS_ENABLED(CONFIG_X86_64))
-		return 0x6;
-	else if (IS_ENABLED(CONFIG_X86))
-		return 0x7;
-	else if (IS_ENABLED(CONFIG_ARCH_RV32I))
-		return 0x19;
-	else if (IS_ENABLED(CONFIG_ARCH_RV64I))
-		return 0x1b;
-	else if (IS_ENABLED(CONFIG_SANDBOX))
-		return 0;	/* not used */
-
-	return -EINVAL;
-}
+#define EFI_DIRNAME	"/EFI/BOOT/"
 
 static int get_efi_pxe_vci(char *str, int max_len)
 {
 	int ret;
 
-	ret = get_efi_pxe_arch();
+	ret = efi_get_pxe_arch();
 	if (ret < 0)
 		return ret;
 
@@ -136,11 +79,10 @@ static void set_efi_bootdev(struct blk_desc *desc, struct bootflow *bflow)
 	if (last_slash)
 		*last_slash = '\0';
 
-	log_debug("setting bootdev %s, %s, %s, %p, %x\n",
-		  dev_get_uclass_name(media_dev), devnum_str, bflow->fname,
-		  bflow->buf, size);
 	dev_name = device_get_uclass_id(media_dev) == UCLASS_MASS_STORAGE ?
-		 "usb" : dev_get_uclass_name(media_dev);
+		 "usb" : blk_get_uclass_name(device_get_uclass_id(media_dev));
+	log_debug("setting bootdev %s, %s, %s, %p, %x\n",
+		  dev_name, devnum_str, bflow->fname, bflow->buf, size);
 	efi_set_bootdev(dev_name, devnum_str, bflow->fname, bflow->buf, size);
 }
 
@@ -179,62 +121,6 @@ static int distro_efi_check(struct udevice *dev, struct bootflow_iter *iter)
 	return 0;
 }
 
-/**
- * distro_efi_get_fdt_name() - Get the filename for reading the .dtb file
- *
- * @fname: Place to put filename
- * @size: Max size of filename
- * @seq: Sequence number, to cycle through options (0=first)
- * Returns: 0 on success, -ENOENT if the "fdtfile" env var does not exist,
- * -EINVAL if there are no more options, -EALREADY if the control FDT should be
- * used
- */
-static int distro_efi_get_fdt_name(char *fname, int size, int seq)
-{
-	const char *fdt_fname;
-	const char *prefix;
-
-	/* select the prefix */
-	switch (seq) {
-	case 0:
-		/* this is the default */
-		prefix = "/dtb";
-		break;
-	case 1:
-		prefix = "";
-		break;
-	case 2:
-		prefix = "/dtb/current";
-		break;
-	default:
-		return log_msg_ret("pref", -EINVAL);
-	}
-
-	fdt_fname = env_get("fdtfile");
-	if (fdt_fname) {
-		snprintf(fname, size, "%s/%s", prefix, fdt_fname);
-		log_debug("Using device tree: %s\n", fname);
-	} else if (IS_ENABLED(CONFIG_OF_HAS_PRIOR_STAGE)) {
-		strcpy(fname, "<prior>");
-		return log_msg_ret("pref", -EALREADY);
-	/* Use this fallback only for 32-bit ARM */
-	} else if (IS_ENABLED(CONFIG_ARM) && !IS_ENABLED(CONFIG_ARM64)) {
-		const char *soc = env_get("soc");
-		const char *board = env_get("board");
-		const char *boardver = env_get("boardver");
-
-		/* cf the code in label_boot() which seems very complex */
-		snprintf(fname, size, "%s/%s%s%s%s.dtb", prefix,
-			 soc ? soc : "", soc ? "-" : "", board ? board : "",
-			 boardver ? boardver : "");
-		log_debug("Using default device tree: %s\n", fname);
-	} else {
-		return log_msg_ret("env", -ENOENT);
-	}
-
-	return 0;
-}
-
 /*
  * distro_efi_try_bootflow_files() - Check that files are present
  *
@@ -255,20 +141,21 @@ static int distro_efi_try_bootflow_files(struct udevice *dev,
 	int ret, seq;
 
 	/* We require a partition table */
-	if (!bflow->part)
+	if (!bflow->part) {
+		log_debug("no partitions\n");
 		return -ENOENT;
+	}
 
 	strcpy(fname, EFI_DIRNAME);
-	ret = get_efi_leafname(fname + strlen(fname),
-			       sizeof(fname) - strlen(fname));
-	if (ret)
-		return log_msg_ret("leaf", ret);
+	strcat(fname, efi_get_basename());
 
 	if (bflow->blk)
 		 desc = dev_get_uclass_plat(bflow->blk);
 	ret = bootmeth_try_file(bflow, desc, NULL, fname);
-	if (ret)
+	if (ret) {
+		log_debug("File '%s' not found\n", fname);
 		return log_msg_ret("try", ret);
+	}
 
 	/* Since we can access the file, let's call it ready */
 	bflow->state = BOOTFLOWST_READY;
@@ -279,7 +166,7 @@ static int distro_efi_try_bootflow_files(struct udevice *dev,
 	ret = -ENOENT;
 	*fname = '\0';
 	for (seq = 0; ret == -ENOENT; seq++) {
-		ret = distro_efi_get_fdt_name(fname, sizeof(fname), seq);
+		ret = efi_get_distro_fdt_name(fname, sizeof(fname), seq);
 		if (ret == -EALREADY)
 			bflow->flags = BOOTFLOWF_USE_PRIOR_FDT;
 		if (!ret) {
@@ -331,7 +218,7 @@ static int distro_efi_read_bootflow_net(struct bootflow *bflow)
 	ret = get_efi_pxe_vci(str, sizeof(str));
 	if (ret)
 		return log_msg_ret("vci", ret);
-	ret = get_efi_pxe_arch();
+	ret = efi_get_pxe_arch();
 	if (ret < 0)
 		return log_msg_ret("arc", ret);
 	arch = ret;
@@ -360,7 +247,7 @@ static int distro_efi_read_bootflow_net(struct bootflow *bflow)
 		return log_msg_ret("sz", -EINVAL);
 	bflow->size = size;
 
-    /* bootfile should be setup by dhcp*/
+	/* bootfile should be setup by dhcp */
 	bootfile_name = env_get("bootfile");
 	if (!bootfile_name)
 		return log_msg_ret("bootfile_name", ret);
@@ -378,7 +265,7 @@ static int distro_efi_read_bootflow_net(struct bootflow *bflow)
 	sprintf(file_addr, "%lx", fdt_addr);
 
 	/* We only allow the first prefix with PXE */
-	ret = distro_efi_get_fdt_name(fname, sizeof(fname), 0);
+	ret = efi_get_distro_fdt_name(fname, sizeof(fname), 0);
 	if (ret)
 		return log_msg_ret("nam", ret);
 
@@ -403,6 +290,8 @@ static int distro_efi_read_bootflow(struct udevice *dev, struct bootflow *bflow)
 {
 	int ret;
 
+	log_debug("dev='%s', part=%d\n", bflow->dev->name, bflow->part);
+
 	/*
 	 * bootmeth_efi doesn't allocate any buffer neither for blk nor net device
 	 * set flag to avoid freeing static buffer.
@@ -426,9 +315,9 @@ static int distro_efi_read_bootflow(struct udevice *dev, struct bootflow *bflow)
 static int distro_efi_boot(struct udevice *dev, struct bootflow *bflow)
 {
 	ulong kernel, fdt;
-	char cmd[50];
 	int ret;
 
+	log_debug("distro EFI boot\n");
 	kernel = env_get_hex("kernel_addr_r", 0);
 	if (!bootmeth_uses_network(bflow)) {
 		ret = efiload_read_file(bflow, kernel);
@@ -453,20 +342,17 @@ static int distro_efi_boot(struct udevice *dev, struct bootflow *bflow)
 		fdt = env_get_hex("fdt_addr_r", 0);
 	}
 
-	/*
-	 * At some point we can add a real interface to bootefi so we can call
-	 * this directly. For now, go through the CLI, like distro boot.
-	 */
 	if (bflow->flags & BOOTFLOWF_USE_BUILTIN_FDT) {
 		log_debug("Booting with built-in fdt\n");
-		snprintf(cmd, sizeof(cmd), "bootefi %lx", kernel);
+		if (efi_binary_run(map_sysmem(kernel, 0), bflow->size,
+				   EFI_FDT_USE_INTERNAL))
+			return log_msg_ret("run", -EINVAL);
 	} else {
 		log_debug("Booting with external fdt\n");
-		snprintf(cmd, sizeof(cmd), "bootefi %lx %lx", kernel, fdt);
+		if (efi_binary_run(map_sysmem(kernel, 0), bflow->size,
+				   map_sysmem(fdt, 0)))
+			return log_msg_ret("run", -EINVAL);
 	}
-
-	if (run_command(cmd, 0))
-		return log_msg_ret("run", -EINVAL);
 
 	return 0;
 }
@@ -493,7 +379,8 @@ static const struct udevice_id distro_efi_bootmeth_ids[] = {
 	{ }
 };
 
-U_BOOT_DRIVER(bootmeth_efi) = {
+/* Put a number before 'efi' to provide a default ordering */
+U_BOOT_DRIVER(bootmeth_4efi) = {
 	.name		= "bootmeth_efi",
 	.id		= UCLASS_BOOTMETH,
 	.of_match	= distro_efi_bootmeth_ids,

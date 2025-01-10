@@ -5,35 +5,23 @@
 
 #define LOG_CATEGORY	LOGC_BOOT
 
-#include <common.h>
+#include <errno.h>
 #include <smbios.h>
-
-static inline int verify_checksum(const struct smbios_entry *e)
-{
-	/*
-	 * Checksums for SMBIOS tables are calculated to have a value, so that
-	 * the sum over all bytes yields zero (using unsigned 8 bit arithmetic).
-	 */
-	u8 *byte = (u8 *)e;
-	u8 sum = 0;
-
-	for (int i = 0; i < e->length; i++)
-		sum += byte[i];
-
-	return sum;
-}
+#include <string.h>
+#include <tables_csum.h>
+#include <linux/kernel.h>
 
 const struct smbios_entry *smbios_entry(u64 address, u32 size)
 {
 	const struct smbios_entry *entry = (struct smbios_entry *)(uintptr_t)address;
 
-	if (!address | !size)
+	if (!address || !size)
 		return NULL;
 
 	if (memcmp(entry->anchor, "_SM_", 4))
 		return NULL;
 
-	if (verify_checksum(entry))
+	if (table_compute_checksum(entry, entry->length))
 		return NULL;
 
 	return entry;
@@ -51,14 +39,7 @@ static u8 *find_next_header(u8 *pos)
 	return pos;
 }
 
-static struct smbios_header *get_next_header(struct smbios_header *curr)
-{
-	u8 *pos = ((u8 *)curr) + curr->length;
-
-	return (struct smbios_header *)find_next_header(pos);
-}
-
-static const struct smbios_header *next_header(const struct smbios_header *curr)
+static struct smbios_header *get_next_header(const struct smbios_header *curr)
 {
 	u8 *pos = ((u8 *)curr) + curr->length;
 
@@ -74,7 +55,7 @@ const struct smbios_header *smbios_header(const struct smbios_entry *entry, int 
 		if (header->type == type)
 			return header;
 
-		header = next_header(header);
+		header = get_next_header(header);
 	}
 
 	return NULL;
@@ -242,21 +223,24 @@ static void clear_smbios_table(struct smbios_header *header,
 	}
 }
 
-void smbios_prepare_measurement(const struct smbios_entry *entry,
+void smbios_prepare_measurement(const struct smbios3_entry *entry,
 				struct smbios_header *smbios_copy)
 {
 	u32 i, j;
+	void *table_end;
 	struct smbios_header *header;
+
+	table_end = (void *)((u8 *)smbios_copy + entry->table_maximum_size);
 
 	for (i = 0; i < ARRAY_SIZE(smbios_filter_tables); i++) {
 		header = smbios_copy;
-		for (j = 0; j < entry->struct_count; j++) {
+		for (j = 0; (void *)header < table_end; j++) {
 			if (header->type == smbios_filter_tables[i].type)
 				break;
 
 			header = get_next_header(header);
 		}
-		if (j >= entry->struct_count)
+		if ((void *)header >= table_end)
 			continue;
 
 		clear_smbios_table(header,

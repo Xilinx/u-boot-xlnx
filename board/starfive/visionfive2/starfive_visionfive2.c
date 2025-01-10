@@ -4,11 +4,11 @@
  * Author: Yanhong Wang<yanhong.wang@starfivetech.com>
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <fdt_support.h>
 #include <env.h>
+#include <log.h>
 #include <asm/arch/eeprom.h>
 #include <asm/io.h>
 #include <asm/sections.h>
@@ -17,10 +17,18 @@
 DECLARE_GLOBAL_DATA_PTR;
 #define JH7110_L2_PREFETCHER_BASE_ADDR		0x2030000
 #define JH7110_L2_PREFETCHER_HART_OFFSET	0x2000
+#define FDTFILE_MILK_V_MARS \
+	"starfive/jh7110-milkv-mars.dtb"
+#define FDTFILE_MILK_V_MARS_CM \
+	"starfive/jh7110-milkv-mars-cm.dtb"
+#define FDTFILE_MILK_V_MARS_CM_LITE \
+	"starfive/jh7110-milkv-mars-cm-lite.dtb"
 #define FDTFILE_VISIONFIVE2_1_2A \
 	"starfive/jh7110-starfive-visionfive-2-v1.2a.dtb"
 #define FDTFILE_VISIONFIVE2_1_3B \
 	"starfive/jh7110-starfive-visionfive-2-v1.3b.dtb"
+#define FDTFILE_PINE64_STAR64 \
+	"starfive/jh7110-pine64-star64.dtb"
 
 /* enable U74-mc hart1~hart4 prefetcher */
 static void enable_prefetcher(void)
@@ -48,20 +56,45 @@ static void set_fdtfile(void)
 {
 	u8 version;
 	const char *fdtfile;
+	const char *product_id;
 
-	version = get_pcb_revision_from_eeprom();
-	switch (version) {
-	case 'a':
-	case 'A':
-		fdtfile = FDTFILE_VISIONFIVE2_1_2A;
-	        break;
+	fdtfile = env_get("fdtfile");
+	if (fdtfile)
+		return;
 
-	case 'b':
-	case 'B':
-	default:
-		fdtfile = FDTFILE_VISIONFIVE2_1_3B;
-	        break;
-	};
+	product_id = get_product_id_from_eeprom();
+	if (!product_id) {
+		log_err("Can't read EEPROM\n");
+		return;
+	}
+	if (!strncmp(product_id, "MARC", 4)) {
+		if (get_mmc_size_from_eeprom())
+			fdtfile = FDTFILE_MILK_V_MARS_CM;
+		else
+			fdtfile = FDTFILE_MILK_V_MARS_CM_LITE;
+	} else if (!strncmp(product_id, "MARS", 4)) {
+		fdtfile = FDTFILE_MILK_V_MARS;
+	} else if (!strncmp(product_id, "VF7110", 6)) {
+		version = get_pcb_revision_from_eeprom();
+
+		switch (version) {
+		case 'a':
+		case 'A':
+			fdtfile = FDTFILE_VISIONFIVE2_1_2A;
+			break;
+
+		case 'b':
+		case 'B':
+		default:
+			fdtfile = FDTFILE_VISIONFIVE2_1_3B;
+			break;
+		}
+	} else if (!strncmp(product_id, "STAR64", 6)) {
+		fdtfile = FDTFILE_PINE64_STAR64;
+	} else {
+		log_err("Unknown product\n");
+		return;
+	}
 
 	env_set("fdtfile", fdtfile);
 }

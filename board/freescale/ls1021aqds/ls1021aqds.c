@@ -4,7 +4,6 @@
  * Copyright 2019, 2021 NXP
  */
 
-#include <common.h>
 #include <clock_legacy.h>
 #include <fdt_support.h>
 #include <i2c.h>
@@ -182,7 +181,7 @@ int board_early_init_f(void)
 	return 0;
 }
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 void board_init_f(ulong dummy)
 {
 #ifdef CONFIG_NAND_BOOT

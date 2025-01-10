@@ -15,7 +15,6 @@
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/sizes.h>
-#include <common.h>
 #include <fsl_esdhc_imx.h>
 #include <mmc.h>
 #include <miiphy.h>
@@ -267,7 +266,7 @@ int power_init_board(void)
 	struct udevice *dev;
 	int ret, dev_id, rev_id;
 
-	ret = pmic_get("pfuze3000@8", &dev);
+	ret = pmic_get("pmic@8", &dev);
 	if (ret == -ENODEV)
 		return 0;
 	if (ret != 0)

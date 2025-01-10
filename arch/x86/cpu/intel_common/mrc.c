@@ -5,17 +5,17 @@
 
 #define LOG_CATEGORY	UCLASS_RAM
 
-#include <common.h>
+#include <config.h>
 #include <dm.h>
 #include <init.h>
 #include <log.h>
 #include <spl.h>
 #include <syscon.h>
+#include <time.h>
 #include <asm/cpu.h>
 #include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/intel_regs.h>
-#include <asm/mrc_common.h>
 #include <asm/pch_common.h>
 #include <asm/post.h>
 #include <asm/arch/me.h>
@@ -259,7 +259,7 @@ int mrc_common_init(struct udevice *dev, void *pei_data, bool use_asm_linkage)
 		return ret;
 
 	delay = dev_read_u32_default(dev, "fspm,training-delay", 0);
-	if (spl_phase() == PHASE_SPL) {
+	if (xpl_phase() == PHASE_SPL) {
 		if (delay)
 			printf("SDRAM training (%d seconds)...", delay);
 		else

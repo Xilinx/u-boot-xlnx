@@ -5,7 +5,6 @@
  * Copyright 2019 Google LLC
  */
 
-#include <common.h>
 #include <dm.h>
 #include <p2sb.h>
 #include <asm/test.h>
@@ -25,4 +24,4 @@ static int dm_test_p2sb_base(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_p2sb_base, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_p2sb_base, UTF_SCAN_PDATA | UTF_SCAN_FDT);

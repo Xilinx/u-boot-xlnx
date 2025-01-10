@@ -7,8 +7,10 @@
 #include "rk356x-u-boot.dtsi"
 
 / {
-	chosen {
-		stdout-path = &uart2;
+	leds {
+		led-0 {
+			default-state = "on";
+		};
 	};
 };
 
@@ -26,31 +28,18 @@
 
 &sdhci {
 	cap-mmc-highspeed;
-	mmc-ddr-1_8v;
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
 	mmc-hs400-enhanced-strobe;
 };
 
 &sfc {
-	bootph-pre-ram;
-	u-boot,spl-sfc-no-dma;
-	#address-cells = <1>;
-	#size-cells = <0>;
-	status = "okay";
-
 	flash@0 {
 		bootph-pre-ram;
-		compatible = "jedec,spi-nor";
-		reg = <0>;
-		spi-max-frequency = <24000000>;
-		spi-rx-bus-width = <4>;
-		spi-tx-bus-width = <1>;
+		bootph-some-ram;
 	};
 };
 
-&uart2 {
-	clock-frequency = <24000000>;
-	bootph-all;
-	status = "okay";
+&usb_host0_ohci {
+	status = "disabled";
 };

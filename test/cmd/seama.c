@@ -5,7 +5,6 @@
  * Copyright (C) 2021 Linus Walleij <linus.walleij@linaro.org>
  */
 
-#include <common.h>
 #include <command.h>
 #include <dm.h>
 #include <test/suites.h>
@@ -17,7 +16,6 @@
 static int seama_test_noargs(struct unit_test_state *uts)
 {
 	/* Test that 'seama' with no arguments fails gracefully */
-	console_record_reset();
 	run_command("seama", 0);
 	ut_assert_nextlinen("seama - Load the SEAMA image and sets envs");
 	ut_assert_skipline();
@@ -27,12 +25,11 @@ static int seama_test_noargs(struct unit_test_state *uts)
 	ut_assert_console_end();
 	return 0;
 }
-SEAMA_TEST(seama_test_noargs, UT_TESTF_CONSOLE_REC);
+SEAMA_TEST(seama_test_noargs, UTF_CONSOLE);
 
 static int seama_test_addr(struct unit_test_state *uts)
 {
 	/* Test that loads SEAMA image 0 to address 0x01000000 */
-	console_record_reset();
 	run_command("seama 0x01000000", 0);
 	ut_assert_nextlinen("Loading SEAMA image 0 from nand0");
 	ut_assert_nextlinen("SEMA IMAGE:");
@@ -43,12 +40,11 @@ static int seama_test_addr(struct unit_test_state *uts)
 	ut_assert_console_end();
 	return 0;
 }
-SEAMA_TEST(seama_test_addr, UT_TESTF_CONSOLE_REC);
+SEAMA_TEST(seama_test_addr, UTF_CONSOLE);
 
 static int seama_test_index(struct unit_test_state *uts)
 {
 	/* Test that loads SEAMA image 0 exlicitly specified */
-	console_record_reset();
 	run_command("seama 0x01000000 0", 0);
 	ut_assert_nextlinen("Loading SEAMA image 0 from nand0");
 	ut_assert_nextlinen("SEMA IMAGE:");
@@ -59,7 +55,7 @@ static int seama_test_index(struct unit_test_state *uts)
 	ut_assert_console_end();
 	return 0;
 }
-SEAMA_TEST(seama_test_index, UT_TESTF_CONSOLE_REC);
+SEAMA_TEST(seama_test_index, UTF_CONSOLE);
 
 int do_ut_seama(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {

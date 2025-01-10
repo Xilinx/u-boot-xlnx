@@ -25,9 +25,9 @@
  *
  * For each transfer (except "Interrupt") we wait for completion.
  */
-#include <common.h>
 #include <command.h>
 #include <dm.h>
+#include <dm/device_compat.h>
 #include <log.h>
 #include <malloc.h>
 #include <memalign.h>
@@ -190,7 +190,6 @@ int usb_disable_asynch(int disable)
 }
 #endif /* !CONFIG_IS_ENABLED(DM_USB) */
 
-
 /*-------------------------------------------------------------------
  * Message wrappers.
  *
@@ -214,8 +213,9 @@ int usb_int_msg(struct usb_device *dev, unsigned long pipe,
  * clear keyboards LEDs). For data transfers, (storage transfers) we don't
  * allow control messages with 0 timeout, by previousely resetting the flag
  * asynch_allowed (usb_disable_asynch(1)).
- * returns the transferred length if OK or -1 if error. The transferred length
- * and the current status are stored in the dev->act_len and dev->status.
+ * returns the transferred length if OK, otherwise a negative error code. The
+ * transferred length and the current status are stored in the dev->act_len and
+ * dev->status.
  */
 int usb_control_msg(struct usb_device *dev, unsigned int pipe,
 			unsigned char request, unsigned char requesttype,
@@ -257,11 +257,14 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe,
 			break;
 		mdelay(1);
 	}
+
+	if (timeout == 0)
+		return -ETIMEDOUT;
+
 	if (dev->status)
 		return -1;
 
 	return dev->act_len;
-
 }
 
 /*-------------------------------------------------------------------
@@ -288,7 +291,6 @@ int usb_bulk_msg(struct usb_device *dev, unsigned int pipe,
 	else
 		return -EIO;
 }
-
 
 /*-------------------------------------------------------------------
  * Max Packet stuff
@@ -555,17 +557,35 @@ int usb_clear_halt(struct usb_device *dev, int pipe)
 	return 0;
 }
 
-
 /**********************************************************************
  * get_descriptor type
  */
 static int usb_get_descriptor(struct usb_device *dev, unsigned char type,
 			unsigned char index, void *buf, int size)
 {
-	return usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
-			       USB_REQ_GET_DESCRIPTOR, USB_DIR_IN,
-			       (type << 8) + index, 0, buf, size,
-			       USB_CNTL_TIMEOUT);
+	int i;
+	int result;
+
+	if (size <= 0)		/* No point in asking for no data */
+		return -EINVAL;
+
+	memset(buf, 0, size);	/* Make sure we parse really received data */
+
+	for (i = 0; i < 3; ++i) {
+		/* retry on length 0 or error; some devices are flakey */
+		result = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
+					 USB_REQ_GET_DESCRIPTOR, USB_DIR_IN,
+					 (type << 8) + index, 0, buf, size,
+					 USB_CNTL_TIMEOUT);
+		if (result <= 0 && result != -ETIMEDOUT)
+			continue;
+		if (result > 1 && ((u8 *)buf)[1] != type) {
+			result = -ENODATA;
+			continue;
+		}
+		break;
+	}
+	return result;
 }
 
 /**********************************************************************
@@ -745,7 +765,6 @@ static int usb_get_string(struct usb_device *dev, unsigned short langid,
 	return result;
 }
 
-
 static void usb_try_string_workarounds(unsigned char *buf, int *length)
 {
 	int newlength, oldlength = *length;
@@ -759,7 +778,6 @@ static void usb_try_string_workarounds(unsigned char *buf, int *length)
 		*length = newlength;
 	}
 }
-
 
 static int usb_string_sub(struct usb_device *dev, unsigned int langid,
 		unsigned int index, unsigned char *buf)
@@ -794,7 +812,6 @@ static int usb_string_sub(struct usb_device *dev, unsigned int langid,
 
 	return rc;
 }
-
 
 /********************************************************************
  * usb_string:
@@ -850,7 +867,6 @@ int usb_string(struct usb_device *dev, int index, char *buf, size_t size)
 	err = idx;
 	return err;
 }
-
 
 /********************************************************************
  * USB device handling:
@@ -1084,6 +1100,54 @@ static int usb_prepare_device(struct usb_device *dev, int addr, bool do_read,
 	return 0;
 }
 
+static int usb_device_is_ignored(u16 id_vendor, u16 id_product)
+{
+	ulong vid, pid;
+	char *end;
+	const char *cur = NULL;
+
+	/* ignore list depends on env support */
+	if (!CONFIG_IS_ENABLED(ENV_SUPPORT))
+		return 0;
+
+	cur = env_get("usb_ignorelist");
+
+	/* parse "usb_ignorelist" strictly */
+	while (cur && cur[0] != '\0') {
+		vid = simple_strtoul(cur, &end, 0);
+		/*
+		 * If strtoul did not parse a single digit or the next char is
+		 * not ':' the ignore list is malformed.
+		 */
+		if (cur == end || end[0] != ':')
+			return -EINVAL;
+
+		cur = end + 1;
+		pid = simple_strtoul(cur, &end, 0);
+		/* Consider '*' as wildcard for the product ID */
+		if (cur == end && end[0] == '*') {
+			pid = U16_MAX + 1;
+			end++;
+		}
+		/*
+		 * The ignore list is malformed if no product ID / wildcard was
+		 * parsed or entries are not separated by ',' or terminated with
+		 * '\0'.
+		 */
+		if (cur == end || (end[0] != ',' && end[0] != '\0'))
+			return -EINVAL;
+
+		if (id_vendor == vid && (pid > U16_MAX || id_product == pid))
+			return -ENODEV;
+
+		if (end[0] == '\0')
+			break;
+		cur = end + 1;
+	}
+
+	return 0;
+}
+
 int usb_select_config(struct usb_device *dev)
 {
 	unsigned char *tmpbuf = NULL;
@@ -1098,6 +1162,27 @@ int usb_select_config(struct usb_device *dev)
 	le16_to_cpus(&dev->descriptor.idVendor);
 	le16_to_cpus(&dev->descriptor.idProduct);
 	le16_to_cpus(&dev->descriptor.bcdDevice);
+
+	/* ignore devices from usb_ignorelist */
+	err = usb_device_is_ignored(dev->descriptor.idVendor,
+				    dev->descriptor.idProduct);
+	if (err == -ENODEV) {
+		debug("Ignoring USB device 0x%x:0x%x\n",
+			dev->descriptor.idVendor, dev->descriptor.idProduct);
+		return err;
+	} else if (err == -EINVAL) {
+		/*
+		 * Continue on "usb_ignorelist" parsing errors. The list is
+		 * parsed for each device returning the error would result in
+		 * ignoring all USB devices.
+		 * Since the parsing error is independent of the probed device
+		 * report errors with printf instead of dev_err.
+		 */
+		printf("usb_ignorelist parse error in \"%s\"\n",
+		       env_get("usb_ignorelist"));
+	} else if (err < 0) {
+		return err;
+	}
 
 	/*
 	 * Kingston DT Ultimate 32GB USB 3.0 seems to be extremely sensitive
@@ -1295,6 +1380,5 @@ void usb_find_usb2_hub_address_port(struct usb_device *udev,
 	*hub_port = 0;
 }
 #endif
-
 
 /* EOF */

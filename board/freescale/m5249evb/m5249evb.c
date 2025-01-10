@@ -4,7 +4,7 @@
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <init.h>
 #include <malloc.h>
@@ -31,7 +31,6 @@ int checkboard (void) {
 
 	return 0;
 };
-
 
 int dram_init(void)
 {
@@ -90,7 +89,6 @@ int dram_init(void)
 
 	return 0;
 };
-
 
 int testdram(void)
 {

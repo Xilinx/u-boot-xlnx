@@ -9,7 +9,6 @@
  *   Rui Miguel Silva <rui.silva@linaro.org>
  */
 
-#include <common.h>
 #include <console.h>
 #include <mapmem.h>
 #include <asm/global_data.h>
@@ -24,7 +23,6 @@
 
 static int loadm_test_params(struct unit_test_state *uts)
 {
-	ut_assertok(console_record_reset_enable());
 	run_command("loadm", 0);
 	ut_assert_nextline("loadm - load binary blob from source address to destination address");
 
@@ -42,7 +40,7 @@ static int loadm_test_params(struct unit_test_state *uts)
 
 	return 0;
 }
-LOADM_TEST(loadm_test_params, UT_TESTF_CONSOLE_REC);
+LOADM_TEST(loadm_test_params, UTF_CONSOLE);
 
 static int loadm_test_load (struct unit_test_state *uts)
 {
@@ -52,7 +50,6 @@ static int loadm_test_load (struct unit_test_state *uts)
 	memset(buf, '\0', BUF_SIZE);
 	memset(buf, 0xaa, BUF_SIZE / 2);
 
-	ut_assertok(console_record_reset_enable());
 	run_command("loadm 0x0 0x80 0x80", 0);
 	ut_assert_nextline("loaded bin to memory: size: 128");
 
@@ -60,7 +57,7 @@ static int loadm_test_load (struct unit_test_state *uts)
 
 	return 0;
 }
-LOADM_TEST(loadm_test_load, UT_TESTF_CONSOLE_REC);
+LOADM_TEST(loadm_test_load, UTF_CONSOLE);
 
 int do_ut_loadm(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {

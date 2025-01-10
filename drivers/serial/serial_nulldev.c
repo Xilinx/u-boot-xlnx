@@ -3,7 +3,6 @@
  * Copyright (c) 2015 National Instruments
  */
 
-#include <common.h>
 #include <dm.h>
 #include <serial.h>
 
@@ -31,7 +30,6 @@ static const struct udevice_id nulldev_serial_ids[] = {
 	{ .compatible = "nulldev-serial" },
 	{ }
 };
-
 
 const struct dm_serial_ops nulldev_serial_ops = {
 	.putc = nulldev_serial_putc,

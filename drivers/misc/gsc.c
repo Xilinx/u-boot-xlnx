@@ -389,7 +389,7 @@ static int gsc_probe(struct udevice *dev)
 	if (priv->rtc)
 		dev_set_priv(priv->rtc, priv);
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 	gsc_banner(dev);
 #endif
 
@@ -531,10 +531,10 @@ static int do_gsc(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[]
 		if (!gsc_wd_disable(dev))
 			return CMD_RET_SUCCESS;
 	} else if (strcasecmp(argv[1], "thermal") == 0) {
-		char *cmd, *val;
+		const char *cmd, *val;
 
-		cmd = (argc > 2) ? argv[2] : NULL;
-		val = (argc > 3) ? argv[3] : NULL;
+		cmd = cmd_arg2(argc, argv);
+		val = cmd_arg3(argc, argv);
 		if (!gsc_thermal(dev, cmd, val))
 			return CMD_RET_SUCCESS;
 	}

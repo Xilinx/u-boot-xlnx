@@ -4,7 +4,6 @@
  * Köry Maincent, Bootlin, <kory.maincent@bootlin.com>
  */
 
-#include <common.h>
 #include <bootdev.h>
 #include <command.h>
 #include <dm.h>
@@ -98,7 +97,6 @@ static int extension_scan(bool show)
 	/* either the number of extensions, or -ve for error */
 	return extension_num;
 }
-
 
 static int do_extension_scan(struct cmd_tbl *cmdtp, int flag,
 			     int argc, char *const argv[])

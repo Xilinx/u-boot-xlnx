@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source extras for U-Boot for the White Hawk board
+ *
+ * Copyright (C) 2021 Renesas Electronics Corp.
+ */
+
+#include "r8a779g0-u-boot.dtsi"
+
+/ {
+	aliases {
+		spi0 = &rpc;
+	};
+};
+
+&avb1 {
+	status = "disabled";
+};
+
+&avb2 {
+	status = "disabled";
+};
+
+&rpc {
+	flash@0 {
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
+};

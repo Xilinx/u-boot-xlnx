@@ -5,7 +5,6 @@
  * Qcom DWMAC specific glue layer
  */
 
-#include <common.h>
 #include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <asm/io.h>
@@ -523,6 +522,12 @@ static int eqos_probe_resources_qcom(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
+	ret = eqos_get_base_addr_dt(dev);
+	if (ret) {
+		pr_err("eqos_get_base_addr_dt failed: %d\n", ret);
+		return ret;
+	}
+
 	interface = eqos->config->interface(dev);
 
 	if (interface == PHY_INTERFACE_MODE_NA) {
@@ -575,7 +580,6 @@ static int eqos_remove_resources_qcom(struct udevice *dev)
 
 	debug("%s(dev=%p):\n", __func__, dev);
 
-	clk_free(&eqos->clk_tx);
 	dm_gpio_free(dev, &eqos->phy_reset_gpio);
 	reset_free(&eqos->reset_ctl);
 

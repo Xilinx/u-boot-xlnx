@@ -3,7 +3,6 @@
  * Copyright 2019 Toradex
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <init.h>
 #include <asm/global_data.h>
@@ -133,7 +132,7 @@ void board_mem_get_layout(u64 *phys_sdram_1_start,
 	struct tdx_user_fuses tdxramfuses;
 	int scierr = sc_misc_otp_fuse_read(-1, 6, &val);
 
-	if (scierr) {
+	if (!scierr) {
 		/* QP has one A72 core disabled */
 		is_quadplus = ((val >> 4) & 0x3) != 0x0;
 	}
@@ -206,16 +205,6 @@ static inline void board_gpio_init(void) {}
 void board_preboot_os(void)
 {
 	gpio_direction_output(BKL1_GPIO, 0);
-}
-
-int checkboard(void)
-{
-	puts("Model: Toradex Apalis iMX8\n");
-
-	build_info();
-	print_bootinfo();
-
-	return 0;
 }
 
 static enum pcb_rev_t get_pcb_revision(void)
@@ -301,12 +290,12 @@ int board_init(void)
 	return 0;
 }
 
-/*
- * Board specific reset that is system reset.
- */
 void reset_cpu(void)
 {
-	/* TODO */
+	sc_pm_reboot(-1, SC_PM_RESET_TYPE_COLD);
+
+	do {
+	} while (1);
 }
 
 #if defined(CONFIG_OF_LIBFDT) && defined(CONFIG_OF_BOARD_SETUP)

@@ -6,11 +6,12 @@
  *	Peng Fan <Peng.Fan@freescale.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <clock_legacy.h>
 #include <command.h>
 #include <div64.h>
 #include <log.h>
+#include <time.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <linux/errno.h>
@@ -1099,7 +1100,7 @@ void epdc_clock_disable(void)
 }
 #endif
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 /*
  * Dump some core clockes.
  */

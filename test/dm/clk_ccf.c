@@ -4,7 +4,6 @@
  * Lukasz Majewski, DENX Software Engineering, lukma@denx.de
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <asm/clk.h>
@@ -209,5 +208,4 @@ static int dm_test_clk_ccf(struct unit_test_state *uts)
 
 	return 1;
 }
-
-DM_TEST(dm_test_clk_ccf, UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_clk_ccf, UTF_SCAN_FDT);

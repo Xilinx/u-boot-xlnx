@@ -1,8 +1,8 @@
 config BLK
 	bool # "Support block devices"
 	depends on DM
-	default y if MMC || USB || SCSI || NVME || IDE || AHCI || SATA
-	default y if EFI_MEDIA || VIRTIO_BLK || PVBLOCK
+	def_bool y if MMC || USB || SCSI || NVME || IDE || AHCI || SATA
+	def_bool y if EFI_MEDIA || VIRTIO_BLK || PVBLOCK
 	help
 	  Enable support for block devices, such as SCSI, MMC and USB
 	  flash sticks. These provide a block-level interface which permits
@@ -13,7 +13,7 @@ config BLK
 
 config SPL_LEGACY_BLOCK
 	bool # "Enable Legacy Block Device"
-	depends on SPL && !DM_SPL
+	depends on SPL
 	default y if SPL_MMC || SPL_USB_STORAGE || SCSI || NVME || IDE
 	default y if SPL_AHCI_PCI
 	help
@@ -109,7 +109,7 @@ config EFI_MEDIA
 
 config SPL_BLK_FS
 	bool "Load images from filesystems on block devices"
-	depends on SPL_BLK
+	depends on SPL_BLK && SPL_FS_LOADER
 	help
 	  Use generic support to load images from fat/ext filesystems on
 	  different types of block devices such as NVMe.
@@ -265,6 +265,7 @@ config SYS_64BIT_LBA
 
 config RKMTD
 	bool "Rockchip rkmtd virtual block device"
+	select RANDOM_UUID
 	help
 	  Enable "rkmtd" class and driver to create a virtual block device
 	  to transfer Rockchip boot block data to and from NAND with block

@@ -78,6 +78,7 @@ config SPL_MAX_SIZE
 	hex "Maximum size of the SPL image, excluding BSS"
 	default 0x30000 if ARCH_MX6 && MX6_OCRAM_256KB
 	default 0x1b000 if AM33XX && !TI_SECURE_DEVICE
+	default 0xec00 if OMAP34XX
 	default 0x10000 if ARCH_MX6 && !MX6_OCRAM_256KB
 	default 0x7fa0 if SUNXI_SRAM_ADDRESS = 0x10000
 	default 0x7fa0 if SUNXI_SRAM_ADDRESS = 0x20000 && !MACH_SUN50I_H616
@@ -86,6 +87,8 @@ config SPL_MAX_SIZE
 	default 0x5fa0 if SUNXI_SRAM_ADDRESS = 0x0
 	default 0x10000 if ASPEED_AST2600
 	default 0x27000 if IMX8MM && SPL_TEXT_BASE = 0x7E1000
+	default 0x30000 if ARCH_SC5XX && (SC59X_64 || SC59X)
+	default 0x20000 if ARCH_SC5XX && (SC58X || SC57X)
 	default 0x0
 	help
 	  Maximum size of the SPL image (text, data, rodata, and linker lists
@@ -97,8 +100,7 @@ config SPL_PAD_TO
 	default 0x31000 if ARCH_MX6 && MX6_OCRAM_256KB
 	default 0x11000 if ARCH_MX7 || (ARCH_MX6 && !MX6_OCRAM_256KB)
 	default 0x10000 if ARCH_KEYSTONE
-	default 0x8000 if ARCH_SUNXI && !MACH_SUN50I_H616
-	default 0x0 if ARCH_MTMIPS
+	default 0x0 if ARCH_MTMIPS || ARCH_SUNXI
 	default TPL_MAX_SIZE if TPL_MAX_SIZE > SPL_MAX_SIZE
 	default SPL_MAX_SIZE
 	help
@@ -111,7 +113,7 @@ config SPL_PAD_TO
 config SPL_HAS_BSS_LINKER_SECTION
 	depends on SPL_FRAMEWORK
 	bool "Use a specific address for the BSS via the linker script"
-	default y if ARCH_SUNXI || ARCH_MX6 || ARCH_OMAP2PLUS || MIPS || RISCV || ARCH_ZYNQMP
+	default y if ARCH_SUNXI || ARCH_MX6 || ARCH_OMAP2PLUS || MIPS || RISCV || ARCH_ZYNQMP || ARCH_SC5XX
 
 config SPL_BSS_START_ADDR
 	hex "Link address for the BSS within the SPL binary"
@@ -123,6 +125,9 @@ config SPL_BSS_START_ADDR
 	default 0x4ff80000 if ARCH_SUNXI && !(MACH_SUN9I || MACH_SUNIV)
 	default 0x2ff80000 if ARCH_SUNXI && MACH_SUN9I
 	default 0x1000 if ARCH_ZYNQMP
+	default 0x200B0000 if ARCH_SC5XX && (SC59X_64 || SC59X)
+	default 0x20080000 if ARCH_SC5XX && SC58X
+	default 0x200A0000 if ARCH_SC5XX && SC57X
 
 choice
 	prompt "Enforce SPL BSS limit"
@@ -151,6 +156,7 @@ config SPL_BSS_MAX_SIZE
 	depends on SPL_BSS_LIMIT
 	default 0x100000 if ARCH_MX6 || RISCV
 	default 0x80000 if ARCH_OMAP2PLUS || ARCH_SUNXI
+	default 0x10000 if ARCH_SC5XX
 	help
 	  When non-zero, the linker checks that the actual memory used by SPL
 	  from __bss_start to __bss_end does not exceed it.
@@ -183,6 +189,7 @@ config SPL_SYS_REPORT_STACK_F_USAGE
 
 config SPL_SHOW_ERRORS
 	bool "Show more information when something goes wrong"
+	depends on SPL_LIBCOMMON_SUPPORT
 	help
 	  This enabled more verbose error messages and checking when something
 	  goes wrong in SPL. For example, it shows the error code when U-Boot
@@ -206,7 +213,7 @@ config SPL_BINMAN_SYMBOLS
 config SPL_BINMAN_UBOOT_SYMBOLS
 	bool "Declare binman symbols for U-Boot phases in SPL"
 	depends on SPL_BINMAN_SYMBOLS
-	default n if ARCH_IMX8M
+	default n if ARCH_IMX8M || ARCH_IMX8ULP || ARCH_IMX9
 	default y
 	help
 	  This enables use of symbols in SPL which refer to U-Boot phases,
@@ -261,16 +268,27 @@ config SPL_LDSCRIPT
 
 config SPL_TEXT_BASE
 	hex "SPL Text Base"
+	default 0x40200000 if OMAP34XX
 	default 0x402F4000 if AM43XX
 	default 0x402F0400 if AM33XX
+	default 0x00908000 if ARCH_MX6
+	default 0x00912000 if ARCH_MX7
 	default 0x40301350 if OMAP54XX
 	default 0x10060 if MACH_SUN50I || MACH_SUN50I_H5 || MACH_SUN9I
 	default 0x20060 if SUN50I_GEN_H6 || SUNXI_GEN_NCAT2
 	default 0x00060 if ARCH_SUNXI
 	default 0xfffc0000 if ARCH_ZYNQMP
+	default 0x20080000 if ARCH_SC5XX
 	default 0x0
 	help
 	  The address in memory that SPL will be running from.
+
+config SPL_SOC_INIT
+	bool "Call SoC-specific initialization in SPL"
+	help
+	  If this option is enabled, U-Boot will call the function
+	  spl_soc_init() from board_init_r(). This function should be
+	  provided by the SoC vendor.
 
 config SPL_BOARD_INIT
 	bool "Call board-specific initialization in SPL"
@@ -279,8 +297,15 @@ config SPL_BOARD_INIT
 	  spl_board_init() from board_init_r(). This function should be
 	  provided by the board.
 
+config SPL_LOAD_BLOCK
+	bool
+	help
+	  Support loading images from block devices. This adds a bl_len member
+	  to struct spl_load_info.
+
 config SPL_BOOTROM_SUPPORT
 	bool "Support returning to the BOOTROM"
+	select SPL_LOAD_BLOCK if MACH_IMX
 	help
 	  Some platforms (e.g. the Rockchip RK3368) provide support in their
 	  ROM for loading the next boot-stage after performing basic setup
@@ -355,7 +380,7 @@ config SPL_SYS_MALLOC_SIMPLE
 config SPL_SHARES_INIT_SP_ADDR
 	bool "SPL and U-Boot use the same initial stack pointer location"
 	depends on (ARM || ARCH_JZ47XX || MICROBLAZE || RISCV) && SPL_FRAMEWORK
-	default n if ARCH_SUNXI || ARCH_MX6 || ARCH_MX7
+	default n if ARCH_SUNXI || ARCH_MX6 || ARCH_MX7 || ARCH_SC5XX
 	default y
 	help
 	  In many cases, we can use the same initial stack pointer address for
@@ -364,7 +389,8 @@ config SPL_SHARES_INIT_SP_ADDR
 
 config SPL_STACK
 	hex "Initial stack pointer location"
-	depends on (ARM || ARCH_JZ47XX || MICROBLAZE || RISCV) && SPL_FRAMEWORK
+	depends on (ARM || ARCH_JZ47XX || MICROBLAZE || RISCV) && \
+		SPL_FRAMEWORK || ROCKCHIP_RK3036
 	depends on !SPL_SHARES_INIT_SP_ADDR
 	default 0x946bb8 if ARCH_MX7
 	default 0x93ffb8 if ARCH_MX6 && MX6_OCRAM_256KB
@@ -375,6 +401,9 @@ config SPL_STACK
 	default 0x54000 if MACH_SUN50I || MACH_SUN50I_H5
 	default 0x18000 if MACH_SUN9I
 	default 0x8000 if ARCH_SUNXI
+	default 0x200E4000 if ARCH_SC5XX && (SC59X_64 || SC59X)
+	default 0x200B0000 if ARCH_SC5XX && SC58X
+	default 0x200D0000 if ARCH_SC5XX && SC57X
 	help
 	  Address of the start of the stack SPL will use before SDRAM is
 	  initialized.
@@ -401,6 +430,7 @@ config SPL_STACK_R_MALLOC_SIMPLE_LEN
 	depends on SPL_STACK_R && SPL_SYS_MALLOC_SIMPLE
 	hex "Size of malloc_simple heap after switching to DRAM SPL stack"
 	default 0x400000 if ARCH_K3 && ARM64
+	default 0x200000 if ARCH_K3 && CPU_V7R
 	default 0x100000
 	help
 	  Specify the amount of the stack to use as memory pool for
@@ -432,6 +462,7 @@ config SPL_CUSTOM_SYS_MALLOC_ADDR
 config SPL_SYS_MALLOC_SIZE
 	hex "Size of the SPL malloc pool"
 	depends on SPL_SYS_MALLOC
+	default 0x180000 if BIOSEMU && RISCV
 	default 0x100000
 
 config SPL_READ_ONLY
@@ -473,17 +504,45 @@ config SPL_DISPLAY_PRINT
 	  banner ("U-Boot SPL ..."). This function should be provided by
 	  the board.
 
-config SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
-	bool "MMC raw mode: by sector"
+config SPL_SYS_MMCSD_RAW_MODE
+	bool "Use raw reads to locate the next boot phase"
+	depends on SPL_DM_MMC || SPL_MMC
 	default y if ARCH_SUNXI || ARCH_DAVINCI || ARCH_UNIPHIER || \
 		     ARCH_MX6 || ARCH_MX7 || \
 		     ARCH_ROCKCHIP || ARCH_MVEBU ||  ARCH_SOCFPGA || \
 		     ARCH_AT91 || ARCH_ZYNQ || ARCH_KEYSTONE || OMAP34XX || \
-		     OMAP44XX || OMAP54XX || AM33XX || AM43XX || \
+		     OMAP54XX || AM33XX || AM43XX || \
 		     TARGET_SIFIVE_UNLEASHED || TARGET_SIFIVE_UNMATCHED
+	help
+	  Support booting from an MMC without a filesystem.
+
+if SPL_SYS_MMCSD_RAW_MODE
+
+choice
+	prompt "Method for locating next phase of boot (e.g. U-Boot)"
+
+config SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
+	bool "MMC raw mode: by sector"
+	select SPL_LOAD_BLOCK
 	help
 	  Use sector number for specifying U-Boot location on MMC/SD in
 	  raw mode.
+
+config SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
+	bool "MMC raw mode: by partition"
+	select SPL_LOAD_BLOCK
+	help
+	  Use a partition for loading U-Boot when using MMC/SD in raw mode.
+
+config SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION_TYPE
+	bool "MMC raw mode: by partition type"
+	depends on DOS_PARTITION
+	help
+	  Use partition type for specifying U-Boot partition on MMC/SD in
+	  raw mode. U-Boot will be loaded from the first partition of this
+	  type to be found.
+
+endchoice
 
 config SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR
 	hex "Address on the MMC to load U-Boot from"
@@ -494,7 +553,7 @@ config SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR
 	default 0x100 if ARCH_UNIPHIER
 	default 0x0 if ARCH_MVEBU
 	default 0x200 if ARCH_SOCFPGA || ARCH_AT91
-	default 0x300 if ARCH_ZYNQ || ARCH_KEYSTONE || OMAP34XX || OMAP44XX || \
+	default 0x300 if ARCH_ZYNQ || ARCH_KEYSTONE || OMAP34XX || \
 		         OMAP54XX || AM33XX || AM43XX || ARCH_K3
 	default 0x4000 if ARCH_ROCKCHIP
 	default 0x822 if TARGET_SIFIVE_UNLEASHED || TARGET_SIFIVE_UNMATCHED
@@ -515,11 +574,6 @@ config SYS_MMCSD_RAW_MODE_U_BOOT_DATA_PART_OFFSET
 
 	  If unsure, leave the default.
 
-config SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
-	bool "MMC Raw mode: by partition"
-	help
-	  Use a partition for loading U-Boot when using MMC/SD in raw mode.
-
 config SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION
 	hex "Partition to use to load U-Boot from"
 	depends on SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
@@ -528,20 +582,14 @@ config SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION
 	  Partition on the MMC to load U-Boot from when the MMC is being
 	  used in raw mode
 
-config SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION_TYPE
-	bool "MMC raw mode: by partition type"
-	depends on DOS_PARTITION && SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
-	help
-	  Use partition type for specifying U-Boot partition on MMC/SD in
-	  raw mode. U-Boot will be loaded from the first partition of this
-	  type to be found.
-
 config SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION_TYPE
 	hex "Partition Type on the MMC to load U-Boot from"
 	depends on SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION_TYPE
 	help
 	  Partition Type on the MMC to load U-Boot from, when the MMC is being
 	  used in raw mode.
+
+endif # SPL_SYS_MMCSD_RAW_MODE
 
 config SUPPORT_EMMC_BOOT_OVERRIDE_PART_CONFIG
 	bool "Override eMMC EXT_CSC_PART_CONFIG by user defined partition"
@@ -568,8 +616,7 @@ config SYS_MMCSD_RAW_MODE_EMMC_BOOT_PARTITION
 config SPL_FIT_IMAGE_TINY
 	bool "Remove functionality from SPL FIT loading to reduce size"
 	depends on SPL_FIT
-	default y if MACH_SUN50I || MACH_SUN50I_H5 || SUN50I_GEN_H6
-	default y if ARCH_IMX8M || ARCH_IMX9
+	default y if ARCH_IMX8M || ARCH_IMX9 || ARCH_SUNXI
 	help
 	  Enable this to reduce the size of the FIT image loading code
 	  in SPL, if space for the SPL binary is very tight.
@@ -682,6 +729,22 @@ config SPL_FS_FAT
 	  permits U-Boot (or Linux in Falcon mode) to be loaded from a FAT
 	  filesystem from within SPL. Support for the underlying block
 	  device (e.g. MMC or USB) must be enabled separately.
+
+config SPL_FS_FAT_DMA_ALIGN
+	bool "Use DMA-aligned buffers with FAT"
+	depends on SPL_FS_FAT
+	select SPL_LOAD_BLOCK
+	default y if SPL_LOAD_FIT
+	help
+	  The FAT filesystem driver tries to ensure that the reads it issues to
+	  the block subsystem use DMA-aligned buffers. If the supplied buffer is
+	  not DMA-aligned, the FAT driver will use a bounce-buffer and read
+	  block-by-block. This is separate from the bounce-buffer used by the
+	  block subsystem (CONFIG_BOUNCE_BUFFER).
+
+	  Enable this config to align buffers passed to the FAT filesystem
+	  driver. This will speed up reads, but will increase the size of U-Boot
+	  by around 60 bytes.
 
 config SPL_FS_LOAD_PAYLOAD_NAME
 	string "File to load for U-Boot from the filesystem"
@@ -857,7 +920,7 @@ config SPL_MPC8XXX_INIT_DDR
 	  allows DRAM to be set up before loading U-Boot into that DRAM,
 	  where it can run.
 
-config SPL_MTD_SUPPORT
+config SPL_MTD
 	bool "Support MTD drivers"
 	help
 	  Enable support for MTD (Memory Technology Device) within SPL. MTD
@@ -876,6 +939,7 @@ config SPL_MUSB_NEW
 
 config SPL_NAND_SUPPORT
 	bool "Support NAND flash"
+	select SPL_LOAD_BLOCK
 	help
 	  Enable support for NAND (Negative AND) flash in SPL. NAND flash
 	  can be used to allow SPL to load U-Boot from supported devices.
@@ -1022,6 +1086,7 @@ config SPL_DM_SPI_FLASH
 
 config SPL_NET
 	bool "Support networking"
+	depends on !NET_LWIP
 	help
 	  Enable support for network devices (such as Ethernet) in SPL.
 	  This permits SPL to load U-Boot over a network link rather than
@@ -1081,8 +1146,11 @@ config SPL_OS_BOOT
 
 config SPL_PAYLOAD_ARGS_ADDR
 	hex "Address in memory to load 'args' file for Falcon Mode to"
-	depends on SPL_OS_BOOT
+	depends on SPL_OS_BOOT || SPL_LOAD_FIT_OPENSBI_OS_BOOT
 	default 0x88000000 if ARCH_OMAP2PLUS
+	default 0x99000000 if ARCH_SC5XX && SC59X_64
+	default 0xA0000000 if ARCH_SC5XX && TARGET_SC594_SOM_EZKIT
+	default 0x80000000 if ARCH_SC5XX && TARGET_SC594_SOM_EZLITE
 	help
 	  Address in memory where the 'args' file, typically a device tree
 	  will be loaded in to memory.
@@ -1101,6 +1169,8 @@ config SYS_OS_BASE
 config SPL_FALCON_BOOT_MMCSD
 	bool "Enable Falcon boot from MMC or SD media"
 	depends on SPL_OS_BOOT && SPL_MMC
+	select SPL_LOAD_BLOCK
+	select SPL_SYS_MMCSD_RAW_MODE
 	help
 	  Select this if the Falcon mode OS image mode is on MMC or SD media.
 
@@ -1195,15 +1265,11 @@ config SPL_POWER_DOMAIN
 	  the drivers in drivers/power/domain as part of a SPL build.
 
 config SPL_RAM_SUPPORT
-	bool "Support booting from RAM"
-	default y if MICROBLAZE || ARCH_SOCFPGA || ARCH_TEGRA || ARCH_ZYNQ
-	help
-	  Enable booting of an image in RAM. The image can be preloaded or
-	  it can be loaded by SPL directly into RAM (e.g. using USB).
+	bool
 
 config SPL_RAM_DEVICE
 	bool "Support booting from preloaded image in RAM"
-	depends on SPL_RAM_SUPPORT
+	select SPL_RAM_SUPPORT
 	default y if MICROBLAZE || ARCH_SOCFPGA || ARCH_TEGRA || ARCH_ZYNQ
 	help
 	  Enable booting of an image already loaded in RAM. The image has to
@@ -1258,8 +1324,7 @@ config SPL_SATA_RAW_U_BOOT_SECTOR
 
 config SPL_NVME
 	bool "NVM Express device support"
-	depends on BLK
-	select HAVE_BLOCK_DEVICE
+	depends on SPL_BLK
 	select FS_LOADER
 	select SPL_BLK_FS
 	help
@@ -1390,7 +1455,7 @@ config SPL_ATF
 	help
 	  ATF(ARM Trusted Firmware) is a component for ARM AArch64 which
 	  is loaded by SPL (which is considered as BL2 in ATF terminology).
-	  More detail at: https://github.com/ARM-software/arm-trusted-firmware
+	  More detail at: https://github.com/TrustedFirmware-A/trusted-firmware-a
 
 config SPL_ATF_LOAD_IMAGE_V2
 	bool "Use the new LOAD_IMAGE_V2 parameter passing"

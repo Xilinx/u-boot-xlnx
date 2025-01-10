@@ -4,7 +4,6 @@
  * Valentin Lontgchamp, Keymile AG, valentin.longchamp@keymile.com
  */
 
-#include <common.h>
 #include <command.h>
 #include <log.h>
 #include <miiphy.h>
@@ -262,7 +261,6 @@ int do_mvsw_reg_write(const char *name, int argc, char *const argv[])
 
 	return ret;
 }
-
 
 int do_mvsw_reg(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 {

@@ -9,7 +9,6 @@
 #include <config.h>
 #include <display_options.h>
 #include <errno.h>
-#include <common.h>
 #include <env.h>
 #include <lmb.h>
 #include <log.h>
@@ -21,8 +20,10 @@
 #include <fs.h>
 #include <sandboxfs.h>
 #include <semihostingfs.h>
+#include <time.h>
 #include <ubifs_uboot.h>
 #include <btrfs.h>
+#include <asm/cache.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <div64.h>
@@ -220,11 +221,11 @@ static struct fstype_info fstypes[] = {
 		.null_dev_desc_ok = false,
 		.probe = ext4fs_probe,
 		.close = ext4fs_close,
-		.ls = ext4fs_ls,
+		.ls = fs_ls_generic,
 		.exists = ext4fs_exists,
 		.size = ext4fs_size,
 		.read = ext4_read_file,
-#ifdef CONFIG_CMD_EXT4_WRITE
+#ifdef CONFIG_EXT4_WRITE
 		.write = ext4_write_file,
 		.ln = ext4fs_create_link,
 #else
@@ -232,12 +233,14 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 #endif
 		.uuid = ext4fs_uuid,
-		.opendir = fs_opendir_unsupported,
+		.opendir = ext4fs_opendir,
+		.readdir = ext4fs_readdir,
+		.closedir = ext4fs_closedir,
 		.unlink = fs_unlink_unsupported,
 		.mkdir = fs_mkdir_unsupported,
 	},
 #endif
-#if IS_ENABLED(CONFIG_SANDBOX) && !IS_ENABLED(CONFIG_SPL_BUILD)
+#if IS_ENABLED(CONFIG_SANDBOX) && !IS_ENABLED(CONFIG_XPL_BUILD)
 	{
 		.fstype = FS_TYPE_SANDBOX,
 		.name = "sandbox",
@@ -256,7 +259,7 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 	},
 #endif
-#ifdef CONFIG_SEMIHOSTING
+#if CONFIG_IS_ENABLED(SEMIHOSTING)
 	{
 		.fstype = FS_TYPE_SEMIHOSTING,
 		.name = "semihosting",
@@ -275,7 +278,7 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 	},
 #endif
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 #ifdef CONFIG_CMD_UBIFS
 	{
 		.fstype = FS_TYPE_UBIFS,
@@ -296,7 +299,7 @@ static struct fstype_info fstypes[] = {
 	},
 #endif
 #endif
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 #ifdef CONFIG_FS_BTRFS
 	{
 		.fstype = FS_TYPE_BTRFS,
@@ -526,12 +529,11 @@ int fs_size(const char *filename, loff_t *size)
 	return ret;
 }
 
-#ifdef CONFIG_LMB
+#if CONFIG_IS_ENABLED(LMB)
 /* Check if a file may be read to the given address */
 static int fs_read_lmb_check(const char *filename, ulong addr, loff_t offset,
 			     loff_t len, struct fstype_info *info)
 {
-	struct lmb lmb;
 	int ret;
 	loff_t size;
 	loff_t read_len;
@@ -550,10 +552,9 @@ static int fs_read_lmb_check(const char *filename, ulong addr, loff_t offset,
 	if (len && len < read_len)
 		read_len = len;
 
-	lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
-	lmb_dump_all(&lmb);
+	lmb_dump_all();
 
-	if (lmb_alloc_addr(&lmb, addr, read_len) == addr)
+	if (lmb_alloc_addr(addr, read_len) == addr)
 		return 0;
 
 	log_err("** Reading file would overwrite reserved memory **\n");
@@ -568,7 +569,7 @@ static int _fs_read(const char *filename, ulong addr, loff_t offset, loff_t len,
 	void *buf;
 	int ret;
 
-#ifdef CONFIG_LMB
+#if CONFIG_IS_ENABLED(LMB)
 	if (do_lmb_check) {
 		ret = fs_read_lmb_check(filename, addr, offset, len, info);
 		if (ret)
@@ -749,7 +750,7 @@ int do_load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
 	if (argc > 7)
 		return CMD_RET_USAGE;
 
-	if (fs_set_blk_dev(argv[1], (argc >= 3) ? argv[2] : NULL, fstype)) {
+	if (fs_set_blk_dev(argv[1], cmd_arg2(argc, argv), fstype)) {
 		log_err("Can't set block device\n");
 		return 1;
 	}
@@ -791,10 +792,9 @@ int do_load(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
 		return 1;
 	}
 
-	if (IS_ENABLED(CONFIG_CMD_BOOTEFI))
-		efi_set_bootdev(argv[1], (argc > 2) ? argv[2] : "",
-				(argc > 4) ? argv[4] : "", map_sysmem(addr, 0),
-				len_read);
+	efi_set_bootdev(argv[1], (argc > 2) ? argv[2] : "",
+			(argc > 4) ? argv[4] : "", map_sysmem(addr, 0),
+			len_read);
 
 	printf("%llu bytes read in %lu ms", len_read, time);
 	if (time > 0) {
@@ -818,7 +818,7 @@ int do_ls(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[],
 	if (argc > 4)
 		return CMD_RET_USAGE;
 
-	if (fs_set_blk_dev(argv[1], (argc >= 3) ? argv[2] : NULL, fstype))
+	if (fs_set_blk_dev(argv[1], cmd_arg2(argc, argv), fstype))
 		return 1;
 
 	if (fs_ls(argc >= 4 ? argv[3] : "/"))
@@ -1001,6 +1001,9 @@ int fs_read_alloc(const char *fname, ulong size, uint align, void **bufp)
 	ulong addr;
 	char *buf;
 	int ret;
+
+	if (!align)
+		align = ARCH_DMA_MINALIGN;
 
 	buf = memalign(align, size + 1);
 	if (!buf)

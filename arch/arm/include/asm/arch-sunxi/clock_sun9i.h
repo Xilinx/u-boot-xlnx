@@ -217,13 +217,9 @@ struct sunxi_ccm_reg {
 #define APB1_RESET_TWI_SHIFT		0
 #define APB1_RESET_TWI_MASK		(0xf << APB1_RESET_TWI_SHIFT)
 
-
 #ifndef __ASSEMBLY__
 void clock_set_pll1(unsigned int clk);
-void clock_set_pll2(unsigned int clk);
-void clock_set_pll4(unsigned int clk);
 void clock_set_pll6(unsigned int clk);
-void clock_set_pll12(unsigned int clk);
 unsigned int clock_get_pll4_periph0(void);
 #endif
 

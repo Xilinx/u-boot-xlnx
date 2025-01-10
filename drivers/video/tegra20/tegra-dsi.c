@@ -4,7 +4,6 @@
  * Copyright (c) 2022 Svyatoslav Ryhel <clamor95@gmail.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <misc.h>
@@ -12,20 +11,26 @@
 #include <mipi_dsi.h>
 #include <backlight.h>
 #include <panel.h>
+#include <reset.h>
 #include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/time.h>
 #include <power/regulator.h>
 
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
-#include <asm/arch/display.h>
-#include <asm/arch-tegra30/dsi.h>
+#include <asm/arch-tegra/clk_rst.h>
 
+#include "tegra-dc.h"
+#include "tegra-dsi.h"
 #include "mipi-phy.h"
 
-#define USEC_PER_SEC	1000000L
-#define NSEC_PER_SEC	1000000000L
+/* List of supported DSI bridges */
+enum {
+	DSI_V0,
+	DSI_V1,
+};
 
 struct tegra_dsi_priv {
 	struct mipi_dsi_host host;
@@ -33,6 +38,7 @@ struct tegra_dsi_priv {
 	struct mipi_dphy_timing dphy_timing;
 
 	struct udevice *panel;
+	struct udevice *mipi;
 	struct display_timing timing;
 
 	struct dsi_ctlr *dsi;
@@ -43,6 +49,12 @@ struct tegra_dsi_priv {
 	int dsi_clk;
 	int video_fifo_depth;
 	int host_fifo_depth;
+
+	u32 version;
+
+	/* for ganged-mode support */
+	struct udevice *master;
+	struct udevice *slave;
 };
 
 static void tegra_dc_enable_controller(struct udevice *dev)
@@ -503,6 +515,41 @@ static void tegra_dsi_pad_calibrate(struct dsi_pad_ctrl_reg *pad)
 	writel(value, TEGRA_VI_BASE + (CSI_CIL_PAD_CONFIG << 2));
 }
 
+static void tegra_dsi_mipi_calibrate(struct tegra_dsi_priv *priv)
+{
+	struct dsi_pad_ctrl_reg *pad = &priv->dsi->pad;
+	u32 value;
+	int ret;
+
+	ret = misc_set_enabled(priv->mipi, true);
+	if (ret)
+		log_debug("%s: failed to enable MIPI calibration: %d\n",
+			  __func__, ret);
+
+	writel(0, &pad->pad_ctrl);
+	writel(0, &pad->pad_ctrl_1);
+	writel(0, &pad->pad_ctrl_2);
+	writel(0, &pad->pad_ctrl_3);
+	writel(0, &pad->pad_ctrl_4);
+
+	/* DSI pad enable */
+	value = DSI_PAD_CONTROL_VS1_PULLDN(0) | DSI_PAD_CONTROL_VS1_PDIO(0);
+	writel(value, &pad->pad_ctrl);
+
+	value = DSI_PAD_SLEW_UP(0x7) | DSI_PAD_SLEW_DN(0x7) |
+		DSI_PAD_LP_UP(0x1) | DSI_PAD_LP_DN(0x1) |
+		DSI_PAD_OUT_CLK(0x0);
+	writel(value, &pad->pad_ctrl_2);
+
+	value = DSI_PAD_PREEMP_PD_CLK(0x3) | DSI_PAD_PREEMP_PU_CLK(0x3) |
+		DSI_PAD_PREEMP_PD(0x03) | DSI_PAD_PREEMP_PU(0x3);
+	writel(value, &pad->pad_ctrl_3);
+
+	ret = misc_write(priv->mipi, 0, NULL, 0);
+	if (ret)
+		log_debug("%s: MIPI calibration failed %d\n", __func__, ret);
+}
+
 static void tegra_dsi_set_timeout(struct dsi_timeout_reg *rtimeout,
 				  unsigned long bclk,
 				  unsigned int vrefresh)
@@ -551,6 +598,17 @@ static void tegra_dsi_set_phy_timing(struct dsi_timing_reg *ptiming,
 		DSI_TIMING_FIELD(dphy_timing->tasure, period, 1) << 8 |
 		DSI_TIMING_FIELD(dphy_timing->tago, period, 1);
 	writel(value, &ptiming->dsi_bta_timing);
+}
+
+static void tegra_dsi_ganged_enable(struct udevice *dev, unsigned int start,
+				    unsigned int size)
+{
+	struct tegra_dsi_priv *priv = dev_get_priv(dev);
+	struct dsi_ganged_mode_reg *ganged = &priv->dsi->ganged;
+
+	writel(start, &ganged->ganged_mode_start);
+	writel(size << 16 | size, &ganged->ganged_mode_size);
+	writel(DSI_GANGED_MODE_CONTROL_ENABLE, &ganged->ganged_mode_ctrl);
 }
 
 static void tegra_dsi_configure(struct udevice *dev,
@@ -637,9 +695,19 @@ static void tegra_dsi_configure(struct udevice *dev,
 		writel(hact << 16 | hbp, &len->dsi_pkt_len_2_3);
 		writel(hfp, &len->dsi_pkt_len_4_5);
 		writel(0x0f0f << 16, &len->dsi_pkt_len_6_7);
+
+		/* set SOL delay (for non-burst mode only) */
+		writel(8 * mul / div, &misc->dsi_sol_delay);
 	} else {
-		/* 1 byte (DCS command) + pixel data */
-		value = 1 + timing->hactive.typ * mul / div;
+		if (priv->master || priv->slave) {
+			/*
+			 * For ganged mode, assume symmetric left-right mode.
+			 */
+			value = 1 + (timing->hactive.typ / 2) * mul / div;
+		} else {
+			/* 1 byte (DCS command) + pixel data */
+			value = 1 + timing->hactive.typ * mul / div;
+		}
 
 		writel(0, &len->dsi_pkt_len_0_1);
 		writel(value << 16, &len->dsi_pkt_len_2_3);
@@ -649,10 +717,40 @@ static void tegra_dsi_configure(struct udevice *dev,
 		value = MIPI_DCS_WRITE_MEMORY_START << 8 |
 			MIPI_DCS_WRITE_MEMORY_CONTINUE;
 		writel(value, &len->dsi_dcs_cmds);
+
+		/* set SOL delay */
+		if (priv->master || priv->slave) {
+			unsigned long delay, bclk, bclk_ganged;
+			unsigned int lanes = device->lanes;
+			unsigned long htotal = timing->hactive.typ + timing->hfront_porch.typ +
+					       timing->hback_porch.typ + timing->hsync_len.typ;
+
+			/* SOL to valid, valid to FIFO and FIFO write delay */
+			delay = 4 + 4 + 2;
+			delay = DIV_ROUND_UP(delay * mul, div * lanes);
+			/* FIFO read delay */
+			delay = delay + 6;
+
+			bclk = DIV_ROUND_UP(htotal * mul, div * lanes);
+			bclk_ganged = DIV_ROUND_UP(bclk * lanes / 2, lanes);
+			value = bclk - bclk_ganged + delay + 20;
+		} else {
+			/* TODO: revisit for non-ganged mode */
+			value = 8 * mul / div;
+		}
+
+		writel(value, &misc->dsi_sol_delay);
 	}
 
-	/* set SOL delay (for non-burst mode only) */
-	writel(8 * mul / div, &misc->dsi_sol_delay);
+	if (priv->slave) {
+		/*
+		 * TODO: Support modes other than symmetrical left-right
+		 * split.
+		 */
+		tegra_dsi_ganged_enable(dev, 0, timing->hactive.typ / 2);
+		tegra_dsi_ganged_enable(priv->slave, timing->hactive.typ / 2,
+					timing->hactive.typ / 2);
+	}
 }
 
 static int tegra_dsi_encoder_enable(struct udevice *dev)
@@ -666,10 +764,25 @@ static int tegra_dsi_encoder_enable(struct udevice *dev)
 	u32 value;
 	int ret;
 
+	/* If for some reasone DSI is enabled then it needs to
+	 * be disabled in order for the panel initialization
+	 * commands to be properly sent.
+	 */
+	value = readl(&misc->dsi_pwr_ctrl);
+
+	if (value & DSI_POWER_CONTROL_ENABLE) {
+		value = readl(&misc->dsi_pwr_ctrl);
+		value &= ~DSI_POWER_CONTROL_ENABLE;
+		writel(value, &misc->dsi_pwr_ctrl);
+	}
+
 	/* Disable interrupt */
 	writel(0, &misc->int_enable);
 
-	tegra_dsi_pad_calibrate(&priv->dsi->pad);
+	if (priv->version)
+		tegra_dsi_mipi_calibrate(priv);
+	else
+		tegra_dsi_pad_calibrate(&priv->dsi->pad);
 
 	tegra_dsi_get_muldiv(device->format, &mul, &div);
 
@@ -708,12 +821,6 @@ static int tegra_dsi_encoder_enable(struct udevice *dev)
 	if (ret)
 		return ret;
 
-	tegra_dsi_configure(dev, 0);
-
-	ret = panel_set_backlight(priv->panel, BACKLIGHT_DEFAULT);
-	if (ret)
-		return ret;
-
 	tegra_dsi_configure(dev, device->mode_flags);
 
 	tegra_dc_enable_controller(dev);
@@ -723,13 +830,18 @@ static int tegra_dsi_encoder_enable(struct udevice *dev)
 	value |= DSI_POWER_CONTROL_ENABLE;
 	writel(value, &misc->dsi_pwr_ctrl);
 
+	if (priv->slave)
+		tegra_dsi_encoder_enable(priv->slave);
+
 	return 0;
 }
 
 static int tegra_dsi_bridge_set_panel(struct udevice *dev, int percent)
 {
-	/* Is not used in tegra dc */
-	return 0;
+	struct tegra_dsi_priv *priv = dev_get_priv(dev);
+
+	/* Turn on/off backlight */
+	return panel_set_backlight(priv->panel, percent);
 }
 
 static int tegra_dsi_panel_timings(struct udevice *dev,
@@ -745,9 +857,18 @@ static int tegra_dsi_panel_timings(struct udevice *dev,
 static void tegra_dsi_init_clocks(struct udevice *dev)
 {
 	struct tegra_dsi_priv *priv = dev_get_priv(dev);
+	struct tegra_dc_plat *dc_plat = dev_get_plat(dev);
 	struct mipi_dsi_device *device = &priv->device;
 	unsigned int mul, div;
 	unsigned long bclk, plld;
+
+	if (!priv->slave) {
+		/* Change DSIB clock parent to match DSIA */
+		struct clk_rst_ctlr *clkrst =
+			(struct clk_rst_ctlr *)NV_PA_CLK_RST_BASE;
+
+		clrbits_le32(&clkrst->plld2.pll_base, BIT(25)); /* DSIB_CLK_SRC */
+	}
 
 	tegra_dsi_get_muldiv(device->format, &mul, &div);
 
@@ -755,6 +876,19 @@ static void tegra_dsi_init_clocks(struct udevice *dev)
 					(div * device->lanes);
 
 	plld = DIV_ROUND_UP(bclk * 8, USEC_PER_SEC);
+
+	dc_plat->scdiv = ((plld * USEC_PER_SEC +
+		priv->timing.pixelclock.typ / 2) /
+		priv->timing.pixelclock.typ) - 2;
+
+	/*
+	 * BUG: If DISP1 is a PLLD/D2 child, it cannot go over 370MHz. The
+	 * cause of this is not quite clear. This can be overcomed by
+	 * halving the PLLD/D2 if the target rate is > 800MHz. This way
+	 * DISP1 and DSI clocks will be equal.
+	 */
+	if (plld > 800)
+		plld /= 2;
 
 	switch (clock_get_osc_freq()) {
 	case CLOCK_OSC_FREQ_12_0: /* OSC is 12Mhz */
@@ -787,12 +921,33 @@ static void tegra_dsi_init_clocks(struct udevice *dev)
 	reset_set_enable(priv->dsi_clk, 0);
 }
 
+static int tegra_dsi_ganged_probe(struct udevice *dev)
+{
+	struct tegra_dsi_priv *mpriv = dev_get_priv(dev);
+	struct udevice *gangster;
+
+	uclass_get_device_by_phandle(UCLASS_PANEL, dev,
+				     "nvidia,ganged-mode", &gangster);
+	if (gangster) {
+		/* Ganged mode is set */
+		struct tegra_dsi_priv *spriv = dev_get_priv(gangster);
+
+		mpriv->slave = gangster;
+		spriv->master = dev;
+	}
+
+	return 0;
+}
+
 static int tegra_dsi_bridge_probe(struct udevice *dev)
 {
 	struct tegra_dsi_priv *priv = dev_get_priv(dev);
 	struct mipi_dsi_device *device = &priv->device;
 	struct mipi_dsi_panel_plat *mipi_plat;
+	struct reset_ctl reset_ctl;
 	int ret;
+
+	priv->version = dev_get_driver_data(dev);
 
 	priv->dsi = (struct dsi_ctlr *)dev_read_addr_ptr(dev);
 	if (!priv->dsi) {
@@ -800,8 +955,17 @@ static int tegra_dsi_bridge_probe(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	priv->video_fifo_depth = 480;
+	priv->video_fifo_depth = 1920;
 	priv->host_fifo_depth = 64;
+
+	tegra_dsi_ganged_probe(dev);
+
+	ret = reset_get_by_name(dev, "dsi", &reset_ctl);
+	if (ret) {
+		log_debug("%s: reset_get_by_name() failed: %d\n",
+			  __func__, ret);
+		return ret;
+	}
 
 	ret = uclass_get_device_by_phandle(UCLASS_REGULATOR, dev,
 					   "avdd-dsi-csi-supply", &priv->avdd);
@@ -814,6 +978,16 @@ static int tegra_dsi_bridge_probe(struct udevice *dev)
 	if (ret) {
 		printf("%s: Cannot get panel: error %d\n", __func__, ret);
 		return log_ret(ret);
+	}
+
+	if (priv->version) {
+		ret = uclass_get_device_by_phandle(UCLASS_MISC, dev,
+						   "nvidia,mipi-calibrate",
+						   &priv->mipi);
+		if (ret) {
+			log_debug("%s: cannot get MIPI: error %d\n", __func__, ret);
+			return ret;
+		}
 	}
 
 	panel_get_display_timing(priv->panel, &priv->timing);
@@ -831,11 +1005,16 @@ static int tegra_dsi_bridge_probe(struct udevice *dev)
 
 	tegra_dsi_get_format(device->format, &priv->format);
 
+	reset_assert(&reset_ctl);
+
 	ret = regulator_set_enable_if_allowed(priv->avdd, true);
 	if (ret && ret != -ENOSYS)
 		return ret;
 
 	tegra_dsi_init_clocks(dev);
+
+	mdelay(2);
+	reset_deassert(&reset_ctl);
 
 	return 0;
 }
@@ -847,7 +1026,8 @@ static const struct panel_ops tegra_dsi_bridge_ops = {
 };
 
 static const struct udevice_id tegra_dsi_bridge_ids[] = {
-	{ .compatible = "nvidia,tegra30-dsi" },
+	{ .compatible = "nvidia,tegra30-dsi", .data = DSI_V0 },
+	{ .compatible = "nvidia,tegra114-dsi", .data = DSI_V1 },
 	{ }
 };
 

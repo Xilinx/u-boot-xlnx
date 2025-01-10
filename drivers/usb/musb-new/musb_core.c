@@ -79,7 +79,6 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #else
-#include <common.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <usb.h>
@@ -99,7 +98,6 @@
 
 #define TA_WAIT_BCON(m) max_t(int, (m)->a_wait_bcon, OTG_TIME_A_WAIT_BCON)
 
-
 #define DRIVER_AUTHOR "Mentor Graphics, Texas Instruments, Nokia"
 #define DRIVER_DESC "Inventra Dual-Role USB Controller Driver"
 
@@ -114,7 +112,6 @@ MODULE_DESCRIPTION(DRIVER_INFO);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" MUSB_DRIVER_NAME);
-
 
 #ifndef __UBOOT__
 /*-------------------------------------------------------------------------*/
@@ -301,7 +298,6 @@ void musb_read_fifo(struct musb_hw_ep *hw_ep, u16 len, u8 *dst)
 #endif
 
 #endif	/* normal PIO */
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -972,7 +968,6 @@ int musb_start(struct musb *musb)
 #endif
 }
 
-
 static void musb_generic_disable(struct musb *musb)
 {
 	void __iomem	*mbase = musb->mregs;
@@ -1042,7 +1037,6 @@ static void musb_shutdown(struct platform_device *pdev)
 	/* FIXME power down */
 }
 #endif
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -1345,7 +1339,6 @@ done:
 	return 0;
 }
 
-
 /*
  * ep_config_from_hw - when MUSB_C_DYNFIFO_DEF is false
  * @param musb the controller
@@ -1527,7 +1520,7 @@ static int __devinit musb_core_init(u16 musb_type, struct musb *musb)
 /*-------------------------------------------------------------------------*/
 
 #if defined(CONFIG_SOC_OMAP2430) || defined(CFG_SOC_OMAP3430) || \
-	defined(CFG_ARCH_OMAP4) || defined(CONFIG_ARCH_U8500)
+	defined(CONFIG_ARCH_U8500)
 
 static irqreturn_t generic_interrupt(int irq, void *__hci)
 {

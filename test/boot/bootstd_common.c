@@ -6,12 +6,12 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <bootdev.h>
 #include <bootstd.h>
 #include <dm.h>
 #include <memalign.h>
 #include <mmc.h>
+#include <usb.h>
 #include <linux/log2.h>
 #include <test/suites.h>
 #include <test/ut.h>
@@ -74,6 +74,9 @@ int bootstd_test_check_mmc_hunter(struct unit_test_state *uts)
 	struct bootstd_priv *std;
 	uint seq;
 
+	if (!IS_ENABLED(CONFIG_MMC))
+		return 0;
+
 	/* get access to the used hunters */
 	ut_assertok(bootstd_get_priv(&std));
 
@@ -84,6 +87,11 @@ int bootstd_test_check_mmc_hunter(struct unit_test_state *uts)
 	ut_asserteq(BIT(seq), std->hunters_used);
 
 	return 0;
+}
+
+void bootstd_reset_usb(void)
+{
+	usb_started = false;
 }
 
 int do_ut_bootstd(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])

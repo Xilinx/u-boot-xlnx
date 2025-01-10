@@ -9,7 +9,6 @@
  * warranty of any kind, whether express or implied.
  */
 
-#include <common.h>
 #include <log.h>
 #include <asm/io.h>
 #include <asm/arch/cpu.h>
@@ -48,7 +47,6 @@ void kirkwood_mpp_conf(const u32 *mpp_list, u32 *mpp_save)
 		debug(" %08x", mpp_ctrl[i]);
 	}
 	debug("\n");
-
 
 	while (*mpp_list) {
 		unsigned int num = MPP_NUM(*mpp_list);

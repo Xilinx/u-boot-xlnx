@@ -5,7 +5,6 @@
  * Patched for AX88772B by Antmicro Ltd <www.antmicro.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <net.h>
@@ -96,7 +95,6 @@
 #define FLAG_TYPE_AX88772	(1U << 1)
 #define FLAG_TYPE_AX88772B	(1U << 2)
 #define FLAG_EEPROM_MAC		(1U << 3) /* initial mac address in eeprom */
-
 
 /* driver private */
 struct asix_private {

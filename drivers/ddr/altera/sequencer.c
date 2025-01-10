@@ -3,8 +3,8 @@
  * Copyright Altera Corporation (C) 2012-2015
  */
 
-#include <common.h>
 #include <log.h>
+#include <linux/string.h>
 #include <asm/io.h>
 #include <asm/arch/sdram.h>
 #include <errno.h>
@@ -688,7 +688,6 @@ static void scc_mgr_apply_group_dm_out1_delay(struct socfpga_sdrseq *seq,
 		scc_mgr_load_dm(i);
 	}
 }
-
 
 /* apply and load delay on both DQS and OCT out1 */
 static void scc_mgr_apply_group_dqs_io_and_oct_out1(struct socfpga_sdrseq *seq,
@@ -2579,7 +2578,6 @@ static int rw_mgr_mem_calibrate_vfifo_center(struct socfpga_sdrseq *seq,
 	search_left_edge(seq, 0, rank_bgn, rw_group, rw_group, test_bgn,
 			 &sticky_bit_chk,
 			 left_edge, right_edge, use_read_test);
-
 
 	/* Search for the right edge of the window for each bit */
 	ret = search_right_edge(seq, 0, rank_bgn, rw_group, rw_group,

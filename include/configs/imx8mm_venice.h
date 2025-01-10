@@ -12,7 +12,7 @@
 #define CFG_SYS_UBOOT_BASE	\
 	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 /* malloc f used before GD_FLG_FULL_MALLOC_INIT set */
 #define CFG_MALLOC_F_ADDR		0x930000
 #endif
@@ -23,6 +23,7 @@
 	func(MMC, mmc, 2) \
 	func(USB, usb, 0) \
 	func(USB, usb, 1) \
+	func(NVME, nvme, 0) \
 	func(DHCP, dhcp, na)
 #include <config_distro_bootcmd.h>
 #define CFG_EXTRA_ENV_SETTINGS \

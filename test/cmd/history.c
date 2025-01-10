@@ -6,7 +6,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <cli.h>
 #include <command.h>
 #include <test/lib.h>
@@ -46,4 +45,4 @@ static int lib_test_history(struct unit_test_state *uts)
 
 	return 0;
 }
-LIB_TEST(lib_test_history, UT_TESTF_CONSOLE_REC);
+LIB_TEST(lib_test_history, UTF_CONSOLE);

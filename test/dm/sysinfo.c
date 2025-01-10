@@ -4,7 +4,6 @@
  * Mario Six, Guntermann & Drunck GmbH, mario.six@gdsys.cc
  */
 
-#include <common.h>
 #include <dm.h>
 #include <log.h>
 #include <dm/test.h>
@@ -60,5 +59,4 @@ static int dm_test_sysinfo(struct unit_test_state *uts)
 
 	return 0;
 }
-
-DM_TEST(dm_test_sysinfo, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_sysinfo, UTF_SCAN_PDATA | UTF_SCAN_FDT);

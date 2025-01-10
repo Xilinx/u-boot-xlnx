@@ -30,7 +30,6 @@
 #  endif
 # endif
 #else				/* U-Boot build */
-# include <common.h>
 # include <linux/string.h>
 # include <linux/ctype.h>
 #endif
@@ -58,7 +57,6 @@ struct env_entry_node {
 	int used;
 	struct env_entry entry;
 };
-
 
 static void _hdelete(const char *key, struct hsearch_data *htab,
 		     struct env_entry *ep, int idx);
@@ -127,7 +125,6 @@ int hcreate_r(size_t nel, struct hsearch_data *htab)
 	/* everything went alright */
 	return 1;
 }
-
 
 /*
  * hdestroy()
@@ -224,7 +221,7 @@ static int
 do_callback(const struct env_entry *e, const char *name, const char *value,
 	    enum env_op op, int flags)
 {
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 	if (e->callback)
 		return e->callback(name, value, op, flags);
 #endif
@@ -429,7 +426,6 @@ int hsearch_r(struct env_entry item, enum env_action action,
 	return 0;
 }
 
-
 /*
  * hdelete()
  */
@@ -491,7 +487,7 @@ int hdelete_r(const char *key, struct hsearch_data *htab, int flag)
 	return 0;
 }
 
-#if !(defined(CONFIG_SPL_BUILD) && !defined(CONFIG_SPL_SAVEENV))
+#if !(defined(CONFIG_XPL_BUILD) && !defined(CONFIG_SPL_SAVEENV))
 /*
  * hexport()
  */
@@ -718,7 +714,6 @@ ssize_t hexport_r(struct hsearch_data *htab, const char sep, int flag,
 	return size;
 }
 #endif
-
 
 /*
  * himport()

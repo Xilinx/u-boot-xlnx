@@ -13,7 +13,7 @@
 #define CFG_SYS_UBOOT_BASE	\
 	(QSPI0_AMBA_BASE + CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR * 512)
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 #define CFG_MALLOC_F_ADDR		0x204D0000
 #endif
 
@@ -25,6 +25,12 @@
 #include <config_distro_bootcmd.h>
 #else
 #define BOOTENV
+#endif
+
+#ifdef CONFIG_SYS_MMC_ENV_DEV
+#define IMX93_EVK_MMC_ENV_DEV CONFIG_SYS_MMC_ENV_DEV
+#else
+#define IMX93_EVK_MMC_ENV_DEV 0
 #endif
 
 /* Initial environment variables */
@@ -42,7 +48,7 @@
 	"boot_fit=no\0" \
 	"fdtfile=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"bootm_size=0x10000000\0" \
-	"mmcdev=" __stringify(CONFIG_SYS_MMC_ENV_DEV)"\0" \
+	"mmcdev=" __stringify(IMX93_EVK_MMC_ENV_DEV)"\0" \
 	"mmcpart=1\0" \
 	"mmcroot=/dev/mmcblk1p2 rootwait rw\0" \
 	"mmcautodetect=yes\0" \
@@ -133,9 +139,5 @@
 
 /* Using ULP WDOG for reset */
 #define WDOG_BASE_ADDR          WDG3_BASE_ADDR
-
-#if defined(CONFIG_CMD_NET)
-#define PHY_ANEG_TIMEOUT 20000
-#endif
 
 #endif

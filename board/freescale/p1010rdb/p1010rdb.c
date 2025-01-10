@@ -4,7 +4,7 @@
  * Copyright 2020 NXP
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <image.h>
 #include <init.h>
@@ -622,7 +622,6 @@ void board_reset(void)
 }
 #endif
 
-
 int misc_init_r(void)
 {
 	ccsr_gur_t *gur = (void *)(CFG_SYS_MPC85xx_GUTS_ADDR);
@@ -657,7 +656,7 @@ int misc_init_r(void)
 	return 0;
 }
 
-#ifndef CONFIG_SPL_BUILD
+#ifndef CONFIG_XPL_BUILD
 static int pin_mux_cmd(struct cmd_tbl *cmdtp, int flag, int argc,
 		       char *const argv[])
 {

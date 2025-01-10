@@ -6,7 +6,6 @@
 
 #include <asm/arch/clock.h>
 #include <asm/io.h>
-#include <common.h>
 #include <config.h>
 #include <nand.h>
 #include <linux/bitops.h>
@@ -48,14 +47,12 @@
 #define NFC_CTL_PAGE_SIZE_MASK     (0xf << 8)
 #define NFC_CTL_PAGE_SIZE(a)       ((fls(a) - 11) << 8)
 
-
 #define NFC_ECC_EN                 (1 << 0)
 #define NFC_ECC_PIPELINE           (1 << 3)
 #define NFC_ECC_EXCEPTION          (1 << 4)
 #define NFC_ECC_BLOCK_SIZE         (1 << 5)
 #define NFC_ECC_RANDOM_EN          (1 << 9)
 #define NFC_ECC_RANDOM_DIRECTION   (1 << 10)
-
 
 #define NFC_ADDR_NUM_OFFSET        16
 #define NFC_SEND_ADDR              (1 << 19)
@@ -524,9 +521,10 @@ static int nand_read_buffer(struct nfc_config *conf, uint32_t offs,
 	return 0;
 }
 
+static struct nfc_config conf;
+
 int nand_spl_load_image(uint32_t offs, unsigned int size, void *dest)
 {
-	static struct nfc_config conf = { };
 	int ret;
 
 	ret = nand_detect_config(&conf, offs, dest);
@@ -534,6 +532,11 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dest)
 		return ret;
 
 	return nand_read_buffer(&conf, offs, size, dest);
+}
+
+unsigned int nand_page_size(void)
+{
+	return conf.page_size;
 }
 
 void nand_deselect(void)

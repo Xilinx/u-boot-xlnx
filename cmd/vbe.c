@@ -6,7 +6,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <bloblist.h>
 #include <bootmeth.h>
 #include <bootstd.h>
@@ -94,7 +93,7 @@ static int do_vbe_state(struct cmd_tbl *cmdtp, int flag, int argc,
 	printf("Phases:");
 	for (i = PHASE_NONE; i < PHASE_COUNT; i++) {
 		if (handoff->phases & (1 << i))
-			printf(" %s", spl_phase_name(i));
+			printf(" %s", xpl_name(i));
 
 	}
 	if (!handoff->phases)

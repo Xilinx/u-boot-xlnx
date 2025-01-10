@@ -15,8 +15,11 @@ config ARMADA_32BIT
 	select SUPPORT_SPL
 	select SYS_L2_PL310 if !SYS_L2CACHE_OFF
 	select TRANSLATION_OFFSET
+	select TOOLS_KWBIMAGE if SPL
 	select SPL_SYS_NO_VECTOR_TABLE if SPL
 	select ARCH_VERY_EARLY_INIT
+	select ARMADA_32BIT_SYSCON_RESET if DM_RESET && PCI_MVEBU
+	select ARMADA_32BIT_SYSCON_SYSRESET if SYSRESET
 
 # ARMv7 SoCs...
 config ARMADA_375
@@ -33,6 +36,10 @@ config ARMADA_38X_HS_IMPEDANCE_THRESH
 	depends on ARMADA_38X
 	default 0x6
 	range 0x0 0x7
+
+config ARMADA_38X_SUPPORT_OLD_DDR3_TRAINING
+	bool
+	depends on ARMADA_38X
 
 config ARMADA_XP
 	bool
@@ -142,6 +149,8 @@ config TARGET_TURRIS_OMNIA
 	select SPL_SYS_MALLOC_SIMPLE
 	select SYS_I2C_MVTWSI
 	select ATSHA204A
+	select I2C_EEPROM
+	select ARMADA_38X_SUPPORT_OLD_DDR3_TRAINING
 
 config TARGET_TURRIS_MOX
 	bool "Support CZ.NIC's Turris Mox / RIPE Atlas Probe"
@@ -206,9 +215,16 @@ config TARGET_X530
 	bool "Support Allied Telesis x530"
 	select 88F6820
 
+config TARGET_X250
+	bool "Support Allied Telesis x250"
+	select ARMADA_8K
+	imply SCSI
+	imply BOOTSTD_DEFAULTS
+
 config TARGET_X240
 	bool "Support Allied Telesis x240"
 	select ALLEYCAT_5
+	imply BOOTSTD_DEFAULTS
 
 config TARGET_DB_XC3_24G4XG
 	bool "Support DB-XC3-24G4XG"
@@ -247,6 +263,16 @@ config DDR_LOG_LEVEL
 	  At level 3, rovides the windows margin of each DQ as a results of
 	  DQS centeralization.
 
+config DDR_IMMUTABLE_DEBUG_SETTINGS
+	bool "Immutable DDR debug level (always DEBUG_LEVEL_ERROR)"
+	depends on ARMADA_38X
+	help
+	  Makes the DDR training code debug level settings immutable.
+	  The debug level setting from board topology definition is ignored.
+	  The debug level is always set to DEBUG_LEVEL_ERROR and register
+	  dumps are disabled.
+	  This can save around 10 KiB of space in SPL binary.
+
 config DDR_RESET_ON_TRAINING_FAILURE
 	bool "Reset the board on DDR training failure instead of hanging"
 	depends on ARMADA_38X || ARMADA_XP
@@ -282,6 +308,7 @@ config SYS_BOARD
 	default "theadorable" if TARGET_THEADORABLE
 	default "a38x" if TARGET_CONTROLCENTERDC
 	default "x530" if TARGET_X530
+	default "x250" if TARGET_X250
 	default "x240" if TARGET_X240
 	default "db-xc3-24g4xg" if TARGET_DB_XC3_24G4XG
 	default "crs3xx-98dx3236" if TARGET_CRS3XX_98DX3236
@@ -306,6 +333,7 @@ config SYS_CONFIG_NAME
 	default "turris_mox" if TARGET_TURRIS_MOX
 	default "controlcenterdc" if TARGET_CONTROLCENTERDC
 	default "x530" if TARGET_X530
+	default "x250" if TARGET_X250
 	default "x240" if TARGET_X240
 	default "db-xc3-24g4xg" if TARGET_DB_XC3_24G4XG
 	default "crs3xx-98dx3236" if TARGET_CRS3XX_98DX3236
@@ -330,6 +358,7 @@ config SYS_VENDOR
 	default "CZ.NIC" if TARGET_TURRIS_MOX
 	default "gdsys" if TARGET_CONTROLCENTERDC
 	default "alliedtelesis" if TARGET_X530
+	default "alliedtelesis" if TARGET_X250
 	default "alliedtelesis" if TARGET_X240
 	default "mikrotik" if TARGET_CRS3XX_98DX3236
 	default "Marvell" if TARGET_MVEBU_ALLEYCAT5
@@ -454,6 +483,29 @@ config SF_DEFAULT_MODE
 	hex "Default mode for SPI flash"
 	default 0x0
 	depends on MVEBU_SPL_BOOT_DEVICE_SPI
+
+config ARMADA_32BIT_SYSCON
+	bool
+	depends on ARMADA_32BIT
+	select REGMAP
+	select SYSCON
+
+config ARMADA_32BIT_SYSCON_RESET
+	bool "Support Armada XP/375/38x/39x reset controller"
+	depends on ARMADA_32BIT
+	depends on DM_RESET
+	select ARMADA_32BIT_SYSCON
+	help
+	  Build support for Armada XP/375/38x/39x reset controller. This is
+	  needed for PCIe support.
+
+config ARMADA_32BIT_SYSCON_SYSRESET
+	bool "Support Armada XP/375/38x/39x sysreset via driver model"
+	depends on ARMADA_32BIT
+	depends on SYSRESET
+	select ARMADA_32BIT_SYSCON
+	help
+	  Build support for Armada XP/375/38x/39x system reset via driver model.
 
 source "board/solidrun/clearfog/Kconfig"
 source "board/kobol/helios4/Kconfig"

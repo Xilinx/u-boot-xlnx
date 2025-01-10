@@ -5,7 +5,6 @@
  * Based on code from coreboot src/soc/intel/broadwell/cpu.c
  */
 
-#include <common.h>
 #include <dm.h>
 #include <cpu.h>
 #include <init.h>
@@ -85,7 +84,7 @@ static const u8 power_limit_time_msr_to_sec[] = {
 	[0x11] = 128,
 };
 
-#if defined(CONFIG_SPL_BUILD) && !defined(CONFIG_TPL_BUILD)
+#if defined(CONFIG_XPL_BUILD) && !defined(CONFIG_TPL_BUILD)
 int arch_cpu_init(void)
 {
 	return 0;

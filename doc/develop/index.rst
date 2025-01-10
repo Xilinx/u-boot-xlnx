@@ -13,6 +13,8 @@ General
    codingstyle
    designprinciples
    docstyle
+   kconfig
+   memory
    patman
    process
    release_cycle
@@ -29,7 +31,7 @@ Implementation
 
    directories
    bloblist
-   bootstd
+   bootstd/index
    ci_testing
    commands
    config_binding
@@ -38,6 +40,7 @@ Implementation
    distro
    driver-model/index
    environment
+   init
    expo
    cedit
    event
@@ -60,6 +63,7 @@ Debugging
    :maxdepth: 1
 
    crash_dumps
+   gdb
    trace
 
 Packaging
@@ -80,6 +84,7 @@ Testing
    py_testing
    tests_writing
    tests_sandbox
+   binman_tests
 
 Refactoring
 -----------
@@ -98,3 +103,11 @@ Code quality
    :maxdepth: 1
 
    python_cq
+
+Historical documentation
+------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   historical/index

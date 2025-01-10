@@ -5,12 +5,12 @@
  * Copyright (C) 2016 Google, Inc
  */
 
-#include <common.h>
 #include <bios_emul.h>
 #include <bootstage.h>
 #include <dm.h>
 #include <init.h>
 #include <log.h>
+#include <time.h>
 #include <vesa.h>
 #include <video.h>
 #include <asm/cpu.h>
@@ -318,7 +318,6 @@ err:
 	debug("%s: ret=%d\n", __func__, ret);
 	return ret;
 };
-
 
 static unsigned long gtt_read(struct broadwell_igd_priv *priv,
 			      unsigned long reg)

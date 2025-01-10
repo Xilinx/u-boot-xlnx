@@ -185,11 +185,6 @@ static inline int flag_is_changeable_p(uint32_t flag)
 }
 #endif
 
-static inline void mfence(void)
-{
-	__asm__ __volatile__("mfence" : : : "memory");
-}
-
 /**
  * cpu_enable_paging_pae() - Enable PAE-paging
  *
@@ -297,5 +292,12 @@ u32 cpu_get_stepping(void);
  * Return: address size (typically 32 or 36)
  */
 int cpu_phys_address_size(void);
+
+void board_final_init(void);
+void board_final_cleanup(void);
+
+#ifndef CONFIG_EFI_STUB
+int reserve_arch(void);
+#endif
 
 #endif

@@ -6,7 +6,6 @@
 #ifndef _DDR_ML_WRAPPER_H
 #define _DDR_ML_WRAPPER_H
 
-#include <common.h>
 #include <i2c.h>
 #include <spl.h>
 #include <asm/io.h>
@@ -79,7 +78,6 @@
 #define MV_DEBUG_RL_FULL
 #define MV_DEBUG_WL_FULL
 #endif
-
 
 /* The following is a list of Marvell status */
 #define MV_ERROR	(-1)

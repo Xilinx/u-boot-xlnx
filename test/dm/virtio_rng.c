@@ -4,7 +4,6 @@
  * Written by Andrew Scull <ascull@google.com>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <virtio_types.h>
 #include <virtio.h>
@@ -49,4 +48,4 @@ static int dm_test_virtio_rng_check_len(struct unit_test_state *uts)
 
 	return 0;
 }
-DM_TEST(dm_test_virtio_rng_check_len, UT_TESTF_SCAN_PDATA | UT_TESTF_SCAN_FDT);
+DM_TEST(dm_test_virtio_rng_check_len, UTF_SCAN_PDATA | UTF_SCAN_FDT);

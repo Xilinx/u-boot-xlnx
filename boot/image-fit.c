@@ -15,10 +15,10 @@
 #include <time.h>
 #include <linux/libfdt.h>
 #include <u-boot/crc.h>
+#include <linux/kconfig.h>
 #else
 #include <linux/compiler.h>
 #include <linux/sizes.h>
-#include <common.h>
 #include <errno.h>
 #include <log.h>
 #include <mapmem.h>
@@ -36,12 +36,8 @@ DECLARE_GLOBAL_DATA_PTR;
 #include <bootm.h>
 #include <image.h>
 #include <bootstage.h>
-#include <linux/kconfig.h>
+#include <upl.h>
 #include <u-boot/crc.h>
-#include <u-boot/md5.h>
-#include <u-boot/sha1.h>
-#include <u-boot/sha256.h>
-#include <u-boot/sha512.h>
 
 /*****************************************************************************/
 /* New uImage format routines */
@@ -2180,7 +2176,8 @@ int fit_image_load(struct bootm_headers *images, ulong addr,
 		fit_image_check_os(fit, noffset, IH_OS_TEE) ||
 		fit_image_check_os(fit, noffset, IH_OS_OPENRTOS) ||
 		fit_image_check_os(fit, noffset, IH_OS_EFI) ||
-		fit_image_check_os(fit, noffset, IH_OS_VXWORKS);
+		fit_image_check_os(fit, noffset, IH_OS_VXWORKS) ||
+		fit_image_check_os(fit, noffset, IH_OS_ELF);
 
 	/*
 	 * If either of the checks fail, we should report an error, but
@@ -2297,6 +2294,8 @@ int fit_image_load(struct bootm_headers *images, ulong addr,
 	}
 
 	bootstage_mark(bootstage_id + BOOTSTAGE_SUB_LOAD);
+
+	upl_add_image(fit, noffset, load, len);
 
 	*datap = load;
 	*lenp = len;

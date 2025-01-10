@@ -3,7 +3,6 @@
  * Copyright (C) 2015-2019 Stefan Roese <sr@denx.de>
  */
 
-#include <common.h>
 #include <command.h>
 #include <console.h>
 #include <dm.h>
@@ -11,7 +10,7 @@
 #include <init.h>
 #include <net.h>
 #include <pci.h>
-#if !defined(CONFIG_SPL_BUILD)
+#if !defined(CONFIG_XPL_BUILD)
 #include <bootcount.h>
 #endif
 #include <asm/global_data.h>
@@ -253,7 +252,7 @@ int board_eth_init(struct bd_info *bis)
 }
 #endif
 
-#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_BOARD_LATE_INIT)
+#if !defined(CONFIG_XPL_BUILD) && defined(CONFIG_BOARD_LATE_INIT)
 int board_late_init(void)
 {
 	pci_dev_t bdf;
@@ -288,7 +287,6 @@ int board_late_init(void)
 				return 0;
 			}
 		} while (get_timer(start_time) < ABORT_TIMEOUT);
-
 
 		/*
 		 * At this stage the bootcounter has not been incremented
@@ -345,7 +343,7 @@ int board_late_init(void)
 }
 #endif
 
-#if !defined(CONFIG_SPL_BUILD) && defined(CONFIG_PCI)
+#if !defined(CONFIG_XPL_BUILD) && defined(CONFIG_PCI)
 static int pcie_get_link_speed_width(pci_dev_t bdf, int *speed, int *width)
 {
 	struct udevice *dev;

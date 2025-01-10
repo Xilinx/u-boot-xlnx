@@ -10,11 +10,11 @@
 #ifndef	GRUB_ZFS_HEADER
 #define	GRUB_ZFS_HEADER 1
 
-
 /*
  * On-disk version number.
  */
 #define	SPA_VERSION			28ULL
+#define	FEATURES_SUPPORTED_SPA_VERSION	5000ULL
 
 /*
  * The following are configuration names used in the nvlist describing a pool's

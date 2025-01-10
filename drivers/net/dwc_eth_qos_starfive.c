@@ -4,7 +4,6 @@
  * Author: Yanhong Wang<yanhong.wang@starfivetech.com>
  */
 
-#include <common.h>
 #include <asm/cache.h>
 #include <asm/gpio.h>
 #include <clk.h>
@@ -183,6 +182,12 @@ static int eqos_probe_resources_jh7110(struct udevice *dev)
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct starfive_platform_data *data;
 	int ret;
+
+	ret = eqos_get_base_addr_dt(dev);
+	if (ret) {
+		pr_err("eqos_get_base_addr_dt failed: %d\n", ret);
+		return ret;
+	}
 
 	data = calloc(1, sizeof(struct starfive_platform_data));
 	if (!data)

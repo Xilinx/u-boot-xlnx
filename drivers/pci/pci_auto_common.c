@@ -11,7 +11,6 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <errno.h>
 #include <log.h>
@@ -108,7 +107,6 @@ void pciauto_config_init(struct pci_controller *hose)
 			break;
 		}
 	}
-
 
 	if (hose->pci_mem)
 		pciauto_show_region("Memory", hose->pci_mem);

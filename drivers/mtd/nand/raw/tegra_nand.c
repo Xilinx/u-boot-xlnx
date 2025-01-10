@@ -6,7 +6,6 @@
  * (C) Copyright 2006 DENX Software Engineering
  */
 
-#include <common.h>
 #include <log.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
@@ -679,7 +678,6 @@ static int nand_write_page_hwecc(struct mtd_info *mtd,
 	nand_rw_page(mtd, chip, (uint8_t *)buf, page, 1, 1);
 	return 0;
 }
-
 
 /**
  * Read raw page data without ecc

@@ -16,7 +16,6 @@
  * current period to complete first).
  */
 
-#include <common.h>
 #include <clk.h>
 #include <div64.h>
 #include <dm.h>
@@ -26,8 +25,7 @@
 #include <linux/math64.h>
 #include <linux/bitfield.h>
 #include <linux/clk-provider.h>
-
-#define NSEC_PER_SEC 1000000000L
+#include <linux/time.h>
 
 #define REG_PWM_A		0x0
 #define REG_PWM_B		0x4

@@ -12,7 +12,6 @@
  * Andreas Larsson <andreas@gaisler.com>
  */
 
-#include <common.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
 #include <clk.h>
@@ -395,8 +394,6 @@ static int ocores_i2c_enable_clk(struct udevice *dev)
 		return -EINVAL;
 
 	bus->ip_clk_khz = clk_rate / 1000;
-
-	clk_free(&bus->clk);
 
 	return 0;
 }

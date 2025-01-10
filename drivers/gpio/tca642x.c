@@ -20,7 +20,7 @@
  * MA 02111-1307 USA
  */
 
-#include <common.h>
+#include <config.h>
 #include <command.h>
 #include <i2c.h>
 #include <tca642x.h>
@@ -164,7 +164,7 @@ int tca642x_set_inital_state(uchar chip, struct tca642x_bank_info init_data[])
 	return ret;
 }
 
-#if defined(CONFIG_CMD_TCA642X) && !defined(CONFIG_SPL_BUILD)
+#if defined(CONFIG_CMD_TCA642X) && !defined(CONFIG_XPL_BUILD)
 /*
  * Display tca642x information
  */

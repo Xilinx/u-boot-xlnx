@@ -68,7 +68,6 @@
  *
  */
 
-#include <common.h>
 #include <cpu_func.h>
 #include <dm.h>
 #include <log.h>
@@ -434,7 +433,7 @@ static int rtl8139_recv_common(struct rtl8139_priv *priv, unsigned char *rxdata,
 	int length = 0;
 
 	if (inb(priv->ioaddr + RTL_REG_CHIPCMD) & RTL_REG_CHIPCMD_RXBUFEMPTY)
-		return 0;
+		return -EAGAIN;
 
 	priv->rxstatus = inw(priv->ioaddr + RTL_REG_INTRSTATUS);
 	/* See below for the rest of the interrupt acknowledges.  */
@@ -453,7 +452,7 @@ static int rtl8139_recv_common(struct rtl8139_priv *priv, unsigned char *rxdata,
 			  RTL_STS_RXBADALIGN)) ||
 	    (rx_size < ETH_ZLEN) ||
 	    (rx_size > ETH_FRAME_LEN + 4)) {
-		printf("rx error %hX\n", rx_status);
+		debug("rx error %hX\n", rx_status);
 		/* this clears all interrupts still pending */
 		rtl8139_reset(priv);
 		return 0;

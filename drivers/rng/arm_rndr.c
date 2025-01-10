@@ -9,11 +9,10 @@
 
 #define LOG_CATEGORY UCLASS_RNG
 
-#include <common.h>
 #include <dm.h>
-#include <linux/kernel.h>
 #include <rng.h>
 #include <asm/system.h>
+#include <linux/kernel.h>
 
 #define DRIVER_NAME	"arm-rndr"
 
@@ -62,10 +61,10 @@ static const struct dm_rng_ops arm_rndr_ops = {
 	.read = arm_rndr_read,
 };
 
-static int arm_rndr_probe(struct udevice *dev)
+static int arm_rndr_bind(struct udevice *dev)
 {
 	if (!cpu_has_rndr())
-		return -ENODEV;
+		return -ENOENT;
 
 	return 0;
 }
@@ -74,7 +73,7 @@ U_BOOT_DRIVER(arm_rndr) = {
 	.name = DRIVER_NAME,
 	.id = UCLASS_RNG,
 	.ops = &arm_rndr_ops,
-	.probe = arm_rndr_probe,
+	.bind = arm_rndr_bind,
 };
 
 U_BOOT_DRVINFO(cpu_arm_rndr) = {

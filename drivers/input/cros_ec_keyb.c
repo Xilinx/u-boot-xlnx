@@ -5,7 +5,6 @@
  * Copyright (c) 2012 The Chromium OS Authors.
  */
 
-#include <common.h>
 #include <cros_ec.h>
 #include <dm.h>
 #include <errno.h>
@@ -28,7 +27,6 @@ struct cros_ec_keyb_priv {
 	int key_cols;			/* Number of keyboard columns */
 	int ghost_filter;		/* 1 to enable ghost filter, else 0 */
 };
-
 
 /**
  * Check the keyboard controller and return a list of key matrix positions

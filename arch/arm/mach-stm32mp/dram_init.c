@@ -5,8 +5,8 @@
 
 #define LOG_CATEGORY LOGC_ARCH
 
-#include <common.h>
 #include <dm.h>
+#include <efi_loader.h>
 #include <image.h>
 #include <init.h>
 #include <lmb.h>
@@ -14,8 +14,28 @@
 #include <ram.h>
 #include <asm/global_data.h>
 #include <asm/system.h>
+#include <mach/stm32mp.h>
 
 DECLARE_GLOBAL_DATA_PTR;
+
+int optee_get_reserved_memory(u32 *start, u32 *size)
+{
+	fdt_addr_t fdt_mem_size;
+	fdt_addr_t fdt_start;
+	ofnode node;
+
+	node = ofnode_path("/reserved-memory/optee");
+	if (!ofnode_valid(node)) {
+		node = ofnode_path("/reserved-memory/optee_core");
+		if (!ofnode_valid(node))
+			return -ENOENT;
+	}
+
+	fdt_start = ofnode_get_addr_size(node, "reg", &fdt_mem_size);
+	*start = fdt_start;
+	*size = fdt_mem_size;
+	return (fdt_start < 0) ? fdt_start : 0;
+}
 
 int dram_init(void)
 {
@@ -24,8 +44,11 @@ int dram_init(void)
 	int ret;
 
 	ret = uclass_get_device(UCLASS_RAM, 0, &dev);
-	if (ret) {
-		log_debug("RAM init failed: %d\n", ret);
+	/* in case there is no RAM driver, retrieve DDR size from DT */
+	if (ret == -ENODEV) {
+		return fdtdec_setup_mem_size_base();
+	} else if (ret) {
+		log_err("RAM init failed: %d\n", ret);
 		return ret;
 	}
 	ret = ram_get_info(dev, &ram);
@@ -33,7 +56,7 @@ int dram_init(void)
 		log_debug("Cannot get RAM size: %d\n", ret);
 		return ret;
 	}
-	log_debug("RAM init base=%lx, size=%x\n", ram.base, ram.size);
+	log_debug("RAM init base=%p, size=%zx\n", (void *)ram.base, ram.size);
 
 	gd->ram_size = ram.size;
 
@@ -44,21 +67,27 @@ phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
 	phys_size_t size;
 	phys_addr_t reg;
-	struct lmb lmb;
+	u32 optee_start, optee_size;
 
 	if (!total_size)
 		return gd->ram_top;
 
-	/* found enough not-reserved memory to relocated U-Boot */
-	lmb_init(&lmb);
-	lmb_add(&lmb, gd->ram_base, get_effective_memsize());
-	boot_fdt_add_mem_rsv_regions(&lmb, (void *)gd->fdt_blob);
-	/* add 8M for reserved memory for display, fdt, gd,... */
-	size = ALIGN(SZ_8M + CONFIG_SYS_MALLOC_LEN + total_size, MMU_SECTION_SIZE),
-	reg = lmb_alloc(&lmb, size, MMU_SECTION_SIZE);
+	/*
+	 * make sure U-Boot uses address space below 4GB boundaries even
+	 * if the effective available memory is bigger
+	 */
+	gd->ram_top = clamp_val(gd->ram_top, 0, SZ_4G - 1);
 
-	if (!reg)
-		reg = gd->ram_top - size;
+	/* add 8M for U-Boot reserved memory: display, fdt, gd,... */
+	size = ALIGN(SZ_8M + CONFIG_SYS_MALLOC_LEN + total_size, MMU_SECTION_SIZE);
+
+	reg = gd->ram_top - size;
+
+	/* Reserved memory for OP-TEE at END of DDR for STM32MP1 SoC */
+	if (IS_ENABLED(CONFIG_STM32MP13X) || IS_ENABLED(CONFIG_STM32MP15X)) {
+		if (!optee_get_reserved_memory(&optee_start, &optee_size))
+			reg = ALIGN(optee_start - size, MMU_SECTION_SIZE);
+	}
 
 	/* before relocation, mark the U-Boot memory as cacheable by default */
 	if (!(gd->flags & GD_FLG_RELOC))

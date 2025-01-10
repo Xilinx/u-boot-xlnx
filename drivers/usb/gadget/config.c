@@ -8,7 +8,6 @@
  *                      Remy Bohmer <linux@bohmer.net>
  */
 
-#include <common.h>
 #include <asm/unaligned.h>
 #include <linux/errno.h>
 #include <linux/list.h>
@@ -16,7 +15,6 @@
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
-
 
 /**
  * usb_descriptor_fillbuf - fill buffer with descriptors
@@ -51,7 +49,6 @@ usb_descriptor_fillbuf(void *buf, unsigned buflen,
 	}
 	return dest - (u8 *)buf;
 }
-
 
 /**
  * usb_gadget_config_buf - builts a complete configuration descriptor

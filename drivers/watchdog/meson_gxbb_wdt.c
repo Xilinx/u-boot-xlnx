@@ -24,7 +24,6 @@
 #define GXBB_WDT_CTRL_DIV_MASK			GENMASK(17, 0)
 #define GXBB_WDT_TCNT_SETUP_MASK		GENMASK(15, 0)
 
-
 struct amlogic_wdt_priv {
 	void __iomem *reg_base;
 };
@@ -98,10 +97,8 @@ static int amlogic_wdt_probe(struct udevice *dev)
 		return ret;
 
 	ret = clk_enable(&clk);
-	if (ret) {
-		clk_free(&clk);
+	if (ret)
 		return ret;
-	}
 
 	/* Setup with 1ms timebase */
 	writel(((clk_get_rate(&clk) / 1000) & GXBB_WDT_CTRL_DIV_MASK) |

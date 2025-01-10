@@ -3,7 +3,6 @@
  * Copyright (C) 2020, STMicroelectronics - All Rights Reserved
  */
 
-#include <common.h>
 #include <blk.h>
 #include <dm.h>
 #include <dfu.h>
@@ -73,7 +72,6 @@ static void board_get_alt_info_mmc(struct udevice *dev, char *buf)
 static void board_get_alt_info_mtd(struct mtd_info *mtd, char *buf)
 {
 	struct mtd_info *part;
-	bool first = true;
 	const char *name;
 	int len, partnum = 0;
 
@@ -86,17 +84,13 @@ static void board_get_alt_info_mtd(struct mtd_info *mtd, char *buf)
 			"mtd %s=", name);
 
 	len += snprintf(buf + len, DFU_ALT_BUF_LEN - len,
-			"%s raw 0x0 0x%llx ",
+			"%s raw 0x0 0x%llx",
 			name, mtd->size);
 
 	list_for_each_entry(part, &mtd->partitions, node) {
 		partnum++;
-		if (!first)
-			len += snprintf(buf + len, DFU_ALT_BUF_LEN - len, ";");
-		first = false;
-
 		len += snprintf(buf + len, DFU_ALT_BUF_LEN - len,
-				"%s_%s part %d",
+				";%s_%s part %d",
 				name, part->name, partnum);
 	}
 }
@@ -128,24 +122,9 @@ void set_dfu_alt_info(char *interface, char *devstr)
 		/* probe all MTD devices */
 		mtd_probe_devices();
 
-		/* probe SPI flash device on a bus */
-		if (!uclass_get_device(UCLASS_SPI_FLASH, 0, &dev)) {
-			mtd = get_mtd_device_nm("nor0");
-			if (!IS_ERR_OR_NULL(mtd))
+		mtd_for_each_device(mtd)
+			if (!mtd_is_partition(mtd))
 				board_get_alt_info_mtd(mtd, buf);
-
-			mtd = get_mtd_device_nm("nor1");
-			if (!IS_ERR_OR_NULL(mtd))
-				board_get_alt_info_mtd(mtd, buf);
-		}
-
-		mtd = get_mtd_device_nm("nand0");
-		if (!IS_ERR_OR_NULL(mtd))
-			board_get_alt_info_mtd(mtd, buf);
-
-		mtd = get_mtd_device_nm("spi-nand0");
-		if (!IS_ERR_OR_NULL(mtd))
-			board_get_alt_info_mtd(mtd, buf);
 	}
 
 	if (IS_ENABLED(CONFIG_DFU_VIRT)) {

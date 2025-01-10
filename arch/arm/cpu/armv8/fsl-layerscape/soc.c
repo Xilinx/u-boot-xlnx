@@ -4,7 +4,7 @@
  * Copyright 2019-2021 NXP
  */
 
-#include <common.h>
+#include <config.h>
 #include <clock_legacy.h>
 #include <cpu_func.h>
 #include <env.h>
@@ -811,6 +811,8 @@ __weak int fsl_setenv_bootcmd(void)
 	enum boot_src src = get_boot_src();
 	char bootcmd_str[MAX_BOOTCMD_SIZE];
 
+	bootcmd_str[0] = 0;
+
 	switch (src) {
 #ifdef IFC_NOR_BOOTCOMMAND
 	case BOOT_SOURCE_IFC_NOR:
@@ -858,6 +860,9 @@ __weak int fsl_setenv_bootcmd(void)
 #endif
 		break;
 	}
+
+	if (!bootcmd_str[0])
+		return 0;
 
 	ret = env_set("bootcmd", bootcmd_str);
 	if (ret) {

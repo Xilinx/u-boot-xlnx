@@ -25,12 +25,13 @@ int board_phys_sdram_size(phys_size_t *size)
 	return 0;
 }
 
-int board_fit_config_name_match(const char *name)
+int board_fit_config_name_match(const char *path)
 {
-	int i  = 0;
-	const char *dtb;
+	const char *name = path + strlen("freescale/");
 	static char init;
+	const char *dtb;
 	char buf[32];
+	int i  = 0;
 
 	do {
 		dtb = eeprom_get_dtb_name(i++, buf, sizeof(buf));
@@ -42,22 +43,6 @@ int board_fit_config_name_match(const char *name)
 	} while (dtb);
 
 	return -1;
-}
-
-static int __maybe_unused setup_fec(void)
-{
-	struct iomuxc_gpr_base_regs *gpr =
-		(struct iomuxc_gpr_base_regs *)IOMUXC_GPR_BASE_ADDR;
-
-#ifndef CONFIG_IMX8MP
-	/* Use 125M anatop REF_CLK1 for ENET1, not from external */
-	clrsetbits_le32(&gpr->gpr[1], 0x2000, 0);
-#else
-	/* Enable RGMII TX clk output */
-	setbits_le32(&gpr->gpr[1], BIT(22));
-#endif
-
-	return 0;
 }
 
 #if (IS_ENABLED(CONFIG_NET))
@@ -74,6 +59,9 @@ int board_phy_config(struct phy_device *phydev)
 		val |= 0xb << 8; /* LED2(Green;Link/Act): blink for TX/RX act */
 		phy_write(phydev, MDIO_DEVAD_NONE, 24, val);
 		break;
+	case 0xd565a401: /* MaxLinear GPY111 */
+		puts("GPY111 ");
+		break;
 	}
 
 	if (phydev->drv->config)
@@ -86,9 +74,6 @@ int board_phy_config(struct phy_device *phydev)
 int board_init(void)
 {
 	venice_eeprom_init(1);
-
-	if (IS_ENABLED(CONFIG_FEC_MXC))
-		setup_fec();
 
 	return 0;
 }
@@ -172,20 +157,20 @@ int board_late_init(void)
 			int bootpart;
 
 			switch (EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)) {
-			case 1: /* boot0 */
-				bootpart = 1;
+			case EMMC_BOOT_PART_BOOT1:
+				bootpart = EMMC_HWPART_BOOT1;
 				break;
-			case 2: /* boot1 */
-				bootpart = 2;
+			case EMMC_BOOT_PART_BOOT2:
+				bootpart = EMMC_HWPART_BOOT2;
 				break;
-			case 7: /* user */
+			case EMMC_BOOT_PART_USER:
 			default:
-				bootpart = 0;
+				bootpart = EMMC_HWPART_DEFAULT;
 				break;
 			}
 			/* IMX8MP/IMX8MN BOOTROM v2 uses offset=0 for boot parts */
 			if ((IS_ENABLED(CONFIG_IMX8MN) || IS_ENABLED(CONFIG_IMX8MP)) &&
-			    (bootpart == 1 || bootpart == 2))
+			    (bootpart == EMMC_BOOT_PART_BOOT1 || bootpart == EMMC_BOOT_PART_BOOT2))
 				bootblk = 0;
 			env_set_hex("bootpart", bootpart);
 			env_set_hex("bootblk", bootblk);
@@ -216,10 +201,10 @@ uint mmc_get_env_part(struct mmc *mmc)
 {
 	if (!IS_SD(mmc)) {
 		switch (EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)) {
-		case 1:
-			return 1;
-		case 2:
-			return 2;
+		case EMMC_BOOT_PART_BOOT1:
+			return EMMC_HWPART_BOOT1;
+		case EMMC_BOOT_PART_BOOT2:
+			return EMMC_HWPART_BOOT2;
 		}
 	}
 
@@ -229,6 +214,7 @@ uint mmc_get_env_part(struct mmc *mmc)
 int ft_board_setup(void *fdt, struct bd_info *bd)
 {
 	const char *base_model = eeprom_get_baseboard_model();
+	const char *path;
 	char pcbrev;
 	int off;
 
@@ -237,10 +223,10 @@ int ft_board_setup(void *fdt, struct bd_info *bd)
 
 	if (!strncmp(base_model, "GW73", 4)) {
 		pcbrev = get_pcb_rev(base_model);
+		path = fdt_get_alias(fdt, "ethernet1");
 
-		if (pcbrev > 'B' && pcbrev < 'E') {
-			printf("adjusting dt for %s\n", base_model);
-
+		if (pcbrev > 'B' && pcbrev < 'E' && path && !strncmp(path, "/soc@0/pcie@", 12)) {
+			printf("adjusting %s pcie\n", base_model);
 			/*
 			 * revC/D/E has PCIe 4-port switch which changes
 			 * ethernet1 PCIe GbE:

@@ -92,7 +92,7 @@
 /* SPL */
 #ifdef CONFIG_SPL
 
-#ifdef CONFIG_SPL_BUILD
+#ifdef CONFIG_XPL_BUILD
 #define CFG_SYS_FSL_USDHC_NUM 2
 
 #ifdef CONFIG_SYS_BOOT_EMMC
@@ -110,7 +110,5 @@
 #endif
 #endif
 
-#define CFG_MXC_USB_PORTSC            (PORT_PTS_UTMI | PORT_PTS_PTW)
-#define CFG_MXC_USB_FLAGS             0
 
 #endif /* __IMX6Q_ACC_H */

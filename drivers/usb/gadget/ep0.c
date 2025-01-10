@@ -36,7 +36,6 @@
  * XXX
  */
 
-#include <common.h>
 #include <serial.h>
 #include <usbdevice.h>
 
@@ -93,7 +92,6 @@ __maybe_unused static char *usbd_device_requests[] = {
 #define USBD_DEVICE_REQUESTS(x) (((unsigned int)x <= USB_REQ_SYNCH_FRAME) ? usbd_device_requests[x] : "UNKNOWN")
 
 /* EP0 Configuration Set ********************************************************************* */
-
 
 /**
  * ep0_get_status - fill in URB data with appropriate status
@@ -377,7 +375,6 @@ static int ep0_get_descriptor (struct usb_device_instance *device,
 		return -1;
 	}
 
-
 	dbg_ep0 (1, "urb: buffer: %p buffer_length: %2d actual_length: %2d tx_packetSize: %2d",
 		 urb->buffer, urb->buffer_length, urb->actual_length,
 		 device->bus->endpoint_array[0].tx_packetSize);
@@ -421,7 +418,6 @@ int ep0_recv_setup (struct urb *urb)
 	device = urb->device;
 
 	dbg_ep0 (3, "urb: %p device: %p", urb, urb->device);
-
 
 	/*dbg_ep0(2, "-       -       -       -       -       -       -       -       -       -"); */
 
@@ -533,7 +529,6 @@ int ep0_recv_setup (struct urb *urb)
 	}
 	/* handle the requests that do not return data */
 	else {
-
 
 		/*dbg_ep0(3, "Host-to-Device"); */
 		switch (request->bRequest) {

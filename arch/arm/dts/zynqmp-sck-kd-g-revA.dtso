@@ -129,12 +129,6 @@
 		i2c-bus = <&hub>;
 		reset-gpios = <&slg7xl45106 3 GPIO_ACTIVE_LOW>;
 	};
-
-	usb2244: mmc@3 { /* u41 */
-		compatible = "usb424,2244";
-		reg = <3>;
-		reset-gpios = <&slg7xl45106 2 GPIO_ACTIVE_LOW>;
-	};
 };
 
 &gem1 { /* mdio mio50/51 */

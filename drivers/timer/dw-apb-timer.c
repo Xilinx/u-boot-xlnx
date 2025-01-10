@@ -5,7 +5,6 @@
  * Copyright (C) 2018 Marek Vasut <marex@denx.de>
  */
 
-#include <common.h>
 #include <dm.h>
 #include <clk.h>
 #include <dt-structs.h>
@@ -13,7 +12,6 @@
 #include <reset.h>
 #include <timer.h>
 #include <dm/device_compat.h>
-#include <linux/kconfig.h>
 
 #include <asm/io.h>
 #include <asm/arch/timer.h>
@@ -75,8 +73,6 @@ static int dw_apb_timer_probe(struct udevice *dev)
 			return ret;
 
 		uc_priv->clock_rate = clk_get_rate(&clk);
-
-		clk_free(&clk);
 	}
 
 	/* init timer */

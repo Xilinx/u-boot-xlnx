@@ -2,7 +2,6 @@
 /*
  * Copyright (C) 2007 Atmel Corporation
  */
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <fdtdec.h>
@@ -337,8 +336,6 @@ static int atmel_spi_enable_clk(struct udevice *bus)
 		return -EINVAL;
 
 	priv->bus_clk_rate = clk_rate;
-
-	clk_free(&clk);
 
 	return 0;
 }

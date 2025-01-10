@@ -18,7 +18,6 @@
  * SPDX-License-Identifier:	GPL-2.0+
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <log.h>
@@ -117,6 +116,8 @@ enum sun4i_spi_bits {
 	SPI_TCR_XCH,
 	SPI_TCR_CS_MANUAL,
 	SPI_TCR_CS_LEVEL,
+	SPI_TCR_SDC,
+	SPI_TCR_SDM,
 	SPI_FCR_TF_RST,
 	SPI_FCR_RF_RST,
 	SPI_FSR_RF_CNT_MASK,
@@ -128,12 +129,12 @@ struct sun4i_spi_variant {
 	u32 fifo_depth;
 	bool has_soft_reset;
 	bool has_burst_ctl;
+	bool has_clk_ctl;
 };
 
 struct sun4i_spi_plat {
 	struct sun4i_spi_variant *variant;
 	u32 base;
-	u32 max_hz;
 };
 
 struct sun4i_spi_priv {
@@ -232,8 +233,15 @@ err_ahb:
 static void sun4i_spi_set_speed_mode(struct udevice *dev)
 {
 	struct sun4i_spi_priv *priv = dev_get_priv(dev);
-	unsigned int div;
+	unsigned int div, div_cdr2;
 	u32 reg;
+
+	/*
+	 * The uclass should take care that this won't happen. But anyway,
+	 * avoid a div-by-zero exception.
+	 */
+	if (!priv->freq)
+		return;
 
 	/*
 	 * Setup clock divider.
@@ -241,6 +249,8 @@ static void sun4i_spi_set_speed_mode(struct udevice *dev)
 	 * We have two choices there. Either we can use the clock
 	 * divide rate 1, which is calculated thanks to this formula:
 	 * SPI_CLK = MOD_CLK / (2 ^ (cdr + 1))
+	 * Or for sun6i/sun8i variants:
+	 * SPI_CLK = MOD_CLK / (2 ^ cdr)
 	 * Or we can use CDR2, which is calculated with the formula:
 	 * SPI_CLK = MOD_CLK / (2 * (cdr + 1))
 	 * Whether we use the former or the latter is set through the
@@ -248,18 +258,18 @@ static void sun4i_spi_set_speed_mode(struct udevice *dev)
 	 *
 	 * First try CDR2, and if we can't reach the expected
 	 * frequency, fall back to CDR1.
+	 * There is one exception if the requested clock is the input
+	 * clock. In that case we always use CDR1 because we'll get a
+	 * 1:1 ration for sun6i/sun8i variants.
 	 */
 
 	div = DIV_ROUND_UP(SUNXI_INPUT_CLOCK, priv->freq);
+	div_cdr2 = DIV_ROUND_UP(div, 2);
 	reg = readl(SPI_REG(priv, SPI_CCR));
 
-	if ((div / 2) <= (SUN4I_CLK_CTL_CDR2_MASK + 1)) {
-		div /= 2;
-		if (div > 0)
-			div--;
-
+	if (div != 1 && (div_cdr2 <= (SUN4I_CLK_CTL_CDR2_MASK + 1))) {
 		reg &= ~(SUN4I_CLK_CTL_CDR2_MASK | SUN4I_CLK_CTL_DRS);
-		reg |= SUN4I_CLK_CTL_CDR2(div) | SUN4I_CLK_CTL_DRS;
+		reg |= SUN4I_CLK_CTL_CDR2(div_cdr2 - 1) | SUN4I_CLK_CTL_DRS;
 	} else {
 		div = fls(div - 1);
 		/* The F1C100s encodes the divider as 2^(n+1) */
@@ -302,7 +312,19 @@ static int sun4i_spi_claim_bus(struct udevice *dev)
 	setbits_le32(SPI_REG(priv, SPI_TCR), SPI_BIT(priv, SPI_TCR_CS_MANUAL) |
 		     SPI_BIT(priv, SPI_TCR_CS_ACTIVE_LOW));
 
-	sun4i_spi_set_speed_mode(dev->parent);
+	if (priv->variant->has_clk_ctl) {
+		sun4i_spi_set_speed_mode(dev->parent);
+	} else {
+		/*
+		 * At this moment there is no ability to change input clock.
+		 * Therefore, we can only use default HOSC@24MHz clock and
+		 * set SPI sampling mode to normal
+		 */
+		clrsetbits_le32(SPI_REG(priv, SPI_TCR),
+				SPI_BIT(priv, SPI_TCR_SDC) |
+				SPI_BIT(priv, SPI_TCR_SDM),
+				SPI_BIT(priv, SPI_TCR_SDM));
+	}
 
 	return 0;
 }
@@ -387,11 +409,10 @@ static int sun4i_spi_xfer(struct udevice *dev, unsigned int bitlen,
 
 static int sun4i_spi_set_speed(struct udevice *dev, uint speed)
 {
-	struct sun4i_spi_plat *plat = dev_get_plat(dev);
 	struct sun4i_spi_priv *priv = dev_get_priv(dev);
 
-	if (speed > plat->max_hz)
-		speed = plat->max_hz;
+	if (speed > SUN4I_SPI_MAX_RATE)
+		speed = SUN4I_SPI_MAX_RATE;
 
 	if (speed < SUN4I_SPI_MIN_RATE)
 		speed = SUN4I_SPI_MIN_RATE;
@@ -444,7 +465,6 @@ static int sun4i_spi_probe(struct udevice *bus)
 
 	priv->variant = plat->variant;
 	priv->base = plat->base;
-	priv->freq = plat->max_hz;
 
 	return 0;
 }
@@ -452,16 +472,9 @@ static int sun4i_spi_probe(struct udevice *bus)
 static int sun4i_spi_of_to_plat(struct udevice *bus)
 {
 	struct sun4i_spi_plat *plat = dev_get_plat(bus);
-	int node = dev_of_offset(bus);
 
 	plat->base = dev_read_addr(bus);
 	plat->variant = (struct sun4i_spi_variant *)dev_get_driver_data(bus);
-	plat->max_hz = fdtdec_get_int(gd->fdt_blob, node,
-				      "spi-max-frequency",
-				      SUN4I_SPI_DEFAULT_RATE);
-
-	if (plat->max_hz > SUN4I_SPI_MAX_RATE)
-		plat->max_hz = SUN4I_SPI_MAX_RATE;
 
 	return 0;
 }
@@ -516,6 +529,8 @@ static const u32 sun6i_spi_bits[] = {
 	[SPI_TCR_CS_MASK]	= 0x30,
 	[SPI_TCR_CS_MANUAL]	= BIT(6),
 	[SPI_TCR_CS_LEVEL]	= BIT(7),
+	[SPI_TCR_SDC]		= BIT(11),
+	[SPI_TCR_SDM]		= BIT(13),
 	[SPI_TCR_XCH]		= BIT(31),
 	[SPI_FCR_RF_RST]	= BIT(15),
 	[SPI_FCR_TF_RST]	= BIT(31),
@@ -526,6 +541,7 @@ static const struct sun4i_spi_variant sun4i_a10_spi_variant = {
 	.regs			= sun4i_spi_regs,
 	.bits			= sun4i_spi_bits,
 	.fifo_depth		= 64,
+	.has_clk_ctl		= true,
 };
 
 static const struct sun4i_spi_variant sun6i_a31_spi_variant = {
@@ -534,9 +550,19 @@ static const struct sun4i_spi_variant sun6i_a31_spi_variant = {
 	.fifo_depth		= 128,
 	.has_soft_reset		= true,
 	.has_burst_ctl		= true,
+	.has_clk_ctl		= true,
 };
 
 static const struct sun4i_spi_variant sun8i_h3_spi_variant = {
+	.regs			= sun6i_spi_regs,
+	.bits			= sun6i_spi_bits,
+	.fifo_depth		= 64,
+	.has_soft_reset		= true,
+	.has_burst_ctl		= true,
+	.has_clk_ctl		= true,
+};
+
+static const struct sun4i_spi_variant sun50i_r329_spi_variant = {
 	.regs			= sun6i_spi_regs,
 	.bits			= sun6i_spi_bits,
 	.fifo_depth		= 64,
@@ -556,6 +582,10 @@ static const struct udevice_id sun4i_spi_ids[] = {
 	{
 	  .compatible = "allwinner,sun8i-h3-spi",
 	  .data = (ulong)&sun8i_h3_spi_variant,
+	},
+	{
+	  .compatible = "allwinner,sun50i-r329-spi",
+	  .data = (ulong)&sun50i_r329_spi_variant,
 	},
 	{ /* sentinel */ }
 };

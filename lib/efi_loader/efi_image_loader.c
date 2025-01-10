@@ -9,7 +9,6 @@
 
 #define LOG_CATEGORY LOGC_EFI
 
-#include <common.h>
 #include <cpu_func.h>
 #include <efi_loader.h>
 #include <log.h>
@@ -172,11 +171,6 @@ static efi_status_t efi_loader_relocate(const IMAGE_BASE_RELOCATION *rel,
 		rel = (const IMAGE_BASE_RELOCATION *)relocs;
 	}
 	return EFI_SUCCESS;
-}
-
-void __weak invalidate_icache_all(void)
-{
-	/* If the system doesn't support icache_all flush, cross our fingers */
 }
 
 /**
@@ -744,7 +738,6 @@ static bool efi_image_authenticate(void *efi, size_t efi_size)
 		log_debug("Message digest doesn't match\n");
 	}
 
-
 	/* last resort try the image sha256 hash in db */
 	if (!ret && efi_signature_lookup_digest(regs, db, false))
 		ret = true;
@@ -766,7 +759,6 @@ static bool efi_image_authenticate(void *efi, size_t efi_size)
 	return true;
 }
 #endif /* CONFIG_EFI_SECURE_BOOT */
-
 
 /**
  * efi_check_pe() - check if a memory buffer contains a PE-COFF image
@@ -987,7 +979,13 @@ efi_status_t efi_load_pe(struct efi_loaded_image_obj *handle,
 	/* Flush cache */
 	flush_cache((ulong)efi_reloc,
 		    ALIGN(virt_size, EFI_CACHELINE_SIZE));
-	invalidate_icache_all();
+
+	/*
+	 * If on x86 a write affects a prefetched instruction,
+	 * the prefetch queue is invalidated.
+	 */
+	if (!CONFIG_IS_ENABLED(X86))
+		invalidate_icache_all();
 
 	/* Populate the loaded image interface bits */
 	loaded_image_info->image_base = efi_reloc;

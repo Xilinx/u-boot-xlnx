@@ -4,7 +4,6 @@
  *		      Wenyou.Yang <wenyou.yang@atmel.com>
  */
 
-#include <common.h>
 #include <clk.h>
 #include <dm.h>
 #include <malloc.h>
@@ -146,8 +145,6 @@ static int atmel_sdhci_probe(struct udevice *dev)
 	host->mmc->priv = host;
 	host->ops = &atmel_sdhci_ops;
 	upriv->mmc = host->mmc;
-
-	clk_free(&clk);
 
 	ret = sdhci_probe(dev);
 	if (ret)

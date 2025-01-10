@@ -4,12 +4,10 @@
  * Gerry Hamel, geh@ti.com, Texas Instruments
  */
 
-#include <common.h>
 #include <log.h>
 #include <malloc.h>
 
 #include <circbuf.h>
-
 
 int buf_init (circbuf_t * buf, unsigned int size)
 {

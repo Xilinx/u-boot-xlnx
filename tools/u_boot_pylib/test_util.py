@@ -23,8 +23,9 @@ except:
     use_concurrent = False
 
 
-def run_test_coverage(prog, filter_fname, exclude_list, build_dir, required=None,
-                    extra_args=None, single_thread='-P1'):
+def run_test_coverage(prog, filter_fname, exclude_list, build_dir,
+                      required=None, extra_args=None, single_thread='-P1',
+                      args=None):
     """Run tests and check that we get 100% coverage
 
     Args:
@@ -42,6 +43,7 @@ def run_test_coverage(prog, filter_fname, exclude_list, build_dir, required=None
         single_thread (str): Argument string to make the tests run
             single-threaded. This is necessary to get proper coverage results.
             The default is '-P0'
+        args (list of str): List of tests to run, or None to run all
 
     Raises:
         ValueError if the code coverage is not 100%
@@ -60,12 +62,18 @@ def run_test_coverage(prog, filter_fname, exclude_list, build_dir, required=None
     prefix = ''
     if build_dir:
         prefix = 'PYTHONPATH=$PYTHONPATH:%s/sandbox_spl/tools ' % build_dir
-    cmd = ('%spython3-coverage run '
-           '--omit "%s" %s %s %s %s' % (prefix, ','.join(glob_list),
-                                        prog, extra_args or '', test_cmd,
-                                        single_thread or '-P1'))
+
+    # Detect a Python virtualenv and use 'coverage' instead
+    covtool = ('python3-coverage' if sys.prefix == sys.base_prefix else
+               'coverage')
+
+    cmd = ('%s%s run '
+           '--omit "%s" %s %s %s %s %s' % (prefix, covtool, ','.join(glob_list),
+                                           prog, extra_args or '', test_cmd,
+                                           single_thread or '-P1',
+                                           ' '.join(args) if args else ''))
     os.system(cmd)
-    stdout = command.output('python3-coverage', 'report')
+    stdout = command.output(covtool, 'report')
     lines = stdout.splitlines()
     if required:
         # Convert '/path/to/name.py' just the module name 'name'

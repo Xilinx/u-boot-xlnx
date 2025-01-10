@@ -5,7 +5,6 @@
  * This file is based on: drivers/i2c/soft-i2c.c,
  * with added driver-model support and code cleanup.
  */
-#include <common.h>
 #include <errno.h>
 #include <dm.h>
 #include <i2c.h>
@@ -102,7 +101,7 @@ static int i2c_gpio_read_bit(struct i2c_gpio_bus *bus, int delay)
 
 	bus->set_scl(bus, 1);
 	udelay(delay);
-	value = bus->get_sda(bus);
+	value = bus->get_sda ? bus->get_sda(bus) : 0;
 	udelay(delay);
 	bus->set_scl(bus, 0);
 	udelay(2 * delay);
@@ -257,6 +256,9 @@ static int i2c_gpio_read_data(struct i2c_gpio_bus *bus, uchar chip,
 {
 	unsigned int delay = bus->udelay;
 
+	if (!bus->get_sda)
+		return -EOPNOTSUPP;
+
 	debug("%s: chip %x buffer: %p len %d\n", __func__, chip, buffer, len);
 
 	while (len-- > 0)
@@ -354,7 +356,10 @@ static int i2c_gpio_of_to_plat(struct udevice *dev)
 	bus->udelay = dev_read_u32_default(dev, "i2c-gpio,delay-us",
 					   DEFAULT_UDELAY);
 
-	bus->get_sda = i2c_gpio_sda_get;
+	if (dev_read_bool(dev, "i2c-gpio,sda-output-only"))
+		bus->get_sda = NULL;
+	else
+		bus->get_sda = i2c_gpio_sda_get;
 	bus->set_sda = i2c_gpio_sda_set;
 	if (dev_read_bool(dev, "i2c-gpio,scl-output-only"))
 		bus->set_scl = i2c_gpio_scl_set_output_only;

@@ -4,7 +4,7 @@
  * Copyright (C) 2014-2015  Masahiro Yamada <yamada.masahiro@socionext.com>
  */
 
-#include <common.h>
+#include <config.h>
 #include <log.h>
 #include <asm/io.h>
 #include <asm/unaligned.h>
@@ -232,6 +232,11 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
 	}
 
 	return 0;
+}
+
+unsigned int nand_page_size(void)
+{
+	return page_size;
 }
 
 void nand_deselect(void) {}
