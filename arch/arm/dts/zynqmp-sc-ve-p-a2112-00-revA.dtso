@@ -2,7 +2,7 @@
 /*
  * dts file for AMD Versal Gen 2 VNC (T50)
  *
- * (C) Copyright 2024, Advanced Micro Devices, Inc.
+ * (C) Copyright 2024 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
@@ -461,16 +461,10 @@
 	#size-cells = <0>;
 	/* i2c_scm_eeprom - via i2c1 */
 	/* i2c_main u21 - repeater from SC (J79 - disabling) */
-	eeprom: eeprom@54 { /* u97 - m24128 16kB */
-		compatible = "st,24c128", "atmel,24c128";
-		label = "eeprom_cc";
-		reg = <0x54>; /* & 0x5c */
-		/* WP from SC PL or via J1801 */
-	};
-
+	/* u97 - m24128 16kB is defined in 'zynqmp-sc-k24-revA.dts' */
 	/* u1910 - rc21005bq (OTP) i2c 0x9 selection via J1964/J1965/J1966 or UFS_CLK_SEL_X gpios */
 
-	xp_hsdp: clock-generator@64 { /* u1911 - oe J1951 FIXME not marked properly */
+	xp_hsdp: clock-generator@64 { /* u1911 - oe J1951 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x64>;
@@ -478,7 +472,7 @@
 		clock-output-names = "hsdp";
 	};
 
-	xp_usb3: clock-generator@63 { /* u1912 - oe J1952 FIXME not marked properly */
+	xp_usb3: clock-generator@63 { /* u1912 - oe J1952 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x63>;
@@ -489,7 +483,7 @@
 	/* Also to SE card via D23/D24 Samtec */
 
 	/* i2c_main_1 u147 - ltc4316 - translator from SC (J157 - disabling) */
-	xp_qsfp: clock-generator@66 { /* u43 - oe J1 - origin addr 0x64 FIXME not marked properly */
+	xp_qsfp: clock-generator@66 { /* u43 - oe J1 - origin addr 0x64 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x66>;
@@ -498,16 +492,16 @@
 	};
 
 	/* i2c_main_2 u148 - ltc4316 - translator from SC (J122 - disabling) */
-	xp_lpddr5_c0: clock-generator@57 { /* u115 - oe J81 - origin addr 0x50 FIXME not marked properly */
+	xp_lpddr5_c0: clock-generator@40 { /* u115 - oe J81 - origin addr 0x50 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
-		reg = <0x57>;
+		reg = <0x40>;
 		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c0";
 	};
 
 	/* i2c_main_3 u149 - ltc4316 - translator from SC (J154 - disabling) */
-	xp_ddr5_udimm: clock-generator@56 { /* u116 - oe J78 - origin addr 0x50 FIXME not marked properly */
+	xp_ddr5_udimm: clock-generator@56 { /* u116 - oe J78 - origin addr 0x50 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x56>;
@@ -516,7 +510,7 @@
 	};
 
 	/* i2c_main_4 u150 - ltc4316 - translator from SC (J146 - disabling) */
-	xp_xpl7_ps_refclk: clock-generator@55 { /* u39 - oe J107 - origin addr 0x50 FIXME not marked properly */
+	xp_xpl7_ps_refclk: clock-generator@55 { /* u39 - oe J107 - origin addr 0x50 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x55>;
@@ -525,7 +519,7 @@
 	};
 
 	/* i2c_main_5 u1782 - ltc4316 - translator from SC (J1798 - disabling) */
-	xp_lpddr5_c1: clock-generator@59 { /* u1916 - oe J1958 - origin addr 0x50 FIXME not marked properly */
+	xp_lpddr5_c1: clock-generator@59 { /* u1916 - oe J1958 - origin addr 0x50 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x59>;
@@ -534,7 +528,7 @@
 	};
 
 	/* i2c_main_6 u1927 - ltc4316 - translator from SC */
-	xp_hdmi_frl_clk: clock-generator@5a { /* u1928 - origin addr 0x50 FIXME not marked properly */
+	xp_hdmi_frl_clk: clock-generator@5a { /* u1928 - origin addr 0x50 */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x5a>;
