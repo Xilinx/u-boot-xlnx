@@ -1652,6 +1652,8 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 					rem_bank_len *= 2;
 			}
 			rem_bank_len -= from;
+		} else {
+			rem_bank_len = mtd->size - from;
 		}
 
 		if (CONFIG_IS_ENABLED(SPI_STACKED_PARALLEL)) {
