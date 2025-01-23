@@ -75,19 +75,19 @@
 		shunt-resistor = <5000>; /* R3053 */
 	};
 
-	ina226_vcc_fpd: ina226@41 { /* u1898 - 0.88V */
+	ina226_vcc_fpd: ina226@5e { /* u1898 - 0.88V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcc-fpd";
-		reg = <0x41>;
+		reg = <0x5e>;
 		shunt-resistor = <1000>; /* R3013 */
 	};
 
-	ina226_vcc_soc: ina226@42 { /* u1899 - 0.8V */
+	ina226_vcc_soc: ina226@62 { /* u1899 - 0.8V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcc-soc";
-		reg = <0x42>;
+		reg = <0x62>;
 		shunt-resistor = <1000>; /* R2992 */
 	};
 
@@ -112,7 +112,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vccaux";
 		reg = <0x45>;
-		shunt-resistor = <5000>; /* R2818 */
+		shunt-resistor = <2000>; /* R2818 */
 	};
 
 	ina226_gtyp_avccaux: ina226@46 { /* u1830 - 1.5V */
@@ -123,20 +123,20 @@
 		shunt-resistor = <20000>; /* R2778 20m on SCHEMATICS */
 	};
 
-	ina226_vcc_io: ina226@47 { /* u1868 - 0.8V */
+	ina226_vcc_io: ina226@41 { /* u1868 - 0.8V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcc-io";
-		reg = <0x47>;
-		shunt-resistor = <5000>; /* R3148 */
+		reg = <0x41>;
+		shunt-resistor = <2000>; /* R3148 */
 	};
 
-	ina226_vcc_mmd: ina226@48 { /* u1864 - 0.8V */
+	ina226_vcc_mmd: ina226@68 { /* u1864 - 0.8V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcc-mmd";
-		reg = <0x48>;
-		shunt-resistor = <5000>; /* R3110 */
+		reg = <0x68>;
+		shunt-resistor = <2000>; /* R3110 */
 	};
 
 	ina226_vcc_ram: ina226@49 { /* u1866 - 0.8V */
@@ -144,7 +144,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vcc-ram";
 		reg = <0x49>;
-		shunt-resistor = <5000>; /* R3129 */
+		shunt-resistor = <2000>; /* R3129 */
 	};
 
 	ina226_vcco_500: ina226@4a { /* u1840 - 1.8V */
@@ -152,7 +152,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-500";
 		reg = <0x4a>;
-		shunt-resistor = <5000>; /* R2878 */
+		shunt-resistor = <2000>; /* R2878 */
 	};
 
 	ina226_vcco_501: ina226@4b { /* u1842 - 1.8V */
@@ -160,7 +160,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-501";
 		reg = <0x4b>;
-		shunt-resistor = <5000>; /* R2897 */
+		shunt-resistor = <2000>; /* R2897 */
 	};
 
 	ina226_vcco_502: ina226@4c { /* u1844 - 1.8V */
@@ -168,7 +168,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-502";
 		reg = <0x4c>;
-		shunt-resistor = <5000>; /* R2916 */
+		shunt-resistor = <2000>; /* R2916 */
 	};
 
 	ina226_vcco_503: ina226@4d { /* u1846 - 1.8V */
@@ -176,7 +176,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-503";
 		reg = <0x4d>;
-		shunt-resistor = <5000>; /* R2935 */
+		shunt-resistor = <2000>; /* R2935 */
 	};
 
 	ina226_vcc_mipi_507: ina226@4e { /* u1836 - 0.8V */
@@ -187,22 +187,22 @@
 		shunt-resistor = <20000>; /* R3034 20m on SCHEMATICS */
 	};
 
-	ina226_vccio_mipi_507: ina226@4f { /* u1822 - 1.2V */
+	ina226_vccio_mipi_507: ina226@42 { /* u1822 - 1.2V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vccio-mipi-507";
-		reg = <0x4f>;
+		reg = <0x42>;
 		shunt-resistor = <20000>; /* R2702 20m on SCHEMATICS */
 	};
 
 	
 	/* FIXME ina226 down - address can be shifted by 0x20 down via ltc4316 (u1888) */
-	ina226_vcco_700_705: ina226@50 { /* u1818 - 1.05V */
+	ina226_vcco_700_705: ina226@50 { /* u1818 - 1.0V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-700-705";
 		reg = <0x50>;
-		shunt-resistor = <5000>; /* R2664 */
+		shunt-resistor = <2000>; /* R2664 */
 	};
 
 	ina226_vcco_706_709: ina226@51 { /* u1824 - 1.2V */
@@ -210,23 +210,23 @@
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-706-709";
 		reg = <0x51>;
-		shunt-resistor = <5000>; /* R2721 */
+		shunt-resistor = <2000>; /* R2721 */
 	};
 
-	ina226_vcco_710_715: ina226@52 { /* u1824 - 1.1V */
+	ina226_vcco_710_715: ina226@52 { /* u1816 - 1.1V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-710-715";
 		reg = <0x52>;
-		shunt-resistor = <5000>; /* R2645 */
+		shunt-resistor = <2000>; /* R2645 */
 	};
 
-	ina226_vcco_400_402: ina226@53 { /* u1848 - 1.8V */
+	ina226_vcco_400_402: ina226@53 { /* u1848 - 3.3V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vcco-400-402";
 		reg = <0x53>;
-		shunt-resistor = <5000>; /* R2954 */
+		shunt-resistor = <2000>; /* R2954 */
 	};
 
 	ina226_vcc_usb2_504: ina226@54 { /* u1860 - 0.8V */
@@ -253,11 +253,11 @@
 		shunt-resistor = <20000>; /* R2973 20m on SCHEMATICS */
 	};
 
-	ina226_vccio_paux_504: ina226@57 { /* u1838 - 1.8V */
+	ina226_vccio_paux_504: ina226@58 { /* u1838 - 1.8V */
 		compatible = "ti,ina226";
 		#io-channel-cells = <1>;
 		label = "ina226-vccio-paux-504";
-		reg = <0x57>;
+		reg = <0x58>;
 		shunt-resistor = <20000>; /* R2858 20m on SCHEMATICS */
 	};
 
@@ -266,7 +266,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-gtyp-mm-avcc";
 		reg = <0x59>;
-		shunt-resistor = <5000>; /* R2740 */
+		shunt-resistor = <2000>; /* R2740 */
 	};
 
 	ina226_gtyp_mmi_avtt: ina226@5a { /* u1828 - 1.2V */
@@ -274,7 +274,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-gtyp-mmi-avtt";
 		reg = <0x5a>;
-		shunt-resistor = <5000>; /* R2759 */
+		shunt-resistor = <2000>; /* R2759 */
 	};
 
 	ina226_gtyp_mmi_avccaux: ina226@5b { /* u1832 - 1.5V */
@@ -290,7 +290,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-gtyp-avcc";
 		reg = <0x5c>;
-		shunt-resistor = <5000>; /* R2607 */
+		shunt-resistor = <2000>; /* R2607 */
 	};
 
 	ina226_gtyp_avtt: ina226@5d { /* u1814 - 1.2V */
@@ -298,7 +298,7 @@
 		#io-channel-cells = <1>;
 		label = "ina226-gtyp-avtt";
 		reg = <0x5d>;
-		shunt-resistor = <5000>; /* R2626 */
+		shunt-resistor = <2000>; /* R2626 */
 	};
 
 	/* u19/u16 - tca9517 (J50 - disabling) */
