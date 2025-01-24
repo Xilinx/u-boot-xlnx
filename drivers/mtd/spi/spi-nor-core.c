@@ -4146,12 +4146,55 @@ static int spi_nor_cypress_octal_dtr_enable(struct spi_nor *nor)
 	return 0;
 }
 
+static int cypress_nor_disable_ecc(struct spi_nor *nor)
+{
+	int ret;
+	u8 buf;
+
+	/*
+	 * In S28HS02GT with the default ECC configuration(2-bit error detection)
+	 * byte-programming( < 16bytes) is not allowed. Set the ECC configuration
+	 * to 1-bit error detection/correction to enable byte-programming.
+	 */
+	nor->addr_mode_nbytes = 4;
+	ret = spansion_read_any_reg(nor, SPINOR_REG_CYPRESS_CFR4V, 0, &buf);
+	if (ret < 0)
+		return ret;
+
+	buf &= (u8)(~SPINOR_REG_CYPRESS_CFR4_BIT3);
+
+	ret = write_enable(nor);
+	if (ret)
+		return ret;
+
+	ret = spansion_write_any_reg(nor, SPINOR_REG_CYPRESS_CFR4V, buf);
+	if (ret < 0) {
+		dev_dbg(nor->dev, "error while writing configuration register\n");
+		return -EINVAL;
+	}
+
+	ret = write_disable(nor);
+	if (ret)
+		return ret;
+
+	ret = spansion_read_any_reg(nor, SPINOR_REG_CYPRESS_CFR4V, 0, &buf);
+	if (ret < 0)
+		return ret;
+
+	if (buf & (u8)SPINOR_REG_CYPRESS_CFR4_BIT3) {
+		printf("Failed to disable 2-bit ECC detection.\n");
+		return -EOPNOTSUPP;
+	}
+
+	return 0;
+}
+
 static void s28hx_t_late_init(struct spi_nor *nor,
 			      struct spi_nor_flash_parameter *params)
 {
 	nor->octal_dtr_enable = spi_nor_cypress_octal_dtr_enable;
 	nor->setup = s25_s28_setup;
-
+	cypress_nor_disable_ecc(nor);
 	/*
 	 * Programming is supported only in 16-byte ECC data unit granularity.
 	 * Byte-programming, bit-walking, or multiple program operations to the
