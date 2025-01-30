@@ -60,7 +60,7 @@ static u32 versal_multi_boot(void)
 	if (bootmode == JTAG_MODE)
 		return 0;
 
-	return readl(0xF1110004);
+	return 0;
 }
 
 int board_init(void)
