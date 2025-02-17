@@ -284,6 +284,14 @@
 				      "tsu_clk";
 		};
 
+		mmi_10gbe: ethernet@ed920000 {
+			compatible = "amd,versal2-10gbe";
+			status = "disabled";
+			reg = <0 0xed920000 0 0x1000>;
+			interrupts = <0 164 4>, <0 164 4>, <0 164 4>, <0 164 4>;
+			clock-names = "pclk", "hclk", "tsu_clk";
+		};
+
 		gic: interrupt-controller@e2000000 {
 			compatible = "arm,gic-v3";
 			#interrupt-cells = <3>;
