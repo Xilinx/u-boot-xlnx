@@ -446,12 +446,12 @@
 	/* u23/u33 - tca9517 (J10 - disabling) */
 	/* pmbus to ext_pmus */
 	vccint: tps53681@60 { /* u1870 */
-		compatible = "ti,tps53681", "ti,tps53679";
+		compatible = "ti,tps53681";
 		reg = <0x60>;
 	};
 
 	vcc_aie_soc: tps53681@61 { /* u1881 */
-		compatible = "ti,tps53681", "ti,tps53679";
+		compatible = "ti,tps53681";
 		reg = <0x61>;
 	};
 };
