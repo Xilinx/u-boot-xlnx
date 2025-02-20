@@ -257,3 +257,7 @@
 		};
 	};
 };
+
+&zynqmp_dpsub {
+	status = "disabled";
+};
