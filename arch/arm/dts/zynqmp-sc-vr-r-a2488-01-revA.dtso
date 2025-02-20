@@ -1,0 +1,319 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for Xilinx ZynqMP VR-R-A2488-01-revA
+ *
+ * Copyright (C) 2024 - 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/pinctrl-zynqmp.h>
+
+
+/dts-v1/;
+/plugin/;
+
+/* Compatible with zynqmp-sm-k24-revA.dts */
+
+&{/} {
+	compatible = "xlnx,zynqmp-sc-vr-r-a2488-01-revA",
+		     "xlnx,zynqmp-sc-vr-r-a2488-01", "xlnx,zynqmp";
+	model = "ZynqMP SC VR-R-A2488-01 revA";
+};
+
+&i2c1 { /* i2c_main bus */
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* Remove it because on bus is behind pca9541 */
+	eeprom@54 {
+		status = "disabled";
+	};
+
+	/* J181 for enable/disable */
+	i2c-arbitrator@72 { /* u1804 */
+		compatible = "nxp,pca9541";
+		reg = <0x72>;
+
+		i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			eeprom_cc: eeprom@54 { /* u486 - required by spec - also at address 0x5C */
+				compatible = "atmel,24c128";
+				label = "eeprom_cc";
+				reg = <0x54>;
+				/* wp-gpios via FTDI chip */
+			};
+
+			i2c-mux@75 { /* u483 */
+				compatible = "nxp,pca9548";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x75>;
+				/* reset-gpios = SC_I2C_MUX_RST0 */
+				i2c@0 { /* I2C_CH0_LPDDR5 */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+					ch0_lp5: clock-generator@50 { /* u456, OE via J165 320MHz */
+						#clock-cells = <0>;
+						compatible = "renesas,proxo-xp";
+						reg = <0x50>;
+						clock-output-names = "ch0_lp5";
+					};
+				};
+				i2c@1 { /* I2C_CH1_LPDDR5 */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					ch1_lp5: clock-generator@50 { /* u457, OE via J167 320MHz */
+						#clock-cells = <0>;
+						compatible = "renesas,proxo-xp";
+						reg = <0x50>;
+						clock-output-names = "ch1_lp5";
+					};
+				};
+				i2c@2 { /* NC */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+				};
+				i2c@3 { /* NC */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+				};
+				i2c@4 { /* SI5518 */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <4>;
+					/* u33@60 */
+					/* J163 connector */
+				};
+				i2c@5 { /* SEQ_PMBUS */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <5>;
+					/* J215 connector */
+					ucd90320: power-sequencer@77 { /* u438 */
+						compatible = "ti,ucd90320";
+						reg = <0x77>;
+					};
+				};
+				i2c@6 { /* NC */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <6>;
+				};
+				i2c@7 { /* I2C_VERSAL_REF */
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <7>;
+					xpl7_ps_refclk: clock-generator@55 { /* u455, OE via J164 50MHz */
+						#clock-cells = <0>;
+						compatible = "renesas,proxo-xp";
+						reg = <0x55>;
+						clock-output-names = "xpl7_ps_refclk";
+					};
+				};
+			};
+
+			/* J176 - jumper for enabling INA226_PMBUS */
+			/* u1793 dac_avcc_cs ina745@40 */
+			/* u1794 dac_avtt_cs ina745@41 */
+			/* u1795 dac_avccaux_cs ina745@42 */
+			/* u1796 adc_avcc_cs ina745@43 */
+			/* u1797 adc_avccaux_cs ina745@44 */
+
+			/* J178 - jumper for enabling PMBUS */
+			/* J180 - external connector */
+			/* J38 - SAMTEC connector */
+
+			tps53681_u10: tps53681@60 { /* u10 */
+				compatible = "ti,tps53681";
+				reg = <0x60>;
+			};
+			vcco_io: regulator@1b { /* u27 */
+				compatible = "ti,tps546b24";
+				reg = <0x1b>;
+			};
+			vcco_soc: regulator@1d { /* u325 */
+				compatible = "ti,tps546d24";
+				reg = <0x1d>;
+			};
+			vccint_gt: regulator@10 { /* u22 */
+				compatible = "ti,tps546b24";
+				reg = <0x10>;
+			};
+			vcc_ram: regulator@19 { /* u29 */
+				compatible = "ti,tps546b24";
+				reg = <0x19>;
+			};
+			util_1v8: regulator@1a { /* u436 */
+				compatible = "ti,tps546b24";
+				reg = <0x1a>;
+			};
+			vccaux_pmc: regulator@12 { /* u1791 */
+				compatible = "ti,tps546b24";
+				reg = <0x12>;
+			};
+			lp5_vdd1_1v8: regulator@e { /* u448 */
+				compatible = "ti,tps544b25";
+				reg = <0xe>;
+			};
+			lp5_vdd2h_1v05: regulator@f { /* u449 */
+				compatible = "ti,tps544b25";
+				reg = <0xf>;
+			};
+			lp5_vcco_1v0: regulator@15 { /* u452 */
+				compatible = "ti,tps544b25";
+				reg = <0x15>;
+			};
+			lp5_vddq_0v5: regulator@22 { /* u453 */
+				compatible = "ti,tps546b24";
+				reg = <0x22>;
+			};
+			gtm_avcc: regulator@24 { /* u8 */
+				compatible = "ti,tps546b24";
+				reg = <0x24>;
+			};
+			gtm_avccaux: regulator@21 { /* u9 */
+				compatible = "ti,tps546b24";
+				reg = <0x21>;
+			};
+
+			/* J177 - jumper for enabling LEFT_PMBUS */
+			vcc_pmc: regulator@29 { /* u28 */
+				compatible = "ti,tps546b24";
+				reg = <0x29>;
+			};
+			vcc_psfp: regulator@13 { /* u20 */
+				compatible = "ti,tps546b24";
+				reg = <0x13>;
+			};
+			vcc_pslp: regulator@14 { /* u21 */
+				compatible = "ti,tps546b24";
+				reg = <0x14>;
+			};
+			vcco_mio: regulator@16 { /* u30 */
+				compatible = "ti,tps546b24";
+				reg = <0x16>;
+			};
+			vccaux: regulator@23 { /* u24 */
+				compatible = "ti,tps546b24";
+				reg = <0x23>;
+			};
+			vcco_503: regulator@17 { /* u1733 */
+				compatible = "ti,tps546b24";
+				reg = <0x17>;
+			};
+			vcco_x5io: regulator@18 { /* u26 */
+				compatible = "ti,tps546b24";
+				reg = <0x18>;
+			};
+			vcco_713: regulator@26 { /* u1792 */
+				compatible = "ti,tps546b24";
+				reg = <0x26>;
+			};
+			gtyp_avcc: regulator@27 { /* u6 */
+				compatible = "ti,tps546b24";
+				reg = <0x27>;
+			};
+			gtyp_avtt: regulator@25 { /* u23 */
+				compatible = "ti,tps546b24";
+				reg = <0x25>;
+			};
+			gtyp_avccaux: regulator@20 { /* u7 */
+				compatible = "ti,tps546b24";
+				reg = <0x20>;
+			};
+			gtm_avtt: regulator@1c { /* u19 */
+				compatible = "ti,tps546b24";
+				reg = <0x1c>;
+			};
+		};
+	};
+
+	/* J182 - jumper for enabling PMC_I2C */
+	/* J183 - jumper for enabling X5IO_L7 */
+};
+
+&gem1 { /* gem1 MIO38-49, MDIO MIO50/51 */
+	status = "okay";
+	phy-mode = "rgmii-id";
+	phy-handle = <&phy0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_gem1_default>;
+
+	mdio: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy0: ethernet-phy@8 { /* ADI1300 - u500 */
+			#phy-cells = <1>;
+			compatible = "ethernet-phy-id0283.bc30";
+			reg = <8>;
+			adi,rx-internal-delay-ps = <2400>;
+			adi,tx-internal-delay-ps = <2400>;
+			adi,fifo-depth-bits = <8>;
+			reset-gpios = <&gpio 77 GPIO_ACTIVE_LOW>;
+			reset-assert-us = <10>;
+			reset-deassert-us = <5000>;
+		};
+	};
+};
+
+&pinctrl0 { /* required by spec */
+	status = "okay";
+
+	pinctrl_gem1_default: gem1-default {
+		conf {
+			groups = "ethernet1_0_grp";
+			slew-rate = <SLEW_RATE_SLOW>;
+			power-source = <IO_STANDARD_LVCMOS18>;
+		};
+
+		conf-rx {
+			pins = "MIO44", "MIO46", "MIO48";
+			bias-high-impedance;
+			low-power-disable;
+		};
+
+		conf-bootstrap {
+			pins = "MIO45", "MIO47", "MIO49";
+			bias-disable;
+			low-power-disable;
+		};
+
+		conf-tx {
+			pins = "MIO38", "MIO39", "MIO40",
+				"MIO41", "MIO42", "MIO43";
+			bias-disable;
+			low-power-enable;
+		};
+
+		conf-mdio {
+			groups = "mdio1_0_grp";
+			slew-rate = <SLEW_RATE_SLOW>;
+			power-source = <IO_STANDARD_LVCMOS18>;
+			bias-disable;
+		};
+
+		mux-mdio {
+			function = "mdio1";
+			groups = "mdio1_0_grp";
+		};
+
+		mux {
+			function = "ethernet1";
+			groups = "ethernet1_0_grp";
+		};
+	};
+};
+
+&zynqmp_dpsub {
+	status = "disabled";
+};
