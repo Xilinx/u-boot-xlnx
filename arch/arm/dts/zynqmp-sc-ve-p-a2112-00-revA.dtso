@@ -304,142 +304,142 @@
 	/* u19/u16 - tca9517 (J50 - disabling) */
 	/* pmbus */
 	vcc_lpd: regulator@10 { /* u1859 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x10>;
 	};
 
 	util_1v8: regulator@11 { /* u1876 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x11>;
 	};
 
 	vccaux_lpd: regulator@13 { /* u1837 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x13>;
 	};
 
 	vccio_usb3_504: regulator@14 { /* u1821 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x14>;
 	};
 
 	vccaux: regulator@15 { /* u1835 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x15>;
 	};
 
 	gtyp_avccaux: regulator@16 { /* u1831 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x16>;
 	};
 
 	vcc_io: regulator@17 { /* u1869 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x17>;
 	};
 
 	vcc_mmd: regulator@18 { /* u1865 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x18>;
 	};
 
 	vcc_ram: regulator@19 { /* u1867 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x19>;
 	};
 
 	vcco_500: regulator@1a { /* u1841 */
-		compatible = "ti,tps546d24a";
+		compatible = "ti,tps546d24";
 		reg = <0x1a>;
 	};
 
 	vcco_501: regulator@1b { /* u1843 */
-		compatible = "ti,tps546d24a";
+		compatible = "ti,tps546d24";
 		reg = <0x1b>;
 	};
 
 	vcco_502: regulator@1c { /* u1845 */
-		compatible = "ti,tps546d24a";
+		compatible = "ti,tps546d24";
 		reg = <0x1c>;
 	};
 
 	vcco_503: regulator@1d { /* u1847 */
-		compatible = "ti,tps546d24a";
+		compatible = "ti,tps546d24";
 		reg = <0x1d>;
 	};
 
 	vcc_mipi_507: regulator@1e { /* u1857 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x1e>;
 	};
 
 	vccio_mipi_507: regulator@1f { /* u1823 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x1f>;
 	};
 
 	vcco_700_705: regulator@20 { /* u1819 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x20>;
 	};
 
 	vcco_706_709: regulator@21 { /* u1825 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x21>;
 	};
 
 	vcco_710_715: regulator@22 { /* u1817 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x22>;
 	};
 
 	vcco_400_402: regulator@23 { /* u1849 */
-		compatible = "ti,tps546d24a";
+		compatible = "ti,tps546d24";
 		reg = <0x23>;
 	};
 
 	vcc_usb2_504: regulator@24 { /* u1861 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x24>;
 	};
 
 	vcc_paux_usb3_504: regulator@25 { /* u1863 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x25>;
 	};
 
 	vccio_reg_usb2_504: regulator@26 { /* u1851 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x26>;
 	};
 
 	vccio_paux_504: regulator@27 { /* u1839 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x27>;
 	};
 
 	gtyp_mmi_avcc: regulator@29 { /* u1827 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x29>;
 	};
 
 	gtyp_mmi_avtt: regulator@2a { /* u1829 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x2a>;
 	};
 
 	gtyp_mmi_avccaux: regulator@2b { /* u1833 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x2b>;
 	};
 
 	gtyp_avcc: regulator@2c { /* u1813 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x2c>;
 	};
 
 	gtyp_avtt: regulator@2d { /* u1815 */
-		compatible = "ti,tps546b24a";
+		compatible = "ti,tps546b24";
 		reg = <0x2d>;
 	};
 
