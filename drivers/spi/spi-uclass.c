@@ -523,8 +523,10 @@ int spi_slave_of_to_plat(struct udevice *dev, struct dm_spi_slave_plat *plat)
 	if (ret == -EOVERFLOW || ret == -FDT_ERR_BADLAYOUT) {
 		dev_read_u32(dev, "reg", &plat->cs[0]);
 	} else {
-		dev_err(dev, "has no valid 'reg' property (%d)\n", ret);
-		return ret;
+		if (ret) {
+			dev_err(dev, "has no valid 'reg' property (%d)\n", ret);
+			return ret;
+		}
 	}
 #else
 	plat->cs[0] = dev_read_u32_default(dev, "reg", -1);
