@@ -8,6 +8,8 @@
 #ifndef _ZYNQMP_FIRMWARE_H_
 #define _ZYNQMP_FIRMWARE_H_
 
+#include <compiler.h>
+
 enum pm_api_id {
 	PM_GET_API_VERSION = 1,
 	PM_SET_CONFIGURATION = 2,
@@ -499,5 +501,12 @@ struct zynqmp_ipi_msg {
 	size_t len;
 	u32 *buf;
 };
+
+#define __data __section(".data")
+
+typedef int (*smc_call_handler_t)(u32 api_id, u32 arg0, u32 arg1, u32 arg2,
+				  u32 arg3, u32 *ret_payload);
+
+extern smc_call_handler_t __data smc_call_handler;
 
 #endif /* _ZYNQMP_FIRMWARE_H_ */
