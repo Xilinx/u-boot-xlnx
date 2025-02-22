@@ -24,6 +24,10 @@
 	};
 };
 
+&pwm_fan {
+	pwms = <&ttc0 0 40000 0>;
+};
+
 &gem1 { /* MDIO MIO50/51 */
 	status = "okay";
 	phy-mode = "sgmii";
