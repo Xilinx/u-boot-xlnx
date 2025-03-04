@@ -358,7 +358,7 @@ static int __maybe_unused query_vidconsole(int *rows, int *cols)
 void efi_setup_console_size(void)
 {
 	int rows = 25, cols = 80;
-	int ret = -ENODEV;
+	int ret = 0;
 
 	if (IS_ENABLED(CONFIG_VIDEO))
 		ret = query_vidconsole(&rows, &cols);
