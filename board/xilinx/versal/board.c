@@ -9,6 +9,7 @@
 #include <dfu.h>
 #include <env.h>
 #include <fdtdec.h>
+#include <fwu.h>
 #include <init.h>
 #include <env_internal.h>
 #include <log.h>
@@ -22,6 +23,7 @@
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
+#include <linux/bitfield.h>
 #include <linux/sizes.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
@@ -365,6 +367,8 @@ enum env_location env_get_location(enum env_operation op, int prio)
 
 #define DFU_ALT_BUF_LEN		SZ_1K
 
+#if !defined(CONFIG_FWU_MULTI_BANK_UPDATE)
+
 static void mtd_found_part(u32 *base, u32 *size)
 {
 	struct mtd_info *part, *mtd;
@@ -444,4 +448,70 @@ void set_dfu_alt_info(char *interface, char *devstr)
 	env_set("dfu_alt_info", buf);
 	puts("DFU alt info setting: done\n");
 }
+#else
+
+/* Generate dfu_alt_info from partitions */
+void set_dfu_alt_info(char *interface, char *devstr)
+{
+	int ret;
+	struct mtd_info *mtd;
+
+	/*
+	 * It is called multiple times for every image
+	 * per bank that's why enough to set it up once.
+	 */
+	if (env_get("dfu_alt_info"))
+		return;
+
+	ALLOC_CACHE_ALIGN_BUFFER(char, buf, DFU_ALT_BUF_LEN);
+	memset(buf, 0, sizeof(buf));
+
+	mtd_probe_devices();
+
+	mtd = get_mtd_device_nm("nor0");
+	if (IS_ERR_OR_NULL(mtd))
+		return;
+
+	ret = fwu_gen_alt_info_from_mtd(buf, DFU_ALT_BUF_LEN, mtd);
+	if (ret < 0) {
+		log_err("Error: Failed to generate dfu_alt_info. (%d)\n", ret);
+		return;
+	}
+	log_debug("Make dfu_alt_info: '%s'\n", buf);
+
+	env_set("dfu_alt_info", buf);
+}
+
+/*
+ * The PMC Global pggs4 register contains below information
+ * in each byte as:
+ *
+ * Byte[3]: Magic number
+ * Byte[2]: Boot counter value
+ * Byte[1]: Boot partition value - boot index
+ * Byte[0]: Rollback counter value
+ */
+
+#define MAGIC_NUM	0x1D
+#define MAGIC_MASK	GENMASK(31, 24)
+#define BOOTINDEX_MASK	GENMASK(15, 8)
+
+int plat_get_boot_index(void)
+{
+	u32 val;
+
+	if (IS_ENABLED(CONFIG_ZYNQMP_FIRMWARE))
+		val = zynqmp_pm_get_pmc_global_pggs_reg(PMC_GLOBAL_PGGS4_REG);
+	else
+		val = readl(PMC_GLOBAL_PGGS4_REG);
+
+	if (FIELD_GET(MAGIC_MASK, val) != MAGIC_NUM) {
+		log_err("Error: Magic number of pmc global register is not 0x%x\n",
+			MAGIC_NUM);
+		return -EINVAL;
+	}
+
+	return FIELD_GET(BOOTINDEX_MASK, val);
+}
+#endif
 #endif

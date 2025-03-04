@@ -9,6 +9,7 @@
 #include <efi.h>
 #include <efi_loader.h>
 #include <env.h>
+#include <fwu.h>
 #include <image.h>
 #include <init.h>
 #include <jffs2/load_kernel.h>
@@ -703,5 +704,38 @@ phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 
 	return reg + size;
 }
+#endif
 
+#if defined(CONFIG_FWU_MULTI_BANK_UPDATE)
+int fwu_plat_get_alt_num(struct udevice __always_unused *dev,
+			 efi_guid_t *image_id, u8 *alt_num)
+{
+	int ret;
+
+	ret = fwu_mtd_get_alt_num(image_id, alt_num, "nor0");
+	debug("%s: return %d\n", __func__, ret);
+
+	return ret;
+}
+
+void fwu_plat_get_bootidx(uint *boot_idx)
+{
+	int ret;
+	u32 active_idx;
+
+	ret = fwu_get_active_index(&active_idx);
+	if (ret < 0)
+		printf("%s: failed to read active index\n", __func__);
+
+	ret = plat_get_boot_index();
+	if (ret < 0) {
+		*boot_idx = 0;
+		printf("%s: failed and setup boot index to 0\n", __func__);
+	} else {
+		*boot_idx = ret;
+	}
+
+	debug("%s: boot_idx: %d, active_idx: %d\n",
+	      __func__, *boot_idx, active_idx);
+}
 #endif
