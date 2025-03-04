@@ -198,6 +198,42 @@ int zynqmp_pm_ufs_cal_reg(u32 *value)
 }
 #endif
 
+#if defined(CONFIG_ARCH_VERSAL)
+u32 zynqmp_pm_get_pmc_global_pggs_reg(u32 reg_addr)
+{
+	int ret;
+	u32 value = 0;
+	u32 ret_payload[PAYLOAD_ARG_CNT];
+
+	if (reg_addr == PMC_GLOBAL_PGGS3_REG) {
+		value = 0;
+	} else if (reg_addr == PMC_GLOBAL_PGGS4_REG) {
+		value = 1;
+	} else {
+		printf("%s: not supported pggs register  0x%x\n",
+		       __func__, reg_addr);
+		return 0;
+	}
+
+	ret = zynqmp_pm_is_function_supported(PM_IOCTL, IOCTL_READ_PGGS);
+	if (ret) {
+		printf("%s: IOCTL_READ_PGGS is not supported failed with error code: %d\n",
+		       __func__, ret);
+		return 0;
+	}
+
+	ret = xilinx_pm_request(PM_IOCTL, PMC_GLOBAL_PGGS3_REG_NODE,
+				IOCTL_READ_PGGS, value, 0, ret_payload);
+	if (ret) {
+		printf("%s: node 0x%x get pggs register failed\n",
+		       __func__, PMC_GLOBAL_PGGS3_REG_NODE);
+		return 0;
+	}
+
+	return ret_payload[1];
+}
+#endif
+
 int zynqmp_pm_set_gem_config(u32 node, enum pm_gem_config_type config, u32 value)
 {
 	int ret;
