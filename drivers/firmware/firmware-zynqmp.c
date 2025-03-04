@@ -199,6 +199,29 @@ int zynqmp_pm_ufs_cal_reg(u32 *value)
 #endif
 
 #if defined(CONFIG_ARCH_VERSAL)
+u32 zynqmp_pm_get_pmc_multi_boot_reg(void)
+{
+	int ret;
+	u32 ret_payload[PAYLOAD_ARG_CNT];
+
+	ret = zynqmp_pm_is_function_supported(PM_IOCTL, IOCTL_READ_REG);
+	if (ret) {
+		printf("%s: IOCTL_READ_REG is not supported failed with error code: %d\n"
+		       , __func__, ret);
+		return 0;
+	}
+
+	ret = xilinx_pm_request(PM_IOCTL, PM_REG_PMC_GLOBAL_NODE, IOCTL_READ_REG,
+				PMC_MULTI_BOOT_MODE_REG_OFFSET, 0, ret_payload);
+	if (ret) {
+		printf("%s: node 0x%x: get_bootmode 0x%x failed\n",
+		       __func__, PM_REG_PMC_GLOBAL_NODE, PMC_MULTI_BOOT_MODE_REG_OFFSET);
+		return 0;
+	}
+
+	return ret_payload[1];
+}
+
 u32 zynqmp_pm_get_pmc_global_pggs_reg(u32 reg_addr)
 {
 	int ret;

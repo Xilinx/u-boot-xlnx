@@ -62,12 +62,18 @@ static u8 versal_get_bootmode(void)
 static u32 versal_multi_boot(void)
 {
 	u8 bootmode = versal_get_bootmode();
+	u32 reg = 0;
 
 	/* Mostly workaround for QEMU CI pipeline */
 	if (bootmode == JTAG_MODE)
 		return 0;
 
-	return 0;
+	if (IS_ENABLED(CONFIG_ZYNQMP_FIRMWARE) && current_el() != 3)
+		reg = zynqmp_pm_get_pmc_multi_boot_reg();
+	else
+		reg = readl(PMC_MULTI_BOOT_REG);
+
+	return reg & PMC_MULTI_BOOT_MASK;
 }
 
 int board_init(void)
