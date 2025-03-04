@@ -460,6 +460,7 @@ int zynqmp_mmio_read(const u32 address, u32 *value);
 int zynqmp_mmio_write(const u32 address, const u32 mask, const u32 value);
 int zynqmp_pm_feature(const u32 api_id);
 u32 zynqmp_pm_get_bootmode_reg(void);
+u32 zynqmp_pm_get_pmc_multi_boot_reg(void);
 int zynqmp_pm_ufs_get_txrx_cfgrdy(u32 *value);
 int zynqmp_pm_ufs_sram_csr_read(u32 *value);
 int zynqmp_pm_ufs_sram_csr_write(u32 *value);
@@ -523,6 +524,9 @@ extern smc_call_handler_t __data smc_call_handler;
 
 #define CRP_BOOT_MODE_REG_NODE		0x30000001
 #define CRP_BOOT_MODE_REG_OFFSET	0x200
+
+#define PM_REG_PMC_GLOBAL_NODE	0x30000004
+#define PMC_MULTI_BOOT_MODE_REG_OFFSET	0x4
 
 #define PMC_GLOBAL_PGGS3_REG_NODE	0x1824C005
 
