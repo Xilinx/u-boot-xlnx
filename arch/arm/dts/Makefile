@@ -445,7 +445,14 @@ dtb-$(CONFIG_ARCH_VERSAL2) += \
 	versal2-mini-ospi.dtb \
 	versal2-mini-qspi.dtb \
 	versal2-mini.dtb \
+	versal2-vek385-revA.dtb \
 	amd-versal2-virt.dtb
+
+versal2-ve-p-a2112-00-revA-x-prc-10-revA-dtbs := versal2-ve-p-a2112-00-revA.dtb x-prc-10-revA.dtbo
+versal2-ve-p-a2112-00-revA-x-prc-11-revA-dtbs := versal2-ve-p-a2112-00-revA.dtb x-prc-11-revA.dtbo
+dtb-$(CONFIG_ARCH_VERSAL2) += versal2-ve-p-a2112-00-revA-x-prc-10-revA.dtb
+dtb-$(CONFIG_ARCH_VERSAL2) += versal2-ve-p-a2112-00-revA-x-prc-11-revA.dtb
+
 dtb-$(CONFIG_ARCH_VERSAL_NET) += \
 	versal-net-vn-x-b2197-01-revA.dtb \
 	versal-net-mini.dtb \

@@ -1,0 +1,187 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for Xilinx X-PRC-10 RevA
+ *
+ * (C) Copyright 2024 - 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/* likely defaults to have usb/gem */
+#define J336	1
+#define J340	0
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/net/ti-dp83867.h>
+
+&{/} {
+	model = "X-PRC-10 revA";
+
+	aliases {
+		nvmem2 = &eeprom_x;
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&qspi { /* PMC_MIO0-12 - dual stack/dual parallel */
+	status = "okay";
+	#size-cells = <0>;
+	#address-cells = <1>;
+	num-cs = <2>;
+	/* reset-gpios = <&gpio0 22 0>; */
+
+	flash0: flash@0 { /* u416/u414/u415/u417 */
+		compatible = "jedec,spi-nor";	/* check maximum frequency from datasheet */
+		spi-max-frequency = <15000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+		parallel-memories = <0 0x8000000>, <0 0x8000000>;
+		reg = <0>, <1>;
+
+		partitions {
+			#size-cells = <1>;
+			#address-cells = <1>;
+			compatible = "fixed-partitions";
+
+			partition@0 {
+				reg = <0 0x200000>;
+				label = "qspi0-flash0";
+			};
+
+			partition@1 {
+				reg = <0x200000 0x7e00000>;
+				label = "qspi0-flash1";
+			};
+		};
+	};
+};
+
+&serial0 { /* LPD_MIO16-17 */
+	status = "okay";
+};
+
+&serial1 { /* LPD_MIO20-21 */
+	status = "okay";
+};
+
+&sdhci0 { /* PMC_MIO27-32, WP PMC_MIO38, CD PMC_MIO37 */
+	status = "okay";
+	bus-width = <4>;
+	xlnx,mio-bank = <0>;
+};
+
+&sdhci1 { /* PMC_MIO40-51 */
+	status = "okay";
+	bus-width = <8>;
+	disable-wp;
+	non-removable;
+	no-sd;
+	no-sdio;
+	cap-mmc-hw-reset;
+	xlnx,mio-bank = <0>;
+	no-mmc-hs400; /* FIXME */
+};
+
+#if J336 /* 1-2 shorted */
+	&usb0 { /* PMC_MIO14-25 */
+		status = "okay";
+	};
+
+	&dwc3_0 {
+		status = "okay";
+		dr_mode = "peripheral";
+		maximum-speed = "high-speed";
+	};
+#else /* J336 */
+	&can0 { /* PMC_MIO16-17 */
+		status = "okay";
+	};
+
+	&can1 { /* PMC_MIO18-19 */
+		status = "okay";
+	};
+
+	&can2 { /* PMC_MIO20-21 */
+		status = "okay";
+	};
+
+	&can3 { /* PMC_MIO22-23 */
+		status = "okay";
+	};
+
+	&ufshc { /* PMC_MIO24-25 but via J336 */
+		status = "okay";
+	};
+
+#endif /* J336 */
+
+&i3c1 { /* LPD_MIO18-19 */
+	status = "okay";
+	#address-cells = <3>;
+	#size-cells = <0>;
+
+	eeprom: eeprom@51 { /* u45 */
+		compatible = "atmel,24c128";
+		reg = <0x51 0 0x10>;
+	};
+
+	/* icm-42605 - missing i3c driver
+	drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c */
+	icm42605@69 { /* u119 */
+		compatible = "invensense,icm42605";
+		reg = <0x69 0 0x10>;
+	};
+
+	imu@6b { /* u120 */
+		compatible = "st,lsm6dso";
+		reg = <0x69 0 0x10>;
+	};
+
+	/* Connected twice */
+	eeprom_x: eeprom@55 { /* u46 */
+		compatible = "atmel,24c128";
+		reg = <0x55 0 0x10>;
+	};
+};
+
+#if J340 /* 3-5, 4-6 shorted */
+	&i2c1 { /* LPD_MIO24-25 (but J340 can block it) FIXME not sure about controller */
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		eeprom_x0: eeprom@55 { /* u46 */
+			compatible = "atmel,24c128";
+			reg = <0x55>;
+		};
+	};
+#else /* J340 - 1-3, 2-4 shorted */
+	&gem0 { /* LPD_MIO0-11, MDIO LPD_MIO24-25 (but J340 can block it) */
+		status = "okay";
+		phy-handle = <&phy0>;
+		phy-mode = "rgmii-id";
+
+		mdio: mdio {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			phy0: ethernet-phy@1 { /* u128 */
+				#phy-cells = <1>;
+				reg = <1>;
+				compatible = "ethernet-phy-id2000.a231";
+				ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_25_NS>;
+				ti,tx-internal-delay = <DP83867_RGMIIDCTL_2_75_NS>;
+				ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
+				ti,dp83867-rxctrl-strap-quirk;
+				reset-assert-us = <100>;
+				reset-deassert-us = <280>;
+				reset-gpios = <&gpio0 23 GPIO_ACTIVE_LOW>;
+			};
+		};
+	};
+#endif
