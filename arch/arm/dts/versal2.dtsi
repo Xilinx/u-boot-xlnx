@@ -2,7 +2,7 @@
 /*
  * dts file for AMD Versal Gen 2
  *
- * Copyright (C) 2023, Advanced Micro Devices, Inc.
+ * Copyright (C) 2023 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
@@ -634,6 +634,7 @@
 			status = "disabled";
 			reg = <0 0xf1ee0000 0 0x100>;
 			clock-names = "bus_clk", "ref_clk";
+			reset-names = "usb_crst";
 			ranges;
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -657,6 +658,7 @@
 			status = "disabled";
 			reg = <0x0 0xf1ef0000 0x0 0x100>;
 			clock-names = "bus_clk", "ref_clk";
+			reset-names = "usb_crst";
 			ranges;
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -675,7 +677,7 @@
 			};
 		};
 
-		mmi_usb {
+		usb_mmi: mmi-usb {
 			compatible = "xlnx,versal2-mmi-dwc3";
 			status = "disabled";
 			ranges;
@@ -693,7 +695,6 @@
 				snps,quirk-frame-length-adjustment = <0x20>;
 				snps,usb3_lpm_capable;
 				dr_mode = "host";
-				clock-names = "ref";
 			};
 		};
 
