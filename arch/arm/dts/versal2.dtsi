@@ -470,6 +470,8 @@
 			cdns,fifo-width = <4>;
 			cdns,is-dma = <1>; /* u-boot specific */
 			cdns,trigger-address = <0xc0000000>;
+			clock-names = "ref";
+			reset-names = "qspi", "qspi-ocp";
 		};
 
 		qspi: spi@f1030000 {
