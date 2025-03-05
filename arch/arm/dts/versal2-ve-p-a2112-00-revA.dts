@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2 VNC (T50)
+ *
+ * Copyright (C) 2024, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2.dtsi"
+#include "versal2-clk-ccf.dtsi"
+
+/ {
+	compatible = "amd,versal2";
+	model = "AMD Versal Gen 2 Silicon EL2";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1920000 console=ttyAMA0,115200";
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>; /* LPDDR5 2GB */
+		device_type = "memory";
+	};
+
+	firmware {
+		versal2-firmware {
+			compatible = "xlnx,versal2-firmware";
+			method = "smc";
+		};
+
+		psci: psci { /* Should be injected by firmware */
+			compatible = "arm,psci-1.0";
+			method = "smc";
+		};
+	};
+};
+
+/* GPIO leds/dips/pushPB, SMA to PL */
+
+&mmi_10gbe {
+	status = "okay";
+	phy-mode = "10gbase-r";
+	fixed-link {
+		speed = <10000>;
+		full-duplex;
+	};
+};

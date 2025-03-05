@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for Xilinx X-PRC-11 RevA
+ *
+ * (C) Copyright 2024 - 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+&{/} {
+	model = "X-PRC-11 revA";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&sdhci0 { /* PMC_MIO13-19, WP PMC_MIO25, CD PMC_MIO24 */
+	status = "okay";
+	bus-width = <4>;
+	xlnx,mio-bank = <0>;
+};
+
+&serial0 { /* PMC_MIO44-45 */
+	status = "okay";
+};
+
+&serial1 { /* LPD_MIO4-5 */
+	status = "okay";
+};
+
+&spi0 { /* LPD 6, 10-11 */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	num-cs = <1>;
+	flash_spi0: flash@0 { /* U408 - is25wp064 */
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			partition@0 {
+				label = "spi0-flash0";
+				reg = <0 0x800000>;
+			};
+		};
+	};
+};
+
+&i2c0 { /* PMC_MIO42-43 */
+	status = "okay";
+#if J313 /* 2-3 shorted */
+#if J314 /* 2-3 shorted */
+	#address-cells = <1>;
+	#size-cells = <0>;
+	eeprom_x0: eeprom@51 { /* u45 - br24g128 */
+		compatible = "atmel,24c128";
+		reg = <0x51>;
+	};
+#endif
+#endif
+};
+
+&i2c1 { /* LPD_MIO24-25 */
+	status = "okay";
+#if J350 /* 2-3 shorted */
+#if J351 /* 2-3 shorted */
+	#address-cells = <1>;
+	#size-cells = <0>;
+	eeprom_x0: eeprom@51 { /* u46 - m24c128 */
+		compatible = "atmel,24c128";
+		reg = <0x51>;
+	};
+#endif
+#endif
+};
+
+&gem1 { /* LPD_MIO12-23, MDIO LPD_MIO50-51 */
+	status = "okay";
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+
+	mdio: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy0: ethernet-phy@1 { /* u139 - marwell 88e1512 */
+			#phy-cells = <1>;
+			reg = <1>;
+			reset-gpios = <&gpio0 7 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&ufshc { /* PMC_MIO24-25 but via J336 */
+	status = "okay";
+};
+
+&usb1 { /* PMC_MIO28-38 */
+	status = "okay";
+};
+
+&dwc3_1 {
+	status = "okay";
+	dr_mode = "host";
+	maximum-speed = "high-speed";
+};
+
+&ospi { /* u97 and u390 - dual parallel configuration FIXME */
+	status = "okay";
+	reset-names = "qspi", "qspi-ocp";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	mt35xu02g: flash@0 {
+		compatible = "micron,m25p80", "jedec,spi-nor";
+		spi-max-frequency = <50000>;
+		spi-rx-bus-width = <8>;
+		spi-tx-bus-width = <8>;
+		cdns,tslch-ns = <1>;
+		cdns,tchsh-ns = <1>;
+		cdns,tsd2d-ns = <0>;
+		cdns,tshsl-ns = <0>;
+		cdns,read-delay = <0>;
+		#size-cells = <1>;
+		#address-cells = <1>;
+		reg = <0>;
+		no-wp;
+		broken-flash-reset;
+
+		partitions {
+			#size-cells = <1>;
+			#address-cells = <1>;
+			compatible = "fixed-partitions";
+
+			partition@0 {
+				reg = <0x0 0x200000>;
+				label = "ospi-flash0";
+			};
+
+			partition@1 {
+				reg = <0x200000 0x3e00000>;
+				label = "ospi-flash1";
+			};
+		};
+	};
+};

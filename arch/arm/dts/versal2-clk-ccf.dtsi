@@ -1,0 +1,508 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for Xilinx Versal2 with PM
+ *
+ * Copyright (C) 2022, Xilinx, Inc.
+ * Copyright (C) 2022 - 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include <dt-bindings/clock/xlnx-versal2-clk.h>
+#include <dt-bindings/power/xlnx-versal2-power.h>
+#include <dt-bindings/reset/xlnx-versal2-resets.h>
+
+/ {
+	ref_clk: ref-clk {
+		bootph-all;
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <33333333>;
+	};
+
+	can0_clk: can0-clk {
+		#clock-cells = <0>;
+		compatible = "fixed-factor-clock";
+		clocks = <&versal2_clk CAN0_REF_2X>;
+		clock-div = <2>;
+		clock-mult = <1>;
+	};
+
+	can1_clk: can1-clk {
+		#clock-cells = <0>;
+		compatible = "fixed-factor-clock";
+		clocks = <&versal2_clk CAN1_REF_2X>;
+		clock-div = <2>;
+		clock-mult = <1>;
+	};
+
+	can2_clk: can2-clk {
+		#clock-cells = <0>;
+		compatible = "fixed-factor-clock";
+		clocks = <&versal2_clk CAN2_REF_2X>;
+		clock-div = <2>;
+		clock-mult = <1>;
+	};
+
+	can3_clk: can3-clk {
+		#clock-cells = <0>;
+		compatible = "fixed-factor-clock";
+		clocks = <&versal2_clk CAN3_REF_2X>;
+		clock-div = <2>;
+		clock-mult = <1>;
+	};
+
+	clk150: clk150 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <150000000>;
+	};
+
+	clk250: clk250 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <250000000>;
+	};
+
+	firmware {
+		versal2_firmware: versal2-firmware {
+			compatible = "xlnx,versal2-firmware";
+			bootph-all;
+			method = "smc";
+			#power-domain-cells = <1>;
+
+			versal2_reset: reset-controller {
+				compatible = "xlnx,versal-reset";
+				#reset-cells = <1>;
+			};
+
+			versal2_clk: clock-controller {
+				#clock-cells = <1>;
+				compatible = "xlnx,versal2-clk";
+				clocks = <&ref_clk>, <&ref_clk>;
+				clock-names = "ref_clk", "pl_alt_ref_clk";
+			};
+
+			versal_net_power: power-management {
+				compatible = "xlnx,zynqmp-power";
+				interrupt-parent = <&gic>;
+				interrupts = <0 57 4>;
+				mboxes = <&ipi_mailbox_pmu1 0>,
+					 <&ipi_mailbox_pmu1 1>;
+				mbox-names = "tx", "rx";
+			};
+
+			versal_sec_cfg: versal-sec-cfg {
+				compatible = "xlnx,versal-sec-cfg";
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					bbram_zeroize: bbram-zeroize@4 {
+						reg = <0x04 0x4>;
+					};
+
+					bbram_key: bbram-key@10 {
+						reg = <0x10 0x20>;
+					};
+
+					bbram_usr: bbram-usr@30 {
+						reg = <0x30 0x4>;
+					};
+
+					bbram_lock: bbram-lock@48 {
+						reg = <0x48 0x4>;
+					};
+
+					user_key0: user-key@110 {
+						reg = <0x110 0x20>;
+					};
+
+					user_key1: user-key@130 {
+						reg = <0x130 0x20>;
+					};
+
+					user_key2: user-key@150 {
+						reg = <0x150 0x20>;
+					};
+
+					user_key3: user-key@170 {
+						reg = <0x170 0x20>;
+					};
+
+					user_key4: user-key@190 {
+						reg = <0x190 0x20>;
+					};
+
+					user_key5: user-key@1b0 {
+						reg = <0x1b0 0x20>;
+					};
+
+					user_key6: user-key@1d0 {
+						reg = <0x1d0 0x20>;
+					};
+
+					user_key7: user-key@1f0 {
+						reg = <0x1f0 0x20>;
+					};
+				};
+			};
+		};
+	};
+
+	zynqmp-ipi {
+		compatible = "xlnx,zynqmp-ipi-mailbox";
+		interrupt-parent = <&gic>;
+		interrupts = <0 57 4>;
+		xlnx,ipi-id = <2>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		ipi_mailbox_pmu1: mailbox@eb3f0440 {
+			compatible = "xlnx,zynqmp-ipi-dest-mailbox";
+			reg = <0 0xeb3f0440 0 0x20>,
+			      <0 0xeb3f0460 0 0x20>,
+			      <0 0xeb3f0280 0 0x20>,
+			      <0 0xeb3f02a0 0 0x20>;
+			reg-names = "local_request_region", "local_response_region",
+				    "remote_request_region", "remote_response_region";
+			#mbox-cells = <1>;
+			xlnx,ipi-id = <1>;
+		};
+	};
+};
+
+&cpu0 {
+	clocks = <&versal2_clk ACPU_0>;
+};
+
+&cpu100 {
+	clocks = <&versal2_clk ACPU_0>;
+};
+
+&cpu10000 {
+	clocks = <&versal2_clk ACPU_1>;
+};
+
+&cpu10100 {
+	clocks = <&versal2_clk ACPU_1>;
+};
+
+&cpu20000 {
+	clocks = <&versal2_clk ACPU_2>;
+};
+
+&cpu20100 {
+	clocks = <&versal2_clk ACPU_2>;
+};
+
+&cpu30000 {
+	clocks = <&versal2_clk ACPU_3>;
+};
+
+&cpu30100 {
+	clocks = <&versal2_clk ACPU_3>;
+};
+
+&can0 {
+	clocks = <&versal2_clk CAN0_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_CAN_FD_0>;
+};
+
+&can1 {
+	clocks = <&versal2_clk CAN1_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_CAN_FD_1>;
+};
+
+&can2 {
+	clocks = <&versal2_clk CAN2_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_CAN_FD_2>;
+};
+
+&can3 {
+	clocks = <&versal2_clk CAN3_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_CAN_FD_3>;
+};
+
+&gem0 {
+	clocks = <&versal2_clk LPD_LSBUS>,
+		 <&versal2_clk GEM0_REF>, <&versal2_clk GEM0_TX>,
+		 <&versal2_clk GEM0_RX>, <&versal2_clk GEM_TSU>;
+	power-domains = <&versal2_firmware PM_DEV_GEM_0>;
+};
+
+&gem1 {
+	clocks = <&versal2_clk LPD_LSBUS>,
+		 <&versal2_clk GEM1_REF>, <&versal2_clk GEM1_TX>,
+		 <&versal2_clk GEM1_RX>, <&versal2_clk GEM_TSU>;
+	power-domains = <&versal2_firmware PM_DEV_GEM_1>;
+};
+
+&mmi_10gbe {
+	clocks = <&clk150>, <&clk150>, <&clk150>, <&clk250>;
+};
+
+&gpio0 {
+	clocks = <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_GPIO>;
+};
+
+&gpio1 {
+	clocks = <&versal2_clk PMC_LSBUS_REF>;
+	power-domains = <&versal2_firmware PM_DEV_GPIO_PMC>;
+};
+
+&i2c0 {
+	clocks = <&versal2_clk I3C0_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_0>;
+};
+
+&i2c1 {
+	clocks = <&versal2_clk I3C1_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_1>;
+};
+
+&i2c2 {
+	clocks = <&versal2_clk I3C2_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_2>;
+};
+
+&i2c3 {
+	clocks = <&versal2_clk I3C3_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_3>;
+};
+
+&i2c4 {
+	clocks = <&versal2_clk I3C4_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_4>;
+};
+
+&i2c5 {
+	clocks = <&versal2_clk I3C5_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_5>;
+};
+
+&i2c6 {
+	clocks = <&versal2_clk I3C6_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_6>;
+};
+
+&i2c7 {
+	clocks = <&versal2_clk I3C7_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_7>;
+};
+
+&i3c0 {
+	clocks = <&versal2_clk I3C0_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_0>;
+};
+
+&i3c1 {
+	clocks = <&versal2_clk I3C1_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_1>;
+};
+
+&i3c2 {
+	clocks = <&versal2_clk I3C2_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_2>;
+};
+
+&i3c3 {
+	clocks = <&versal2_clk I3C3_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_3>;
+};
+
+&i3c4 {
+	clocks = <&versal2_clk I3C4_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_4>;
+};
+
+&i3c5 {
+	clocks = <&versal2_clk I3C5_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_5>;
+};
+
+&i3c6 {
+	clocks = <&versal2_clk I3C6_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_6>;
+};
+
+&i3c7 {
+	clocks = <&versal2_clk I3C7_REF>;
+	power-domains = <&versal2_firmware PM_DEV_I2C_7>;
+};
+
+&adma0 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_0>;
+};
+
+&adma1 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_1>;
+};
+
+&adma2 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_2>;
+};
+
+&adma3 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_3>;
+};
+
+&adma4 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_4>;
+};
+
+&adma5 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_5>;
+};
+
+&adma6 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_6>;
+};
+
+&adma7 {
+	clocks = <&versal2_clk ADMA>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_ADMA_7>;
+};
+
+&qspi {
+	clocks = <&versal2_clk QSPI_REF>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_QSPI>;
+};
+
+&ospi {
+	clocks = <&versal2_clk OSPI_REF>;
+	power-domains = <&versal2_firmware PM_DEV_OSPI>;
+	resets = <&versal2_reset VERSAL_RST_OSPI>, <&versal2_reset VERSAL_RST_OSPI>;
+};
+
+&rtc {
+	power-domains = <&versal2_firmware PM_DEV_RTC>;
+};
+
+&serial0 {
+	clocks = <&versal2_clk UART0_REF>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_UART_0>;
+};
+
+&serial1 {
+	clocks = <&versal2_clk UART1_REF>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_UART_1>;
+};
+
+&sdhci0 {
+	clocks = <&versal2_clk SDIO0_REF>, <&versal2_clk LPD_LSBUS>,
+		<&versal2_clk SD_DLL_REF>;
+	power-domains = <&versal2_firmware PM_DEV_SDIO_0>;
+};
+
+&sdhci1 {
+	clocks = <&versal2_clk SDIO1_REF>, <&versal2_clk LPD_LSBUS>,
+		<&versal2_clk SD_DLL_REF>;
+	power-domains = <&versal2_firmware PM_DEV_SDIO_1>;
+};
+
+&spi0 {
+	clocks = <&versal2_clk SPI0_REF>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_SPI_0>;
+};
+
+&spi1 {
+	clocks = <&versal2_clk SPI1_REF>, <&versal2_clk LPD_LSBUS>;
+	power-domains = <&versal2_firmware PM_DEV_SPI_1>;
+};
+
+&ttc0 {
+	clocks = <&versal2_clk TTC0>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_0>;
+};
+
+&ttc1 {
+	clocks = <&versal2_clk TTC1>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_1>;
+};
+
+&ttc2 {
+	clocks = <&versal2_clk TTC2>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_2>;
+};
+
+&ttc3 {
+	clocks = <&versal2_clk TTC3>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_3>;
+};
+
+&ttc4 {
+	clocks = <&versal2_clk TTC4>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_4>;
+};
+
+&ttc5 {
+	clocks = <&versal2_clk TTC5>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_5>;
+};
+
+&ttc6 {
+	clocks = <&versal2_clk TTC6>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_6>;
+};
+
+&ttc7 {
+	clocks = <&versal2_clk TTC7>;
+	power-domains = <&versal2_firmware PM_DEV_TTC_7>;
+};
+
+&usb0 {
+	clocks = <&versal2_clk USB0_BUS_REF>, <&versal2_clk USB0_BUS_REF>;
+	power-domains = <&versal2_firmware PM_DEV_USB_0>;
+	resets = <&versal2_reset VERSAL_RST_USB_0>;
+};
+
+&dwc3_0 {
+	clocks = <&versal2_clk USB0_BUS_REF>;
+};
+
+&usb1 {
+	clocks = <&versal2_clk USB1_BUS_REF>, <&versal2_clk USB1_BUS_REF>;
+	power-domains = <&versal2_firmware PM_DEV_USB_1>;
+	resets = <&versal2_reset VERSAL_RST_USB_1>;
+};
+
+&dwc3_1 {
+	clocks = <&versal2_clk USB1_BUS_REF>;
+};
+
+&wwdt0 {
+	clocks = <&versal2_clk FPD_WWDT0>;
+	power-domains = <&versal2_firmware PM_DEV_FPD_SWDT_0>;
+};
+
+&wwdt1 {
+	clocks = <&versal2_clk FPD_WWDT1>;
+	power-domains = <&versal2_firmware PM_DEV_FPD_SWDT_1>;
+};
+
+&wwdt2 {
+	clocks = <&versal2_clk FPD_WWDT2>;
+	power-domains = <&versal2_firmware PM_DEV_FPD_SWDT_2>;
+};
+
+&wwdt3 {
+	clocks = <&versal2_clk FPD_WWDT3>;
+	power-domains = <&versal2_firmware PM_DEV_FPD_SWDT_3>;
+};
+
+&ufshc {
+	clocks = <&versal2_clk UFS_REF>;
+	power-domains = <&versal2_firmware PM_DEV_UFS>;
+	resets = <&versal2_reset VERSAL_RST_UFS>, <&versal2_reset VERSAL_RST_UFS_PHY>;
+};
