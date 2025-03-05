@@ -624,8 +624,8 @@
 			status = "disabled";
 			interrupts = <0 234 4>;
 			reg = <0 0xf10b0000 0 0x100>;
-			freq-table-hz = <0 0>, <0 0>, <0 0>;
-			clock-names = "core_clk", "phy_clk", "ref_clk";
+			freq-table-hz = <0 0>;
+			clock-names = "core_clk";
 			reset-names = "ufshc-rst", "ufsphy-rst";
 		};
 
