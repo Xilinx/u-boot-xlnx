@@ -285,7 +285,7 @@
 		};
 
 		mmi_10gbe: ethernet@ed920000 {
-			compatible = "amd,versal2-10gbe";
+			compatible = "amd,versal2-10gbe", "cdns,gem";
 			status = "disabled";
 			reg = <0 0xed920000 0 0x1000>;
 			interrupts = <0 164 4>, <0 164 4>, <0 164 4>, <0 164 4>;
