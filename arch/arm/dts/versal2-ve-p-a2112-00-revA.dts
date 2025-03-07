@@ -23,18 +23,6 @@
 		reg = <0 0 0 0x80000000>; /* LPDDR5 2GB */
 		device_type = "memory";
 	};
-
-	firmware {
-		versal2-firmware {
-			compatible = "xlnx,versal2-firmware";
-			method = "smc";
-		};
-
-		psci: psci { /* Should be injected by firmware */
-			compatible = "arm,psci-1.0";
-			method = "smc";
-		};
-	};
 };
 
 /* GPIO leds/dips/pushPB, SMA to PL */
