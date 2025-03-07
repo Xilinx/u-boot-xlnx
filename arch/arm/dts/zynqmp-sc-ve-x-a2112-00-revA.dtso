@@ -1,0 +1,238 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal Gen 2 VNC (T50) PCIE
+ *
+ * (C) Copyright 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/net/ti-dp83867.h>
+#include <dt-bindings/phy/phy.h>
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+	compatible = "xlnx,zynqmp-sc-ve-x-a2112-00-revA",
+		     "xlnx,zynqmp-sc-ve-x-a2112-00", "xlnx,zynqmp";
+	model = "ZynqMP SC VE-X-A2112-00 revA";
+};
+
+&i2c0 { /* MIO 66/67 */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	/* i2c_pmc */
+	/* u106 - repeater from SC (J106 - disabling) */
+
+	/* u108/u109 - tca9517 (J110 - disabling) */
+	/* ina226_pmbus */
+	ina226_vr_lpd: ina226@40 { /* u19 - 0.8V */
+		compatible = "ti,ina226";
+		#io-channel-cells = <1>;
+		label = "ina226-vr-lpd";
+		reg = <0x40>;
+		shunt-resistor = <5000>; /* R156 */
+	};
+
+	ina226_vcc_fpd: ina226@41 { /* u7 - 0.8V */
+		compatible = "ti,ina226";
+		#io-channel-cells = <1>;
+		label = "ina226-vcc-fpd";
+		reg = <0x41>;
+		shunt-resistor = <1000>; /* R51 */
+	};
+
+	/* u113/u114 - tca9517 (J112 - disabling) */
+	/* pmbus */
+	vr_lpd: regulator@10 { /* u20 */
+		compatible = "ti,tps546b24a";
+		reg = <0x10>;
+	};
+
+	vr_util_1v8: regulator@11 { /* u49 */
+		compatible = "ti,tps546b24a";
+		reg = <0x11>;
+	};
+
+	vr_aux_lpd: regulator@13 { /* u22 */
+		compatible = "ti,tps546b24a";
+		reg = <0x13>;
+	};
+
+	vr_vccio_usb3_1v2: regulator@14 { /* u34 */
+		compatible = "ti,tps546b24a";
+		reg = <0x14>;
+	};
+
+	vr_aux_1v5: regulator@15 { /* u36 */
+		compatible = "ti,tps546b24a";
+		reg = <0x15>;
+	};
+
+	vr_util_5v0: regulator@16 { /* u63 */
+		compatible = "ti,tps546b24a";
+		reg = <0x16>;
+	};
+
+	vr_util_3v3: regulator@17 { /* u61 */
+		compatible = "ti,tps546b24a";
+		reg = <0x17>;
+	};
+
+	vr_mmd_0v8: regulator@18 { /* u38 */
+		compatible = "ti,tps546b24a";
+		reg = <0x18>;
+	};
+
+	vr_ram: regulator@19 { /* u17 */
+		compatible = "ti,tps546b24a";
+		reg = <0x19>;
+	};
+
+	vr_mio_1v8: regulator@1d { /* u18 */
+		compatible = "ti,tps546d24a";
+		reg = <0x1d>;
+	};
+
+	vr_mipi_1v2: regulator@1f { /* u24 */
+		compatible = "ti,tps546d24a";
+		reg = <0x1f>;
+	};
+
+	vr_lp5_1v0: regulator@20 { /* u40 */
+		compatible = "ti,tps546d24a";
+		reg = <0x20>;
+	};
+
+	vr_hdio_3v3: regulator@23 { /* u42 */
+		compatible = "ti,tps546d24a";
+		reg = <0x23>;
+	};
+
+	vr_vcc_usb2_0v8: regulator@24 { /* u26 */
+		compatible = "ti,tps546d24a";
+		reg = <0x24>;
+	};
+
+	vr_vcc_paux_usb3_0v8: regulator@25 { /* u28 */
+		compatible = "ti,tps546d24a";
+		reg = <0x25>;
+	};
+
+	vr_vccio_reg_usb2_3v3: regulator@26 { /* u30 */
+		compatible = "ti,tps546d24a";
+		reg = <0x26>;
+	};
+
+	vr_vccio_paux_1v8: regulator@27 { /* u32 */
+		compatible = "ti,tps546d24a";
+		reg = <0x27>;
+	};
+
+	vr_gtyp_mmi_avcc_0v92: regulator@29 { /* u44 */
+		compatible = "ti,tps546d24a";
+		reg = <0x29>;
+	};
+
+	vr_gtyp_mmi_avtt_1v2: regulator@2a { /* u46 */
+		compatible = "ti,tps546d24a";
+		reg = <0x2a>;
+	};
+
+	vr_gtyp_mmi_avccaux_1v5: regulator@2b { /* u48 */
+		compatible = "ti,tps546d24a";
+		reg = <0x2b>;
+	};
+
+	/* u110/u111 - tca9517 (J111 - disabling) */
+	/* ext_pmbus under pmbus */
+	vr_lp5_vdd2_1v05: regulator@21 { /* u50 */
+		compatible = "ti,tps546d24a";
+		reg = <0x21>;
+	};
+
+	vr_lp5_vddq_0v5: regulator@22 { /* u51 */
+		compatible = "ti,tps546d24a";
+		reg = <0x22>;
+	};
+
+	vccint: tps53681@60 { /* u2 */
+		compatible = "ti,tps53681", "ti,tps53679";
+		reg = <0x60>;
+	};
+
+	vcc_aie_soc: tps53681@61 { /* u9 */
+		compatible = "ti,tps53681", "ti,tps53679";
+		reg = <0x61>;
+	};
+};
+
+&i2c1 { /* MIO24/25 */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* u94 - repeater from SC (J96 - disabling) */
+	/* i2c_main */
+	/* EEPROM - already described in sc-k24 DT */
+
+	/* u100 - translator from SC (J101 - disabling) + 0x7 */
+	/* i2c_main_1 */
+	lpddr5_c0_c1: clock-generator@57 { /* u91 XP or SI570 - oe J83 */
+		#clock-cells = <0>;
+		compatible = "renesas,proxo-xp";
+		reg = <0x57>;
+		clock-frequency = <320000000>;
+		clock-output-names = "lpddr5_c0_c1";
+	};
+
+	/* u102 - translator from SC (J103 - disabling) + 0x9 */
+	/* i2c_main_2 */
+	lpddr5_c2: clock-generator@59 { /* u92 XP or SI570 - oe J88 */
+		#clock-cells = <0>;
+		compatible = "renesas,proxo-xp";
+		reg = <0x59>;
+		clock-frequency = <320000000>;
+		clock-output-names = "lpddr5_c2";
+	};
+
+	/* u103 - translator from SC (J104 - disabling) + 0x6 */
+	/* i2c_main_3 */
+	lpddr5_c3_c4: clock-generator@56 { /* u93 XP or SI570 - oe J93 */
+		#clock-cells = <0>;
+		compatible = "renesas,proxo-xp";
+		reg = <0x56>;
+		clock-frequency = <320000000>;
+		clock-output-names = "lpddr5_c3_c4";
+	};
+
+	/* u101 - translator from SC (J102 - disabling) + 0x5 */
+	/* i2c_main_4 */
+	ps_refclk: clock-generator@55 { /* u90 XP or SI570 - oe J79 */
+		#clock-cells = <0>;
+		compatible = "renesas,proxo-xp";
+		reg = <0x55>;
+		clock-frequency = <33333333>;
+		clock-output-names = "ps_refclk";
+	};
+
+	/* u97 - repeater from SC (J98 - disabling) */
+	ucd90320: power-sequencer@73 { /* u74 */
+		compatible = "ti,ucd90320";
+		reg = <0x73>;
+	};
+
+	/* u168 - repeater from SC (J125 - disabling) */
+	slg7xl45106: gpio@11 { /* u159 - SLG7XL46528 reset logic */
+		compatible = "dlg,slg7xl45106";
+		reg = <0x11>;
+		label = "resetchip";
+		gpio-controller;
+		#gpio-cells = <2>;
+		gpio-line-names = "USB_PHY_RST_B", "", "", "",
+				  "", "", "EEPROM_WC_B", "PS_ETH_RST_B";
+	};
+};
