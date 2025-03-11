@@ -858,7 +858,6 @@ static int ufshcd_comp_devman_upiu(struct ufs_hba *hba,
 
 static int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 {
-	unsigned long start;
 	u32 intr_status;
 	u32 enabled_intr_status;
 
@@ -867,18 +866,10 @@ static int ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	/* Make sure doorbell reg is updated before reading interrupt status */
 	wmb();
 
-	start = get_timer(0);
 	do {
 		intr_status = ufshcd_readl(hba, REG_INTERRUPT_STATUS);
 		enabled_intr_status = intr_status & hba->intr_mask;
 		ufshcd_writel(hba, intr_status, REG_INTERRUPT_STATUS);
-
-		if (get_timer(start) > QUERY_REQ_TIMEOUT) {
-			dev_err(hba->dev,
-				"Timedout waiting for UTP response\n");
-
-			return -ETIMEDOUT;
-		}
 
 		if (enabled_intr_status & UFSHCD_ERROR_MASK) {
 			dev_err(hba->dev, "Error in status:%08x\n",
