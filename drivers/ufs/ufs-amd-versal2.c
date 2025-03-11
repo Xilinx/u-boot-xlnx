@@ -19,6 +19,8 @@
 #include "ufshcd-dwc.h"
 #include "ufshci-dwc.h"
 
+#define PWM_G1_SLOWAUTOMODE_1LANE       0x4
+
 #define SRAM_CSR_INIT_DONE_MASK		BIT(0)
 #define SRAM_CSR_EXT_LD_DONE_MASK	BIT(1)
 #define SRAM_CSR_BYPASS_MASK		BIT(2)
@@ -300,6 +302,7 @@ static int ufs_versal2_init(struct ufs_hba *hba)
 	int ret = 0;
 
 	priv->phy_mode = UFSHCD_DWC_PHY_MODE_ROM;
+	hba->quirks = PWM_G1_SLOWAUTOMODE_1LANE;
 
 	ret = clk_get_by_name(hba->dev, "core_clk", &clk);
 	if (ret) {
