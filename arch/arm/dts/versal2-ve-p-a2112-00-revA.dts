@@ -23,6 +23,18 @@
 		reg = <0 0 0 0x80000000>; /* LPDDR5 2GB */
 		device_type = "memory";
 	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* TF-A, TEE, RPUs */
+		res: memory@0 {
+			no-map;
+			reg = <0 0 0 0x20000000>;
+		};
+	};
 };
 
 /* GPIO leds/dips/pushPB, SMA to PL */
