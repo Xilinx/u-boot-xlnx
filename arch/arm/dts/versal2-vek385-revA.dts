@@ -90,8 +90,6 @@
 		cdns,tsd2d-ns = <0>;
 		cdns,tshsl-ns = <0>;
 		cdns,read-delay = <0>;
-		#size-cells = <1>;
-		#address-cells = <1>;
 		reg = <0>;
 		no-wp;
 		broken-flash-reset;
