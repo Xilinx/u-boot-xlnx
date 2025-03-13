@@ -18,6 +18,7 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <33333333>;
+		clock-output-names = "ref_clk";
 	};
 
 	can0_clk: can0-clk {
