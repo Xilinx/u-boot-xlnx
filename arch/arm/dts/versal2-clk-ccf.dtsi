@@ -80,7 +80,7 @@
 				#clock-cells = <1>;
 				compatible = "xlnx,versal2-clk";
 				clocks = <&ref_clk>, <&ref_clk>;
-				clock-names = "ref_clk", "pl_alt_ref_clk";
+				clock-names = "ref", "pl_alt_ref";
 			};
 
 			versal_net_power: power-management {
