@@ -76,7 +76,7 @@
 
 &ospi { /* PMC_MIO0-10, MIO12 */
 	status = "okay";
-	reset-names = "qspi", "qspi-ocp";
+	reset-names = "qspi";
 	#address-cells = <1>;
 	#size-cells = <0>;
 

@@ -383,7 +383,7 @@
 &ospi {
 	clocks = <&versal2_clk OSPI_REF>;
 	power-domains = <&versal2_firmware PM_DEV_OSPI>;
-	resets = <&versal2_reset VERSAL_RST_OSPI>, <&versal2_reset VERSAL_RST_OSPI>;
+	resets = <&versal2_reset VERSAL_RST_OSPI>;
 };
 
 &rtc {

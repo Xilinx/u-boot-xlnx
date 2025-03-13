@@ -115,7 +115,7 @@
 
 &ospi { /* u97 and u390 - dual parallel configuration FIXME */
 	status = "okay";
-	reset-names = "qspi", "qspi-ocp";
+	reset-names = "qspi";
 	#address-cells = <1>;
 	#size-cells = <0>;
 
