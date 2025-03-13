@@ -400,7 +400,7 @@
 			interrupts = <0 102 0x04>;
 		};
 
-		i3c0: i3c@f1940000 {
+		i3c0: i3c@f1948000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -409,7 +409,7 @@
 			interrupts = <0 21 4>;
 		};
 
-		i3c1: i3c@f1950000 {
+		i3c1: i3c@f1958000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -418,7 +418,7 @@
 			interrupts = <0 22 4>;
 		};
 
-		i3c2: i3c@f1960000 {
+		i3c2: i3c@f1968000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -427,7 +427,7 @@
 			interrupts = <0 11 4>;
 		};
 
-		i3c3: i3c@f1970000 {
+		i3c3: i3c@f1978000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -436,7 +436,7 @@
 			interrupts = <0 12 4>;
 		};
 
-		i3c4: i3c@f1980000 {
+		i3c4: i3c@f1988000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -445,7 +445,7 @@
 			interrupts = <0 13 4>;
 		};
 
-		i3c5: i3c@f1990000 {
+		i3c5: i3c@f1998000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -454,7 +454,7 @@
 			interrupts = <0 100 4>;
 		};
 
-		i3c6: i3c@f19a0000 {
+		i3c6: i3c@f19a8000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
@@ -463,7 +463,7 @@
 			interrupts = <0 101 4>;
 		};
 
-		i3c7: i3c@f19b0000 {
+		i3c7: i3c@f19b8000 {
 			compatible = "snps,dw-i3c-master-1.00a";
 			status = "disabled";
 			#address-cells = <3>;
