@@ -1294,7 +1294,8 @@ static int spansion_erase_non_uniform(struct spi_nor *nor, u32 addr,
 #endif
 
 #if defined(CONFIG_SPI_FLASH_LOCK)
-#if defined(CONFIG_SPI_FLASH_STMICRO) || defined(CONFIG_SPI_FLASH_SST)
+#if defined(CONFIG_SPI_FLASH_STMICRO) || defined(CONFIG_SPI_FLASH_SST) || \
+	defined(CONFIG_SPI_FLASH_ISSI) || defined(CONFIG_SPI_FLASH_GIGADEVICE)
 /* Write status register and ensure bits in mask match written values */
 static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask)
 {
@@ -1320,6 +1321,7 @@ static int write_sr_and_check(struct spi_nor *nor, u8 status_new, u8 mask)
 	return ((ret & mask) != (status_new & mask)) ? -EIO : 0;
 }
 
+#if defined(CONFIG_SPI_FLASH_STMICRO) || defined(CONFIG_SPI_FLASH_SST)
 static void stm_get_locked_range(struct spi_nor *nor, u8 sr, loff_t *ofs,
 				 uint64_t *len)
 {
@@ -1585,6 +1587,7 @@ static int stm_is_unlocked(struct spi_nor *nor, loff_t ofs, uint64_t len)
 	return stm_is_unlocked_sr(nor, ofs, len, status);
 }
 #endif /* CONFIG_SPI_FLASH_STMICRO */
+#endif
 #endif
 
 static const struct flash_info *spi_nor_read_id(struct spi_nor *nor)
