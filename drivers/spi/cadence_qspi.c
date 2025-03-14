@@ -283,13 +283,11 @@ static int cadence_spi_probe(struct udevice *bus)
 
 	priv->wr_delay = 50 * DIV_ROUND_UP(NSEC_PER_SEC, priv->ref_clk_hz);
 
-	/* Reset ospi flash device */
-	return cadence_qspi_flash_reset(bus);
-
 	if (device_is_compatible(bus, "amd,versal2-ospi"))
 		return cadence_device_reset(bus);
 
-	return 0;
+	/* Reset ospi flash device */
+	return cadence_qspi_flash_reset(bus);
 }
 
 static int cadence_spi_remove(struct udevice *dev)
