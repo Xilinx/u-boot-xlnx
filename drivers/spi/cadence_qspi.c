@@ -33,6 +33,11 @@ __weak int cadence_qspi_apb_dma_read(struct cadence_spi_priv *priv,
 	return 0;
 }
 
+__weak int cadence_device_reset(struct udevice *dev)
+{
+	return 0;
+}
+
 __weak int cadence_qspi_flash_reset(struct udevice *dev)
 {
 	return 0;
