@@ -25,6 +25,33 @@
 	status = "disabled";
 };
 
+&i2c1 {
+        bootph-all;
+        clock-frequency = <400000>;
+        pinctrl-names = "default", "gpio";
+        pinctrl-0 = <&pinctrl_i2c1_default>;
+        pinctrl-1 = <&pinctrl_i2c1_gpio>;
+        scl-gpios = <&gpio 24 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+        sda-gpios = <&gpio 25 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
+
+        /delete-node/ gpio@11;
+        /delete-node/ i2c-arbitrator@72;
+
+        eeprom_cc: eeprom@54 { /* on CC defined by spec */
+                bootph-all;
+                compatible = "atmel,24c64";
+                label = "eeprom_cc";
+                reg = <0x54>;
+        };
+
+        /* 0x33 - u167 DA9131 */
+        /* 0x32 - u166 DA9130 */
+        /* 0x30-0x31 - u170 DA9062 */
+        /* 0x70 - u168 SLG7XL44091 */
+        /* 0x68 - u169 SLG7XL44092 */
+        /* 0x10-0x11 - slg7xl46528 */
+};
+
 &gpio {
 	status = "okay";
 	gpio-line-names =
