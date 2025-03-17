@@ -63,19 +63,34 @@
 	scl-gpios = <&gpio 24 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	sda-gpios = <&gpio 25 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 
-	eeprom_cc: eeprom@54 { /* on CC defined by spec */
-		bootph-all;
-		compatible = "atmel,24c64";
-		label = "eeprom_cc";
-		reg = <0x54>;
+	slg7xl45106: gpio@11 { /* u169 - reset logic */
+		compatible = "dlg,slg7xl45106";
+		reg = <0x11>;
+		label = "resetchip";
+		gpio-controller;
+		#gpio-cells = <2>;
+		gpio-line-names = "USB_PHY_RESET_B", "SC_PS_RESET_OUT2",
+				  "SC_PS_RESET_OUT3", "SC_PS_RESET_OUT4",
+				  "SC_PS_RESET_OUT5",
+				  "EEPROM_WC_B", "PS_ETH_RST_B";
 	};
 
-	/* 0x33 - u167 DA9131 */
-	/* 0x32 - u166 DA9130 */
-	/* 0x30-0x31 - u170 DA9062 */
-	/* 0x70 - u168 SLG7XL44091 */
-	/* 0x68 - u169 SLG7XL44092 */
-	/* 0x10-0x11 - slg7xl46528 */
+	i2c-arbitrator@72 { /* u161 */
+		compatible = "nxp,pca9541";
+		reg = <0x72>;
+
+		i2c_arb: i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			eeprom_cc: eeprom@54 { /* u35 - required by spec - also at address 0x5C */
+				compatible = "atmel,24c128";
+				label = "eeprom_cc";
+				reg = <0x54>;
+				wp-gpios = <&slg7xl45106 5 GPIO_ACTIVE_LOW>;
+			};
+		};
+	};
 };
 
 &gpio {
