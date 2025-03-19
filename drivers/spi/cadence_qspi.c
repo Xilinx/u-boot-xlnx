@@ -222,7 +222,7 @@ static int cadence_spi_child_pre_probe(struct udevice *bus)
 	return 0;
 }
 
-__weak int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
+__weak int cadence_qspi_set_dll_mode(struct udevice *dev)
 {
 	return -ENOTSUPP;
 }
@@ -287,7 +287,7 @@ static int cadence_spi_probe(struct udevice *bus)
 	priv->dll_mode = CQSPI_DLL_MODE_BYPASS;
 
 	/* Select dll mode */
-	ret = cadence_qspi_versal_set_dll_mode(bus);
+	ret = cadence_qspi_set_dll_mode(bus);
 	if (ret == -ENOTSUPP)
 		debug("DLL mode set to bypass mode : %x\n", ret);
 
