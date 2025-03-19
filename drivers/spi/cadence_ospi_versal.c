@@ -159,11 +159,11 @@ static const struct soc_attr matches[] = {
 };
 
 /*
- * cadence_qspi_versal_set_dll_mode checks for silicon version
+ * cadence_qspi_set_dll_mode checks for silicon version
  * and set the DLL mode.
  * Returns 0 in case of success, -ENOTSUPP in case of failure.
  */
-int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
+int cadence_qspi_set_dll_mode(struct udevice *dev)
 {
 	struct cadence_spi_priv *priv = dev_get_priv(dev);
 	const struct soc_attr *attr;
