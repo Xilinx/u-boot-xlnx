@@ -43,7 +43,7 @@ __weak int cadence_qspi_flash_reset(struct udevice *dev)
 	return 0;
 }
 
-__weak int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
+__weak int cadence_spi_ctrl_reset(struct cadence_spi_priv *priv)
 {
 	return 0;
 }
@@ -618,7 +618,7 @@ static int cadence_spi_setup_strmode(struct udevice *bus)
 		return 0;
 
 	/* Reset ospi controller */
-	ret = cadence_spi_versal_ctrl_reset(priv);
+	ret = cadence_spi_ctrl_reset(priv);
 	if (ret) {
 		printf("Cadence ctrl reset failed err: %d\n", ret);
 		return ret;

@@ -177,7 +177,7 @@ int cadence_qspi_versal_set_dll_mode(struct udevice *dev)
 	return -ENOTSUPP;
 }
 
-int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
+int cadence_spi_ctrl_reset(struct cadence_spi_priv *priv)
 {
 	int ret;
 
