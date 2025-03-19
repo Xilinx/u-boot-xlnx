@@ -43,6 +43,11 @@ __weak int cadence_qspi_flash_reset(struct udevice *dev)
 	return 0;
 }
 
+__weak int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv)
+{
+	return 0;
+}
+
 __weak ofnode cadence_qspi_get_subnode(struct udevice *dev)
 {
 	return dev_read_first_subnode(dev);
