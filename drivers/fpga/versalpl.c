@@ -42,7 +42,7 @@ static int versal_load(xilinx_desc *desc, const void *buf, size_t bsize,
 	buf_hi = upper_32_bits(bin_buf);
 
 	ret = xilinx_pm_request(VERSAL_PM_LOAD_PDI, VERSAL_PM_PDI_TYPE, buf_lo,
-				buf_hi, 0, ret_payload);
+				buf_hi, 0, 0, 0, ret_payload);
 	if (ret)
 		printf("PL FPGA LOAD failed with err: 0x%08x\n", ret);
 

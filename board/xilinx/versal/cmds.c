@@ -51,7 +51,7 @@ static int do_versal_load_pdi(struct cmd_tbl *cmdtp, int flag, int argc,
 	buf_hi = upper_32_bits((ulong)pdi_buf);
 
 	ret = xilinx_pm_request(VERSAL_PM_LOAD_PDI, VERSAL_PM_PDI_TYPE, buf_lo,
-				buf_hi, 0, ret_payload);
+				buf_hi, 0, 0, 0, ret_payload);
 	if (ret)
 		printf("PDI load failed with err: 0x%08x\n", ret);
 
