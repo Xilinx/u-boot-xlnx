@@ -118,12 +118,14 @@
 
 &usb1 { /* PMC_MIO27-39 */
 	status = "okay";
+	dma-coherent;
 };
 
 &dwc3_1 {
 	status = "okay";
 	dr_mode = "host";
 	maximum-speed = "high-speed";
+	dma-coherent;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
