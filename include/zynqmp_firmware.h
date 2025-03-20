@@ -530,4 +530,11 @@ extern smc_call_handler_t __data smc_call_handler;
 
 #define PMC_GLOBAL_PGGS3_REG_NODE	0x1824C005
 
+#define PM_REGNODE_PMC_IOU_SLCR		0x30000002
+#define PM_REGNODE_EFUSE_CACHE		0x30000003
+
+#define SRAM_CSR_OFFSET			0x104C
+#define TXRX_CFGRDY_OFFSET		0x1054
+#define UFS_CAL_1_OFFSET		0xBE8
+
 #endif /* _ZYNQMP_FIRMWARE_H_ */
