@@ -27,11 +27,6 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	/* Remove it because on bus is behind pca9541 */
-	eeprom@54 {
-		status = "disabled";
-	};
-
 	/* J181 for enable/disable */
 	i2c-arbitrator@72 { /* u1804 */
 		compatible = "nxp,pca9541";
@@ -40,13 +35,6 @@
 		i2c-arb {
 			#address-cells = <1>;
 			#size-cells = <0>;
-
-			eeprom_cc: eeprom@54 { /* u486 - required by spec - also at address 0x5C */
-				compatible = "atmel,24c128";
-				label = "eeprom_cc";
-				reg = <0x54>;
-				/* wp-gpios via FTDI chip */
-			};
 
 			i2c-mux@75 { /* u483 */
 				compatible = "nxp,pca9548";
