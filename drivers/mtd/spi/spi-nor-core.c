@@ -12,7 +12,7 @@
 #include <display_options.h>
 #include <log.h>
 #include <watchdog.h>
-#include <asm/gpio.h>
+#include <asm-generic/gpio.h>
 #include <dm.h>
 #include <dm/device_compat.h>
 #include <dm/devres.h>
@@ -6304,6 +6304,7 @@ void spi_nor_set_fixups(struct spi_nor *nor)
 
 static int spi_nor_hw_reset(struct spi_nor *nor)
 {
+#if CONFIG_IS_ENABLED(DM_GPIO)
 	struct udevice *dev = nor->spi->dev;
 	int rc;
 
@@ -6330,6 +6331,7 @@ static int spi_nor_hw_reset(struct spi_nor *nor)
 
 		udelay(1200);
 	}
+#endif
 	return 0;
 }
 
