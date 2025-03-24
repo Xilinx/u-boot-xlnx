@@ -16,11 +16,6 @@
 	compatible = "xlnx,zynqmp-sc-vek385-revA",
 		     "xlnx,zynqmp-sc-vek385", "xlnx,zynqmp";
 	model = "ZynqMP SC VEK385 revA";
-
-	aliases {
-		/* This is kind of HACK but works properly based on design */
-		nvmem1 = "/axi/i2c@ff030000/i2c-arbitrator@72/i2c-arb/eeprom@54";
-	};
 };
 
 &i2c0 { /* I2C_SCK C23/C24 - MIO 66/67 */
@@ -32,23 +27,6 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	/* Remove it because on vek385 it is behind pca9541 */
-	eeprom@54 {
-		status = "disabled";
-	};
-
-	slg7xl45106: gpio@11 { /* u169 - reset logic */
-		compatible = "dlg,slg7xl45106";
-		reg = <0x11>;
-		label = "resetchip";
-		gpio-controller;
-		#gpio-cells = <2>;
-		gpio-line-names = "USB_PHY_RESET_B", "SC_PS_RESET_OUT2",
-				  "SC_PS_RESET_OUT3", "SC_PS_RESET_OUT4",
-				  "SC_PS_RESET_OUT5", "",
-				  "EEPROM_WC_B", "PS_ETH_RST_B";
-	};
-
 	i2c-arbitrator@72 { /* u161 */
 		compatible = "nxp,pca9541";
 		reg = <0x72>;
@@ -56,13 +34,6 @@
 		i2c-arb {
 			#address-cells = <1>;
 			#size-cells = <0>;
-
-			eeprom_cc: eeprom@54 { /* u35 - required by spec - also at address 0x5C */
-				compatible = "atmel,24c128";
-				label = "eeprom_cc";
-				reg = <0x54>;
-				wp-gpios = <&slg7xl45106 5 GPIO_ACTIVE_LOW>;
-			};
 
 			tca6416_u37: gpio@20 { /* u37 */
 				compatible = "ti,tca6416";
