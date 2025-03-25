@@ -225,10 +225,43 @@
 	#pwm-cells = <3>;
 };
 
+&adma0 {
+	dma-coherent;
+};
+
+&adma1 {
+	dma-coherent;
+};
+
+&adma2 {
+	dma-coherent;
+};
+
+&adma3 {
+	dma-coherent;
+};
+
+&adma4 {
+	dma-coherent;
+};
+
+&adma5 {
+	dma-coherent;
+};
+
+&adma6 {
+	dma-coherent;
+};
+
+&adma7 {
+	dma-coherent;
+};
+
 &gem0 { /* MDIO PMC_MIO50/51, MIO0-11 */
 	status = "okay";
 	phy-handle = <&phy0>;
 	phy-mode = "rgmii-id";
+	dma-coherent;
 
 	mdio: mdio {
 		#address-cells = <1>;
