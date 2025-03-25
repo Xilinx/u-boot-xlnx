@@ -41,6 +41,7 @@
 				#address-cells = <1>;
 				#size-cells = <0>;
 				reg = <0x75>;
+				i2c-mux-idle-disconnect;
 				/* reset-gpios = SC_I2C_MUX_RST0 */
 				i2c@0 { /* I2C_CH0_LPDDR5 */
 					#address-cells = <1>;
