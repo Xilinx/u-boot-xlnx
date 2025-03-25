@@ -146,7 +146,7 @@ static int usb_onboard_hub_probe(struct udevice *dev)
 	int ret;
 
 	ret = device_get_supply_regulator(dev, "vdd-supply", &hub->vdd);
-	if (ret && ret != -ENOENT) {
+	if (ret && (ret != -ENOENT || ret != -ENOSYS)) {
 		dev_err(dev, "can't get vdd-supply: %d\n", ret);
 		return ret;
 	}
