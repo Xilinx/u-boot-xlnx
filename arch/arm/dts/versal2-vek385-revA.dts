@@ -150,10 +150,12 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	bootph-all;
 	clock-frequency = <400000>;
 
 	i2c-arbitrator@72 { /* u161 */
 		compatible = "nxp,pca9541";
+		bootph-all;
 		reg = <0x72>;
 
 		/* board_i2c1 */
@@ -162,6 +164,7 @@
 			#size-cells = <0>;
 			eeprom: eeprom@54 { /* u35 - also at address 0x5C */
 				compatible = "atmel,24c128";
+				bootph-all;
 				reg = <0x54>;
 				/* wp via SC */
 			};

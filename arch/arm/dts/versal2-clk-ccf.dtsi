@@ -80,6 +80,7 @@
 			versal2_clk: clock-controller {
 				#clock-cells = <1>;
 				compatible = "xlnx,versal2-clk";
+				bootph-all;
 				clocks = <&ref_clk>, <&ref_clk>;
 				clock-names = "ref", "pl_alt_ref";
 			};
