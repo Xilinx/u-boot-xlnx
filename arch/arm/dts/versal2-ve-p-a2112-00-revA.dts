@@ -37,6 +37,42 @@
 	};
 };
 
+&adma0 {
+	dma-coherent;
+};
+
+&adma1 {
+	dma-coherent;
+};
+
+&adma2 {
+	dma-coherent;
+};
+
+&adma3 {
+	dma-coherent;
+};
+
+&adma4 {
+	dma-coherent;
+};
+
+&adma5 {
+	dma-coherent;
+};
+
+&adma6 {
+	dma-coherent;
+};
+
+&adma7 {
+	dma-coherent;
+};
+
+&gem0 {
+	dma-coherent;
+};
+
 /* GPIO leds/dips/pushPB, SMA to PL */
 
 &mmi_10gbe {
