@@ -165,6 +165,20 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0>;
+			/*
+			 * WARNING: Potential Conflict!
+			 * The TCA6416 GPIO expander device is currently owned by SC as well.
+			 * This design results in two software components potentially conflicting
+			 * over control of the device. While no immediate issues are observed
+			 * due to limited interactions.
+			 * FIXME - The schematics should be revised to avoid conflicts.
+			 */
+			tca6416_u37: gpio@20 {
+				compatible = "ti,tca6416";
+				reg = <0x20>;
+				#gpio-cells = <0x02>;
+				gpio-controller;
+			};
 			eeprom: eeprom@54 { /* u35 - also at address 0x5C */
 				compatible = "atmel,24c128";
 				bootph-all;
