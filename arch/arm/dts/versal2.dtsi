@@ -771,6 +771,70 @@
 			};
 		};
 
+		mdb_pcie0: pcie@ed931000 {
+				compatible = "amd,versal2-mdb-host";
+				status = "disabled";
+				reg = <0x0 0xed931000 0x0 0x2000>,
+				      <0x1000 0x100000 0x0 0xff00000>,
+				      <0x1000 0x0 0x0 0x100000>,
+				      <0x0 0xed860000 0x0 0x2000>;
+				reg-names = "slcr", "config", "dbi", "atu";
+				ranges = <0x2000000 0x00 0xa0000000 0x00 0xa0000000 0x00 0x8000000>,
+					 <0x43000000 0x1100 0x00 0x1100 0x00 0x100 0x00>;
+				interrupts = <0 165 4>;
+				interrupt-map-mask = <0 0 0 7>;
+				interrupt-map = <0 0 0 1 &mdb_intc_0 0>,
+						<0 0 0 2 &mdb_intc_0 1>,
+						<0 0 0 3 &mdb_intc_0 2>,
+						<0 0 0 4 &mdb_intc_0 3>;
+				msi-map = <0x0 &its 0x00 0x10000>;
+				xlnx,num-of-bars = <0x2>;
+				xlnx,port-type = <0x1>;
+				xlnx,csr-slcr = <0x1000 0x0 0x0>;
+				xlnx,iatu-address = <0xed860000>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				#interrupt-cells = <1>;
+				device_type = "pci";
+				mdb_intc_0: interrupt-controller {
+						#address-cells = <0>;
+						#interrupt-cells = <1>;
+						interrupt-controller;
+				};
+		};
+
+		mdb_pcie1: pcie@ed939000 {
+				compatible = "amd,versal2-mdb-host";
+				status = "disabled";
+				reg = <0x0 0xed939000 0x0 0x2000>,
+				      <0x1400 0x100000 0x0 0xff00000>,
+				      <0x1400 0x0 0x0 0x100000>,
+				      <0x0 0xed8e0000 0x0 0x2000>;
+				reg-names = "slcr", "config", "dbi", "atu";
+				ranges = <0x2000000 0x00 0xa8000000 0x00 0xa8000000 0x00 0x8000000>,
+					 <0x43000000 0x1500 0x00 0x1500 0x00 0x100 0x00>;
+				interrupts = <0 166 4>;
+				interrupt-map-mask = <0 0 0 7>;
+				interrupt-map = <0 0 0 1 &mdb_intc_1 0>,
+						<0 0 0 2 &mdb_intc_1 1>,
+						<0 0 0 3 &mdb_intc_1 2>,
+						<0 0 0 4 &mdb_intc_1 3>;
+				msi-map = <0x0 &its 0x10000 0x10000>;
+				xlnx,num-of-bars = <0x2>;
+				xlnx,port-type = <0x1>;
+				xlnx,csr-slcr = <0x1400 0x0 0x0>;
+				xlnx,iatu-address = <0xed8e0000>;
+				#address-cells = <3>;
+				#size-cells = <2>;
+				#interrupt-cells = <1>;
+				device_type = "pci";
+				mdb_intc_1: interrupt-controller {
+						#address-cells = <0>;
+						#interrupt-cells = <1>;
+						interrupt-controller;
+				};
+		};
+
 		wwdt0: watchdog@ecc10000 {
 			compatible = "xlnx,versal-wwdt";
 			status = "disabled";
