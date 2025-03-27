@@ -19,7 +19,7 @@
 	options {
 		u-boot {
 			compatible = "u-boot,config";
-			bootscr-address = /bits/ 64 <0x20000000>;
+			bootscr-address = /bits/ 64 <0x78000000>;
 		};
 	};
 
