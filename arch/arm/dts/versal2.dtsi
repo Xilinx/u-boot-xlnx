@@ -67,6 +67,7 @@
 			enable-method = "psci";
 			reg = <0>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu100: cpu@100 {
 			compatible = "arm,cortex-a78";
@@ -74,6 +75,7 @@
 			enable-method = "psci";
 			reg = <0x100>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu10000: cpu@10000 {
 			compatible = "arm,cortex-a78";
@@ -81,6 +83,7 @@
 			enable-method = "psci";
 			reg = <0x10000>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu10100: cpu@10100 {
 			compatible = "arm,cortex-a78";
@@ -88,6 +91,7 @@
 			enable-method = "psci";
 			reg = <0x10100>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu20000: cpu@20000 {
 			compatible = "arm,cortex-a78";
@@ -95,6 +99,7 @@
 			enable-method = "psci";
 			reg = <0x20000>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu20100: cpu@20100 {
 			compatible = "arm,cortex-a78";
@@ -102,6 +107,7 @@
 			enable-method = "psci";
 			reg = <0x20100>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu30000: cpu@30000 {
 			compatible = "arm,cortex-a78";
@@ -109,6 +115,7 @@
 			enable-method = "psci";
 			reg = <0x30000>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 		cpu30100: cpu@30100 {
 			compatible = "arm,cortex-a78";
@@ -116,6 +123,7 @@
 			enable-method = "psci";
 			reg = <0x30100>;
 			operating-points-v2 = <&cpu_opp_table>;
+			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
 	};
 
@@ -160,6 +168,19 @@
 			opp-hz = /bits/ 64 <300000000>;
 			opp-microvolt = <1000000>;
 			clock-latency-ns = <500000>;
+		};
+
+		idle-states {
+			entry-method = "psci";
+
+			CPU_RETENTION_0: cpu-retention-0 {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0>;
+				local-timer-stop;
+				entry-latency-us = <300>;
+				exit-latency-us = <600>;
+				min-residency-us = <10000>;
+			};
 		};
 	};
 
