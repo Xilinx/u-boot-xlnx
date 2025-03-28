@@ -87,7 +87,6 @@
 				compatible = "atmel,24c128";
 				label = "eeprom_cc";
 				reg = <0x54>;
-				wp-gpios = <&slg7xl45106 5 GPIO_ACTIVE_LOW>;
 			};
 		};
 	};
