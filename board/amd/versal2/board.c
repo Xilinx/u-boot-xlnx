@@ -362,6 +362,8 @@ int dram_init(void)
 	return 0;
 }
 
+#if !CONFIG_IS_ENABLED(SYSRESET)
 void reset_cpu(void)
 {
 }
+#endif
