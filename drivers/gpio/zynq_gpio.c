@@ -64,6 +64,7 @@
 /* MSW Mask & Data -WO */
 #define ZYNQ_GPIO_DATA_MSW_OFFSET(BANK)	(0x004 + (8 * BANK))
 /* Data Register-RW */
+#define ZYNQ_GPIO_DATA_OFFSET(BANK)	(0x040 + (4 * BANK))
 #define ZYNQ_GPIO_DATA_RO_OFFSET(BANK)	(0x060 + (4 * BANK))
 /* Direction mode reg-RW */
 #define ZYNQ_GPIO_DIRM_OFFSET(BANK)	(0x204 + (0x40 * BANK))
@@ -230,7 +231,7 @@ static int check_gpio(unsigned gpio, struct udevice *dev)
 
 static int zynq_gpio_get_value(struct udevice *dev, unsigned gpio)
 {
-	u32 data;
+	u32 data, reg;
 	unsigned int bank_num, bank_pin_num;
 	struct zynq_gpio_plat *plat = dev_get_plat(dev);
 
@@ -239,9 +240,15 @@ static int zynq_gpio_get_value(struct udevice *dev, unsigned gpio)
 
 	zynq_gpio_get_bank_pin(gpio, &bank_num, &bank_pin_num, dev);
 
-	data = readl(plat->base +
-			     ZYNQ_GPIO_DATA_RO_OFFSET(bank_num));
-
+	reg = readl(plat->base + ZYNQ_GPIO_DIRM_OFFSET(bank_num));
+	reg &= BIT(bank_pin_num);
+	if (reg != GPIOF_INPUT) {
+		data = readl(plat->base +
+					ZYNQ_GPIO_DATA_OFFSET(bank_num));
+	} else {
+		data = readl(plat->base +
+					ZYNQ_GPIO_DATA_RO_OFFSET(bank_num));
+	}
 	return (data >> bank_pin_num) & 1;
 }
 
