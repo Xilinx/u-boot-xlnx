@@ -19,10 +19,6 @@
 
 &{/} {
 	model = "X-PRC-10 revA";
-
-	aliases {
-		nvmem2 = &eeprom_x;
-	};
 };
 
 &gpio0 {
@@ -120,35 +116,6 @@
 	};
 
 #endif /* J336 */
-
-&i3c1 { /* LPD_MIO18-19 */
-	status = "okay";
-	#address-cells = <3>;
-	#size-cells = <0>;
-
-	eeprom: eeprom@51 { /* u45 */
-		compatible = "atmel,24c128";
-		reg = <0x51 0 0x10>;
-	};
-
-	/* icm-42605 - missing i3c driver
-	drivers/iio/imu/inv_icm42600/inv_icm42600_i2c.c */
-	icm42605@69 { /* u119 */
-		compatible = "invensense,icm42605";
-		reg = <0x69 0 0x10>;
-	};
-
-	imu@6b { /* u120 */
-		compatible = "st,lsm6dso";
-		reg = <0x69 0 0x10>;
-	};
-
-	/* Connected twice */
-	eeprom_x: eeprom@55 { /* u46 */
-		compatible = "atmel,24c128";
-		reg = <0x55 0 0x10>;
-	};
-};
 
 #if J340 /* 3-5, 4-6 shorted */
 	&i2c1 { /* LPD_MIO24-25 (but J340 can block it) FIXME not sure about controller */
