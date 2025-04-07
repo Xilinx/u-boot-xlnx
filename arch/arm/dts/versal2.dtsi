@@ -125,6 +125,19 @@
 			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 		};
+
+		idle-states {
+			entry-method = "psci";
+
+			CPU_RETENTION_0: cpu-retention-0 {
+				compatible = "arm,idle-state";
+				arm,psci-suspend-param = <0>;
+				local-timer-stop;
+				entry-latency-us = <300>;
+				exit-latency-us = <600>;
+				min-residency-us = <10000>;
+			};
+		};
 	};
 
 	cpu_opp_table: opp-table {
@@ -168,19 +181,6 @@
 			opp-hz = /bits/ 64 <300000000>;
 			opp-microvolt = <1000000>;
 			clock-latency-ns = <500000>;
-		};
-
-		idle-states {
-			entry-method = "psci";
-
-			CPU_RETENTION_0: cpu-retention-0 {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0>;
-				local-timer-stop;
-				entry-latency-us = <300>;
-				exit-latency-us = <600>;
-				min-residency-us = <10000>;
-			};
 		};
 	};
 
