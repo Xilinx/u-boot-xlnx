@@ -23,7 +23,7 @@
 	};
 
 	aliases {
-		nvmem1 = &eeprom;
+		nvmem0 = &eeprom;
 	};
 
 	memory@0 {
