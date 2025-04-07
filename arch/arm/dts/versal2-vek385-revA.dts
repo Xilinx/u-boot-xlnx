@@ -315,3 +315,7 @@
 		full-duplex;
 	};
 };
+
+&gpu {
+	status = "okay";
+};

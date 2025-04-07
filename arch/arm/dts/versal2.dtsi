@@ -231,6 +231,94 @@
 		compatible = "xlnx,versal-fpga";
 	};
 
+	gpu_physical_memory_group_manager: physical-memory-group-manager {
+		compatible = "arm,physical-memory-group-manager";
+	};
+
+	/*
+	 * GPU nodes are based on dt binding document shared by ARM and it will
+	 * change going further. Currently as there is no yaml schema available
+	 * there are schema errors reported. Till new binding is available
+	 * please ignore the DT errors and warnings.
+	 */
+	gpu: gpu {
+		status = "disabled";
+		compatible = "arm,mali-ptm", "amd,mmi-gpu";
+		ranges;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		xlnx,gpu-slices = <2>;
+		xlnx,gpu-clk-freq-mhz = <900000000>;
+
+		gpu-interface@ed000000 {
+			compatible = "arm,mali-ptm-interface";
+			ranges = <0 0 0 0xed000000 0 0x300000>;
+			reg = <0 0xed000000 0 0x300000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			gpu_partition_config_a_0: gpu-partition-config@20000 {
+				compatible = "arm,mali-gpu-partition-config";
+				reg = <0 0x20000 0 0x10000>;
+			};
+
+			gpu_partition_control_a_0: gpu-partition-control@30000 {
+				compatible = "arm,mali-gpu-partition-control";
+				reg = <0 0x30000 0 0x10000>;
+				interrupt-names = "PTM_PARTITION_IRQ";
+				interrupts = <0 182 4>;
+			};
+
+			gpu_resource_group: gpu-resource-group@a0000 {
+				compatible = "arm,mali-gpu-resource-group";
+				reg = <0 0xa0000 0 0x10000>;
+				partition-config = <&gpu_partition_config_a_0>;
+				partition-control = <&gpu_partition_control_a_0>;
+				interrupt-names = "PTM_GROUP_IRQ";
+				interrupts = <0 181 4>;
+			};
+
+			gpu_mali: gpu@e0000 {
+				compatible = "arm,mali-midgard";
+				reg = <0 0xe0000 0 0x1ffc0>;
+				interrupt-names = "JOB", "MMU", "GPU";
+				interrupts = <0 180 4>, <0 180 4>, <0 180 4>;
+				arbiter-if = <&gpu_aw_message_a_0>;
+				system-coherency = <0x1f>;
+				physical-memory-group-manager =
+				<&gpu_physical_memory_group_manager>;
+			};
+
+			gpu_aw_message_a_0: gpu-aw-message@fffc0 {
+				compatible = "arm,mali-gpu-aw-message";
+				reg = <0 0xfffc0 0 0x40>;
+				interrupt-names = "PTM_MESSAGE";
+				interrupts = <0 180 4>;
+			};
+		};
+
+		gpu-interface@ed700000 {
+			compatible = "arm,mali-ptm-interface";
+			ranges = <0 0 0 0xed700000 0 0x20000>;
+			reg = <0 0xed700000 0 0x20000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+
+			gpu-system@0 {
+				compatible = "arm,mali-gpu-system";
+				reg = <0 0 0 0x10000>;
+				interrupt-names = "PTM_UNCORRECTED_ERROR_IRQ",
+						"PTM_DEFERRED_ERROR_IRQ";
+				interrupts = <0 188 4>, <0 188 4>;
+			};
+
+			gpu-assign@10000 {
+				compatible = "arm,mali-gpu-assign";
+				reg = <0 0x10000 0 0x10000>;
+			};
+		};
+	};
+
 	amba: axi {
 		compatible = "simple-bus";
 		bootph-all;
