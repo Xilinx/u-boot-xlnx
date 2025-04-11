@@ -608,15 +608,12 @@ void lmb_add_memory(void)
 	int i;
 	phys_addr_t bank_end;
 	phys_size_t size;
-	u64 ram_top = gd->ram_top;
+	/* Assume a 16TB ram_top if not defined */
+	u64 ram_top = 0x100000000000ULL;
 	struct bd_info *bd = gd->bd;
 
 	if (CONFIG_IS_ENABLED(LMB_ARCH_MEM_MAP))
 		return lmb_arch_add_memory();
-
-	/* Assume a 4GB ram_top if not defined */
-	if (!ram_top)
-		ram_top = 0x100000000ULL;
 
 	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
 		size = bd->bi_dram[i].size;
