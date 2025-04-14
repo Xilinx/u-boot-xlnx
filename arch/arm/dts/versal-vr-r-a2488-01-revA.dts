@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for Xilinx Versal VR-R-A2488-01-revA
+ *
+ * (C) Copyright 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include "versal.dtsi"
+#include "versal-clk.dtsi"
+
+/ {
+	compatible = "xlnx,versal-vr-r-a2488-01-revA",
+		     "xlnx,versal-vr-r-a2488-01", "xlnx,versal";
+	model = "Versal VR-R-A2488-01 revA";
+
+	memory: memory@0 {
+		device_type = "memory";
+		/* TODO board should have 4 * 4GB */
+		reg = <0 0 0 0x80000000>, <0x8 0x00000000 0x1 0x80000000>; /* 2GB + 6GB */
+	};
+
+	chosen {
+		bootargs = "console=ttyAMA0 earlycon=pl011,mmio32,0xFF000000,115200n8";
+		stdout-path = "serial0:115200";
+	};
+
+	aliases {
+		spi0 = &qspi;
+		serial0 = &serial0;
+		serial2 = &dcc;
+		i2c0 = &i2c0;
+		rtc0 = &rtc;
+		nvmem0 = &eeprom;
+	};
+
+	pwm_fan: pwm-fan {
+		compatible = "pwm-fan";
+		status = "okay";
+		pwms = <&ttc0 0 40000 0>; /* TODO check polarity */
+	};
+};
+
+&ttc0 { /* LPD MIO21 PWM, LPD MIO22 TACH */
+	status = "okay";
+	#pwm-cells = <3>;
+};
+
+&qspi { /* PMC MIO0 - 12, u1760/u1761 MT25QU01G - dual parallel */
+	status = "okay"; /* u93 and u92 */
+	num-cs = <2>;
+	spi-rx-bus-width = <4>;
+	spi-tx-bus-width = <4>;
+
+	flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>, <1>;
+		parallel-memories = /bits/ 64 <0x8000000 0x8000000>; /* 128MB */
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
+		spi-max-frequency = <35000000>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			partition@0 {
+				label = "spi0-flash0";
+				reg = <0x0 0x10000000>;
+			};
+		};
+	};
+};
+
+&i2c0 { /* PMC_MIO26/27 */
+	status = "okay";
+	/* J182 2-3 enable u485 */
+	bootph-all;
+	clock-frequency = <400000>;
+
+	i2c-arbitrator@72 { /* u1804 */
+		compatible = "nxp,pca9541";
+		reg = <0x72>;
+
+		i2c_arb: i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			eeprom: eeprom@54 { /* u486 - required by spec */
+				compatible = "atmel,24c128";
+				label = "eeprom_cc";
+				reg = <0x54>;
+			};
+		};
+	};
+
+};
+
+&serial0 { /* PMC_MIO34/35 */
+	status = "okay";
+};
+
+&gem0 { /* PMC_MIO 38-49, MDIO PMC 50-51 */
+	status = "okay";
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+	mdio: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		phy0: ethernet-phy@1 { /* u1802 - ADI1300 */
+			#phy-cells = <1>;
+			compatible = "ethernet-phy-id0283.bc30";
+			reg = <1>;
+			adi,rx-internal-delay-ps = <2000>;
+			adi,tx-internal-delay-ps = <2000>;
+			adi,fifo-depth-bits = <8>;
+			/* Missing separate GPIO reset */
+			reset-gpios = <&gpio1 48 GPIO_ACTIVE_LOW>;
+			reset-assert-us = <10>;
+			reset-deassert-us = <5000>;
+		};
+	};
+};
