@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2022, Xilinx, Inc.
- * Copyright (C) 2022, Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 - 2025, Advanced Micro Devices, Inc.
  */
 
 #ifndef _DT_BINDINGS_VERSAL2_POWER_H
@@ -58,5 +58,10 @@
 #define PM_DEV_RPU_D_1				(0x181100F4U)
 #define PM_DEV_RPU_E_0				(0x181100F5U)
 #define PM_DEV_RPU_E_1				(0x181100F6U)
+#define PM_DEV_MMI_USB_DRD			(0x18224135U)
+#define PM_DEV_MMI_GPU				(0x18224136U)
+#define PM_DEV_MMI_DC				(0x18224137U)
+#define PM_DEV_MMI_HDCP				(0x18224138U)
+#define PM_DEV_MMI_DP				(0x18224139U)
 
 #endif
