@@ -55,19 +55,19 @@
 /* CAN at LPD_MIO21-22 FIXME */
 
 &can0 { /* PMC_MIO16-17 */
-	status = "disabled";
+	status = "okay";
 };
 
 &can1 { /* PMC_MIO18-19 */
-	status = "disabled";
+	status = "okay";
 };
 
 &can2 { /* PMC_MIO20-21 */
-	status = "disabled";
+	status = "okay";
 };
 
 &can3 { /* PMC_MIO22-23 */
-	status = "disabled";
+	status = "okay";
 };
 
 &gpio0 {
