@@ -320,6 +320,10 @@
 	status = "okay";
 };
 
+&mmi_dcdma {
+	status = "okay";
+};
+
 &mmi_dc {
 	status = "okay";
 };
