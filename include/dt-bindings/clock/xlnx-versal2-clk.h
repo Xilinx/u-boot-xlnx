@@ -26,6 +26,7 @@
 #define GPU_PLL		0xD9
 #define DC_PIXEL	0xDA
 #define GPU_REF		0xDB
+#define MMI_AUX0_REF	0xDC
 #define PS_AXI_DMA	0xDD
 #define AUX1_REF	0xDF
 

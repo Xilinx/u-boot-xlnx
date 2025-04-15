@@ -524,3 +524,8 @@
 	power-domains = <&versal2_firmware PM_DEV_UFS>;
 	resets = <&versal2_reset VERSAL_RST_UFS>, <&versal2_reset VERSAL_RST_UFS_PHY>;
 };
+
+&mmi_dc {
+	clocks = <&versal2_clk MMI_AUX0_REF>;
+	resets = <&versal2_reset VERSAL_RST_DC>;
+};

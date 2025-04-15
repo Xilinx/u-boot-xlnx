@@ -326,6 +326,107 @@
 		#size-cells = <2>;
 		ranges;
 
+		mmi_dc: mmi-dc@edd00000 {
+			compatible = "amd,mmi-dc-1.0";
+			status = "disabled";
+			reg = <0 0xedd00000 0 0x1000>,
+			      <0 0xedd0a000 0 0x1000>,
+			      <0 0xedd0b000 0 0x1000>,
+			      <0 0xedd0c000 0 0x1000>,
+			      <0 0xedd0d000 0 0x1000>;
+			reg-names = "dp", "blend", "avbuf", "misc", "irq";
+			interrupts = <0 179 4>;
+			clock-names = "ps_vid_clk";
+			dma-names = "vid.0.0", "vid.0.1", "vid.0.2",
+				    "vid.1.0", "vid.1.1", "vid.1.2",
+				    "aud", "cur";
+			dmas = <&mmi_dcdma 0>, <&mmi_dcdma 1>, <&mmi_dcdma 2>,
+			       <&mmi_dcdma 3>, <&mmi_dcdma 4>, <&mmi_dcdma 5>,
+			       <&mmi_dcdma 6>, <&mmi_dcdma 7>;
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					status = "disabled";
+				};
+				port@1 {
+					reg = <1>;
+					status = "disabled";
+				};
+				port@2 {
+					reg = <2>;
+					status = "disabled";
+				};
+				port@3 {
+					reg = <3>;
+					status = "disabled";
+				};
+				port@4 {
+					reg = <4>;
+					status = "disabled";
+				};
+				port@5 {
+					reg = <5>;
+					status = "disabled";
+				};
+				port@6 {
+					reg = <6>;
+					status = "disabled";
+				};
+				port@7 {
+					reg = <7>;
+					status = "disabled";
+				};
+				port@8 {
+					reg = <8>;
+					status = "disabled";
+				};
+				port@9 {
+					reg = <9>;
+					status = "disabled";
+				};
+				port@a {
+					reg = <10>;
+					status = "disabled";
+				};
+				port@b {
+					reg = <11>;
+					status = "disabled";
+				};
+				port@c {
+					reg = <12>;
+					status = "disabled";
+				};
+				port@d {
+					reg = <13>;
+					status = "disabled";
+				};
+				port@e {
+					reg = <14>;
+					status = "disabled";
+				};
+				port@f {
+					reg = <15>;
+					status = "disabled";
+				};
+				port@10 {
+					reg = <16>;
+					status = "disabled";
+				};
+				port@11 {
+					reg = <17>;
+					status = "disabled";
+				};
+				port@12 {
+					reg = <18>;
+					status = "disabled";
+				};
+			};
+		};
+
 		adma0: dma-controller@ebd00000 {
 			compatible = "amd,versal2-dma-1.0";
 			status = "disabled";

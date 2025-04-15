@@ -319,3 +319,7 @@
 &gpu {
 	status = "okay";
 };
+
+&mmi_dc {
+	status = "okay";
+};
