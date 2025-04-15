@@ -320,6 +320,10 @@
 	status = "okay";
 };
 
+&mmi_dptx {
+	status = "okay";
+};
+
 &mmi_dcdma {
 	status = "okay";
 };

@@ -326,6 +326,38 @@
 		#size-cells = <2>;
 		ranges;
 
+		mmi_dptx: mmi-dptx@ede00000 {
+			compatible = "amd,mmi-dptx-1.0";
+			status = "disabled";
+			reg = <0 0xede00000 0 0x40000>,
+			      <0 0xedeb0000 0 0x100>;
+			reg-names = "dp", "hdcp";
+			interrupts = <0 178 4>, <0 167 4>;
+			interrupt-names = "dptx", "hdcp";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					status = "disabled";
+				};
+				port@1 {
+					reg = <1>;
+					status = "disabled";
+				};
+				port@2 {
+					reg = <2>;
+					status = "disabled";
+				};
+				port@3 {
+					reg = <3>;
+					status = "disabled";
+				};
+			};
+		};
+
 		mmi_dcdma: dma-controller@edd10000 {
 			compatible = "amd,mmi-dcdma-1.0";
 			status = "disabled";
