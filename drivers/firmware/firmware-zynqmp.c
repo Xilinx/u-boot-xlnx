@@ -3,6 +3,7 @@
  * Xilinx Zynq MPSoC Firmware driver
  *
  * Copyright (C) 2018-2019 Xilinx, Inc.
+ * Copyright (C) 2022 - 2025, Advanced Micro Devices, Inc.
  */
 
 #include <asm/arch/hardware.h>
@@ -261,7 +262,7 @@ int zynqmp_pm_ufs_cal_reg(u32 *value)
 }
 #endif
 
-#if defined(CONFIG_ARCH_VERSAL)
+#if defined(CONFIG_ARCH_VERSAL) || defined(CONFIG_ARCH_VERSAL2)
 u32 zynqmp_pm_get_pmc_multi_boot_reg(void)
 {
 	int ret;

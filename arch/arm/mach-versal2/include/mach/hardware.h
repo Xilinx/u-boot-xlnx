@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2016 - 2022, Xilinx, Inc.
- * Copyright (C) 2022 - 2024, Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 - 2025, Advanced Micro Devices, Inc.
  */
 
 #ifndef __ASSEMBLY__
@@ -73,6 +73,8 @@ struct crp_regs {
 #define JTAG_MODE	0x00000000
 #define BOOT_MODE_USE_ALT	0x100
 #define BOOT_MODE_ALT_SHIFT	12
+#define PMC_MULTI_BOOT_REG	0xF1110004
+#define PMC_MULTI_BOOT_MASK	0x1FFF
 
 enum versal2_platform {
 	VERSAL2_SILICON = 0,
@@ -99,3 +101,6 @@ enum versal2_platform {
 #define BANK0_TRI	0xF1060200
 
 #define OSPI_CTRL_RST	0xF1260308
+
+#define PMC_GLOBAL_PGGS3_REG	0xF111005C
+#define PMC_GLOBAL_PGGS4_REG	0xF1110060

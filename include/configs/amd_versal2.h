@@ -2,7 +2,7 @@
 /*
  * Configuration for AMD Versal Gen 2
  * Copyright (C) 2016 - 2022, Xilinx, Inc.
- * Copyright (C) 2022 - 2024, Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  *
@@ -22,6 +22,11 @@
 /* Serial setup */
 #define CFG_SYS_BAUDRATE_TABLE \
 	{ 4800, 9600, 19200, 38400, 57600, 115200 }
+
+/* GUID for capsule updatable firmware image */
+#define XILINX_BOOT_IMAGE_GUID \
+	EFI_GUID(0xed9e7fcf, 0x47b3, 0x40cd, 0xb6, 0xe3, \
+		 0x56, 0x5f, 0x14, 0x67, 0x6d, 0x82)
 
 #if defined(CONFIG_CMD_DFU)
 #define DFU_DEFAULT_POLL_TIMEOUT	300
