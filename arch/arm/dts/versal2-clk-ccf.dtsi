@@ -53,6 +53,12 @@
 		clock-mult = <1>;
 	};
 
+	clk50: clk50 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <50000000>;
+	};
+
 	clk150: clk150 {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -497,6 +503,10 @@
 
 &mmi_dwc3 {
 	clocks = <&versal2_clk MMI_DRD_REF_CLK>;
+};
+
+&mmi_dcdma {
+	clocks = <&clk50>;
 };
 
 &wwdt0 {

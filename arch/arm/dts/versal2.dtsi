@@ -326,6 +326,14 @@
 		#size-cells = <2>;
 		ranges;
 
+		mmi_dcdma: dma-controller@edd10000 {
+			compatible = "amd,mmi-dcdma-1.0";
+			status = "disabled";
+			reg = <0 0xedd10000 0 0x1000>;
+			interrupts = <0 179 4>;
+			#dma-cells = <1>;
+		};
+
 		mmi_dc: mmi-dc@edd00000 {
 			compatible = "amd,mmi-dc-1.0";
 			status = "disabled";
