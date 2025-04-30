@@ -77,16 +77,20 @@
 
 	i2c-arbitrator@72 { /* u161 */
 		compatible = "nxp,pca9541";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		bootph-all;
 		reg = <0x72>;
 
-		i2c_arb: i2c-arb {
+		i2c_arb: i2c-arb@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-
+			reg = <0>;
 			eeprom_cc: eeprom@54 { /* u35 - required by spec - also at address 0x5C */
 				compatible = "atmel,24c128";
 				label = "eeprom_cc";
 				reg = <0x54>;
+				bootph-all;
 			};
 		};
 	};
