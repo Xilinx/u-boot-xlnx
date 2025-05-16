@@ -26,6 +26,7 @@
 #include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
+#include <usb.h>
 #include <versalpl.h>
 #include <zynqmp_firmware.h>
 #include "../../xilinx/common/board.h"
@@ -362,6 +363,14 @@ int board_late_init(void)
 		if (ret)
 			return ret;
 	}
+
+#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
+	ret = usb_init();
+	if (!ret)
+		ret = usb_stor_scan(1);
+	if (ret)
+		printf("Error: SD over USB init failed for capsule support\n");
+#endif
 
 	return board_late_init_xilinx();
 }
