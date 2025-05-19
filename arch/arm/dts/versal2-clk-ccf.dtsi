@@ -221,22 +221,22 @@
 };
 
 &can0 {
-	clocks = <&versal2_clk CAN0_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	clocks = <&can0_clk>, <&versal2_clk LPD_LSBUS>;
 	power-domains = <&versal2_firmware PM_DEV_CAN_FD_0>;
 };
 
 &can1 {
-	clocks = <&versal2_clk CAN1_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	clocks = <&can1_clk>, <&versal2_clk LPD_LSBUS>;
 	power-domains = <&versal2_firmware PM_DEV_CAN_FD_1>;
 };
 
 &can2 {
-	clocks = <&versal2_clk CAN2_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	clocks = <&can2_clk>, <&versal2_clk LPD_LSBUS>;
 	power-domains = <&versal2_firmware PM_DEV_CAN_FD_2>;
 };
 
 &can3 {
-	clocks = <&versal2_clk CAN3_REF_2X>, <&versal2_clk LPD_LSBUS>;
+	clocks = <&can3_clk>, <&versal2_clk LPD_LSBUS>;
 	power-domains = <&versal2_firmware PM_DEV_CAN_FD_3>;
 };
 
