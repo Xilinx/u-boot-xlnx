@@ -161,10 +161,9 @@
 		reg = <0x72>;
 
 		/* board_i2c1 */
-		i2c-arb@0 {
+		i2c-arb {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			reg = <0>;
 			/*
 			 * WARNING: Potential Conflict!
 			 * The TCA6416 GPIO expander device is currently owned by SC as well.
