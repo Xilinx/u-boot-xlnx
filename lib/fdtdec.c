@@ -1685,7 +1685,7 @@ int fdtdec_setup(void)
 				gd->fdt_src = FDTSRC_BLOBLIST;
 				log_debug("Devicetree is in bloblist at %p\n",
 					  gd->fdt_blob);
-				ret = 0;
+				goto setup_fdt;
 			} else {
 				log_debug("No FDT found in bloblist\n");
 				ret = -ENOENT;
@@ -1724,6 +1724,7 @@ int fdtdec_setup(void)
 		}
 	}
 
+setup_fdt:
 	if (CONFIG_IS_ENABLED(MULTI_DTB_FIT))
 		setup_multi_dtb_fit();
 
