@@ -231,6 +231,7 @@ enum {
 	BLOBLIST_REC_HDR_SIZE		= sizeof(struct bloblist_rec),
 };
 
+
 /**
  * bloblist_check_magic() - return a bloblist if the magic matches
  *
@@ -249,6 +250,24 @@ static inline void *bloblist_check_magic(ulong addr)
 
 	return ptr;
 }
+
+#if CONFIG_IS_ENABLED(BLOBLIST)
+/**
+ * bloblist_get_blob() - Find a blob and get the size of it
+ *
+ * Searches the bloblist and returns the blob with the matching tag
+ *
+ * @tag:       Tag to search for (enum bloblist_tag_t)
+ * @sizep:     Size of the blob found
+ * Return: pointer to bloblist if found, or NULL if not found
+ */
+void *bloblist_get_blob(uint tag, int *sizep);
+#else
+static inline void *bloblist_get_blob(uint tag, int *sizep)
+{
+	return NULL;
+}
+#endif
 
 /**
  * bloblist_find() - Find a blob
