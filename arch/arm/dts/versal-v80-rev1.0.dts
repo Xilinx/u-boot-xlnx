@@ -2,7 +2,7 @@
 /*
  * dts file for AMD Alveo Versal V80 rev1.0
  *
- * Copyright (C) 2023 - 2024, Advanced Micro Devices, Inc.
+ * Copyright (C) 2023 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  * Sandeep Gundlupet Raju <sandeep.gundlupet-raju@amd.com>
@@ -105,7 +105,7 @@
 
 &i2c0 { /* PS_MIO2/3 i2c MAIN */
 	status = "okay";
-	
+
 	/*
 	 * sit95141a - 0x9 - u115
 	 * rc19013a - 0x6c - u99
@@ -240,7 +240,7 @@
 			reg = <1>;
 			/* j5 - qsfp4 - 0x50 */
 		};
-	 	i2c@2 { /* SB */
+		i2c@2 { /* SB */
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
@@ -264,7 +264,7 @@
 			/* j7 - qsfp4 - 0x50 */
 		};
 	};
- 
+
 	i2c_qsfp3: i2c-mux@71 { /* u100 */
 		compatible = "nxp,pca9545";
 		#address-cells = <1>;
@@ -298,7 +298,7 @@
 			reg = <1>;
 			/* j3 - qsfp4 - 0x50 */
 		};
-	 	i2c@2 { /* SB */
+		i2c@2 { /* SB */
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <2>;
