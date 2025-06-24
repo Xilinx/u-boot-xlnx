@@ -64,7 +64,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	/* i2c_pmc */
-	/* u24 - repeater from SC (J72 - disabling) */ 
+	/* u24 - repeater from SC (J72 - disabling) */
 	/* u15/u14 - tca9517 (J55 - disabling) */
 	/* ina226_pmbus */
 	ina226_vcc_lpd: ina226@40 { /* u1858 - 0.88V */
@@ -195,7 +195,6 @@
 		shunt-resistor = <20000>; /* R2702 20m on SCHEMATICS */
 	};
 
-	
 	/* FIXME ina226 down - address can be shifted by 0x20 down via ltc4316 (u1888) */
 	ina226_vcco_700_705: ina226@50 { /* u1818 - 1.0V */
 		compatible = "ti,ina226";

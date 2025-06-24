@@ -170,7 +170,7 @@
 /* pmc i2c */
 &i2c2 { /* PMC_MIO 50-51 */
 	status = "okay";
-	
+
 	i2c-arbitrator@75 { /* u261 */
 		compatible = "nxp,pca9541";
 		reg = <0x75>;
@@ -251,7 +251,7 @@
 		gpio-line-names = "MCU_VER_SLP_L", "APU_BUF_SLP_S5_L", "APU_BUF_SLP_S3_L", "VE_FTDI_RESET_N", /* 0 - 3 */
 				  "NSW_SUBSYSTEM_PGD", "AUDIO_SUBSYSTEM_PGD", "", ""; /* 4 - 7 */
 	};
-	
+
 	/* 0x9 - renesas,rc21008b u132 */
 	/* 0x10 - renesas,rc21008b u131 */
 
@@ -356,7 +356,7 @@
 	hub_2_0: hub@1 {
 		compatible = "usb424,2744";
 		reg = <1>;
-		i2c-bus = <&hub>; 
+		i2c-bus = <&hub>;
 		reset-gpios = <&max7321_u263 6 GPIO_ACTIVE_LOW>;
 	};
 	/* Also 2244 for sd card */
