@@ -181,41 +181,37 @@
 
 	/* u100 - translator from SC (J101 - disabling) + 0x7 */
 	/* i2c_main_1 */
-	lpddr5_c0_c1: clock-generator@57 { /* u91 XP or SI570 - oe J83 */
+	lpddr5_c0_c1: clock-generator@57 { /* u91 XP or SI570 - oe J83 - 320MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x57>;
-		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c0_c1";
 	};
 
 	/* u102 - translator from SC (J103 - disabling) + 0x9 */
 	/* i2c_main_2 */
-	lpddr5_c2: clock-generator@59 { /* u92 XP or SI570 - oe J88 */
+	lpddr5_c2: clock-generator@59 { /* u92 XP or SI570 - oe J88 - 320MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x59>;
-		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c2";
 	};
 
 	/* u103 - translator from SC (J104 - disabling) + 0x6 */
 	/* i2c_main_3 */
-	lpddr5_c3_c4: clock-generator@56 { /* u93 XP or SI570 - oe J93 */
+	lpddr5_c3_c4: clock-generator@56 { /* u93 XP or SI570 - oe J93 - 320MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x56>;
-		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c3_c4";
 	};
 
 	/* u101 - translator from SC (J102 - disabling) + 0x5 */
 	/* i2c_main_4 */
-	ps_refclk: clock-generator@55 { /* u90 XP or SI570 - oe J79 */
+	ps_refclk: clock-generator@55 { /* u90 XP or SI570 - oe J79 - 33.3kHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x55>;
-		clock-frequency = <33333333>;
 		clock-output-names = "ps_refclk";
 	};
 

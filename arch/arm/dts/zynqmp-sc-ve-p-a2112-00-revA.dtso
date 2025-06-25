@@ -464,75 +464,67 @@
 	/* u97 - m24128 16kB is defined in 'zynqmp-sc-k24-revA.dts' */
 	/* u1910 - rc21005bq (OTP) i2c 0x9 selection via J1964/J1965/J1966 or UFS_CLK_SEL_X gpios */
 
-	xp_hsdp: clock-generator@64 { /* u1911 - oe J1951 */
+	xp_hsdp: clock-generator@64 { /* u1911 - oe J1951 - 156.25 MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x64>;
-		clock-frequency = <156250000>;
 		clock-output-names = "hsdp";
 	};
 
-	xp_usb3: clock-generator@63 { /* u1912 - oe J1952 */
+	xp_usb3: clock-generator@63 { /* u1912 - oe J1952 - 24MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x63>;
-		clock-frequency = <24000000>;
 		clock-output-names = "usb3";
 	};
 
 	/* Also to SE card via D23/D24 Samtec */
 
 	/* i2c_main_1 u147 - ltc4316 - translator from SC (J157 - disabling) */
-	xp_qsfp: clock-generator@66 { /* u43 - oe J1 - origin addr 0x64 */
+	xp_qsfp: clock-generator@66 { /* u43 - oe J1 - origin addr 0x64 - 156.25 MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x66>;
-		clock-frequency = <156250000>;
 		clock-output-names = "qsfp";
 	};
 
 	/* i2c_main_2 u148 - ltc4316 - translator from SC (J122 - disabling) */
-	xp_lpddr5_c0: clock-generator@40 { /* u115 - oe J81 - origin addr 0x50 */
+	xp_lpddr5_c0: clock-generator@40 { /* u115 - oe J81 - origin addr 0x50 - 320MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x40>;
-		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c0";
 	};
 
 	/* i2c_main_3 u149 - ltc4316 - translator from SC (J154 - disabling) */
-	xp_ddr5_udimm: clock-generator@56 { /* u116 - oe J78 - origin addr 0x50 */
+	xp_ddr5_udimm: clock-generator@56 { /* u116 - oe J78 - origin addr 0x50 - 320MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x56>;
-		clock-frequency = <320000000>;
 		clock-output-names = "ddr5_udimm";
 	};
 
 	/* i2c_main_4 u150 - ltc4316 - translator from SC (J146 - disabling) */
-	xp_xpl7_ps_refclk: clock-generator@55 { /* u39 - oe J107 - origin addr 0x50 */
+	xp_xpl7_ps_refclk: clock-generator@55 { /* u39 - oe J107 - origin addr 0x50 - 33.3kHz*/
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x55>;
-		clock-frequency = <33333333>;
 		clock-output-names = "ps_refclk";
 	};
 
 	/* i2c_main_5 u1782 - ltc4316 - translator from SC (J1798 - disabling) */
-	xp_lpddr5_c1: clock-generator@59 { /* u1916 - oe J1958 - origin addr 0x50 */
+	xp_lpddr5_c1: clock-generator@59 { /* u1916 - oe J1958 - origin addr 0x50 - 320MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x59>;
-		clock-frequency = <320000000>;
 		clock-output-names = "lpddr5_c1";
 	};
 
 	/* i2c_main_6 u1927 - ltc4316 - translator from SC */
-	xp_hdmi_frl_clk: clock-generator@5a { /* u1928 - origin addr 0x50 */
+	xp_hdmi_frl_clk: clock-generator@5a { /* u1928 - origin addr 0x50 - 400MHz */
 		#clock-cells = <0>;
 		compatible = "renesas,proxo-xp";
 		reg = <0x5a>;
-		clock-frequency = <400000000>;
 		clock-output-names = "hdmi_frl_clk";
 	};
 
