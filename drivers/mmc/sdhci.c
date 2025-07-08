@@ -304,19 +304,14 @@ static int sdhci_send_command(struct mmc *mmc, struct mmc_cmd *cmd,
 		if (stat & SDHCI_INT_ERROR)
 			break;
 
-		if (host->quirks & SDHCI_QUIRK_BROKEN_R1B &&
-		    cmd->resp_type & MMC_RSP_BUSY && !data) {
-			unsigned int state =
-				sdhci_readl(host, SDHCI_PRESENT_STATE);
-
-			if (!(state & SDHCI_DAT_ACTIVE))
-				return 0;
-		}
-
 		if (get_timer(start) >= SDHCI_READ_STATUS_TIMEOUT) {
-			log_warning("Timeout for status update: %08x %08x\n",
-				    stat, mask);
-			return -ETIMEDOUT;
+			if (host->quirks & SDHCI_QUIRK_BROKEN_R1B) {
+				return 0;
+			} else {
+				printf("%s: Timeout for status update!\n",
+				       __func__);
+				return -ETIMEDOUT;
+			}
 		}
 	} while ((stat & mask) != mask);
 
