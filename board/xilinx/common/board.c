@@ -742,3 +742,29 @@ void fwu_plat_get_bootidx(uint *boot_idx)
 	      __func__, *boot_idx, active_idx);
 }
 #endif
+
+#if defined(CONFIG_FWU_MULTI_BANK_UPDATE)
+int fwu_platform_hook(struct udevice *dev, struct fwu_data *data)
+{
+	/* Note: The FWU metadata is an unsecure piece of data, as
+	 * highlighted by the spec, and there is no way to ascertain
+	 * that it has not been tampered with in a malicious manner.
+	 * U-Boot OTOH can be part of a trusted boot chain, where the
+	 * U-Boot image has been verified before being booted. So,
+	 * although this does remove issues that might crop up with
+	 * manual mismatches, still need to consider the fact that
+	 * the FWU mdata is not a secure piece of data.
+
+	 * And this is a not real problem with Xilinx platforms because
+	 * actually it is only providing reference stack.
+	 */
+
+	struct fwu_image_entry *img_entry = &data->fwu_images[0];
+
+	/* Copy image type GUID */
+	memcpy(&fw_images[0].image_type_id, &img_entry->image_type_guid, 16);
+
+	return 0;
+}
+
+#endif
