@@ -175,7 +175,7 @@
 			ti,dp83867-rxctrl-strap-quirk;
 			reset-assert-us = <100>;
 			reset-deassert-us = <280>;
-			reset-gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
+			reset-gpios = <&gpio0 12 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
