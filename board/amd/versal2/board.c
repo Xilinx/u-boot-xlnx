@@ -572,8 +572,7 @@ int plat_get_boot_index(void)
 	val = readl(PMC_GLOBAL_PGGS4_REG);
 
 	if (FIELD_GET(MAGIC_MASK, val) != MAGIC_NUM) {
-		log_err("Error: Magic number of pmc global register is not 0x%x\n",
-			MAGIC_NUM);
+		log_err("FWU requires PMC magic number 0x%x\n", MAGIC_NUM);
 		return -EINVAL;
 	}
 
