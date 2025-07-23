@@ -77,6 +77,7 @@
 	cap-mmc-hw-reset;
 	bus-width = <8>;
 	xlnx,mio-bank = <0>;
+	clk-phase-mmc-hs = <66>, <60>;
 };
 
 &serial0 { /* PS_MIO8/9 */
