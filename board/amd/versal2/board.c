@@ -346,9 +346,6 @@ int board_late_init(void)
 	int ret;
 	u32 multiboot;
 
-	multiboot = versal2_multi_boot();
-	env_set_hex("multiboot", multiboot);
-
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
 		return 0;
@@ -356,6 +353,9 @@ int board_late_init(void)
 
 	if (!IS_ENABLED(CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG))
 		return 0;
+
+	multiboot = versal2_multi_boot();
+	env_set_hex("multiboot", multiboot);
 
 	if (IS_ENABLED(CONFIG_DISTRO_DEFAULTS)) {
 		ret = boot_targets_setup();
