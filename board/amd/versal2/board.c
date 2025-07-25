@@ -347,6 +347,12 @@ int board_late_init(void)
 	int ret;
 	u32 multiboot;
 
+#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
+	ret = usb_init();
+	if (!ret)
+		ret = usb_stor_scan(1);
+#endif
+
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
 		return 0;
@@ -363,14 +369,6 @@ int board_late_init(void)
 		if (ret)
 			return ret;
 	}
-
-#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
-	ret = usb_init();
-	if (!ret)
-		ret = usb_stor_scan(1);
-	if (ret)
-		printf("Error: SD over USB init failed for capsule support\n");
-#endif
 
 	return board_late_init_xilinx();
 }
