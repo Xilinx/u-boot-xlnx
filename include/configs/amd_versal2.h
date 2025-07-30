@@ -150,6 +150,7 @@
 
 #else /* CONFIG_DISTRO_DEFAULTS */
 # define BOOTENV
+# define BOOTENV_DEV_SHARED_XSPI
 #endif /* CONFIG_DISTRO_DEFAULTS */
 
 /* Initial environment variables */
