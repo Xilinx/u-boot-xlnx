@@ -536,6 +536,6 @@
 };
 
 &mmi_dc {
-	clocks = <&versal2_clk MMI_AUX0_REF>;
+	clocks = <&versal2_clk DC_PIXEL>;
 	resets = <&versal2_reset VERSAL_RST_DC>;
 };
