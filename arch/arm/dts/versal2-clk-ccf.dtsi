@@ -255,7 +255,10 @@
 };
 
 &mmi_10gbe {
-	clocks = <&clk150>, <&clk150>, <&clk150>, <&clk250>;
+	clocks = <&versal2_clk LPD_LSBUS>,
+		 <&versal2_clk MMI_GEM_HCLK>, <&clk150>,
+		 <&clk250>;
+	power-domains = <&versal2_firmware PM_DEV_MMI_GEM>;
 };
 
 &gpio0 {
