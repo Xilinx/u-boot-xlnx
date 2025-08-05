@@ -29,5 +29,6 @@
 #define MMI_AUX0_REF	0xDC
 #define PS_AXI_DMA	0xDD
 #define AUX1_REF	0xDF
+#define MMI_GEM_HCLK	0xE0
 
 #endif
