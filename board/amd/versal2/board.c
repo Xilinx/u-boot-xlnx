@@ -26,6 +26,7 @@
 #include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
+#include <usb.h>
 #include <versalpl.h>
 #include <zynqmp_firmware.h>
 #include "../../xilinx/common/board.h"
@@ -345,6 +346,12 @@ int board_late_init(void)
 {
 	int ret;
 	u32 multiboot;
+
+#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
+	ret = usb_init();
+	if (!ret)
+		ret = usb_stor_scan(1);
+#endif
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
