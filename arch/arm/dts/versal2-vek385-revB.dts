@@ -1,0 +1,320 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD VEK385 revB
+ *
+ * Copyright (C) 2024 - 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal2.dtsi"
+#include "versal2-clk-ccf.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/net/ti-dp83867.h>
+
+/ {
+	compatible = "amd,versal2-vek385-revB", "amd,versal2-vek385", "amd,versal2";
+	model = "AMD Versal VEK385 revB";
+
+	chosen {
+		bootargs = "earlycon=pl011,mmio32,0xf1930000 console=ttyAMA1,115200";
+		stdout-path = "serial1:115200n8";
+	};
+
+	aliases {
+		nvmem0 = &eeprom;
+	};
+
+	memory@0 {
+		reg = <0 0 0 0x80000000>, <0x8 0 0 0x80000000>;
+		device_type = "memory";
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* TF-A, TEE, RPUs */
+		res: memory@0 {
+			no-map;
+			reg = <0 0 0 0x20000000>;
+		};
+	};
+
+	pwm-fan {
+		compatible = "pwm-fan";
+		status = "okay";
+		pwms = <&ttc0 2 40000 1>;
+	};
+};
+
+/* u272 - TPS66993BAR usb, i2c, DP */
+/* CAN at LPD_MIO12-13 FIXME */
+/* CAN at LPD_MIO21-22 FIXME */
+
+&can0 { /* PMC_MIO16-17 */
+	status = "okay";
+};
+
+&can1 { /* PMC_MIO18-19 */
+	status = "okay";
+};
+
+&can2 { /* PMC_MIO20-21 */
+	status = "okay";
+};
+
+&can3 { /* PMC_MIO22-23 */
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&ospi { /* PMC_MIO0-10, MIO12 */
+	status = "okay";
+	reset-names = "qspi";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	spi_flash: flash@0 {
+		compatible = "jedec,spi-nor"; /* u25 */
+		spi-max-frequency = <20000000>; /* FIXME maybe wrong */
+		spi-rx-bus-width = <8>;
+		spi-tx-bus-width = <8>;
+		cdns,tslch-ns = <1>;
+		cdns,tchsh-ns = <1>;
+		cdns,tsd2d-ns = <0>;
+		cdns,tshsl-ns = <0>;
+		cdns,read-delay = <0>;
+		reg = <0>;
+		no-wp;
+		broken-flash-reset;
+
+		partitions {
+			#size-cells = <1>;
+			#address-cells = <1>;
+			compatible = "fixed-partitions";
+
+			partition@0 {
+				reg = <0x0 0x200000>;
+				label = "ospi-flash0";
+			};
+
+			partition@1 {
+				reg = <0x200000 0x3e00000>;
+				label = "ospi-flash1";
+			};
+		};
+	};
+};
+
+&ufshc { /* PMC_MIO24-25 */
+	status = "okay";
+};
+
+&usb1 { /* PMC_MIO27-39 */
+	status = "okay";
+	dma-coherent;
+};
+
+&dwc3_1 {
+	status = "okay";
+	dr_mode = "host";
+	maximum-speed = "high-speed";
+	dma-coherent;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* 2.0 hub on port 1 */
+	hub_2_0: hub@1 {
+		compatible = "usb424,2744";
+		reg = <1>;
+		reset-gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+	};
+	/* USB 3.0 is not connected */
+	/* port 0 u109 USB-SD converter */
+	/* port 1/2 to connector */
+};
+
+&i2c0 { /* PMC_MIO42-43 */
+	status = "okay";
+	/* board_i2c0 - FMC */
+};
+
+&i2c1 { /* PMC_MIO44-45 */
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	bootph-all;
+	clock-frequency = <400000>;
+
+	i2c-arbitrator@72 { /* u161 */
+		compatible = "nxp,pca9541";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		bootph-all;
+		reg = <0x72>;
+
+		/* board_i2c1 */
+		i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/*
+			 * WARNING: Potential Conflict!
+			 * The TCA6416 GPIO expander device is currently owned by SC as well.
+			 * This design results in two software components potentially conflicting
+			 * over control of the device. While no immediate issues are observed
+			 * due to limited interactions.
+			 * FIXME - The schematics should be revised to avoid conflicts.
+			 */
+			tca6416_u37: gpio@20 {
+				compatible = "ti,tca6416";
+				reg = <0x20>;
+				#gpio-cells = <0x02>;
+				gpio-controller;
+			};
+			eeprom: eeprom@54 { /* u35 - also at address 0x5C */
+				compatible = "atmel,24c128";
+				bootph-all;
+				reg = <0x54>;
+				/* wp via SC */
+			};
+			i2c-mux@77 { /* u253 */
+				compatible = "nxp,pca9548";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x77>;
+				i2c-mux-idle-disconnect;
+				i2c@0 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <0>;
+					/* qsfp1 */
+				};
+				i2c@1 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <1>;
+					/* sfp */
+				};
+				i2c@2 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <2>;
+					/* usbdp */
+					/* u272 tps66993 FIXME */
+				};
+				i2c@3 {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					reg = <3>;
+					/* pcie_rp */
+				};
+				/* 4 - 7 not connected */
+			};
+		};
+	};
+};
+
+&serial0 { /* LPD_MIO16-17 */
+	status = "okay";
+};
+
+&serial1 { /* PMC_MIO46-47 */
+	status = "okay";
+};
+
+&ttc0 { /* PMC_MIO49 FAN_PWM */
+	status = "okay";
+	#pwm-cells = <3>;
+};
+
+&adma0 {
+	dma-coherent;
+};
+
+&adma1 {
+	dma-coherent;
+};
+
+&adma2 {
+	dma-coherent;
+};
+
+&adma3 {
+	dma-coherent;
+};
+
+&adma4 {
+	dma-coherent;
+};
+
+&adma5 {
+	dma-coherent;
+};
+
+&adma6 {
+	dma-coherent;
+};
+
+&adma7 {
+	dma-coherent;
+};
+
+&gem0 { /* MDIO PMC_MIO50/51, MIO0-11 */
+	status = "okay";
+	phy-handle = <&phy0>;
+	phy-mode = "rgmii-id";
+	dma-coherent;
+
+	mdio: mdio {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		phy0: ethernet-phy@1 { /* u112 */
+			#phy-cells = <1>;
+			reg = <1>;
+			compatible = "ethernet-phy-id2000.a231";
+			ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_25_NS>;
+			ti,tx-internal-delay = <DP83867_RGMIIDCTL_2_75_NS>;
+			ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
+			ti,dp83867-rxctrl-strap-quirk;
+			reset-assert-us = <100>;
+			reset-deassert-us = <280>;
+			reset-gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&mdb_pcie0 {
+	reset-gpios = <&tca6416_u37 7 GPIO_ACTIVE_LOW>;
+};
+
+&mmi_10gbe {
+	status = "okay";
+	phy-mode = "10gbase-r";
+	fixed-link {
+		speed = <10000>;
+		full-duplex;
+	};
+};
+
+&gpu {
+	status = "okay";
+};
+
+&mmi_dptx {
+	status = "okay";
+};
+
+&mmi_dcdma {
+	status = "okay";
+};
+
+&mmi_dc {
+	status = "okay";
+};
