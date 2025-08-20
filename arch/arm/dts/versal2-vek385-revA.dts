@@ -14,7 +14,7 @@
 #include <dt-bindings/net/ti-dp83867.h>
 
 / {
-	compatible = "amd,versal2";
+	compatible = "amd,versal2-vek385-revA", "amd,versal2-vek385", "amd,versal2";
 	model = "AMD Versal VEK385 revA";
 
 	chosen {
