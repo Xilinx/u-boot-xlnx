@@ -1056,10 +1056,6 @@
 					<0 0 0 3 &mdb_intc_0 2>,
 					<0 0 0 4 &mdb_intc_0 3>;
 			msi-map = <0x0 &its 0x00 0x10000>;
-			xlnx,num-of-bars = <0x2>;
-			xlnx,port-type = <0x1>;
-			xlnx,csr-slcr = <0x1000 0x0 0x0>;
-			xlnx,iatu-address = <0xed860000>;
 			#address-cells = <3>;
 			#size-cells = <2>;
 			#interrupt-cells = <1>;
@@ -1088,10 +1084,6 @@
 					<0 0 0 3 &mdb_intc_1 2>,
 					<0 0 0 4 &mdb_intc_1 3>;
 			msi-map = <0x0 &its 0x10000 0x10000>;
-			xlnx,num-of-bars = <0x2>;
-			xlnx,port-type = <0x1>;
-			xlnx,csr-slcr = <0x1400 0x0 0x0>;
-			xlnx,iatu-address = <0xed8e0000>;
 			#address-cells = <3>;
 			#size-cells = <2>;
 			#interrupt-cells = <1>;

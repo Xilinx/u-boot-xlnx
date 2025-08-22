@@ -291,7 +291,14 @@
 };
 
 &mdb_pcie0 {
-	reset-gpios = <&tca6416_u37 7 GPIO_ACTIVE_LOW>;
+	pcie@0,0 {
+		device_type = "pci";
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+		reset-gpios = <&tca6416_u37 7 GPIO_ACTIVE_LOW>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		ranges;
+	};
 };
 
 &mmi_10gbe {
