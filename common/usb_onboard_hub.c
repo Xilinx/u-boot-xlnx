@@ -57,7 +57,12 @@ static int usb5744_i2c_init(struct udevice *dev)
 
 	ret = dev_read_phandle_with_args(dev, "i2c-bus", NULL, 0, 0, &phandle);
 	if (ret) {
-		dev_err(dev, "i2c-bus not specified\n");
+		if (ret == -ENOENT) {
+			dev_dbg(dev, "i2c-bus not specified\n");
+			return 0;
+		}
+
+		dev_err(dev, "i2c-bus read failed\n");
 		return ret;
 	}
 
