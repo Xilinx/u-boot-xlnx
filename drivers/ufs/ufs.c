@@ -1900,12 +1900,6 @@ int ufs_start(struct ufs_hba *hba)
 		return ret;
 	}
 
-	if (hba->quirks & 0x4) {
-		printf("Device at %s up at:", hba->dev->name);
-		ufshcd_print_pwr_info(hba);
-		return 0;
-	}
-
 	if (ufshcd_get_max_pwr_mode(hba)) {
 		dev_err(hba->dev,
 			"%s: Failed getting max supported power mode\n",
