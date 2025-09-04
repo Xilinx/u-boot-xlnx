@@ -92,7 +92,6 @@
 		cdns,read-delay = <0>;
 		reg = <0>;
 		no-wp;
-		broken-flash-reset;
 
 		partitions {
 			#size-cells = <1>;
