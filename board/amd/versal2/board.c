@@ -26,6 +26,8 @@
 #include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
+#include <scsi.h>
+#include <ufs.h>
 #include <usb.h>
 #include <versalpl.h>
 #include <zynqmp_firmware.h>
@@ -351,6 +353,12 @@ int board_late_init(void)
 	ret = usb_init();
 	if (!ret)
 		ret = usb_stor_scan(1);
+
+	if (IS_ENABLED(CONFIG_UFS)) {
+		ret = ufs_probe();
+		if (!ret)
+			ret = scsi_scan(true);
+	}
 #endif
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
