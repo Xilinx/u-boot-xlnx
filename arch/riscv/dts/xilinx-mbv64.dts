@@ -103,5 +103,60 @@
 			xlnx,data-bits = <8>;
 			xlnx,use-parity = <0>;
 		};
+
+		eth: ethernet@40e00000 {
+			compatible = "xlnx,xps-ethernetlite-1.00.a";
+			reg = <0x0 0x40e00000 0x0 0x10000>;
+			interrupt-parent = <&axi_intc>;
+			interrupts = <5 0>;
+			clocks = <&clk100>;
+			xlnx,rx-ping-pong = <0>;
+			xlnx,tx-ping-pong = <0>;
+			phy-handle = <&phy0>;
+
+			mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				phy0: phy@7 {
+					device_type = "ethernet-phy";
+					reg = <7>;
+				} ;
+			} ;
+		};
+
+		enet: ethernet@40c00000 {
+			compatible = "xlnx,axi-ethernet-1.00.a";
+			reg = <0x0 0x40c00000 0x0 0x40000>;
+			interrupt-parent = <&axi_intc>;
+			interrupts = <7 2>;
+			clocks = <&clk100>, <&clk100>;
+			phy-mode = "rgmii";
+			xlnx,rxcsum = <0>;
+			xlnx,rxmem = <0x1000>;
+			xlnx,txcsum = <0>;
+			phy-handle = <&phy>;
+			axistream-connected = <&axi_dma>;
+
+			mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				phy: phy@7 {
+					device_type = "ethernet-phy";
+					reg = <7>;
+				};
+			};
+		};
+
+		axi_dma: dma@41e00000 {
+			#dma-cells = <1>;
+			axistream-connected = <&enet>;
+			reg = <0x0 0x41e00000 0x0 0x10000>;
+			clock-frequency = <100000000>;
+			clock-names = "s_axi_lite_aclk";
+			clocks = <&clk100>;
+			interrupt-names = "mm2s_introut", "s2mm_introut";
+			interrupt-parent = <&axi_intc>;
+			interrupts = <8 2 9 2>;
+		};
 	};
 };
