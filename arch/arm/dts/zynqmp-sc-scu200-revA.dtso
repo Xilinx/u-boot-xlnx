@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for SC on SCU200 revA (k24)
+ *
+ * (C) Copyright 2025, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/dts-v1/;
+/plugin/;
+
+&{/} {
+	compatible = "xlnx,zynqmp-sc-scu200-revA",
+		     "xlnx,zynqmp-sc-scu200", "xlnx,zynqmp";
+	model = "ZynqMP SC SCU200 revA";
+};
+
+&i2c0 { /* I2C_SCK C42/D42 - MIO 66/67 FMC */
+	status = "okay";
+	/* board_i2c0 */
+};
+
+&i2c1 { /* I2C_SCK C26/C27 - MIO from SOM */
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	i2carb: i2c-arbitrator@72 { /* u75 */
+		compatible = "nxp,pca9541";
+		reg = <0x72>;
+
+		i2carb1: i2c-arb {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* board_i2c1 */
+			/* 0x69 - SIT95211 clock generator */
+			/* 0x20 - TPS25730 power */
+			/* 0x44 - ina700 monitor */
+			/* 0x40 - pina745ai power */
+			/* 0x45 - ina700 monitor */
+
+			eeprom_user: eeprom@57 { /* also at address 0x5f - 1024Kbit */
+				bootph-all;
+				compatible = "atmel,24c1025"; /* st 24FC1025T */
+				reg = <0x57>;
+			};
+		};
+	};
+};
+
+&zynqmp_dpsub {
+	status = "disabled";
+};
