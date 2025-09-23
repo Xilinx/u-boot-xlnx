@@ -336,3 +336,7 @@
 &mmi_dc {
 	status = "okay";
 };
+
+&sysmon0 {
+	status = "okay";
+};
