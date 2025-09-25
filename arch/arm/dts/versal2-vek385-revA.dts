@@ -154,8 +154,6 @@
 
 	i2c-arbitrator@72 { /* u161 */
 		compatible = "nxp,pca9541";
-		#address-cells = <1>;
-		#size-cells = <0>;
 		bootph-all;
 		reg = <0x72>;
 

@@ -3,7 +3,7 @@
  * dts file for Xilinx ZynqMP SC k24 RevA
  *
  * (C) Copyright 2020 - 2021, Xilinx, Inc.
- * (C) Copyright 2023 - 2024, Advanced Micro Devices, Inc.
+ * (C) Copyright 2023 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
@@ -77,8 +77,6 @@
 
 	i2c-arbitrator@72 { /* u161 */
 		compatible = "nxp,pca9541";
-		#address-cells = <1>;
-		#size-cells = <0>;
 		bootph-all;
 		reg = <0x72>;
 
