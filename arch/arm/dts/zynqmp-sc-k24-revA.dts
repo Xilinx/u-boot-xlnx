@@ -142,7 +142,7 @@
 
 &dwc3_0 {
 	status = "okay";
-	dr_mode = "otg";
+	dr_mode = "host";
 	snps,usb3_lpm_capable;
 	maximum-speed = "super-speed";
 };
