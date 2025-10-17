@@ -8,6 +8,7 @@
 #include <command.h>
 #include <time.h>
 #include <asm/global_data.h>
+#include <asm/io.h>
 #include <asm/system.h>
 #include <linux/bitops.h>
 
@@ -27,7 +28,31 @@ unsigned long notrace get_tbclk(void)
 	return cntfrq;
 }
 
-#ifdef CONFIG_SYS_FSL_ERRATUM_A008585
+#ifdef CONFIG_ARCH_VERSAL2
+
+#define VERSAL2_TIMESTAMP_GEN_COUNTER		0xEC920008
+
+unsigned long timer_read_counter(void)
+{
+	u32 upper0, upper1, lower;
+
+read_again:
+	isb();
+	upper0 = readl(VERSAL2_TIMESTAMP_GEN_COUNTER + 0x4);
+
+	isb();
+	lower = readl(VERSAL2_TIMESTAMP_GEN_COUNTER);
+
+	isb();
+	upper1 = readl(VERSAL2_TIMESTAMP_GEN_COUNTER + 0x4);
+
+	if (upper0 != upper1)
+		goto read_again;
+
+	return ((unsigned long)upper1 << 32 | lower);
+}
+
+#elif CONFIG_SYS_FSL_ERRATUM_A008585
 /*
  * FSL erratum A-008585 says that the ARM generic timer counter "has the
  * potential to contain an erroneous value for a small number of core
