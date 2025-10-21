@@ -681,6 +681,7 @@
 			reg = <0 0xed920000 0 0x1000>;
 			interrupts = <0 164 4>, <0 164 4>, <0 164 4>, <0 164 4>;
 			clock-names = "pclk", "hclk", "tx_clk", "tsu_clk";
+			dma-coherent;
 		};
 
 		gic: interrupt-controller@e2000000 {
