@@ -23,9 +23,9 @@
 	};
 
 	aliases {
-		serial0 = &serial0;
+		serial0 = &dcc;
+		serial1 = &serial0;
 		spi0 = &ospi;
-		/* serial0 = &dcc; */
 	};
 
 	chosen {

@@ -23,8 +23,8 @@
 	};
 
 	aliases {
-		serial0 = &serial0;
-		/* serial0 = &dcc; */
+		serial0 = &dcc;
+		serial1 = &serial0;
 	};
 
 	chosen {
