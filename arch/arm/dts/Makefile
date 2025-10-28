@@ -449,6 +449,7 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 dtb-$(CONFIG_ARCH_VERSAL2) += \
 	versal2-mini-emmc.dtb \
 	versal2-mini-ospi.dtb \
+	versal2-mini-ospi-stacked.dtb \
 	versal2-mini-qspi.dtb \
 	versal2-mini.dtb \
 	versal2-vek385-revA.dtb \
