@@ -451,6 +451,12 @@ dtb-$(CONFIG_ARCH_VERSAL2) += \
 	versal2-mini-ospi.dtb \
 	versal2-mini-ospi-stacked.dtb \
 	versal2-mini-qspi.dtb \
+	versal2-mini-qspi-parallel.dtb \
+	versal2-mini-qspi-stacked.dtb \
+	versal2-mini-qspi-x1-single.dtb \
+	versal2-mini-qspi-x1-stacked.dtb \
+	versal2-mini-qspi-x2-single.dtb \
+	versal2-mini-qspi-x2-stacked.dtb \
 	versal2-mini.dtb \
 	versal2-vek385-revA.dtb \
 	versal2-vek385-revB.dtb \
