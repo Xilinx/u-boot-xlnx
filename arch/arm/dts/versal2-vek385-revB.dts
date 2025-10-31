@@ -113,6 +113,7 @@
 
 &ufshc { /* PMC_MIO24-25 */
 	status = "okay";
+	dma-coherent;
 };
 
 &usb1 { /* PMC_MIO27-39 */
