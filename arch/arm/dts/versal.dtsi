@@ -598,6 +598,11 @@
 			#size-cells = <0>;
 		};
 
+		trng: rng@f1230000 {
+			compatible = "xlnx,versal-trng";
+			reg = <0x0 0xf1230000 0x0 0x1000>;
+		};
+
 		sysmon0: sysmon@f1270000 {
 			compatible = "xlnx,versal-sysmon";
 			reg = <0x0 0xf1270000 0x0 0x4000>;
