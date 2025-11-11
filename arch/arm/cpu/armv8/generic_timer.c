@@ -30,8 +30,22 @@ unsigned long notrace get_tbclk(void)
 
 unsigned long timer_read_counter(void)
 {
+	u32 upper0, upper1, lower;
+
+read_again:
 	isb();
-	return readq(VERSAL2_TIMESTAMP_GEN_COUNTER);
+	upper0 = readl(VERSAL2_TIMESTAMP_GEN_COUNTER + 0x4);
+
+	isb();
+	lower = readl(VERSAL2_TIMESTAMP_GEN_COUNTER);
+
+	isb();
+	upper1 = readl(VERSAL2_TIMESTAMP_GEN_COUNTER + 0x4);
+
+	if (upper0 != upper1)
+		goto read_again;
+
+	return ((unsigned long)upper1 << 32 | lower);
 }
 
 #elif CONFIG_SYS_FSL_ERRATUM_A008585
