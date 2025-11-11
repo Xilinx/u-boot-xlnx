@@ -159,7 +159,6 @@
 		spi-tx-bus-width = <8>;
 		spi-rx-bus-width = <8>;
 		spi-max-frequency = <20000000>;
-		broken-flash-reset;
 		reset-gpios = <&gpio1 0xc GPIO_ACTIVE_LOW>;
 	};
 };
