@@ -1141,17 +1141,21 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 				offset /= 2;
 
 			if (nor->flags & SNOR_F_HAS_STACKED) {
-				if (offset >= (mtd->size / 2))
+				if (offset >= (mtd->size / 2)) {
+					offset = offset - (mtd->size / 2);
 					nor->spi->flags |= SPI_XFER_U_PAGE;
-				else
+				} else {
 					nor->spi->flags &= ~SPI_XFER_U_PAGE;
+				}
 			}
 		}
+		if (nor->addr_width == 3) {
 #if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
-		ret = write_bar(nor, offset);
-		if (ret < 0)
-			goto erase_err;
+			ret = write_bar(nor, offset);
+			if (ret < 0)
+				goto erase_err;
 #endif
+		}
 		ret = write_enable(nor);
 		if (ret < 0)
 			goto erase_err;
@@ -1705,11 +1709,12 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 		ret = write_bar(nor, offset);
 		if (ret < 0)
 			return log_ret(ret);
+#endif
+
 		if (len < rem_bank_len)
 			read_len = len;
 		else
 			read_len = rem_bank_len;
-#endif
 
 		if (read_len == 0)
 			return -EIO;
@@ -2092,11 +2097,13 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 			}
 		}
 
+		if (nor->addr_width == 3) {
 #if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
-		ret = write_bar(nor, offset);
-		if (ret < 0)
-			return ret;
+			ret = write_bar(nor, offset);
+			if (ret < 0)
+				return ret;
 #endif
+		}
 
 		/* the size of data remaining on the first page */
 		page_remain = min_t(size_t,
@@ -3909,10 +3916,8 @@ static int s25_s28_mdp_ready(struct spi_nor *nor)
 
 	for (addr = 0; addr < nor->mtd.size; addr += SZ_128M) {
 		ret = spansion_sr_ready(nor, addr, nor->rdsr_dummy);
-		if (ret < 0)
+		if (!ret)
 			return ret;
-		else if (ret == 0)
-			return 0;
 	}
 
 	return 1;
@@ -4304,12 +4309,6 @@ static void mt35xu512aba_post_sfdp_fixup(struct spi_nor *nor,
 		params->rdsr_dummy = 8;
 		params->rdsr_addr_nbytes = 0;
 	}
-
-	/*
-	 * SCCR Map 22nd DWORD does not indicate DTR Octal Mode Enable
-	 * for MT35XU512ABA but is actually supported by device.
-	 */
-	nor->flags |= SNOR_F_IO_MODE_EN_VOLATILE;
 
 	/*
 	 * The BFPT quad enable field is set to a reserved value so the quad
@@ -6502,6 +6501,7 @@ int spi_nor_scan(struct spi_nor *nor)
 #else
 	/* Configure the BAR - discover bank cmds and read current bank */
 	nor->addr_width = 3;
+	set_4byte(nor, info, 0);
 	ret = read_bar(nor, info);
 	if (ret < 0)
 		return ret;
