@@ -7,7 +7,7 @@
 #ifndef _DT_BINDINGS_CLK_VERSAL2_H
 #define _DT_BINDINGS_CLK_VERSAL2_H
 
-#include <dt-bindings/clock/xlnx-versal-net-clk.h>
+#include "xlnx-versal-net-clk.h"
 
 #define CAN2_REF_2X	0xC1
 #define CAN3_REF_2X	0xC6

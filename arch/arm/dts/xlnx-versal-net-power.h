@@ -7,7 +7,7 @@
 #ifndef _DT_BINDINGS_VERSAL_NET_POWER_H
 #define _DT_BINDINGS_VERSAL_NET_POWER_H
 
-#include <dt-bindings/power/xlnx-versal-power.h>
+#include "xlnx-versal-power.h"
 
 #define PM_DEV_USB_1				(0x182240D7U)
 #define PM_DEV_FPD_SWDT_0			(0x182240DBU)

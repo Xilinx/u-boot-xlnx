@@ -16,8 +16,8 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
-#include <dt-bindings/power/xlnx-zynqmp-power.h>
-#include <dt-bindings/reset/xlnx-zynqmp-resets.h>
+#include "xlnx-zynqmp-power.h"
+#include "xlnx-zynqmp-resets.h"
 #include <dt-bindings/thermal/thermal.h>
 
 / {

@@ -7,10 +7,10 @@
  * Michal Simek <michal.simek@amd.com>
  */
 
-#include <dt-bindings/power/xlnx-versal-power.h>
-#include <dt-bindings/power/xlnx-versal-regnode.h>
-#include <dt-bindings/clock/xlnx-versal-clk.h>
-#include <dt-bindings/reset/xlnx-versal-resets.h>
+#include "xlnx-versal-power.h"
+#include "xlnx-versal-regnode.h"
+#include "xlnx-versal-clk.h"
+#include "xlnx-versal-resets.h"
 
 / {
 	pl_alt_ref: pl-alt-ref {

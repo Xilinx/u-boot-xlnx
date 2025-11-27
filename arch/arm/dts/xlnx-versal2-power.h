@@ -7,7 +7,7 @@
 #ifndef _DT_BINDINGS_VERSAL2_POWER_H
 #define _DT_BINDINGS_VERSAL2_POWER_H
 
-#include <dt-bindings/power/xlnx-versal-net-power.h>
+#include "xlnx-versal-net-power.h"
 
 #define PM_DEV_CAN_FD_2				(0x1822411DU)
 #define PM_DEV_CAN_FD_3				(0x1822411EU)

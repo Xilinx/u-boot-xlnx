@@ -8,9 +8,9 @@
  * Michal Simek <michal.simek@amd.com>
  */
 
-#include <dt-bindings/clock/xlnx-versal2-clk.h>
-#include <dt-bindings/power/xlnx-versal2-power.h>
-#include <dt-bindings/reset/xlnx-versal2-resets.h>
+#include "xlnx-versal2-clk.h"
+#include "xlnx-versal2-power.h"
+#include "xlnx-versal2-resets.h"
 
 / {
 	ref_clk: ref-clk {

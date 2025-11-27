@@ -7,7 +7,7 @@
 #ifndef _DT_BINDINGS_VERSAL_NET_RESETS_H
 #define _DT_BINDINGS_VERSAL_NET_RESETS_H
 
-#include <dt-bindings/reset/xlnx-versal-resets.h>
+#include "xlnx-versal-resets.h"
 
 #define VERSAL_RST_USB_1			(0xC1040C6U)
 

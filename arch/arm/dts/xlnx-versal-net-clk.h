@@ -7,7 +7,7 @@
 #ifndef _DT_BINDINGS_CLK_VERSAL_NET_H
 #define _DT_BINDINGS_CLK_VERSAL_NET_H
 
-#include <dt-bindings/clock/xlnx-versal-clk.h>
+#include "xlnx-versal-clk.h"
 
 #define GEM0_REF_RX	0xA9
 #define GEM0_REF_TX	0xA8
