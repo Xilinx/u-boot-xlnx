@@ -522,6 +522,8 @@ extern smc_call_handler_t __data smc_call_handler;
 #define PLM_MODULE_ID_MASK	GENMASK(15, 8)
 #define API_ID_MASK		GENMASK(7, 0)
 
+#define PM_DEV_OSPI		(0x1822402aU)
+
 #define CRP_BOOT_MODE_REG_NODE		0x30000001
 #define CRP_BOOT_MODE_REG_OFFSET	0x200
 
