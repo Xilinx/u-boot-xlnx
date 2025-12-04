@@ -1754,4 +1754,6 @@ int ofnode_copy_node(ofnode dst_parent, const char *name, ofnode src,
  */
 int ofnode_delete(ofnode *nodep);
 
+ofnode get_next_memory_node(ofnode mem);
+
 #endif
