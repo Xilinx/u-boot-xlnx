@@ -44,36 +44,28 @@
 		bootph-all;
 	};
 
-	amba: axi {
-		compatible = "simple-bus";
+	serial0: serial@f1920000 {
 		bootph-all;
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0 0xf1920000 0 0x1000>;
+		reg-io-width = <4>;
+		clock = <1000000>;
+		skip-init;
+	};
 
-		serial0: serial@f1920000 {
-			bootph-all;
-			compatible = "arm,pl011", "arm,primecell";
-			reg = <0 0xf1920000 0 0x1000>;
-			reg-io-width = <4>;
-			clock = <1000000>;
-			skip-init;
-		};
-
-		sdhci1: sdhci@f1050000 {
-			compatible = "xlnx,versal-net-emmc";
-			status = "okay";
-			non-removable;
-			disable-wp;
-			no-sd;
-			no-sdio;
-			no-1-8-v;
-			cap-mmc-hw-reset;
-			bus-width = <8>;
-			reg = <0 0xf1050000 0 0x10000>;
-			clock-names = "clk_xin", "clk_ahb";
-			clocks = <&clk200>, <&clk200>;
-			xlnx,mio-bank = <0>;
-		};
+	sdhci1: sdhci@f1050000 {
+		compatible = "xlnx,versal-net-emmc";
+		status = "okay";
+		non-removable;
+		disable-wp;
+		no-sd;
+		no-sdio;
+		no-1-8-v;
+		cap-mmc-hw-reset;
+		bus-width = <8>;
+		reg = <0 0xf1050000 0 0x10000>;
+		clock-names = "clk_xin", "clk_ahb";
+		clocks = <&clk200>, <&clk200>;
+		xlnx,mio-bank = <0>;
 	};
 };

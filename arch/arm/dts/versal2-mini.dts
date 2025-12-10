@@ -37,20 +37,12 @@
 		bootph-all;
 	};
 
-	amba: axi {
-		compatible = "simple-bus";
+	serial0: serial@f1920000 {
 		bootph-all;
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-
-		serial0: serial@f1920000 {
-			bootph-all;
-			compatible = "arm,pl011", "arm,primecell";
-			reg = <0 0xf1920000 0 0x1000>;
-			reg-io-width = <4>;
-			clock = <1000000>;
-			skip-init;
-		};
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0 0xf1920000 0 0x1000>;
+		reg-io-width = <4>;
+		clock = <1000000>;
+		skip-init;
 	};
 };

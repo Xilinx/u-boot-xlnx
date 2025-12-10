@@ -44,40 +44,32 @@
 		bootph-all;
 	};
 
-	amba: axi {
-		compatible = "simple-bus";
+	serial0: serial@f1920000 {
 		bootph-all;
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
+		compatible = "arm,pl011", "arm,primecell";
+		reg = <0 0xf1920000 0 0x1000>;
+		reg-io-width = <4>;
+		clock = <1000000>;
+		skip-init;
+	};
 
-		serial0: serial@f1920000 {
-			bootph-all;
-			compatible = "arm,pl011", "arm,primecell";
-			reg = <0 0xf1920000 0 0x1000>;
-			reg-io-width = <4>;
-			clock = <1000000>;
-			skip-init;
-		};
+	qspi: spi@f1030000 {
+		compatible = "xlnx,versal-qspi-1.0";
+		status = "okay";
+		clock-names = "ref_clk", "pclk";
+		num-cs = <1>;
+		reg = <0 0xf1030000 0 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		clocks = <&clk150>, <&clk150>;
 
-		qspi: spi@f1030000 {
-			compatible = "xlnx,versal-qspi-1.0";
-			status = "okay";
-			clock-names = "ref_clk", "pclk";
-			num-cs = <1>;
-			reg = <0 0xf1030000 0 0x1000>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			clocks = <&clk150>, <&clk150>;
-
-			flash0: flash@0 {
-				compatible = "n25q512a", "micron,m25p80",
-					     "jedec,spi-nor";
-				reg = <0>;
-				spi-tx-bus-width = <4>;
-				spi-rx-bus-width = <4>;
-				spi-max-frequency = <20000000>;
-			};
+		flash0: flash@0 {
+			compatible = "n25q512a", "micron,m25p80",
+				     "jedec,spi-nor";
+			reg = <0>;
+			spi-tx-bus-width = <4>;
+			spi-rx-bus-width = <4>;
+			spi-max-frequency = <20000000>;
 		};
 	};
 };
