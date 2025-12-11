@@ -432,7 +432,7 @@ int dram_init(void)
 		      __func__, i, (unsigned long long)bank_info[i].phys,
 		      (unsigned long long)bank_info[i].size);
 
-		if (text > bank_info[i].phys &&
+		if (text >= bank_info[i].phys &&
 		    text < (bank_info[i].phys + bank_info[i].size)) {
 			gd->ram_base = bank_info[i].phys;
 			gd->ram_size = bank_info[i].size;
