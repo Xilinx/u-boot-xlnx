@@ -1027,7 +1027,7 @@
 			interrupts = <0 234 4>;
 			reg = <0 0xf10b0000 0 0x100>;
 			freq-table-hz = <0 0>;
-			clock-names = "core_clk";
+			clock-names = "core";
 			reset-names = "host", "phy";
 		};
 
