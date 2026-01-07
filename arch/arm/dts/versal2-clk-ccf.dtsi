@@ -418,13 +418,13 @@
 
 &sdhci0 {
 	clocks = <&versal2_clk SDIO0_REF>, <&versal2_clk LPD_LSBUS>,
-		<&versal2_clk SD_DLL_REF>;
+		 <&versal2_clk SD_DLL_REF>;
 	power-domains = <&versal2_firmware PM_DEV_SDIO_0>;
 };
 
 &sdhci1 {
 	clocks = <&versal2_clk SDIO1_REF>, <&versal2_clk LPD_LSBUS>,
-		<&versal2_clk SD_DLL_REF>;
+		 <&versal2_clk SD_DLL_REF>;
 	power-domains = <&versal2_firmware PM_DEV_SDIO_1>;
 };
 

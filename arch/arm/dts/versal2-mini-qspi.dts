@@ -18,7 +18,7 @@
 	#size-cells = <2>;
 
 	memory: memory@0 {
-		reg = <0 0xBBF00000 0 0x100000>;
+		reg = <0 0xbbf00000 0 0x100000>;
 		device_type = "memory";
 	};
 

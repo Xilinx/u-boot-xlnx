@@ -285,8 +285,7 @@
 				interrupts = <0 180 4>, <0 180 4>, <0 180 4>;
 				arbiter-if = <&gpu_aw_message_a_0>;
 				system-coherency = <0x1f>;
-				physical-memory-group-manager =
-				<&gpu_physical_memory_group_manager>;
+				physical-memory-group-manager = <&gpu_physical_memory_group_manager>;
 			};
 
 			gpu_aw_message_a_0: gpu-aw-message@fffc0 {
@@ -308,7 +307,7 @@
 				compatible = "arm,mali-gpu-system";
 				reg = <0 0 0 0x10000>;
 				interrupt-names = "PTM_UNCORRECTED_ERROR_IRQ",
-						"PTM_DEFERRED_ERROR_IRQ";
+						  "PTM_DEFERRED_ERROR_IRQ";
 				interrupts = <0 188 4>, <0 188 4>;
 			};
 
@@ -346,9 +345,9 @@
 				};
 			};
 
-			cooling-maps {
-			};
+			cooling-maps {};
 		};
+
 		versal_thermal_aie: versal-aie-thermal {
 			polling-delay-passive = <250>; /* milliseconds */
 			polling-delay = <1000>; /* milliseconds */
@@ -368,8 +367,7 @@
 				};
 			};
 
-			cooling-maps {
-			};
+			cooling-maps {};
 		};
 	};
 
@@ -880,7 +878,7 @@
 			reg = <0 0xf12a0000 0 0x100>;
 			interrupts = <0 200 4>, <0 201 4>;
 			interrupt-names = "alarm", "sec";
-			calibration = <0x7FFF>;
+			calibration = <0x7fff>;
 		};
 
 		sdhci0: mmc@f1040000 {
@@ -1041,7 +1039,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 
-			dwc3_0: usb@f1b00000  {
+			dwc3_0: usb@f1b00000 {
 				compatible = "snps,dwc3";
 				status = "disabled";
 				reg = <0 0xf1b00000 0 0x10000>;
@@ -1065,7 +1063,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 
-			dwc3_1: usb@f1c00000  {
+			dwc3_1: usb@f1c00000 {
 				compatible = "snps,dwc3";
 				status = "disabled";
 				reg = <0x0 0xf1c00000 0x0 0x10000>;
@@ -1088,7 +1086,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 
-			mmi_dwc3: usb@edec0000  {
+			mmi_dwc3: usb@edec0000 {
 				compatible = "snps,dwc3";
 				status = "disabled";
 				reg = <0x0 0xedec0000 0x0 0x10000>;
