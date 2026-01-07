@@ -24,10 +24,12 @@
 		stdout-path = "serial0:115200n8";
 	};
 
-/*	aliases {
-		nvmem0 = &eeprom0;
-		nvmem1 = &eeprom1;
-	}; */
+	/*
+	 * aliases {
+	 *	nvmem0 = &eeprom0;
+	 *	nvmem1 = &eeprom1;
+	 * };
+	 */
 };
 
 &i2c0 {

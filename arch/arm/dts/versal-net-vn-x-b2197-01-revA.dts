@@ -112,10 +112,11 @@
 		ranges;
 		reg = <0 0xff9a0000 0 0x10000>;
 		xlnx,cluster-mode = <1>;
+
 		remoteproc_r52: r52-0 {
 			compatible = "xilinx,r52";
 			memory-region = <&rsc_tbl_carveout>, <&rpu0vdev0buffer>,
-				<&rpu0vdev0vring0>, <&rpu0vdev0vring1>;
+					<&rpu0vdev0vring0>, <&rpu0vdev0vring1>;
 			power-domain = <&versal_net_firmware PM_DEV_RPU_A_0>;
 			mboxes = <&ipi_mailbox_rpu0 0>, <&ipi_mailbox_rpu0 1>;
 			mbox-names = "tx", "rx";
