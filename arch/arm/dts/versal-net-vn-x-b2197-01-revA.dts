@@ -142,7 +142,6 @@
 &ospi {
 	num-cs = <2>;
 	iommus = <&smmu 0x245>;
-	reset-names = "qspi";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	reset-names = "qspi";

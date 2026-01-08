@@ -3,6 +3,7 @@
  * dts file for Xilinx Versal NET fixed clock
  *
  * (C) Copyright 2022, Xilinx, Inc.
+ * (C) Copyright 2022 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
