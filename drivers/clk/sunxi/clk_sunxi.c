@@ -122,9 +122,12 @@ extern const struct ccu_desc f1c100s_ccu_desc;
 extern const struct ccu_desc h3_ccu_desc;
 extern const struct ccu_desc h6_ccu_desc;
 extern const struct ccu_desc h616_ccu_desc;
+extern const struct ccu_desc a100_ccu_desc;
 extern const struct ccu_desc h6_r_ccu_desc;
 extern const struct ccu_desc r40_ccu_desc;
 extern const struct ccu_desc v3s_ccu_desc;
+extern const struct ccu_desc a523_ccu_desc;
+extern const struct ccu_desc a523_r_ccu_desc;
 
 static const struct udevice_id sunxi_clk_ids[] = {
 #ifdef CONFIG_CLK_SUN4I_A10
@@ -215,9 +218,21 @@ static const struct udevice_id sunxi_clk_ids[] = {
 	{ .compatible = "allwinner,sun50i-h616-r-ccu",
 	  .data = (ulong)&h6_r_ccu_desc },
 #endif
+#ifdef CONFIG_CLK_SUN50I_A100
+	{ .compatible = "allwinner,sun50i-a100-ccu",
+	  .data = (ulong)&a100_ccu_desc },
+#endif
 #ifdef CONFIG_CLK_SUNIV_F1C100S
 	{ .compatible = "allwinner,suniv-f1c100s-ccu",
 	  .data = (ulong)&f1c100s_ccu_desc },
+#endif
+#ifdef CONFIG_CLK_SUN55I_A523
+	{ .compatible = "allwinner,sun55i-a523-ccu",
+	  .data = (ulong)&a523_ccu_desc },
+#endif
+#ifdef CONFIG_CLK_SUN55I_A523_R
+	{ .compatible = "allwinner,sun55i-a523-r-ccu",
+	  .data = (ulong)&a523_r_ccu_desc },
 #endif
 	{ }
 };

@@ -93,11 +93,6 @@ int board_late_init(void)
 	return 0;
 }
 
-int board_init(void)
-{
-	return 0;
-}
-
 /**
  * dtb_dt_qemu - Return the address of the QEMU provided FDT.
  *
@@ -202,7 +197,7 @@ static int fdtdec_fix_gic(void *fdt)
 	smc_get_gic_its_base(&gic_its_base);
 
 	if (gic_its_base != 0) {
-		offs = fdt_path_offset(fdt, "/its");
+		offs = fdt_path_offset(fdt, "/interrupt-controller/msi-controller");
 		if (offs < 0)
 			return offs;
 

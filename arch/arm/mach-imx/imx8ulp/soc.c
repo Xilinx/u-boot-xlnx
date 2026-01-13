@@ -56,7 +56,7 @@ int mmc_get_env_dev(void)
 
 	if (ret != ROM_API_OKAY) {
 		puts("ROMAPI: failure at query_boot_info\n");
-		return CONFIG_SYS_MMC_ENV_DEV;
+		return CONFIG_ENV_MMC_DEVICE_INDEX;
 	}
 
 	boot_type = boot >> 16;
@@ -64,7 +64,7 @@ int mmc_get_env_dev(void)
 
 	/* If not boot from sd/mmc, use default value */
 	if (boot_type != BOOT_TYPE_SD && boot_type != BOOT_TYPE_MMC)
-		return env_get_ulong("mmcdev", 10, CONFIG_SYS_MMC_ENV_DEV);
+		return env_get_ulong("mmcdev", 10, CONFIG_ENV_MMC_DEVICE_INDEX);
 
 	return board_mmc_get_env_dev(boot_instance);
 }
@@ -279,7 +279,7 @@ int print_cpuinfo(void)
 	if (!ret) {
 		ret = thermal_get_temp(udev, &temp);
 		if (!ret)
-			printf("CPU current temperature: %d\n", temp);
+			printf("CPU current temperature: %dC\n", temp / 1000);
 		else
 			debug(" - failed to get CPU current temperature\n");
 	} else {
@@ -384,7 +384,22 @@ static struct mm_region imx8ulp_arm64_mem_map[] = {
 		/* SRAM0 (align with 2M) */
 		.virt = 0x22000000UL,
 		.phys = 0x22000000UL,
-		.size = 0x200000UL,
+		.size = 0x1f000UL,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+			 PTE_BLOCK_OUTER_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		/* SCMI shared memory buffer must be mapped as non-cacheable. */
+		.virt = 0x2201f000UL,
+		.phys = 0x2201f000UL,
+		.size = 0x1000UL,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+			 PTE_BLOCK_NON_SHARE |
+			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
+	}, {
+		.virt = 0x22020000UL,
+		.phys = 0x22020000UL,
+		.size = 0x1e0000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 			 PTE_BLOCK_OUTER_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
@@ -804,9 +819,10 @@ int imx8ulp_dm_post_init(void)
 	return 0;
 }
 EVENT_SPY_SIMPLE(EVT_DM_POST_INIT_F, imx8ulp_dm_post_init);
+EVENT_SPY_SIMPLE(EVT_DM_POST_INIT_R, imx8ulp_dm_post_init);
 
 #if defined(CONFIG_XPL_BUILD)
-__weak void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
+__weak void __noreturn jump_to_image(struct spl_image_info *spl_image)
 {
 	debug("image entry point: 0x%lx\n", spl_image->entry_point);
 

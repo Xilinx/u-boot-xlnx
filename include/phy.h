@@ -123,6 +123,11 @@ struct phy_driver {
 	int (*write_mmd)(struct phy_device *phydev, int devad, int reg,
 			 u16 val);
 
+	/** @read_page: Return the current PHY register page number */
+	int (*read_page)(struct phy_device *phydev);
+	/** @write_page: Set the current PHY register page number */
+	int (*write_page)(struct phy_device *phydev, int page);
+
 	/* driver private data */
 	ulong data;
 };
@@ -314,6 +319,9 @@ int phy_modify_mmd_changed(struct phy_device *phydev, int devad, u32 regnum,
 			   u16 mask, u16 set);
 int phy_modify_mmd(struct phy_device *phydev, int devad, u32 regnum,
 		   u16 mask, u16 set);
+int phy_save_page(struct phy_device *phydev);
+int phy_select_page(struct phy_device *phydev, int page);
+int phy_restore_page(struct phy_device *phydev, int oldpage, int ret);
 
 int phy_startup(struct phy_device *phydev);
 int phy_config(struct phy_device *phydev);
@@ -332,6 +340,30 @@ int gen10g_config(struct phy_device *phydev);
 int gen10g_startup(struct phy_device *phydev);
 int gen10g_shutdown(struct phy_device *phydev);
 int gen10g_discover_mmds(struct phy_device *phydev);
+
+/**
+ * phy_set_bits - Convenience function for setting bits in a PHY register
+ * @phydev: the phy_device struct
+ * @devad: The MMD to read from
+ * @regnum: register number to write
+ * @val: bits to set
+ */
+static inline int phy_set_bits(struct phy_device *phydev, int devad, u32 regnum, u16 val)
+{
+	return phy_modify(phydev, devad, regnum, 0, val);
+}
+
+/**
+ * phy_clear_bits - Convenience function for clearing bits in a PHY register
+ * @phydev: the phy_device struct
+ * @devad: The MMD to write to
+ * @regnum: register number to write
+ * @val: bits to clear
+ */
+static inline int phy_clear_bits(struct phy_device *phydev, int devad, u32 regnum, u16 val)
+{
+	return phy_modify(phydev, devad, regnum, val, 0);
+}
 
 /**
  * U_BOOT_PHY_DRIVER() - Declare a new U-Boot driver

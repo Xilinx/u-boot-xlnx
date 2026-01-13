@@ -8,6 +8,9 @@ config IMX8M
 	select LTO
 	select ROM_UNIFIED_SECTIONS
 	select ARMV8_CRYPTO
+	imply CPU
+	imply CPU_IMX
+	imply IMX_TMU
 
 config IMX8MQ
 	bool
@@ -37,6 +40,17 @@ config SYS_HAS_ARMV8_SECURE_BASE
 	  If enabled, please also define the value for ARMV8_SECURE_BASE,
 	  for i.MX8M, it could be some address in OCRAM.
 
+config IMX8M_OPTEE_LOAD_ADDR
+	hex "Load address of OPTEE image"
+	default 0xbe000000 if IMX8MM
+	default 0xbe000000 if IMX8MN
+	default 0x56000000 if IMX8MP
+	default 0xfe000000 if IMX8MQ
+	help
+	  The load and entry address for the OPTEE image. This value defaults to
+	  the one defined in tf-a if not provided in the board defconfig file.
+
+
 choice
 	prompt "NXP i.MX8M board select"
 	optional
@@ -53,7 +67,13 @@ config TARGET_IMX8MQ_EVK
 	select FSL_CAAM
 	select ARCH_MISC_INIT
 	select SPL_CRYPTO if SPL
+	select CMD_REMOTEPROC
+	select REMOTEPROC_IMX
+	select REGMAP
+	select SYSCON
 	imply OF_UPSTREAM
+	imply BOOTSTD_FULL
+	imply BOOTSTD_BOOTCOMMAND
 
 config TARGET_IMX8MQ_PHANBELL
 	bool "imx8mq_phanbell"
@@ -79,6 +99,12 @@ config TARGET_IMX8MM_EVK
 	select FSL_CAAM
 	select ARCH_MISC_INIT
 	select SPL_CRYPTO if SPL
+	select CMD_REMOTEPROC
+	select REMOTEPROC_IMX
+	select REGMAP
+	select SYSCON
+	imply BOOTSTD_FULL
+	imply BOOTSTD_BOOTCOMMAND
 	imply OF_UPSTREAM
 
 config TARGET_IMX8MM_ICORE_MX8MM
@@ -153,7 +179,13 @@ config TARGET_IMX8MN_EVK
 	select IMX8M_LPDDR4
 	select FSL_CAAM
 	select SPL_CRYPTO if SPL
+	select CMD_REMOTEPROC
+	select REMOTEPROC_IMX
+	select REGMAP
+	select SYSCON
 	imply OF_UPSTREAM
+	imply BOOTSTD_FULL
+	imply BOOTSTD_BOOTCOMMAND
 
 config TARGET_IMX8MN_DDR4_EVK
 	bool "imx8mn DDR4 EVK board"
@@ -162,7 +194,13 @@ config TARGET_IMX8MN_DDR4_EVK
 	select IMX8M_DDR4
 	select FSL_CAAM
 	select SPL_CRYPTO if SPL
+	select CMD_REMOTEPROC
+	select REMOTEPROC_IMX
+	select REGMAP
+	select SYSCON
 	imply OF_UPSTREAM
+	imply BOOTSTD_FULL
+	imply BOOTSTD_BOOTCOMMAND
 
 config TARGET_IMX8MN_VENICE
 	bool "Support Gateworks Venice iMX8M Nano module"
@@ -226,7 +264,13 @@ config TARGET_IMX8MP_EVK
 	select FSL_CAAM
 	select ARCH_MISC_INIT
 	select SPL_CRYPTO if SPL
+	select CMD_REMOTEPROC
+	select REMOTEPROC_IMX
+	select REGMAP
+	select SYSCON
 	imply OF_UPSTREAM
+	imply BOOTSTD_FULL
+	imply BOOTSTD_BOOTCOMMAND
 
 config TARGET_IMX8MP_NAVQP
 	bool "Emcraft Systems i.MX8M Plus NavQ+ board"
@@ -266,6 +310,13 @@ config TARGET_KONTRON_PITX_IMX8M
 	bool "Support Kontron pITX-imx8m"
 	select IMX8MQ
 	select IMX8M_LPDDR4
+
+config TARGET_TORADEX_SMARC_IMX8MP
+	bool "Support Toradex SMARC iMX8M Plus module"
+	select IMX8MP
+	select SUPPORT_SPL
+	select IMX8M_LPDDR4
+	imply OF_UPSTREAM
 
 config TARGET_VERDIN_IMX8MM
 	bool "Support Toradex Verdin iMX8M Mini module"
@@ -314,6 +365,15 @@ config TARGET_PHYCORE_IMX8MP
 	select SUPPORT_SPL
 	select IMX8M_LPDDR4
 	imply OF_UPSTREAM
+
+config TARGET_IMX8MP_LIBRA_FPSC
+	bool "PHYTEC Libra i.MX 8M Plus FPSC"
+	select IMX8MP
+	select SUPPORT_SPL
+	select IMX8M_LPDDR4
+	imply OF_UPSTREAM
+	help
+	  Libra i.MX8M Plus FPSC is an SBC based on the NXP i.MX 8M Plus SoC.
 
 config TARGET_IMX8MM_CL_IOT_GATE
 	bool "CompuLab iot-gate-imx8"
@@ -379,6 +439,7 @@ source "board/kontron/sl-mx8mm/Kconfig"
 source "board/menlo/mx8menlo/Kconfig"
 source "board/msc/sm2s_imx8mp/Kconfig"
 source "board/mntre/imx8mq_reform2/Kconfig"
+source "board/phytec/imx8mp-libra-fpsc/Kconfig"
 source "board/phytec/phycore_imx8mm/Kconfig"
 source "board/phytec/phycore_imx8mp/Kconfig"
 source "board/polyhex/imx8mp_debix_model_a/Kconfig"
@@ -386,6 +447,7 @@ source "board/purism/librem5/Kconfig"
 source "board/ronetix/imx8mq-cm/Kconfig"
 source "board/technexion/pico-imx8mq/Kconfig"
 source "board/variscite/imx8mn_var_som/Kconfig"
+source "board/toradex/smarc-imx8mp/Kconfig"
 source "board/toradex/verdin-imx8mm/Kconfig"
 source "board/toradex/verdin-imx8mp/Kconfig"
 

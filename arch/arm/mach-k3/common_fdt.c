@@ -3,11 +3,11 @@
  * Copyright 2023 Toradex - https://www.toradex.com/
  */
 
+#include <asm/arch/k3-common-fdt.h>
 #include "common.h"
 #include <dm.h>
 #include <fdt_support.h>
 #include <linux/soc/ti/ti_sci_protocol.h>
-#include "common_fdt.h"
 
 static int fdt_fixup_msmc_ram(void *blob, char *parent_path, char *node_name)
 {
@@ -65,6 +65,7 @@ static int fdt_fixup_msmc_ram(void *blob, char *parent_path, char *node_name)
 		      subnode, addr, size);
 		if (addr + size > msmc_size ||
 		    !strncmp(fdt_get_name(blob, subnode, &len), "sysfw", 5) ||
+		    !strncmp(fdt_get_name(blob, subnode, &len), "tifs", 4)  ||
 		    !strncmp(fdt_get_name(blob, subnode, &len), "l3cache", 7)) {
 			fdt_del_node(blob, subnode);
 			debug("%s: deleting subnode %d\n", __func__, subnode);
@@ -118,13 +119,14 @@ int fdt_fixup_reserved(void *blob, const char *name,
 {
 	int nodeoffset, subnode;
 	int ret;
+	struct fdt_memory carveout = {
+		.start = new_address,
+	};
 
 	/* Find reserved-memory */
 	nodeoffset = fdt_subnode_offset(blob, 0, "reserved-memory");
-	if (nodeoffset < 0) {
-		debug("Could not find reserved-memory node\n");
-		return 0;
-	}
+	if (nodeoffset < 0)
+		goto add_carveout;
 
 	/* Find existing matching subnode and remove it */
 	fdt_for_each_subnode(subnode, blob, nodeoffset) {
@@ -138,7 +140,9 @@ int fdt_fixup_reserved(void *blob, const char *name,
 			return -EINVAL;
 		if (!strncmp(node_name, name, strlen(name))) {
 			/* Read out old size first */
-			addr = fdtdec_get_addr_size(blob, subnode, "reg", &size);
+			addr = fdtdec_get_addr_size_auto_parent(
+				blob, nodeoffset, subnode, "reg", 0, &size,
+				false);
 			if (addr == FDT_ADDR_T_NONE)
 				return -EINVAL;
 			new_size = size;
@@ -153,14 +157,48 @@ int fdt_fixup_reserved(void *blob, const char *name,
 		}
 	}
 
-	struct fdt_memory carveout = {
-		.start = new_address,
-		.end = new_address + new_size - 1,
-	};
+add_carveout:
+	carveout.end = new_address + new_size - 1;
 	ret = fdtdec_add_reserved_memory(blob, name, &carveout, NULL, 0, NULL,
 					 FDTDEC_RESERVED_MEMORY_NO_MAP);
 	if (ret < 0)
 		return ret;
 
 	return 0;
+}
+
+static int fdt_fixup_critical_trips(void *blob, int zoneoffset, int maxc)
+{
+	int node, trip;
+
+	node = fdt_subnode_offset(blob, zoneoffset, "trips");
+	if (node < 0)
+		return -1;
+
+	fdt_for_each_subnode(trip, blob, node) {
+		const char *type = fdt_getprop(blob, trip, "type", NULL);
+
+		if (!type || (strncmp(type, "critical", 8) != 0))
+			continue;
+
+		if (fdt_setprop_u32(blob, trip, "temperature", 1000 * maxc) < 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+void fdt_fixup_thermal_critical_trips_k3(void *blob, int maxc)
+{
+	int node, zone;
+
+	node = fdt_path_offset(blob, "/thermal-zones");
+	if (node < 0)
+		return;
+
+	fdt_for_each_subnode(zone, blob, node) {
+		if (fdt_fixup_critical_trips(blob, zone, maxc) < 0)
+			printf("Failed to set temperature in %s critical trips\n",
+			       fdt_get_name(blob, zone, NULL));
+	}
 }

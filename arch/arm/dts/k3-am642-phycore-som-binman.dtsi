@@ -33,7 +33,6 @@
 		ti_sci_enc: ti-fs-enc.bin {
 			filename = "ti-sysfw/ti-sci-firmware-am64x_sr2-hs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_sysfw_cfg: combined-sysfw-cfg.bin {
 			filename = "combined-sysfw-cfg.bin";
@@ -42,7 +41,6 @@
 		sysfw_inner_cert: sysfw-inner-cert {
 			filename = "ti-sysfw/ti-sci-firmware-am64x_sr2-hs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 
 	};
@@ -73,7 +71,6 @@
 		ti_sci_enc_fs: ti-fs-enc.bin {
 			filename = "ti-sysfw/ti-sci-firmware-am64x_sr2-hs-fs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_sysfw_cfg_fs: combined-sysfw-cfg.bin {
 			filename = "combined-sysfw-cfg.bin";
@@ -82,7 +79,6 @@
 		sysfw_inner_cert_fs: sysfw-inner-cert {
 			filename = "ti-sysfw/ti-sci-firmware-am64x_sr2-hs-fs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 
 	};
@@ -109,12 +105,24 @@
 		ti_sci_gp: ti-sci-gp.bin {
 			filename = "ti-sysfw/ti-sci-firmware-am64x-gp.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_sysfw_cfg_gp: combined-sysfw-cfg-gp.bin {
 			filename = "combined-sysfw-cfg.bin";
 			type = "blob-ext";
 		};
+	};
+};
+
+#include "k3-binman-capsule-r5.dtsi"
+
+&capsule_tiboot3 {
+	efi-capsule {
+		/*
+		 * The GUID is generated dynamically by taking a namespace UUID and hashing
+		 * it with the board compatible and fw_image name:
+		 * mkeficapsule guidgen k3-am642-r5-phycore-som-2gb.dtb PHYCORE_AM64X_TIBOOT3
+		 */
+		image-guid = "B0A6B4FA-5DF0-5CD1-90EC-B60BDE798486";
 	};
 };
 
@@ -350,8 +358,11 @@
 					compression = "none";
 					load = <0x8F000000>;
 					arch = "arm";
-
-					blob-ext {
+					ti-secure {
+						content = <&am6xx_phycore_disable_rtc_dtbo>;
+						keyfile = "custMpk.pem";
+					};
+					am6xx_phycore_disable_rtc_dtbo: blob-ext {
 						filename = "dts/upstream/src/arm64/ti/k3-am6xx-phycore-disable-rtc.dtbo";
 					};
 				};
@@ -362,8 +373,11 @@
 					compression = "none";
 					load = <0x8F001000>;
 					arch = "arm";
-
-					blob-ext {
+					ti-secure {
+						content = <&am6xx_phycore_disable_spi_not_dtbo>;
+						keyfile = "custMpk.pem";
+					};
+					am6xx_phycore_disable_spi_not_dtbo: blob-ext {
 						filename = "dts/upstream/src/arm64/ti/k3-am6xx-phycore-disable-spi-nor.dtbo";
 					};
 				};
@@ -374,8 +388,11 @@
 					compression = "none";
 					load = <0x8F002000>;
 					arch = "arm";
-
-					blob-ext {
+					ti-secure {
+						content = <&am6xx_phycore_disable_eth_phy_dtbo>;
+						keyfile = "custMpk.pem";
+					};
+					am6xx_phycore_disable_eth_phy_dtbo: blob-ext {
 						filename = "dts/upstream/src/arm64/ti/k3-am6xx-phycore-disable-eth-phy.dtbo";
 					};
 				};
@@ -386,8 +403,11 @@
 					compression = "none";
 					load = <0x8F003000>;
 					arch = "arm";
-
-					blob-ext {
+					ti-secure {
+						content = <&am6xx_phycore_disable_qspi_nor_dtbo>;
+						keyfile = "custMpk.pem";
+					};
+					am6xx_phycore_disable_qspi_nor_dtbo: blob-ext {
 						filename = "dts/upstream/src/arm64/ti/k3-am6xx-phycore-qspi-nor.dtbo";
 					};
 				};
@@ -502,4 +522,29 @@
 		};
 	};
 };
+
+#include "k3-binman-capsule.dtsi"
+
+&capsule_tispl {
+	efi-capsule {
+		/*
+		 * The GUID is generated dynamically by taking a namespace UUID and hashing
+		 * it with the board compatible and fw_image name:
+		 * mkeficapsule guidgen k3-am642-phyboard-electra-rdk.dtb PHYCORE_AM64X_SPL
+		 */
+		image-guid = "D0F34382-C2C4-509C-A1D4-BC1CB1B992A8";
+	};
+};
+
+&capsule_uboot {
+	efi-capsule {
+		/*
+		 * The GUID is generated dynamically by taking a namespace UUID and hashing
+		 * it with the board compatible and fw_image name:
+		 * mkeficapsule guidgen k3-am642-phyboard-electra-rdk.dtb PHYCORE_AM64X_UBOOT
+		 */
+		image-guid = "0BB40539-DB41-5407-B4D4-EAD057FE10F4";
+	};
+};
+
 #endif /* CONFIG_TARGET_PHYCORE_AM64X_A53 */

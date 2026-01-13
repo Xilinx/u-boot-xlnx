@@ -284,7 +284,7 @@ DECLARE_GLOBAL_DATA_PTR;
  * clock 0: PLL 0 div 1
  * clock 1: PLL 1 div 2
  */
-#define CLK_PLL_CONFIG			0X30
+#define CLK_PLL_CONFIG			0x30
 #define CLK_PLL_MASK			0x33
 
 #define CMN_READY			BIT(0)
@@ -788,7 +788,7 @@ U_BOOT_DRIVER(rockchip_tcphy_usb3_port) = {
 
 U_BOOT_DRIVER(rockchip_typec_phy) = {
 	.name	= "rockchip_typec_phy",
-	.id	= UCLASS_PHY,
+	.id	= UCLASS_NOP,
 	.of_match = rockchip_typec_phy_ids,
 	.probe = rockchip_tcphy_probe,
 	.bind = rockchip_tcphy_bind,

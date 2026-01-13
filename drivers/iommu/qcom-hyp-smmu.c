@@ -11,6 +11,7 @@
 #include <dm.h>
 #include <iommu.h>
 #include <linux/bitfield.h>
+#include <linux/bug.h>
 #include <linux/list.h>
 #include <linux/err.h>
 #include <lmb.h>
@@ -387,8 +388,10 @@ static struct iommu_ops qcom_smmu_ops = {
 };
 
 static const struct udevice_id qcom_smmu500_ids[] = {
-	{ .compatible = "qcom,sdm845-smmu-500" },
+	{ .compatible = "qcom,sc7180-smmu-500" },
 	{ .compatible = "qcom,sc7280-smmu-500" },
+	{ .compatible = "qcom,sdm845-smmu-500" },
+	{ .compatible = "qcom,sm6350-smmu-500" },
 	{ .compatible = "qcom,smmu-500", },
 	{ /* sentinel */ }
 };

@@ -8,6 +8,7 @@
 #include <dm.h>
 #include <errno.h>
 #include <scmi_agent.h>
+#include <scmi_agent-uclass.h>
 #include <scmi_protocols.h>
 #include <asm/types.h>
 #include <dm/device.h>
@@ -175,12 +176,19 @@ U_BOOT_DRIVER(scmi_regulator) = {
 static int scmi_regulator_bind(struct udevice *dev)
 {
 	struct driver *drv;
+	ofnode regul_node;
 	ofnode node;
 	int ret;
 
+	regul_node = ofnode_find_subnode(dev_ofnode(dev), "regulators");
+	if (!ofnode_valid(regul_node)) {
+		dev_err(dev, "no regulators node\n");
+		return -ENXIO;
+	}
+
 	drv = DM_DRIVER_GET(scmi_regulator);
 
-	ofnode_for_each_subnode(node, dev_ofnode(dev)) {
+	ofnode_for_each_subnode(node, regul_node) {
 		ret = device_bind(dev, drv, ofnode_get_name(node),
 				  NULL, node, NULL);
 		if (ret)
@@ -195,3 +203,10 @@ U_BOOT_DRIVER(scmi_voltage_domain) = {
 	.id = UCLASS_NOP,
 	.bind = scmi_regulator_bind,
 };
+
+static struct scmi_proto_match match[] = {
+	{ .proto_id = SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN },
+	{ /* Sentinel */ }
+};
+
+U_BOOT_SCMI_PROTO_DRIVER(scmi_voltage_domain, match);

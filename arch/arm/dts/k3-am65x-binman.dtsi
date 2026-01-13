@@ -32,12 +32,10 @@
 		ti_sci_cert: ti-sci-cert.bin {
 			filename = "ti-sysfw/ti-sci-firmware-am65x_sr2-hs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 		ti-sci-firmware-am65x-hs-enc.bin {
 			filename = "ti-sysfw/ti-sci-firmware-am65x_sr2-hs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 	};
 	itb {
@@ -73,7 +71,6 @@
 		ti_sci: ti-sci.bin {
 			filename = "ti-sysfw/ti-sci-firmware-am65x_sr2-gp.bin";
 			type = "blob-ext";
-			optional;
 		};
 	};
 	itb_gp {
@@ -95,10 +92,10 @@
 
 #ifdef CONFIG_TARGET_AM654_A53_EVM
 
-#define SPL_AM654_EVM_DTB "spl/dts/k3-am654-base-board.dtb"
+#define SPL_AM654_EVM_DTB "spl/dts/ti/k3-am654-base-board.dtb"
 #define AM654_EVM_DTB "u-boot.dtb"
 
-#define AM654_EVM_ICSSG2_DTBO "arch/arm/dts/k3-am654-icssg2.dtbo"
+#define AM654_EVM_ICSSG2_DTBO "ti/k3-am654-icssg2.dtbo"
 
 &binman {
 	ti-spl {

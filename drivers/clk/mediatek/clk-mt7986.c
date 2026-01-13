@@ -366,6 +366,7 @@ static const struct mtk_parent infra_pcie_parents[] = {
 		.id = _id, .mux_reg = (_reg) + 0x8,                            \
 		.mux_set_reg = (_reg) + 0x0, .mux_clr_reg = (_reg) + 0x4,      \
 		.mux_shift = _shift, .mux_mask = BIT(_width) - 1,              \
+		.gate_shift = -1, .upd_shift = -1,			       \
 		.parent_flags = _parents, .num_parents = ARRAY_SIZE(_parents), \
 		.flags = CLK_MUX_SETCLR_UPD | CLK_PARENT_MIXED,                \
 	}
@@ -572,7 +573,7 @@ U_BOOT_DRIVER(mtk_clk_apmixedsys) = {
 	.of_match = mt7986_fixed_pll_compat,
 	.probe = mt7986_fixed_pll_probe,
 	.priv_auto = sizeof(struct mtk_clk_priv),
-	.ops = &mtk_clk_topckgen_ops,
+	.ops = &mtk_clk_fixed_pll_ops,
 	.flags = DM_FLAG_PRE_RELOC,
 };
 

@@ -5,9 +5,11 @@
 #include <console.h>
 #include <display_options.h>
 #include <efi_loader.h>
-#include <image.h>
+#include <env.h>
+#include <linux/kconfig.h>
 #include <lwip/apps/http_client.h>
 #include "lwip/altcp_tls.h"
+#include <lwip/errno.h>
 #include <lwip/timeouts.h>
 #include <rng.h>
 #include <mapmem.h>
@@ -27,6 +29,8 @@ enum done_state {
 };
 
 struct wget_ctx {
+	char server_name[SERVER_NAME_SIZE];
+	u16 port;
 	char *path;
 	ulong daddr;
 	ulong saved_daddr;
@@ -35,6 +39,23 @@ struct wget_ctx {
 	ulong start_time;
 	enum done_state done;
 };
+
+static void wget_lwip_fill_info(struct pbuf *hdr, u16_t hdr_len, u32_t hdr_cont_len)
+{
+	if (wget_info->headers) {
+		if (hdr_len < MAX_HTTP_HEADERS_SIZE)
+			pbuf_copy_partial(hdr, (void *)wget_info->headers, hdr_len, 0);
+		else
+			hdr_len = 0;
+		wget_info->headers[hdr_len] = 0;
+	}
+	wget_info->hdr_cont_len = (u32)hdr_cont_len;
+}
+
+static void wget_lwip_set_file_size(u32_t rx_content_len)
+{
+	wget_info->file_size = (ulong)rx_content_len;
+}
 
 bool wget_validate_uri(char *uri);
 
@@ -116,68 +137,48 @@ static int parse_url(char *url, char *host, u16 *port, char **path,
 	return 0;
 }
 
-/*
- * Legacy syntax support
- * Convert [<server_name_or_ip>:]filename into a URL if needed
+/**
+ * store_block() - copy received data
+ *
+ * This function is called by the receive callback to copy a block of data
+ * into its final location (ctx->daddr). Before doing so, it checks if the copy
+ * is allowed.
+ *
+ * @ctx: the context for the current transfer
+ * @src: the data received from the TCP stack
+ * @len: the length of the data
  */
-static int parse_legacy_arg(char *arg, char *nurl, size_t rem)
+static int store_block(struct wget_ctx *ctx, void *src, u16_t len)
 {
-	char *p = nurl;
-	size_t n;
-	char *col = strchr(arg, ':');
-	char *env;
-	char *server;
-	char *path;
+	ulong store_addr = ctx->daddr;
+	uchar *ptr;
 
-	if (strstr(arg, "http") == arg) {
-		n = snprintf(nurl, rem, "%s", arg);
-		if (n < 0 || n > rem)
-			return -1;
-		return 0;
-	}
-
-	n = snprintf(p, rem, "%s", "http://");
-	if (n < 0 || n > rem)
+	/* Avoid overflow */
+	if (wget_info->buffer_size && wget_info->buffer_size < ctx->size + len)
 		return -1;
-	p += n;
-	rem -= n;
 
-	if (col) {
-		n = col - arg;
-		server = arg;
-		path = col + 1;
-	} else {
-		env = env_get("httpserverip");
-		if (!env)
-			env = env_get("serverip");
-		if (!env) {
-			log_err("error: httpserver/serverip has to be set\n");
+	if (CONFIG_IS_ENABLED(LMB) && wget_info->set_bootdev) {
+		if (store_addr + len < store_addr ||
+		    lmb_read_check(store_addr, len)) {
+			if (!wget_info->silent) {
+				printf("\nwget error: ");
+				printf("trying to overwrite reserved memory\n");
+			}
 			return -1;
 		}
-		n = strlen(env);
-		server = env;
-		path = arg;
 	}
 
-	if (rem < n)
-		return -1;
-	strncpy(p, server, n);
-	p += n;
-	rem -= n;
-	if (rem < 1)
-		return -1;
-	*p = '/';
-	p++;
-	rem--;
-	n = strlen(path);
-	if (rem < n)
-		return -1;
-	strncpy(p, path, n);
-	p += n;
-	rem -= n;
-	if (rem < 1)
-		return -1;
-	*p = '\0';
+	ptr = map_sysmem(store_addr, len);
+	memcpy(ptr, src, len);
+	unmap_sysmem(ptr);
+
+	ctx->daddr += len;
+	ctx->size += len;
+	if (ctx->size - ctx->prevsize > PROGRESS_PRINT_STEP_BYTES) {
+		if (!wget_info->silent)
+			printf("#");
+		ctx->prevsize = ctx->size;
+	}
 
 	return 0;
 }
@@ -187,6 +188,7 @@ static err_t httpc_recv_cb(void *arg, struct altcp_pcb *pcb, struct pbuf *pbuf,
 {
 	struct wget_ctx *ctx = arg;
 	struct pbuf *buf;
+	err_t ret;
 
 	if (!pbuf)
 		return ERR_BUF;
@@ -195,18 +197,17 @@ static err_t httpc_recv_cb(void *arg, struct altcp_pcb *pcb, struct pbuf *pbuf,
 		ctx->start_time = get_timer(0);
 
 	for (buf = pbuf; buf; buf = buf->next) {
-		memcpy((void *)ctx->daddr, buf->payload, buf->len);
-		ctx->daddr += buf->len;
-		ctx->size += buf->len;
-		if (ctx->size - ctx->prevsize > PROGRESS_PRINT_STEP_BYTES) {
-			printf("#");
-			ctx->prevsize = ctx->size;
+		if (store_block(ctx, buf->payload, buf->len) < 0) {
+			altcp_abort(pcb);
+			ret = ERR_BUF;
+			goto out;
 		}
 	}
-
 	altcp_recved(pcb, pbuf->tot_len);
+	ret = ERR_OK;
+out:
 	pbuf_free(pbuf);
-	return ERR_OK;
+	return ret;
 }
 
 static void httpc_result_cb(void *arg, httpc_result_t httpc_result,
@@ -214,6 +215,13 @@ static void httpc_result_cb(void *arg, httpc_result_t httpc_result,
 {
 	struct wget_ctx *ctx = arg;
 	ulong elapsed;
+
+	wget_info->status_code = (u32)srv_res;
+
+	if (err == ERR_BUF) {
+		ctx->done = FAILURE;
+		return;
+	}
 
 	if (httpc_result != HTTPC_RESULT_OK) {
 		log_err("\nHTTP client error %d\n", httpc_result);
@@ -229,13 +237,19 @@ static void httpc_result_cb(void *arg, httpc_result_t httpc_result,
 	elapsed = get_timer(ctx->start_time);
 	if (!elapsed)
 		elapsed = 1;
-	if (rx_content_len > PROGRESS_PRINT_STEP_BYTES)
-		printf("\n");
-	printf("%u bytes transferred in %lu ms (", rx_content_len, elapsed);
-	print_size(rx_content_len / elapsed * 1000, "/s)\n");
-	printf("Bytes transferred = %lu (%lx hex)\n", ctx->size, ctx->size);
-	efi_set_bootdev("Net", "", ctx->path, map_sysmem(ctx->saved_daddr, 0),
-			rx_content_len);
+	if (!wget_info->silent) {
+		if (rx_content_len > PROGRESS_PRINT_STEP_BYTES)
+			printf("\n");
+		printf("%u bytes transferred in %lu ms (", rx_content_len,
+		       elapsed);
+		print_size(rx_content_len / elapsed * 1000, "/s)\n");
+		printf("Bytes transferred = %lu (%lx hex)\n", ctx->size,
+		       ctx->size);
+	}
+	if (wget_info->set_bootdev)
+		efi_set_bootdev("Http", ctx->server_name, ctx->path, map_sysmem(ctx->saved_daddr, 0),
+				rx_content_len);
+	wget_lwip_set_file_size(rx_content_len);
 	if (env_set_hex("filesize", rx_content_len) ||
 	    env_set_hex("fileaddr", ctx->saved_daddr)) {
 		log_err("Could not set filesize or fileaddr\n");
@@ -246,18 +260,32 @@ static void httpc_result_cb(void *arg, httpc_result_t httpc_result,
 	ctx->done = SUCCESS;
 }
 
-static int wget_loop(struct udevice *udev, ulong dst_addr, char *uri)
+static err_t httpc_headers_done_cb(httpc_state_t *connection, void *arg, struct pbuf *hdr,
+				   u16_t hdr_len, u32_t content_len)
 {
-	char server_name[SERVER_NAME_SIZE];
-#if defined CONFIG_WGET_HTTPS
+	wget_lwip_fill_info(hdr, hdr_len, content_len);
+
+	if (wget_info->check_buffer_size && (ulong)content_len > wget_info->buffer_size)
+		return ERR_BUF;
+
+	return ERR_OK;
+}
+
+
+#if CONFIG_IS_ENABLED(WGET_CACERT)
+#endif
+
+int wget_do_request(ulong dst_addr, char *uri)
+{
+#if CONFIG_IS_ENABLED(WGET_HTTPS)
 	altcp_allocator_t tls_allocator;
 #endif
 	httpc_connection_t conn;
 	httpc_state_t *state;
+	struct udevice *udev;
 	struct netif *netif;
 	struct wget_ctx ctx;
 	char *path;
-	u16 port;
 	bool is_https;
 
 	ctx.daddr = dst_addr;
@@ -267,19 +295,67 @@ static int wget_loop(struct udevice *udev, ulong dst_addr, char *uri)
 	ctx.prevsize = 0;
 	ctx.start_time = 0;
 
-	if (parse_url(uri, server_name, &port, &path, &is_https))
+	if (parse_url(uri, ctx.server_name, &ctx.port, &path, &is_https))
 		return CMD_RET_USAGE;
+
+	if (net_lwip_eth_start() < 0)
+		return CMD_RET_FAILURE;
+
+	if (!wget_info)
+		wget_info = &default_wget_info;
+
+	udev = eth_get_dev();
 
 	netif = net_lwip_new_netif(udev);
 	if (!netif)
 		return -1;
 
+	/* if URL with hostname init dns */
+	if (!ipaddr_aton(ctx.server_name, NULL) && net_lwip_dns_init())
+		return CMD_RET_FAILURE;
+
 	memset(&conn, 0, sizeof(conn));
-#if defined CONFIG_WGET_HTTPS
+#if CONFIG_IS_ENABLED(WGET_HTTPS)
 	if (is_https) {
+		char *ca;
+		size_t ca_sz;
+
+#if CONFIG_IS_ENABLED(WGET_CACERT) || CONFIG_IS_ENABLED(WGET_BUILTIN_CACERT)
+#if CONFIG_IS_ENABLED(WGET_BUILTIN_CACERT)
+		if (!cacert_initialized)
+			set_cacert_builtin();
+#endif
+		ca = cacert;
+		ca_sz = cacert_size;
+
+		if (cacert_auth_mode == AUTH_REQUIRED) {
+			if (!ca || !ca_sz) {
+				if (!wget_info->silent)
+					printf("Error: cacert authentication "
+					       "mode is 'required' but no CA "
+					       "certificates given\n");
+				return CMD_RET_FAILURE;
+		       }
+		} else if (cacert_auth_mode == AUTH_NONE) {
+			ca = NULL;
+			ca_sz = 0;
+		} else if (cacert_auth_mode == AUTH_OPTIONAL) {
+			/*
+			 * Nothing to do, this is the default behavior of
+			 * altcp_tls to check server certificates against CA
+			 * certificates when the latter are provided and proceed
+			 * with no verification if not.
+			 */
+		}
+#endif
+		if (!ca && !wget_info->silent) {
+			printf("WARNING: no CA certificates, ");
+			printf("HTTPS connections not authenticated\n");
+		}
 		tls_allocator.alloc = &altcp_tls_alloc;
 		tls_allocator.arg =
-			altcp_tls_create_config_client(NULL, 0, server_name);
+			altcp_tls_create_config_client(ca, ca_sz,
+						       ctx.server_name);
 
 		if (!tls_allocator.arg) {
 			log_err("error: Cannot create a TLS connection\n");
@@ -292,16 +368,18 @@ static int wget_loop(struct udevice *udev, ulong dst_addr, char *uri)
 #endif
 
 	conn.result_fn = httpc_result_cb;
+	conn.headers_done_fn = httpc_headers_done_cb;
 	ctx.path = path;
-	if (httpc_get_file_dns(server_name, port, path, &conn, httpc_recv_cb,
+	if (httpc_get_file_dns(ctx.server_name, ctx.port, path, &conn, httpc_recv_cb,
 			       &ctx, &state)) {
 		net_lwip_remove_netif(netif);
 		return CMD_RET_FAILURE;
 	}
 
+	errno = 0;
+
 	while (!ctx.done) {
 		net_lwip_rx(udev, netif);
-		sys_check_timeouts();
 		if (ctrlc())
 			break;
 	}
@@ -311,43 +389,10 @@ static int wget_loop(struct udevice *udev, ulong dst_addr, char *uri)
 	if (ctx.done == SUCCESS)
 		return 0;
 
+	if (errno == EPERM && !wget_info->silent)
+		printf("Certificate verification failed\n");
+
 	return -1;
-}
-
-int wget_with_dns(ulong dst_addr, char *uri)
-{
-	eth_set_current();
-
-	return wget_loop(eth_get_dev(), dst_addr, uri);
-}
-
-int do_wget(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[])
-{
-	char *end;
-	char *url;
-	ulong dst_addr;
-	char nurl[1024];
-
-	if (argc < 2 || argc > 3)
-		return CMD_RET_USAGE;
-
-	dst_addr = hextoul(argv[1], &end);
-	if (end == (argv[1] + strlen(argv[1]))) {
-		if (argc < 3)
-			return CMD_RET_USAGE;
-		url = argv[2];
-	} else {
-		dst_addr = image_load_addr;
-		url = argv[1];
-	}
-
-	if (parse_legacy_arg(url, nurl, sizeof(nurl)))
-		return CMD_RET_FAILURE;
-
-	if (wget_with_dns(dst_addr, nurl))
-		return CMD_RET_FAILURE;
-
-	return CMD_RET_SUCCESS;
 }
 
 /**
@@ -391,10 +436,15 @@ bool wget_validate_uri(char *uri)
 
 	if (!strncmp(uri, "http://", strlen("http://"))) {
 		prefix_len = strlen("http://");
-	} else if (!strncmp(uri, "https://", strlen("https://"))) {
-		prefix_len = strlen("https://");
+	} else if (CONFIG_IS_ENABLED(WGET_HTTPS)) {
+		if (!strncmp(uri, "https://", strlen("https://"))) {
+			prefix_len = strlen("https://");
+		} else {
+			log_err("only http(s):// is supported\n");
+			return false;
+		}
 	} else {
-		log_err("only http(s):// is supported\n");
+		log_err("only http:// is supported\n");
 		return false;
 	}
 

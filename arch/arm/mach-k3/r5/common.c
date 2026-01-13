@@ -5,6 +5,7 @@
  * Copyright (C) 2023 Texas Instruments Incorporated - https://www.ti.com/
  */
 
+#include <env.h>
 #include <linux/printk.h>
 #include <linux/types.h>
 #include <asm/hardware.h>
@@ -26,7 +27,7 @@ enum {
 	IMAGE_ID_DM_FW,
 	IMAGE_ID_TIFSSTUB_HS,
 	IMAGE_ID_TIFSSTUB_FS,
-	IMAGE_ID_T,
+	IMAGE_ID_TIFSSTUB_GP,
 	IMAGE_AMT,
 };
 
@@ -136,7 +137,7 @@ void release_resources_for_core_shutdown(void)
 	}
 }
 
-void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
+void __noreturn jump_to_image(struct spl_image_info *spl_image)
 {
 	typedef void __noreturn (*image_entry_noargs_t)(void);
 	struct ti_sci_handle *ti_sci = get_ti_sci_handle();
@@ -144,7 +145,7 @@ void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
 	int ret, size = 0, shut_cpu = 0;
 
 	/* Release all the exclusive devices held by SPL before starting ATF */
-	ti_sci->ops.dev_ops.release_exclusive_devices(ti_sci);
+	ti_sci->ops.dev_ops.release_exclusive_devices();
 
 	ret = rproc_init();
 	if (ret)
@@ -253,6 +254,31 @@ void disable_linefill_optimization(void)
 	asm("mcr p15, 0, %0, c1, c0, 1" : : "r" (actlr));
 }
 
+int remove_fwl_region(struct fwl_data *fwl)
+{
+	struct ti_sci_handle *sci = get_ti_sci_handle();
+	struct ti_sci_fwl_ops *ops = &sci->ops.fwl_ops;
+	struct ti_sci_msg_fwl_region region;
+	int ret;
+
+	region.fwl_id = fwl->fwl_id;
+	region.region = fwl->regions;
+	region.n_permission_regs = 3;
+
+	ops->get_fwl_region(sci, &region);
+
+	/* zero out the enable field of the firewall */
+	region.control = region.control & ~0xF;
+
+	pr_debug("Disabling firewall id: %d region: %d\n",
+		 region.fwl_id, region.region);
+
+	ret = ops->set_fwl_region(sci, &region);
+	if (ret)
+		pr_err("Could not disable firewall\n");
+	return ret;
+}
+
 static void remove_fwl_regions(struct fwl_data fwl_data, size_t num_regions,
 			       enum k3_firewall_region_type fwl_type)
 {
@@ -348,5 +374,151 @@ void board_fit_image_post_process(const void *fit, int node, void **p_image,
 	} else {
 		ti_secure_image_check_binary(p_image, p_size);
 	}
+}
+#endif
+
+#ifdef CONFIG_SPL_OS_BOOT_SECURE
+
+static bool tifalcon_loaded = false;
+
+int spl_start_uboot(void)
+{
+	/* If tifalcon.bin is not loaded, proceed to regular boot */
+	if (!tifalcon_loaded)
+		return 1;
+
+	/* Boot to linux on R5 SPL with tifalcon.bin loaded */
+	return 0;
+}
+
+int k3_r5_falcon_bootmode(void)
+{
+	char *mmcdev = env_get("mmcdev");
+
+	if (!mmcdev)
+		return BOOT_DEVICE_NOBOOT;
+
+	if (strncmp(mmcdev, "0", sizeof("0")) == 0)
+		return BOOT_DEVICE_MMC1;
+	else if (strncmp(mmcdev, "1", sizeof("1")) == 0)
+		return BOOT_DEVICE_MMC2;
+	else
+		return BOOT_DEVICE_NOBOOT;
+}
+
+static int k3_falcon_fdt_add_bootargs(void *fdt)
+{
+	struct disk_partition info;
+	struct blk_desc *dev_desc;
+	char bootmedia[32];
+	char bootpart[32];
+	char str[256];
+	int ret;
+
+	strlcpy(bootmedia, env_get("boot"), sizeof(bootmedia));
+	strlcpy(bootpart, env_get("bootpart"), sizeof(bootpart));
+	ret = blk_get_device_part_str(bootmedia, bootpart, &dev_desc, &info, 0);
+	if (ret < 0) {
+		printf("%s: Failed to get part details for %s %s [%d]\n",
+		       __func__, bootmedia, bootpart, ret);
+		return ret;
+	}
+
+	if (!CONFIG_IS_ENABLED(PARTITION_UUIDS)) {
+		printf("ERROR: Failed to find rootfs PARTUUID\n");
+		printf("%s: CONFIG_SPL_PARTITION_UUIDS not enabled\n",
+		       __func__);
+		return -EOPNOTSUPP;
+	}
+
+	snprintf(str, sizeof(str), "console=%s root=PARTUUID=%s rootwait",
+		 env_get("console"), disk_partition_uuid(&info));
+
+	ret = fdt_find_and_setprop(fdt, "/chosen", "bootargs", str,
+				   strlen(str) + 1, 1);
+	if (ret) {
+		printf("%s: Could not set bootargs: %s\n", __func__,
+		       fdt_strerror(ret));
+		return ret;
+	}
+
+	debug("%s: Set bootargs to: %s\n", __func__, str);
+	return 0;
+}
+
+static int k3_falcon_fdt_fixup(void *fdt)
+{
+	int ret;
+
+	if (!fdt)
+		return -EINVAL;
+
+	fdt_set_totalsize(fdt, fdt_totalsize(fdt) + CONFIG_SYS_FDT_PAD);
+
+	if (fdt_path_offset(fdt, "/chosen/bootargs") < 0) {
+		ret = k3_falcon_fdt_add_bootargs(fdt);
+
+		if (ret)
+			return ret;
+	}
+
+	if (IS_ENABLED(CONFIG_OF_BOARD_SETUP)) {
+		ret = ft_board_setup(fdt, gd->bd);
+		if (ret) {
+			printf("%s: Failed in board setup: %s\n", __func__,
+			       fdt_strerror(ret));
+			return ret;
+		}
+	}
+
+	if (IS_ENABLED(CONFIG_OF_SYSTEM_SETUP)) {
+		ret = ft_system_setup(fdt, gd->bd);
+		if (ret) {
+			printf("%s: Failed in system setup: %s\n", __func__,
+			       fdt_strerror(ret));
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int k3_r5_falcon_prep(void)
+{
+	struct spl_image_loader *loader, *drv;
+	struct spl_image_info kernel_image;
+	struct spl_boot_device bootdev;
+	int ret = -ENXIO, n_ents;
+	void *fdt;
+
+	tifalcon_loaded = true;
+	memset(&kernel_image, '\0', sizeof(kernel_image));
+	drv = ll_entry_start(struct spl_image_loader, spl_image_loader);
+	n_ents = ll_entry_count(struct spl_image_loader, spl_image_loader);
+	bootdev.boot_device = k3_r5_falcon_bootmode();
+
+	for (loader = drv; loader != drv + n_ents; loader++) {
+		if (loader && bootdev.boot_device != loader->boot_device)
+			continue;
+
+		printf("Load falcon from %s\n", spl_loader_name(loader));
+		ret = loader->load_image(&kernel_image, &bootdev);
+		if (ret)
+			continue;
+
+		fdt = spl_image_fdt_addr(&kernel_image);
+		ret = k3_falcon_fdt_fixup(fdt);
+		if (ret) {
+			printf("Failed to fixup fdt in falcon mode: %d\n", ret);
+			return ret;
+		}
+
+		return 0;
+	}
+
+	printf("%s: ERROR: No supported loader for boot dev '%d'\n", __func__,
+	       bootdev.boot_device);
+
+	return ret;
 }
 #endif

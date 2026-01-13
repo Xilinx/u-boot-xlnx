@@ -96,7 +96,7 @@ static int scsi_file_op(enum dfu_op op, struct dfu_entity *dfu, u64 offset, void
 		return -1;
 	}
 
-	snprintf(dev_part_str, sizeof(dev_part_str), "%d:%d", dfu->data.scsi.dev,
+	snprintf(dev_part_str, sizeof(dev_part_str), "%d:%x", dfu->data.scsi.dev,
 		 dfu->data.scsi.part);
 
 	ret = fs_set_blk_dev("scsi", dev_part_str, fstype);
@@ -340,11 +340,6 @@ int dfu_fill_entity_scsi(struct dfu_entity *dfu, char *devstr, char **argv, int 
 		third_arg = simple_strtoul(argv[2], &s, 0);
 		if (*s)
 			return -EINVAL;
-	}
-
-	if (scsi_scan(false)) {
-		pr_err("Couldn't init scsi device.\n");
-		return -ENODEV;
 	}
 
 	ret = find_scsi_device(dfu->data.scsi.lun, &scsi);

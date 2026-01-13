@@ -22,21 +22,6 @@
 		mmc0 = &sdio1;
 		spi0 = &qspi;
 	};
-
-	button1 {
-		compatible = "st,button1";
-		button-gpio = <&gpioi 11 0>;
-	};
-
-	led1 {
-		compatible = "st,led1";
-		led-gpio = <&gpioi 1 0>;
-	};
-};
-
-&ltdc {
-	clocks = <&rcc 0 STM32F7_APB2_CLOCK(LTDC)>;
-	bootph-all;
 };
 
 &fmc {
@@ -63,8 +48,14 @@
 	};
 };
 
+&ltdc {
+	bootph-all;
+
+	clocks = <&rcc 0 STM32F7_APB2_CLOCK(LTDC)>;
+};
+
 &panel_rgb {
-	compatible = "simple-panel";
+	compatible = "rocktech,rk043fn48h", "simple-panel";
 
 	display-timings {
 		timing@0 {

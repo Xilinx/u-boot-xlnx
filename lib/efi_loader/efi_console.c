@@ -9,6 +9,7 @@
 
 #include <ansi.h>
 #include <charset.h>
+#include <efi_device_path.h>
 #include <malloc.h>
 #include <time.h>
 #include <dm/device.h>
@@ -29,6 +30,17 @@ struct cout_mode {
 };
 
 __maybe_unused static struct efi_object uart_obj;
+
+/*
+ * suppress emission of ANSI escape-characters for use by unit tests. Leave it
+ * as 0 for the default behaviour
+ */
+static bool no_ansi;
+
+void efi_console_set_ansi(bool allow_ansi)
+{
+	no_ansi = !allow_ansi;
+}
 
 static struct cout_mode efi_cout_modes[] = {
 	/* EFI Mode 0 is 80x25 and always present */
@@ -348,13 +360,6 @@ static int __maybe_unused query_vidconsole(int *rows, int *cols)
 	return 0;
 }
 
-/**
- * efi_setup_console_size() - update the mode table.
- *
- * By default the only mode available is 80x25. If the console has at least 50
- * lines, enable mode 80x50. If we can query the console size and it is neither
- * 80x25 nor 80x50, set it as an additional mode.
- */
 void efi_setup_console_size(void)
 {
 	int rows = 25, cols = 80;
@@ -362,8 +367,12 @@ void efi_setup_console_size(void)
 
 	if (IS_ENABLED(CONFIG_VIDEO))
 		ret = query_vidconsole(&rows, &cols);
-	if (ret)
-		ret = query_console_serial(&rows, &cols);
+	if (ret) {
+		if (no_ansi)
+			ret = 0;
+		else
+			ret = query_console_serial(&rows, &cols);
+	}
 	if (ret)
 		return;
 
@@ -1375,7 +1384,9 @@ efi_status_t efi_console_get_u16_string(struct efi_simple_text_input_protocol *c
 					int row, int col)
 {
 	efi_status_t ret;
-	efi_uintn_t len = 0;
+	efi_uintn_t len;
+	efi_uintn_t cursor;
+	efi_uintn_t i;
 	struct efi_input_key key;
 
 	printf(ANSI_CURSOR_POSITION
@@ -1384,25 +1395,51 @@ efi_status_t efi_console_get_u16_string(struct efi_simple_text_input_protocol *c
 
 	efi_cin_empty_buffer();
 
+	len = u16_strlen(buf);
+	cursor = len;
 	for (;;) {
+		printf(ANSI_CURSOR_POSITION "%ls"
+		       ANSI_CLEAR_LINE_TO_END ANSI_CURSOR_POSITION,
+		       row, col, buf, row, col + (int)cursor);
 		do {
 			ret = EFI_CALL(cin->read_key_stroke(cin, &key));
 			mdelay(10);
 		} while (ret == EFI_NOT_READY);
 
 		if (key.unicode_char == u'\b') {
-			if (len > 0)
-				buf[--len] = u'\0';
-
-			printf(ANSI_CURSOR_POSITION
-			       "%ls"
-			       ANSI_CLEAR_LINE_TO_END, row, col, buf);
+			if (cursor > 0) {
+				if (cursor == len) {
+					buf[--cursor] = u'\0';
+				} else {
+					for (i = cursor - 1; i < len; i++)
+						buf[i] = buf[i + 1];
+					cursor--;
+				}
+				len--;
+			}
+			continue;
+		} else if (key.scan_code == 8) { /* delete */
+			for (i = cursor; i <= len; i++)
+				buf[i] = buf[i + 1];
+			len--;
 			continue;
 		} else if (key.unicode_char == u'\r') {
 			buf[len] = u'\0';
 			return EFI_SUCCESS;
 		} else if (key.unicode_char == 0x3 || key.scan_code == 23) {
 			return EFI_ABORTED;
+		} else if (key.scan_code == 3) { /* Right arrow */
+			cursor += (cursor < len) ? 1 : 0;
+			continue;
+		} else if (key.scan_code == 4) { /* Left arrow */
+			cursor -= (cursor > 0) ? 1 : 0;
+			continue;
+		} else if (key.scan_code == 5) { /* Home */
+			cursor = 0;
+			continue;
+		} else if (key.scan_code == 6) { /* End */
+			cursor = len;
+			continue;
 		} else if (key.unicode_char < 0x20) {
 			/* ignore control codes other than Ctrl+C, '\r' and '\b' */
 			continue;
@@ -1419,8 +1456,17 @@ efi_status_t efi_console_get_u16_string(struct efi_simple_text_input_protocol *c
 		if (len >= (count - 1))
 			continue;
 
-		buf[len] = key.unicode_char;
+		/*
+		 * Insert the character into the middle of the buffer, shift the
+		 * characters after the cursor along. The check above ensures we
+		 * will never overflow the buffer.
+		 * If the cursor is at the end of the string then this will
+		 * do nothing.
+		 */
+		for (i = len + 1; i > cursor; i--)
+			buf[i] = buf[i - 1];
+		buf[cursor] = key.unicode_char;
+		cursor++;
 		len++;
-		printf(ANSI_CURSOR_POSITION "%ls", row, col, buf);
 	}
 }

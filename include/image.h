@@ -232,6 +232,8 @@ enum image_type_t {
 	IH_TYPE_FDT_LEGACY,		/* Binary Flat Device Tree Blob	in a Legacy Image */
 	IH_TYPE_RENESAS_SPKG,		/* Renesas SPKG image */
 	IH_TYPE_STARFIVE_SPL,		/* StarFive SPL image */
+	IH_TYPE_TFA_BL31,		/* TFA BL31 image */
+	IH_TYPE_STM32IMAGE_V2,		/* STMicroelectronics STM32 Image V2.0 */
 
 	IH_TYPE_COUNT,			/* Number of image types */
 };
@@ -652,10 +654,10 @@ int boot_get_fpga(struct bootm_headers *images);
  * boot_get_ramdisk() is responsible for finding a valid ramdisk image.
  * Currently supported are the following ramdisk sources:
  *      - multicomponent kernel/ramdisk image,
- *      - commandline provided address of decicated ramdisk image.
+ *      - commandline provided address of dedicated ramdisk image.
  *
  * returns:
- *     0, if ramdisk image was found and valid, or skiped
+ *     0, if ramdisk image was found and valid, or skipped
  *     rd_start and rd_end are set to ramdisk start/end addresses if
  *     ramdisk image is found and valid
  *
@@ -737,7 +739,7 @@ int boot_get_fdt_fit(struct bootm_headers *images, ulong addr,
  * @param bootstage_id	ID of starting bootstage to use for progress updates.
  *			This will be added to the BOOTSTAGE_SUB values when
  *			calling bootstage_mark()
- * @param load_op	Decribes what to do with the load address
+ * @param load_op	Describes what to do with the load address
  * @param datap		Returns address of loaded image
  * @param lenp		Returns length of loaded image
  * Return: node offset of image, or -ve error code on error:
@@ -810,7 +812,7 @@ int fit_get_node_from_config(struct bootm_headers *images,
  * boot_get_fdt() is responsible for finding a valid flat device tree image.
  * Currently supported are the following FDT sources:
  *      - multicomponent kernel/ramdisk/FDT image,
- *      - commandline provided address of decicated FDT image.
+ *      - commandline provided address of dedicated FDT image.
  *
  * Return:
  *     0, if fdt image was found and valid, or skipped
@@ -1102,6 +1104,7 @@ int booti_setup(ulong image, ulong *relocated_addr, ulong *size,
 #define FIT_STANDALONE_PROP	"standalone"
 #define FIT_SCRIPT_PROP		"script"
 #define FIT_PHASE_PROP		"phase"
+#define FIT_TFA_BL31_PROP	"tfa-bl31"
 
 #define FIT_MAX_HASH_LEN	HASH_MAX_DIGEST_SIZE
 
@@ -1160,16 +1163,28 @@ int fit_image_get_type(const void *fit, int noffset, uint8_t *type);
 int fit_image_get_comp(const void *fit, int noffset, uint8_t *comp);
 int fit_image_get_load(const void *fit, int noffset, ulong *load);
 int fit_image_get_entry(const void *fit, int noffset, ulong *entry);
-int fit_image_get_data(const void *fit, int noffset,
-				const void **data, size_t *size);
+int fit_image_get_emb_data(const void *fit, int noffset, const void **data,
+			   size_t *size);
 int fit_image_get_data_offset(const void *fit, int noffset, int *data_offset);
 int fit_image_get_data_position(const void *fit, int noffset,
 				int *data_position);
 int fit_image_get_data_size(const void *fit, int noffset, int *data_size);
 int fit_image_get_data_size_unciphered(const void *fit, int noffset,
 				       size_t *data_size);
-int fit_image_get_data_and_size(const void *fit, int noffset,
-				const void **data, size_t *size);
+int fit_image_get_data(const void *fit, int noffset, const void **data,
+		       size_t *size);
+
+/**
+ * fit_image_get_phase() - Get the phase from a FIT image
+ *
+ * @fit: FIT to read from
+ * @offset: offset node to read
+ * @phasep: Returns phase, if any
+ * Return: 0 if read OK and *phasep is value, -ENOENT if there was no phase
+ * property in the node, other -ve value on other error
+ */
+int fit_image_get_phase(const void *fit, int offset,
+			enum image_phase_t *phasep);
 
 /**
  * fit_get_data_node() - Get verified image data for an image
@@ -1399,7 +1414,9 @@ int fit_check_format(const void *fit, ulong size);
  * copied into the configuration node in the FIT image. This is required to
  * match configurations with compressed FDTs.
  *
- * Returns: offset to the configuration to use if one was found, -1 otherwise
+ * Returns: offset to the configuration to use if one was found, -EINVAL if
+ * there a /configurations or /images node is missing, -ENOENT if no match was
+ * found, -ENXIO if the FDT node has no compatible string
  */
 int fit_conf_find_compat(const void *fit, const void *fdt);
 
@@ -1673,6 +1690,24 @@ struct sig_header_s {
  */
 int image_pre_load(ulong addr);
 
+#if defined(USE_HOSTCC) && CONFIG_IS_ENABLED(LIBCRYPTO)
+/**
+ * rsa_verify_openssl() - Verify a signature against some data with openssl API
+ *
+ * Verify a RSA PKCS1.5/PSS signature against an expected hash.
+ *
+ * @info:		Specifies the key and algorithms
+ * @region:		Pointer to the input data
+ * @region_count:	Number of region
+ * @sig:		Signature
+ * @sig_len:		Number of bytes in the signature
+ * Return: 0 if verified, -ve on error
+ */
+int rsa_verify_openssl(struct image_sign_info *info,
+		       const struct image_region region[], int region_count,
+		       uint8_t *sig, uint sig_len);
+#endif
+
 /**
  * fit_image_verify_required_sigs() - Verify signatures marked as 'required'
  *
@@ -1788,6 +1823,21 @@ struct cipher_algo {
 		       const unsigned char *data, int data_len,
 		       unsigned char **cipher, int *cipher_len);
 
+	/**
+	 * add_cipher_data() - Add cipher data to the FIT and device tree
+	 *
+	 * This is used to add the ciphered data to the FIT and other cipher
+	 * related information (key and initialization vector) to a device tree.
+	 *
+	 * @info: Pointer to image cipher information.
+	 * @keydest: Pointer to a device tree where the key and IV can be
+	 *           stored. keydest can be NULL when the key is retrieved at
+	 *           runtime by another mean.
+	 * @fit: Pointer to the FIT image.
+	 * @node_noffset: Offset where the cipher information are stored in the
+	 *                FIT.
+	 * return: 0 on success, a negative error code otherwise.
+	 */
 	int (*add_cipher_data)(struct image_cipher_info *info,
 			       void *keydest, void *fit, int node_noffset);
 
@@ -1800,6 +1850,30 @@ int fit_image_cipher_get_algo(const void *fit, int noffset, char **algo);
 
 struct cipher_algo *image_get_cipher_algo(const char *full_name);
 struct andr_image_data;
+
+/**
+ * android_image_get_bootimg_size() - Extract size of Android boot image
+ *
+ * This is used to extract the size of an Android boot image
+ * from boot image header.
+ *
+ * @hdr: Pointer to boot image header
+ * @boot_img_size: On exit returns the size in bytes of the boot image
+ * Return: true if succeeded, false otherwise
+ */
+bool android_image_get_bootimg_size(const void *hdr, u32 *boot_img_size);
+
+/**
+ * android_image_get_vendor_bootimg_size() - Extract size of Android vendor-boot image
+ *
+ * This is used to extract the size of an Android vendor-boot image
+ * from vendor-boot image header.
+ *
+ * @hdr: Pointer to vendor-boot image header
+ * @vendor_boot_img_size: On exit returns the size in bytes of the vendor-boot image
+ * Return: true if succeeded, false otherwise
+ */
+bool android_image_get_vendor_bootimg_size(const void *hdr, u32 *vendor_boot_img_size);
 
 /**
  * android_image_get_data() - Parse Android boot images
@@ -2061,7 +2135,7 @@ struct fit_loadable_tbl {
  * _handler is the handler function to call after this image type is loaded
  */
 #define U_BOOT_FIT_LOADABLE_HANDLER(_type, _handler) \
-	ll_entry_declare(struct fit_loadable_tbl, _function, fit_loadable) = { \
+	ll_entry_declare(struct fit_loadable_tbl, _type, fit_loadable) = { \
 		.type = _type, \
 		.handler = _handler, \
 	}

@@ -19,5 +19,8 @@ char *soc_name_decode(void);
 
 bool soc_detection(void);
 
+void configure_capsule_updates(void);
+
 int plat_get_boot_index(void);
+
 #endif /* BOARD_XILINX_COMMON_BOARD_H */

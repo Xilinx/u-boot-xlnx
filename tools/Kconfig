@@ -9,6 +9,16 @@ config MKIMAGE_DTC_PATH
 	  some cases the system dtc may not support all required features
 	  and the path to a different version should be given here.
 
+config TOOLS_IMAGE_PRE_LOAD
+	def_bool y
+	help
+	  Enable pre-load signature support in the tools builds.
+
+config TOOLS_CRC16
+	def_bool y
+	help
+	  Enable CRC32 support in the tools builds
+
 config TOOLS_CRC32
 	def_bool y
 	help
@@ -127,7 +137,7 @@ config DEVICE_TYPE
 	default 0x01
 	depends on FSPI_CONF_HEADER
 	help
-	  Flash type: Serial NOR (0X01) and Serial NAND (0x02)
+	  Flash type: Serial NOR (0x01) and Serial NAND (0x02)
 
 config FLASH_PAD_TYPE
 	hex "Flash Pad Type"

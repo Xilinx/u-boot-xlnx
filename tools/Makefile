@@ -63,9 +63,10 @@ HOSTCFLAGS_img2srec.o := -pedantic
 hostprogs-y += mkenvimage
 mkenvimage-objs := mkenvimage.o os_support.o generated/lib/crc32.o
 
-hostprogs-y += dumpimage mkimage
-hostprogs-$(CONFIG_TOOLS_LIBCRYPTO) += fit_info fit_check_sign
+hostprogs-y += dumpimage mkimage fit_info
+hostprogs-$(CONFIG_FIT_SIGNATURE) += fit_check_sign
 hostprogs-$(CONFIG_TOOLS_LIBCRYPTO) += fdt_add_pubkey
+hostprogs-$(CONFIG_TOOLS_LIBCRYPTO) += preload_check_sign
 
 ifneq ($(CONFIG_CMD_BOOTEFI_SELFTEST)$(CONFIG_FWU_MDATA_GPT_BLK),)
 hostprogs-y += file2include
@@ -75,6 +76,9 @@ FIT_OBJS-y := fit_common.o fit_image.o image-host.o generated/boot/image-fit.o
 FIT_SIG_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := image-sig-host.o generated/boot/image-fit-sig.o
 FIT_CIPHER_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := generated/boot/image-cipher.o
 
+HOSTCFLAGS_image-host.o += \
+	$(shell pkg-config --cflags libssl libcrypto 2> /dev/null || echo "")
+
 # The following files are synced with upstream DTC.
 # Use synced versions from scripts/dtc/libfdt/.
 LIBFDT_OBJS := $(addprefix libfdt/, fdt.o fdt_ro.o fdt_wip.o fdt_sw.o fdt_rw.o \
@@ -83,11 +87,17 @@ LIBFDT_OBJS := $(addprefix libfdt/, fdt.o fdt_ro.o fdt_wip.o fdt_sw.o fdt_rw.o \
 RSA_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix generated/lib/rsa/, \
 					rsa-sign.o rsa-verify.o \
 					rsa-mod-exp.o)
+HOSTCFLAGS_rsa-sign.o += \
+	$(shell pkg-config --cflags libssl libcrypto 2> /dev/null || echo "")
 
 ECDSA_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix generated/lib/ecdsa/, ecdsa-libcrypto.o)
+HOSTCFLAGS_ecdsa-libcrypto.o += \
+	$(shell pkg-config --cflags libssl libcrypto 2> /dev/null || echo "")
 
 AES_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := $(addprefix generated/lib/aes/, \
 					aes-encrypt.o aes-decrypt.o)
+
+PRELOAD_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := generated/boot/image-pre-load.o
 
 # Cryptographic helpers and image types that depend on openssl/libcrypto
 LIBCRYPTO_OBJS-$(CONFIG_TOOLS_LIBCRYPTO) := \
@@ -135,6 +145,7 @@ dumpimage-mkimage-objs := aisimage.o \
 			generated/lib/hash-checksum.o \
 			generated/lib/sha1.o \
 			generated/lib/sha256.o \
+			generated/lib/sha256_common.o \
 			generated/lib/sha512.o \
 			generated/common/hash.o \
 			ublimage.o \
@@ -157,6 +168,9 @@ fit_info-objs   := $(dumpimage-mkimage-objs) fit_info.o
 fit_check_sign-objs   := $(dumpimage-mkimage-objs) fit_check_sign.o
 fdt_add_pubkey-objs   := $(dumpimage-mkimage-objs) fdt_add_pubkey.o
 file2include-objs := file2include.o
+preload_check_sign-objs := $(dumpimage-mkimage-objs) $(PRELOAD_OBJS-y) preload_check_sign.o
+HOSTCFLAGS_preload_check_sign.o += \
+	$(shell pkg-config --cflags libssl libcrypto 2> /dev/null || echo "")
 
 ifneq ($(CONFIG_MX23)$(CONFIG_MX28)$(CONFIG_TOOLS_LIBCRYPTO),)
 # Add CFG_MXS into host CFLAGS, so we can check whether or not register
@@ -194,6 +208,9 @@ HOSTLDLIBS_dumpimage := $(HOSTLDLIBS_mkimage)
 HOSTLDLIBS_fit_info := $(HOSTLDLIBS_mkimage)
 HOSTLDLIBS_fit_check_sign := $(HOSTLDLIBS_mkimage)
 HOSTLDLIBS_fdt_add_pubkey := $(HOSTLDLIBS_mkimage)
+HOSTLDLIBS_preload_check_sign := $(HOSTLDLIBS_mkimage)
+HOSTLDLIBS_preload_check_sign += \
+	$(shell pkg-config --libs libssl libcrypto 2> /dev/null || echo "-lssl -lcrypto")
 
 hostprogs-$(CONFIG_EXYNOS5250) += mkexynosspl
 hostprogs-$(CONFIG_EXYNOS5420) += mkexynosspl
@@ -316,7 +333,9 @@ HOST_EXTRACFLAGS += -include $(srctree)/include/compiler.h \
 		-D__KERNEL_STRICT_NAMES \
 		-D_GNU_SOURCE
 
+ifeq ($(CROSS_BUILD_TOOLS),)
 __build:	$(LOGO-y)
+endif
 
 $(LOGO_H):	$(obj)/bmp_logo $(LOGO_BMP)
 	$(obj)/bmp_logo --gen-info $(LOGO_BMP) > $@
@@ -327,7 +346,6 @@ $(LOGO_DATA_H):	$(obj)/bmp_logo $(LOGO_BMP)
 else
 $(LOGO_DATA_H):	$(obj)/bmp_logo $(LOGO_BMP)
 	$(obj)/bmp_logo --gen-data $(LOGO_BMP) > $@
-#endif
 endif
 
 # Let clean descend into subdirs

@@ -37,6 +37,7 @@ config OF_REAL
 
 config OF_BOARD_FIXUP
 	bool "Board-specific manipulation of Device Tree"
+	depends on !COMPILE_TEST
 	help
 	  In certain circumstances it is necessary to be able to modify
 	  U-Boot's device tree (e.g. to delete device from it). This option
@@ -87,6 +88,7 @@ config OF_LIVE
 
 config OF_UPSTREAM
 	bool "Enable use of devicetree imported from Linux kernel release"
+	depends on !COMPILE_TEST
 	help
 	  Traditionally, U-Boot platforms used to have their custom devicetree
 	  files or copy devicetree files from Linux kernel which are hard to
@@ -183,7 +185,6 @@ config OF_BOARD
 
 config OF_HAS_PRIOR_STAGE
 	bool
-	depends on !BLOBLIST
 	help
 	  Indicates that a prior stage of the firmware (before U-Boot proper)
 	  makes use of device tree and this board normally boots with that prior
@@ -214,6 +215,7 @@ config OF_OMIT_DTB
 config DEFAULT_DEVICE_TREE
 	string "Default Device Tree for DT control"
 	depends on OF_CONTROL
+	default "sandbox" if SANDBOX
 	help
 	  This option specifies the default Device Tree used for DT control.
 	  It can be overridden from the command line:
@@ -307,6 +309,7 @@ config MULTI_DTB_FIT_USER_DEF_ADDR
 
 config DTB_RESELECT
 	bool "Support swapping dtbs at a later point in boot"
+	depends on !COMPILE_TEST
 	depends on MULTI_DTB_FIT
 	help
 	  It is possible during initial boot you may need to use a generic
@@ -404,16 +407,6 @@ config SPL_MULTI_DTB_FIT_USER_DEF_ADDR
 	   the FIT image containing the DTBs is uncompressed in an area defined
 	   at compilation time. This is the address of this area. It must be
 	   aligned on 2-byte boundary.
-
-config OF_TAG_MIGRATE
-	bool "Ease migration from old device trees with u-boot,dm- tags"
-	default y
-	help
-	  U-Boot moved over to use new tags to mark device tree nodes which need
-	  to be processed in SPL, before relocation, etc. Enable this option to
-	  detect old tags and handle them.
-
-	  Note: This option will be removed after the 2023.07 release.
 
 config OF_SPL_REMOVE_PROPS
 	string "List of device tree properties to drop for SPL"

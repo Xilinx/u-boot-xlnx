@@ -65,6 +65,7 @@ int dram_init(void)
 
 phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
+	phys_addr_t top = gd->ram_top;
 	phys_size_t size;
 	phys_addr_t reg;
 	u32 optee_start, optee_size;
@@ -81,12 +82,13 @@ phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 	/* add 8M for U-Boot reserved memory: display, fdt, gd,... */
 	size = ALIGN(SZ_8M + CONFIG_SYS_MALLOC_LEN + total_size, MMU_SECTION_SIZE);
 
-	reg = gd->ram_top - size;
+	reg = ALIGN(gd->ram_top - size, MMU_SECTION_SIZE);
 
 	/* Reserved memory for OP-TEE at END of DDR for STM32MP1 SoC */
 	if (IS_ENABLED(CONFIG_STM32MP13X) || IS_ENABLED(CONFIG_STM32MP15X)) {
 		if (!optee_get_reserved_memory(&optee_start, &optee_size))
-			reg = ALIGN(optee_start - size, MMU_SECTION_SIZE);
+			if (optee_start + optee_size == top)
+				reg = ALIGN(optee_start - size, MMU_SECTION_SIZE);
 	}
 
 	/* before relocation, mark the U-Boot memory as cacheable by default */

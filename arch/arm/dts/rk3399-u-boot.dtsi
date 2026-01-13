@@ -29,31 +29,6 @@
 	};
 };
 
-#if defined(CONFIG_ROCKCHIP_SPI_IMAGE) && defined(CONFIG_HAS_ROM)
-&binman {
-	multiple-images;
-	rom {
-		filename = "u-boot.rom";
-		size = <0x400000>;
-		pad-byte = <0xff>;
-
-		mkimage {
-			args = "-n rk3399 -T rkspi";
-			u-boot-spl {
-			};
-		};
-		u-boot-img {
-			offset = <0x40000>;
-		};
-		u-boot {
-			offset = <0x300000>;
-		};
-		fdtmap {
-		};
-	};
-};
-#endif /* CONFIG_ROCKCHIP_SPI_IMAGE && CONFIG_HAS_ROM */
-
 &cru {
 	bootph-all;
 };

@@ -10,7 +10,6 @@
 #include <mapmem.h>
 #include <asm/global_data.h>
 #include <dm/uclass.h>
-#include <test/suites.h>
 #include <test/ut.h>
 #include <dm.h>
 #include <env.h>
@@ -26,7 +25,7 @@
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Declare a new bdinfo test */
-#define BDINFO_TEST(_name, _flags)	UNIT_TEST(_name, _flags, bdinfo_test)
+#define BDINFO_TEST(_name, _flags)	UNIT_TEST(_name, _flags, bdinfo)
 
 static int test_num_l(struct unit_test_state *uts, const char *name,
 		      ulong value)
@@ -162,9 +161,9 @@ static int bdinfo_test_all(struct unit_test_state *uts)
 	ut_assertok(bdinfo_check_mem(uts));
 
 	/* CONFIG_SYS_HAS_SRAM testing not supported */
-	ut_assertok(test_num_l(uts, "flashstart", 0));
-	ut_assertok(test_num_l(uts, "flashsize", 0));
-	ut_assertok(test_num_l(uts, "flashoffset", 0));
+	ut_check_console_linen(uts, "flashstart");
+	ut_check_console_linen(uts, "flashsize");
+	ut_check_console_linen(uts, "flashoffset");
 	ut_assert_nextline("baudrate    = %lu bps",
 			   env_get_ulong("baudrate", 10, 1234));
 	ut_assertok(test_num_l(uts, "relocaddr", gd->relocaddr));
@@ -216,8 +215,15 @@ static int bdinfo_test_all(struct unit_test_state *uts)
 		ut_assertok(test_num_l(uts, "malloc base", gd_malloc_start()));
 	}
 
+	/* Check arch_print_bdinfo() output */
 	if (IS_ENABLED(CONFIG_X86))
-		ut_check_skip_to_linen(uts, " high end   =");
+		ut_check_skip_to_linen(uts, "tsc");
+
+#ifdef CONFIG_RISCV
+	ut_check_console_linen(uts, "boot hart");
+	if (gd->arch.firmware_fdt_addr)
+		ut_check_console_linen(uts, "firmware fdt");
+#endif
 
 	return 0;
 }
@@ -282,11 +288,3 @@ static int bdinfo_test_eth(struct unit_test_state *uts)
 	return 0;
 }
 BDINFO_TEST(bdinfo_test_eth, UTF_CONSOLE);
-
-int do_ut_bdinfo(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
-{
-	struct unit_test *tests = UNIT_TEST_SUITE_START(bdinfo_test);
-	const int n_ents = UNIT_TEST_SUITE_COUNT(bdinfo_test);
-
-	return cmd_ut_category("bdinfo", "bdinfo_test_", tests, n_ents, argc, argv);
-}

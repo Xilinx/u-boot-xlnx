@@ -3,16 +3,24 @@
 /* Copyright (C) 2024 Linaro Ltd. */
 
 #include <command.h>
+#include <env.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
+#include <hexdump.h>
+#include <linux/compiler_attributes.h>
+#include <linux/kernel.h>
 #include <lwip/ip4_addr.h>
+#include <lwip/dns.h>
 #include <lwip/err.h>
 #include <lwip/netif.h>
 #include <lwip/pbuf.h>
 #include <lwip/etharp.h>
 #include <lwip/init.h>
 #include <lwip/prot/etharp.h>
+#include <lwip/timeouts.h>
 #include <net.h>
+#include <timer.h>
+#include <u-boot/schedule.h>
 
 /* xx:xx:xx:xx:xx:xx\0 */
 #define MAC_ADDR_STRLEN 18
@@ -20,8 +28,11 @@
 #if defined(CONFIG_API) || defined(CONFIG_EFI_LOADER)
 void (*push_packet)(void *, int len) = 0;
 #endif
+int net_try_count;
+static int net_restarted;
 int net_restart_wrap;
-static uchar net_pkt_buf[(PKTBUFSRX) * PKTSIZE_ALIGN + PKTALIGN];
+static uchar net_pkt_buf[(PKTBUFSRX) * PKTSIZE_ALIGN + PKTALIGN]
+	__aligned(PKTALIGN);
 uchar *net_rx_packets[PKTBUFSRX];
 uchar *net_rx_packet;
 const u8 net_bcast_ethaddr[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
@@ -30,11 +41,17 @@ char *pxelinux_configfile;
 struct in_addr	net_ip;
 char net_boot_file_name[1024];
 
-static err_t linkoutput(struct netif *netif, struct pbuf *p)
+static err_t net_lwip_tx(struct netif *netif, struct pbuf *p)
 {
 	struct udevice *udev = netif->state;
 	void *pp = NULL;
 	int err;
+
+	if (CONFIG_IS_ENABLED(LWIP_DEBUG_RXTX)) {
+		printf("net_lwip_tx: %u bytes, udev %s\n", p->len, udev->name);
+		print_hex_dump("net_lwip_tx: ", 0, 16, 1, p->payload, p->len,
+			       true);
+	}
 
 	if ((unsigned long)p->payload % PKTALIGN) {
 		/*
@@ -50,7 +67,7 @@ static err_t linkoutput(struct netif *netif, struct pbuf *p)
 	err = eth_get_ops(udev)->send(udev, pp ? pp : p->payload, p->len);
 	free(pp);
 	if (err) {
-		log_err("send error %d\n", err);
+		debug("send error %d\n", err);
 		return ERR_ABRT;
 	}
 
@@ -60,7 +77,7 @@ static err_t linkoutput(struct netif *netif, struct pbuf *p)
 static err_t net_lwip_if_init(struct netif *netif)
 {
 	netif->output = etharp_output;
-	netif->linkoutput = linkoutput;
+	netif->linkoutput = net_lwip_tx;
 	netif->mtu = 1500;
 	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
 
@@ -127,6 +144,59 @@ static int get_udev_ipv4_info(struct udevice *dev, ip4_addr_t *ip,
 	return 0;
 }
 
+/*
+ * Initialize DNS via env
+ */
+int net_lwip_dns_init(void)
+{
+#if CONFIG_IS_ENABLED(DNS)
+	bool has_server = false;
+	ip_addr_t ns;
+	char *nsenv;
+
+	nsenv = env_get("dnsip");
+	if (nsenv && ipaddr_aton(nsenv, &ns)) {
+		dns_setserver(0, &ns);
+		has_server = true;
+	}
+
+	nsenv = env_get("dnsip2");
+	if (nsenv && ipaddr_aton(nsenv, &ns)) {
+		dns_setserver(1, &ns);
+		has_server = true;
+	}
+
+	if (!has_server) {
+		log_err("No valid name server (dnsip/dnsip2)\n");
+		return -EINVAL;
+	}
+
+	return 0;
+#else
+	log_err("DNS disabled\n");
+	return -EINVAL;
+#endif
+}
+
+/*
+ * Initialize the network stack if needed and start the current device if valid
+ */
+int net_lwip_eth_start(void)
+{
+	int ret;
+
+	net_init();
+	eth_halt();
+	eth_set_current();
+	ret = eth_init();
+	if (ret < 0) {
+		eth_halt();
+		return ret;
+	}
+
+	return 0;
+}
+
 static struct netif *new_netif(struct udevice *udev, bool with_ip)
 {
 	unsigned char enetaddr[ARP_HLEN];
@@ -134,18 +204,9 @@ static struct netif *new_netif(struct udevice *udev, bool with_ip)
 	ip4_addr_t ip, mask, gw;
 	struct netif *netif;
 	int ret = 0;
-	static bool first_call = true;
 
 	if (!udev)
 		return NULL;
-
-	if (first_call) {
-		eth_init_rings();
-		/* Pick a valid active device, if any */
-		eth_init();
-		lwip_init();
-		first_call = false;
-	}
 
 	if (eth_start_udev(udev) < 0) {
 		log_err("Could not start %s\n", udev->name);
@@ -212,11 +273,19 @@ void net_lwip_remove_netif(struct netif *netif)
 	free(netif);
 }
 
+/*
+ * Initialize the network buffers, an ethernet device, and the lwIP stack
+ * (once).
+ */
 int net_init(void)
 {
-	eth_set_current();
+	static bool init_done;
 
-	net_lwip_new_netif(eth_get_dev());
+	if (!init_done) {
+		eth_init_rings();
+		lwip_init();
+		init_done = true;
+	}
 
 	return 0;
 }
@@ -251,6 +320,11 @@ int net_lwip_rx(struct udevice *udev, struct netif *netif)
 	int len;
 	int i;
 
+	/* lwIP timers */
+	sys_check_timeouts();
+	/* Other tasks and actions */
+	schedule();
+
 	if (!eth_is_active(udev))
 		return -EINVAL;
 
@@ -260,6 +334,13 @@ int net_lwip_rx(struct udevice *udev, struct netif *netif)
 		flags = 0;
 
 		if (len > 0) {
+			if (CONFIG_IS_ENABLED(LWIP_DEBUG_RXTX)) {
+				printf("net_lwip_tx: %u bytes, udev %s \n", len,
+				       udev->name);
+				print_hex_dump("net_lwip_rx: ", 0, 16, 1,
+					       packet, len, true);
+			}
+
 			pbuf = alloc_pbuf_and_copy(packet, len);
 			if (pbuf)
 				netif->input(pbuf, netif);
@@ -273,6 +354,44 @@ int net_lwip_rx(struct udevice *udev, struct netif *netif)
 		len = 0;
 
 	return len;
+}
+
+/**
+ * net_lwip_dns_resolve() - find IP address from name or IP
+ *
+ * @name_or_ip: host name or IP address
+ * @ip: output IP address
+ *
+ * Return value: 0 on success, -1 on failure.
+ */
+int net_lwip_dns_resolve(char *name_or_ip, ip_addr_t *ip)
+{
+#if defined(CONFIG_DNS)
+	char *var = "_dnsres";
+	char *argv[] = { "dns", name_or_ip, var, NULL };
+	int argc = ARRAY_SIZE(argv) - 1;
+#endif
+
+	if (ipaddr_aton(name_or_ip, ip))
+		return 0;
+
+#if defined(CONFIG_DNS)
+	if (do_dns(NULL, 0, argc, argv) != CMD_RET_SUCCESS)
+		return -1;
+
+	name_or_ip = env_get(var);
+	if (!name_or_ip)
+		return -1;
+
+	if (!ipaddr_aton(name_or_ip, ip))
+		return -1;
+
+	env_set(var, NULL);
+
+	return 0;
+#else
+	return -1;
+#endif
 }
 
 void net_process_received_packet(uchar *in_packet, int len)
@@ -300,5 +419,48 @@ int net_loop(enum proto_t protocol)
 
 u32_t sys_now(void)
 {
+#if CONFIG_IS_ENABLED(SANDBOX_TIMER)
+	return timer_early_get_count();
+#else
 	return get_timer(0);
+#endif
+}
+
+int net_start_again(void)
+{
+	char *nretry;
+	int retry_forever = 0;
+	unsigned long retrycnt = 0;
+
+	nretry = env_get("netretry");
+	if (nretry) {
+		if (!strcmp(nretry, "yes"))
+			retry_forever = 1;
+		else if (!strcmp(nretry, "no"))
+			retrycnt = 0;
+		else if (!strcmp(nretry, "once"))
+			retrycnt = 1;
+		else
+			retrycnt = simple_strtoul(nretry, NULL, 0);
+	} else {
+		retrycnt = 0;
+		retry_forever = 0;
+	}
+
+	if ((!retry_forever) && (net_try_count > retrycnt)) {
+		eth_halt();
+		/*
+		 * We don't provide a way for the protocol to return an error,
+		 * but this is almost always the reason.
+		 */
+		return -ETIMEDOUT;
+	}
+
+	net_try_count++;
+
+	eth_halt();
+#if !defined(CONFIG_NET_DO_NOT_TRY_ANOTHER)
+	eth_try_another(!net_restarted);
+#endif
+	return eth_init();
 }

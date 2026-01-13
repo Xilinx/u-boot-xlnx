@@ -114,7 +114,7 @@ int dm_extended_scan(bool pre_reloc_only);
  *
  * Some devices may not be visible to Driver Model. This weak function can
  * be provided by boards which wish to create their own devices
- * programmaticaly. They should do this by calling device_bind() on each
+ * programmatically. They should do this by calling device_bind() on each
  * device.
  *
  * @pre_reloc_only: If true, bind only nodes with special devicetree properties,
@@ -135,6 +135,21 @@ int dm_scan_other(bool pre_reloc_only);
  * Return: 0 if OK, -ve on error
  */
 int dm_init_and_scan(bool pre_reloc_only);
+
+/**
+ * dm_autoprobe() - Probe devices which are marked for probe-after-bind
+ *
+ * This probes all devices with a DM_FLAG_PROBE_AFTER_BIND flag. It checks the
+ * entire tree, so parent nodes need not have the flag set.
+ *
+ * It recursively probes parent nodes, so they do not need to have the flag
+ * set themselves. Since parents are always probed before children, if a child
+ * has the flag set, then its parent (and any devices up the chain to the root
+ * device) will be probed too.
+ *
+ * Return: 0 if OK, -ve on error
+ */
+int dm_autoprobe(void);
 
 /**
  * dm_init() - Initialise Driver Model structures

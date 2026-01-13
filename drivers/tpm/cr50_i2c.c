@@ -388,7 +388,7 @@ static int cr50_i2c_recv(struct udevice *dev, u8 *buf, size_t buf_len)
 	int status;
 	int ret;
 
-	log_debug("%s: buf_len=%x\n", __func__, buf_len);
+	log_debug("%s: buf_len=%zx\n", __func__, buf_len);
 	if (buf_len < TPM_HEADER_SIZE)
 		return -E2BIG;
 
@@ -465,7 +465,7 @@ static int cr50_i2c_send(struct udevice *dev, const u8 *buf, size_t len)
 	ulong timeout;
 	int ret;
 
-	log_debug("len=%x\n", len);
+	log_debug("len=%zx\n", len);
 	timeout = timer_get_us() + TIMEOUT_LONG_US;
 	do {
 		ret = cr50_i2c_status(dev);
@@ -737,8 +737,12 @@ static int cr50_i2c_report_state(struct udevice *dev, char *str, int str_max)
 
 static int cr50_i2c_open(struct udevice *dev)
 {
+	struct cr50_priv *priv = dev_get_priv(dev);
 	char buf[80];
 	int ret;
+
+	if (priv->locality != -1)
+		return -EBUSY;
 
 	ret = process_reset(dev);
 	if (ret)

@@ -46,6 +46,7 @@ void bdinfo_print_num_ll(const char *name, unsigned long long value)
 static void print_eth(void)
 {
 	const int idx = eth_get_dev_index();
+	char ipstr[] = "ipaddr\0\0";
 	uchar enetaddr[6];
 	char name[10];
 	int ret;
@@ -62,7 +63,11 @@ static void print_eth(void)
 		printf("%-12s= (not set)\n", name);
 	else
 		printf("%-12s= %pM\n", name, enetaddr);
-	printf("IP addr     = %s\n", env_get("ipaddr"));
+
+	if (idx > 0)
+		sprintf(ipstr, "ipaddr%d", idx);
+
+	printf("IP addr     = %s\n", env_get(ipstr));
 }
 
 void bdinfo_print_mhz(const char *name, unsigned long hz)
@@ -140,10 +145,6 @@ static int bdinfo_print_all(struct bd_info *bd)
 #endif
 	bdinfo_print_num_l("boot_params", (ulong)bd->bi_boot_params);
 	print_bi_dram(bd);
-	if (IS_ENABLED(CONFIG_SYS_HAS_SRAM)) {
-		bdinfo_print_num_l("sramstart", (ulong)bd->bi_sramstart);
-		bdinfo_print_num_l("sramsize", (ulong)bd->bi_sramsize);
-	}
 	bdinfo_print_num_l("flashstart", (ulong)bd->bi_flashstart);
 	bdinfo_print_num_l("flashsize", (ulong)bd->bi_flashsize);
 	bdinfo_print_num_l("flashoffset", (ulong)bd->bi_flashoffset);

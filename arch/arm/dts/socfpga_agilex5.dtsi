@@ -1,6 +1,7 @@
 // SPDX-License-Identifier:     GPL-2.0
 /*
  * Copyright (C) 2024 Intel Corporation <www.intel.com>
+ * Copyright (C) 2025 Altera Corporation <www.altera.com>
  */
 
 /dts-v1/;
@@ -330,6 +331,20 @@
 			status = "disabled";
 		};
 
+		nand: nand@10b80000 {
+			compatible = "cdns,nand";
+			reg = <0x10b80000 0x10000>,
+				<0x10840000 0x1000>;
+			reg-names = "reg", "sdma";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			interrupts = <0 97 4>;
+			clocks = <&clkmgr AGILEX5_NAND_CLK>;
+			resets = <&rst NAND_RESET>, <&rst COMBOPHY_RESET>;
+			cdns,board-delay-ps = <4830>;
+			status = "disabled";
+		};
+
 		ocram: sram@00000000 {
 			compatible = "mmio-sram";
 			reg = <0x00000000 0x200000>;
@@ -373,6 +388,7 @@
 			reg-io-width = <4>;
 			num-cs = <4>;
 			clocks = <&clkmgr AGILEX5_L4_MAIN_CLK>;
+			spi-max-frequency = <50000000>;
 			status = "disabled";
 		};
 
@@ -387,6 +403,7 @@
 			reg-io-width = <4>;
 			num-cs = <4>;
 			clocks = <&clkmgr AGILEX5_L4_MAIN_CLK>;
+			spi-max-frequency = <50000000>;
 			status = "disabled";
 		};
 
@@ -544,6 +561,13 @@
 			status = "disabled";
 		};
 
+		sdr: sdr@18000000 {
+			compatible = "intel,sdr-ctl-agilex5";
+			reg = <0x18000000 0x400000>;
+			resets = <&rst DDRSCH_RESET>;
+			bootph-all;
+		};
+
 		/* QSPI address not available yet */
 		qspi: spi@108d2000 {
 			compatible = "cdns,qspi-nor";
@@ -571,5 +595,9 @@
 				};
 			};
 		};
+	};
+
+	aliases {
+		sysmgr = &sysmgr;
 	};
 };

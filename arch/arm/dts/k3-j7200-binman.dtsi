@@ -7,46 +7,6 @@
 
 #ifdef CONFIG_TARGET_J7200_R5_EVM
 
-&bcfg_yaml {
-	config = "board-cfg_j7200.yaml";
-};
-
-&rcfg_yaml {
-	config = "rm-cfg_j7200.yaml";
-};
-
-&pcfg_yaml {
-	config = "pm-cfg_j7200.yaml";
-};
-
-&scfg_yaml {
-	config = "sec-cfg_j7200.yaml";
-};
-
-&bcfg_yaml_tifs {
-	config = "board-cfg_j7200.yaml";
-};
-
-&rcfg_yaml_tifs {
-	config = "rm-cfg_j7200.yaml";
-};
-
-&pcfg_yaml_tifs {
-	config = "pm-cfg_j7200.yaml";
-};
-
-&scfg_yaml_tifs {
-	config = "sec-cfg_j7200.yaml";
-};
-
-&rcfg_yaml_dm {
-	config = "rm-cfg_j7200.yaml";
-};
-
-&pcfg_yaml_dm {
-	config = "pm-cfg_j7200.yaml";
-};
-
 &binman {
 	tiboot3-j7200-hs-evm.bin {
 		filename = "tiboot3-j7200-hs-evm.bin";
@@ -64,7 +24,7 @@
 			content-sysfw-data = <&combined_tifs_cfg_sr1>;
 			content-sysfw-inner-cert = <&sysfw_inner_cert_sr1>;
 			content-dm-data = <&combined_dm_cfg_sr1>;
-			load = <0x41c00000>;
+			load = <CONFIG_SPL_TEXT_BASE>;
 			load-sysfw = <0x40000>;
 			load-sysfw-data = <0x7f000>;
 			load-dm-data = <0x41c80000>;
@@ -75,7 +35,6 @@
 		ti_fs_enc_sr1: ti-fs-enc.bin {
 			filename = "ti-sysfw/ti-fs-firmware-j7200-hs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_tifs_cfg_sr1: combined-tifs-cfg.bin {
 			filename = "combined-tifs-cfg.bin";
@@ -84,7 +43,6 @@
 		sysfw_inner_cert_sr1: sysfw-inner-cert {
 			filename = "ti-sysfw/ti-fs-firmware-j7200-hs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_dm_cfg_sr1: combined-dm-cfg.bin {
 			filename = "combined-dm-cfg.bin";
@@ -109,7 +67,7 @@
 			content-sysfw-data = <&combined_tifs_cfg>;
 			content-sysfw-inner-cert = <&sysfw_inner_cert>;
 			content-dm-data = <&combined_dm_cfg>;
-			load = <0x41c00000>;
+			load = <CONFIG_SPL_TEXT_BASE>;
 			load-sysfw = <0x40000>;
 			load-sysfw-data = <0x7f000>;
 			load-dm-data = <0x41c80000>;
@@ -120,7 +78,6 @@
 		ti_fs_enc: ti-fs-enc.bin {
 			filename = "ti-sysfw/ti-fs-firmware-j7200_sr2-hs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_tifs_cfg: combined-tifs-cfg.bin {
 			filename = "combined-tifs-cfg.bin";
@@ -129,7 +86,6 @@
 		sysfw_inner_cert: sysfw-inner-cert {
 			filename = "ti-sysfw/ti-fs-firmware-j7200_sr2-hs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_dm_cfg: combined-dm-cfg.bin {
 			filename = "combined-dm-cfg.bin";
@@ -156,7 +112,7 @@
 			content-sysfw-data = <&combined_tifs_cfg_fs_sr1>;
 			content-sysfw-inner-cert = <&sysfw_inner_cert_fs_sr1>;
 			content-dm-data = <&combined_dm_cfg_fs_sr1>;
-			load = <0x41c00000>;
+			load = <CONFIG_SPL_TEXT_BASE>;
 			load-sysfw = <0x40000>;
 			load-sysfw-data = <0x7f000>;
 			load-dm-data = <0x41c80000>;
@@ -167,7 +123,6 @@
 		ti_fs_enc_fs_sr1: ti-fs-enc.bin {
 			filename = "ti-sysfw/ti-fs-firmware-j7200-hs-fs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_tifs_cfg_fs_sr1: combined-tifs-cfg.bin {
 			filename = "combined-tifs-cfg.bin";
@@ -176,7 +131,6 @@
 		sysfw_inner_cert_fs_sr1: sysfw-inner-cert {
 			filename = "ti-sysfw/ti-fs-firmware-j7200-hs-fs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_dm_cfg_fs_sr1: combined-dm-cfg.bin {
 			filename = "combined-dm-cfg.bin";
@@ -201,7 +155,7 @@
 			content-sysfw-data = <&combined_tifs_cfg_fs>;
 			content-sysfw-inner-cert = <&sysfw_inner_cert_fs>;
 			content-dm-data = <&combined_dm_cfg_fs>;
-			load = <0x41c00000>;
+			load = <CONFIG_SPL_TEXT_BASE>;
 			load-sysfw = <0x40000>;
 			load-sysfw-data = <0x7f000>;
 			load-dm-data = <0x41c80000>;
@@ -212,7 +166,6 @@
 		ti_fs_enc_fs: ti-fs-enc.bin {
 			filename = "ti-sysfw/ti-fs-firmware-j7200_sr2-hs-fs-enc.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_tifs_cfg_fs: combined-tifs-cfg.bin {
 			filename = "combined-tifs-cfg.bin";
@@ -221,7 +174,6 @@
 		sysfw_inner_cert_fs: sysfw-inner-cert {
 			filename = "ti-sysfw/ti-fs-firmware-j7200_sr2-hs-fs-cert.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_dm_cfg_fs: combined-dm-cfg.bin {
 			filename = "combined-dm-cfg.bin";
@@ -240,7 +192,7 @@
 			combined;
 			dm-data;
 			content-sbl = <&u_boot_spl_unsigned>;
-			load = <0x41c00000>;
+			load = <CONFIG_SPL_TEXT_BASE>;
 			content-sysfw = <&ti_fs_gp>;
 			load-sysfw = <0x40000>;
 			content-sysfw-data = <&combined_tifs_cfg_gp>;
@@ -256,7 +208,6 @@
 		ti_fs_gp: ti-fs-gp.bin {
 			filename = "ti-sysfw/ti-fs-firmware-j7200-gp.bin";
 			type = "blob-ext";
-			optional;
 		};
 		combined_tifs_cfg_gp: combined-tifs-cfg-gp.bin {
 			filename = "combined-tifs-cfg.bin";
@@ -277,13 +228,6 @@
 #define J7200_EVM_DTB "u-boot.dtb"
 
 &binman {
-	ti-dm {
-		filename = "ti-dm.bin";
-		blob-ext {
-			filename = "ti-dm/j7200/ipc_echo_testb_mcu1_0_release_strip.xer5f";
-			optional;
-		};
-	};
 	ti-spl {
 		insert-template = <&ti_spl_template>;
 
@@ -385,7 +329,7 @@
 						keyfile = "custMpk.pem";
 					};
 					dm: ti-dm {
-						filename = "ti-dm.bin";
+						filename = "ti-dm/j7200/ipc_echo_testb_mcu1_0_release_strip.xer5f";
 					};
 				};
 
@@ -470,7 +414,7 @@
 			images {
 				dm {
 					ti-dm {
-						filename = "ti-dm.bin";
+						filename = "ti-dm/j7200/ipc_echo_testb_mcu1_0_release_strip.xer5f";
 					};
 				};
 

@@ -656,7 +656,7 @@ static struct spi_nor *mtd_to_spi_nor(struct mtd_info *mtd)
 	return mtd->priv;
 }
 
-#ifndef CONFIG_SPI_FLASH_BAR
+#if !CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 static u8 spi_nor_convert_opcode(u8 opcode, const u8 table[][2], size_t size)
 {
 	size_t i;
@@ -740,7 +740,7 @@ static void spi_nor_set_4byte_opcodes(struct spi_nor *nor,
 	nor->program_opcode = spi_nor_convert_3to4_program(nor->program_opcode);
 	nor->erase_opcode = spi_nor_convert_3to4_erase(nor->erase_opcode);
 }
-#endif /* !CONFIG_SPI_FLASH_BAR */
+#endif /* !CONFIG_IS_ENABLED(SPI_FLASH_BAR) */
 
 /* Enable/disable 4-byte addressing mode. */
 static int set_4byte(struct spi_nor *nor, const struct flash_info *info,
@@ -931,7 +931,7 @@ static int spi_nor_erase_chip_wait_till_ready(struct spi_nor *nor, unsigned long
 	return spi_nor_wait_till_ready_with_timeout(nor, timeout);
 }
 
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 /*
  * This "clean_bar" is necessary in a situation when one was accessing
  * spi flash memory > 16 MiB by using Bank Address Register's BA24 bit.
@@ -1150,7 +1150,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 			}
 		}
 		if (nor->addr_width == 3) {
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 			ret = write_bar(nor, offset);
 			if (ret < 0)
 				goto erase_err;
@@ -1212,7 +1212,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	addr_known = false;
 erase_err:
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 	err = clean_bar(nor);
 	if (!ret)
 		ret = err;
@@ -1710,7 +1710,7 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 				offset /= 2;
 		}
 
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 		ret = write_bar(nor, offset);
 		if (ret < 0)
 			return log_ret(ret);
@@ -1748,7 +1748,7 @@ static int spi_nor_read(struct mtd_info *mtd, loff_t from, size_t len,
 	ret = 0;
 
 read_err:
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 	ret = clean_bar(nor);
 #endif
 	return ret;
@@ -2103,7 +2103,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 		}
 
 		if (nor->addr_width == 3) {
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 			ret = write_bar(nor, offset);
 			if (ret < 0)
 				return ret;
@@ -2178,7 +2178,7 @@ static int spi_nor_write(struct mtd_info *mtd, loff_t to, size_t len,
 	}
 
 write_err:
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 	ret = clean_bar(nor);
 #endif
 	return ret;
@@ -3955,7 +3955,7 @@ static int s25_s28_setup(struct spi_nor *nor, const struct flash_info *info,
 	int ret;
 	u8 cr;
 
-#ifdef CONFIG_SPI_FLASH_BAR
+#if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 	return -ENOTSUPP; /* Bank Address Register is not supported */
 #endif
 	/*
@@ -6540,7 +6540,7 @@ int spi_nor_scan(struct spi_nor *nor)
 	if (nor->flags & (SNOR_F_HAS_PARALLEL | SNOR_F_HAS_STACKED))
 		shift = 1;
 	if (nor->addr_width == 3 && (mtd->size >> shift) > SZ_16M) {
-#ifndef CONFIG_SPI_FLASH_BAR
+#if !CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 		/* enable 4-byte addressing if the device exceeds 16MiB */
 		nor->addr_width = 4;
 		if (JEDEC_MFR(info) == SNOR_MFR_SPANSION ||

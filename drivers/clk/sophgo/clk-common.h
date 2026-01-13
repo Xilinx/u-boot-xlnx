@@ -45,12 +45,14 @@ static inline u32 cv1800b_clk_getbit(void *base, struct cv1800b_clk_regbit *bit)
 
 static inline u32 cv1800b_clk_setbit(void *base, struct cv1800b_clk_regbit *bit)
 {
-	return setbits_le32(base + bit->offset, BIT(bit->shift));
+	setbits_le32(base + bit->offset, BIT(bit->shift));
+	return 0;
 }
 
 static inline u32 cv1800b_clk_clrbit(void *base, struct cv1800b_clk_regbit *bit)
 {
-	return clrbits_le32(base + bit->offset, BIT(bit->shift));
+	clrbits_le32(base + bit->offset, BIT(bit->shift));
+	return 0;
 }
 
 static inline u32 cv1800b_clk_getfield(void *base,
@@ -68,7 +70,7 @@ cv1800b_clk_setfield(void *base, struct cv1800b_clk_regfield *field, u32 val)
 	u32 new_val = (readl(base + field->offset) & ~mask) |
 		      ((val << field->shift) & mask);
 
-	return writel(new_val, base + field->offset);
+	writel(new_val, base + field->offset);
 }
 
 #endif /* __CLK_SOPHGO_COMMON_H__ */

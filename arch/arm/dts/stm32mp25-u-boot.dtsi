@@ -25,6 +25,10 @@
 		optee {
 			bootph-all;
 		};
+
+		scmi {
+			bootph-all;
+		};
 	};
 
 	/* need PSCI for sysreset during board_f */
@@ -34,6 +38,11 @@
 
 	soc@0 {
 		bootph-all;
+	};
+
+	/* temporary until kernel DT update */
+	watchdog {
+		arm,smc-id = <0xbc000000>;
 	};
 };
 
@@ -90,6 +99,10 @@
 };
 
 &pinctrl {
+	bootph-all;
+};
+
+&rcc {
 	bootph-all;
 };
 

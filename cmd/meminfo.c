@@ -15,6 +15,10 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
+void __weak arch_dump_mem_attrs(void)
+{
+}
+
 static void print_region(const char *name, ulong base, ulong size, ulong *uptop)
 {
 	ulong end = base + size;
@@ -58,6 +62,8 @@ static int do_meminfo(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (!IS_ENABLED(CONFIG_CMD_MEMINFO_MAP))
 		return 0;
 
+	arch_dump_mem_attrs();
+
 	printf("\n%-12s %8s %8s %8s %8s\n", "Region", "Base", "Size", "End",
 	       "Gap");
 	printf("------------------------------------------------\n");
@@ -87,7 +93,7 @@ static int do_meminfo(struct cmd_tbl *cmdtp, int flag, int argc,
 	print_region("stack", stk_bot, CONFIG_STACK_SIZE, &upto);
 	if (IS_ENABLED(CONFIG_LMB))
 		show_lmb(lmb_get(), &upto);
-	print_region("free", gd->ram_base, upto, &upto);
+	print_region("free", gd->ram_base, upto - gd->ram_base, &upto);
 
 	return 0;
 }

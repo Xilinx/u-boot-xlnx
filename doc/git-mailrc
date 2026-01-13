@@ -13,7 +13,7 @@ alias u-boot uboot
 alias abiessmann     Andreas Bießmann <andreas@biessmann.org>
 alias abrodkin       Alexey Brodkin <alexey.brodkin@synopsys.com>
 alias afleming       Andy Fleming <afleming@gmail.com>
-alias ag             Anatolij Gustschin <agust@denx.de>
+alias ag             Anatolij Gustschin <ag.dev.uboot@gmail.com>
 alias agraf          Alexander Graf <agraf@csgraf.de>
 alias alexnemirovsky Alex Nemirovsky <alex.nemirovsky@cortina-access.com>
 alias alisonwang     Alison Wang <alison.wang@nxp.com>
@@ -23,7 +23,7 @@ alias bmeng          Bin Meng <bmeng.cn@gmail.com>
 alias danielschwierzeck Daniel Schwierzeck <daniel.schwierzeck@gmail.com>
 alias dinh           Dinh Nguyen <dinguyen@kernel.org>
 alias ehristev       Eugen Hristev <eugen.hristev@linaro.org>
-alias hs             Heiko Schocher <hs@denx.de>
+alias hs             Heiko Schocher <hs@nabladev.com>
 alias freenix        Peng Fan <peng.fan@nxp.com>
 alias iwamatsu       Nobuhiro Iwamatsu <iwamatsu@nigauri.org>
 alias jaehoon        Jaehoon Chung <jh80.chung@samsung.com>
@@ -42,11 +42,11 @@ alias mbrugger       Matthias Brugger <mbrugger@suse.com>
 alias monstr         Michal Simek <monstr@monstr.eu>
 alias prom           Minkyu Kang <mk7.kang@samsung.com>
 alias ptomsich       Philipp Tomsich <philipp.tomsich@theobroma-systems.com>
-alias sbabic         Stefano Babic <sbabic@denx.de>
+alias sbabic         Stefano Babic <sbabic@nabladev.com>
 alias simongoldschmidt Simon Goldschmidt <simon.k.r.goldschmidt@gmail.com>
 alias sjg            Simon Glass <sjg@chromium.org>
 alias smcnutt        Scott McNutt <smcnutt@psyent.com>
-alias stroese        Stefan Roese <sr@denx.de>
+alias stroese        Stefan Roese <stefan.roese@mailbox.org>
 alias tienfong       Tien Fong Chee <tien.fong.chee@intel.com>
 alias trini          Tom Rini <trini@konsulko.com>
 alias wd             Wolfgang Denk <wd@denx.de>
@@ -74,7 +74,7 @@ alias samsung        uboot, prom
 alias snapdragon     uboot, mateusz
 alias socfpga        uboot, marex, dinh, simongoldschmidt, tienfong
 alias sunxi          uboot, jagan, apritzel
-alias tegra          uboot, sjg, Tom Warren <twarren@nvidia.com>, Stephen Warren <swarren@nvidia.com>
+alias tegra          uboot, sjg, Tom Warren <twarren@nvidia.com>
 alias tegra2         tegra
 alias ti             uboot, trini
 alias uniphier       uboot, masahiro

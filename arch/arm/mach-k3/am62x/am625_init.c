@@ -29,6 +29,12 @@
 /* TISCI DEV ID for A53 Clock */
 #define AM62X_DEV_A53SS0_CORE_0_DEV_ID 135
 
+struct fwl_data rom_fwls[] = {
+	{ "SOC_DEVGRP_MAIN", 641, 1 },
+	{ "SOC_DEVGRP_MAIN", 642, 1 },
+	{ "SOC_DEVGRP_MAIN", 642, 2 },
+};
+
 /*
  * This uninitialized global variable would normal end up in the .bss section,
  * but the .bss is cleared between writing and reading this variable, so move
@@ -177,6 +183,7 @@ void board_init_f(ulong dummy)
 {
 	struct udevice *dev;
 	int ret;
+	int i;
 
 	if (IS_ENABLED(CONFIG_CPU_V7R)) {
 		setup_k3_mpu_regions();
@@ -261,6 +268,11 @@ void board_init_f(ulong dummy)
 	/* Output System Firmware version info */
 	k3_sysfw_print_ver();
 
+	/* Disable firewalls ROM has configured. */
+	if (IS_ENABLED(CONFIG_CPU_V7R))
+		for (i = 0; i < ARRAY_SIZE(rom_fwls); i++)
+			remove_fwl_region(&rom_fwls[i]);
+
 	if (IS_ENABLED(CONFIG_ESM_K3)) {
 		/* Probe/configure ESM0 */
 		ret = uclass_get_device_by_name(UCLASS_MISC, "esm@420000", &dev);
@@ -282,15 +294,6 @@ void board_init_f(ulong dummy)
 	}
 	spl_enable_cache();
 
-	if (IS_ENABLED(CONFIG_SPL_ETH) && IS_ENABLED(CONFIG_TI_AM65_CPSW_NUSS) &&
-	    spl_boot_device() == BOOT_DEVICE_ETHERNET) {
-		struct udevice *cpswdev;
-
-		if (uclass_get_device_by_driver(UCLASS_MISC, DM_DRIVER_GET(am65_cpsw_nuss),
-						&cpswdev))
-			printf("Failed to probe am65_cpsw_nuss driver\n");
-	}
-
 	fixup_a53_cpu_freq_by_speed_grade();
 }
 
@@ -301,6 +304,11 @@ u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 				MAIN_DEVSTAT_PRIMARY_BOOTMODE_SHIFT;
 	u32 bootmode_cfg = (devstat & MAIN_DEVSTAT_PRIMARY_BOOTMODE_CFG_MASK) >>
 			    MAIN_DEVSTAT_PRIMARY_BOOTMODE_CFG_SHIFT;
+
+	if (bootindex != K3_PRIMARY_BOOTMODE) {
+		pr_alert("Fallback to backup bootmode MMCSD_MODE_FS\n");
+		return MMCSD_MODE_FS;
+	}
 
 	switch (bootmode) {
 	case BOOT_DEVICE_EMMC:
@@ -319,5 +327,9 @@ u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 
 u32 spl_boot_device(void)
 {
+#if IS_ENABLED(CONFIG_SPL_OS_BOOT_SECURE) && !IS_ENABLED(CONFIG_ARM64)
+	return k3_r5_falcon_bootmode();
+#else
 	return get_boot_device();
+#endif
 }

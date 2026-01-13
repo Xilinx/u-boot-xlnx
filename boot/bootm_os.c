@@ -402,7 +402,18 @@ static int do_bootm_elf(int flag, struct bootm_info *bmi)
 	if (flag != BOOTM_STATE_OS_GO)
 		return 0;
 
-	bootelf(bmi->images->ep, flags, 0, NULL);
+	/*
+	 * Required per RISC-V boot protocol:
+	 * a0(argc) = hartid of the current core
+	 * a1(argv) = address of the devicetree in memory
+	 * https://www.kernel.org/doc/html/latest/arch/riscv/boot.html#register-state
+	 */
+#if defined(CONFIG_RISCV)
+	bmi->argc = gd->arch.boot_hart;
+	bmi->argv = (char **)bmi->images->ft_addr;
+#endif
+
+	bootelf(bmi->images->ep, flags, bmi->argc, bmi->argv);
 
 	return 1;
 }
@@ -498,16 +509,18 @@ static int do_bootm_efi(int flag, struct bootm_info *bmi)
 	/* We expect to return */
 	images->os.type = IH_TYPE_STANDALONE;
 
-	image_buf = map_sysmem(images->ep, images->os.image_len);
+	image_buf = map_sysmem(images->os.image_start, images->os.image_len);
 
 	/* Run EFI image */
 	printf("## Transferring control to EFI (at address %08lx) ...\n",
-	       images->ep);
+	       images->os.image_start);
 	bootstage_mark(BOOTSTAGE_ID_RUN_OS);
 
 	ret = efi_binary_run(image_buf, images->os.image_len,
 			     images->ft_len
-			     ? images->ft_addr : EFI_FDT_USE_INTERNAL);
+			     ? images->ft_addr : EFI_FDT_USE_INTERNAL,
+				 (void *)images->initrd_start,
+				 (size_t)(images->initrd_end - images->initrd_start));
 
 	return ret;
 }

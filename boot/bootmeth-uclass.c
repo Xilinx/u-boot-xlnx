@@ -6,11 +6,13 @@
 
 #define LOG_CATEGORY UCLASS_BOOTSTD
 
+#include <alist.h>
 #include <blk.h>
 #include <bootflow.h>
 #include <bootmeth.h>
 #include <bootstd.h>
 #include <dm.h>
+#include <dm/device-internal.h>
 #include <env_internal.h>
 #include <fs.h>
 #include <malloc.h>
@@ -83,14 +85,15 @@ int bootmeth_boot(struct udevice *dev, struct bootflow *bflow)
 }
 
 int bootmeth_read_file(struct udevice *dev, struct bootflow *bflow,
-		       const char *file_path, ulong addr, ulong *sizep)
+		       const char *file_path, ulong addr,
+		       enum bootflow_img_t type, ulong *sizep)
 {
 	const struct bootmeth_ops *ops = bootmeth_get_ops(dev);
 
 	if (!ops->read_file)
 		return -ENOSYS;
 
-	return ops->read_file(dev, bflow, file_path, addr, sizep);
+	return ops->read_file(dev, bflow, file_path, addr, type, sizep);
 }
 
 int bootmeth_get_bootflow(struct udevice *dev, struct bootflow *bflow)
@@ -133,16 +136,24 @@ int bootmeth_setup_iter_order(struct bootflow_iter *iter, bool include_global)
 		 * We don't support skipping global bootmeths. Instead, the user
 		 * should omit them from the ordering
 		 */
-		if (!include_global)
-			return log_msg_ret("glob", -EPERM);
+		if (!include_global) {
+			ret = log_msg_ret("glob", -EPERM);
+			goto err_order;
+		}
 		memcpy(order, std->bootmeth_order,
-		       count * sizeof(struct bootmeth *));
+		       count * sizeof(struct udevice *));
 
 		if (IS_ENABLED(CONFIG_BOOTMETH_GLOBAL)) {
 			for (i = 0; i < count; i++) {
 				struct udevice *dev = order[i];
 				struct bootmeth_uc_plat *ucp;
 				bool is_global;
+
+				ret = device_probe(dev);
+				if (ret) {
+					ret = log_msg_ret("probe", ret);
+					goto err_order;
+				}
 
 				ucp = dev_get_uclass_plat(dev);
 				is_global = ucp->flags &
@@ -188,18 +199,36 @@ int bootmeth_setup_iter_order(struct bootflow_iter *iter, bool include_global)
 		}
 		count = upto;
 	}
-	if (!count)
-		return log_msg_ret("count2", -ENOENT);
+	if (!count) {
+		ret = log_msg_ret("count2", -ENOENT);
+		goto err_order;
+	}
 
+	/* start with the global bootmeths */
 	if (IS_ENABLED(CONFIG_BOOTMETH_GLOBAL) && include_global &&
 	    iter->first_glob_method != -1 && iter->first_glob_method != count) {
 		iter->cur_method = iter->first_glob_method;
 		iter->doing_global = true;
+		iter->have_global = true;
 	}
+
+	/*
+	 * check we don't exceed the maximum bits in methods_done when tracking
+	 * which global bootmeths have run
+	 */
+	if (IS_ENABLED(CONFIG_BOOTMETH_GLOBAL) && count > BOOTMETH_MAX_COUNT) {
+		free(order);
+		return log_msg_ret("tmb", -ENOSPC);
+	}
+
 	iter->method_order = order;
 	iter->num_methods = count;
 
 	return 0;
+
+err_order:
+	free(order);
+	return ret;
 }
 
 int bootmeth_set_order(const char *order_str)
@@ -326,8 +355,10 @@ int bootmeth_try_file(struct bootflow *bflow, struct blk_desc *desc,
 	return 0;
 }
 
-int bootmeth_alloc_file(struct bootflow *bflow, uint size_limit, uint align)
+int bootmeth_alloc_file(struct bootflow *bflow, uint size_limit, uint align,
+			enum bootflow_img_t type)
 {
+	struct blk_desc *desc = NULL;
 	void *buf;
 	uint size;
 	int ret;
@@ -344,11 +375,18 @@ int bootmeth_alloc_file(struct bootflow *bflow, uint size_limit, uint align)
 	bflow->state = BOOTFLOWST_READY;
 	bflow->buf = buf;
 
+	if (bflow->blk)
+		desc = dev_get_uclass_plat(bflow->blk);
+
+	if (!bootflow_img_add(bflow, bflow->fname, type, map_to_sysmem(buf),
+			      size))
+		return log_msg_ret("bai", -ENOMEM);
+
 	return 0;
 }
 
 int bootmeth_alloc_other(struct bootflow *bflow, const char *fname,
-			 void **bufp, uint *sizep)
+			 enum bootflow_img_t type, void **bufp, uint *sizep)
 {
 	struct blk_desc *desc = NULL;
 	char path[200];
@@ -377,6 +415,10 @@ int bootmeth_alloc_other(struct bootflow *bflow, const char *fname,
 	if (ret)
 		return log_msg_ret("all", ret);
 
+	if (!bootflow_img_add(bflow, bflow->fname, type, map_to_sysmem(buf),
+			      size))
+		return log_msg_ret("boi", -ENOMEM);
+
 	*bufp = buf;
 	*sizep = size;
 
@@ -384,7 +426,8 @@ int bootmeth_alloc_other(struct bootflow *bflow, const char *fname,
 }
 
 int bootmeth_common_read_file(struct udevice *dev, struct bootflow *bflow,
-			      const char *file_path, ulong addr, ulong *sizep)
+			      const char *file_path, ulong addr,
+			      enum bootflow_img_t type, ulong *sizep)
 {
 	struct blk_desc *desc = NULL;
 	loff_t len_read;
@@ -412,6 +455,9 @@ int bootmeth_common_read_file(struct udevice *dev, struct bootflow *bflow,
 	if (ret)
 		return ret;
 	*sizep = len_read;
+
+	if (!bootflow_img_add(bflow, bflow->fname, type, addr, size))
+		return log_msg_ret("bci", -ENOMEM);
 
 	return 0;
 }

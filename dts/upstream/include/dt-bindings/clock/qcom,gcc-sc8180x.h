@@ -248,6 +248,17 @@
 #define GCC_USB3_SEC_CLKREF_CLK					238
 #define GCC_UFS_MEM_CLKREF_EN					239
 #define GCC_UFS_CARD_CLKREF_EN					240
+#define GPLL9							241
+#define GCC_CAMERA_AHB_CLK					242
+#define GCC_CAMERA_XO_CLK					243
+#define GCC_CPUSS_DVM_BUS_CLK					244
+#define GCC_CPUSS_GNOC_CLK					245
+#define GCC_DISP_AHB_CLK					246
+#define GCC_DISP_XO_CLK						247
+#define GCC_GPU_CFG_AHB_CLK					248
+#define GCC_NPU_CFG_AHB_CLK					249
+#define GCC_VIDEO_AHB_CLK					250
+#define GCC_VIDEO_XO_CLK					251
 
 #define GCC_EMAC_BCR						0
 #define GCC_GPU_BCR						1
@@ -294,6 +305,10 @@
 #define GCC_VIDEO_AXI0_CLK_BCR					42
 #define GCC_VIDEO_AXI1_CLK_BCR					43
 #define GCC_USB3_DP_PHY_SEC_BCR					44
+#define GCC_USB3_UNIPHY_MP0_BCR					45
+#define GCC_USB3_UNIPHY_MP1_BCR					46
+#define GCC_USB3UNIPHY_PHY_MP0_BCR				47
+#define GCC_USB3UNIPHY_PHY_MP1_BCR				48
 
 /* GCC GDSCRs */
 #define EMAC_GDSC						0

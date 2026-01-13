@@ -17,10 +17,8 @@ endif
 ifdef CONFIG_USB_GADGET
 obj-$(CONFIG_USB_GADGET_AT91) += at91_udc.o
 obj-$(CONFIG_USB_GADGET_ATMEL_USBA) += atmel_usba_udc.o
-obj-$(CONFIG_USB_GADGET_BCM_UDC_OTG_PHY) += bcm_udc_otg_phy.o
 obj-$(CONFIG_USB_GADGET_DWC2_OTG) += dwc2_udc_otg.o
 obj-$(CONFIG_USB_GADGET_DWC2_OTG_PHY) += dwc2_udc_otg_phy.o
-obj-$(CONFIG_USB_GADGET_MAX3420) += max3420_udc.o
 obj-$(CONFIG_USB_RENESAS_USBHS) += rcar/
 ifndef CONFIG_XPL_BUILD
 obj-$(CONFIG_USB_GADGET_DOWNLOAD) += g_dnl.o
@@ -35,7 +33,3 @@ endif
 endif
 
 obj-$(CONFIG_CI_UDC) += ci_udc.o
-
-# Devices not related to the new gadget layer depend on CONFIG_USB_DEVICE
-# This is really only N900 and USBTTY now.
-obj-$(CONFIG_USB_DEVICE) += core.o ep0.o

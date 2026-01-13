@@ -765,7 +765,7 @@ static ulong search_container_header(ulong p, int size)
 
 	for (i = 0; i < size; i += 4) {
 		hdr = (u8 *)(p + i);
-		if (*(hdr + 3) == 0x87 && *hdr == 0)
+		if (*(hdr + 3) == 0x87 && (*hdr == 0 || *hdr == 2))
 			if (*(hdr + 1) != 0 || *(hdr + 2) != 0)
 				return p + i;
 	}
@@ -863,7 +863,7 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
 			struct spl_boot_device bootdev = {};
 			spl_parse_image_header(&spl_image, &bootdev, header);
 			spl_board_prepare_for_boot();
-			jump_to_image_no_args(&spl_image);
+			jump_to_image(&spl_image);
 #else
 			/* In U-Boot, allow jumps to scripts */
 			cmd_source_script(sdp_func->jmp_address, NULL, NULL);

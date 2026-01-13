@@ -21,6 +21,7 @@
 #include <part.h>
 #include <malloc.h>
 #include <memalign.h>
+#include <rtc.h>
 #include <asm/cache.h>
 #include <linux/compiler.h>
 #include <linux/ctype.h>
@@ -214,6 +215,11 @@ static __u32 get_fatent(fsdata *mydata, __u32 entry)
 		/* Write back the fatbuf to the disk */
 		if (flush_dirty_fat_buffer(mydata) < 0)
 			return -1;
+
+		if (getsize > FATBUFBLOCKS) {
+			debug("getsize is too large for bufptr\n");
+			getsize = FATBUFBLOCKS;
+		}
 
 		if (disk_read(startblock, getsize, bufptr) < 0) {
 			debug("Error reading FAT blocks\n");

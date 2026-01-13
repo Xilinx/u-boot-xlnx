@@ -306,8 +306,7 @@ static int boot_targets_setup(void)
 		break;
 	case UFS_MODE:
 		puts("UFS_MODE\n");
-		if (uclass_get_device_by_name(UCLASS_UFS,
-					      "ufs@f10b0000", &dev)) {
+		if (uclass_get_device(UCLASS_UFS, 0, &dev)) {
 			debug("UFS driver for UFS device is not present\n");
 			break;
 		}
@@ -347,6 +346,7 @@ static int boot_targets_setup(void)
 				env_targets ? env_targets : "");
 
 		env_set("boot_targets", new_targets);
+		free(new_targets);
 	}
 
 	return 0;

@@ -9,6 +9,7 @@
 
 #include <command.h>
 #include <efi.h>
+#include <efi_device_path.h>
 #include <efi_loader.h>
 #include <exports.h>
 #include <log.h>
@@ -37,6 +38,9 @@ static efi_status_t bootefi_run_prepare(const char *load_options_path,
 				     loaded_image_infop);
 	if (ret != EFI_SUCCESS)
 		return ret;
+
+	(*image_objp)->auth_status = EFI_IMAGE_AUTH_PASSED;
+	(*image_objp)->entry = efi_selftest;
 
 	/* Transfer environment variable as load options */
 	return efi_env_set_load_options((efi_handle_t)*image_objp,
@@ -106,8 +110,8 @@ static int do_efi_selftest(void)
 		return CMD_RET_FAILURE;
 
 	/* Execute the test */
-	ret = EFI_CALL(efi_selftest(&image_obj->header, &systab));
-	free(loaded_image_info->load_options);
+	ret = do_bootefi_exec(&image_obj->header,
+			      loaded_image_info->load_options);
 	efi_free_pool(test_device_path);
 	efi_free_pool(test_image_path);
 	if (ret != EFI_SUCCESS)
@@ -132,22 +136,39 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 {
 	efi_status_t ret;
 	char *p;
-	void *fdt, *image_buf;
-	unsigned long addr, size;
+	void *fdt, *initrd = NULL, *image_buf;
+	unsigned long addr, size, rd_len = 0, fdt_addr = 0;
 	void *image_addr;
 	size_t image_size;
+	int fdt_arg = 2;
 
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
 	if (argc > 2) {
-		uintptr_t fdt_addr;
+		ulong rd_addr = 0;
+		char *end = strchr(argv[2], ':');
 
-		fdt_addr = hextoul(argv[2], NULL);
-		fdt = map_sysmem(fdt_addr, 0);
-	} else {
-		fdt = EFI_FDT_USE_INTERNAL;
+		if (end) {
+			rd_addr = hextoul(argv[2], NULL);
+			if (!rd_addr)
+				return CMD_RET_USAGE;
+
+			rd_len = hextoul(++end, NULL);
+			initrd = map_sysmem(rd_addr, rd_len);
+			++fdt_arg;
+		}
 	}
+
+	if (argc > fdt_arg + 1)
+		return CMD_RET_USAGE;
+	if (argc == fdt_arg + 1)
+		fdt_addr = hextoul(argv[fdt_arg], NULL);
+
+	if (fdt_addr)
+		fdt = map_sysmem(fdt_addr, 0);
+	else
+		fdt = EFI_FDT_USE_INTERNAL;
 
 	if (IS_ENABLED(CONFIG_CMD_BOOTEFI_BOOTMGR) &&
 	    !strcmp(argv[1], "bootmgr")) {
@@ -211,7 +232,7 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 		}
 	}
 
-	ret = efi_binary_run(image_buf, size, fdt);
+	ret = efi_binary_run(image_buf, size, fdt, initrd, rd_len);
 
 	if (ret != EFI_SUCCESS)
 		return CMD_RET_FAILURE;
@@ -220,7 +241,7 @@ static int do_bootefi(struct cmd_tbl *cmdtp, int flag, int argc,
 }
 
 U_BOOT_LONGHELP(bootefi,
-	"<image address>[:<image size>] [<fdt address>]\n"
+	"<image address>[:<size>] [<initrd address>:<size>] [<fdt address>]\n"
 	"  - boot EFI payload\n"
 #ifdef CONFIG_CMD_BOOTEFI_HELLO
 	"bootefi hello\n"

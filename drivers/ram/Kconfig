@@ -1,3 +1,5 @@
+menu "RAM drivers using Driver Model"
+
 config RAM
 	bool "Enable RAM drivers using Driver Model"
 	depends on DM
@@ -37,7 +39,7 @@ config VPL_RAM
 
 config STM32_SDRAM
 	bool "Enable STM32 SDRAM support"
-	depends on RAM
+	depends on RAM && ARCH_STM32
 	help
 	  STM32F7 family devices support flexible memory controller(FMC) to
 	  support external memories like sdram, psram & nand.
@@ -45,7 +47,7 @@ config STM32_SDRAM
 
 config MPC83XX_SDRAM
 	bool "Enable MPC83XX SDRAM support"
-	depends on RAM
+	depends on RAM && MPC83xx
 	help
 	  Enable support for the internal DDR Memory Controller of the MPC83xx
 	  family of SoCs. Both static configurations, as well as configuring
@@ -65,13 +67,13 @@ config K3_AM654_DDRSS
 
 config K3_DDRSS
 	bool "Enable K3 DDRSS support"
-	depends on RAM
+	depends on RAM && ARCH_K3
 
 choice
 	depends on K3_DDRSS
 	prompt "K3 DDRSS Arch Support"
 
-	default K3_J721E_DDRSS if SOC_K3_J721E || SOC_K3_J721S2 || SOC_K3_J784S4
+	default K3_J721E_DDRSS if SOC_K3_J721E || SOC_K3_J7200 || SOC_K3_J721S2 || SOC_K3_J784S4
 	default K3_AM64_DDRSS if SOC_K3_AM642
 	default K3_AM64_DDRSS if SOC_K3_AM625
 	default K3_AM62A_DDRSS if SOC_K3_AM62A7 || SOC_K3_AM62P5 || SOC_K3_J722S
@@ -116,11 +118,35 @@ config IMXRT_SDRAM
 	  to support external memories like sdram, psram & nand.
 	  This driver is for the sdram memory interface with the SEMC.
 
+config K3_INLINE_ECC
+	bool "Enable TI Inline ECC support"
+	depends on K3_DDRSS
+	help
+	  Enable Inline ECC support on K3 platforms. 1/9th of the SDRAM space
+	  is used for ECC storage and the rest 8/9th is available for system
+	  use. Enabling ECC increases boot time as the ECC protected regions
+	  need to be primed with a predefined value prior to enabling ECC
+	  check.
+
+config K3_MULTI_DDR
+	bool "Enable support for multiple K3 DDRSS controllers"
+	depends on K3_DDRSS
+	help
+	  Enabling this option adds support for configuring multiple DDR memory
+	  controllers for K3 devices. The external memory interleave layer
+	  present in the MSMC (Multicore Shared Memory Controller) is
+	  responsible for interleaving between the controllers.
+	default y if SOC_K3_J721S2 || SOC_K3_J784S4
+
 source "drivers/ram/aspeed/Kconfig"
 source "drivers/ram/cadence/Kconfig"
 source "drivers/ram/octeon/Kconfig"
+source "drivers/ram/renesas/Kconfig"
 source "drivers/ram/rockchip/Kconfig"
 source "drivers/ram/sifive/Kconfig"
 source "drivers/ram/stm32mp1/Kconfig"
 source "drivers/ram/starfive/Kconfig"
 source "drivers/ram/sunxi/Kconfig"
+source "drivers/ram/thead/Kconfig"
+
+endmenu

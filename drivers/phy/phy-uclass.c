@@ -274,7 +274,7 @@ int generic_phy_exit(struct phy *phy)
 {
 	struct phy_counts *counts;
 	struct phy_ops const *ops;
-	int ret;
+	int ret = 0;
 
 	if (!generic_phy_valid(phy))
 		return 0;
@@ -292,12 +292,11 @@ int generic_phy_exit(struct phy *phy)
 		if (ret) {
 			dev_err(phy->dev, "PHY: Failed to exit %s: %d.\n",
 				phy->dev->name, ret);
-			return ret;
 		}
 	}
 	counts->init_count = 0;
 
-	return 0;
+	return ret;
 }
 
 int generic_phy_power_on(struct phy *phy)
@@ -415,7 +414,7 @@ int generic_phy_get_bulk(struct udevice *dev, struct phy_bulk *bulk)
 	if (!dev_read_prop(dev, "phys", NULL)) {
 		phydev = dev->parent;
 		if (!dev_read_prop(phydev, "phys", NULL)) {
-			pr_err("%s : no phys property\n", __func__);
+			pr_debug("%s : no phys property\n", __func__);
 			return 0;
 		}
 	}

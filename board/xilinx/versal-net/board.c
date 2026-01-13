@@ -21,8 +21,8 @@
 #include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
-#include <versalpl.h>
 #include <zynqmp_firmware.h>
+#include <versalpl.h>
 #include "../common/board.h"
 
 #include <linux/bitfield.h>

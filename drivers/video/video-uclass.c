@@ -26,6 +26,7 @@
 #ifdef CONFIG_SANDBOX
 #include <asm/sdl.h>
 #endif
+#include "vidconsole_internal.h"
 
 /*
  * Theory of operation:
@@ -171,7 +172,7 @@ int video_fill_part(struct udevice *dev, int xstart, int ystart, int xend,
 	struct video_priv *priv = dev_get_uclass_priv(dev);
 	void *start, *line;
 	int pixels = xend - xstart;
-	int row, i, ret;
+	int row, i;
 
 	start = priv->fb + ystart * priv->line_length;
 	start += xstart * VNBYTES(priv->bpix);
@@ -210,9 +211,42 @@ int video_fill_part(struct udevice *dev, int xstart, int ystart, int xend,
 		}
 		line += priv->line_length;
 	}
-	ret = video_sync_copy(dev, start, line);
-	if (ret)
-		return ret;
+
+	video_damage(dev, xstart, ystart, xend - xstart, yend - ystart);
+
+	return 0;
+}
+
+int video_draw_box(struct udevice *dev, int x0, int y0, int x1, int y1,
+		   int width, u32 colour)
+{
+	struct video_priv *priv = dev_get_uclass_priv(dev);
+	int pbytes = VNBYTES(priv->bpix);
+	void *start, *line;
+	int pixels = x1 - x0;
+	int row;
+
+	start = priv->fb + y0 * priv->line_length;
+	start += x0 * pbytes;
+	line = start;
+	for (row = y0; row < y1; row++) {
+		void *ptr = line;
+		int i;
+
+		for (i = 0; i < width; i++)
+			fill_pixel_and_goto_next(&ptr, colour, pbytes, pbytes);
+		if (row < y0 + width || row >= y1 - width) {
+			for (i = 0; i < pixels - width * 2; i++)
+				fill_pixel_and_goto_next(&ptr, colour, pbytes,
+							 pbytes);
+		} else {
+			ptr += (pixels - width * 2) * pbytes;
+		}
+		for (i = 0; i < width; i++)
+			fill_pixel_and_goto_next(&ptr, colour, pbytes, pbytes);
+		line += priv->line_length;
+	}
+	video_damage(dev, x0, y0, x1 - x0, y1 - y0);
 
 	return 0;
 }
@@ -233,7 +267,6 @@ int video_reserve_from_bloblist(struct video_handoff *ho)
 int video_fill(struct udevice *dev, u32 colour)
 {
 	struct video_priv *priv = dev_get_uclass_priv(dev);
-	int ret;
 
 	switch (priv->bpix) {
 	case VIDEO_BPP16:
@@ -245,6 +278,7 @@ int video_fill(struct udevice *dev, u32 colour)
 				*ppix++ = colour;
 			break;
 		}
+		fallthrough;
 	case VIDEO_BPP32:
 		if (CONFIG_IS_ENABLED(VIDEO_BPP32)) {
 			u32 *ppix = priv->fb;
@@ -254,13 +288,13 @@ int video_fill(struct udevice *dev, u32 colour)
 				*ppix++ = colour;
 			break;
 		}
+		fallthrough;
 	default:
 		memset(priv->fb, colour, priv->fb_size);
 		break;
 	}
-	ret = video_sync_copy(dev, priv->fb, priv->fb + priv->fb_size);
-	if (ret)
-		return ret;
+
+	video_damage(dev, 0, 0, priv->xsize, priv->ysize);
 
 	return video_sync(dev, false);
 }
@@ -346,7 +380,7 @@ void video_set_default_colors(struct udevice *dev, bool invert)
 	struct video_priv *priv = dev_get_uclass_priv(dev);
 	int fore, back;
 
-	if (CONFIG_IS_ENABLED(SYS_WHITE_ON_BLACK)) {
+	if (priv->white_on_black) {
 		/* White is used when switching to bold, use light gray here */
 		fore = VID_LIGHT_GRAY;
 		back = VID_BLACK;
@@ -367,12 +401,104 @@ void video_set_default_colors(struct udevice *dev, bool invert)
 	priv->colour_bg = video_index_to_colour(priv, back);
 }
 
+/* Notify about changes in the frame buffer */
+#ifdef CONFIG_VIDEO_DAMAGE
+void video_damage(struct udevice *vid, int x, int y, int width, int height)
+{
+	struct video_priv *priv = dev_get_uclass_priv(vid);
+	int xend = x + width;
+	int yend = y + height;
+
+	if (x > priv->xsize)
+		return;
+
+	if (y > priv->ysize)
+		return;
+
+	if (xend > priv->xsize)
+		xend = priv->xsize;
+
+	if (yend > priv->ysize)
+		yend = priv->ysize;
+
+	/* Span a rectangle across all old and new damage */
+	priv->damage.xstart = min(x, priv->damage.xstart);
+	priv->damage.ystart = min(y, priv->damage.ystart);
+	priv->damage.xend = max(xend, priv->damage.xend);
+	priv->damage.yend = max(yend, priv->damage.yend);
+}
+#endif
+
+static void video_flush_dcache(struct udevice *vid, bool use_copy)
+{
+	struct video_priv *priv = dev_get_uclass_priv(vid);
+	ulong fb = use_copy ? (ulong)priv->copy_fb : (ulong)priv->fb;
+	uint cacheline_size = 32;
+
+#ifdef CONFIG_SYS_CACHELINE_SIZE
+	cacheline_size = CONFIG_SYS_CACHELINE_SIZE;
+#endif
+
+	if (CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
+		return;
+
+	if (!priv->flush_dcache)
+		return;
+
+	if (!IS_ENABLED(CONFIG_VIDEO_DAMAGE)) {
+		flush_dcache_range(fb, ALIGN(fb + priv->fb_size,
+					     cacheline_size));
+
+		return;
+	}
+
+	if (priv->damage.xend && priv->damage.yend) {
+		int lstart = priv->damage.xstart * VNBYTES(priv->bpix);
+		int lend = priv->damage.xend * VNBYTES(priv->bpix);
+		int y;
+
+		for (y = priv->damage.ystart; y < priv->damage.yend; y++) {
+			ulong start = fb + (y * priv->line_length) + lstart;
+			ulong end = start + lend - lstart;
+
+			start = ALIGN_DOWN(start, cacheline_size);
+			end = ALIGN(end, cacheline_size);
+
+			flush_dcache_range(start, end);
+		}
+	}
+}
+
+static void video_flush_copy(struct udevice *vid)
+{
+	struct video_priv *priv = dev_get_uclass_priv(vid);
+
+	if (!priv->copy_fb)
+		return;
+
+	if (priv->damage.xend && priv->damage.yend) {
+		int lstart = priv->damage.xstart * VNBYTES(priv->bpix);
+		int lend = priv->damage.xend * VNBYTES(priv->bpix);
+		int y;
+
+		for (y = priv->damage.ystart; y < priv->damage.yend; y++) {
+			ulong offset = (y * priv->line_length) + lstart;
+			ulong len = lend - lstart;
+
+			memcpy(priv->copy_fb + offset, priv->fb + offset, len);
+		}
+	}
+}
+
 /* Flush video activity to the caches */
 int video_sync(struct udevice *vid, bool force)
 {
 	struct video_priv *priv = dev_get_uclass_priv(vid);
 	struct video_ops *ops = video_get_ops(vid);
 	int ret;
+
+	if (IS_ENABLED(CONFIG_VIDEO_COPY))
+		video_flush_copy(vid);
 
 	if (ops && ops->video_sync) {
 		ret = ops->video_sync(vid);
@@ -384,21 +510,23 @@ int video_sync(struct udevice *vid, bool force)
 	    get_timer(priv->last_sync) < CONFIG_VIDEO_SYNC_MS)
 		return 0;
 
-	/*
-	 * flush_dcache_range() is declared in common.h but it seems that some
-	 * architectures do not actually implement it. Is there a way to find
-	 * out whether it exists? For now, ARM is safe.
-	 */
-#if defined(CONFIG_ARM) && !CONFIG_IS_ENABLED(SYS_DCACHE_OFF)
-	if (priv->flush_dcache) {
-		flush_dcache_range((ulong)priv->fb,
-				   ALIGN((ulong)priv->fb + priv->fb_size,
-					 CONFIG_SYS_CACHELINE_SIZE));
-	}
-#elif defined(CONFIG_VIDEO_SANDBOX_SDL)
+	video_flush_dcache(vid, false);
+
+	if (IS_ENABLED(CONFIG_VIDEO_COPY))
+		video_flush_dcache(vid, true);
+
+#if defined(CONFIG_VIDEO_SANDBOX_SDL)
+	/* to see the copy framebuffer, use priv->copy_fb */
 	sandbox_sdl_sync(priv->fb);
 #endif
 	priv->last_sync = get_timer(0);
+
+	if (IS_ENABLED(CONFIG_VIDEO_DAMAGE)) {
+		priv->damage.xstart = priv->xsize;
+		priv->damage.ystart = priv->ysize;
+		priv->damage.xend = 0;
+		priv->damage.yend = 0;
+	}
 
 	return 0;
 }
@@ -451,69 +579,6 @@ int video_get_ysize(struct udevice *dev)
 	return priv->ysize;
 }
 
-#ifdef CONFIG_VIDEO_COPY
-int video_sync_copy(struct udevice *dev, void *from, void *to)
-{
-	struct video_priv *priv = dev_get_uclass_priv(dev);
-
-	if (priv->copy_fb) {
-		long offset, size;
-
-		/* Find the offset of the first byte to copy */
-		if ((ulong)to > (ulong)from) {
-			size = to - from;
-			offset = from - priv->fb;
-		} else {
-			size = from - to;
-			offset = to - priv->fb;
-		}
-
-		/*
-		 * Allow a bit of leeway for valid requests somewhere near the
-		 * frame buffer
-		 */
-		if (offset < -priv->fb_size || offset > 2 * priv->fb_size) {
-#ifdef DEBUG
-			char str[120];
-
-			snprintf(str, sizeof(str),
-				 "[** FAULT sync_copy fb=%p, from=%p, to=%p, offset=%lx]",
-				 priv->fb, from, to, offset);
-			console_puts_select_stderr(true, str);
-#endif
-			return -EFAULT;
-		}
-
-		/*
-		 * Silently crop the memcpy. This allows callers to avoid doing
-		 * this themselves. It is common for the end pointer to go a
-		 * few lines after the end of the frame buffer, since most of
-		 * the update algorithms terminate a line after their last write
-		 */
-		if (offset + size > priv->fb_size) {
-			size = priv->fb_size - offset;
-		} else if (offset < 0) {
-			size += offset;
-			offset = 0;
-		}
-
-		memcpy(priv->copy_fb + offset, priv->fb + offset, size);
-	}
-
-	return 0;
-}
-
-int video_sync_copy_all(struct udevice *dev)
-{
-	struct video_priv *priv = dev_get_uclass_priv(dev);
-
-	video_sync_copy(dev, priv->fb, priv->fb + priv->fb_size);
-
-	return 0;
-}
-
-#endif
-
 #define SPLASH_DECL(_name) \
 	extern u8 __splash_ ## _name ## _begin[]; \
 	extern u8 __splash_ ## _name ## _end[]
@@ -553,6 +618,18 @@ static void video_idle(struct cyclic_info *cyc)
 	video_sync_all();
 }
 
+void video_set_white_on_black(struct udevice *dev, bool white_on_black)
+{
+	struct video_priv *priv = dev_get_uclass_priv(dev);
+
+	if (priv->white_on_black != white_on_black) {
+		priv->white_on_black = white_on_black;
+		video_set_default_colors(dev, false);
+
+		video_clear(dev);
+	}
+}
+
 /* Set up the display ready for use */
 static int video_post_probe(struct udevice *dev)
 {
@@ -589,10 +666,13 @@ static int video_post_probe(struct udevice *dev)
 		ho->ysize = priv->ysize;
 		ho->line_length = priv->line_length;
 		ho->bpix = priv->bpix;
+		ho->format = priv->format;
 	}
 
 	if (IS_ENABLED(CONFIG_VIDEO_COPY) && plat->copy_base)
 		priv->copy_fb = map_sysmem(plat->copy_base, plat->size);
+
+	priv->white_on_black = CONFIG_IS_ENABLED(SYS_WHITE_ON_BLACK);
 
 	/* Set up colors  */
 	video_set_default_colors(dev, false);

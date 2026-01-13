@@ -8,6 +8,7 @@ Sections are entries which can contain other entries. This allows hierarchical
 images to be created.
 """
 
+from __future__ import annotations
 from collections import OrderedDict
 import concurrent.futures
 import re
@@ -165,7 +166,7 @@ class Entry_section(Entry):
         self._pad_byte = 0
         self._sort = False
         self._skip_at_start = None
-        self._end_4gb = False
+        self._end_at_4gb = False
         self._ignore_missing = False
         self._filename = None
         self.align_default = 0
@@ -187,9 +188,9 @@ class Entry_section(Entry):
         super().ReadNode()
         self._pad_byte = fdt_util.GetInt(self._node, 'pad-byte', 0)
         self._sort = fdt_util.GetBool(self._node, 'sort-by-offset')
-        self._end_4gb = fdt_util.GetBool(self._node, 'end-at-4gb')
+        self._end_at_4gb = fdt_util.GetBool(self._node, 'end-at-4gb')
         self._skip_at_start = fdt_util.GetInt(self._node, 'skip-at-start')
-        if self._end_4gb:
+        if self._end_at_4gb and self.GetImage().copy_to_orig:
             if not self.size:
                 self.Raise("Section size must be provided when using end-at-4gb")
             if self._skip_at_start is not None:
@@ -263,6 +264,8 @@ class Entry_section(Entry):
         super().AddMissingProperties(have_image_pos)
         if self.compress != 'none':
             have_image_pos = False
+        if self._end_at_4gb:
+            state.AddZeroProp(self._node, 'skip-at-start')
         for entry in self._entries.values():
             entry.AddMissingProperties(have_image_pos)
 
@@ -505,6 +508,8 @@ class Entry_section(Entry):
 
     def SetCalculatedProperties(self):
         super().SetCalculatedProperties()
+        if self._end_at_4gb:
+            state.SetInt(self._node, 'skip-at-start', self._skip_at_start)
         for entry in self._entries.values():
             entry.SetCalculatedProperties()
 
@@ -533,7 +538,7 @@ class Entry_section(Entry):
         for entry in self._entries.values():
             entry.WriteMap(fd, indent + 1)
 
-    def GetEntries(self):
+    def GetEntries(self) -> dict[str, Entry]:
         return self._entries
 
     def GetContentsByPhandle(self, phandle, source_entry, required):
@@ -662,23 +667,6 @@ class Entry_section(Entry):
         else:
             raise ValueError("%s: No such property '%s'" % (msg, prop_name))
 
-    def GetRootSkipAtStart(self):
-        """Get the skip-at-start value for the top-level section
-
-        This is used to find out the starting offset for root section that
-        contains this section. If this is a top-level section then it returns
-        the skip-at-start offset for this section.
-
-        This is used to get the absolute position of section within the image.
-
-        Returns:
-            Integer skip-at-start value for the root section containing this
-                section
-        """
-        if self.section:
-            return self.section.GetRootSkipAtStart()
-        return self._skip_at_start
-
     def GetStartOffset(self):
         """Get the start offset for this section
 
@@ -785,9 +773,17 @@ class Entry_section(Entry):
                        todo)
         return True
 
-    def drop_absent(self):
-        """Drop entries which are absent"""
-        self._entries = {n: e for n, e in self._entries.items() if not e.absent}
+    def drop_absent_optional(self) -> None:
+        """Drop entries which are absent.
+        Call for all nodes in the tree. Leaf nodes will do nothing per
+        definition. Sections however have _entries and should drop all children
+        which are absent.
+        """
+        self._entries = {n: e for n, e in self._entries.items() if not (e.absent and e.optional)}
+        # Drop nodes first before traversing children to avoid superfluous calls
+        # to children of absent nodes.
+        for e in self.GetEntries().values():
+            e.drop_absent_optional()
 
     def _SetEntryOffsetSize(self, name, offset, size):
         """Set the offset and size of an entry
@@ -801,7 +797,7 @@ class Entry_section(Entry):
         if not entry:
             self._Raise("Unable to set offset/size for unknown entry '%s'" %
                         name)
-        entry.SetOffsetSize(self._skip_at_start + offset if offset is not None
+        entry.SetOffsetSize(offset + self._skip_at_start if offset is not None
                             else None, size)
 
     def GetEntryOffsets(self):

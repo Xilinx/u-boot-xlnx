@@ -94,6 +94,8 @@ static const struct soc_attr ti_k3_soc_pd_data[] = {
 		.family = "J721E",
 		.data = &j721e_pd_platdata,
 	},
+#endif
+#if IS_ENABLED(CONFIG_SOC_K3_J7200)
 	{
 		.family = "J7200",
 		.data = &j7200_pd_platdata,
@@ -114,6 +116,10 @@ static const struct soc_attr ti_k3_soc_pd_data[] = {
 #if IS_ENABLED(CONFIG_SOC_K3_J784S4)
 	{
 		.family = "J784S4",
+		.data = &j784s4_pd_platdata,
+	},
+	{
+		.family = "J742S2",
 		.data = &j784s4_pd_platdata,
 	},
 #endif
@@ -221,7 +227,7 @@ static int ti_pd_get(struct ti_pd *pd)
 
 	pd_write(pdctl, pd, PSC_PDCTL);
 
-	return 0;
+	return ti_pd_wait(pd);
 }
 
 static int ti_pd_put(struct ti_pd *pd)

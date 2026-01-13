@@ -13,6 +13,25 @@
 #include <dm/lists.h>
 #include <dm/root.h>
 #include <dm/uclass-internal.h>
+#include <dt-bindings/leds/common.h>
+
+static const char * const led_colors[LED_COLOR_ID_MAX] = {
+	[LED_COLOR_ID_WHITE] = "white",
+	[LED_COLOR_ID_RED] = "red",
+	[LED_COLOR_ID_GREEN] = "green",
+	[LED_COLOR_ID_BLUE] = "blue",
+	[LED_COLOR_ID_AMBER] = "amber",
+	[LED_COLOR_ID_VIOLET] = "violet",
+	[LED_COLOR_ID_YELLOW] = "yellow",
+	[LED_COLOR_ID_IR] = "ir",
+	[LED_COLOR_ID_MULTI] = "multicolor",
+	[LED_COLOR_ID_RGB] = "rgb",
+	[LED_COLOR_ID_PURPLE] = "purple",
+	[LED_COLOR_ID_ORANGE] = "orange",
+	[LED_COLOR_ID_PINK] = "pink",
+	[LED_COLOR_ID_CYAN] = "cyan",
+	[LED_COLOR_ID_LIME] = "lime",
+};
 
 int led_bind_generic(struct udevice *parent, const char *driver_name)
 {
@@ -45,6 +64,9 @@ int led_get_by_label(const char *label, struct udevice **devp)
 
 		/* Ignore the top-level LED node */
 		if (uc_plat->label && !strcmp(label, uc_plat->label))
+			return uclass_get_device_tail(dev, 0, devp);
+
+		if (!strcmp(label, ofnode_get_name(dev_ofnode(dev))))
 			return uclass_get_device_tail(dev, 0, devp);
 	}
 
@@ -232,16 +254,75 @@ int led_activity_blink(void)
 #endif
 #endif
 
+static const char *led_get_function_name(struct udevice *dev)
+{
+	struct led_uc_plat *uc_plat;
+	const char *func;
+	u32 color;
+	u32 enumerator;
+	int ret;
+	int cp;
+
+	if (!dev)
+		return NULL;
+
+	uc_plat = dev_get_uclass_plat(dev);
+	if (!uc_plat)
+		return NULL;
+
+	if (uc_plat->label)
+		return uc_plat->label;
+
+	/* Now try to detect function label name */
+	func = dev_read_string(dev, "function");
+	cp = dev_read_u32(dev, "color", &color);
+	/*
+	 *  prevent coverity scan error CID 541279: (TAINTED_SCALAR)
+	 *  only check the upper bound. No need to check the lower bound
+	 *  as color is from type u32 and never can be lower than 0.
+	 */
+	if (color >= LED_COLOR_ID_MAX)
+		cp = -EINVAL;
+
+	if (cp == 0 || func) {
+		ret = dev_read_u32(dev, "function-enumerator", &enumerator);
+		if (!ret) {
+			snprintf(uc_plat->name, LED_MAX_NAME_SIZE,
+				 "%s:%s-%d",
+				 cp ? "" : led_colors[color],
+				 func ? func : "", enumerator);
+		} else {
+			snprintf(uc_plat->name, LED_MAX_NAME_SIZE,
+				 "%s:%s",
+				 cp ? "" : led_colors[color],
+				 func ? func : "");
+		}
+		uc_plat->label = uc_plat->name;
+	}
+
+	return uc_plat->label;
+}
+
+static const char *led_get_label(struct udevice *dev, ofnode node)
+{
+	const char *label;
+
+	label = ofnode_read_string(node, "label");
+	if (!label)
+		label = led_get_function_name(dev);
+	if (!label && !ofnode_read_string(node, "compatible"))
+		label = ofnode_get_name(node);
+
+	return label;
+}
+
 static int led_post_bind(struct udevice *dev)
 {
 	struct led_uc_plat *uc_plat = dev_get_uclass_plat(dev);
 	const char *default_state;
 
 	if (!uc_plat->label)
-		uc_plat->label = dev_read_string(dev, "label");
-
-	if (!uc_plat->label && !dev_read_string(dev, "compatible"))
-		uc_plat->label = ofnode_get_name(dev_ofnode(dev));
+		uc_plat->label = led_get_label(dev, dev_ofnode(dev));
 
 	uc_plat->default_state = LEDST_COUNT;
 
@@ -300,15 +381,21 @@ static int led_post_probe(struct udevice *dev)
 static int led_init(struct uclass *uc)
 {
 	struct led_uc_priv *priv = uclass_get_priv(uc);
+	ofnode led_node;
+	int ret;
 
 #ifdef CONFIG_LED_BOOT
-	priv->boot_led_label = ofnode_options_read_str("boot-led");
-	priv->boot_led_period = ofnode_options_read_int("boot-led-period", 250);
+	ret = ofnode_options_get_by_phandle("boot-led", &led_node);
+	if (!ret)
+		priv->boot_led_label = led_get_label(NULL, led_node);
+	priv->boot_led_period = ofnode_options_read_int("boot-led-period-ms", 250);
 #endif
 
 #ifdef CONFIG_LED_ACTIVITY
-	priv->activity_led_label = ofnode_options_read_str("activity-led");
-	priv->activity_led_period = ofnode_options_read_int("activity-led-period",
+	ret = ofnode_options_get_by_phandle("activity-led", &led_node);
+	if (!ret)
+		priv->activity_led_label = led_get_label(NULL, led_node);
+	priv->activity_led_period = ofnode_options_read_int("activity-led-period-ms",
 							    250);
 #endif
 

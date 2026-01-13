@@ -36,6 +36,10 @@
 		};
 	};
 
+	bsev@6001b000 {
+		status = "okay";
+	};
+
 	pinmux@70000014 {
 		pinctrl-names = "default";
 		pinctrl-0 = <&state_default>;
@@ -492,12 +496,6 @@
 			label = "Volume Up";
 			gpios = <&gpio TEGRA_GPIO(Q, 5) GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_UP>;
-		};
-
-		switch-dock-hall-sensor {
-			label = "Lid sensor";
-			gpios = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_LOW>;
-			linux,code = <SW_LID>;
 		};
 	};
 

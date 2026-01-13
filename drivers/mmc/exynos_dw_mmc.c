@@ -18,15 +18,33 @@
 #include <linux/printk.h>
 
 #define	DWMMC_MAX_CH_NUM		4
-#define	DWMMC_MAX_FREQ			52000000
+#define	DWMMC_MAX_FREQ			208000000
 #define	DWMMC_MIN_FREQ			400000
 #define	DWMMC_MMC0_SDR_TIMING_VAL	0x03030001
 #define	DWMMC_MMC2_SDR_TIMING_VAL	0x03020001
 
 #define EXYNOS4412_FIXED_CIU_CLK_DIV	4
 
-/* Quirks */
+/* CLKSEL register defines */
+#define CLKSEL_CCLK_SAMPLE(x)		(((x) & 7) << 0)
+#define CLKSEL_UP_SAMPLE(x, y)		(((x) & ~CLKSEL_CCLK_SAMPLE(7)) | \
+					 CLKSEL_CCLK_SAMPLE(y))
+
+/**
+ * DOC: Quirk flags for different Exynos DW MMC blocks
+ *
+ * %DWMCI_QUIRK_DISABLE_SMU: DW MMC block has Security Management Unit (SMU)
+ * which has to be configured in non-encryption mode during driver's init.
+ *
+ * %DWMCI_QUIRK_DISABLE_FMP: DW MMC block has Flash Memory Protector (FMP) which
+ * has to be disabled during driver's init. This flag disables FMP encryption
+ * and lets external non-secure main CPUs access the SFR (peripheral memory
+ * region, i.e. registers) in MMC core. Although it's usually done by early
+ * bootloaders (before U-Boot), in some cases like during USB boot the FMP might
+ * be left unconfigured.
+ */
 #define DWMCI_QUIRK_DISABLE_SMU		BIT(0)
+#define DWMCI_QUIRK_DISABLE_FMP		BIT(1)
 
 #ifdef CONFIG_DM_MMC
 #include <dm.h>
@@ -121,22 +139,6 @@ static int exynos_dwmmc_set_sclk(struct dwmci_host *host, unsigned long rate)
 	return 0;
 }
 
-/* Configure CLKSEL register with chosen timing values */
-static int exynos_dwmci_clksel(struct dwmci_host *host)
-{
-	struct dwmci_exynos_priv_data *priv = exynos_dwmmc_get_priv(host);
-	u32 timing;
-
-	if (host->mmc->selected_mode == MMC_DDR_52)
-		timing = priv->ddr_timing;
-	else
-		timing = priv->sdr_timing;
-
-	dwmci_writel(host, priv->chip->clksel, timing);
-
-	return 0;
-}
-
 /**
  * exynos_dwmmc_get_ciu_div - Get internal clock divider value
  * @host: MMC controller object
@@ -160,15 +162,45 @@ static u8 exynos_dwmmc_get_ciu_div(struct dwmci_host *host)
 				& DWMCI_DIVRATIO_MASK) + 1;
 }
 
+/* Configure CLKSEL register with chosen timing values */
+static int exynos_dwmci_clksel(struct dwmci_host *host)
+{
+	struct dwmci_exynos_priv_data *priv = exynos_dwmmc_get_priv(host);
+	u8 clk_div = exynos_dwmmc_get_ciu_div(host) - 1;
+	u32 timing;
+
+	switch (host->mmc->selected_mode) {
+	case MMC_DDR_52:
+		timing = priv->ddr_timing;
+		break;
+	case UHS_SDR104:
+	case UHS_SDR50:
+		timing = (priv->sdr_timing & 0xfff8ffff) | (clk_div << 16);
+		break;
+	case UHS_DDR50:
+		timing = (priv->ddr_timing & 0xfff8ffff) | (clk_div << 16);
+		break;
+	default:
+		timing = priv->sdr_timing;
+	}
+
+	dwmci_writel(host, priv->chip->clksel, timing);
+
+	return 0;
+}
+
 static unsigned int exynos_dwmci_get_clk(struct dwmci_host *host, uint freq)
 {
 	unsigned long sclk;
 	u8 clk_div;
 	int err;
 
-	/* Should be double rate for DDR mode */
-	if (host->mmc->selected_mode == MMC_DDR_52 && host->mmc->bus_width == 8)
+	/* Should be double rate for DDR or HS mode */
+	if ((host->mmc->selected_mode == MMC_DDR_52 &&
+	     host->mmc->bus_width == 8) ||
+	    host->mmc->selected_mode == MMC_HS_400) {
 		freq *= 2;
+	}
 
 	clk_div = exynos_dwmmc_get_ciu_div(host);
 	err = exynos_dwmmc_set_sclk(host, freq * clk_div);
@@ -199,6 +231,18 @@ static void exynos_dwmci_board_init(struct dwmci_host *host)
 			     MPSCTRL_SECURE_WRITE_BIT |
 			     MPSCTRL_NON_SECURE_READ_BIT |
 			     MPSCTRL_NON_SECURE_WRITE_BIT | MPSCTRL_VALID);
+	}
+
+	if (priv->chip->quirks & DWMCI_QUIRK_DISABLE_FMP) {
+		u32 reg;
+
+		reg = dwmci_readl(host, EMMCP_MPSECURITY);
+		if (reg & MPSECURITY_FMP_ON ||
+		    reg & MPSECURITY_MMC_SFR_PROT_ON) {
+			reg &= ~MPSECURITY_FMP_ON;
+			reg &= ~MPSECURITY_MMC_SFR_PROT_ON;
+			dwmci_writel(host, EMMCP_MPSECURITY, reg);
+		}
 	}
 
 	if (priv->sdr_timing)
@@ -282,6 +326,75 @@ static int exynos_dwmmc_of_to_plat(struct udevice *dev)
 	return 0;
 }
 
+#if CONFIG_IS_ENABLED(MMC_SUPPORTS_TUNING)
+static int exynos_dwmmc_get_best_clksmpl(u8 candidates)
+{
+	int i;
+
+	for (i = 0; i < 8; i++) {
+		candidates = (candidates >> 1) | (candidates << 7); /* ror */
+		if ((candidates & 0xc7) == 0xc7)
+			return i;
+	}
+
+	for (i = 0; i < 8; i++) {
+		candidates = (candidates >> 1) | (candidates << 7); /* ror */
+		if ((candidates & 0x83) == 0x83)
+			return i;
+	}
+
+	/*
+	 * If no valid clock sample values are found, use the first candidate
+	 * bit for clock sample value.
+	 */
+	for (i = 0; i < 8; i++) {
+		candidates = (candidates >> 1) | (candidates << 7); /* ror */
+		if ((candidates & 0x1) == 0x1)
+			return i;
+	}
+
+	return -EIO;
+}
+
+static int exynos_dwmmc_execute_tuning(struct udevice *dev, u32 opcode)
+{
+	struct dwmci_exynos_priv_data *priv = dev_get_priv(dev);
+	struct dwmci_host *host = &priv->host;
+	struct mmc *mmc = mmc_get_mmc_dev(dev);
+	u8 start_smpl, smpl, candidates = 0;
+	u32 clksel;
+	int ret;
+
+	clksel = dwmci_readl(host, priv->chip->clksel);
+	start_smpl = CLKSEL_CCLK_SAMPLE(clksel);
+
+	do {
+		dwmci_writel(host, DWMCI_TMOUT, ~0);
+
+		/* Move to the next clksmpl */
+		smpl = (clksel + 1) & 0x7;
+		clksel = CLKSEL_UP_SAMPLE(clksel, smpl);
+		dwmci_writel(host, priv->chip->clksel, clksel);
+
+		if (!mmc_send_tuning(mmc, opcode))
+			candidates |= (1 << smpl);
+
+	} while (start_smpl != smpl);
+
+	ret = exynos_dwmmc_get_best_clksmpl(candidates);
+	if (ret < 0) {
+		printf("DWMMC%d: No candidates for clksmpl\n", host->dev_index);
+		return ret;
+	}
+
+	dwmci_writel(host, priv->chip->clksel, CLKSEL_UP_SAMPLE(clksel, ret));
+
+	return 0;
+}
+#endif /* CONFIG_MMC_SUPPORTS_TUNING */
+
+struct dm_mmc_ops exynos_dwmmc_ops;
+
 static int exynos_dwmmc_probe(struct udevice *dev)
 {
 	struct exynos_mmc_plat *plat = dev_get_plat(dev);
@@ -290,6 +403,12 @@ static int exynos_dwmmc_probe(struct udevice *dev)
 	struct dwmci_host *host = &priv->host;
 	unsigned long freq;
 	int err;
+
+	/* Extend generic 'dm_dwmci_ops' with .execute_tuning implementation */
+	memcpy(&exynos_dwmmc_ops, &dm_dwmci_ops, sizeof(struct dm_mmc_ops));
+#if CONFIG_IS_ENABLED(MMC_SUPPORTS_TUNING)
+	exynos_dwmmc_ops.execute_tuning = exynos_dwmmc_execute_tuning;
+#endif
 
 #ifndef CONFIG_CPU_V7A
 	err = clk_get_by_index(dev, 1, &priv->clk); /* ciu */
@@ -303,7 +422,7 @@ static int exynos_dwmmc_probe(struct udevice *dev)
 	flag = host->buswidth == 8 ? PINMUX_FLAG_8BIT_MODE : PINMUX_FLAG_NONE;
 	err = exynos_pinmux_config(host->dev_id, flag);
 	if (err) {
-		printf("DWMMC%d not configure\n", host->dev_index);
+		printf("DWMMC%d not configured\n", host->dev_index);
 		return err;
 	}
 #endif
@@ -321,7 +440,8 @@ static int exynos_dwmmc_probe(struct udevice *dev)
 
 	host->name = dev->name;
 	host->board_init = exynos_dwmci_board_init;
-	host->caps = MMC_MODE_DDR_52MHz;
+	host->caps = MMC_MODE_DDR_52MHz | MMC_MODE_HS200 | MMC_MODE_HS400 |
+		     UHS_CAPS;
 	host->clksel = exynos_dwmci_clksel;
 	host->get_mmc_clk = exynos_dwmci_get_clk;
 
@@ -368,16 +488,36 @@ static const struct exynos_dwmmc_variant exynos7_smu_drv_data = {
 	.quirks	= DWMCI_QUIRK_DISABLE_SMU,
 };
 
+static const struct exynos_dwmmc_variant exynos850_drv_data = {
+	.clksel	= DWMCI_CLKSEL64,
+	.quirks	= DWMCI_QUIRK_DISABLE_SMU | DWMCI_QUIRK_DISABLE_FMP,
+};
+
 static const struct udevice_id exynos_dwmmc_ids[] = {
 	{
 		.compatible	= "samsung,exynos4412-dw-mshc",
 		.data		= (ulong)&exynos4_drv_data,
+	}, {
+		.compatible	= "samsung,exynos5420-dw-mshc-smu",
+		.data		= (ulong)&exynos5_drv_data,
+	}, {
+		.compatible	= "samsung,exynos5420-dw-mshc",
+		.data		= (ulong)&exynos5_drv_data,
+	}, {
+		.compatible	= "samsung,exynos5250-dw-mshc",
+		.data		= (ulong)&exynos5_drv_data,
 	}, {
 		.compatible	= "samsung,exynos-dwmmc",
 		.data		= (ulong)&exynos5_drv_data,
 	}, {
 		.compatible	= "samsung,exynos7-dw-mshc-smu",
 		.data		= (ulong)&exynos7_smu_drv_data,
+	}, {
+		.compatible	= "samsung,exynos7870-dw-mshc-smu",
+		.data		= (ulong)&exynos7_smu_drv_data,
+	}, {
+		.compatible	= "samsung,exynos850-dw-mshc-smu",
+		.data		= (ulong)&exynos850_drv_data,
 	},
 	{ }
 };
@@ -389,8 +529,8 @@ U_BOOT_DRIVER(exynos_dwmmc_drv) = {
 	.of_to_plat	= exynos_dwmmc_of_to_plat,
 	.bind		= exynos_dwmmc_bind,
 	.probe		= exynos_dwmmc_probe,
-	.ops		= &dm_dwmci_ops,
+	.ops		= &exynos_dwmmc_ops,
 	.priv_auto	= sizeof(struct dwmci_exynos_priv_data),
 	.plat_auto	= sizeof(struct exynos_mmc_plat),
 };
-#endif
+#endif /* CONFIG_DM_MMC */

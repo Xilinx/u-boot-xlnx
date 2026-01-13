@@ -49,6 +49,30 @@ u32 __weak spl_spi_boot_cs(void)
 	return CONFIG_SF_DEFAULT_CS;
 }
 
+#if IS_ENABLED(CONFIG_SPL_OS_BOOT)
+static int spl_spi_load_image_os(struct spl_image_info *spl_image,
+				 struct spl_boot_device *bootdev,
+				 struct spi_flash *flash,
+				 struct spl_load_info *load)
+{
+	int err = spl_load(spl_image, bootdev, load, 0,
+			   CONFIG_SYS_SPI_KERNEL_OFFS);
+
+	if (err)
+		return err;
+
+#if IS_ENABLED(CONFIG_SPL_OS_BOOT_ARGS)
+	/* Read device tree. */
+	return spi_flash_read(flash, CONFIG_SYS_SPI_ARGS_OFFS,
+			      CONFIG_SYS_SPI_ARGS_SIZE,
+			      (void *)CONFIG_SPL_PAYLOAD_ARGS_ADDR);
+#else
+	return 0;
+#endif
+
+}
+#endif
+
 /*
  * The main entry for SPI booting. It's necessary that SDRAM is already
  * configured and available since this code loads the main U-Boot image
@@ -80,15 +104,16 @@ static int spl_spi_load_image(struct spl_image_info *spl_image,
 	spl_load_init(&load, spl_spi_fit_read, flash, 1);
 
 #if CONFIG_IS_ENABLED(OS_BOOT)
-	if (spl_start_uboot()) {
-		int err = spl_load(spl_image, bootdev, &load, 0,
-				   CFG_SYS_SPI_KERNEL_OFFS);
+	if (!spl_start_uboot()) {
+		err = spl_spi_load_image_os(spl_image, bootdev, flash, &load);
 
 		if (!err)
-			/* Read device tree. */
-			return spi_flash_read(flash, CFG_SYS_SPI_ARGS_OFFS,
-					      CFG_SYS_SPI_ARGS_SIZE,
-					      (void *)CONFIG_SPL_PAYLOAD_ARGS_ADDR);
+			return 0;
+
+		printf("%s: Failed in falcon boot: %d", __func__, err);
+		if (IS_ENABLED(CONFIG_SPL_OS_BOOT_SECURE))
+			return err;
+		printf("Fallback to U-Boot\n");
 	}
 #endif
 

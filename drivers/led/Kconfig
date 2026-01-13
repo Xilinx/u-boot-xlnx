@@ -11,6 +11,7 @@ config LED
 
 config LED_BOOT
 	bool "Enable LED boot support"
+	depends on LED
 	help
 	  Enable LED boot support.
 
@@ -22,6 +23,7 @@ config LED_BOOT
 
 config LED_ACTIVITY
 	bool "Enable LED activity support"
+	depends on LED
 	help
 	  Enable LED activity support.
 
@@ -137,7 +139,8 @@ config SPL_LED_GPIO
 	  See the help of LED_GPIO for details.
 
 config LED_STATUS
-	bool "Enable status LED API"
+	bool "Enable legacy status LED API"
+	depends on !LED
 	help
 	  Allows common u-boot commands to use a board's leds to
 	  provide status for activities like booting and downloading files.

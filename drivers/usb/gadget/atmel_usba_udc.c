@@ -521,16 +521,16 @@ usba_udc_set_selfpowered(struct usb_gadget *gadget, int is_selfpowered)
 static int usba_udc_pullup(struct usb_gadget *gadget, int is_on)
 {
 	struct usba_udc *udc = to_usba_udc(gadget);
-	u32 ctrl;
 
-	ctrl = usba_readl(udc, CTRL);
-
+	/*
+	 * Some chips don't reliably drive DP/DM lines to high impedance when
+	 * using the DETACH/PULLD_DIS bits.
+	 * To ensure a reliable disconnect, power cycle the controller instead
+	 */
 	if (is_on)
-		ctrl &= ~USBA_DETACH;
+		usba_writel(udc, CTRL, USBA_ENABLE_MASK);
 	else
-		ctrl |= USBA_DETACH;
-
-	usba_writel(udc, CTRL, ctrl);
+		usba_writel(udc, CTRL, USBA_DISABLE_MASK);
 
 	return 0;
 }
@@ -1147,7 +1147,7 @@ static int usba_udc_irq(struct usba_udc *udc)
 		reset_all_endpoints(udc);
 
 		if (udc->gadget.speed != USB_SPEED_UNKNOWN &&
-		    udc->driver->disconnect) {
+		    udc->driver && udc->driver->disconnect) {
 			udc->gadget.speed = USB_SPEED_UNKNOWN;
 			spin_unlock(&udc->lock);
 			udc->driver->disconnect(&udc->gadget);
@@ -1443,6 +1443,7 @@ static const struct udevice_id usba_udc_ids[] = {
 	{ .compatible = "atmel,at91sam9rl-udc" },
 	{ .compatible = "atmel,at91sam9g45-udc" },
 	{ .compatible = "atmel,sama5d3-udc" },
+	{ .compatible = "microchip,sam9x60-udc" },
 	{}
 };
 

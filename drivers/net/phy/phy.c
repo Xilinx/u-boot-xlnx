@@ -9,6 +9,7 @@
  */
 #include <console.h>
 #include <dm.h>
+#include <env.h>
 #include <log.h>
 #include <malloc.h>
 #include <net.h>
@@ -242,7 +243,9 @@ int genphy_update_link(struct phy_device *phydev)
 
 	if ((phydev->autoneg == AUTONEG_ENABLE) &&
 	    !(mii_reg & BMSR_ANEGCOMPLETE)) {
-		int i = 0;
+		u32 i = 0;
+		u32 aneg_timeout = env_get_ulong("phy_aneg_timeout", 10,
+						 CONFIG_PHY_ANEG_TIMEOUT);
 
 		printf("%s Waiting for PHY auto negotiation to complete",
 		       phydev->dev->name);
@@ -250,7 +253,7 @@ int genphy_update_link(struct phy_device *phydev)
 			/*
 			 * Timeout reached ?
 			 */
-			if (i > (CONFIG_PHY_ANEG_TIMEOUT / 50)) {
+			if (i > (aneg_timeout / 50)) {
 				printf(" TIMEOUT !\n");
 				phydev->link = 0;
 				return -ETIMEDOUT;
@@ -839,8 +842,6 @@ struct phy_device *phy_find_by_mask(struct mii_dev *bus, uint phy_mask)
 static void phy_connect_dev(struct phy_device *phydev, struct udevice *dev,
 			    phy_interface_t interface)
 {
-	/* Soft Reset the PHY */
-	phy_reset(phydev);
 	if (phydev->dev && phydev->dev != dev) {
 		printf("%s:%d is connected to %s.  Reconnecting to %s\n",
 		       phydev->bus->name, phydev->addr,
@@ -1248,4 +1249,117 @@ bool phy_interface_is_ncsi(void)
 #else
 	return 0;
 #endif
+}
+
+/**
+ * __phy_read_page() - read the current page
+ * @phydev: a pointer to a &struct phy_device
+ *
+ * Returns page index or < 0 on error
+ */
+static int __phy_read_page(struct phy_device *phydev)
+{
+	struct phy_driver *drv = phydev->drv;
+
+	if (!drv->read_page) {
+		debug("read_page callback not available, PHY driver not loaded?\n");
+		return -EOPNOTSUPP;
+	}
+
+	return drv->read_page(phydev);
+}
+
+/**
+ * __phy_write_page() - Write a new page
+ * @phydev: a pointer to a &struct phy_device
+ * @page: page index to select
+ *
+ * Returns 0 or < 0 on error.
+ */
+static int __phy_write_page(struct phy_device *phydev, int page)
+{
+	struct phy_driver *drv = phydev->drv;
+
+	if (!drv->write_page) {
+		debug("write_page callback not available, PHY driver not loaded?\n");
+		return -EOPNOTSUPP;
+	}
+
+	return drv->write_page(phydev, page);
+}
+
+/**
+ * phy_save_page() - save the current page
+ * @phydev: a pointer to a &struct phy_device
+ *
+ * Return the current page number. On error,
+ * returns a negative errno. phy_restore_page() must always be called
+ * after this, irrespective of success or failure of this call.
+ */
+int phy_save_page(struct phy_device *phydev)
+{
+	return __phy_read_page(phydev);
+}
+
+/**
+ * phy_select_page - Switch to a PHY page and return the previous page
+ * @phydev: a pointer to a &struct phy_device
+ * @page: desired page
+ *
+ * NOTE: Save the current PHY page, and set the current page.
+ * On error, returns a negative errno, otherwise returns the previous page number.
+ * phy_restore_page() must always be called after this, irrespective
+ * of success or failure of this call.
+ */
+int phy_select_page(struct phy_device *phydev, int page)
+{
+	int ret, oldpage;
+
+	oldpage = ret = phy_save_page(phydev);
+	if (ret < 0)
+		return ret;
+
+	if (oldpage != page) {
+		ret = __phy_write_page(phydev, page);
+		if (ret < 0)
+			return ret;
+	}
+
+	return oldpage;
+}
+
+/**
+ * phy_restore_page - Restore a previously saved page and propagate status
+ * @phydev: a pointer to a &struct phy_device
+ * @oldpage: the old page, return value from phy_save_page() or phy_select_page()
+ * @ret: operation's return code
+ *
+ * Restoring @oldpage if it is a valid page.
+ * This function propagates the earliest error code from the group of
+ * operations.
+ *
+ * Returns:
+ *   @oldpage if it was a negative value, otherwise
+ *   @ret if it was a negative errno value, otherwise
+ *   phy_write_page()'s negative value if it were in error, otherwise
+ *   @ret.
+ */
+int phy_restore_page(struct phy_device *phydev, int oldpage, int ret)
+{
+	int r;
+
+	if (oldpage >= 0) {
+		r = __phy_write_page(phydev, oldpage);
+
+		/* Propagate the operation return code if the page write
+		 * was successful.
+		 */
+		if (ret >= 0 && r < 0)
+			ret = r;
+	} else {
+		/* Propagate the phy page selection error code */
+		ret = oldpage;
+	}
+
+	return ret;
 }

@@ -14,6 +14,7 @@
 #include <asm/global_data.h>
 #include <asm/spl.h>
 #include <handoff.h>
+#include <image.h>
 #include <mmc.h>
 
 struct blk_desc;
@@ -265,17 +266,36 @@ enum spl_sandbox_flags {
 	SPL_SANDBOXF_ARG_IS_BUF,
 };
 
+/**
+ * struct spl_image_info - Information about the SPL image being loaded
+ *
+ * @fdt_size: Size of the FDT for the image (0 if none)
+ * @buf: Buffer where the image should be loaded
+ * @fdt_buf: Buffer where the FDT will be copied by spl_reloc_jump(), only used
+ *	if @fdt_size is non-zero
+ * @fdt_start: Pointer to the FDT to be copied (must be set up before calling
+ *	spl_reloc_jump()
+ * @rcode_buf: Buffer to hold the relocating-jump code
+ * @stack_prot: Pointer to the stack-protection value, used to ensure the stack
+ *	does not overflow
+ * @reloc_offset: offset between the relocating-jump code and its place in the
+ *	currently running image
+ */
 struct spl_image_info {
 	const char *name;
 	u8 os;
-	uintptr_t load_addr;
-	uintptr_t entry_point;
+	ulong load_addr;
+	ulong entry_point;
 #if CONFIG_IS_ENABLED(LOAD_FIT) || CONFIG_IS_ENABLED(LOAD_FIT_FULL)
 	void *fdt_addr;
+#endif
+#if defined(CONFIG_BOOTM_OPTEE) && defined(CONFIG_ARM) && !defined(CONFIG_ARM64)
+	ulong optee_addr;
 #endif
 	u32 boot_device;
 	u32 offset;
 	u32 size;
+	ulong fdt_size;
 	u32 flags;
 	void *arg;
 #ifdef CONFIG_SPL_LEGACY_IMAGE_CRC_CHECK
@@ -283,7 +303,18 @@ struct spl_image_info {
 	ulong dcrc_length;
 	ulong dcrc;
 #endif
+#if CONFIG_IS_ENABLED(RELOC_LOADER)
+	void *buf;
+	void *fdt_buf;
+	void *fdt_start;
+	void *rcode_buf;
+	uint *stack_prot;
+	ulong reloc_offset;
+#endif
 };
+
+/* function to jump to an image from SPL */
+typedef void __noreturn (*spl_jump_to_image_t)(struct spl_image_info *);
 
 static inline void *spl_image_fdt_addr(struct spl_image_info *info)
 {
@@ -316,12 +347,18 @@ typedef ulong (*spl_load_reader)(struct spl_load_info *load, ulong sector,
  * @read: Function to call to read from the device
  * @priv: Private data for the device
  * @bl_len: Block length for reading in bytes
+ * @phase: Image phase to load
+ * @no_fdt_update: true to update the FDT with any loadables that are loaded
  */
 struct spl_load_info {
 	spl_load_reader read;
 	void *priv;
 #if IS_ENABLED(CONFIG_SPL_LOAD_BLOCK)
-	int bl_len;
+	u16 bl_len;
+#endif
+#if CONFIG_IS_ENABLED(BOOTMETH_VBE)
+	u8 phase;
+	u8 fdt_update;
 #endif
 };
 
@@ -344,6 +381,40 @@ static inline void spl_set_bl_len(struct spl_load_info *info, int bl_len)
 #endif
 }
 
+static inline void xpl_set_phase(struct spl_load_info *info,
+				 enum image_phase_t phase)
+{
+#if CONFIG_IS_ENABLED(BOOTMETH_VBE)
+	info->phase = phase;
+#endif
+}
+
+static inline enum image_phase_t xpl_get_phase(struct spl_load_info *info)
+{
+#if CONFIG_IS_ENABLED(BOOTMETH_VBE)
+	return info->phase;
+#else
+	return IH_PHASE_NONE;
+#endif
+}
+
+static inline void xpl_set_fdt_update(struct spl_load_info *info,
+				      bool fdt_update)
+{
+#if CONFIG_IS_ENABLED(BOOTMETH_VBE)
+	info->fdt_update = fdt_update;
+#endif
+}
+
+static inline enum image_phase_t xpl_get_fdt_update(struct spl_load_info *info)
+{
+#if CONFIG_IS_ENABLED(BOOTMETH_VBE)
+	return info->fdt_update;
+#else
+	return true;
+#endif
+}
+
 /**
  * spl_load_init() - Set up a new spl_load_info structure
  */
@@ -354,6 +425,8 @@ static inline void spl_load_init(struct spl_load_info *load,
 	load->read = h_read;
 	load->priv = priv;
 	spl_set_bl_len(load, bl_len);
+	xpl_set_phase(load, IH_PHASE_NONE);
+	xpl_set_fdt_update(load, true);
 }
 
 /*
@@ -795,7 +868,7 @@ int spl_load_image_fat_os(struct spl_image_info *spl_image,
 			  struct spl_boot_device *bootdev,
 			  struct blk_desc *block_dev, int partition);
 
-void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image);
+void __noreturn jump_to_image(struct spl_image_info *spl_image);
 
 /* SPL EXT image functions */
 int spl_load_image_ext(struct spl_image_info *spl_image,
@@ -951,9 +1024,9 @@ void __noreturn spl_invoke_atf(struct spl_image_info *spl_image);
  *
  * Return: bl31 params structure pointer
  */
-struct bl31_params *bl2_plat_get_bl31_params(uintptr_t bl32_entry,
-					     uintptr_t bl33_entry,
-					     uintptr_t fdt_addr);
+struct bl31_params *bl2_plat_get_bl31_params(ulong bl32_entry,
+					     ulong bl33_entry,
+					     ulong fdt_addr);
 
 /**
  * bl2_plat_get_bl31_params_default() - prepare params for bl31.
@@ -972,9 +1045,9 @@ struct bl31_params *bl2_plat_get_bl31_params(uintptr_t bl32_entry,
  *
  * Return: bl31 params structure pointer
  */
-struct bl31_params *bl2_plat_get_bl31_params_default(uintptr_t bl32_entry,
-						     uintptr_t bl33_entry,
-						     uintptr_t fdt_addr);
+struct bl31_params *bl2_plat_get_bl31_params_default(ulong bl32_entry,
+						     ulong bl33_entry,
+						     ulong fdt_addr);
 
 /**
  * bl2_plat_get_bl31_params_v2() - return params for bl31
@@ -988,9 +1061,9 @@ struct bl31_params *bl2_plat_get_bl31_params_default(uintptr_t bl32_entry,
  *
  * Return: bl31 params structure pointer
  */
-struct bl_params *bl2_plat_get_bl31_params_v2(uintptr_t bl32_entry,
-					      uintptr_t bl33_entry,
-					      uintptr_t fdt_addr);
+struct bl_params *bl2_plat_get_bl31_params_v2(ulong bl32_entry,
+					      ulong bl33_entry,
+					      ulong fdt_addr);
 
 /**
  * bl2_plat_get_bl31_params_v2_default() - prepare params for bl31.
@@ -1007,9 +1080,9 @@ struct bl_params *bl2_plat_get_bl31_params_v2(uintptr_t bl32_entry,
  *
  * Return: bl31 params structure pointer
  */
-struct bl_params *bl2_plat_get_bl31_params_v2_default(uintptr_t bl32_entry,
-						      uintptr_t bl33_entry,
-						      uintptr_t fdt_addr);
+struct bl_params *bl2_plat_get_bl31_params_v2_default(ulong bl32_entry,
+						      ulong bl33_entry,
+						      ulong fdt_addr);
 /**
  * spl_optee_entry - entry function for optee
  *
@@ -1046,10 +1119,16 @@ int board_return_to_bootrom(struct spl_image_info *spl_image,
 ulong board_spl_fit_size_align(ulong size);
 
 /**
- * spl_perform_fixups() - arch/board-specific callback before processing
- *                        the boot-payload
+ * spl_perform_arch_fixups() - arch specific callback before processing the
+ *                        boot-payload
  */
-void spl_perform_fixups(struct spl_image_info *spl_image);
+void spl_perform_arch_fixups(struct spl_image_info *spl_image);
+
+/**
+ * spl_perform_board_fixups() - board specific callback before processing the
+ *                        boot-payload
+ */
+void spl_perform_board_fixups(struct spl_image_info *spl_image);
 
 /*
  * spl_get_load_buffer() - get buffer for loading partial image data
@@ -1112,5 +1191,32 @@ int spl_write_upl_handoff(struct spl_image_info *spl_image);
  * This must be called before upl_add_image(), etc.
  */
 void spl_upl_init(void);
+
+/**
+ * spl_reloc_prepare() - Prepare the relocating loader ready for use
+ *
+ * Sets up the relocating loader ready for use. This must be called before
+ * spl_reloc_jump() can be used.
+ *
+ * The memory layout is figured out, making use of the space between the top of
+ * the current image and the top of memory.
+ *
+ * Once this is done, the relocating-jump code is copied into place at
+ * image->rcode_buf
+ *
+ * @image: SPL image containing information. This is updated with various
+ * necessary values. On entry, the size and fdt_size fields must be valid
+ * @addrp: Returns the address to which the image should be loaded into memory
+ * Return 0 if OK, -ENOSPC if there is not enough memory available
+ */
+int spl_reloc_prepare(struct spl_image_info *image, ulong *addrp);
+
+/**
+ * spl_reloc_jump() - Jump to an image, via a 'relocating-jump' region
+ *
+ * @image: SPL image to jump to
+ * @func: Function to call in the final image
+ */
+int spl_reloc_jump(struct spl_image_info *image, spl_jump_to_image_t func);
 
 #endif

@@ -186,10 +186,15 @@ static int passwd_abort_sha256(uint64_t etime)
 	ret = hash_parse_string(algo_name, sha_env_str, sha_env);
 	if (ret) {
 		printf("Hash %s not supported!\n", algo_name);
+		free(presskey);
 		return 0;
 	}
 
 	sha = malloc_cache_aligned(SHA256_SUM_LEN);
+	if (!sha) {
+		free(presskey);
+		return -ENOMEM;
+	}
 	size = SHA256_SUM_LEN;
 	/*
 	 * We don't know how long the stop-string is, so we need to
@@ -405,7 +410,7 @@ static int abortboot_single_key(int bootdelay)
 			udelay(10000);
 		} while (!abort && get_timer(ts) < 1000);
 
-		printf("\b\b\b%2d ", bootdelay);
+		printf("\rHit any key to stop autoboot: %1d\033[K", bootdelay);
 	}
 
 	putc('\n');

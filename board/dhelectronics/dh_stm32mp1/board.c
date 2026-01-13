@@ -27,7 +27,6 @@
 #include <led.h>
 #include <memalign.h>
 #include <misc.h>
-#include <mtd.h>
 #include <mtd_node.h>
 #include <netdev.h>
 #include <phy.h>
@@ -86,15 +85,15 @@ static bool dh_stm32_mac_is_in_ks8851(void)
 	if (!ofnode_valid(node))
 		return false;
 
+	if (!ofnode_device_is_compatible(node, "micrel,ks8851-mll"))
+		return false;
+
 	ret = ofnode_get_path(node, path, sizeof(path));
 	if (ret)
 		return false;
 
 	ret = uclass_get_device_by_of_path(UCLASS_ETH, path, &udev);
 	if (ret)
-		return false;
-
-	if (!ofnode_device_is_compatible(node, "micrel,ks8851-mll"))
 		return false;
 
 	/*
@@ -120,7 +119,30 @@ static bool dh_stm32_mac_is_in_ks8851(void)
 	return false;
 }
 
-static int dh_stm32_setup_ethaddr(void)
+static int dh_stm32_get_mac_from_fuse(unsigned char *enetaddr, int index)
+{
+	struct udevice *dev;
+	u8 otp[12];
+	int ret;
+
+	ret = uclass_get_device_by_driver(UCLASS_MISC,
+					  DM_DRIVER_GET(stm32mp_bsec),
+					  &dev);
+	if (ret)
+		return ret;
+
+	ret = misc_read(dev, STM32_BSEC_SHADOW(BSEC_OTP_MAC), otp, sizeof(otp));
+	if (ret < 0)
+		return ret;
+
+	memcpy(enetaddr, otp + ARP_HLEN * index, ARP_HLEN);
+	if (!is_valid_ethaddr(enetaddr))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int dh_stm32_setup_ethaddr(struct eeprom_id_page *eip)
 {
 	unsigned char enetaddr[6];
 
@@ -130,13 +152,22 @@ static int dh_stm32_setup_ethaddr(void)
 	if (dh_get_mac_is_enabled("ethernet0"))
 		return 0;
 
+	if (!dh_stm32_get_mac_from_fuse(enetaddr, 0))
+		goto out;
+
+	if (!dh_get_value_from_eeprom_buffer(DH_MAC0, enetaddr, sizeof(enetaddr), eip))
+		goto out;
+
 	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom0"))
-		return eth_env_set_enetaddr("ethaddr", enetaddr);
+		goto out;
 
 	return -ENXIO;
+
+out:
+	return eth_env_set_enetaddr("ethaddr", enetaddr);
 }
 
-static int dh_stm32_setup_eth1addr(void)
+static int dh_stm32_setup_eth1addr(struct eeprom_id_page *eip)
 {
 	unsigned char enetaddr[6];
 
@@ -149,20 +180,50 @@ static int dh_stm32_setup_eth1addr(void)
 	if (dh_stm32_mac_is_in_ks8851())
 		return 0;
 
-	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom0")) {
-		enetaddr[5]++;
-		return eth_env_set_enetaddr("eth1addr", enetaddr);
-	}
+	if (!dh_stm32_get_mac_from_fuse(enetaddr, 1))
+		goto out;
+
+	if (!dh_get_value_from_eeprom_buffer(DH_MAC1, enetaddr, sizeof(enetaddr), eip))
+		goto out;
+
+	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom0"))
+		goto increment_out;
 
 	return -ENXIO;
+
+increment_out:
+	enetaddr[5]++;
+
+out:
+	return eth_env_set_enetaddr("eth1addr", enetaddr);
 }
 
 int setup_mac_address(void)
 {
-	if (dh_stm32_setup_ethaddr())
+	u8 eeprom_buffer[DH_EEPROM_ID_PAGE_MAX_SIZE] = { 0 };
+	struct eeprom_id_page *eip = (struct eeprom_id_page *)eeprom_buffer;
+	int ret;
+
+	ret = dh_read_eeprom_id_page(eeprom_buffer, "eeprom0wl");
+	if (ret) {
+		/*
+		 * The EEPROM ID page is available on SoM rev. 200 and greater.
+		 * For SoM rev. 100 the return value will be -ENODEV. Suppress
+		 * the error message for that, because the absence cannot be
+		 * treated as an error.
+		 */
+		if (ret != -ENODEV)
+			printf("%s: Cannot read valid data from EEPROM ID page! ret = %d\n",
+			       __func__, ret);
+		eip = NULL;
+	} else {
+		dh_add_item_number_and_serial_to_env(eip);
+	}
+
+	if (dh_stm32_setup_ethaddr(eip))
 		log_err("%s: Unable to setup ethaddr!\n", __func__);
 
-	if (dh_stm32_setup_eth1addr())
+	if (dh_stm32_setup_eth1addr(eip))
 		log_err("%s: Unable to setup eth1addr!\n", __func__);
 
 	return 0;
@@ -243,17 +304,29 @@ static void board_get_coding_straps(void)
 int board_stm32mp1_ddr_config_name_match(struct udevice *dev,
 					 const char *name)
 {
-	if (ddr3code == 1 &&
-	    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-2x1gb-533mhz"))
-		return 0;
+	if (IS_ENABLED(CONFIG_TARGET_DH_STM32MP13X)) {
+		if (ddr3code == 1 &&
+		    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-1x2gb-533mhz"))
+			return 0;
 
-	if (ddr3code == 2 &&
-	    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-2x2gb-533mhz"))
-		return 0;
+		if (ddr3code == 2 &&
+		    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-1x4gb-533mhz"))
+			return 0;
+	}
 
-	if (ddr3code == 3 &&
-	    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-2x4gb-533mhz"))
-		return 0;
+	if (IS_ENABLED(CONFIG_TARGET_DH_STM32MP15X)) {
+		if (ddr3code == 1 &&
+		    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-2x1gb-533mhz"))
+			return 0;
+
+		if (ddr3code == 2 &&
+		    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-2x2gb-533mhz"))
+			return 0;
+
+		if (ddr3code == 3 &&
+		    !strcmp(name, "st,ddr3l-dhsom-1066-888-bin-g-2x4gb-533mhz"))
+			return 0;
+	}
 
 	return -EINVAL;
 }
@@ -693,6 +766,34 @@ void board_quiesce_devices(void)
 #endif
 }
 
+#ifdef CONFIG_TARGET_DH_STM32MP13X
+enum env_location env_get_location(enum env_operation op, int prio)
+{
+	u32 bootmode = get_bootmode();
+
+	if (prio)
+		return ENVL_UNKNOWN;
+
+	switch (bootmode & TAMP_BOOT_DEVICE_MASK) {
+	case BOOT_FLASH_SD:
+	case BOOT_FLASH_EMMC:
+		if (CONFIG_IS_ENABLED(ENV_IS_IN_MMC))
+			return ENVL_MMC;
+		else
+			return ENVL_NOWHERE;
+
+	case BOOT_FLASH_NOR:
+		if (CONFIG_IS_ENABLED(ENV_IS_IN_SPI_FLASH))
+			return ENVL_SPI_FLASH;
+		else
+			return ENVL_NOWHERE;
+
+	default:
+		return ENVL_NOWHERE;
+	}
+}
+#endif
+
 static void dh_stm32_ks8851_fixup(void *blob)
 {
 	struct gpio_desc ks8851intrn;
@@ -777,7 +878,7 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 #endif
 
 #if defined(CONFIG_XPL_BUILD)
-void spl_perform_fixups(struct spl_image_info *spl_image)
+void spl_perform_board_fixups(struct spl_image_info *spl_image)
 {
 	dh_stm32_ks8851_fixup(spl_image_fdt_addr(spl_image));
 }

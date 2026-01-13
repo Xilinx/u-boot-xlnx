@@ -18,6 +18,9 @@
 
 #include <dt-bindings/clock/stm32h7-clks.h>
 
+/* must be equal to last peripheral clock index */
+#define LAST_PERIF_BANK SYSCFG_CK
+
 /* RCC CR specific definitions */
 #define RCC_CR_HSION			BIT(0)
 #define RCC_CR_HSIRDY			BIT(2)
@@ -111,6 +114,7 @@
 #define		QSPISRC_PER_CK		3
 
 #define PWR_CR3				0x0c
+#define PWR_CR3_LDOEN			BIT(1)
 #define PWR_CR3_SCUEN			BIT(2)
 #define PWR_D3CR			0x18
 #define PWR_D3CR_VOS_MASK		GENMASK(15, 14)
@@ -372,7 +376,11 @@ int configure_clocks(struct udevice *dev)
 	clrsetbits_le32(pwr_base + PWR_D3CR, PWR_D3CR_VOS_MASK,
 			VOS_SCALE_1 << PWR_D3CR_VOS_SHIFT);
 	/* Lock supply configuration update */
+#if IS_ENABLED(CONFIG_TARGET_STM32H747_DISCO)
+	clrbits_le32(pwr_base + PWR_CR3, PWR_CR3_LDOEN);
+#else
 	clrbits_le32(pwr_base + PWR_CR3, PWR_CR3_SCUEN);
+#endif
 	while (!(readl(pwr_base + PWR_D3CR) & PWR_D3CR_VOSREADY))
 		;
 
@@ -541,8 +549,8 @@ static u32 stm32_get_PLL1_rate(struct stm32_rcc_regs *regs,
 	divr1 = readl(&regs->pll1divr) & RCC_PLL1DIVR_DIVR1_MASK;
 	divr1 = (divr1 >> RCC_PLL1DIVR_DIVR1_SHIFT) + 1;
 
-	fracn1 = readl(&regs->pll1fracr) & RCC_PLL1DIVR_DIVR1_MASK;
-	fracn1 = fracn1 & RCC_PLL1DIVR_DIVR1_SHIFT;
+	fracn1 = readl(&regs->pll1fracr) & RCC_PLL1FRACR_FRACN1_MASK;
+	fracn1 = (fracn1 >> RCC_PLL1FRACR_FRACN1_SHIFT) + 1;
 
 	vco = (pllsrc / divm1) * divn1;
 	rate = (pllsrc * fracn1) / (divm1 * 8192);

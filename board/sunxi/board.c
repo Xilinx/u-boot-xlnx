@@ -14,6 +14,7 @@
 #include <dm.h>
 #include <env.h>
 #include <hang.h>
+#include <i2c.h>
 #include <image.h>
 #include <init.h>
 #include <log.h>
@@ -113,10 +114,14 @@ void i2c_init_board(void)
 	clock_twi_onoff(5, 1);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(8), SUN50I_GPL_R_TWI);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(9), SUN50I_GPL_R_TWI);
-#elif CONFIG_MACH_SUN50I_H616
+#elif defined(CONFIG_MACH_SUN50I_H616)
 	clock_twi_onoff(5, 1);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN50I_H616_GPL_R_TWI);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN50I_H616_GPL_R_TWI);
+#elif CONFIG_MACH_SUN55I_A523
+	clock_twi_onoff(5, 1);
+	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN50I_GPL_R_TWI);
+	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN50I_GPL_R_TWI);
 #else
 	clock_twi_onoff(5, 1);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN8I_H3_GPL_R_TWI);
@@ -434,7 +439,8 @@ static void mmc_pinmux_setup(int sdc)
 			sunxi_gpio_set_pull(pin, SUNXI_GPIO_PULL_UP);
 			sunxi_gpio_set_drv(pin, 2);
 		}
-#elif defined(CONFIG_MACH_SUN50I_H616)
+#elif defined(CONFIG_MACH_SUN50I_H616) || defined(CONFIG_MACH_SUN50I_A133) || \
+      defined(CONFIG_MACH_SUN55I_A523)
 		/* SDC2: PC0-PC1, PC5-PC6, PC8-PC11, PC13-PC16 */
 		for (pin = SUNXI_GPC(0); pin <= SUNXI_GPC(16); pin++) {
 			if (pin > SUNXI_GPC(1) && pin < SUNXI_GPC(5))
@@ -515,7 +521,7 @@ int board_mmc_init(struct bd_info *bis)
 	return 0;
 }
 
-#ifdef CONFIG_SYS_MMC_ENV_DEV
+#ifdef CONFIG_ENV_MMC_DEVICE_INDEX
 int mmc_get_env_dev(void)
 {
 	switch (sunxi_get_boot_device()) {
@@ -524,7 +530,7 @@ int mmc_get_env_dev(void)
 	case BOOT_DEVICE_MMC2:
 		return 1;
 	default:
-		return CONFIG_SYS_MMC_ENV_DEV;
+		return CONFIG_ENV_MMC_DEVICE_INDEX;
 	}
 }
 #endif
@@ -562,7 +568,8 @@ void sunxi_board_init(void)
 #if defined CONFIG_AXP152_POWER || defined CONFIG_AXP209_POWER || \
 	defined CONFIG_AXP221_POWER || defined CONFIG_AXP305_POWER || \
 	defined CONFIG_AXP809_POWER || defined CONFIG_AXP818_POWER || \
-	defined CONFIG_AXP313_POWER || defined CONFIG_AXP717_POWER
+	defined CONFIG_AXP313_POWER || defined CONFIG_AXP717_POWER || \
+	defined CONFIG_AXP803_POWER
 	power_failed = axp_init();
 
 	if (IS_ENABLED(CONFIG_AXP_DISABLE_BOOT_ON_POWERON) && !power_failed) {
@@ -577,14 +584,18 @@ void sunxi_board_init(void)
 
 #ifdef CONFIG_AXP_DCDC1_VOLT
 	power_failed |= axp_set_dcdc1(CONFIG_AXP_DCDC1_VOLT);
-	power_failed |= axp_set_dcdc5(CONFIG_AXP_DCDC5_VOLT);
 #endif
 #ifdef CONFIG_AXP_DCDC2_VOLT
 	power_failed |= axp_set_dcdc2(CONFIG_AXP_DCDC2_VOLT);
+#endif
+#ifdef CONFIG_AXP_DCDC3_VOLT
 	power_failed |= axp_set_dcdc3(CONFIG_AXP_DCDC3_VOLT);
 #endif
 #ifdef CONFIG_AXP_DCDC4_VOLT
 	power_failed |= axp_set_dcdc4(CONFIG_AXP_DCDC4_VOLT);
+#endif
+#ifdef CONFIG_AXP_DCDC5_VOLT
+	power_failed |= axp_set_dcdc5(CONFIG_AXP_DCDC5_VOLT);
 #endif
 
 #ifdef CONFIG_AXP_ALDO1_VOLT
@@ -876,6 +887,27 @@ static void bluetooth_dt_fixup(void *blob)
 			   "local-bd-address", bdaddr, ETH_ALEN, 1);
 }
 
+#define PINEPHONE_LIS3MDL_I2C_ADDR	0x1e
+#define PINEPHONE_LIS3MDL_I2C_BUS	1 /* I2C1 */
+
+static void board_dt_fixup(void *blob)
+{
+	struct udevice *bus, *dev;
+
+	if (IS_ENABLED(CONFIG_PINEPHONE_DT_SELECTION) &&
+	    !fdt_node_check_compatible(blob, 0, "pine64,pinephone-1.2")) {
+		if (!uclass_get_device_by_seq(UCLASS_I2C,
+					      PINEPHONE_LIS3MDL_I2C_BUS,
+					      &bus)) {
+			dm_i2c_probe(bus, PINEPHONE_LIS3MDL_I2C_ADDR, 0, &dev);
+			fdt_set_status_by_compatible(blob, "st,lis3mdl-magn",
+				dev ? FDT_STATUS_OKAY  : FDT_STATUS_DISABLED);
+			fdt_set_status_by_compatible(blob, "voltafield,af8133j",
+				dev ? FDT_STATUS_DISABLED : FDT_STATUS_OKAY);
+		}
+	}
+}
+
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	int __maybe_unused r;
@@ -889,6 +921,7 @@ int ft_board_setup(void *blob, struct bd_info *bd)
 	fdt_fixup_ethernet(blob);
 
 	bluetooth_dt_fixup(blob);
+	board_dt_fixup(blob);
 
 #ifdef CONFIG_VIDEO_DT_SIMPLEFB
 	r = sunxi_simplefb_setup(blob);

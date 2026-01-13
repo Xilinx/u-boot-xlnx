@@ -1319,12 +1319,71 @@
 		status = "okay";
 		clock-frequency = <100000>;
 
+		power-sensor@42 {
+			compatible = "ti,ina3221";
+			reg = <0x42>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			input@0 {
+				reg = <0x0>;
+				label = "VDD_MUX";
+				shunt-resistor-micro-ohms = <20000>;
+			};
+
+			input@1 {
+				reg = <0x1>;
+				label = "VDD_5V_IO_SYS";
+				shunt-resistor-micro-ohms = <5000>;
+			};
+
+			input@2 {
+				reg = <0x2>;
+				label = "VDD_3V3_SYS";
+				shunt-resistor-micro-ohms = <10000>;
+			};
+		};
+
+		power-sensor@43 {
+			compatible = "ti,ina3221";
+			reg = <0x43>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			input@0 {
+				reg = <0x0>;
+				label = "VDD_3V3_IO";
+				shunt-resistor-micro-ohms = <10000>;
+			};
+
+			input@1 {
+				reg = <0x1>;
+				label = "VDD_1V8_IO";
+				shunt-resistor-micro-ohms = <10000>;
+			};
+
+			input@2 {
+				reg = <0x2>;
+				label = "VDD_M2_IN";
+				shunt-resistor-micro-ohms = <10000>;
+			};
+		};
+
 		exp1: gpio@74 {
 			compatible = "ti,tca9539";
 			reg = <0x74>;
 
 			#gpio-cells = <2>;
 			gpio-controller;
+
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(L, 1) IRQ_TYPE_EDGE_FALLING>;
+
+			#interrupt-cells = <2>;
+			interrupt-controller;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&gpio_1v8>;
 		};
 
 		exp2: gpio@77 {
@@ -1333,6 +1392,15 @@
 
 			#gpio-cells = <2>;
 			gpio-controller;
+
+			interrupt-parent = <&gpio>;
+			interrupts = <TEGRA_GPIO(Z, 2) IRQ_TYPE_EDGE_FALLING>;
+
+			#interrupt-cells = <2>;
+			interrupt-controller;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&gpio_1v8>;
 		};
 	};
 
@@ -1517,6 +1585,7 @@
 		bus-width = <4>;
 
 		cd-gpios = <&gpio TEGRA_GPIO(Z, 1) GPIO_ACTIVE_LOW>;
+		wp-gpios = <&gpio TEGRA_GPIO(Z, 4) GPIO_ACTIVE_HIGH>;
 
 		vqmmc-supply = <&vddio_sdmmc>;
 		vmmc-supply = <&vdd_3v3_sd>;
@@ -1552,6 +1621,18 @@
 			gpios = <&gpio TEGRA_GPIO(X, 6) GPIO_ACTIVE_LOW>;
 			linux,code = <KEY_VOLUMEUP>;
 		};
+	};
+
+	fan: pwm-fan {
+		compatible = "pwm-fan";
+		pwms = <&pwm 3 45334>;
+		fan-supply = <&vdd_fan>;
+		interrupt-parent = <&gpio>;
+		interrupts = <TEGRA_GPIO(K, 7) IRQ_TYPE_EDGE_RISING>;
+
+		/* cooling level (0, 1, 2, 3) - pwm inverted */
+		cooling-levels = <255 128 64 0>;
+		#cooling-cells = <2>;
 	};
 
 	vdd_sys_mux: regulator-vdd-sys-mux {
@@ -1603,7 +1684,7 @@
 		regulator-name = "VDD_3V3_SD";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
-		gpio = <&gpio TEGRA_GPIO(Z, 4) GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio TEGRA_GPIO(Z, 3) GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		vin-supply = <&vdd_3v3_sys>;
 
@@ -1635,7 +1716,7 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		regulator-always-on;
-		gpio = <&exp1 14 GPIO_ACTIVE_HIGH>;
+		gpio = <&exp1 9 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		vin-supply = <&vdd_1v8>;
 	};
@@ -1708,5 +1789,68 @@
 		gpio = <&gpio TEGRA_GPIO(CC, 4) GPIO_ACTIVE_HIGH>;
 		enable-active-high;
 		vin-supply = <&vdd_5v0_sys>;
+	};
+
+	vdd_fan: regulator-vdd-fan {
+		compatible = "regulator-fixed";
+		regulator-name = "VDD_FAN";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&exp1 4 GPIO_ACTIVE_LOW>;
+		vin-supply = <&vdd_5v0_sys>;
+
+		regulator-enable-ramp-delay = <284>;
+	};
+
+	thermal-zones {
+		cpu-thermal {
+			trips {
+				cpu_trip_critical: critical {
+					temperature = <96500>;
+					hysteresis = <0>;
+					type = "critical";
+				};
+
+				cpu_trip_hot: hot {
+					temperature = <70000>;
+					hysteresis = <2000>;
+					type = "hot";
+				};
+
+				cpu_trip_active: active {
+					temperature = <50000>;
+					hysteresis = <2000>;
+					type = "active";
+				};
+
+				cpu_trip_passive: passive {
+					temperature = <30000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map0 {
+					cooling-device = <&fan 3 3>;
+					trip = <&cpu_trip_critical>;
+				};
+
+				map1 {
+					cooling-device = <&fan 2 2>;
+					trip = <&cpu_trip_hot>;
+				};
+
+				map2 {
+					cooling-device = <&fan 1 1>;
+					trip = <&cpu_trip_active>;
+				};
+
+				map3 {
+					cooling-device = <&fan 0 0>;
+					trip = <&cpu_trip_passive>;
+				};
+			};
+		};
 	};
 };

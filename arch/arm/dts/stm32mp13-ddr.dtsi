@@ -1,0 +1,49 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR BSD-3-Clause
+/*
+ * Copyright : STMicroelectronics 2018-2025
+ */
+#ifdef CONFIG_SPL
+&ddr {
+	clocks = <&rcc AXIDCG>,
+		 <&rcc DDRC1>,
+		 <&rcc DDRPHYC>,
+		 <&rcc DDRCAPB>,
+		 <&rcc DDRPHYCAPB>;
+
+	clock-names = "axidcg",
+		      "ddrc1",
+		      "ddrphyc",
+		      "ddrcapb",
+		      "ddrphycapb";
+
+	config-DDR_MEM_COMPATIBLE {
+		st,ctl-perf = <
+			DDR_SCHED
+			DDR_SCHED1
+			DDR_PERFHPR1
+			DDR_PERFLPR1
+			DDR_PERFWR1
+			DDR_PCFGR_0
+			DDR_PCFGW_0
+			DDR_PCFGQOS0_0
+			DDR_PCFGQOS1_0
+			DDR_PCFGWQOS0_0
+			DDR_PCFGWQOS1_0
+		>;
+
+		st,phy-reg = <
+			DDR_PGCR
+			DDR_ACIOCR
+			DDR_DXCCR
+			DDR_DSGCR
+			DDR_DCR
+			DDR_ODTCR
+			DDR_ZQ0CR1
+			DDR_DX0GCR
+			DDR_DX1GCR
+		>;
+	};
+};
+#endif
+
+#include "stm32mp1-ddr.dtsi"

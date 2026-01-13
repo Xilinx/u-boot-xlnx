@@ -35,18 +35,9 @@ config BCM6348_IUDMA
 	  This driver support data transfer from devices to
 	  memory and from memory to devices.
 
-config DMA_LPC32XX
-	bool "LPC32XX DMA driver"
-	select DMA_LEGACY
-	help
-	  Enable some legacy DMA code for lpc32xx. It provides some direct
-	  functions likes lpc32xx_dma_wait_status() which can be called from
-	  other code.
-
-	  This should be converted to use driver model and UCLASS_DMA.
-
 config TI_EDMA3
 	bool "TI EDMA3 driver"
+	depends on ARCH_OMAP2PLUS || ARCH_KEYSTONE
 	select DMA_LEGACY
 	help
 	  Enable the TI EDMA3 driver for DRA7xx and AM43xx evms.
@@ -75,6 +66,13 @@ config XILINX_DPDMA
 	  Enable support for Xilinx ZynqMP Display DMA driver. Currently
 	  this file is used as placeholder for driver. The main reason is
 	  to record compatible string and calling power domain driver.
+
+config ADI_DMA
+	bool "ADI DMA driver"
+	depends on DMA && DMA_CHANNELS
+	help
+	  Enable DMA support for Analog Devices SOCs, such as the SC5xx.
+	  Currently this is a minimalistic driver tested against OSPI use only.
 
 if APBH_DMA
 config APBH_DMA_BURST

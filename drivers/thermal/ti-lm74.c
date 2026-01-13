@@ -28,7 +28,7 @@ static int ti_lm74_get_temp(struct udevice *dev, int *temp)
 
 	raw = ((buf[0] << 8) + buf[1]) >> 3;
 
-	*temp = (((int)raw * 125) + 1000) / 2000;
+	*temp = (((int)raw * 125) + 1000) / 2;
 
 	return 0;
 }
@@ -44,7 +44,7 @@ static const struct udevice_id of_ti_lm74_match[] = {
 	{},
 };
 
-U_BOOT_DRIVER(ti_bandgap_thermal) = {
+U_BOOT_DRIVER(ti_lm74_thermal) = {
 	.name	= "ti_lm74_thermal",
 	.id	= UCLASS_THERMAL,
 	.ops	= &ti_lm74_ops,

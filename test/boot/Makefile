@@ -6,12 +6,14 @@ ifdef CONFIG_UT_BOOTSTD
 obj-$(CONFIG_BOOTSTD) += bootdev.o bootstd_common.o bootflow.o bootmeth.o
 obj-$(CONFIG_FIT) += image.o
 
+ifdef CONFIG_VIDEO_SANDBOX_SDL
 obj-$(CONFIG_EXPO) += expo.o
 obj-$(CONFIG_CEDIT) += cedit.o
 endif
+endif
 
 ifdef CONFIG_SANDBOX
-obj-$(CONFIG_$(XPL_)CMDLINE) += bootm.o
+obj-$(CONFIG_$(PHASE_)CMDLINE) += bootm.o
 endif
 obj-$(CONFIG_MEASURED_BOOT) += measurement.o
 

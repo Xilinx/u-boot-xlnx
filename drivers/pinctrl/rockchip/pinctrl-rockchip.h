@@ -458,6 +458,9 @@ struct rockchip_pin_bank {
 #define MR_PMUGRF(ID, PIN, FUNC, REG, VAL)	\
 	PIN_BANK_MUX_ROUTE_FLAGS(ID, PIN, FUNC, REG, VAL, ROUTE_TYPE_PMUGRF)
 
+#define RK3576_PIN_BANK_FLAGS(ID, PIN, LABEL, M, O1, O2, O3, O4)	\
+	PIN_BANK_IOMUX_FLAGS_OFFSET(ID, PIN, LABEL, M, M, M, M, O1, O2, O3, O4)
+
 #define RK3588_PIN_BANK_FLAGS(ID, PIN, LABEL, M, P)			\
 	PIN_BANK_IOMUX_FLAGS_PULL_FLAGS(ID, PIN, LABEL, M, M, M, M, P, P, P, P)
 
@@ -500,7 +503,6 @@ struct rockchip_mux_route_data {
 struct rockchip_pin_ctrl {
 	struct rockchip_pin_bank	*pin_banks;
 	u32				nr_banks;
-	u32				nr_pins;
 	int				grf_mux_offset;
 	int				pmu_mux_offset;
 	int				grf_drv_offset;

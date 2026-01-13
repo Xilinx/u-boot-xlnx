@@ -3,7 +3,7 @@
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
-ifdef CONFIG_$(XPL_)DM_USB
+ifdef CONFIG_$(PHASE_)DM_USB
 obj-y += usb-uclass.o
 obj-$(CONFIG_SANDBOX) += usb-sandbox.o
 endif
@@ -54,7 +54,6 @@ obj-$(CONFIG_USB_XHCI_GENERIC) += xhci-generic.o
 obj-$(CONFIG_USB_XHCI_OMAP) += xhci-omap.o
 obj-$(CONFIG_USB_XHCI_PCI) += xhci-pci.o
 obj-$(CONFIG_USB_XHCI_RCAR) += xhci-rcar.o
-obj-$(CONFIG_USB_XHCI_STI) += dwc3-sti-glue.o
 obj-$(CONFIG_USB_XHCI_OCTEON) += dwc3-octeon-glue.o
 
 # designware

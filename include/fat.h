@@ -11,7 +11,6 @@
 
 #include <fs.h>
 #include <asm/byteorder.h>
-#include <asm/cache.h>
 
 struct disk_partition;
 
@@ -206,6 +205,7 @@ int fat_opendir(const char *filename, struct fs_dir_stream **dirsp);
 int fat_readdir(struct fs_dir_stream *dirs, struct fs_dirent **dentp);
 void fat_closedir(struct fs_dir_stream *dirs);
 int fat_unlink(const char *filename);
+int fat_rename(const char *old_path, const char *new_path);
 int fat_mkdir(const char *dirname);
 void fat_close(void);
 void *fat_next_cluster(fat_itr *itr, unsigned int *nbytes);

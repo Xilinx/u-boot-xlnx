@@ -499,6 +499,9 @@ static int do_env_load(struct cmd_tbl *cmdtp, int flag, int argc,
 static int do_env_select(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
+	if (argc < 2)
+		return CMD_RET_USAGE;
+
 	return env_select(argv[1]) ? 1 : 0;
 }
 #endif
@@ -522,6 +525,9 @@ static int do_env_default(struct cmd_tbl *cmdtp, int flag,
 				break;
 			case 'f':		/* force */
 				env_flag |= H_FORCE;
+				break;
+			case 'k':
+				env_flag |= H_NOCLEAR;
 				break;
 			default:
 				return cmd_usage(cmdtp);
@@ -1133,8 +1139,9 @@ U_BOOT_LONGHELP(env,
 #if defined(CONFIG_CMD_ENV_CALLBACK)
 	"callbacks - print callbacks and their associated variables\nenv "
 #endif
-	"default [-f] -a - [forcibly] reset default environment\n"
-	"env default [-f] var [...] - [forcibly] reset variable(s) to their default values\n"
+	"default [-k] [-f] -a - [forcibly] reset default environment\n"
+	"env default [-k] [-f] var [...] - [forcibly] reset variable(s) to their default values\n"
+	"      \"-k\": keep variables not defined in default environment\n"
 	"env delete [-f] var [...] - [forcibly] delete variable(s)\n"
 #if defined(CONFIG_CMD_EDITENV)
 	"env edit name - edit environment variable\n"
@@ -1259,7 +1266,7 @@ U_BOOT_CMD_COMPLETE(
 	"      \"-rt\": set runtime attribute\n"
 	"      \"-at\": set time-based authentication attribute\n"
 	"      \"-a\": append-write\n"
-	"      \"-i addr,size\": use <addr,size> as variable's value\n"
+	"      \"-i addr:size\": use <addr,size> as variable's value\n"
 	"      \"-v\": verbose message\n"
 	"    - delete UEFI variable 'name' if 'value' not specified\n"
 #endif

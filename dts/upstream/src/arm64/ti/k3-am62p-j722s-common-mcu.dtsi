@@ -12,23 +12,15 @@
 		#pinctrl-cells = <1>;
 		pinctrl-single,register-width = <32>;
 		pinctrl-single,function-mask = <0xffffffff>;
-		pinctrl-single,gpio-range =
-			<&mcu_pmx_range 0 21 PIN_GPIO_RANGE_IOPAD>,
-			<&mcu_pmx_range 23 1 PIN_GPIO_RANGE_IOPAD>,
-			<&mcu_pmx_range 32 2 PIN_GPIO_RANGE_IOPAD>;
 		bootph-all;
-
-		mcu_pmx_range: gpio-range {
-			#pinctrl-single,gpio-range-cells = <3>;
-		};
 	};
 
 	mcu_esm: esm@4100000 {
 		compatible = "ti,j721e-esm";
 		reg = <0x00 0x4100000 0x00 0x1000>;
-		ti,esm-pins = <0>, <1>, <2>, <85>;
-		status = "reserved";
 		bootph-pre-ram;
+		/* Interrupt sources: esm0_cfg, esm0_hi, esm0_low, mrti0, wrti0 */
+		ti,esm-pins = <0>, <1>, <2>, <85>, <86>;
 	};
 
 	/*

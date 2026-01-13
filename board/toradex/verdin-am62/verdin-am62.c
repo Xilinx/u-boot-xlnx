@@ -15,15 +15,12 @@
 #include <init.h>
 #include <k3-ddrss.h>
 #include <spl.h>
+#include <linux/sizes.h>
+#include <asm/arch/k3-ddr.h>
 
 #include "../common/tdx-cfg-block.h"
 
 DECLARE_GLOBAL_DATA_PTR;
-
-int board_init(void)
-{
-	return 0;
-}
 
 int dram_init(void)
 {
@@ -33,6 +30,20 @@ int dram_init(void)
 		puts("## WARNING: Less than 512MB RAM detected\n");
 
 	return 0;
+}
+
+int dram_init_banksize(void)
+{
+	s32 ret;
+
+	ret = fdtdec_setup_memory_banksize();
+	if (ret)
+		printf("Error setting up memory banksize. %d\n", ret);
+
+	/* Use the detected RAM size, we only support 1 bank right now. */
+	gd->bd->bi_dram[0].size = gd->ram_size;
+
+	return ret;
 }
 
 /*
@@ -79,7 +90,7 @@ static void select_dt_from_module_version(void)
 	else
 		strlcpy(&variant[0], "nonwifi", sizeof(variant));
 
-	if (strcmp(variant, env_variant)) {
+	if (!env_variant || strcmp(variant, env_variant)) {
 		printf("Setting variant to %s\n", variant);
 		env_set("variant", variant);
 	}

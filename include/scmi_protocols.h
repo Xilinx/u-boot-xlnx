@@ -24,6 +24,9 @@ enum scmi_std_protocol {
 	SCMI_PROTOCOL_ID_SENSOR = 0x15,
 	SCMI_PROTOCOL_ID_RESET_DOMAIN = 0x16,
 	SCMI_PROTOCOL_ID_VOLTAGE_DOMAIN = 0x17,
+	SCMI_PROTOCOL_ID_PINCTRL = 0x19,
+	SCMI_PROTOCOL_ID_VENDOR_80 = 0x80,
+	SCMI_PROTOCOL_ID_VENDOR_82 = 0x82,
 };
 
 enum scmi_status_code {
@@ -38,6 +41,7 @@ enum scmi_status_code {
 	SCMI_GENERIC_ERROR = -8,
 	SCMI_HARDWARE_ERROR = -9,
 	SCMI_PROTOCOL_ERROR = -10,
+	SCMI_IN_USE = -11,
 };
 
 /*
@@ -47,6 +51,10 @@ enum scmi_discovery_id {
 	SCMI_PROTOCOL_VERSION = 0x0,
 	SCMI_PROTOCOL_ATTRIBUTES = 0x1,
 	SCMI_PROTOCOL_MESSAGE_ATTRIBUTES = 0x2,
+};
+
+enum scmi_imx_misc_message_id {
+	SCMI_MISC_ROM_PASSOVER_GET = 0x7
 };
 
 /*
@@ -139,7 +147,7 @@ struct scmi_base_discover_impl_version_out {
 struct scmi_base_discover_list_protocols_out {
 	s32 status;
 	u32 num_protocols;
-	u32 protocols[3];
+	u32 protocols[];
 };
 
 /**
@@ -391,7 +399,7 @@ int scmi_generic_protocol_version(struct udevice *dev,
 int scmi_base_protocol_version(struct udevice *dev, u32 *version);
 
 /**
- * scmi_protocol_attrs - get protocol attributes
+ * scmi_base_protocol_attrs - get protocol attributes
  * @dev:		SCMI protocol device
  * @num_agents:		Number of SCMI agents
  * @num_protocols:	Number of SCMI protocols
@@ -406,7 +414,7 @@ int scmi_base_protocol_attrs(struct udevice *dev, u32 *num_agents,
 			     u32 *num_protocols);
 
 /**
- * scmi_protocol_message_attrs - get message-specific attributes
+ * scmi_base_protocol_message_attrs - get message-specific attributes
  * @dev:		SCMI protocol device
  * @message_id:		SCMI message ID
  * @attributes:		Message-specific attributes
@@ -725,12 +733,16 @@ int scmi_pwd_name_get(struct udevice *dev, u32 domain_id, u8 **name);
 /*
  * SCMI Clock Protocol
  */
+#define CLOCK_PROTOCOL_VERSION_2_1	0x20001
+#define CLOCK_PROTOCOL_VERSION_3_0	0x30000
 
 enum scmi_clock_message_id {
 	SCMI_CLOCK_ATTRIBUTES = 0x3,
 	SCMI_CLOCK_RATE_SET = 0x5,
 	SCMI_CLOCK_RATE_GET = 0x6,
 	SCMI_CLOCK_CONFIG_SET = 0x7,
+	SCMI_CLOCK_PARENT_SET = 0xD,
+	SCMI_CLOCK_GET_PERMISSIONS = 0xF,
 };
 
 #define SCMI_CLK_PROTO_ATTR_COUNT_MASK	GENMASK(15, 0)
@@ -743,7 +755,7 @@ enum scmi_clock_message_id {
 #define SCMI_CLOCK_NAME_LENGTH_MAX 16
 
 /**
- * struct scmi_clk_get_nb_out - Response for SCMI_PROTOCOL_ATTRIBUTES command
+ * struct scmi_clk_protocol_attr_out - Response for SCMI_PROTOCOL_ATTRIBUTES command
  * @status:	SCMI command status
  * @attributes:	Attributes of the clock protocol, mainly number of clocks exposed
  */
@@ -761,7 +773,7 @@ struct scmi_clk_attribute_in {
 };
 
 /**
- * struct scmi_clk_get_nb_out - Response payload for SCMI_CLOCK_ATTRIBUTES command
+ * struct scmi_clk_attribute_out - Response payload for SCMI_CLOCK_ATTRIBUTES command
  * @status:	SCMI command status
  * @attributes:	clock attributes
  * @clock_name:	name of the clock
@@ -769,17 +781,45 @@ struct scmi_clk_attribute_in {
 struct scmi_clk_attribute_out {
 	s32 status;
 	u32 attributes;
+#define CLK_HAS_RESTRICTIONS(x)	((x) & BIT(1))
 	char clock_name[SCMI_CLOCK_NAME_LENGTH_MAX];
 };
 
 /**
- * struct scmi_clk_state_in - Message payload for CLOCK_CONFIG_SET command
+ * struct scmi_clk_attribute_out_v2 - Response payload for SCMI_CLOCK_ATTRIBUTES command
+ * Clock management Protocol 2.0
+ * @status:	SCMI command status
+ * @attributes:	clock attributes
+ * @clock_name:	name of the clock
+ * @clock_enable_delay: delay incurred by the platform to enable the clock
+ */
+struct scmi_clk_attribute_out_v2 {
+	s32 status;
+	u32 attributes;
+	char clock_name[SCMI_CLOCK_NAME_LENGTH_MAX];
+	u32 clock_enable_delay;
+};
+
+/**
+ * struct scmi_clk_state_in_v1 - Message payload for CLOCK_CONFIG_SET command for protocol < 2.1
  * @clock_id:	SCMI clock ID
  * @attributes:	Attributes of the targets clock state
  */
-struct scmi_clk_state_in {
+struct scmi_clk_state_in_v1 {
 	u32 clock_id;
 	u32 attributes;
+};
+
+/**
+ * struct scmi_clk_state_in_v2 - Message payload for CLOCK_CONFIG_SET command for protocol >= 2.1
+ * @clock_id:	SCMI clock ID
+ * @attributes:	Attributes of the targets clock state
+ * @extended_config_val: Extended and OEM specific configuration
+ */
+struct scmi_clk_state_in_v2 {
+	u32 clock_id;
+	u32 attributes;
+	u32 extended_config_val;
 };
 
 /**
@@ -791,7 +831,7 @@ struct scmi_clk_state_out {
 };
 
 /**
- * struct scmi_clk_state_in - Message payload for CLOCK_RATE_GET command
+ * struct scmi_clk_rate_get_in - Message payload for CLOCK_RATE_GET command
  * @clock_id:	SCMI clock ID
  * @attributes:	Attributes of the targets clock state
  */
@@ -812,7 +852,7 @@ struct scmi_clk_rate_get_out {
 };
 
 /**
- * struct scmi_clk_state_in - Message payload for CLOCK_RATE_SET command
+ * struct scmi_clk_rate_set_in - Message payload for CLOCK_RATE_SET command
  * @flags:	Flags for the clock rate set request
  * @clock_id:	SCMI clock ID
  * @rate_lsb:	32bit LSB of the clock rate in Hertz
@@ -832,6 +872,47 @@ struct scmi_clk_rate_set_in {
 struct scmi_clk_rate_set_out {
 	s32 status;
 };
+
+/**
+ * struct scmi_clk_parent_set_in - Message payload for CLOCK_PARENT_SET command
+ * @clock_id:		SCMI clock ID
+ * @parent_clk:		SCMI clock ID
+ */
+struct scmi_clk_parent_set_in {
+	u32 clock_id;
+	u32 parent_clk;
+};
+
+/**
+ * struct scmi_clk_parent_set_out - Response payload for CLOCK_PARENT_SET command
+ * @status:	SCMI command status
+ */
+struct scmi_clk_parent_set_out {
+	s32 status;
+};
+
+/**
+ * struct scmi_clk_get_permissions_in - Message payload for CLOCK_GET_PERMISSIONS command
+ * @clock_id:	Identifier for the clock device.
+ */
+struct scmi_clk_get_permissions_in {
+	u32 clock_id;
+};
+
+/**
+ * struct scmi_clk_get_permissions_out - Response payload for CLOCK_GET_PERMISSIONS command
+ * @status:	Negative 32-bit integers are used to return error status codes.
+ * @permissions:	Bit[31] Clock state control, Bit[30] Clock parent control,
+ * Bit[29] Clock rate control, Bits[28:0] Reserved, must be zero.
+ */
+struct scmi_clk_get_permissions_out {
+	s32 status;
+	u32 permissions;
+};
+
+#define SUPPORT_CLK_STAT_CONTROL	BIT(31)
+#define SUPPORT_CLK_PARENT_CONTROL	BIT(30)
+#define SUPPORT_CLK_RATE_CONTROL	BIT(29)
 
 /*
  * SCMI Reset Domain Protocol
@@ -1005,4 +1086,57 @@ struct scmi_voltd_level_get_out {
 	s32 voltage_level;
 };
 
+/* SCMI Pinctrl Protocol */
+enum scmi_pinctrl_message_id {
+	SCMI_MSG_PINCTRL_CONFIG_SET = 0x6
+};
+
+struct scmi_pin_config {
+	u32 type;
+	u32 val;
+};
+
+/**
+ * struct scmi_pinctrl_config_set_in - Message payload for PAD_CONFIG_SET command
+ * @identifier:		Identifier for the pin or group.
+ * @function_id:	Identifier for the function selected to be enabled
+ * 			for the selected pin or group. This field is set to
+ * 			0xFFFFFFFF if no function should be enabled by the
+ * 			pin or group.
+ * @attributes:		Bits[31:11] Reserved, must be zero.
+ * 			Bit[10] Function valid.
+ * 			Bits[9:2] Number of configurations to set.
+ * 			Bits[1:0] Selector: Whether the identifier field
+ * 				  refers to a pin or a group.
+ * @configs:	Array of configurations.
+ */
+struct scmi_pinctrl_config_set_in {
+	u32 identifier;
+	u32 function_id;
+	u32 attributes;
+	struct scmi_pin_config configs[4];
+};
+
+struct scmi_pinctrl_config_set_out {
+	s32 status;
+};
+
+/* SCMI Perf Protocol */
+enum scmi_perf_message_id {
+	SCMI_PERF_DOMAIN_ATTRIBUTES = 0x3,
+	SCMI_PERF_DESCRIBE_LEVELS = 0x4,
+	SCMI_PERF_LIMITS_SET = 0x5,
+	SCMI_PERF_LIMITS_GET = 0x6,
+	SCMI_PERF_LEVEL_SET = 0x7,
+	SCMI_PERF_LEVEL_GET = 0x8
+};
+
+struct scmi_perf_in {
+	u32 domain_id;
+	u32 perf_level;
+};
+
+struct scmi_perf_out {
+	s32 status;
+};
 #endif /* _SCMI_PROTOCOLS_H */

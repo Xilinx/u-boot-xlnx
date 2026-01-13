@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source extras for U-Boot for the R-Car V4H Sparrow Hawk board
+ *
+ * Copyright (C) 2025 Marek Vasut <marek.vasut+renesas@mailbox.org>
+ */
+
+#include "r8a779g0-u-boot.dtsi"
+
+&avb0_pins {
+	pins-vddq18-25-avb {
+		pins = "PIN_VDDQ_AVB0", "PIN_VDDQ_AVB1", "PIN_VDDQ_AVB2", "PIN_VDDQ_TSN0";
+		power-source = <1800>;
+	};
+};
+
+/* Page 31 / FAN */
+&gpio1 {
+	pwm-fan-hog {
+		gpio-hog;
+		gpios = <15 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "PWM-FAN";
+	};
+};
+
+/* Page 29 / CSI_IF_CN / CAM_CN0 */
+&i2c1 {
+	status = "okay";
+};
+
+/* Page 29 / CSI_IF_CN / CAM_CN1 */
+&i2c2 {
+	status = "okay";
+};
+
+/* Page 31 / IO_CN */
+&i2c3 {
+	status = "okay";
+};
+
+/* Page 31 / IO_CN */
+&i2c4 {
+	status = "okay";
+};
+
+/* Page 18 / POWER_CORE and Page 19 / POWER_PMIC */
+&i2c5 {
+	status = "okay";
+};
+
+&rpc {
+	flash@0 {
+		/*
+		 * EVTA1 is populated with Spansion S25FS512S
+		 * EVTB1 is populated with Winbond W77Q51NW
+		 */
+		compatible = "jedec,spi-nor";
+		spi-tx-bus-width = <1>;
+		spi-rx-bus-width = <1>;
+	};
+};
+
+&vcc_sdhi {
+	states = <1800000 0>, <3300000 1>;
+};

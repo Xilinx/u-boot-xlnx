@@ -12,6 +12,7 @@
 
 / {
 	aliases {
+		tick-timer = &main_timer0;
 		remoteproc0 = &sysctrler;
 		remoteproc1 = &a53_0;
 	};
@@ -62,13 +63,22 @@
 
 &cbass_main {
 	sysctrler: sysctrler {
-		compatible = "ti,am654-system-controller";
+		compatible = "ti,am654-tisci-rproc-r5";
 		mboxes= <&secure_proxy_main 1>,
 			<&secure_proxy_main 0>,
 			<&secure_proxy_sa3 0>;
 		mbox-names = "tx", "rx", "boot_notify";
 		bootph-pre-ram;
 	};
+};
+
+&main_timer0 {
+	/delete-property/ clocks;
+	/delete-property/ clocks-names;
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-parents;
+	clock-frequency = <25000000>;
+	bootph-pre-ram;
 };
 
 &wkup_uart0_pins_default {

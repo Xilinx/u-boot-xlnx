@@ -10,15 +10,3 @@
 #include <asm/global_data.h>
 
 DECLARE_GLOBAL_DATA_PTR;
-
-int board_init(void)
-{
-	return 0;
-}
-
-int board_late_init(void)
-{
-	gd->env_valid = 1; //to load environment variable from persistent store
-	env_relocate();
-	return 0;
-}

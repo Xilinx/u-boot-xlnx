@@ -2,13 +2,11 @@ if ROCKCHIP_RK3588
 
 config TARGET_EVB_RK3588
 	bool "Rockchip EVB1 v10"
-	select BOARD_LATE_INIT
 	help
 	  RK3588 EVB is a evaluation board for Rockchp RK3588.
 
 config TARGET_CM3588_NAS_RK3588
 	bool "FriendlyElec CM3588 NAS"
-	select BOARD_LATE_INIT
 	help
 	  The CM3588 NAS by FriendlyElec pairs the CM3588 compute module, based
 	  on the Rockchip RK3588 SoC, with the CM3588 NAS Kit carrier board.
@@ -29,9 +27,25 @@ config TARGET_CM3588_NAS_RK3588
 	  - 3.5mm Headphone out, 2.0mm PH-2A Mic in
 	  - 5V Fan connector, PWM beeper, IR receiver, RTC battery connector
 
+config TARGET_GAMEFORCE_ACE_RK3588S
+	bool "GameForce Ace"
+	help
+	  The GameForce Ace is a handheld game console from GameForce with
+	  the Rockchip RK3588S SoC.
+
+	  Hardware features:
+	  - Rockchip RK3588S SoC
+	  - 12GB LPDDR4x RAM
+	  - 128GB eMMC
+	  - MicroSD card slot
+	  - 1x USB 3.0 Type-C with DP AltMode support
+	  - 1x HDMI 2.1 micro-HDMI out
+	  - 1920x1080 touchscreen MIPI-DSI panel
+	  - Analog joysticks and L/R triggers
+	  - 16 digital buttons
+
 config TARGET_GENBOOK_CM5_RK3588
 	bool "Cool Pi CM5 GenBook"
-	select BOARD_LATE_INIT
 	help
 	  GeenBook is a notebook based on Rockchip RK3588, and works as a carrier
 	  board connect with CM5 SOM.
@@ -49,7 +63,6 @@ config TARGET_GENBOOK_CM5_RK3588
 
 config TARGET_JAGUAR_RK3588
 	bool "Theobroma Systems SBC-RK3588-AMR (Jaguar)"
-	select BOARD_LATE_INIT
 	help
 	  The SBC-RK3588-AMR is a Single Board Computer designed by
 	  Theobroma Systems for autonomous mobile robots.
@@ -74,9 +87,29 @@ config TARGET_JAGUAR_RK3588
 	      - fan controller (AMC6821 emulation)
 	    * 80-pin Mezzanine connector
 
+config TARGET_KHADAS_EDGE2_RK3588
+	bool "Khadas Edge2 RK3588 board"
+	help
+	  Khadas Edge2 is a Rockchip RK3588S based SBC (Single Board Computer)
+	  by Khadas.
+
+	  There are tree variants depending on the DRAM size : 8G and 16G.
+
+	  Specification:
+
+	  Rockchip RK3588S SoC
+	  4x ARM Cortex-A76, 4x ARM Cortex-A55
+	  8/16GB memory LPDDR4x
+	  Mali G610MP4 GPU
+	  3x MIPI CSI 4x lanes
+	  2x MIPI-DSI DPHY 4x lanes
+	  32/64GB eMMC
+	  1x USB 2.0, 1x USB 3.0, 2x USB-Type-C
+	  1x HDMI 2.1 output, 1x DP 1.4 output
+	  USB PD over USB Type-C
+
 config TARGET_NANOPCT6_RK3588
 	bool "FriendlyElec NanoPC-T6 RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  The NanoPC-T6 is a Rockchip RK3588 based SBC by FriendlyElec.
 
@@ -121,7 +154,6 @@ config TARGET_NANOPCT6_RK3588
 
 config TARGET_NANOPI_R6C_RK3588S
 	bool "FriendlyElec NanoPi R6C"
-	select BOARD_LATE_INIT
 	help
 	  The NanoPi R6C is a SBC by FriendlyElec based on the Rockchip
 	  RK3588s.
@@ -133,7 +165,6 @@ config TARGET_NANOPI_R6C_RK3588S
 
 config TARGET_NANOPI_R6S_RK3588S
 	bool "FriendlyElec NanoPi R6S"
-	select BOARD_LATE_INIT
 	help
 	  The NanoPi R6S is a SBC by FriendlyElec based on the Rockchip
 	  RK3588s.
@@ -145,7 +176,6 @@ config TARGET_NANOPI_R6S_RK3588S
 
 config TARGET_NOVA_RK3588
 	bool "Indiedroid Nova RK3588"
-	select BOARD_LATE_INIT
 	help
 	  Indiedroid Nova is a Rockchip RK3588s based SBC by Indiedroid.
 	  It comes in configurations from 4GB of RAM to 16GB of RAM,
@@ -154,13 +184,11 @@ config TARGET_NOVA_RK3588
 
 config TARGET_ODROID_M2_RK3588S
 	bool "Hardkernel ODROID-M2"
-	select BOARD_LATE_INIT
 	help
 	  Hardkernel ODROID-M2 single board computer with a RK3588S2 SoC.
 
 config TARGET_RK3588_NEU6
 	bool "Edgeble Neural Compute Module 6(Neu6) SoM"
-	select BOARD_LATE_INIT
 	help
 	  Neu6A:
 	  Neural Compute Module 6A(Neu6A) is a 96boards SoM-CB compute module
@@ -182,7 +210,6 @@ config TARGET_RK3588_NEU6
 
 config TARGET_ROCK5A_RK3588
 	bool "Radxa ROCK5A RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  Radxa ROCK5A is a Rockchip RK3588S based SBC (Single Board Computer)
 	  by Radxa.
@@ -209,7 +236,6 @@ config TARGET_ROCK5A_RK3588
 
 config TARGET_ROCK5B_RK3588
 	bool "Radxa ROCK5B RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  Radxa ROCK5B is a Rockchip RK3588 based SBC (Single Board Computer)
 	  by Radxa.
@@ -234,7 +260,6 @@ config TARGET_ROCK5B_RK3588
 
 config TARGET_ROCK_5_ITX_RK3588
 	bool "Radxa ROCK-5-ITX RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  Radxa ROCK-5-ITX is a Rockchip RK3588 based SBC (Single Board
 	  Computer) by Radxa in the ITX formfactor.
@@ -260,9 +285,27 @@ config TARGET_ROCK_5_ITX_RK3588
 	  Front-panel connectors for audio and case-power, -leds
 	  Powered by either 12V, ATX power-supply or PoE
 
+config TARGET_ROCK_5C_RK3588S
+	bool "Radxa ROCK 5C RK3588S2 board"
+	help
+	  Radxa ROCK 5C is a Rockchip RK3588S2 based single board computer.
+
+	  Specification:
+
+	  Quad A76 and Quad A55 CPU
+	  6 TOPS NPU
+	  up to 32GB LPDDR4x RAM
+	  eMMC / SPI flash connector
+	  Micro SD Card slot
+	  Gigabit ethernet port (supports PoE with add-on PoE HAT)
+	  WiFi6 / BT5.4
+	  1x USB 3.0 Type-A HOST port
+	  1x USB 3.0 Type-A OTG port
+	  2x USB 2.0 Type-A HOST port
+	  1x USB Type-C 5V power port
+
 config TARGET_SIGE7_RK3588
 	bool "ArmSoM Sige7 RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  ArmSoM Sige7 is a Rockchip RK3588 based SBC (Single Board Computer)
 	  by ArmSoM.
@@ -287,14 +330,12 @@ config TARGET_SIGE7_RK3588
 
 config TARGET_QUARTZPRO64_RK3588
 	bool "Pine64 QuartzPro64 RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  Pine64 QuartzPro64 is a Rockchip RK3588 based SBC (Single Board
 	  Computer) by Pine64.
 
 config TARGET_TIGER_RK3588
 	bool "Theobroma Systems SOM-RK3588-Q7 (Tiger)"
-	select BOARD_LATE_INIT
 	help
 	  The RK3588-Q7 SoM is a Qseven-compatible (70mm x 70mm, MXM-230
 	  connector) system-on-module from Theobroma Systems, featuring the
@@ -324,7 +365,6 @@ config TARGET_TIGER_RK3588
 
 config TARGET_TURINGRK1_RK3588
 	bool "Turing Machines RK1 RK3588 board"
-	select BOARD_LATE_INIT
 	help
 	  The Turing RK1 is a Rockchip RK3588 based SoM from Turing Machines.
 
@@ -347,7 +387,6 @@ config TARGET_TURINGRK1_RK3588
 
 config TARGET_TOYBRICK_RK3588
 	bool "Toybrick TB-RK3588X board"
-	select BOARD_LATE_INIT
 	help
 	  Rockchip Toybrick TB-RK3588X is a Rockchip RK3588 based development board.
 	  TB-RK3588X adopts core board and mainboard design. The core board is connected
@@ -378,12 +417,6 @@ config ROCKCHIP_STIMER_BASE
 config SYS_SOC
 	default "rk3588"
 
-config ROCKCHIP_COMMON_STACK_ADDR
-	default y
-
-config TEXT_BASE
-	default 0x00a00000
-
 source "board/armsom/sige7-rk3588/Kconfig"
 source "board/coolpi/genbook_cm5_rk3588/Kconfig"
 source "board/edgeble/neural-compute-module-6/Kconfig"
@@ -391,16 +424,22 @@ source "board/friendlyelec/cm3588-nas-rk3588/Kconfig"
 source "board/friendlyelec/nanopc-t6-rk3588/Kconfig"
 source "board/friendlyelec/nanopi-r6c-rk3588s/Kconfig"
 source "board/friendlyelec/nanopi-r6s-rk3588s/Kconfig"
+source "board/gameforce/ace-rk3588s/Kconfig"
 source "board/hardkernel/odroid_m2/Kconfig"
 source "board/indiedroid/nova/Kconfig"
+source "board/khadas/khadas-edge2-rk3588s/Kconfig"
 source "board/pine64/quartzpro64-rk3588/Kconfig"
 source "board/turing/turing-rk1-rk3588/Kconfig"
 source "board/radxa/rock5a-rk3588s/Kconfig"
 source "board/radxa/rock5b-rk3588/Kconfig"
 source "board/radxa/rock-5-itx-rk3588/Kconfig"
+source "board/radxa/rock-5c-rk3588s/Kconfig"
 source "board/rockchip/evb_rk3588/Kconfig"
 source "board/rockchip/toybrick_rk3588/Kconfig"
 source "board/theobroma-systems/jaguar_rk3588/Kconfig"
 source "board/theobroma-systems/tiger_rk3588/Kconfig"
+
+config SYS_CONFIG_NAME
+	default "rk3588_common"
 
 endif

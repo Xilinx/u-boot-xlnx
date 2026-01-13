@@ -11,11 +11,14 @@ static struct erofs_ctxt {
 
 int erofs_dev_read(int device_id, void *buf, u64 offset, size_t len)
 {
-	lbaint_t sect = offset >> ctxt.cur_dev->log2blksz;
-	int off = offset & (ctxt.cur_dev->blksz - 1);
+	lbaint_t sect;
+	int off;
 
 	if (!ctxt.cur_dev)
 		return -EIO;
+
+	sect = offset >> ctxt.cur_dev->log2blksz;
+	off = offset & (ctxt.cur_dev->blksz - 1);
 
 	if (fs_devread(ctxt.cur_dev, &ctxt.cur_part_info, sect,
 		       off, len, buf))
@@ -59,16 +62,19 @@ struct erofs_dir_stream {
 
 static int erofs_readlink(struct erofs_inode *vi)
 {
-	size_t len = vi->i_size;
+	size_t alloc_size;
 	char *target;
 	int err;
 
-	target = malloc(len + 1);
+	if (__builtin_add_overflow(vi->i_size, 1, &alloc_size))
+		return -EFSCORRUPTED;
+
+	target = malloc(alloc_size);
 	if (!target)
 		return -ENOMEM;
-	target[len] = '\0';
+	target[vi->i_size] = '\0';
 
-	err = erofs_pread(vi, target, len, 0);
+	err = erofs_pread(vi, target, vi->i_size, 0);
 	if (err)
 		goto err_out;
 

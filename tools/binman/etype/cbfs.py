@@ -5,6 +5,7 @@
 # Entry-type module for a Coreboot Filesystem (CBFS)
 #
 
+from __future__ import annotations
 from collections import OrderedDict
 
 from binman import cbfs_util
@@ -276,7 +277,8 @@ class Entry_cbfs(Entry):
         for entry in self._entries.values():
             entry.ListEntries(entries, indent + 1)
 
-    def GetEntries(self):
+    def GetEntries(self) -> dict[str, Entry]:
+        """Returns the entries (tree children) of this section"""
         return self._entries
 
     def ReadData(self, decomp=True, alt_format=None):

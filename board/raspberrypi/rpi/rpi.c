@@ -3,6 +3,8 @@
  * (C) Copyright 2012-2016 Stephen Warren
  */
 
+#define LOG_CATEGORY	LOGC_BOARD
+
 #include <config.h>
 #include <dm.h>
 #include <env.h>
@@ -193,6 +195,21 @@ static const struct rpi_model rpi_models_new_scheme[] = {
 		DTB_DIR "bcm2712-rpi-5-b.dtb",
 		true,
 	},
+	[0x18] = {
+		"Compute Module 5",
+		DTB_DIR "bcm2712-rpi-cm5-cm5io.dtb",
+		true,
+	},
+	[0x19] = {
+		"500",
+		DTB_DIR "bcm2712-rpi-500.dtb",
+		true,
+	},
+	[0x1A] = {
+		"Compute Module 5 Lite",
+		DTB_DIR "bcm2712-rpi-cm5l-cm5io.dtb",
+		true,
+	},
 };
 
 static const struct rpi_model rpi_models_old_scheme[] = {
@@ -317,13 +334,27 @@ int dram_init(void)
 #ifdef CONFIG_OF_BOARD
 int dram_init_banksize(void)
 {
+	phys_addr_t total_size = 0;
+	int i;
 	int ret;
 
 	ret = fdtdec_setup_memory_banksize();
 	if (ret)
 		return ret;
 
-	return fdtdec_setup_mem_size_base();
+	ret = fdtdec_setup_mem_size_base();
+	if (ret)
+		return ret;
+
+	/* Update gd->ram_size to reflect total RAM across all banks */
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
+		if (gd->bd->bi_dram[i].size == 0)
+			break;
+		total_size += gd->bd->bi_dram[i].size;
+	}
+	gd->ram_size = total_size;
+
+	return 0;
 }
 #endif
 
@@ -339,18 +370,13 @@ static void set_fdtfile(void)
 }
 
 /*
- * If the firmware provided a valid FDT at boot time, let's expose it in
- * ${fdt_addr} so it may be passed unmodified to the kernel.
+ * Allow U-Boot to use its control FDT with extlinux if one is not provided.
+ * This will then go through the usual fixups that U-Boot does, before being
+ * handed off to Linux
  */
 static void set_fdt_addr(void)
 {
-	if (env_get("fdt_addr"))
-		return;
-
-	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC)
-		return;
-
-	env_set_hex("fdt_addr", fw_dtb_pointer);
+	env_set_hex("fdt_addr", (ulong)gd->fdt_blob);
 }
 
 /*
@@ -521,15 +547,14 @@ int board_init(void)
 /*
  * If the firmware passed a device tree use it for U-Boot.
  */
-void *board_fdt_blob_setup(int *err)
+int board_fdt_blob_setup(void **fdtp)
 {
-	*err = 0;
-	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC) {
-		*err = -ENXIO;
-		return NULL;
-	}
+	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC)
+		return -ENXIO;
 
-	return (void *)fw_dtb_pointer;
+	*fdtp = (void *)fw_dtb_pointer;
+
+	return 0;
 }
 
 int copy_property(void *dst, void *src, char *path, char *property)
@@ -580,21 +605,35 @@ void  update_fdt_from_fw(void *fdt, void *fw_fdt)
 	/* kernel address randomisation seed as provided by the firmware */
 	copy_property(fdt, fw_fdt, "/chosen", "kaslr-seed");
 
+	/* warnings from the firmware (if any) */
+	copy_property(fdt, fw_fdt, "/chosen", "user-warnings");
+
 	/* address of the PHY device as provided by the firmware  */
 	copy_property(fdt, fw_fdt, "ethernet0/mdio@e14/ethernet-phy@1", "reg");
+
+	/* Bluetooth device address as provided by the firmware */
+	copy_property(fdt, fw_fdt, "/soc/serial@7e201000/bluetooth", "local-bd-address");
+
+	/* copy uart clk as provided by the firmware */
+	copy_property(fdt, fw_fdt, "/clocks/clk-uart", "clock-frequency");
 }
 
 int ft_board_setup(void *blob, struct bd_info *bd)
 {
 	int node;
 
-	update_fdt_from_fw(blob, (void *)fw_dtb_pointer);
-
-	node = fdt_node_offset_by_compatible(blob, -1, "simple-framebuffer");
-	if (node < 0)
-		fdt_simplefb_add_node(blob);
+	if (blob == gd->fdt_blob)
+		log_debug("Same FDT: nothing to do\n");
 	else
-		fdt_simplefb_enable_and_mem_rsv(blob);
+		update_fdt_from_fw(blob, (void *)gd->fdt_blob);
+
+	if (CONFIG_IS_ENABLED(FDT_SIMPLEFB)) {
+		node = fdt_node_offset_by_compatible(blob, -1, "simple-framebuffer");
+		if (node < 0)
+			fdt_simplefb_add_node(blob);
+		else
+			fdt_simplefb_enable_and_mem_rsv(blob);
+	}
 
 #ifdef CONFIG_EFI_LOADER
 	/* Reserve the spin table */
@@ -769,7 +808,7 @@ static int rpi_acpi_write_ssdt(struct acpi_ctx *ctx, const struct acpi_writer *e
 
 	/* (Re)calculate length and checksum */
 	ssdt->length = ctx->current - (void *)ssdt;
-	ssdt->checksum = table_compute_checksum((void *)ssdt, ssdt->length);
+	acpi_update_checksum(ssdt);
 	log_debug("SSDT at %p, length %x\n", ssdt, ssdt->length);
 
 	/* Drop the table if it is empty */

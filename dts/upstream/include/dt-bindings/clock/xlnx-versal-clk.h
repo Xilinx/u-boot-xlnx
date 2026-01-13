@@ -7,6 +7,13 @@
 #ifndef _DT_BINDINGS_CLK_VERSAL_H
 #define _DT_BINDINGS_CLK_VERSAL_H
 
+/*
+ * These bindings are deprecated, because they do not match the actual
+ * concept of bindings but rather contain pure firmware values.
+ * Instead include the header in the DTS source directory.
+ */
+#warning "These bindings are deprecated. Instead use the header in the DTS source directory."
+
 #define PMC_PLL					1
 #define APU_PLL					2
 #define RPU_PLL					3

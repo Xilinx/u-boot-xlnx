@@ -129,17 +129,6 @@ int do_board_detect(void)
 		       (unsigned int)gd->ram_size);
 	}
 
-	/*
-	 * Check the I2C PMIC to detect the deprecated SoM with DA9063.
-	 */
-	imx_iomux_v3_setup_multiple_pads(i2c1_pads, ARRAY_SIZE(i2c1_pads));
-
-	if (i2c_get_chip_for_busnum(0, 0x58, 0, &udev) == 0) {
-		printf("### ATTENTION: DEPRECATED SOM REVISION (N8010 Rev0) DETECTED! ###\n");
-		printf("###  THIS HW IS NOT SUPPORTED AND BOOTING WILL PROBABLY FAIL  ###\n");
-		printf("###             PLEASE UPGRADE TO LATEST MODULE               ###\n");
-	}
-
 	return 0;
 }
 
@@ -195,6 +184,53 @@ static int power_init_board(void)
 	pmic_reg_write(dev, PCA9450_LDO2CTRL, 0xC0);
 
 	return 0;
+}
+
+unsigned long board_spl_mmc_get_uboot_raw_sector(struct mmc *mmc, unsigned long raw_sect)
+{
+	/*
+	 * The image offset on SD/MMC devices is 33 KiB, except for eMMC boot if
+	 * fastboot is enabled. In this case it is 1 KiB. In order to make the
+	 * bootloader universal, check the fastboot OTP boot fuse and adjust
+	 * the offset.
+	 */
+	if (!IS_SD(mmc) && (readl(OCOTP_BASE_ADDR + 0x470) & 0x80)) {
+		switch (EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)) {
+		case EMMC_BOOT_PART_BOOT1:
+		case EMMC_BOOT_PART_BOOT2:
+			raw_sect -= 32 * 2;
+			break;
+		}
+	}
+
+	return raw_sect;
+}
+
+const char *spl_board_loader_name(u32 boot_device)
+{
+	static char name[16];
+	struct mmc *mmc;
+
+	switch (boot_device) {
+	case BOOT_DEVICE_SPI:
+		sprintf(name, "SPI NOR");
+		return name;
+	case BOOT_DEVICE_MMC1:
+		mmc_init_device(0);
+		mmc = find_mmc_device(0);
+		mmc_init(mmc);
+		snprintf(name, sizeof(name), "eMMC %s",
+			 emmc_hwpart_names[EXT_CSD_EXTRACT_BOOT_PART(mmc->part_config)]);
+		return name;
+	case BOOT_DEVICE_MMC2:
+		sprintf(name, "SD card");
+		return name;
+	case BOOT_DEVICE_BOARD:
+		sprintf(name, "USB OTG");
+		return name;
+	}
+
+	return NULL;
 }
 
 void board_init_f(ulong dummy)

@@ -30,8 +30,8 @@ config TARGET_AM3517_EVM
 	select DM
 	select DM_GPIO
 	select DM_I2C
-	select DM_MMC
 	select DM_SERIAL
+	select MMC
 	imply CMD_DM
 
 config TARGET_CM_T35
@@ -95,6 +95,7 @@ config TARGET_OMAP3_LOGIC
 	select OMAP3_GPIO_4
 	select OMAP3_GPIO_6
 	imply CMD_DM
+	imply VIDEO_DAMAGE
 
 config TARGET_TAO3530
 	bool "TAO3530"

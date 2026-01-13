@@ -157,13 +157,10 @@ setup(
     long_description=long_description,
     long_description_content_type="text/plain",
     url="https://git.kernel.org/pub/scm/utils/dtc/dtc.git",
-    license="BSD",
-    license_files=["GPL", "BSD-2-Clause"],
+    license="GPL-2.0-or-later OR BSD-2-Clause",
 
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BSD License",
-        "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
         "Operating System :: OS Independent",
     ],
 

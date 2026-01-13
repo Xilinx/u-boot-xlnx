@@ -10,12 +10,12 @@
 /* Override CONFIG_LOG_MAX_LEVEL */
 #define LOG_DEBUG
 
+#include <env.h>
 #include <asm/global_data.h>
 #include <dm/device.h>
 #include <hexdump.h>
 #include <test/log.h>
 #include <test/test.h>
-#include <test/suites.h>
 #include <test/ut.h>
 #include <asm/eth.h>
 #include "syslog_test.h"

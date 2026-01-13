@@ -44,7 +44,10 @@ properties:
       - rockchip,rk3328-pinctrl
       - rockchip,rk3368-pinctrl
       - rockchip,rk3399-pinctrl
+      - rockchip,rk3528-pinctrl
+      - rockchip,rk3562-pinctrl
       - rockchip,rk3568-pinctrl
+      - rockchip,rk3576-pinctrl
       - rockchip,rk3588-pinctrl
       - rockchip,rv1108-pinctrl
       - rockchip,rv1126-pinctrl
@@ -132,7 +135,7 @@ additionalProperties:
               description:
                 Pin bank index.
             - minimum: 0
-              maximum: 13
+              maximum: 14
               description:
                 Mux 0 means GPIO and mux 1 to N means
                 the specific device function.

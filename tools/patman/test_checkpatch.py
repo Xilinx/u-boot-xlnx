@@ -11,10 +11,10 @@ import tempfile
 import unittest
 
 from patman import checkpatch
-from patman import gitutil
 from patman import patchstream
 from patman import series
 from patman import commit
+from u_boot_pylib import gitutil
 
 
 class Line:
@@ -137,7 +137,7 @@ Signed-off-by: Simon Glass <sjg@chromium.org>
 class TestPatch(unittest.TestCase):
     """Test the u_boot_line() function in checkpatch.pl"""
 
-    def test_basic(self):
+    def test_filter(self):
         """Test basic filter operation"""
         data='''
 
@@ -522,12 +522,5 @@ index 0000000..2234c87
         self.check_strl("cat");
         self.check_strl("cpy");
 
-    def test_schema(self):
-        """Check for uses of strn(cat|cpy)"""
-        pm = PatchMaker()
-        pm.add_line('arch/sandbox/dts/sandbox.dtsi', '\tu-boot,dm-pre-proper;')
-        self.check_single_message(pm, 'PRE_SCHEMA', 'error')
-
 if __name__ == "__main__":
     unittest.main()
-    gitutil.RunTests()

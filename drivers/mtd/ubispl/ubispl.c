@@ -113,7 +113,7 @@ static int vtbl_check(struct ubi_scan_info *ubi,
 
 		crc = crc32(UBI_CRC32_INIT, &vtbl[i], UBI_VTBL_RECORD_SIZE_CRC);
 		if (be32_to_cpu(vtbl[i].crc) != crc) {
-			ubi_err("bad CRC at record %u: %#08x, not %#08x",
+			ubi_err("bad CRC at record %u: #%08x, not #%08x",
 				i, crc, be32_to_cpu(vtbl[i].crc));
 			ubi_dump_vtbl_record(&vtbl[i], i);
 			return 1;
@@ -779,7 +779,7 @@ static int ubi_scan_fastmap(struct ubi_scan_info *ubi,
 		 * that already so we merily copy it over.
 		 */
 		if (pnum == fm_anchor)
-			memcpy(vh, ubi->blockinfo + pnum, sizeof(*fm));
+			memcpy(vh, ubi->blockinfo + pnum, sizeof(*vh));
 
 		if (i == 0) {
 			if (be32_to_cpu(vh->vol_id) != UBI_FM_SB_VOLUME_ID) {

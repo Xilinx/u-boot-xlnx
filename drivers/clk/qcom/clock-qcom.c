@@ -74,6 +74,33 @@ void clk_enable_vote_clk(phys_addr_t base, const struct vote_clk *vclk)
 	} while ((val != BRANCH_ON_VAL) && (val != BRANCH_NOC_FSM_ON_VAL));
 }
 
+int qcom_gate_clk_en(const struct msm_clk_priv *priv, unsigned long id)
+{
+	if (id >= priv->data->num_clks || priv->data->clks[id].reg == 0) {
+		log_err("gcc@%#08llx: unknown clock ID %lu!\n",
+			priv->base, id);
+		return -ENOENT;
+	}
+
+	setbits_le32(priv->base + priv->data->clks[id].reg, priv->data->clks[id].en_val);
+	if (priv->data->clks[id].cbcr_reg) {
+		unsigned int count;
+		u32 val;
+
+		for (count = 0; count < 200; count++) {
+			val = readl(priv->base + priv->data->clks[id].cbcr_reg);
+			val &= BRANCH_CHECK_MASK;
+			if (val == BRANCH_ON_VAL || val == BRANCH_NOC_FSM_ON_VAL)
+				break;
+			udelay(1);
+		}
+		if (WARN(count == 200, "WARNING: Clock @ %#lx [%#010x] stuck at off\n",
+			 priv->data->clks[id].cbcr_reg, val))
+			return -EBUSY;
+	}
+	return 0;
+}
+
 #define APPS_CMD_RCGR_UPDATE BIT(0)
 
 /* Update clock command via CMD_RCGR */
@@ -164,6 +191,25 @@ void clk_rcg_set_rate(phys_addr_t base, uint32_t cmd_rcgr, int div,
 
 	/* Inform h/w to start using the new config. */
 	clk_bcr_update(base + cmd_rcgr);
+}
+
+#define PHY_MUX_MASK		GENMASK(1, 0)
+#define PHY_MUX_PHY_SRC		0
+#define PHY_MUX_REF_SRC		2
+
+void clk_phy_mux_enable(phys_addr_t base, uint32_t cmd_rcgr, bool enabled)
+{
+	u32 cfg;
+
+	/* setup src select and divider */
+	cfg  = readl(base + cmd_rcgr);
+	cfg &= ~(PHY_MUX_MASK);
+	if (enabled)
+		cfg |= FIELD_PREP(PHY_MUX_MASK, PHY_MUX_PHY_SRC);
+	else
+		cfg |= FIELD_PREP(PHY_MUX_MASK, PHY_MUX_REF_SRC);
+
+	writel(cfg, base + cmd_rcgr);
 }
 
 const struct freq_tbl *qcom_find_freq(const struct freq_tbl *f, uint rate)

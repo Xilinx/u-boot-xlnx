@@ -1180,6 +1180,7 @@ static int j721e_wiz_probe(struct udevice *dev)
 	ofnode node;
 	struct regmap *regmap;
 	u32 num_lanes;
+	bool already_configured = false;
 
 	node = get_child_by_name(dev, "serdes");
 
@@ -1201,6 +1202,7 @@ static int j721e_wiz_probe(struct udevice *dev)
 
 	if (num_lanes > WIZ_MAX_LANES) {
 		dev_err(dev, "Cannot support %d lanes\n", num_lanes);
+		rc = -EINVAL;
 		goto err_addr_to_resource;
 	}
 
@@ -1242,15 +1244,6 @@ static int j721e_wiz_probe(struct udevice *dev)
 		goto err_addr_to_resource;
 	}
 
-	for (i = 0; i < wiz->num_lanes; i++) {
-		regmap_field_read(wiz->p_enable[i], &val);
-		if (val & (P_ENABLE | P_ENABLE_FORCE)) {
-			dev_err(dev, "SERDES already configured\n");
-			rc = -EBUSY;
-			goto err_addr_to_resource;
-		}
-	}
-
 	rc = j721e_wiz_bind_of_clocks(wiz);
 	if (rc) {
 		dev_err(dev, "Failed to bind clocks\n");
@@ -1269,10 +1262,21 @@ static int j721e_wiz_probe(struct udevice *dev)
 		goto err_addr_to_resource;
 	}
 
-	rc = wiz_init(wiz);
-	if (rc) {
-		dev_err(dev, "WIZ initialization failed\n");
-		goto err_addr_to_resource;
+	for (i = 0; i < wiz->num_lanes; i++) {
+		regmap_field_read(wiz->p_enable[i], &val);
+		if (val & (P_ENABLE | P_ENABLE_FORCE)) {
+			dev_info(dev, "SERDES already configured, skipping wiz initialization\n");
+			already_configured = true;
+			break;
+		}
+	}
+
+	if (!already_configured) {
+		rc = wiz_init(wiz);
+		if (rc) {
+			dev_err(dev, "WIZ initialization failed\n");
+			goto err_addr_to_resource;
+		}
 	}
 
 	return 0;

@@ -184,6 +184,15 @@ config SPL_DM_PMIC_PFUZE100
 	This config enables implementation of driver-model pmic uclass features
 	for PMIC PFUZE100 in SPL. The driver implements read/write operations.
 
+config DM_PMIC_MAX8907
+	bool "Enable Driver Model for PMIC MAX8907"
+	---help---
+	This config enables implementation of driver-model pmic uclass features
+	for PMIC MAX8907. The driver implements read/write operations.
+	This is a Power Management IC with a decent set of peripherals from which
+	3 DC-to-DC Step-Down (SD) Regulators, 20 Low-Dropout Linear (LDO) Regulators,
+	Real-Time Clock (RTC) and more with I2C Compatible Interface.
+
 config DM_PMIC_MAX77663
 	bool "Enable Driver Model for PMIC MAX77663"
 	---help---
@@ -219,9 +228,9 @@ config PMIC_MAX8997
 	This is a Power Management IC with RTC, Fuel Gauge, MUIC control on Chip.
 	- 21x LDOs
 	- 12x GPIOs
-	- Haptic Motor driver
+	- Haptic motor driver
 	- RTC with two alarms
-	- Fueal Gauge and One backup battery charger
+	- Fuel Gauge and one backup battery charger
 	- MUIC
 	- Others
 
@@ -294,6 +303,16 @@ config DM_PMIC_SANDBOX
 	  - set by i2c emul driver's probe() (defaults in header)
 
 	Driver binding info: doc/device-tree-bindings/pmic/sandbox.txt
+
+config DM_PMIC_CPCAP
+	bool "Enable Driver Model for Motorola CPCAP"
+	help
+	The CPCAP is a Motorola/ST-Ericsson creation, a multifunctional IC
+	whose main purpose is power control. It was used in a wide variety of
+	Motorola products, both Tegra and OMAP based. The most notable devices
+	using this PMIC are the Motorola Droid 4, Atrix 4G, and Droid X2.
+	Unlike most PMICs, this one is not I2C based; it uses the SPI bus. The
+	core driver provides both read and write access to the device registers.
 
 config PMIC_S5M8767
 	bool "Enable Driver Model for the Samsung S5M8767 PMIC"

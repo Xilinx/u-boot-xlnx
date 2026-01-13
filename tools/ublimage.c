@@ -178,6 +178,7 @@ static uint32_t parse_cfg_file(struct ubl_header *ublhdr, char *name)
 					lineno, fld, &dcd_len);
 		}
 	}
+	free(line);
 	fclose(fd);
 
 	return dcd_len;
@@ -218,7 +219,7 @@ static void ublimage_set_header(void *ptr, struct stat *sbuf, int ifd,
 	parse_cfg_file(ublhdr, params->imagename);
 }
 
-int ublimage_check_params(struct image_tool_params *params)
+static int ublimage_check_params(struct image_tool_params *params)
 {
 	if (!params)
 		return CFG_INVALID;

@@ -1,8 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *	Copied from LiMon - BOOTP.
  *
  *	Copyright 1994, 1995, 2000 Neil Russell.
- *	(See License)
  *	Copyright 2000 Paolo Scaffardi
  */
 
@@ -24,10 +24,6 @@
 #if defined(CONFIG_CMD_DHCP)
 /* Minimum DHCP Options size per RFC2131 - results in 576 byte pkt */
 #define OPT_FIELD_SIZE 312
-#if defined(CONFIG_BOOTP_VENDOREX)
-extern u8 *dhcp_vendorex_prep(u8 *e); /*rtn new e after add own opts. */
-extern u8 *dhcp_vendorex_proc(u8 *e); /*rtn next e if mine,else NULL  */
-#endif
 #else
 #define OPT_FIELD_SIZE 64
 #endif
@@ -89,6 +85,8 @@ typedef enum { INIT,
 #define DHCP_ACK      5
 #define DHCP_NAK      6
 #define DHCP_RELEASE  7
+
+#define DHCP_OPTION_PXE_CONFIG_FILE	209	/* "ConfigFile" option according to rfc5071 */
 
 /**********************************************************************/
 

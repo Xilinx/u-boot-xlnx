@@ -33,25 +33,20 @@ DECLARE_GLOBAL_DATA_PTR;
 #define GUEST_VIRTIO_MMIO_BASE	0x2000000
 #define GUEST_VIRTIO_MMIO_SIZE	0x100000
 
-int board_init(void)
-{
-	return 0;
-}
-
 /*
  * Use fdt provided by Xen: according to
  * https://www.kernel.org/doc/Documentation/arm64/booting.txt
  * x0 is the physical address of the device tree blob (dtb) in system RAM.
  * This is stored in rom_pointer during low level init.
  */
-void *board_fdt_blob_setup(int *err)
+int board_fdt_blob_setup(void **fdtp)
 {
-	*err = 0;
-	if (fdt_magic(rom_pointer[0]) != FDT_MAGIC) {
-		*err = -ENXIO;
-		return NULL;
-	}
-	return (void *)rom_pointer[0];
+	if (fdt_magic(rom_pointer[0]) != FDT_MAGIC)
+		return -ENXIO;
+
+	*fdtp = (void *)rom_pointer[0];
+
+	return 0;
 }
 
 /*

@@ -182,6 +182,8 @@ saved_args:
 	.word 0
 	.endr
 END(saved_args)
+
+	.section .text
 #endif
 
 #ifdef CONFIG_ARMV7_LPAE
@@ -279,8 +281,8 @@ ENTRY(cpu_init_cp15)
 	orr	r2, r4, r2		@ r2 has combined CPU variant + revision
 
 /* Early stack for ERRATA that needs into call C code */
-#if defined(CONFIG_XPL_BUILD) && defined(CONFIG_SPL_STACK)
-	ldr	r0, =(CONFIG_SPL_STACK)
+#if CONFIG_IS_ENABLED(HAVE_INIT_STACK)
+	ldr	r0, =CONFIG_VAL(STACK)
 #else
 	ldr	r0, =(SYS_INIT_SP_ADDR)
 #endif

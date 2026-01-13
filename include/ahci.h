@@ -7,7 +7,7 @@
 #ifndef _AHCI_H_
 #define _AHCI_H_
 
-#include <pci.h>
+#include <linux/types.h>
 
 #define AHCI_PCI_BAR		0x24
 #define AHCI_MAX_SG		56 /* hardware max is 64K */
@@ -137,8 +137,8 @@ struct ahci_ioports {
 	void __iomem	*port_mmio;
 	struct ahci_cmd_hdr	*cmd_slot;
 	struct ahci_sg		*cmd_tbl_sg;
-	ulong	cmd_tbl;
-	u32	rx_fis;
+	void *cmd_tbl;
+	void *rx_fis;
 };
 
 /**

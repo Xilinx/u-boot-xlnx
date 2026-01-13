@@ -42,7 +42,11 @@
 };
 
 &mcu_timer0 {
-	status = "okay";
+	/delete-property/ clocks;
+	/delete-property/ clocks-names;
+	/delete-property/ assigned-clocks;
+	/delete-property/ assigned-clock-parents;
+	clock-frequency = <166666666>;
 	bootph-pre-ram;
 };
 
@@ -62,7 +66,7 @@
 &cbass_mcu_wakeup {
 	sysctrler: sysctrler {
 		bootph-pre-ram;
-		compatible = "ti,am654-system-controller";
+		compatible = "ti,am654-tisci-rproc-r5";
 		mboxes= <&secure_proxy_mcu 4>, <&secure_proxy_mcu 5>;
 		mbox-names = "tx", "rx";
 	};

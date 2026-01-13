@@ -73,7 +73,7 @@ static int spl_fit_get_image_name(const struct spl_fit_info *ctx,
 				  const char **outname)
 {
 	struct udevice *sysinfo;
-	const char *name, *str;
+	const char *name, *str, *end;
 	__maybe_unused int node;
 	int len, i;
 	bool found = true;
@@ -83,11 +83,17 @@ static int spl_fit_get_image_name(const struct spl_fit_info *ctx,
 		debug("cannot find property '%s': %d\n", type, len);
 		return -EINVAL;
 	}
+	/* A string property should be NUL terminated */
+	end = name + len - 1;
+	if (!len || *end) {
+		debug("malformed property '%s'\n", type);
+		return -EINVAL;
+	}
 
 	str = name;
 	for (i = 0; i < index; i++) {
 		str = strchr(str, '\0') + 1;
-		if (!str || (str - name >= len)) {
+		if (str > end) {
 			found = false;
 			break;
 		}
@@ -190,7 +196,7 @@ static int get_aligned_image_size(struct spl_load_info *info, int data_size,
 /**
  * load_simple_fit(): load the image described in a certain FIT node
  * @info:	points to information about the device to load data from
- * @sector:	the start sector of the FIT image on the device
+ * @fit_offset:	the offset of the FIT image on the device
  * @ctx:	points to the FIT context structure
  * @node:	offset of the DT node describing the image to load (relative
  *		to @fit)
@@ -199,7 +205,9 @@ static int get_aligned_image_size(struct spl_load_info *info, int data_size,
  *		the image gets loaded to the address pointed to by the
  *		load_addr member in this struct, if load_addr is not 0
  *
- * Return:	0 on success or a negative error number.
+ * Return:	0 on success, -EBADSLT if this image is not the correct phase
+ * (for CONFIG_BOOTMETH_VBE_SIMPLE_FW), or another negative error number on
+ * other error.
  */
 static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 			   const struct spl_fit_info *ctx, int node,
@@ -217,6 +225,25 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 	const void *data;
 	const void *fit = ctx->fit;
 	bool external_data = false;
+
+	log_debug("starting\n");
+	if (CONFIG_IS_ENABLED(BOOTMETH_VBE) &&
+	    xpl_get_phase(info) != IH_PHASE_NONE) {
+		enum image_phase_t phase;
+		int ret;
+
+		ret = fit_image_get_phase(fit, node, &phase);
+		/* if the image is for any phase, let's use it */
+		if (ret == -ENOENT || phase == xpl_get_phase(info)) {
+			log_debug("found\n");
+		} else if (ret < 0) {
+			log_debug("err=%d\n", ret);
+			return ret;
+		} else {
+			log_debug("- phase mismatch, skipping this image\n");
+			return -EBADSLT;
+		}
+	}
 
 	if (IS_ENABLED(CONFIG_SPL_FPGA) ||
 	    (IS_ENABLED(CONFIG_SPL_OS_BOOT) && spl_decompression_enabled())) {
@@ -243,11 +270,14 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 	if (!fit_image_get_data_position(fit, node, &offset)) {
 		external_data = true;
 	} else if (!fit_image_get_data_offset(fit, node, &offset)) {
+		log_debug("read offset %x = offset from fit %lx\n",
+			  offset, (ulong)offset + ctx->ext_data_offset);
 		offset += ctx->ext_data_offset;
 		external_data = true;
 	}
 
 	if (external_data) {
+		ulong read_offset;
 		void *src_ptr;
 
 		/* External data */
@@ -270,11 +300,12 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 
 		overhead = get_aligned_image_overhead(info, offset);
 		size = get_aligned_image_size(info, length, offset);
+		read_offset = fit_offset + get_aligned_image_offset(info,
+							    offset);
+		log_debug("reading from offset %x / %lx size %lx to %p: ",
+			  offset, read_offset, size, src_ptr);
 
-		if (info->read(info,
-			       fit_offset +
-			       get_aligned_image_offset(info, offset), size,
-			       src_ptr) < length)
+		if (info->read(info, read_offset, size, src_ptr) < length)
 			return -EIO;
 
 		debug("External data: dst=%p, offset=%x, size=%lx\n",
@@ -282,7 +313,7 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 		src = src_ptr + overhead;
 	} else {
 		/* Embedded data */
-		if (fit_image_get_data(fit, node, &data, &length)) {
+		if (fit_image_get_emb_data(fit, node, &data, &length)) {
 			puts("Cannot get image data/size\n");
 			return -ENOENT;
 		}
@@ -322,7 +353,7 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 		}
 		length = loadEnd - CONFIG_SYS_LOAD_ADDR;
 	} else {
-		memcpy(load_ptr, src, length);
+		memmove(load_ptr, src, length);
 	}
 
 	if (image_info) {
@@ -336,6 +367,7 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 		else
 			image_info->entry_point = FDT_ERROR;
 	}
+	log_debug("- done loading\n");
 
 	upl_add_image(fit, node, load_addr, length);
 
@@ -371,7 +403,7 @@ static int spl_fit_append_fdt(struct spl_image_info *spl_image,
 	 * Use the address following the image as target address for the
 	 * device tree.
 	 */
-	image_info.load_addr = spl_image->load_addr + spl_image->size;
+	image_info.load_addr = ALIGN(spl_image->load_addr + spl_image->size, 8);
 
 	/* Figure out which device tree the board wants to use */
 	node = spl_fit_get_image_node(ctx, FIT_FDT_PROP, index++);
@@ -416,8 +448,8 @@ static int spl_fit_append_fdt(struct spl_image_info *spl_image,
 				debug("%s: No additional FDT node\n", __func__);
 				ret = 0;
 				break;
-			} else if (ret < 0) {
-				continue;
+			} else if (ret) {
+				break;
 			}
 
 			ret = board_spl_fit_append_fdt_skip(str);
@@ -448,7 +480,9 @@ static int spl_fit_append_fdt(struct spl_image_info *spl_image,
 			image_info.load_addr = (ulong)tmpbuffer;
 			ret = load_simple_fit(info, offset, ctx, node,
 					      &image_info);
-			if (ret < 0)
+			if (ret == -EBADSLT)
+				continue;
+			else if (ret < 0)
 				break;
 
 			/* Make room in FDT for changes from the overlay */
@@ -487,9 +521,6 @@ static int spl_fit_record_loadable(const struct spl_fit_info *ctx, int index,
 	const char *name;
 	int node;
 
-	if (CONFIG_IS_ENABLED(FIT_IMAGE_TINY))
-		return 0;
-
 	ret = spl_fit_get_image_name(ctx, "loadables", index, &name);
 	if (ret < 0)
 		return ret;
@@ -517,6 +548,23 @@ static int spl_fit_image_is_fpga(const void *fit, int node)
 		return 0;
 
 	return !strcmp(type, "fpga");
+}
+
+static void spl_fit_image_record_arm32_optee(const void *fit, int node,
+					     struct spl_image_info *spl_image,
+					     struct spl_image_info *image_info)
+{
+#if defined(CONFIG_BOOTM_OPTEE) && defined(CONFIG_ARM) && !defined(CONFIG_ARM64)
+	const char *type = fdt_getprop(fit, node, FIT_TYPE_PROP, NULL);
+
+	if (!type)
+		return;
+
+	if (strcmp(type, "tee"))
+		return;
+
+	spl_image->optee_addr = image_info->load_addr;
+#endif
 }
 
 static int spl_fit_image_get_os(const void *fit, int noffset, uint8_t *os)
@@ -677,13 +725,51 @@ static int spl_simple_fit_read(struct spl_fit_info *ctx,
 	 */
 	size = get_aligned_image_size(info, size, 0);
 	buf = board_spl_fit_buffer_addr(size, size, 1);
+	if (!buf) {
+		/*
+		 * We assume that none of the board will ever use 0x0 as a
+		 * valid load address. Theoretically some board could use it,
+		 * but this is extremely unlikely.
+		 */
+		return -EIO;
+	}
 
 	count = info->read(info, offset, size, buf);
+	if (!count) {
+		/*
+		 * FIT could not be read. This means we should free the
+		 * memory allocated by board_spl_fit_buffer_addr().
+		 * Unfortunately, we don't know what memory allocation
+		 * mechanism was used:
+		 *   - For the SPL_SYS_MALLOC_SIMPLE case nothing could
+		 *     be done. The memory just could not be freed.
+		 *   - For statically allocated memory buffer we can try
+		 *     to reuse previously allocated memory (example:
+		 *     board_spl_fit_buffer_addr() function from the
+		 *     file test/image/spl_load.c).
+		 *   - For normall malloc() -- memory leak can't be easily
+		 *     avoided. To somehow reduce memory consumption the
+		 *     next calls of board_spl_fit_buffer_addr() could
+		 *     reallocate previously allocated buffer and use
+		 *     them again. This is somethat similar to the approach
+		 *     used for statically allocated buffer.
+		 *
+		 * Please note:
+		 *   - FIT images with data placed outside of the FIT
+		 *     structure will cause small memory leak (several
+		 *     kilobytes),
+		 *   - FIT images with data placed inside to the FIT
+		 *     structure may cause huge memory leak (up to
+		 *     several megabytes). Do NOT use such images!
+		 */
+		return -EIO;
+	}
+
 	ctx->fit = buf;
 	debug("fit read offset %lx, size=%lu, dst=%p, count=%lu\n",
 	      offset, size, buf, count);
 
-	return (count == 0) ? -EIO : 0;
+	return 0;
 }
 
 static int spl_simple_fit_parse(struct spl_fit_info *ctx)
@@ -809,7 +895,7 @@ int spl_load_simple_fit(struct spl_image_info *spl_image,
 
 		image_info.load_addr = 0;
 		ret = load_simple_fit(info, offset, &ctx, node, &image_info);
-		if (ret < 0) {
+		if (ret < 0 && ret != -EBADSLT) {
 			printf("%s: can't load image loadables index %d (ret = %d)\n",
 			       __func__, index, ret);
 			return ret;
@@ -834,8 +920,12 @@ int spl_load_simple_fit(struct spl_image_info *spl_image,
 		    image_info.entry_point != FDT_ERROR)
 			spl_image->entry_point = image_info.entry_point;
 
+		spl_fit_image_record_arm32_optee(ctx.fit, node, spl_image,
+						 &image_info);
+
 		/* Record our loadables into the FDT */
-		if (spl_image->fdt_addr)
+		if (!CONFIG_IS_ENABLED(FIT_IMAGE_TINY) &&
+		    xpl_get_fdt_update(info) && spl_image->fdt_addr)
 			spl_fit_record_loadable(&ctx, index,
 						spl_image->fdt_addr,
 						&image_info);
@@ -862,7 +952,7 @@ int spl_load_fit_image(struct spl_image_info *spl_image,
 {
 	struct bootm_headers images;
 	const char *fit_uname_config = NULL;
-	uintptr_t fdt_hack;
+	ulong fdt_hack;
 	const char *uname;
 	ulong fw_data = 0, dt_data = 0, img_data = 0;
 	ulong fw_len = 0, dt_len = 0, img_len = 0;

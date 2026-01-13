@@ -6,6 +6,9 @@
  * Written by Simon Glass <sjg@chromium.org>
  */
 
+#define LOG_CATEGORY LOGC_EFI
+
+#include <efi_device_path.h>
 #include <efi_loader.h>
 #include <env.h>
 #include <errno.h>

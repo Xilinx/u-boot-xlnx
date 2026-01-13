@@ -89,14 +89,32 @@ config VIDEO_PCI_DEFAULT_FB_SIZE
 
 config VIDEO_COPY
 	bool "Enable copying the frame buffer to a hardware copy"
+	select VIDEO_DAMAGE
 	help
 	  On some machines (e.g. x86), reading from the frame buffer is very
 	  slow because it is uncached. To improve performance, this feature
 	  allows the frame buffer to be kept in cached memory (allocated by
 	  U-Boot) and then copied to the hardware frame-buffer as needed.
+	  It uses the VIDEO_DAMAGE feature to keep track of regions to copy
+	  and will only copy actually touched regions.
 
 	  To use this, your video driver must set @copy_base in
 	  struct video_uc_plat.
+
+config VIDEO_DAMAGE
+	bool "Enable damage tracking of frame buffer regions"
+	help
+	  On some machines (most ARM), the display frame buffer resides in
+	  RAM. To make the display controller pick up screen updates, we
+	  have to flush frame buffer contents from CPU caches into RAM which
+	  can be a slow operation.
+
+	  This feature adds damage tracking to collect information about regions
+	  that received updates. When we want to sync, we then only flush
+	  regions of the frame buffer that were modified before, speeding up
+	  screen refreshes significantly.
+
+	  It is also used by VIDEO_COPY to identify which regions changed.
 
 config BACKLIGHT_PWM
 	bool "Generic PWM based Backlight Driver"
@@ -292,27 +310,6 @@ config PANEL_HX8238D
 	  displays in 16M colors with dithering.
 
 source "drivers/video/fonts/Kconfig"
-
-config VIDCONSOLE_AS_LCD
-	bool "Use 'vidconsole' when CONFIG_VIDCONSOLE_AS_NAME string is seen in stdout"
-	help
-	  This is a work-around for boards which have 'lcd' or 'vga' in their
-	  stdout environment variable, but have moved to use driver model for
-	  video. In this case the console will no-longer work. While it is
-	  possible to update the environment, the breakage may be confusing for
-	  users. This option will be removed around the end of 2020.
-
-config VIDCONSOLE_AS_NAME
-	string "Use 'vidconsole' when string defined here is seen in stdout"
-	depends on VIDCONSOLE_AS_LCD
-	default "lcd" if LCD || TEGRA_COMMON
-	default "vga" if !LCD
-	help
-	  This is a work-around for boards which have 'lcd' or 'vga' in their
-	  stdout environment variable, but have moved to use driver model for
-	  video. In this case the console will no-longer work. While it is
-	  possible to update the environment, the breakage may be confusing for
-	  users. This option will be removed around the end of 2020.
 
 config VIDEO_BOCHS
 	bool "Enable Bochs video emulation for QEMU"
@@ -516,6 +513,7 @@ config VIDEO_LCD_ANX9804
 
 config ATMEL_LCD
 	bool "Atmel LCD panel support"
+	imply VIDEO_DAMAGE
 	depends on ARCH_AT91
 
 config ATMEL_LCD_BGR555
@@ -525,6 +523,7 @@ config ATMEL_LCD_BGR555
 
 config VIDEO_BCM2835
 	bool "Display support for BCM2835"
+	imply VIDEO_DAMAGE
 	help
 	  The graphics processor already sets up the display so this driver
 	  simply checks the resolution and then sets up the frame buffer with
@@ -550,6 +549,23 @@ config VIDEO_LCD_HIMAX_HX8394
 	Say Y here if you want to enable support for Himax HX8394
 	dsi 4dl panel.
 
+config VIDEO_LCD_MOT
+	tristate "Atrix 4G and Droid X2 540x960 DSI video mode panel"
+	depends on PANEL && BACKLIGHT
+	select VIDEO_MIPI_DSI
+	help
+	  Say Y here if you want to enable support for the LCD panel module for
+	  Motorola Atrix 4G or Droid X2. Exact panel vendor and model are
+	  unknown. The panel has a 540x960 resolution and uses 24 bit RGB per
+	  pixel.
+
+config VIDEO_LCD_NOVATEK_NT35510
+	bool "Novatek NT35510 DSI LCD panel support"
+	select VIDEO_MIPI_DSI
+	help
+	Say Y here if you want to enable support for Novatek nt35510
+	dsi panel.
+
 config VIDEO_LCD_ORISETECH_OTM8009A
 	bool "OTM8009A DSI LCD panel support"
 	select VIDEO_MIPI_DSI
@@ -564,6 +580,14 @@ config VIDEO_LCD_LG_LD070WX3
 	help
 	  Say Y here if you want to enable support for LG LD070WX3
 	  800x1280 DSI video mode panel.
+
+config VIDEO_LCD_LG_LH400WV3
+	bool "LH400WV3-SD04 DSI LCD panel support"
+	depends on PANEL && BACKLIGHT
+	select VIDEO_MIPI_DSI
+	help
+	  Say Y here if you want to enable support for LG LH400WV3
+	  480x800 DSI video mode panel.
 
 config VIDEO_LCD_RAYDIUM_RM68200
 	bool "RM68200 DSI LCD panel support"
@@ -598,6 +622,15 @@ config VIDEO_LCD_SAMSUNG_LTL106HL02
 	  Say Y here if you want to enable support for Samsung LTL106HL02
 	  LCD module found in Microsoft Surface 2. The panel has a FullHD
 	  resolution (1920x1080).
+
+config VIDEO_LCD_SHARP_LQ079L1SX01
+	tristate "Sharp LQ079L1SX01 1536x2048 DSI video mode panel"
+	depends on PANEL && BACKLIGHT
+	select VIDEO_MIPI_DSI
+	help
+	  Say Y here if you want to enable support for Sharp LQ079L1SX01
+	  LCD module found in Xiaomi Mi Pad tablet. The panel has a QXGA
+	  resolution (1536x2048).
 
 config VIDEO_LCD_SHARP_LQ101R1SX01
 	tristate "Sharp LQ101R1SX01 2560x1600 DSI video mode panel"
@@ -643,12 +676,37 @@ config VIDEO_LCD_TDO_TL070WSH30
 	Say Y here if you want to enable support for TDO TL070WSH30
 	1024x600 DSI video mode panel.
 
+config VIDEO_LCD_HITACHI_TX10D07VM0BAA
+	tristate "Hitachi TX10D07VM0BAA 480x800 MIPI DSI video mode panel"
+	depends on PANEL && BACKLIGHT
+	select VIDEO_MIPI_DSI
+	help
+	  Say Y here if you want to enable support for Hitachi TX10D07VM0BAA
+	  TFT-LCD module. The panel has a 480x800 resolution.
+
 config VIDEO_LCD_HITACHI_TX18D42VM
 	bool "Hitachi tx18d42vm LVDS LCD panel support"
 	---help---
 	Support for Hitachi tx18d42vm LVDS LCD panels, these panels have a
 	lcd controller which needs to be initialized over SPI, once that is
 	done they work like a regular LVDS panel.
+
+config VIDEO_LCD_SONY_L4F00430T01
+	tristate "Sony L4F00430T01 480x800 LCD panel support"
+	depends on PANEL
+	help
+	  Say Y here if you want to enable support for Sony L4F00430T01
+	  LCD module found in Samsung Galaxy R. The panel has a
+	  WVGA resolution (480x800) and is setup over SPI, video
+	  data comes from RGB.
+
+config VIDEO_LCD_SAMSUNG_S6E63M0
+	tristate "Samsung S6E63M0 controller based panel support"
+	depends on PANEL && BACKLIGHT
+	help
+	  Say Y here if you want to enable support for Samsung S6E63M0
+	  controller found in some panels like on Samsung Captivate Glide.
+	  Currently only DBI C panel is implemented.
 
 config VIDEO_LCD_SPI_CS
 	string "SPI CS pin for LCD related config job"
@@ -697,6 +755,7 @@ source "drivers/video/meson/Kconfig"
 
 config VIDEO_MVEBU
 	bool "Armada XP LCD controller"
+	imply VIDEO_DAMAGE
 	---help---
 	Support for the LCD controller integrated in the Marvell
 	Armada XP SoC.
@@ -711,6 +770,12 @@ config I2C_EDID
 	bool "Enable EDID library"
 	help
 	   This enables library for accessing EDID data from an LCD panel.
+
+config I2C_EDID_STANDARD
+	bool "Enable standard timings EDID library expansion"
+	depends on I2C_EDID
+	help
+	   This enables standard timings expansion for EDID data from an LCD panel.
 
 config DISPLAY
 	bool "Enable Display support"
@@ -731,8 +796,28 @@ config NXP_TDA19988
 
 config ATMEL_HLCD
 	bool "Enable ATMEL video support using HLCDC"
+	imply VIDEO_DAMAGE
 	help
 	   HLCDC supports video output to an attached LCD panel.
+
+config BACKLIGHT_AAT2870
+	bool "Backlight Driver for AAT2870"
+	depends on BACKLIGHT
+	select DM_I2C
+	help
+	  Say Y to enable the backlight driver for Skyworks AAT2870 LED
+	  Backlight Driver and Multiple LDO Lighting Management Unit.
+	  Only backlight is supported as for now. Supported backlight
+	  level range is from 2 to 255 with step of 1.
+
+config BACKLIGHT_LM3532
+	bool "Backlight Driver for LM3532"
+	depends on BACKLIGHT
+	select DM_I2C
+	help
+	  Say Y to enable the backlight driver for National Semiconductor / TI
+	  LM3532 Lighting Power chip. Only backlight functions is supported as
+	  for now. Supported backlight level range is from 1 to 255.
 
 config BACKLIGHT_LM3533
 	bool "Backlight Driver for LM3533"
@@ -742,6 +827,23 @@ config BACKLIGHT_LM3533
 	  Say Y to enable the backlight driver for National Semiconductor / TI
 	  LM3533 Lighting Power chip. Only Bank A is supported as for now.
 	  Supported backlight level range is from 2 to 255 with step of 1.
+
+config BACKLIGHT_LP855x
+	bool "Backlight Driver for LP855x"
+	depends on BACKLIGHT
+	select DM_I2C
+	help
+	  Say Y to enable the backlight driver for National Semiconductor / TI
+	  LP8550/1/2/3/5/6/7 LED Backlight Driver. Only register driven mode is
+	  supported for now, PWM mode can be added if there will be any need in
+	  it. Supported backlight level range is from 0 to 255 with step of 1.
+
+config BACKLIGHT_SAMSUNG_CMC623
+	bool "Backlight Driver for Samsung CMC623"
+	depends on VIDEO_BRIDGE_SAMSUNG_CMC623
+	help
+	  Say Y to enable the backlight driver for Samsung CMC623 image converter
+	  chip's PWM output to control backlight brightness.
 
 source "drivers/video/ti/Kconfig"
 
@@ -805,22 +907,15 @@ source "drivers/video/stm32/Kconfig"
 
 source "drivers/video/tidss/Kconfig"
 
-config VIDEO_TEGRA124
-	bool "Enable video support on Tegra124"
-	help
-	   Tegra124 supports many video output options including eDP and
-	   HDMI. At present only eDP is supported by U-Boot. This option
-	   enables this support which can be used on devices which
-	   have an eDP display connected.
-
 source "drivers/video/bridge/Kconfig"
 
-source "drivers/video/tegra20/Kconfig"
+source "drivers/video/tegra/Kconfig"
 
 source "drivers/video/imx/Kconfig"
 
 config VIDEO_MXS
 	bool "Enable video support on i.MX28/i.MX6UL/i.MX7 SoCs"
+	imply VIDEO_DAMAGE
 	help
 	  Enable framebuffer driver for i.MX28/i.MX6UL/i.MX7 processors
 
@@ -883,6 +978,7 @@ config VIDEO_DW_MIPI_DSI
 
 config VIDEO_SIMPLE
 	bool "Simple display driver for preconfigured display"
+	imply VIDEO_DAMAGE
 	help
 	  Enables a simple generic display driver which utilizes the
 	  simple-framebuffer devicetree bindings.
@@ -901,6 +997,7 @@ config VIDEO_DT_SIMPLEFB
 
 config VIDEO_MCDE_SIMPLE
 	bool "Simple driver for ST-Ericsson MCDE with preconfigured display"
+	imply VIDEO_DAMAGE
 	help
 	  Enables a simple display driver for ST-Ericsson MCDE
 	  (Multichannel Display Engine), which reads the configuration from

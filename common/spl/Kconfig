@@ -12,7 +12,7 @@ config SPL_DFU_NO_RESET
 
 config SPL
 	bool "Enable SPL"
-	depends on SUPPORT_SPL
+	depends on SUPPORT_SPL && !COMPILE_TEST
 	help
 	  If you want to build SPL as well as the normal image, say Y.
 
@@ -80,11 +80,10 @@ config SPL_MAX_SIZE
 	default 0x1b000 if AM33XX && !TI_SECURE_DEVICE
 	default 0xec00 if OMAP34XX
 	default 0x10000 if ARCH_MX6 && !MX6_OCRAM_256KB
-	default 0x7fa0 if SUNXI_SRAM_ADDRESS = 0x10000
-	default 0x7fa0 if SUNXI_SRAM_ADDRESS = 0x20000 && !MACH_SUN50I_H616
-	default 0xbfa0 if MACH_SUN50I_H616
+	default 0xbfa0 if MACH_SUN50I_H616 || MACH_SUN50I_A133 || MACH_SUN55I_A523
 	default 0x7000 if RCAR_GEN3
 	default 0x5fa0 if SUNXI_SRAM_ADDRESS = 0x0
+	default 0x7fa0 if ARCH_SUNXI
 	default 0x10000 if ASPEED_AST2600
 	default 0x27000 if IMX8MM && SPL_TEXT_BASE = 0x7E1000
 	default 0x30000 if ARCH_SC5XX && (SC59X_64 || SC59X)
@@ -97,6 +96,7 @@ config SPL_MAX_SIZE
 
 config SPL_PAD_TO
 	hex "Offset to which the SPL should be padded before appending the SPL payload"
+	default 0x7f8000 if ARCH_ROCKCHIP
 	default 0x31000 if ARCH_MX6 && MX6_OCRAM_256KB
 	default 0x11000 if ARCH_MX7 || (ARCH_MX6 && !MX6_OCRAM_256KB)
 	default 0x10000 if ARCH_KEYSTONE
@@ -132,6 +132,7 @@ config SPL_BSS_START_ADDR
 choice
 	prompt "Enforce SPL BSS limit"
 	depends on !PPC
+	default SPL_NO_BSS_LIMIT if COMPILE_TEST
 	default SPL_BSS_LIMIT
 	help
 	  In some platforms we only want to enforce a limit on the size of the
@@ -175,7 +176,7 @@ config SPL_SYS_STACK_F_CHECK_BYTE
 	  Constant used to check the stack
 
 config SPL_SYS_REPORT_STACK_F_USAGE
-	depends on SPL_SIZE_LIMIT_PROVIDE_STACK != 0
+	depends on SPL_SIZE_LIMIT_PROVIDE_STACK > 0
 	bool "Check and report stack usage in SPL before relocation"
 	help
 	  If this option is enabled, the initial SPL stack is filled with 0xaa
@@ -271,10 +272,13 @@ config SPL_TEXT_BASE
 	default 0x40200000 if OMAP34XX
 	default 0x402F4000 if AM43XX
 	default 0x402F0400 if AM33XX
+	default 0x80080000 if ARCH_K3 && ARM64
+	default 0x43c00000 if ARCH_K3 && !ARM64
 	default 0x00908000 if ARCH_MX6
 	default 0x00912000 if ARCH_MX7
 	default 0x40301350 if OMAP54XX
 	default 0x10060 if MACH_SUN50I || MACH_SUN50I_H5 || MACH_SUN9I
+	default 0x44060 if MACH_SUN55I_A523
 	default 0x20060 if SUN50I_GEN_H6 || SUNXI_GEN_NCAT2
 	default 0x00060 if ARCH_SUNXI
 	default 0xfffc0000 if ARCH_ZYNQMP
@@ -362,6 +366,19 @@ config SPL_LOAD_IMX_CONTAINER
 	  Support booting U-Boot from an i.MX8 container image. If you are not
 	  using i.MX8, say 'n'.
 
+config SPL_IMX_CONTAINER_USE_TRAMPOLINE
+	bool
+	depends on SPL
+	help
+	  Enable SPL load reader to load data to a trampoline buffer.
+
+config IMX_PQC_SUPPORT
+	bool "Enable to support i.MX ROM PQC Container"
+	depends on SPL && SPL_LOAD_IMX_CONTAINER
+	help
+	  Support i.MX ROM new PQC container format. If your chip does not use
+	  PQC container, say 'n'.
+
 config IMX_CONTAINER_CFG
 	string "i.MX8 Container config file"
 	depends on SPL && SPL_LOAD_IMX_CONTAINER
@@ -387,23 +404,42 @@ config SPL_SHARES_INIT_SP_ADDR
 	  both SPL and U-Boot itself.  If you need to specify a different address
 	  however, say N here and then set a different value in CONFIG_SPL_STACK.
 
-config SPL_STACK
-	hex "Initial stack pointer location"
+config SPL_HAVE_INIT_STACK
+	bool "SPL requires a initial, fixed, stack-pointer location"
 	depends on (ARM || ARCH_JZ47XX || MICROBLAZE || RISCV) && \
 		SPL_FRAMEWORK || ROCKCHIP_RK3036
 	depends on !SPL_SHARES_INIT_SP_ADDR
+	default y if ARCH_MX7
+	default y if ARCH_MX6 && MX6_OCRAM_256KB
+	default y if ARCH_MX6 && !MX6_OCRAM_256KB
+	default y if MACH_SUN50I_H6 || MACH_SUN50I_H616 || MACH_SUN8I_R528
+	default y if MACH_SUN50I || MACH_SUN50I_H5
+	default y if MACH_SUN9I
+	default y if ARCH_SUNXI
+	default y if ARCH_SC5XX && (SC59X_64 || SC59X)
+	default y if ARCH_SC5XX && SC58X
+	default y if ARCH_SC5XX && SC57X
+	help
+	  Enable if the SPL phase should not use inherit its initial
+	  stack-pointer from the settings for U-Boot proper, but should set
+	  its own value.
+
+config SPL_STACK
+	hex "Address of the initial stack-pointer for the SPL phase"
+	depends on SPL_HAVE_INIT_STACK
 	default 0x946bb8 if ARCH_MX7
 	default 0x93ffb8 if ARCH_MX6 && MX6_OCRAM_256KB
 	default 0x91ffb8 if ARCH_MX6 && !MX6_OCRAM_256KB
 	default 0x118000 if MACH_SUN50I_H6
 	default 0x52a00 if MACH_SUN50I_H616
-	default 0x40000 if MACH_SUN8I_R528
+	default 0x40000 if MACH_SUN8I_R528 || MACH_SUN50I_A133
+	default 0x44000 if MACH_SUN55I_A523
 	default 0x54000 if MACH_SUN50I || MACH_SUN50I_H5
 	default 0x18000 if MACH_SUN9I
 	default 0x8000 if ARCH_SUNXI
-	default 0x200E4000 if ARCH_SC5XX && (SC59X_64 || SC59X)
-	default 0x200B0000 if ARCH_SC5XX && SC58X
-	default 0x200D0000 if ARCH_SC5XX && SC57X
+	default 0x200e4000 if ARCH_SC5XX && (SC59X_64 || SC59X)
+	default 0x200b0000 if ARCH_SC5XX && SC58X
+	default 0x200d0000 if ARCH_SC5XX && SC57X
 	help
 	  Address of the start of the stack SPL will use before SDRAM is
 	  initialized.
@@ -462,7 +498,7 @@ config SPL_CUSTOM_SYS_MALLOC_ADDR
 config SPL_SYS_MALLOC_SIZE
 	hex "Size of the SPL malloc pool"
 	depends on SPL_SYS_MALLOC
-	default 0x180000 if BIOSEMU && RISCV
+	default 0x800000 if RISCV
 	default 0x100000
 
 config SPL_READ_ONLY
@@ -509,7 +545,7 @@ config SPL_SYS_MMCSD_RAW_MODE
 	depends on SPL_DM_MMC || SPL_MMC
 	default y if ARCH_SUNXI || ARCH_DAVINCI || ARCH_UNIPHIER || \
 		     ARCH_MX6 || ARCH_MX7 || \
-		     ARCH_ROCKCHIP || ARCH_MVEBU ||  ARCH_SOCFPGA || \
+		     ARCH_ROCKCHIP || ARCH_MVEBU || TARGET_SOCFPGA_GEN5 || \
 		     ARCH_AT91 || ARCH_ZYNQ || ARCH_KEYSTONE || OMAP34XX || \
 		     OMAP54XX || AM33XX || AM43XX || \
 		     TARGET_SIFIVE_UNLEASHED || TARGET_SIFIVE_UNMATCHED
@@ -520,6 +556,7 @@ if SPL_SYS_MMCSD_RAW_MODE
 
 choice
 	prompt "Method for locating next phase of boot (e.g. U-Boot)"
+	default SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR if MVEBU_SPL_BOOT_DEVICE_MMC
 
 config SYS_MMCSD_RAW_MODE_U_BOOT_USE_SECTOR
 	bool "MMC raw mode: by sector"
@@ -552,7 +589,7 @@ config SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR
 	default 0x8a if ARCH_MX6 || ARCH_MX7
 	default 0x100 if ARCH_UNIPHIER
 	default 0x0 if ARCH_MVEBU
-	default 0x200 if ARCH_SOCFPGA || ARCH_AT91
+	default 0x200 if TARGET_SOCFPGA_GEN5 || ARCH_AT91
 	default 0x300 if ARCH_ZYNQ || ARCH_KEYSTONE || OMAP34XX || \
 		         OMAP54XX || AM33XX || AM43XX || ARCH_K3
 	default 0x4000 if ARCH_ROCKCHIP
@@ -751,6 +788,7 @@ config SPL_FS_LOAD_PAYLOAD_NAME
 	depends on SPL_FS_EXT4 || SPL_FS_FAT || SPL_FS_SQUASHFS || SPL_SEMIHOSTING
 	default "tispl.bin" if SYS_K3_SPL_ATF
 	default "u-boot.itb" if SPL_LOAD_FIT
+	default "linux.itb" if SPL_LOAD_FIT_OPENSBI_OS_BOOT
 	default "u-boot.img"
 	help
 	  Filename to read to load U-Boot when reading from filesystem.
@@ -758,6 +796,7 @@ config SPL_FS_LOAD_PAYLOAD_NAME
 config SPL_FS_LOAD_KERNEL_NAME
 	string "File to load for the OS kernel from the filesystem"
 	depends on (SPL_FS_EXT4 || SPL_FS_FAT || SPL_FS_SQUASHFS) && SPL_OS_BOOT
+	default "fitImage" if SPL_OS_BOOT_SECURE
 	default "uImage"
 	help
 	  Filename to read to load for the OS kernel when reading from the
@@ -765,7 +804,7 @@ config SPL_FS_LOAD_KERNEL_NAME
 
 config SPL_FS_LOAD_ARGS_NAME
 	string "File to load for the OS kernel argument parameters from the filesystem"
-	depends on (SPL_FS_EXT4 || SPL_FS_FAT || SPL_FS_SQUASHFS) && SPL_OS_BOOT
+	depends on (SPL_FS_EXT4 || SPL_FS_FAT || SPL_FS_SQUASHFS) && SPL_OS_BOOT_ARGS
 	default "args"
 	help
 	  Filename to read to load for the OS kernel argument parameters from
@@ -946,6 +985,21 @@ config SPL_NAND_SUPPORT
 	  This enables the drivers in drivers/mtd/nand/raw as part of an SPL
 	  build.
 
+config SPL_NAND_RAW_U_BOOT_USE_SECTOR
+	bool "NAND raw mode: by sector"
+	depends on SPL_NAND_SUPPORT
+	select SPL_LOAD_BLOCK
+	help
+	  Use sector number for specifying U-Boot location on NAND in
+	  raw mode.
+
+config SPL_NAND_RAW_U_BOOT_SECTOR
+	hex "Address on the NAND to load U-Boot from"
+	depends on SPL_NAND_RAW_U_BOOT_USE_SECTOR
+	help
+	  Address on the NAND to load U-Boot from, when the NAND is being used
+	  in raw mode. Units: NAND disk sectors (1 sector = 512 bytes).
+
 config SPL_NAND_RAW_ONLY
 	bool "Support to boot only raw u-boot.bin images"
 	depends on SPL_NAND_SUPPORT
@@ -981,6 +1035,14 @@ config SPL_NAND_IDENT
 	bool "Use chip ID to identify NAND flash"
 	help
 	  SPL uses the chip ID list to identify the NAND flash.
+
+config SPL_RELOC_LOADER
+	bool "Allow relocating the next phase"
+	help
+	  In some cases multiple U-Boot phases need to run in SRAM, typically
+	  at the same address. Enable this to support loading the next phase
+	  to temporary memory, then copying it into place afterwards, then
+	  jumping to it.
 
 config SPL_UBI
 	bool "Support UBI"
@@ -1060,7 +1122,7 @@ config SPL_UBI_LOAD_KERNEL_ID
 
 config SPL_UBI_LOAD_ARGS_ID
 	int "id of kernel args volume"
-	depends on SPL_OS_BOOT
+	depends on SPL_OS_BOOT_ARGS
 	help
 	  The UBI volume id from which to load the device tree
 
@@ -1080,13 +1142,14 @@ config SPL_DM_SPI
 
 config SPL_DM_SPI_FLASH
 	bool "Support SPI DM FLASH drivers in SPL"
-	depends on SPL_DM
+	depends on SPL_DM_SPI
 	help
 	  Enable support for SPI DM flash drivers in SPL.
 
 config SPL_NET
 	bool "Support networking"
 	depends on !NET_LWIP
+	select SPL_USE_TINY_PRINTF_POINTER_SUPPORT if SPL_USE_TINY_PRINTF
 	help
 	  Enable support for network devices (such as Ethernet) in SPL.
 	  This permits SPL to load U-Boot over a network link rather than
@@ -1139,14 +1202,47 @@ config SPL_ONENAND_SUPPORT
 
 config SPL_OS_BOOT
 	bool "Activate Falcon Mode"
-	depends on !TI_SECURE_DEVICE
+	select SPL_OS_BOOT_SECURE if TI_SECURE_DEVICE
+	depends on ARM || MICROBLAZE || PPC
 	help
 	  Enable booting directly to an OS from SPL.
 	  for more info read doc/README.falcon
 
+config SPL_OS_BOOT_SECURE
+	bool "Allow Falcon Mode on secure devices"
+	depends on SPL_OS_BOOT
+	help
+	  This allows for secure devices with signature verification capabilities
+	  to use falcon mode by disabling certain inherently non-securable options
+	  in the SPL boot flow.
+
+config SPL_BOOTZ
+	bool "Allow booting a zImage style Linux kernel from SPL"
+	depends on SPL_OS_BOOT && !SPL_OS_BOOT_SECURE
+	default y if ARM && !ARM64
+	select SPL_LIB_BOOTZ
+	help
+	  Boot a linux zimage from memory in falcon boot.
+
+config SPL_BOOTI
+	bool "Allow booting an Image style Linux kernel from SPL"
+	depends on SPL_OS_BOOT && !SPL_OS_BOOT_SECURE
+	default y if ARM64 || RISCV
+	select SPL_LIB_BOOTI
+	help
+	  Boot an uncompressed linux kernel image from memory in falcon boot.
+
+config SPL_OS_BOOT_ARGS
+	bool "Allow SPL to load args for kernel in falcon mode"
+	depends on (SPL_OS_BOOT || SPL_LOAD_FIT_OPENSBI_OS_BOOT) && !SPL_OS_BOOT_SECURE
+	default y if !SPL_OS_BOOT_SECURE
+	help
+	  This option enables the SPL to load an args file (usually the FDT)
+	  alongside the kernel image in falcon boot mode.
+
 config SPL_PAYLOAD_ARGS_ADDR
 	hex "Address in memory to load 'args' file for Falcon Mode to"
-	depends on SPL_OS_BOOT || SPL_LOAD_FIT_OPENSBI_OS_BOOT
+	depends on SPL_OS_BOOT_ARGS
 	default 0x88000000 if ARCH_OMAP2PLUS
 	default 0x99000000 if ARCH_SC5XX && SC59X_64
 	default 0xA0000000 if ARCH_SC5XX && TARGET_SC594_SOM_EZKIT
@@ -1186,7 +1282,7 @@ config SYS_MMCSD_RAW_MODE_KERNEL_SECTOR
 
 config SYS_MMCSD_RAW_MODE_ARGS_SECTOR
 	hex "Falcon mode: Sector to load 'args' from MMC"
-	depends on SPL_FALCON_BOOT_MMCSD
+	depends on SPL_FALCON_BOOT_MMCSD && SPL_OS_BOOT_ARGS
 	help
 	  When Falcon mode is used with an MMC or SD media, SPL needs to know
 	  where to look for the OS 'args', typically a device tree. The
@@ -1196,7 +1292,7 @@ config SYS_MMCSD_RAW_MODE_ARGS_SECTOR
 
 config SYS_MMCSD_RAW_MODE_ARGS_SECTORS
 	hex "Falcon mode: Number of sectors to load for 'args' from MMC"
-	depends on SPL_FALCON_BOOT_MMCSD && SYS_MMCSD_RAW_MODE_ARGS_SECTOR != 0x0
+	depends on SPL_FALCON_BOOT_MMCSD && SPL_OS_BOOT_ARGS
 
 config SPL_PAYLOAD
 	string "SPL payload"
@@ -1215,6 +1311,14 @@ config SPL_PCI
 	  or must perform some init using PCI in SPL, this provides the
 	  necessary driver support. This enables the drivers in drivers/pci
 	  as part of an SPL build.
+
+config SPL_PCI_ENDPOINT
+	bool "Support for PCI endpoint drivers"
+	help
+	   Enable this configuration option to support configurable PCI
+	   endpoints at SPL. This should be enabled if the platform has
+	   a PCI controllers that can operate in endpoint mode (as a device
+	   connected to PCI host or bridge).
 
 config SPL_PCH
 	bool "Support PCH drivers"
@@ -1276,8 +1380,63 @@ config SPL_RAM_DEVICE
 	  be already in memory when SPL takes over, e.g. loaded by the boot
 	  ROM.
 
+config SPL_PCI_DFU
+	bool "PCIe boot support"
+	depends on SPL_PCI_ENDPOINT
+	help
+	  This config enables support to download bootloaders over PCIe
+	  when device is acting as an PCI endpoint.
+
+if SPL_PCI_DFU
+
+config SPL_PCI_DFU_SPL_LOAD_FIT_ADDRESS
+	hex "Address to load FIT image when booting via DFU over PCIe"
+	help
+	  Specify the load address of the fit image that will be loaded
+	  by SPL via DFU over PCIe.
+
+config SPL_PCI_DFU_BAR_SIZE
+	hex "BAR size to advertise for PCIe DFU"
+	default 0x800000
+	help
+	  This config sets the size of BAR to be advertised to the Root
+	  Complex. The size should be large enough to fit the FIT image
+	  being downloaded via DFU over PCIe.
+
+config SPL_PCI_DFU_MAGIC_WORD
+	hex "Completion magic word for PCIe DFU boot"
+	default 0xdeadbeef
+	help
+	  Specify the magic word which will be written to a specific
+	  address to signal the completion of transfer of FIT image
+	  when using DFU over PCIe to download the image. Size of magic
+	  word should be 32-bit.
+
+config SPL_PCI_DFU_VENDOR_ID
+	hex "PCI Vendor ID for PCI endpoint"
+	help
+	  PCI Vendor ID for endpoint device for DFU over PCIe. This should
+	  be set to your assigned 16-bit PCI Vendor ID.
+
+config SPL_PCI_DFU_DEVICE_ID
+	hex "PCI Vendor ID for PCI endpoint"
+	help
+	  A 16-bit PCI Vendor ID for endpoint device for DFU over PCIe.
+
+config SPL_PCI_DFU_BOOT_PHASE
+	string "Current boot phase for PCI DFU boot"
+	help
+	  Specify the current boot phase when booting via DFU over PCIe.
+	  This value can be read by the root complex to determine the
+	  current boot phase. Value of this config is written to memory
+	  location (BAR_start + PCI_DFU_BAR_SIZE - 70). Max size of this
+	  config is 63 bytes.
+
+endif
+
 config SPL_REMOTEPROC
 	bool "Support REMOTEPROCS"
+	default y if (CPU_V7R && ARCH_K3)
 	help
 	  Enable support for REMOTEPROCs in SPL. This permits to load
 	  a remote processor firmware in SPL.
@@ -1422,6 +1581,24 @@ config SYS_SPI_U_BOOT_OFFS
 	 Address within SPI-Flash from where the u-boot payload is fetched
 	 from.
 
+config SYS_SPI_KERNEL_OFFS
+	hex "Falcon mode: address of kernel payload in SPI flash"
+	depends on SPL_SPI_FLASH_SUPPORT && SPL_OS_BOOT
+	help
+	 Address within SPI-Flash from where the kernel payload is fetched
+	 in falcon boot.
+
+config SYS_SPI_ARGS_OFFS
+	hex "Falcon mode: address of args payload in SPI flash"
+	depends on SPL_SPI_FLASH_SUPPORT && SPL_OS_BOOT_ARGS
+	help
+	 Address within SPI-Flash from where the args payload (usually the
+	 dtb) is fetched in falcon boot.
+
+config SYS_SPI_ARGS_SIZE
+	hex "Falcon mode: size of args payload in SPI flash"
+	depends on SPL_SPI_FLASH_SUPPORT && SPL_OS_BOOT_ARGS
+
 config SPL_THERMAL
 	bool "Driver support for thermal devices"
 	help
@@ -1491,7 +1668,7 @@ config SPL_AM33XX_ENABLE_RTC32K_OSC
 config SPL_OPTEE_IMAGE
 	bool "Support OP-TEE Trusted OS image in SPL"
 	depends on ARM
-	depends on SPL_LOAD_FIT || SPL_LOAD_FIT_FULL
+	depends on SPL_LOAD_FIT
 	help
 	  OP-TEE is an open source Trusted OS which is loaded by SPL.
 	  More detail at: https://github.com/OP-TEE/optee_os
@@ -1527,7 +1704,7 @@ config SPL_OPENSBI_SCRATCH_OPTIONS
 config SPL_TARGET
 	string "Addtional build targets for 'make'"
 	default "spl/u-boot-spl.srec" if RCAR_GEN2
-	default "spl/u-boot-spl.scif" if RCAR_GEN3
+	default "spl/u-boot-spl.scif" if RCAR_64
 	default ""
 	help
 	  On some platforms we need to have 'make' run additional build target
@@ -1547,7 +1724,7 @@ config SPL_AT91_MCK_BYPASS
 endmenu
 
 config TPL
-	depends on SUPPORT_TPL
+	depends on SUPPORT_TPL && !COMPILE_TEST
 	bool "Enable TPL"
 	help
 	  If you want to build TPL as well as the normal image and SPL, say Y.
@@ -1555,7 +1732,7 @@ config TPL
 source "common/spl/Kconfig.tpl"
 
 config VPL
-	depends on SUPPORT_SPL
+	depends on SUPPORT_SPL && !COMPILE_TEST
 	bool "Enable VPL"
 	help
 	  If you want to build VPL as well as the normal image, TPL and SPL,

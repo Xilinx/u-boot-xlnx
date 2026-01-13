@@ -19,8 +19,8 @@ import time
 
 from buildman import builderthread
 from buildman import toolchain
-from patman import gitutil
 from u_boot_pylib import command
+from u_boot_pylib import gitutil
 from u_boot_pylib import terminal
 from u_boot_pylib import tools
 from u_boot_pylib.terminal import tprint
@@ -265,7 +265,7 @@ class Builder:
                  reproducible_builds=False, force_build=False,
                  force_build_failures=False, force_reconfig=False,
                  in_tree=False, force_config_on_failure=False, make_func=None,
-                 dtc_skip=False):
+                 dtc_skip=False, build_target=None):
         """Create a new Builder object
 
         Args:
@@ -315,6 +315,7 @@ class Builder:
                 retrying a failed build
             make_func (function): Function to call to run 'make'
             dtc_skip (bool): True to skip building dtc and use the system one
+            build_target (str): Build target to use (None to use the default)
         """
         self.toolchains = toolchains
         self.base_dir = base_dir
@@ -363,6 +364,7 @@ class Builder:
                 raise ValueError('Cannot find dtc')
         else:
             self.dtc = None
+        self.build_target = build_target
 
         if not self.squash_config_y:
             self.config_filenames += EXTRA_CONFIG_FILENAMES
@@ -510,7 +512,7 @@ class Builder:
             stage: Stage that we are at (mrproper, config, oldconfig, build)
             cwd: Directory where make should be run
             args: Arguments to pass to make
-            kwargs: Arguments to pass to command.run_pipe()
+            kwargs: Arguments to pass to command.run_one()
         """
 
         def check_output(stream, data):
@@ -531,11 +533,12 @@ class Builder:
             return False
 
         self._restarting_config = False
-        self._terminated  = False
+        self._terminated = False
         cmd = [self.gnu_make] + list(args)
-        result = command.run_pipe([cmd], capture=True, capture_stderr=True,
-                cwd=cwd, raise_on_error=False, infile='/dev/null',
-                output_func=check_output, **kwargs)
+        result = command.run_one(*cmd, capture=True, capture_stderr=True,
+                                 cwd=cwd, raise_on_error=False,
+                                 infile='/dev/null', output_func=check_output,
+                                 **kwargs)
 
         if self._terminated:
             # Try to be helpful
@@ -628,10 +631,13 @@ class Builder:
         Args:
             commit_upto: Commit number to use (0..self.count-1)
             target: Target name
+
+        Return:
+            str: Output directory to use, or '' if None
         """
         output_dir = self.get_output_dir(commit_upto)
         if self.work_in_output:
-            return output_dir
+            return output_dir or ''
         return os.path.join(output_dir, target)
 
     def get_done_file(self, commit_upto, target):
@@ -1095,14 +1101,13 @@ class Builder:
                 diff = result[name]
                 if name.startswith('_'):
                     continue
-                if diff != 0:
-                    color = self.col.RED if diff > 0 else self.col.GREEN
+                colour = self.col.RED if diff > 0 else self.col.GREEN
                 msg = ' %s %+d' % (name, diff)
                 if not printed_target:
                     tprint('%10s  %-15s:' % ('', result['_target']),
                           newline=False)
                     printed_target = True
-                tprint(msg, colour=color, newline=False)
+                tprint(msg, colour=colour, newline=False)
             if printed_target:
                 tprint()
                 if show_bloat:
@@ -1353,6 +1358,7 @@ class Builder:
             for line in lines:
                 if not line:
                     continue
+                col = None
                 if line[0] == '+':
                     col = self.col.GREEN
                 elif line[0] == '-':
@@ -1680,7 +1686,7 @@ class Builder:
         """
         thread_dir = self.get_thread_dir(thread_num)
         builderthread.mkdir(thread_dir)
-        git_dir = os.path.join(thread_dir, '.git')
+        git_dir = os.path.join(thread_dir, '.git') if thread_dir else None
 
         # Create a worktree or a git repo clone for this thread if it
         # doesn't already exist

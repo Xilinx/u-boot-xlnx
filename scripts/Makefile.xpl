@@ -58,20 +58,18 @@ endif
 
 export SPL_NAME
 
-ifdef CONFIG_XPL_BUILD
-XPL_ := SPL_
+ifeq ($(CONFIG_SPL_BUILD),y)
+PHASE_ := SPL_
+else
 ifeq ($(CONFIG_VPL_BUILD),y)
 PHASE_ := VPL_
 else
 ifeq ($(CONFIG_TPL_BUILD),y)
 PHASE_ := TPL_
 else
-PHASE_ := SPL_
-endif
-endif
-else
-XPL_ :=
 PHASE_ :=
+endif
+endif
 endif
 
 ifeq ($(obj)$(CONFIG_SUPPORT_SPL),spl)
@@ -137,7 +135,7 @@ head-y		:= $(addprefix $(obj)/,$(head-y))
 libs-y		:= $(addprefix $(obj)/,$(libs-y))
 u-boot-spl-dirs	:= $(patsubst %/,%,$(filter %/, $(libs-y)))
 
-libs-y := $(patsubst %/, %/built-in.o, $(libs-y))
+libs-y := $(patsubst %/, %/built-in.a, $(libs-y))
 
 # Add GCC lib
 ifeq ($(CONFIG_USE_PRIVATE_LIBGCC),y)
@@ -392,7 +390,6 @@ $(obj)/$(BOARD)-spl.bin: $(obj)/u-boot-spl.bin
 endif
 
 $(obj)/u-boot-spl.ldr: $(obj)/u-boot-spl
-	$(CREATE_LDR_ENV)
 	$(LDR) -T $(CONFIG_LDR_CPU) -c $@ $< $(LDR_FLAGS)
 	$(BOARD_SIZE_CHECK)
 
@@ -445,7 +442,8 @@ MKIMAGEFLAGS_sunxi-spl.bin = \
 	-A $(ARCH) \
 	-T $(CONFIG_SPL_IMAGE_TYPE) \
 	-a $(CONFIG_SPL_TEXT_BASE) \
-	-n $(CONFIG_DEFAULT_DEVICE_TREE)
+	-n $(CONFIG_DEFAULT_DEVICE_TREE) \
+	$(if $(KEYDIR),-k $(KEYDIR))
 
 OBJCOPYFLAGS_u-boot-spl-dtb.hex := -I binary -O ihex --change-address=$(CONFIG_SPL_TEXT_BASE)
 
@@ -510,6 +508,7 @@ quiet_cmd_u-boot-spl ?= LTO     $@
       cmd_u-boot-spl ?= \
 	(									\
 		cd $(obj) &&							\
+		touch $(patsubst $(obj)/%,%,$(u-boot-spl-main)) &&		\
 		$(CC) -nostdlib -nostartfiles $(LTO_FINAL_LDFLAGS) $(c_flags)	\
 		$(KBUILD_LDFLAGS:%=-Wl,%) $(LDFLAGS_$(@F):%=-Wl,%)		\
 		$(patsubst $(obj)/%,%,$(u-boot-spl-init))			\
@@ -526,6 +525,7 @@ quiet_cmd_u-boot-spl ?= LD      $@
       cmd_u-boot-spl ?= \
 	(								\
 		cd $(obj) &&						\
+		touch $(patsubst $(obj)/%,%,$(u-boot-spl-main)) &&	\
 		$(LD) $(KBUILD_LDFLAGS) $(LDFLAGS_$(@F))		\
 		$(patsubst $(obj)/%,%,$(u-boot-spl-init))		\
 		--whole-archive						\

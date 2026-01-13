@@ -53,6 +53,22 @@ respecting the `bootph-xxx` tags in the devicetree.
 
 
 
+.. _etype_atf_bl1:
+
+Entry: atf-bl1: AP Trusted ROM (TF-A) BL1 blob
+-----------------------------------------------------
+
+Properties / Entry arguments:
+    - atf-bl1-path: Filename of file to read into entry. This is typically
+      called bl1.bin
+
+This entry holds the AP Trusted ROM firmware typically used by an SoC to
+help initialize the SoC before the SPL or U-Boot is started. See
+https://github.com/TrustedFirmware-A/trusted-firmware-a for more information
+about Boot Loader stage 1 (BL1) or about Trusted Firmware (TF-A)
+
+
+
 .. _etype_atf_bl31:
 
 Entry: atf-bl31: ARM Trusted Firmware (ATF) BL31 blob
@@ -875,6 +891,13 @@ The top-level 'fit' node supports the following special properties:
         available at time of signing and must be located in single include
         directory.
 
+    fit,encrypt
+        Enable data encryption in FIT images via mkimage. If the property
+        is found, the keys path is detected among binman include
+        directories and passed to mkimage via  -k flag. All the keys
+        required for encrypting the FIT must be available at the time of
+        encrypting and must be located in a single include directory.
+
 Substitutions
 ~~~~~~~~~~~~~
 
@@ -895,6 +918,9 @@ Available substitutions for property values in these nodes are:
 DEFAULT-SEQ:
     Sequence number of the default fdt, as provided by the 'default-dt'
     entry argument
+
+DEFAULT-NAME:
+    Name of the default fdt, as provided by the 'default-dt' entry argument
 
 Available operations
 ~~~~~~~~~~~~~~~~~~~~
@@ -956,6 +982,21 @@ You can create config nodes in a similar way::
 
 This tells binman to create nodes `config-1` and `config-2`, i.e. a config
 for each of your two files.
+
+It is also possible to use NAME in the node names so that the FDT files name
+will be used instead of the sequence number. This can be useful to identify
+easily at runtime in U-Boot, the config to be used::
+
+    configurations {
+        default = "@config-DEFAULT-NAME";
+        @config-NAME {
+            description = "NAME";
+            firmware = "atf";
+            loadables = "uboot";
+            fdt = "fdt-NAME";
+            fit,compatible;    // optional
+        };
+    };
 
 Note that if no devicetree files are provided (with '-a of-list' as above)
 then no nodes will be generated.
@@ -1635,6 +1676,28 @@ Properties / Entry arguments:
     - nxp,boot-from - device to boot from (e.g. 'sd')
     - nxp,loader-address - loader address (SPL text base)
     - nxp,rom-version - BootROM version ('2' for i.MX8M Nano and Plus)
+
+
+
+.. _etype_nxp_header_ddrfw:
+
+Entry: nxp-header-ddrfw: add a header to DDR PHY firmware images
+----------------------------------------------------------------
+
+This entry is used to combine DDR PHY firmware images and their byte counts
+together. See imx95_evk.rst for how to get DDR PHY Firmware Images.
+
+
+
+.. _etype_nxp_imx9image:
+
+Entry: nxp_imx9image: data file generator and mkimage invocation
+-----------------------------------------------------------------------------
+
+This entry is used to generate a data file that is passed to mkimage with the -n
+option. Each line in this data file represents a command defined in the enum
+imx8image_cmd. The imx8image_copy_image() function parses all commands and
+constructs a .bin file accordingly.
 
 
 

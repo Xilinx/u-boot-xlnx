@@ -45,6 +45,7 @@ enum sh_pfc_model {
 	SH_PFC_R8A779F0,
 	SH_PFC_R8A779G0,
 	SH_PFC_R8A779H0,
+	SH_PFC_R8A78000,
 };
 
 struct sh_pfc_pin_config {
@@ -188,9 +189,9 @@ static void sh_pfc_write_config_reg(struct sh_pfc *pfc,
 
 	sh_pfc_config_reg_helper(pfc, crp, field, &mapped_reg, &mask, &pos);
 
-	dev_dbg(pfc->dev, "write_reg addr = %x, value = 0x%x, field = %u, "
-		"r_width = %u, f_width = %u\n",
-		crp->reg, value, field, crp->reg_width, crp->field_width);
+	dev_dbg(pfc->dev,
+		"write_reg addr = %x, value = 0x%x, field = %u, pos = %u, r_width = %u, f_width = %u\n",
+		crp->reg, value, field, pos, crp->reg_width, crp->field_width);
 
 	mask = ~(mask << pos);
 	value = value << pos;
@@ -743,8 +744,8 @@ sh_pfc_pinconf_find_drive_strength_reg(struct sh_pfc *pfc, unsigned int pin,
 	return NULL;
 }
 
-static int sh_pfc_pinconf_set_drive_strength(struct sh_pfc *pfc,
-					     unsigned int pin, u16 strength)
+int rcar_pinconf_set_drive_strength(struct sh_pfc *pfc,
+				    unsigned int pin, u16 strength)
 {
 	unsigned int offset;
 	unsigned int size;
@@ -831,7 +832,10 @@ static int sh_pfc_pinconf_set(struct sh_pfc_pinctrl *pmx, unsigned _pin,
 		break;
 
 	case PIN_CONFIG_DRIVE_STRENGTH:
-		ret = sh_pfc_pinconf_set_drive_strength(pfc, _pin, arg);
+		if (!pfc->info->ops || !pfc->info->ops->set_drive_strength)
+			return -ENOTSUPP;
+
+		ret = pfc->info->ops->set_drive_strength(pfc, _pin, arg);
 		if (ret < 0)
 			return ret;
 
@@ -961,90 +965,52 @@ static int sh_pfc_pinctrl_probe(struct udevice *dev)
 	if (!priv->pfc.regs)
 		return -ENOMEM;
 
-#ifdef CONFIG_PINCTRL_PFC_R8A7790
-	if (model == SH_PFC_R8A7790)
+	if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7790) && model == SH_PFC_R8A7790)
 		priv->pfc.info = &r8a7790_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7791
-	if (model == SH_PFC_R8A7791)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7791) && model == SH_PFC_R8A7791)
 		priv->pfc.info = &r8a7791_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7792
-	if (model == SH_PFC_R8A7792)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7792) && model == SH_PFC_R8A7792)
 		priv->pfc.info = &r8a7792_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7793
-	if (model == SH_PFC_R8A7793)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7793) && model == SH_PFC_R8A7793)
 		priv->pfc.info = &r8a7793_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7794
-	if (model == SH_PFC_R8A7794)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7794) && model == SH_PFC_R8A7794)
 		priv->pfc.info = &r8a7794_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77951
-	if (model == SH_PFC_R8A7795)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77951) && model == SH_PFC_R8A7795)
 		priv->pfc.info = &r8a77951_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77960
-	if (model == SH_PFC_R8A77960)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77960) && model == SH_PFC_R8A77960)
 		priv->pfc.info = &r8a77960_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77961
-	if (model == SH_PFC_R8A77961)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77961) && model == SH_PFC_R8A77961)
 		priv->pfc.info = &r8a77961_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774A1
-	if (model == SH_PFC_R8A774A1)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774A1) && model == SH_PFC_R8A774A1)
 		priv->pfc.info = &r8a774a1_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774B1
-	if (model == SH_PFC_R8A774B1)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774B1) && model == SH_PFC_R8A774B1)
 		priv->pfc.info = &r8a774b1_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774C0
-	if (model == SH_PFC_R8A774C0)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774C0) && model == SH_PFC_R8A774C0)
 		priv->pfc.info = &r8a774c0_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774E1
-	if (model == SH_PFC_R8A774E1)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774E1) && model == SH_PFC_R8A774E1)
 		priv->pfc.info = &r8a774e1_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77965
-	if (model == SH_PFC_R8A77965)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77965) && model == SH_PFC_R8A77965)
 		priv->pfc.info = &r8a77965_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77970
-	if (model == SH_PFC_R8A77970)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77970) && model == SH_PFC_R8A77970)
 		priv->pfc.info = &r8a77970_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77980
-	if (model == SH_PFC_R8A77980)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77980) && model == SH_PFC_R8A77980)
 		priv->pfc.info = &r8a77980_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77990
-	if (model == SH_PFC_R8A77990)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77990) && model == SH_PFC_R8A77990)
 		priv->pfc.info = &r8a77990_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77995
-	if (model == SH_PFC_R8A77995)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77995) && model == SH_PFC_R8A77995)
 		priv->pfc.info = &r8a77995_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779A0
-	if (model == SH_PFC_R8A779A0)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779A0) && model == SH_PFC_R8A779A0)
 		priv->pfc.info = &r8a779a0_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779F0
-	if (model == SH_PFC_R8A779F0)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779F0) && model == SH_PFC_R8A779F0)
 		priv->pfc.info = &r8a779f0_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779G0
-	if (model == SH_PFC_R8A779G0)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779G0) && model == SH_PFC_R8A779G0)
 		priv->pfc.info = &r8a779g0_pinmux_info;
-#endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779H0
-	if (model == SH_PFC_R8A779H0)
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779H0) && model == SH_PFC_R8A779H0)
 		priv->pfc.info = &r8a779h0_pinmux_info;
-#endif
+	else if (IS_ENABLED(CONFIG_PINCTRL_PFC_R8A78000) && model == SH_PFC_R8A78000)
+		priv->pfc.info = &r8a78000_pinmux_info;
+	else
+		return -ENODEV;
 
 	priv->pmx.pfc = &priv->pfc;
 	sh_pfc_init_ranges(&priv->pfc);
@@ -1054,130 +1020,136 @@ static int sh_pfc_pinctrl_probe(struct udevice *dev)
 }
 
 static const struct udevice_id sh_pfc_pinctrl_ids[] = {
-#ifdef CONFIG_PINCTRL_PFC_R8A7790
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7790)
 	{
 		.compatible = "renesas,pfc-r8a7790",
 		.data = SH_PFC_R8A7790,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7791
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7791)
 	{
 		.compatible = "renesas,pfc-r8a7791",
 		.data = SH_PFC_R8A7791,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7792
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7792)
 	{
 		.compatible = "renesas,pfc-r8a7792",
 		.data = SH_PFC_R8A7792,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7793
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7793)
 	{
 		.compatible = "renesas,pfc-r8a7793",
 		.data = SH_PFC_R8A7793,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A7794
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A7794)
 	{
 		.compatible = "renesas,pfc-r8a7794",
 		.data = SH_PFC_R8A7794,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77951
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77951)
 	{
 		.compatible = "renesas,pfc-r8a7795",
 		.data = SH_PFC_R8A7795,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77960
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77960)
 	{
 		.compatible = "renesas,pfc-r8a7796",
 		.data = SH_PFC_R8A77960,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77961
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77961)
 	{
 		.compatible = "renesas,pfc-r8a77961",
 		.data = SH_PFC_R8A77961,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774A1
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774A1)
 	{
 		.compatible = "renesas,pfc-r8a774a1",
 		.data = SH_PFC_R8A774A1,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774B1
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774B1)
 	{
 		.compatible = "renesas,pfc-r8a774b1",
 		.data = SH_PFC_R8A774B1,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774C0
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774C0)
 	{
 		.compatible = "renesas,pfc-r8a774c0",
 		.data = SH_PFC_R8A774C0,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A774E1
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A774E1)
 	{
 		.compatible = "renesas,pfc-r8a774e1",
 		.data = SH_PFC_R8A774E1,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77965
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77965)
 	{
 		.compatible = "renesas,pfc-r8a77965",
 		.data = SH_PFC_R8A77965,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77970
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77970)
 	{
 		.compatible = "renesas,pfc-r8a77970",
 		.data = SH_PFC_R8A77970,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77980
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77980)
 	{
 		.compatible = "renesas,pfc-r8a77980",
 		.data = SH_PFC_R8A77980,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77990
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77990)
 	{
 		.compatible = "renesas,pfc-r8a77990",
 		.data = SH_PFC_R8A77990,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A77995
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A77995)
 	{
 		.compatible = "renesas,pfc-r8a77995",
 		.data = SH_PFC_R8A77995,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779A0
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779A0)
 	{
 		.compatible = "renesas,pfc-r8a779a0",
 		.data = SH_PFC_R8A779A0,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779F0
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779F0)
 	{
 		.compatible = "renesas,pfc-r8a779f0",
 		.data = SH_PFC_R8A779F0,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779G0
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779G0)
 	{
 		.compatible = "renesas,pfc-r8a779g0",
 		.data = SH_PFC_R8A779G0,
 	},
 #endif
-#ifdef CONFIG_PINCTRL_PFC_R8A779H0
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A779H0)
 	{
 		.compatible = "renesas,pfc-r8a779h0",
 		.data = SH_PFC_R8A779H0,
+	},
+#endif
+#if IS_ENABLED(CONFIG_PINCTRL_PFC_R8A78000)
+	{
+		.compatible = "renesas,pfc-r8a78000",
+		.data = SH_PFC_R8A78000,
 	},
 #endif
 

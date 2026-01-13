@@ -17,6 +17,7 @@
 #define _EFI_TCG2_PROTOCOL_H_
 
 #include <efi_api.h>
+#include <part_efi.h>
 #include <tpm-v2.h>
 #include <tpm_tcg2.h>
 
@@ -27,8 +28,6 @@
 
 #define EFI_TCG2_MAX_PCR_INDEX 23
 #define EFI_TCG2_FINAL_EVENTS_TABLE_VERSION 1
-
-#define TPM2_EVENT_LOG_SIZE CONFIG_EFI_TCG2_PROTOCOL_EVENTLOG_SIZE
 
 typedef u32 efi_tcg_event_log_bitmap;
 typedef u32 efi_tcg_event_log_format;

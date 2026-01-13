@@ -2,15 +2,22 @@
 /*
  * Copyright (C) 2023 PHYTEC Messtechnik GmbH
  * Christoph Stoidner <c.stoidner@phytec.de>
+ * Copyright (C) 2024 PHYTEC Messtechnik GmbH
  *
  * Product homepage:
- * phyBOARD-Segin carrier board is reused for the i.MX93 design.
- * https://www.phytec.eu/en/produkte/single-board-computer/phyboard-segin-imx6ul/
+   https://www.phytec.de/produkte/system-on-modules/phycore-imx-91-93/
  */
 
 #include "imx93-u-boot.dtsi"
 
 / {
+	/*
+	 * The phyCORE-i.MX93 u-boot uses the imx93-phyboard-segin.dts as
+	 * reference, but does only make use of its SoM (phyCORE) contained
+	 * periphery.
+	 */
+	model = "PHYTEC phyCORE-i.MX93";
+
 	wdt-reboot {
 		compatible = "wdt-reboot";
 		wdt = <&wdog3>;
@@ -62,6 +69,16 @@
 	bootph-some-ram;
 };
 
+&pinctrl_lpi2c3 {
+	bootph-pre-ram;
+	bootph-some-ram;
+};
+
+&pinctrl_pmic {
+	bootph-pre-ram;
+	bootph-some-ram;
+};
+
 &pinctrl_reg_usdhc2_vmmc {
 	bootph-pre-ram;
 };
@@ -72,6 +89,16 @@
 };
 
 &pinctrl_usdhc1 {
+	bootph-pre-ram;
+	bootph-some-ram;
+};
+
+&pinctrl_usdhc1_100mhz {
+	bootph-pre-ram;
+	bootph-some-ram;
+};
+
+&pinctrl_usdhc1_200mhz {
 	bootph-pre-ram;
 	bootph-some-ram;
 };
@@ -121,21 +148,6 @@
 	bootph-some-ram;
 };
 
-/*
- * Remove once USB support is added to imx93-phyboard-segin.dts upstream.
- */
-&usbotg1 {
-	disable-over-current;
-	dr_mode = "otg";
-	status = "okay";
-};
-
-&usbotg2 {
-	disable-over-current;
-	dr_mode = "host";
-	status = "okay";
-};
-
 &usdhc1 {
 	bootph-pre-ram;
 	bootph-some-ram;
@@ -160,6 +172,21 @@
 &lpi2c3 {
 	bootph-pre-ram;
 	bootph-some-ram;
+
+	pmic@25 {
+		bootph-pre-ram;
+		bootph-some-ram;
+
+		regulators {
+			bootph-pre-ram;
+			bootph-some-ram;
+		};
+	};
+
+	eeprom@50 {
+		bootph-pre-ram;
+		bootph-some-ram;
+	};
 };
 
 &s4muap {
@@ -194,115 +221,4 @@
 &wdog3 {
 	bootph-all;
 	bootph-pre-ram;
-};
-
-/*
- * The two nodes below won't be needed once nxp,pca9451a
- * support is added to the Linux kernel.
- */
-&iomuxc {
-	pinctrl_lpi2c3: lpi2c3grp {
-		bootph-pre-ram;
-		fsl,pins = <
-			MX93_PAD_GPIO_IO28__LPI2C3_SDA		0x40000b9e
-			MX93_PAD_GPIO_IO29__LPI2C3_SCL		0x40000b9e
-		>;
-	};
-
-	pinctrl_pmic: pmicgrp {
-		bootph-pre-ram;
-		fsl,pins = <
-			MX93_PAD_ENET2_RD3__GPIO4_IO27			0x31e
-		>;
-	};
-};
-
-&lpi2c3 {
-	bootph-pre-ram;
-	bootph-some-ram;
-	clock-frequency = <400000>;
-	pinctrl-names = "default", "sleep";
-	pinctrl-0 = <&pinctrl_lpi2c3>;
-	pinctrl-1 = <&pinctrl_lpi2c3>;
-	status = "okay";
-
-	pmic@25 {
-		bootph-pre-ram;
-		bootph-some-ram;
-		compatible = "nxp,pca9451a";
-		reg = <0x25>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_pmic>;
-		interrupt-parent = <&gpio4>;
-		interrupts = <27 IRQ_TYPE_LEVEL_LOW>;
-
-		regulators {
-			bootph-pre-ram;
-			bootph-some-ram;
-			buck1: BUCK1 {
-				regulator-name = "VDD_SOC";
-				regulator-min-microvolt = <610000>;
-				regulator-max-microvolt = <950000>;
-				regulator-boot-on;
-				regulator-always-on;
-				regulator-ramp-delay = <3125>;
-			};
-
-			buck2: BUCK2 {
-				regulator-name = "VDDQ_0V6";
-				regulator-min-microvolt = <600000>;
-				regulator-max-microvolt = <600000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			buck4: BUCK4 {
-				regulator-name = "VDD_3V3_BUCK";
-				regulator-min-microvolt = <3300000>;
-				regulator-max-microvolt = <3300000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			buck5: BUCK5 {
-				regulator-name = "VDD_1V8";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			buck6: BUCK6 {
-				regulator-name = "VDD_1V1";
-				regulator-min-microvolt = <1100000>;
-				regulator-max-microvolt = <1100000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			ldo1: LDO1 {
-				regulator-name = "PMIC_SNVS_1V8";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			ldo4: LDO4 {
-				regulator-name = "VDD_0V8";
-				regulator-min-microvolt = <800000>;
-				regulator-max-microvolt = <800000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-
-			ldo5: LDO5 {
-				regulator-name = "NVCC_SD2";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <3300000>;
-				regulator-boot-on;
-				regulator-always-on;
-			};
-		};
-	};
 };

@@ -208,7 +208,7 @@ int mtd_parse_partitions(struct mtd_info *parent, const char **_mtdparts,
 {
 	struct mtd_partition partition = {}, *parts;
 	const char *mtdparts = *_mtdparts;
-	uint64_t cur_off = 0, cur_sz = 0;
+	uint64_t cur_off = 0;
 	int nparts = 0;
 	int ret, idx;
 	u64 sz;
@@ -236,9 +236,12 @@ int mtd_parse_partitions(struct mtd_info *parent, const char **_mtdparts,
 		if (ret)
 			return ret;
 
+		if (parts[idx].offset == MTD_OFFSET_NOT_SPECIFIED)
+			parts[idx].offset = cur_off;
+		cur_off += parts[idx].size;
+
 		if (parts[idx].size == MTD_SIZE_REMAINING)
-			parts[idx].size = parent->size - cur_sz;
-		cur_sz += parts[idx].size;
+			parts[idx].size = parent->size - parts[idx].offset;
 
 		sz = parts[idx].size;
 		if (sz < parent->writesize || do_div(sz, parent->writesize)) {
@@ -246,10 +249,6 @@ int mtd_parse_partitions(struct mtd_info *parent, const char **_mtdparts,
 			       parent->writesize);
 			return -EINVAL;
 		}
-
-		if (parts[idx].offset == MTD_OFFSET_NOT_SPECIFIED)
-			parts[idx].offset = cur_off;
-		cur_off += parts[idx].size;
 
 		parts[idx].ecclayout = parent->ecclayout;
 	}
@@ -910,11 +909,13 @@ int add_mtd_partitions_of(struct mtd_info *master)
 			continue;
 
 		offset = ofnode_get_addr_size_index_notrans(child, 0, &size);
-		if (offset == FDT_ADDR_T_NONE || !size) {
-			debug("Missing partition offset/size on \"%s\" partition\n",
+		if (offset == FDT_ADDR_T_NONE) {
+			debug("Missing partition offset on \"%s\" partition\n",
 			      master->name);
 			continue;
 		}
+		if (size == MTDPART_SIZ_FULL)
+			size = master->size - offset;
 
 		part.name = ofnode_read_string(child, "label");
 		if (!part.name)

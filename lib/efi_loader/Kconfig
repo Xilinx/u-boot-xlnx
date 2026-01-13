@@ -2,29 +2,33 @@ menu "UEFI Support"
 
 config EFI_LOADER
 	bool "Support running UEFI applications"
-	depends on OF_LIBFDT && ( \
+	depends on ( \
 		ARM && (SYS_CPU = arm1136 || \
 			SYS_CPU = arm1176 || \
 			SYS_CPU = armv7   || \
 			SYS_CPU = armv8)  || \
 		X86 || RISCV || SANDBOX)
+	# We have not fully removed the requirement for some block device
+	depends on BLK
 	# We need EFI_STUB_64BIT to be set on x86_64 with EFI_STUB
 	depends on !EFI_STUB || !X86_64 || EFI_STUB_64BIT
 	# We need EFI_STUB_32BIT to be set on x86_32 with EFI_STUB
 	depends on !EFI_STUB || !X86 || X86_64 || EFI_STUB_32BIT
 	depends on !EFI_APP
 	default y if !ARM || SYS_CPU = armv7 || SYS_CPU = armv8
-	select BLK
+	select EFI
 	select CHARSET
 	# We need to send DM events, dynamically, in the EFI block driver
 	select DM_EVENT
 	select EVENT_DYNAMIC
 	select LIB_UUID
 	select LMB
+	select OF_LIBFDT
 	imply PARTITION_UUIDS
 	select REGEX
 	imply FAT
 	imply FAT_WRITE
+	imply FAT_RENAME
 	imply USB_KEYBOARD_FN_KEYS
 	imply VIDEO_ANSI
 	help
@@ -68,6 +72,15 @@ config EFI_SECURE_BOOT
 config EFI_SIGNATURE_SUPPORT
 	bool
 
+config EFI_DEBUG_SUPPORT
+	bool "EFI Debug Support"
+	default y if !HAS_BOARD_SIZE_LIMIT
+	help
+	  Select this option if you want to setup the EFI Debug Support
+	  Table and the EFI_SYSTEM_TABLE_POINTER which is used by the debug
+	  agent or an external debugger to determine loaded image information
+	  in a quiescent manner.
+
 menu "UEFI services"
 
 config EFI_GET_TIME
@@ -110,22 +123,6 @@ config EFI_VARIABLE_FILE_STORE
 	  Select this option if you want non-volatile UEFI variables to be
 	  stored as file /ubootefi.var on the EFI system partition.
 
-config EFI_RT_VOLATILE_STORE
-	bool "Allow variable runtime services in volatile storage (e.g RAM)"
-	depends on EFI_VARIABLE_FILE_STORE
-	help
-	  When EFI variables are stored on file we don't allow SetVariableRT,
-	  since the OS doesn't know how to write that file. At the same time
-	  we copy runtime variables in DRAM and support GetVariableRT
-
-	  Enable this option to allow SetVariableRT on the RAM backend of
-	  the EFI variable storage. The OS will be responsible for syncing
-	  the RAM contents to the file, otherwise any changes made during
-	  runtime won't persist reboots.
-	  Authenticated variables are not supported. Note that this will
-	  violate the EFI spec since writing auth variables will return
-	  EFI_INVALID_PARAMETER
-
 config EFI_MM_COMM_TEE
 	bool "UEFI variables storage service via the trusted world"
 	depends on OPTEE
@@ -143,6 +140,31 @@ config EFI_MM_COMM_TEE
 	  A door bell mechanism is used to notify the SP when there is data in the shared
 	  MM buffer. The data is copied by u-boot to the shared buffer before issuing
 	  the door bell event.
+
+config EFI_VARIABLE_NO_STORE
+	bool "Don't persist non-volatile UEFI variables"
+	help
+	  If you choose this option, non-volatile variables cannot be persisted.
+	  You could still provide non-volatile variables via
+	  EFI_VARIABLES_PRESEED.
+
+endchoice
+
+config EFI_RT_VOLATILE_STORE
+	bool "Allow variable runtime services in volatile storage (e.g RAM)"
+	depends on EFI_VARIABLE_FILE_STORE
+	help
+	  When EFI variables are stored on file we don't allow SetVariableRT,
+	  since the OS doesn't know how to write that file. At the same time
+	  we copy runtime variables in DRAM and support GetVariableRT
+
+	  Enable this option to allow SetVariableRT on the RAM backend of
+	  the EFI variable storage. The OS will be responsible for syncing
+	  the RAM contents to the file, otherwise any changes made during
+	  runtime won't persist reboots.
+	  Authenticated variables are not supported. Note that this will
+	  violate the EFI spec since writing auth variables will return
+	  EFI_INVALID_PARAMETER
 
 config FFA_SHARED_MM_BUF_SIZE
 	int "Memory size of the shared MM communication buffer"
@@ -171,17 +193,9 @@ config FFA_SHARED_MM_BUF_ADDR
 	  the MM SP in secure world.
 	  It is assumed that the MM SP knows the address of the shared MM communication buffer.
 
-config EFI_VARIABLE_NO_STORE
-	bool "Don't persist non-volatile UEFI variables"
-	help
-	  If you choose this option, non-volatile variables cannot be persisted.
-	  You could still provide non-volatile variables via
-	  EFI_VARIABLES_PRESEED.
-
-endchoice
-
 config EFI_VARIABLES_PRESEED
 	bool "Initial values for UEFI variables"
+	depends on !COMPILE_TEST
 	depends on !EFI_MM_COMM_TEE
 	help
 	  Include a file with the initial values for non-volatile UEFI variables
@@ -302,7 +316,6 @@ config EFI_CAPSULE_FIRMWARE_FIT
 	depends on EFI_CAPSULE_FIRMWARE_MANAGEMENT
 	select UPDATE_FIT
 	select DFU
-	select SET_DFU_ALT_INFO
 	select EFI_CAPSULE_FIRMWARE
 	help
 	  Select this option if you want to enable firmware management protocol
@@ -314,7 +327,6 @@ config EFI_CAPSULE_FIRMWARE_RAW
 	depends on SANDBOX || (!SANDBOX && !EFI_CAPSULE_FIRMWARE_FIT)
 	select DFU_WRITE_ALT
 	select DFU
-	select SET_DFU_ALT_INFO
 	select EFI_CAPSULE_FIRMWARE
 	help
 	  Select this option if you want to enable firmware management protocol
@@ -385,7 +397,7 @@ config EFI_DT_FIXUP
 
 config EFI_LOADER_HII
 	bool "HII protocols"
-	default y
+	default y if !HAS_BOARD_SIZE_LIMIT
 	help
 	  The Human Interface Infrastructure is a complicated framework that
 	  allows UEFI applications to draw fancy menus and hook strings using
@@ -405,7 +417,7 @@ if EFI_UNICODE_COLLATION_PROTOCOL2
 
 config EFI_UNICODE_CAPITALIZATION
 	bool "Support Unicode capitalization"
-	default y
+	default y if !HAS_BOARD_SIZE_LIMIT
 	help
 	  Select this option to enable correct handling of the capitalization of
 	  Unicode codepoints in the range 0x0000-0xffff. If this option is not
@@ -436,25 +448,15 @@ config EFI_TCG2_PROTOCOL
 	  Provide a EFI_TCG2_PROTOCOL implementation using the TPM hardware
 	  of the platform.
 
-config EFI_TCG2_PROTOCOL_EVENTLOG_SIZE
-	int "EFI_TCG2_PROTOCOL EventLog size"
-	depends on EFI_TCG2_PROTOCOL
-	default 65536
-	help
-		Define the size of the EventLog for EFI_TCG2_PROTOCOL. Note that
-		this is going to be allocated twice. One for the eventlog it self
-		and one for the configuration table that is required from the spec
-
 config EFI_TCG2_PROTOCOL_MEASURE_DTB
 	bool "Measure DTB with EFI_TCG2_PROTOCOL"
 	depends on EFI_TCG2_PROTOCOL
 	help
 	  When enabled, the DTB image passed to the booted EFI image is
 	  measured using the EFI TCG2 protocol. Do not enable this feature if
-	  the passed DTB contains data that change across platform reboots
-	  and cannot be used has a predictable measurement. Otherwise
-	  this feature allows better measurement of the system boot
-	  sequence.
+	  the passed DTB contains data that changes across platform reboots
+	  and cannot be used for a predictable measurement. Otherwise, this
+	  feature allows for better measurement of the system boot sequence.
 
 config EFI_LOAD_FILE2_INITRD
 	bool "EFI_FILE_LOAD2_PROTOCOL for Linux initial ramdisk"
@@ -475,6 +477,23 @@ config EFI_RISCV_BOOT_PROTOCOL
 	  to the next boot stage. It should be enabled as it is meant to
 	  replace the transfer via the device-tree. The latter is not
 	  possible on systems using ACPI.
+
+config EFI_IP4_CONFIG2_PROTOCOL
+	bool "EFI_IP4_CONFIG2_PROTOCOL support"
+	default y if ARCH_QEMU || SANDBOX
+	depends on NET || NET_LWIP
+	help
+	  Provides an implementation of the EFI_IP4_CONFIG2_PROTOCOL, this
+	  protocol can be used to set and get the current ip address and
+	  other network information.
+
+config EFI_HTTP_PROTOCOL
+	bool "EFI_HTTP_PROTOCOL support"
+	default y if ARCH_QEMU || SANDBOX
+	depends on WGET
+	help
+	  Provides an EFI HTTP driver implementing the EFI_HTTP_PROTOCOL. and
+	  EFI_HTTP_SERVICE_BINDING_PROTOCOL.
 
 endmenu
 
@@ -546,6 +565,7 @@ config EFI_HTTP_BOOT
 	bool "EFI HTTP Boot support"
 	depends on NET || NET_LWIP
 	select CMD_NET
+	select CMD_DHCP
 	select CMD_DNS
 	select CMD_WGET
 	select BLKMAP
@@ -577,6 +597,8 @@ config BOOTEFI_TESTAPP_COMPILE
 	  when this option is enabled.
 
 endif
+
+source "lib/efi_client/Kconfig"
 
 source "lib/efi/Kconfig"
 

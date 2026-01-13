@@ -6,8 +6,10 @@
 #include <display_options.h>
 #include <dm/device.h>
 #include <efi_loader.h>
+#include <env.h>
 #include <image.h>
 #include <linux/delay.h>
+#include <linux/kconfig.h>
 #include <lwip/apps/tftp_client.h>
 #include <lwip/timeouts.h>
 #include <mapmem.h>
@@ -15,6 +17,8 @@
 #include <time.h>
 
 #define PROGRESS_PRINT_STEP_BYTES (10 * 1024)
+/* Max time to wait for first data packet from server */
+#define NO_RSP_TIMEOUT_MS 10000
 
 enum done_state {
 	NOT_DONE = 0,
@@ -30,6 +34,47 @@ struct tftp_ctx {
 	ulong start_time;
 	enum done_state done;
 };
+
+/**
+ * store_block() - copy received data
+ *
+ * This function is called by the receive callback to copy a block of data
+ * into its final location (ctx->daddr). Before doing so, it checks if the copy
+ * is allowed.
+ *
+ * @ctx: the context for the current transfer
+ * @src: the data received from the TCP stack
+ * @len: the length of the data
+ */
+static int store_block(struct tftp_ctx *ctx, void *src, u16_t len)
+{
+	ulong store_addr = ctx->daddr;
+	void *ptr;
+
+	if (CONFIG_IS_ENABLED(LMB)) {
+		if (store_addr + len < store_addr ||
+		    lmb_read_check(store_addr, len)) {
+			puts("\nTFTP error: ");
+			puts("trying to overwrite reserved memory...\n");
+			return -1;
+		}
+	}
+
+	ptr = map_sysmem(store_addr, len);
+	memcpy(ptr, src, len);
+	unmap_sysmem(ptr);
+
+	ctx->daddr += len;
+	ctx->size += len;
+	ctx->block_count++;
+	if (ctx->block_count % 10 == 0) {
+		putc('#');
+		if (ctx->block_count % (65 * 10) == 0)
+			puts("\n\t ");
+	}
+
+	return 0;
+}
 
 static void *tftp_open(const char *fname, const char *mode, u8_t is_write)
 {
@@ -71,17 +116,9 @@ static int tftp_write(void *handle, struct pbuf *p)
 	struct tftp_ctx *ctx = handle;
 	struct pbuf *q;
 
-	for (q = p; q; q = q->next) {
-		memcpy((void *)ctx->daddr, q->payload, q->len);
-		ctx->daddr += q->len;
-		ctx->size += q->len;
-		ctx->block_count++;
-		if (ctx->block_count % 10 == 0) {
-			putc('#');
-			if (ctx->block_count % (65 * 10) == 0)
-				puts("\n\t ");
-		}
-	}
+	for (q = p; q; q = q->next)
+		if (store_block(ctx, q->payload, q->len) < 0)
+			return -1;
 
 	return 0;
 }
@@ -106,11 +143,24 @@ static const struct tftp_context tftp_context = {
 	tftp_error
 };
 
+static void no_response(void *arg)
+{
+	struct tftp_ctx *ctx = (struct tftp_ctx *)arg;
+
+	if (ctx->size)
+		return;
+
+	printf("Timeout!\n");
+	ctx->done = FAILURE;
+}
+
 static int tftp_loop(struct udevice *udev, ulong addr, char *fname,
 		     ip_addr_t srvip, uint16_t srvport)
 {
+	int blksize = CONFIG_TFTP_BLOCKSIZE;
 	struct netif *netif;
 	struct tftp_ctx ctx;
+	const char *ep;
 	err_t err;
 
 	if (!fname || addr == 0)
@@ -139,7 +189,10 @@ static int tftp_loop(struct udevice *udev, ulong addr, char *fname,
 	if (!(err == ERR_OK || err == ERR_USE))
 		log_err("tftp_init_client err: %d\n", err);
 
-	tftp_client_set_blksize(CONFIG_TFTP_BLOCKSIZE);
+	ep = env_get("tftpblocksize");
+	if (ep)
+		blksize = simple_strtol(ep, NULL, 10);
+	tftp_client_set_blksize(blksize);
 
 	ctx.start_time = get_timer(0);
 	err = tftp_get(&ctx, &srvip, srvport, fname, TFTP_MODE_OCTET);
@@ -150,15 +203,16 @@ static int tftp_loop(struct udevice *udev, ulong addr, char *fname,
 		return -1;
 	}
 
+	sys_timeout(NO_RSP_TIMEOUT_MS, no_response, &ctx);
 	while (!ctx.done) {
 		net_lwip_rx(udev, netif);
-		sys_check_timeouts();
 		if (ctrlc()) {
 			printf("\nAbort\n");
 			ctx.done = ABORTED;
 			break;
 		}
 	}
+	sys_untimeout(no_response, (void *)&ctx);
 
 	tftp_cleanup();
 
@@ -225,7 +279,7 @@ int do_tftpb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 	if (!arg)
 		arg = net_boot_file_name;
 
-	if (arg) {
+	if (*arg) {
 		/* Parse [ip:[port:]]fname */
 		i = 0;
 		while ((*(words + i) = strsep(&arg, ":")))
@@ -280,11 +334,15 @@ int do_tftpb(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 		goto out;
 	}
 
-	eth_set_current();
+	if (net_lwip_eth_start() < 0) {
+		ret = CMD_RET_FAILURE;
+		goto out;
+	}
 
 	if (tftp_loop(eth_get_dev(), laddr, fname, srvip, port) < 0)
 		ret = CMD_RET_FAILURE;
 out:
-	free(arg);
+	if (arg != net_boot_file_name)
+		free(arg);
 	return ret;
 }

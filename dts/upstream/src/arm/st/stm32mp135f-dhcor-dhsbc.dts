@@ -75,6 +75,8 @@
 };
 
 &ethernet1 {
+	nvmem-cell-names = "mac-address";
+	nvmem-cells = <&ethernet_mac1_address>;
 	phy-handle = <&ethphy1>;
 	phy-mode = "rgmii-id";
 	pinctrl-0 = <&eth1_rgmii_pins_a>;
@@ -94,14 +96,36 @@
 			interrupt-parent = <&gpiog>;
 			interrupts = <12 IRQ_TYPE_LEVEL_LOW>;
 			reg = <1>;
+			realtek,clkout-disable;
 			reset-assert-us = <15000>;
 			reset-deassert-us = <55000>;
 			reset-gpios = <&gpioa 11 GPIO_ACTIVE_LOW>;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@0 {
+					reg = <0>;
+					color = <LED_COLOR_ID_GREEN>;
+					function = LED_FUNCTION_WAN;
+					linux,default-trigger = "netdev";
+				};
+
+				led@1 {
+					reg = <1>;
+					color = <LED_COLOR_ID_YELLOW>;
+					function = LED_FUNCTION_WAN;
+					linux,default-trigger = "netdev";
+				};
+			};
 		};
 	};
 };
 
 &ethernet2 {
+	nvmem-cell-names = "mac-address";
+	nvmem-cells = <&ethernet_mac2_address>;
 	phy-handle = <&ethphy2>;
 	phy-mode = "rgmii-id";
 	pinctrl-0 = <&eth2_rgmii_pins_a>;
@@ -121,9 +145,29 @@
 			interrupt-parent = <&gpiog>;
 			interrupts = <15 IRQ_TYPE_LEVEL_LOW>;
 			reg = <1>;
+			realtek,clkout-disable;
 			reset-assert-us = <15000>;
 			reset-deassert-us = <55000>;
 			reset-gpios = <&gpiog 8 GPIO_ACTIVE_LOW>;
+
+			leds {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				led@0 {
+					reg = <0>;
+					color = <LED_COLOR_ID_GREEN>;
+					function = LED_FUNCTION_LAN;
+					linux,default-trigger = "netdev";
+				};
+
+				led@1 {
+					reg = <1>;
+					color = <LED_COLOR_ID_YELLOW>;
+					function = LED_FUNCTION_LAN;
+					linux,default-trigger = "netdev";
+				};
+			};
 		};
 	};
 };
@@ -132,7 +176,7 @@
 	gpio-line-names = "", "", "", "",
 			  "", "DHSBC_USB_PWR_CC1", "", "",
 			  "", "", "", "DHSBC_nETH1_RST",
-			  "", "DHCOR_HW-CODING_0", "", "";
+			  "", "DHCOR_HW-CODING_0", "", "DHSBC_HW-CODE_2";
 };
 
 &gpiob {
@@ -153,7 +197,7 @@
 	gpio-line-names = "", "", "", "",
 			  "", "DHCOR_RAM-CODING_0", "", "",
 			  "", "DHCOR_RAM-CODING_1", "", "",
-			  "", "", "", "";
+			  "", "DHSBC_HW-CODE_1", "", "";
 };
 
 &gpioe {
@@ -175,6 +219,13 @@
 			  "", "", "", "",
 			  "DHSBC_nETH2_RST", "DHCOR_BT_DEV_WAKE", "", "",
 			  "DHSBC_ETH1_INTB", "", "", "DHSBC_ETH2_INTB";
+};
+
+&gpioh {
+	gpio-line-names = "", "", "", "DHSBC_HW-CODE_0",
+			  "", "", "", "",
+			  "", "", "", "",
+			  "", "", "", "";
 };
 
 &gpioi {
@@ -252,6 +303,9 @@
 	st33htph: tpm@0 {
 		compatible = "st,st33htpm-spi", "tcg,tpm_tis-spi";
 		reg = <0>;
+		interrupt-parent = <&gpioe>;
+		interrupts = <9 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&gpioe 12 GPIO_ACTIVE_LOW>;
 		spi-max-frequency = <24000000>;
 	};
 };
@@ -374,4 +428,20 @@
 		self-powered;
 		type = "micro";
 	};
+};
+
+/* LDO2 is expansion connector 3V3 supply on STM32MP13xx DHCOR DHSBC rev.200 */
+&vdd_ldo2 {
+	regulator-always-on;
+	regulator-boot-on;
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+};
+
+/* LDO5 is carrier board 3V3 supply on STM32MP13xx DHCOR DHSBC rev.200 */
+&vdd_sd {
+	regulator-always-on;
+	regulator-boot-on;
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
 };

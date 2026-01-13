@@ -6,11 +6,12 @@
  */
 
 #include <console.h>
+#include <env.h>
 #include <fdt_support.h>
 #include <mapmem.h>
 #include <asm/global_data.h>
+#include <dm/uclass.h>
 #include <linux/libfdt.h>
-#include <test/suites.h>
 #include <test/ut.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -23,7 +24,7 @@ DECLARE_GLOBAL_DATA_PTR;
  */
 
 /* Declare a new fdt test */
-#define FDT_TEST(_name, _flags)	UNIT_TEST(_name, _flags, fdt_test)
+#define FDT_TEST(_name, _flags)	UNIT_TEST(_name, _flags, fdt)
 
 /**
  * make_test_fdt() - Create an FDT with just a root node
@@ -264,7 +265,7 @@ FDT_TEST(fdt_test_addr_resize, UTF_CONSOLE);
 static int fdt_test_move(struct unit_test_state *uts)
 {
 	char fdt[256];
-	ulong addr, newaddr = 0x10000;
+	ulong addr, newaddr;
 	const int size = sizeof(fdt);
 	uint32_t ts;
 	void *buf;
@@ -274,8 +275,10 @@ static int fdt_test_move(struct unit_test_state *uts)
 	ts = fdt_totalsize(fdt);
 
 	/* Moved target DT location */
-	buf = map_sysmem(newaddr, size);
+	buf = memalign(8, size);
+	ut_assertnonnull(buf);
 	memset(buf, 0, size);
+	newaddr = map_to_sysmem(buf);
 
 	/* Test moving the working FDT to a new location */
 	ut_assertok(run_commandf("fdt move %08lx %08lx %x", addr, newaddr, ts));
@@ -286,6 +289,8 @@ static int fdt_test_move(struct unit_test_state *uts)
 	ut_assertok(run_commandf("cmp.b %08lx %08lx %x", addr, newaddr, ts));
 	ut_assert_nextline("Total of %d byte(s) were the same", ts);
 	ut_assert_console_end();
+
+	free(buf);
 
 	return 0;
 }
@@ -1267,7 +1272,9 @@ static int fdt_test_chosen(struct unit_test_state *uts)
 {
 	const char *env_bootargs = env_get("bootargs");
 	char fdt[8192];
+	struct udevice *dev;
 	ulong addr;
+	ulong smbiosaddr = gd_smbios_start();
 
 	ut_assertok(make_test_fdt(uts, fdt, sizeof(fdt), &addr));
 	fdt_shrink_to_minimum(fdt, 4096);	/* Resize with 4096 extra bytes */
@@ -1280,11 +1287,20 @@ static int fdt_test_chosen(struct unit_test_state *uts)
 	/* Test add new chosen node without initrd */
 	ut_assertok(run_commandf("fdt chosen"));
 	ut_assertok(run_commandf("fdt print /chosen"));
-	ut_assert_nextline("chosen {");
+	ut_assert(0 < console_record_readline(uts->actual_str,
+					      sizeof(uts->actual_str)));
+	if (!strcmp("No RNG device", uts->actual_str))
+		ut_assert(0 < console_record_readline(uts->actual_str,
+						      sizeof(uts->actual_str)));
+	ut_asserteq_str("chosen {", uts->actual_str);
+	if (CONFIG_IS_ENABLED(GENERATE_SMBIOS_TABLE))
+		ut_assert_nextline("\tsmbios3-entrypoint = <0x%08x 0x%08x>;",
+				   upper_32_bits(smbiosaddr),
+				   lower_32_bits(smbiosaddr));
 	ut_assert_nextlinen("\tu-boot,version = "); /* Ignore the version string */
 	if (env_bootargs)
 		ut_assert_nextline("\tbootargs = \"%s\";", env_bootargs);
-	if (IS_ENABLED(CONFIG_DM_RNG) &&
+	if (!uclass_get_device(UCLASS_RNG, 0, &dev) &&
 	    !IS_ENABLED(CONFIG_MEASURED_BOOT) &&
 	    !IS_ENABLED(CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT))
 		ut_assert_nextlinen("\tkaslr-seed = ");
@@ -1294,16 +1310,25 @@ static int fdt_test_chosen(struct unit_test_state *uts)
 	/* Test add new chosen node with initrd */
 	ut_assertok(run_commandf("fdt chosen 0x1234 0x5678"));
 	ut_assertok(run_commandf("fdt print /chosen"));
-	ut_assert_nextline("chosen {");
+	ut_assert(0 < console_record_readline(uts->actual_str,
+					      sizeof(uts->actual_str)));
+	if (!strcmp("No RNG device", uts->actual_str))
+		ut_assert(0 < console_record_readline(uts->actual_str,
+						      sizeof(uts->actual_str)));
+	ut_asserteq_str("chosen {", uts->actual_str);
 	ut_assert_nextline("\tlinux,initrd-end = <0x%08x 0x%08x>;",
 			   upper_32_bits(0x1234 + 0x5678 - 1),
 			   lower_32_bits(0x1234 + 0x5678 - 1));
 	ut_assert_nextline("\tlinux,initrd-start = <0x%08x 0x%08x>;",
 			   upper_32_bits(0x1234), lower_32_bits(0x1234));
+	if (CONFIG_IS_ENABLED(GENERATE_SMBIOS_TABLE))
+		ut_assert_nextline("\tsmbios3-entrypoint = <0x%08x 0x%08x>;",
+				   upper_32_bits(smbiosaddr),
+				   lower_32_bits(smbiosaddr));
 	ut_assert_nextlinen("\tu-boot,version = "); /* Ignore the version string */
 	if (env_bootargs)
 		ut_assert_nextline("\tbootargs = \"%s\";", env_bootargs);
-	if (IS_ENABLED(CONFIG_DM_RNG) &&
+	if (!uclass_get_device(UCLASS_RNG, 0, &dev) &&
 	    !IS_ENABLED(CONFIG_MEASURED_BOOT) &&
 	    !IS_ENABLED(CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT))
 		ut_assert_nextlinen("\tkaslr-seed = ");
@@ -1318,6 +1343,9 @@ static int fdt_test_apply(struct unit_test_state *uts)
 {
 	char fdt[8192], fdto[8192];
 	ulong addr, addro;
+
+	if (!IS_ENABLED(CONFIG_OF_LIBFDT_OVERLAY))
+		return -EAGAIN;
 
 	/* Create base DT with __symbols__ node */
 	ut_assertok(fdt_create(fdt, sizeof(fdt)));
@@ -1462,11 +1490,3 @@ static int fdt_test_apply(struct unit_test_state *uts)
 	return 0;
 }
 FDT_TEST(fdt_test_apply, UTF_CONSOLE);
-
-int do_ut_fdt(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
-{
-	struct unit_test *tests = UNIT_TEST_SUITE_START(fdt_test);
-	const int n_ents = UNIT_TEST_SUITE_COUNT(fdt_test);
-
-	return cmd_ut_category("fdt", "fdt_test_", tests, n_ents, argc, argv);
-}

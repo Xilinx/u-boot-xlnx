@@ -21,6 +21,7 @@ struct toradex_eth_addr {
 } __attribute__((__packed__));
 
 struct toradex_som {
+	int pid4;
 	const char *name;
 	int is_enabled;
 };
@@ -114,8 +115,33 @@ enum {
 	VERDIN_IMX8MMDL_2G_IT,
 	VERDIN_IMX8MMQ_2G_IT_NO_CAN,
 	AQUILA_AM69O_32G_WIFI_BT_IT,
-	VERDIN_IMX95H_16G_WIFI_BT_IT,
+	VERDIN_IMX95H_8G_WIFI_BT_IT,
 	VERDIN_IMX8MMQ_4G_WIFI_BT_ET, /* 90 */
+	APALIS_IMX8QM_WIFI_BT_IT_1300MHZ,
+	APALIS_IMX8QM_IT_1300MHZ,
+	APALIS_IMX8QP_WIFI_BT_1300MHZ,
+	APALIS_IMX8QP_1300MHZ,
+	APALIS_IMX8QM_8GB_WIFI_BT_IT_1300MHZ, /* 95 */
+	SMARC_IMX95_HEXA_8GB_WB_IT,
+	SMARC_IMX8MPQ_4GB_WB_IT,
+	AQUILA_IMX95_HEXA_8GB_WB_IT,
+	VERDIN_AM62PQ_2G_WIFI_BT_IT, /* 99 */
+	SMARC_IMX95_HEXA_8GB_IT = 201,
+	SMARC_IMX95_HEXA_4GB_WB_IT,
+	SMARC_IMX95_HEXA_4GB_ET,
+	SMARC_IMX95_HEXA_2GB_WB_IT,
+	SMARC_IMX95_HEXA_2GB_ET, /* 205 */
+	SMARC_IMX8MPQ_4GB_IT,
+	SMARC_IMX8MPQ_2GB_WB_IT,
+	SMARC_IMX8MPQ_2GB_IT,
+	SMARC_IMX8MPQL_1GB_WB_ET,
+	SMARC_IMX8MPQL_1GB_ET, /* 210 */
+	AQUILA_AM69O_32GB_IT,
+	AQUILA_AM69O_16GB_WB_IT,
+	AQUILA_AM69O_16GB_IT,
+	AQUILA_AM69O_8GB_WB_IT,
+	AQUILA_AM69O_8GB_IT, /* 215 */
+	VERDIN_IMX8MMQ_WB_IT_64G,
 };
 
 enum {
@@ -139,6 +165,7 @@ extern u32 tdx_car_serial;
 
 int read_tdx_cfg_block(void);
 int read_tdx_cfg_block_carrier(void);
+int get_toradex_modules_idx(int pid4);
 const char * const get_toradex_carrier_boards(int pid4);
 const char * const get_toradex_display_adapters(int pid4);
 int try_migrate_tdx_cfg_block_carrier(void);

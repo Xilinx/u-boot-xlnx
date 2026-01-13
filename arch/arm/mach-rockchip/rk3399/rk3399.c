@@ -16,6 +16,7 @@
 #include <asm/arch-rockchip/gpio.h>
 #include <asm/arch-rockchip/grf_rk3399.h>
 #include <asm/arch-rockchip/hardware.h>
+#include <asm/gpio.h>
 #include <linux/bitops.h>
 #include <linux/printk.h>
 #include <power/regulator.h>
@@ -60,8 +61,8 @@ struct mm_region *mem_map = rk3399_mem_map;
 #define TIMER_CONTROL_REG	0x1c
 
 #define TIMER_EN	0x1
-#define TIMER_FMODE	BIT(0)
-#define TIMER_RMODE	BIT(1)
+#define TIMER_FMODE	(0 << 1)
+#define TIMER_RMODE	(1 << 1)
 
 void rockchip_stimer_init(void)
 {
@@ -157,7 +158,7 @@ void board_debug_uart_init(void)
 	/* Enable early UART2 channel C on the RK3399 */
 	rk_clrsetreg(&grf->gpio4c_iomux,
 		     GRF_GPIO4C3_SEL_MASK,
-		     GRF_UART2DGBC_SIN << GRF_GPIO4C3_SEL_SHIFT);
+		     GRF_UART2DBGC_SIN << GRF_GPIO4C3_SEL_SHIFT);
 	rk_clrsetreg(&grf->gpio4c_iomux,
 		     GRF_GPIO4C4_SEL_MASK,
 		     GRF_UART2DBGC_SOUT << GRF_GPIO4C4_SEL_SHIFT);

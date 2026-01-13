@@ -9,6 +9,7 @@
 #include <asm/cache.h>
 #include <bouncebuf.h>
 #include <linux/dma-direction.h>
+#include <part.h>
 
 struct udevice;
 
@@ -181,6 +182,7 @@ struct scsi_cmd {
 #define SCSI_WRT_VERIFY	0x2E		/* Write and Verify (O) */
 #define SCSI_WRITE_LONG	0x3F		/* Write Long (O) */
 #define SCSI_WRITE_SAME	0x41		/* Write Same (O) */
+#define SCSI_UNMAP	0x42		/* Write 10-Byte (MANDATORY) */
 
 /**
  * enum scsi_cmd_phase - current phase of the SCSI protocol
@@ -348,6 +350,16 @@ int scsi_scan(bool verbose);
  * @verbose:	true to show information about each device found
  */
 int scsi_scan_dev(struct udevice *dev, bool verbose);
+
+/**
+ * scsi_get_blk_by_uuid() - Provides SCSI partition information.
+ *
+ * @uuid:		UUID of the partition for fetching its info
+ * @blk_desc_ptr:	Provides the blk descriptor
+ * @part_info_ptr:	Provides partition info
+ */
+int scsi_get_blk_by_uuid(const char *uuid, struct blk_desc **blk_desc_ptr,
+			 struct disk_partition *part_info_ptr);
 
 #define SCSI_IDENTIFY					0xC0  /* not used */
 

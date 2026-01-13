@@ -223,8 +223,6 @@ void musb_write_fifo(struct musb_hw_ep *hw_ep, u16 len, const u8 *src)
 	struct musb *musb = hw_ep->musb;
 	void __iomem *fifo = hw_ep->fifo;
 
-	prefetch((u8 *)src);
-
 	dev_dbg(musb->controller, "%cX ep%d fifo %p count %d buf %p\n",
 			'T', hw_ep->epnum, fifo, len, src);
 
@@ -1956,7 +1954,7 @@ musb_init_controller(struct musb_hdrc_platform_data *plat, struct device *dev,
 
 	/* The musb_platform_init() call:
 	 *   - adjusts musb->mregs and musb->isr if needed,
-	 *   - may initialize an integrated tranceiver
+	 *   - may initialize an integrated transceiver
 	 *   - initializes musb->xceiv, usually by otg_get_phy()
 	 *   - stops powering VBUS
 	 *

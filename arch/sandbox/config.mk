@@ -3,7 +3,7 @@
 
 PLATFORM_CPPFLAGS += -D__SANDBOX__ -U_FORTIFY_SOURCE
 PLATFORM_CPPFLAGS += -fPIC -ffunction-sections -fdata-sections
-PLATFORM_LIBS += -lrt
+PLATFORM_LIBS += -lrt -lpthread
 SDL_CONFIG ?= sdl2-config
 
 # Define this to avoid linking with SDL, which requires SDL libraries
@@ -22,7 +22,9 @@ SANITIZERS	+= -fsanitize=fuzzer
 endif
 KBUILD_CFLAGS	+= $(SANITIZERS)
 
-cmd_u-boot__ = $(CC) -o $@ -Wl,-T u-boot.lds $(u-boot-init) \
+cmd_u-boot__ = \
+	touch $(u-boot-main) ; \
+	$(CC) -o $@ -Wl,-T u-boot.lds $(u-boot-init) \
 	$(KBUILD_LDFLAGS:%=-Wl,%) \
 	$(SANITIZERS) \
 	$(LTO_FINAL_LDFLAGS) \
@@ -32,7 +34,9 @@ cmd_u-boot__ = $(CC) -o $@ -Wl,-T u-boot.lds $(u-boot-init) \
 	-Wl,--no-whole-archive \
 	$(PLATFORM_LIBS) -Wl,-Map -Wl,u-boot.map -Wl,--gc-sections
 
-cmd_u-boot-spl = (cd $(obj) && $(CC) -o $(SPL_BIN) -Wl,-T u-boot-spl.lds \
+cmd_u-boot-spl = (cd $(obj) && \
+	touch $(patsubst $(obj)/%,%,$(u-boot-spl-main)) && \
+	$(CC) -o $(SPL_BIN) -Wl,-T u-boot-spl.lds \
 	$(KBUILD_LDFLAGS:%=-Wl,%) \
 	$(SANITIZERS) \
 	$(LTO_FINAL_LDFLAGS) \
@@ -46,10 +50,10 @@ cmd_u-boot-spl = (cd $(obj) && $(CC) -o $(SPL_BIN) -Wl,-T u-boot-spl.lds \
 
 ifeq ($(HOST_ARCH),$(HOST_ARCH_X86_64))
 EFI_LDS := ${SRCDIR}/../../../arch/x86/lib/elf_x86_64_efi.lds
-EFI_TARGET := --target=efi-app-x86_64
+EFI_TARGET := --output-target=efi-app-x86_64
 else ifeq ($(HOST_ARCH),$(HOST_ARCH_X86))
 EFI_LDS := ${SRCDIR}/../../../arch/x86/lib/elf_ia32_efi.lds
-EFI_TARGET := --target=efi-app-ia32
+EFI_TARGET := --output-target=efi-app-ia32
 else ifeq ($(HOST_ARCH),$(HOST_ARCH_AARCH64))
 EFI_LDS := ${SRCDIR}/../../../arch/arm/lib/elf_aarch64_efi.lds
 OBJCOPYFLAGS += -j .text -j .secure_text -j .secure_data -j .rodata -j .data \

@@ -5,8 +5,6 @@
  * Copyright (C) 2021 Renesas Electronics Corp.
  */
 
-#include "r8a779x-u-boot.dtsi"
-
 / {
 	soc {
 		rpc: spi@ee200000 {
@@ -21,8 +19,4 @@
 			status = "disabled";
 		};
 	};
-};
-
-&extalr_clk {
-	bootph-all;
 };

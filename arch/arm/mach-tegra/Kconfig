@@ -17,7 +17,9 @@ config TEGRA_CLKRST
 
 config TEGRA_CRYPTO
 	bool "Tegra AES128 crypto module"
+	select DM_AES
 	select AES
+	select TEGRA_AES
 
 config TEGRA_GP_PADCTRL
 	bool
@@ -48,13 +50,13 @@ config TEGRA_COMMON
 	select DM_GPIO
 	select DM_I2C
 	select DM_KEYBOARD
-	select DM_MMC
 	select DM_PWM
 	select DM_RESET
 	select DM_SERIAL
 	select DM_SPI
 	select DM_SPI_FLASH
 	select MISC
+	select MMC
 	select MTD
 	select OF_CONTROL
 	select SPI
@@ -198,6 +200,23 @@ source "arch/arm/mach-tegra/tegra124/Kconfig"
 source "arch/arm/mach-tegra/tegra210/Kconfig"
 source "arch/arm/mach-tegra/tegra186/Kconfig"
 
+config SYS_CONFIG_NAME
+	default "tegra"
+
+config TEGRA_PRAM
+	select TEGRA_SUPPORT_NON_SECURE if TEGRA114 || TEGRA124
+	bool "Support reservation of the protected RAM"
+	help
+	  This option indicates the presence of a region of protected RAM.
+
+config TEGRA_PRAM_SIZE
+	hex "Size of pRAM region"
+	depends on TEGRA_PRAM
+	default 0x1000
+	help
+	  Size in kB of carevout which will be reserved as protected RAM starting
+	  from the top of the RAM.
+
 config TEGRA_SPI
 	def_bool y
 	depends on TEGRA20_SFLASH || TEGRA20_SLINK || TEGRA114_SPI
@@ -247,7 +266,7 @@ config CMD_ENTERRCM
 
 config CMD_EBTUPDATE
 	bool "Enable 'ebtupdate' command"
-	depends on TEGRA20 || TEGRA30
+	depends on TEGRA20 || TEGRA30 || TEGRA124
 	select TEGRA_CRYPTO
 	help
 	  Updating u-boot from within u-boot in rather complex or even

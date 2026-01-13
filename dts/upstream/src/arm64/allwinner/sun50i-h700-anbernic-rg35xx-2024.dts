@@ -21,6 +21,12 @@
 		serial0 = &uart0;
 	};
 
+	battery: battery {
+		compatible = "simple-battery";
+		constant-charge-current-max-microamp = <1024000>;
+		voltage-max-design-microvolt = <4200000>;
+	};
+
 	chosen {
 		stdout-path = "serial0:115200n8";
 	};
@@ -161,6 +167,12 @@
 			gpios = <&pio 8 12 GPIO_ACTIVE_HIGH>; /* PI12 */
 			default-state = "on";
 		};
+
+		led-1 {
+			function = LED_FUNCTION_STATUS;
+			color = <LED_COLOR_ID_GREEN>;
+			gpios = <&pio 8 11 GPIO_ACTIVE_HIGH>; /* PI11 */
+		};
 	};
 
 	reg_vcc5v: regulator-vcc5v { /* USB-C power input */
@@ -171,11 +183,25 @@
 	};
 };
 
+&codec {
+	/* Both speakers and headphone jack connected to 74HC4052D analog mux*/
+	allwinner,audio-routing = "Speaker", "LINEOUT",
+				  "Headphone", "LINEOUT";
+	allwinner,pa-gpios = <&pio 8 5 GPIO_ACTIVE_HIGH>; // PI5
+	hp-det-gpios = <&pio 8 3 GPIO_ACTIVE_HIGH>; // PI3
+	status = "okay";
+};
+
 &cpu0 {
 	cpu-supply = <&reg_dcdc1>;
 };
 
 &ehci0 {
+	status = "okay";
+};
+
+&gpu {
+	mali-supply = <&reg_dcdc2>;
 	status = "okay";
 };
 
@@ -217,6 +243,17 @@
 		vin3-supply = <&reg_vcc5v>;
 		vin4-supply = <&reg_vcc5v>;
 
+		axp_adc: adc {
+			compatible = "x-powers,axp717-adc";
+			#io-channel-cells = <1>;
+		};
+
+		battery_power: battery-power {
+			compatible = "x-powers,axp717-battery-power-supply";
+			monitored-battery = <&battery>;
+			x-powers,no-thermistor;
+		};
+
 		regulators {
 			reg_dcdc1: dcdc1 {
 				regulator-always-on;
@@ -254,7 +291,7 @@
 			reg_aldo4: aldo4 {
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <1800000>;
-				regulator-name = "vcc-pg";
+				regulator-name = "avcc";
 			};
 
 			reg_bldo1: bldo1 {
@@ -277,7 +314,10 @@
 			};
 
 			reg_cldo1: cldo1 {
-				/* 3.3v - audio codec - not yet implemented */
+				regulator-always-on;
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-name = "vcc-spkr-amp";
 			};
 
 			reg_cldo2: cldo2 {
@@ -303,9 +343,23 @@
 				regulator-name = "boost";
 			};
 
+			/*
+			 * Regulator function is unknown, but reading
+			 * GPIO values in bootloader is inconsistent
+			 * on reboot if this is disabled. Setting to
+			 * default value from regulator OTP mem.
+			 */
 			reg_cpusldo: cpusldo {
-				/* unused */
+				regulator-always-on;
+				regulator-boot-on;
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
 			};
+		};
+
+		usb_power: usb-power {
+			compatible = "x-powers,axp717-usb-power-supply";
+			input-current-limit-microamp = <1500000>;
 		};
 	};
 };

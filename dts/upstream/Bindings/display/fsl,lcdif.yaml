@@ -50,6 +50,14 @@ properties:
       - const: disp_axi
     minItems: 1
 
+  dmas:
+    items:
+      - description: DMA specifier for the RX DMA channel.
+
+  dma-names:
+    items:
+      - const: rx
+
   interrupts:
     items:
       - description: LCDIF DMA interrupt
@@ -63,12 +71,23 @@ properties:
     $ref: /schemas/graph.yaml#/properties/port
     description: The LCDIF output port
 
+  display:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description: phandle to display panel
+    deprecated: true
+
+  display0:
+    $ref: panel/panel-common.yaml#
+    deprecated: true
+
+  lcd-supply:
+    deprecated: true
+
 required:
   - compatible
   - reg
   - clocks
   - interrupts
-  - port
 
 additionalProperties: false
 
@@ -155,6 +174,24 @@ allOf:
       properties:
         interrupts:
           maxItems: 1
+
+  - if:
+      not:
+        properties:
+          compatible:
+            contains:
+              enum:
+                - fsl,imx28-lcdif
+    then:
+      properties:
+        dmas: false
+        dma-names: false
+        display: false
+        display0: false
+        lcd-supply: false
+
+      required:
+        - port
 
 examples:
   - |

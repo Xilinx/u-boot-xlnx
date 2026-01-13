@@ -30,6 +30,14 @@
 #include <soc.h>
 #include <dm/uclass-internal.h>
 #include <dm/device-internal.h>
+#include <asm/armv8/mmu.h>
+#include <mach/k3-common-fdt.h>
+#include <mach/k3-ddr.h>
+
+#define PROC_BOOT_CTRL_FLAG_R5_CORE_HALT	0x00000001
+#define PROC_BOOT_STATUS_FLAG_R5_WFI		0x00000002
+#define PROC_ID_MCU_R5FSS0_CORE1		0x02
+#define PROC_BOOT_CFG_FLAG_R5_LOCKSTEP		0x00000100
 
 #include <asm/arch/k3-qos.h>
 
@@ -66,6 +74,35 @@ void k3_sysfw_print_ver(void)
 	printf("SYSFW ABI: %d.%d (firmware rev 0x%04x '%s')\n",
 	       ti_sci->version.abi_major, ti_sci->version.abi_minor,
 	       ti_sci->version.firmware_revision, fw_desc);
+}
+
+void __maybe_unused k3_dm_print_ver(void)
+{
+	struct ti_sci_handle *ti_sci = get_ti_sci_handle();
+	struct ti_sci_firmware_ops *fw_ops = &ti_sci->ops.fw_ops;
+	struct ti_sci_dm_version_info dm_info = {0};
+	u64 fw_caps;
+	int ret;
+
+	ret = fw_ops->query_dm_cap(ti_sci, &fw_caps);
+	if (ret) {
+		printf("Failed to query DM firmware capability %d\n", ret);
+		return;
+	}
+
+	if (!(fw_caps & TI_SCI_MSG_FLAG_FW_CAP_DM))
+		return;
+
+	ret = fw_ops->get_dm_version(ti_sci, &dm_info);
+	if (ret) {
+		printf("Failed to fetch DM firmware version %d\n", ret);
+		return;
+	}
+
+	printf("DM ABI: %d.%d (firmware ver 0x%04x '%s--%s' "
+	       "patch_ver: %d)\n", dm_info.abi_major, dm_info.abi_minor,
+	       dm_info.dm_ver, dm_info.sci_server_version,
+	       dm_info.rm_pm_hal_version, dm_info.patch_ver);
 }
 
 void mmr_unlock(uintptr_t base, u32 partition)
@@ -175,11 +212,17 @@ static const char *get_device_type_name(void)
 	}
 }
 
+__weak const char *get_reset_reason(void)
+{
+	return NULL;
+}
+
 int print_cpuinfo(void)
 {
 	struct udevice *soc;
 	char name[64];
 	int ret;
+	const char *reset_reason;
 
 	printf("SoC:   ");
 
@@ -201,6 +244,10 @@ int print_cpuinfo(void)
 
 	printf("%s\n", get_device_type_name());
 
+	reset_reason = get_reset_reason();
+	if (reset_reason)
+		printf("Reset reason: %s\n", reset_reason);
+
 	return 0;
 }
 #endif
@@ -214,6 +261,47 @@ void board_prep_linux(struct bootm_headers *images)
 				 ROUND(images->os.end,
 				       CONFIG_SYS_CACHELINE_SIZE));
 }
+
+void enable_caches(void)
+{
+	void *fdt = (void *)gd->fdt_blob;
+	int ret;
+
+	ret = mem_map_from_dram_banks(K3_MEM_MAP_FIRST_BANK_IDX, K3_MEM_MAP_LEN,
+				     PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+					     PTE_BLOCK_INNER_SHARE);
+	if (ret)
+		debug("%s: Failed to setup dram banks\n", __func__);
+
+	mmu_setup();
+
+	if (CONFIG_K3_ATF_LOAD_ADDR >= CFG_SYS_SDRAM_BASE) {
+		ret = fdt_fixup_reserved(fdt, "tfa", CONFIG_K3_ATF_LOAD_ADDR,
+					 0x80000);
+		if (ret)
+			printf("%s: Failed to perform tfa fixups (%s)\n",
+			       __func__, fdt_strerror(ret));
+		ret = mmu_unmap_reserved_mem("tfa", true);
+		if (ret)
+			printf("%s: Failed to unmap tfa reserved mem (%d)\n",
+			       __func__, ret);
+	}
+
+	if (CONFIG_K3_OPTEE_LOAD_ADDR >= CFG_SYS_SDRAM_BASE) {
+		ret = fdt_fixup_reserved(fdt, "optee",
+					 CONFIG_K3_OPTEE_LOAD_ADDR, 0x1800000);
+		if (ret)
+			printf("%s: Failed to perform optee fixups (%s)\n",
+			       __func__, fdt_strerror(ret));
+		ret = mmu_unmap_reserved_mem("optee", true);
+		if (ret)
+			printf("%s: Failed to unmap optee reserved mem (%d)\n",
+			       __func__, ret);
+	}
+
+	icache_enable();
+	dcache_enable();
+}
 #endif
 
 void spl_enable_cache(void)
@@ -223,15 +311,12 @@ void spl_enable_cache(void)
 	int ret = 0;
 
 	dram_init();
+	dram_init_banksize();
 
 	/* reserve TLB table */
 	gd->arch.tlb_size = PGTABLE_SIZE;
 
 	gd->ram_top += get_effective_memsize();
-	/* keep ram_top in the 32-bit address space */
-	if (gd->ram_top >= 0x100000000)
-		gd->ram_top = (phys_addr_t)0x100000000;
-
 	gd->relocaddr = gd->ram_top;
 
 	ret = spl_reserve_video_from_ram_top();
@@ -263,8 +348,27 @@ static __maybe_unused void k3_dma_remove(void)
 		pr_warn("DMA Device not found (err=%d)\n", rc);
 }
 
+void spl_perform_arch_fixups(struct spl_image_info *spl_image)
+{
+	void *fdt = spl_image_fdt_addr(spl_image);
+
+	if (!fdt)
+		return;
+
+	fdt_fixup_reserved(fdt, "tfa", CONFIG_K3_ATF_LOAD_ADDR, 0x80000);
+	fdt_fixup_reserved(fdt, "optee", CONFIG_K3_OPTEE_LOAD_ADDR, 0x1800000);
+}
+
 void spl_board_prepare_for_boot(void)
 {
+#if IS_ENABLED(CONFIG_SPL_OS_BOOT_SECURE) && !IS_ENABLED(CONFIG_ARM64)
+	int ret;
+
+	ret = k3_r5_falcon_prep();
+	if (ret)
+		panic("%s: Failed to boot in falcon mode: %d\n", __func__, ret);
+#endif /* falcon mode on R5 SPL */
+
 #if !(defined(CONFIG_SYS_ICACHE_OFF) && defined(CONFIG_SYS_DCACHE_OFF))
 	dcache_disable();
 #endif
@@ -282,17 +386,6 @@ void spl_board_prepare_for_linux(void)
 
 int misc_init_r(void)
 {
-	if (IS_ENABLED(CONFIG_TI_AM65_CPSW_NUSS)) {
-		struct udevice *dev;
-		int ret;
-
-		ret = uclass_get_device_by_driver(UCLASS_MISC,
-						  DM_DRIVER_GET(am65_cpsw_nuss),
-						  &dev);
-		if (ret)
-			printf("Failed to probe am65_cpsw_nuss driver\n");
-	}
-
 	if (IS_ENABLED(CONFIG_TI_ICSSG_PRUETH)) {
 		struct udevice *dev;
 		int ret;
@@ -330,5 +423,77 @@ void setup_qos(void)
 
 	for (i = 0; i < qos_count; i++)
 		writel(qos_data[i].val, (uintptr_t)qos_data[i].reg);
+}
+#endif
+
+int __maybe_unused shutdown_mcu_r5_core1(void)
+{
+	struct ti_sci_handle *ti_sci = get_ti_sci_handle();
+	struct ti_sci_dev_ops *dev_ops = &ti_sci->ops.dev_ops;
+	struct ti_sci_proc_ops *proc_ops = &ti_sci->ops.proc_ops;
+	u32 dev_id_mcu_r5_core1 = put_core_ids[0];
+	u64 boot_vector;
+	u32 cfg, ctrl, sts, halted;
+	int cluster_mode_lockstep, ret;
+	bool r_state = false, c_state = false;
+
+	ret = proc_ops->proc_request(ti_sci, PROC_ID_MCU_R5FSS0_CORE1);
+	if (ret) {
+		printf("Unable to request processor control for MCU1_1 core, %d\n",
+		       ret);
+		return ret;
+	}
+
+	ret = dev_ops->is_on(ti_sci, dev_id_mcu_r5_core1, &r_state, &c_state);
+	if (ret) {
+		printf("Unable to get device status for MCU1_1 core, %d\n", ret);
+		return ret;
+	}
+
+	ret = proc_ops->get_proc_boot_status(ti_sci, PROC_ID_MCU_R5FSS0_CORE1,
+					     &boot_vector, &cfg, &ctrl, &sts);
+	if (ret) {
+		printf("Unable to get Processor boot status for MCU1_1 core, %d\n",
+		       ret);
+		goto release_proc_ctrl;
+	}
+
+	halted = !!(sts & PROC_BOOT_STATUS_FLAG_R5_WFI);
+	cluster_mode_lockstep = !!(cfg & PROC_BOOT_CFG_FLAG_R5_LOCKSTEP);
+
+	/*
+	 * Shutdown MCU R5F Core 1 only if:
+	 *	- cluster is booted in SplitMode
+	 *	- core is powered on
+	 *	- core is in WFI (halted)
+	 */
+	if (cluster_mode_lockstep || !c_state || !halted) {
+		ret = -EINVAL;
+		goto release_proc_ctrl;
+	}
+
+	ret = proc_ops->set_proc_boot_ctrl(ti_sci, PROC_ID_MCU_R5FSS0_CORE1,
+					   PROC_BOOT_CTRL_FLAG_R5_CORE_HALT, 0);
+	if (ret) {
+		printf("Unable to Halt MCU1_1 core, %d\n", ret);
+		goto release_proc_ctrl;
+	}
+
+	ret = dev_ops->put_device(ti_sci, dev_id_mcu_r5_core1);
+	if (ret) {
+		printf("Unable to assert reset on MCU1_1 core, %d\n", ret);
+		return ret;
+	}
+
+release_proc_ctrl:
+	proc_ops->proc_release(ti_sci, PROC_ID_MCU_R5FSS0_CORE1);
+	return ret;
+}
+
+#if IS_ENABLED(CONFIG_ARM64) && IS_ENABLED(CONFIG_SPL_OS_BOOT_SECURE)
+int spl_start_uboot(void)
+{
+	/* Always boot to linux on Cortex-A SPL with CONFIG_SPL_OS_BOOT set */
+	return 0;
 }
 #endif

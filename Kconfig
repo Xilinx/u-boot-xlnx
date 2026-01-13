@@ -27,6 +27,31 @@ config DEPRECATED
 	  code that relies on deprecated features that will be removed and
 	  the conversion deadline has passed.
 
+config COMPILE_TEST
+	bool "Compile also drivers which will not load"
+	help
+	  Some drivers can be compiled on a different platform than they are
+	  intended to be run on. Despite they cannot be loaded there (or even
+	  when they load they cannot be used due to missing HW support),
+	  developers still, opposing to distributors, might want to build such
+	  drivers to compile-test them.
+
+	  If you are a developer and want to build everything available, say Y
+	  here. If you are a user/distributor, say N here to exclude useless
+	  drivers to be distributed.
+
+config WERROR
+	bool "Compile U-Boot with warnings as errors"
+	default COMPILE_TEST
+	help
+	  A U-Boot build should not cause any compiler warnings, and this
+	  enables the '-Werror' flag to enforce that rule.
+
+	  However, if you have a new (or very old) compiler or linker with odd
+	  and unusual warnings, or you have some architecture with problems,
+	  you may need to disable this config option in order to
+	  successfully build U-Boot.
+
 config LOCALVERSION
 	string "Local version - append to U-Boot release"
 	help
@@ -298,7 +323,7 @@ config SYS_MALLOC_F_LEN
 config SYS_MALLOC_LEN
 	hex "Define memory for Dynamic allocation"
 	default 0x4000000 if SANDBOX
-	default 0x2000000 if ARCH_ROCKCHIP || ARCH_OMAP2PLUS || ARCH_MESON
+	default 0x2000000 if ARCH_ROCKCHIP || ARCH_OMAP2PLUS || ARCH_MESON || ARCH_K3
 	default 0x200000 if ARCH_BMIPS || X86
 	default 0x4020000 if SUNXI_MINIMUM_DRAM_MB >= 256
 	default 0x220000 if SUNXI_MINIMUM_DRAM_MB >= 64
@@ -443,6 +468,12 @@ config TOOLS_DEBUG
 	  it is possible to set breakpoints on particular lines, single-step
 	  debug through the source code, etc.
 
+config SKIP_RELOCATE
+	bool "Skips relocation of U-Boot to end of RAM"
+	help
+	  Skips relocation of U-Boot allowing for systems that have extremely
+	  limited RAM to run U-Boot.
+
 endif # EXPERT
 
 config PHYS_64BIT
@@ -480,6 +511,7 @@ config SPL_IMAGE
 
 config REMAKE_ELF
 	bool "Recreate an ELF image from raw U-Boot binary"
+	depends on !COMPILE_TEST
 	help
 	  Enable this to recreate an ELF image (u-boot.elf) from the raw
 	  U-Boot binary (u-boot.bin), which may already have been statically
@@ -506,6 +538,7 @@ config BUILD_TARGET
 
 config HAS_BOARD_SIZE_LIMIT
 	bool "Define a maximum size for the U-Boot image"
+	depends on !COMPILE_TEST
 	default y if RCAR_32 || RCAR_64
 	help
 	  In some cases, we need to enforce a hard limit on how big the U-Boot
@@ -520,10 +553,11 @@ config BOARD_SIZE_LIMIT
 	  Maximum size of the U-Boot image. When defined, the build system
 	  checks that the actual size does not exceed it.  This does not
 	  include SPL nor TPL, on platforms that use that functionality, they
-	  have a separate option to restict size.
+	  have separate options to restrict size.
 
 config SYS_CUSTOM_LDSCRIPT
 	bool "Use a custom location for the U-Boot linker script"
+	depends on !COMPILE_TEST
 	help
 	  Normally when linking U-Boot we will look in the board directory,
 	  the CPU directory and finally the "cpu" directory of the architecture
@@ -595,27 +629,6 @@ config SYS_MEM_TOP_HIDE
 	  "corrected" memory size and won't touch it either.
 	  WARNING: Please make sure that this value is a multiple of the OS
 	  page size.
-
-config SYS_HAS_SRAM
-	bool
-	default y if TARGET_PIC32MZDASK
-	default y if TARGET_DEVKIT8000
-	help
-	  Enable this to allow support for the on board SRAM.
-	  SRAM base address is controlled by CONFIG_SYS_SRAM_BASE.
-	  SRAM size is controlled by CONFIG_SYS_SRAM_SIZE.
-
-config SYS_SRAM_BASE
-	hex
-	default 0x80000000 if TARGET_PIC32MZDASK
-	default 0x40200000 if TARGET_DEVKIT8000
-	default 0x0
-
-config SYS_SRAM_SIZE
-	hex
-	default 0x00080000 if TARGET_PIC32MZDASK
-	default 0x10000 if TARGET_DEVKIT8000
-	default 0x0
 
 config SYS_MONITOR_LEN
 	int "Maximum size in bytes reserved for U-Boot in memory"
@@ -708,6 +721,7 @@ config TPL_SYS_MONITOR_BASE
 
 config DYNAMIC_SYS_CLK_FREQ
 	bool "Determine CPU clock frequency at run-time"
+	depends on !COMPILE_TEST
 	help
 	  Implement a get_board_sys_clk function that will determine the CPU
 	  clock frequency at run time, rather than define it statically.
@@ -758,7 +772,7 @@ source "dts/Kconfig"
 
 source "env/Kconfig"
 
-menu Networking
+menu "Networking"
 
 choice
 	prompt "Networking stack"

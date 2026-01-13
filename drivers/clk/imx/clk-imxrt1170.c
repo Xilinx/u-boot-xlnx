@@ -105,6 +105,8 @@ static const char * const usdhc1_sels[] = {"rcosc48M_div2", "osc", "rcosc400M", 
 "pll2_pfd2", "pll2_pfd0", "pll1_div5", "pll_arm"};
 static const char * const semc_sels[] = {"rcosc48M_div2", "osc", "rcosc400M", "rcosc16M",
 "pll1_div5", "pll2_sys", "pll2_pfd2", "pll3_pfd0"};
+static const char * const flexspi1_sels[] = {"rcosc48M_div2", "osc", "rcosc400M", "rcosc16M",
+"pll3_pdf0", "pll2_clk", "pll2_pfd2", "pll3_clk"};
 
 static int imxrt1170_clk_probe(struct udevice *dev)
 {
@@ -114,20 +116,20 @@ static int imxrt1170_clk_probe(struct udevice *dev)
 	base = (void *)ofnode_get_addr(ofnode_by_compatible(ofnode_null(), "fsl,imxrt-anatop"));
 
 	clk_dm(IMXRT1170_CLK_RCOSC_48M,
-	       imx_clk_fixed_factor("rcosc48M", "rcosc16M", 3, 1));
+	       imx_clk_fixed_factor(dev, "rcosc48M", "rcosc16M", 3, 1));
 	clk_dm(IMXRT1170_CLK_RCOSC_400M,
-	       imx_clk_fixed_factor("rcosc400M",  "rcosc16M", 25, 1));
+	       imx_clk_fixed_factor(dev, "rcosc400M",  "rcosc16M", 25, 1));
 	clk_dm(IMXRT1170_CLK_RCOSC_48M_DIV2,
-	       imx_clk_fixed_factor("rcosc48M_div2",  "rcosc48M", 1, 2));
+	       imx_clk_fixed_factor(dev, "rcosc48M_div2",  "rcosc48M", 1, 2));
 
 	clk_dm(IMXRT1170_CLK_PLL_ARM,
-	       imx_clk_pllv3(IMX_PLLV3_SYS, "pll_arm", "osc",
+	       imx_clk_pllv3(dev, IMX_PLLV3_SYS, "pll_arm", "osc",
 			     base + 0x200, 0xff));
 	clk_dm(IMXRT1170_CLK_PLL3,
-	       imx_clk_pllv3(IMX_PLLV3_GENERICV2, "pll3_sys", "osc",
+	       imx_clk_pllv3(dev, IMX_PLLV3_GENERICV2, "pll3_sys", "osc",
 			     base + 0x210, 1));
 	clk_dm(IMXRT1170_CLK_PLL2,
-	       imx_clk_pllv3(IMX_PLLV3_GENERICV2, "pll2_sys", "osc",
+	       imx_clk_pllv3(dev, IMX_PLLV3_GENERICV2, "pll2_sys", "osc",
 			     base + 0x240, 1));
 
 	clk_dm(IMXRT1170_CLK_PLL3_PFD0,
@@ -149,7 +151,7 @@ static int imxrt1170_clk_probe(struct udevice *dev)
 	       imx_clk_pfd("pll2_pfd3", "pll2_sys", base + 0x270, 3));
 
 	clk_dm(IMXRT1170_CLK_PLL3_DIV2,
-	       imx_clk_fixed_factor("pll3_div2", "pll3_sys", 1, 2));
+	       imx_clk_fixed_factor(dev, "pll3_div2", "pll3_sys", 1, 2));
 
 	/* CCM clocks */
 	base = dev_read_addr_ptr(dev);
@@ -157,31 +159,38 @@ static int imxrt1170_clk_probe(struct udevice *dev)
 		return -EINVAL;
 
 	clk_dm(IMXRT1170_CLK_LPUART1_SEL,
-	       imx_clk_mux("lpuart1_sel", base + (25 * 0x80), 8, 3,
+	       imx_clk_mux(dev, "lpuart1_sel", base + (25 * 0x80), 8, 3,
 			   lpuart1_sels, ARRAY_SIZE(lpuart1_sels)));
 	clk_dm(IMXRT1170_CLK_LPUART1,
-	       imx_clk_divider("lpuart1", "lpuart1_sel",
+	       imx_clk_divider(dev, "lpuart1", "lpuart1_sel",
 			       base + (25 * 0x80), 0, 8));
 
+	clk_dm(IMXRT1170_CLK_FLEXSPI1_SEL,
+	       imx_clk_mux(dev, "flexspi1_sel", base + (20 * 0x80), 8, 3,
+			   flexspi1_sels, ARRAY_SIZE(flexspi1_sels)));
+	clk_dm(IMXRT1170_CLK_FLEXSPI1,
+	       imx_clk_divider(dev, "flexspi1", "flexspi1_sel",
+			       base + (20 * 0x80), 0, 8));
+
 	clk_dm(IMXRT1170_CLK_USDHC1_SEL,
-	       imx_clk_mux("usdhc1_sel", base + (58 * 0x80), 8, 3,
+	       imx_clk_mux(dev, "usdhc1_sel", base + (58 * 0x80), 8, 3,
 			   usdhc1_sels, ARRAY_SIZE(usdhc1_sels)));
 	clk_dm(IMXRT1170_CLK_USDHC1,
-	       imx_clk_divider("usdhc1", "usdhc1_sel",
+	       imx_clk_divider(dev, "usdhc1", "usdhc1_sel",
 			       base + (58 * 0x80), 0, 8));
 
 	clk_dm(IMXRT1170_CLK_GPT1_SEL,
-	       imx_clk_mux("gpt1_sel", base + (14 * 0x80), 8, 3,
+	       imx_clk_mux(dev, "gpt1_sel", base + (14 * 0x80), 8, 3,
 			   gpt1_sels, ARRAY_SIZE(gpt1_sels)));
 	clk_dm(IMXRT1170_CLK_GPT1,
-	       imx_clk_divider("gpt1", "gpt1_sel",
+	       imx_clk_divider(dev, "gpt1", "gpt1_sel",
 			       base + (14 * 0x80), 0, 8));
 
 	clk_dm(IMXRT1170_CLK_SEMC_SEL,
-	       imx_clk_mux("semc_sel", base + (4 * 0x80), 8, 3,
+	       imx_clk_mux(dev, "semc_sel", base + (4 * 0x80), 8, 3,
 			   semc_sels, ARRAY_SIZE(semc_sels)));
 	clk_dm(IMXRT1170_CLK_SEMC,
-	       imx_clk_divider("semc", "semc_sel",
+	       imx_clk_divider(dev, "semc", "semc_sel",
 			       base + (4 * 0x80), 0, 8));
 	struct clk *clk, *clk1;
 

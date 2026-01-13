@@ -102,11 +102,6 @@ static struct mm_region qemu_arm64_mem_map[] = {
 struct mm_region *mem_map = qemu_arm64_mem_map;
 #endif
 
-int board_init(void)
-{
-	return 0;
-}
-
 int board_late_init(void)
 {
 	/*
@@ -149,11 +144,12 @@ int dram_init_banksize(void)
 	return 0;
 }
 
-void *board_fdt_blob_setup(int *err)
+int board_fdt_blob_setup(void **fdtp)
 {
-	*err = 0;
 	/* QEMU loads a generated DTB for us at the start of RAM. */
-	return (void *)CFG_SYS_SDRAM_BASE;
+	*fdtp = (void *)CFG_SYS_SDRAM_BASE;
+
+	return 0;
 }
 
 void enable_caches(void)

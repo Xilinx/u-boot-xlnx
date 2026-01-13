@@ -98,7 +98,8 @@ static int script_read_bootflow_file(struct udevice *bootstd,
 	if (!bflow->subdir)
 		return log_msg_ret("prefix", -ENOMEM);
 
-	ret = bootmeth_alloc_file(bflow, 0x10000, ARCH_DMA_MINALIGN);
+	ret = bootmeth_alloc_file(bflow, 0x10000, ARCH_DMA_MINALIGN,
+				  (enum bootflow_img_t)IH_TYPE_SCRIPT);
 	if (ret)
 		return log_msg_ret("read", ret);
 
@@ -106,8 +107,8 @@ static int script_read_bootflow_file(struct udevice *bootstd,
 	if (ret)
 		return log_msg_ret("inf", ret);
 
-	ret = bootmeth_alloc_other(bflow, "boot.bmp", &bflow->logo,
-				   &bflow->logo_size);
+	ret = bootmeth_alloc_other(bflow, "boot.bmp", BFI_LOGO,
+				   &bflow->logo, &bflow->logo_size);
 	/* ignore error */
 
 	return 0;
@@ -128,7 +129,11 @@ static int script_read_bootflow_net(struct bootflow *bflow)
 	if (!fname)
 		return log_msg_ret("dhc", -EINVAL);
 
-	ret = dhcp_run(addr, fname, true);
+	if (IS_ENABLED(CONFIG_CMD_TFTPBOOT) && env_get_yesno("ip_dyn") == 0)
+		ret = tftpb_run(addr, fname);
+	else
+		ret = dhcp_run(addr, fname, true);
+
 	if (ret)
 		return log_msg_ret("dhc", ret);
 

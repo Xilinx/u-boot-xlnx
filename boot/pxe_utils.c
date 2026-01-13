@@ -6,9 +6,11 @@
 
 #define LOG_CATEGORY	LOGC_BOOT
 
+#include <bootflow.h>
 #include <command.h>
 #include <dm.h>
 #include <env.h>
+#include <extension_board.h>
 #include <image.h>
 #include <log.h>
 #include <malloc.h>
@@ -97,7 +99,8 @@ int format_mac_pxe(char *outbuf, size_t outbuf_len)
  * Returns 1 for success, or < 0 on error
  */
 static int get_relfile(struct pxe_context *ctx, const char *file_path,
-		       unsigned long file_addr, ulong *filesizep)
+		       unsigned long file_addr, enum bootflow_img_t type,
+		       ulong *filesizep)
 {
 	size_t path_len;
 	char relfile[MAX_TFTP_PATH_LEN + 1];
@@ -124,7 +127,7 @@ static int get_relfile(struct pxe_context *ctx, const char *file_path,
 
 	sprintf(addr_buf, "%lx", file_addr);
 
-	ret = ctx->getfile(ctx, relfile, addr_buf, &size);
+	ret = ctx->getfile(ctx, relfile, addr_buf, type, &size);
 	if (ret < 0)
 		return log_msg_ret("get", ret);
 	if (filesizep)
@@ -133,16 +136,6 @@ static int get_relfile(struct pxe_context *ctx, const char *file_path,
 	return 1;
 }
 
-/**
- * get_pxe_file() - read a file
- *
- * The file is read and nul-terminated
- *
- * @ctx: PXE context
- * @file_path: File path to read (relative to the PXE file)
- * @file_addr: Address to load file to
- * Returns 1 for success, or < 0 on error
- */
 int get_pxe_file(struct pxe_context *ctx, const char *file_path,
 		 ulong file_addr)
 {
@@ -150,7 +143,8 @@ int get_pxe_file(struct pxe_context *ctx, const char *file_path,
 	int err;
 	char *buf;
 
-	err = get_relfile(ctx, file_path, file_addr, &size);
+	err = get_relfile(ctx, file_path, file_addr, BFI_EXTLINUX_CFG,
+			  &size);
 	if (err < 0)
 		return err;
 
@@ -199,13 +193,15 @@ int get_pxelinux_path(struct pxe_context *ctx, const char *file,
  * @file_path: File path to read (relative to the PXE file)
  * @envaddr_name: Name of environment variable which contains the address to
  *	load to
+ * @type: File type
  * @filesizep: Returns the file size in bytes
  * Returns 1 on success, -ENOENT if @envaddr_name does not exist as an
  *	environment variable, -EINVAL if its format is not valid hex, or other
  *	value < 0 on other error
  */
 static int get_relfile_envaddr(struct pxe_context *ctx, const char *file_path,
-			       const char *envaddr_name, ulong *filesizep)
+			       const char *envaddr_name,
+			       enum bootflow_img_t type, ulong *filesizep)
 {
 	unsigned long file_addr;
 	char *envaddr;
@@ -217,7 +213,7 @@ static int get_relfile_envaddr(struct pxe_context *ctx, const char *file_path,
 	if (strict_strtoul(envaddr, 16, &file_addr) < 0)
 		return -EINVAL;
 
-	return get_relfile(ctx, file_path, file_addr, filesizep);
+	return get_relfile(ctx, file_path, file_addr, type, filesizep);
 }
 
 /**
@@ -405,6 +401,7 @@ static void label_boot_fdtoverlay(struct pxe_context *ctx,
 
 		/* Load overlay file */
 		err = get_relfile_envaddr(ctx, overlayfile, "fdtoverlay_addr_r",
+					  (enum bootflow_img_t)IH_TYPE_FLATDT,
 					  NULL);
 		if (err < 0) {
 			printf("Failed loading overlay %s\n", overlayfile);
@@ -435,6 +432,93 @@ skip_overlay:
 	} while ((fdtoverlay = strstr(fdtoverlay, " ")));
 }
 #endif
+
+/*
+ * label_boot_extension - scan extension boards and load overlay associated
+ */
+
+static void label_boot_extension(struct pxe_context *ctx,
+				 struct pxe_label *label)
+{
+#if CONFIG_IS_ENABLED(SUPPORT_EXTENSION_SCAN)
+	const struct extension *extension;
+	struct fdt_header *working_fdt;
+	struct alist *extension_list;
+	int ret, dir_len, len = 0;
+	char *overlay_dir;
+	const char *slash;
+	ulong fdt_addr;
+
+	ret = extension_scan();
+	if (ret < 0)
+		return;
+
+	extension_list = extension_get_list();
+	if (!extension_list)
+		return;
+
+	/* Get the main fdt and map it */
+	fdt_addr = env_get_hex("fdt_addr_r", 0);
+	working_fdt = map_sysmem(fdt_addr, 0);
+	if (fdt_check_header(working_fdt))
+		return;
+
+	/* Use fdtdir for now as the overlay devicetree directory */
+	if (label->fdtdir) {
+		len = strlen(label->fdtdir);
+		if (!len)
+			slash = "./";
+		else if (label->fdtdir[len - 1] != '/')
+			slash = "/";
+		else
+			slash = "";
+	} else {
+		slash = "/";
+	}
+	dir_len = len + strlen(slash) + 1;
+
+	overlay_dir = calloc(1, dir_len);
+	if (!overlay_dir)
+		return;
+
+	snprintf(overlay_dir, dir_len, "%s%s", label->fdtdir ?: "", slash);
+
+	alist_for_each(extension, extension_list) {
+		char *overlay_file;
+		ulong size;
+
+		len = dir_len + strlen(extension->overlay);
+		overlay_file = calloc(1, len);
+		if (!overlay_file)
+			goto cleanup;
+
+		snprintf(overlay_file, len, "%s%s", overlay_dir,
+			 extension->overlay);
+
+		/* Load extension overlay file */
+		ret = get_relfile_envaddr(ctx, overlay_file,
+					  "extension_overlay_addr",
+					  (enum bootflow_img_t)IH_TYPE_FLATDT,
+					  &size);
+		if (ret < 0) {
+			printf("Failed loading overlay %s\n", overlay_file);
+			free(overlay_file);
+			continue;
+		}
+
+		ret = extension_apply(working_fdt, size);
+		if (ret) {
+			printf("Failed applying overlay %s\n", overlay_file);
+			free(overlay_file);
+			continue;
+		}
+		free(overlay_file);
+	}
+
+cleanup:
+	free(overlay_dir);
+#endif
+}
 
 /**
  * label_boot() - Boot according to the contents of a pxe_label
@@ -490,7 +574,8 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 	}
 
 	if (get_relfile_envaddr(ctx, label->kernel, "kernel_addr_r",
-				NULL) < 0) {
+				(enum bootflow_img_t)IH_TYPE_KERNEL, NULL)
+				< 0) {
 		printf("Skipping %s for failure retrieving kernel\n",
 		       label->name);
 		return 1;
@@ -516,6 +601,7 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 	} else if (label->initrd) {
 		ulong size;
 		if (get_relfile_envaddr(ctx, label->initrd, "ramdisk_addr_r",
+					(enum bootflow_img_t)IH_TYPE_RAMDISK,
 					&size) < 0) {
 			printf("Skipping %s for failure retrieving initrd\n",
 			       label->name);
@@ -661,7 +747,8 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 
 		if (fdtfile) {
 			int err = get_relfile_envaddr(ctx, fdtfile,
-						      "fdt_addr_r", NULL);
+				"fdt_addr_r",
+				 (enum bootflow_img_t)IH_TYPE_FLATDT, NULL);
 
 			free(fdtfilefree);
 			if (err < 0) {
@@ -686,6 +773,8 @@ static int label_boot(struct pxe_context *ctx, struct pxe_label *label)
 			if (label->fdtoverlays)
 				label_boot_fdtoverlay(ctx, label);
 #endif
+			label_boot_extension(ctx, label);
+
 		} else {
 			bootm_argv[3] = NULL;
 		}
@@ -1349,7 +1438,7 @@ static int parse_pxefile_top(struct pxe_context *ctx, char *p, unsigned long bas
 		case T_ONTIMEOUT:
 			err = parse_sliteral(&p, &label_name);
 
-			if (label_name) {
+			if (err >= 0 && label_name) {
 				if (cfg->default_label)
 					free(cfg->default_label);
 
@@ -1361,7 +1450,7 @@ static int parse_pxefile_top(struct pxe_context *ctx, char *p, unsigned long bas
 		case T_FALLBACK:
 			err = parse_sliteral(&p, &label_name);
 
-			if (label_name) {
+			if (err >= 0 && label_name) {
 				if (cfg->fallback_label)
 					free(cfg->fallback_label);
 
@@ -1548,7 +1637,8 @@ void handle_pxe_menu(struct pxe_context *ctx, struct pxe_menu *cfg)
 	if (IS_ENABLED(CONFIG_CMD_BMP)) {
 		/* display BMP if available */
 		if (cfg->bmp) {
-			if (get_relfile(ctx, cfg->bmp, image_load_addr, NULL)) {
+			if (get_relfile(ctx, cfg->bmp, image_load_addr,
+					BFI_LOGO, NULL)) {
 #if defined(CONFIG_VIDEO)
 				struct udevice *dev;
 

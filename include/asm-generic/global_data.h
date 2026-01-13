@@ -23,7 +23,7 @@
 #include <board_f.h>
 #include <event_internal.h>
 #include <fdtdec.h>
-#include <membuff.h>
+#include <membuf.h>
 #include <linux/list.h>
 #include <linux/build_bug.h>
 #include <asm-offsets.h>
@@ -316,14 +316,14 @@ struct global_data {
 	 *
 	 * This buffer is used to collect output during console recording.
 	 */
-	struct membuff console_out;
+	struct membuf console_out;
 	/**
 	 * @console_in: input buffer for console recording
 	 *
 	 * If console recording is activated, this buffer can be used to
 	 * emulate input.
 	 */
-	struct membuff console_in;
+	struct membuf console_in;
 #endif
 #if CONFIG_IS_ENABLED(VIDEO)
 	/**
@@ -671,10 +671,10 @@ enum gd_flags {
 	 * @GD_FLG_FDT_CHANGED: Device tree change has been detected by tests
 	 */
 	GD_FLG_FDT_CHANGED = 0x100000,
-	/**
-	 * @GD_FLG_OF_TAG_MIGRATE: Device tree has old u-boot,dm- tags
+	/*
+	 * @GD_FLG_OF_TAG_MIGRATE: Previously had the value of 0x200000 but was
+	 * freed when migration support was removed.
 	 */
-	GD_FLG_OF_TAG_MIGRATE = 0x200000,
 	/**
 	 * @GD_FLG_DM_DEAD: Driver model is not accessible. This can be set when
 	 * the memory used to holds its tables has been mapped out.

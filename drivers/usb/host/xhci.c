@@ -352,7 +352,7 @@ static unsigned int xhci_get_endpoint_interval(struct usb_device *udev,
 		 * since it uses the same rules as low speed interrupt
 		 * endpoints.
 		 */
-
+		fallthrough;
 	case USB_SPEED_LOW:
 		if (usb_endpoint_xfer_int(endpt_desc) ||
 		    usb_endpoint_xfer_isoc(endpt_desc)) {
@@ -1241,7 +1241,7 @@ static int xhci_lowlevel_init(struct xhci_ctrl *ctrl)
 
 	reg = xhci_readl(&hccr->cr_hcsparams1);
 	ctrl->hub_desc.bNbrPorts = HCS_MAX_PORTS(reg);
-	printf("Register %x NbrPorts %d\n", reg, ctrl->hub_desc.bNbrPorts);
+	debug("Register %x NbrPorts %d\n", reg, ctrl->hub_desc.bNbrPorts);
 
 	/* Port Indicators */
 	reg = xhci_readl(&hccr->cr_hccparams);

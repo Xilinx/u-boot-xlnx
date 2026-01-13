@@ -338,7 +338,6 @@ static u32 zynqmp_clk_get_register(enum zynqmp_clk id)
 		return CRL_APB_IOPLL_TO_FPD_CTRL;
 	case dpll_to_lpd:
 		return CRF_APB_DPLL_TO_LPD_CTRL;
-
 	default:
 		debug("Invalid clk id%d\n", id);
 	}
@@ -883,7 +882,7 @@ static int zynqmp_clk_enable(struct clk *clk)
 	return ret;
 }
 
-static struct clk_ops zynqmp_clk_ops = {
+static const struct clk_ops zynqmp_clk_ops = {
 	.set_rate = zynqmp_clk_set_rate,
 	.get_rate = zynqmp_clk_get_rate,
 	.enable = zynqmp_clk_enable,

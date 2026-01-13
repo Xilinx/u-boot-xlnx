@@ -110,7 +110,7 @@ struct clk *at91_clk_main_rc(void __iomem *reg, const char *name,
 	struct clk *clk;
 	int ret;
 
-	if (!reg || !name || !parent_name)
+	if (!reg || !name)
 		return ERR_PTR(-EINVAL);
 
 	main_rc = kzalloc(sizeof(*main_rc), GFP_KERNEL);
@@ -315,7 +315,8 @@ static int clk_sam9x5_main_set_parent(struct clk *clk, struct clk *parent)
 {
 	struct clk_main *main = to_clk_main(clk);
 	void __iomem *reg = main->reg;
-	unsigned int tmp, index;
+	unsigned int tmp;
+	int index;
 
 	index = at91_clk_mux_val_to_index(main->clk_mux_table,
 			main->num_parents, AT91_CLK_ID_TO_DID(parent->id));

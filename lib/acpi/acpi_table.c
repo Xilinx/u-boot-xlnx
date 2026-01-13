@@ -66,6 +66,7 @@ int acpi_create_dmar(struct acpi_dmar *dmar, enum dmar_flags flags)
 
 	dmar->host_address_width = info.address_width - 1;
 	dmar->flags = flags;
+	header->checksum = table_compute_checksum(dmar, header->length);
 
 	return 0;
 }
@@ -133,8 +134,8 @@ void acpi_fill_header(struct acpi_table_header *header, char *signature)
 	memcpy(header->oem_id, OEM_ID, 6);
 	memcpy(header->oem_table_id, OEM_TABLE_ID, 8);
 	header->oem_revision = OEM_REVISION;
-	memcpy(header->creator_id, ASLC_ID, 4);
-	header->creator_revision = ASL_REVISION;
+	memcpy(header->creator_id, ACPI_CREATOR_ID, 4);
+	header->creator_revision = ACPI_CREATOR_REVISION;
 }
 
 void acpi_align(struct acpi_ctx *ctx)
@@ -195,9 +196,7 @@ int acpi_add_table(struct acpi_ctx *ctx, void *table)
 					(sizeof(u32) * (i + 1));
 
 		/* Re-calculate checksum */
-		rsdt->header.checksum = 0;
-		rsdt->header.checksum = table_compute_checksum((u8 *)rsdt,
-							       rsdt->header.length);
+		acpi_update_checksum(&rsdt->header);
 	}
 
 	if (ctx->xsdt) {
@@ -228,9 +227,7 @@ int acpi_add_table(struct acpi_ctx *ctx, void *table)
 					(sizeof(u64) * (i + 1));
 
 		/* Re-calculate checksum */
-		xsdt->header.checksum = 0;
-		xsdt->header.checksum = table_compute_checksum((u8 *)xsdt,
-							       xsdt->header.length);
+		acpi_update_checksum(&xsdt->header);
 	}
 
 	return 0;
@@ -251,12 +248,12 @@ int acpi_write_fadt(struct acpi_ctx *ctx, const struct acpi_writer *entry)
 	header->revision = acpi_get_table_revision(ACPITAB_FADT);
 	memcpy(header->oem_id, OEM_ID, 6);
 	memcpy(header->oem_table_id, OEM_TABLE_ID, 8);
-	memcpy(header->creator_id, ASLC_ID, 4);
+	memcpy(header->creator_id, ACPI_CREATOR_ID, 4);
 	header->creator_revision = 1;
 	fadt->minor_revision = 2;
 
-	fadt->x_firmware_ctrl = map_to_sysmem(ctx->facs);
-	fadt->x_dsdt = map_to_sysmem(ctx->dsdt);
+	fadt->x_firmware_ctrl = nomap_to_sysmem(ctx->facs);
+	fadt->x_dsdt = nomap_to_sysmem(ctx->dsdt);
 
 	if (fadt->x_firmware_ctrl < 0x100000000ULL)
 		fadt->firmware_ctrl = fadt->x_firmware_ctrl;
@@ -268,12 +265,14 @@ int acpi_write_fadt(struct acpi_ctx *ctx, const struct acpi_writer *entry)
 
 	acpi_fill_fadt(fadt);
 
-	header->checksum = table_compute_checksum(fadt, header->length);
+	acpi_update_checksum(header);
 
 	return acpi_add_fadt(ctx, fadt);
 }
 
+#ifndef CONFIG_QFW_ACPI
 ACPI_WRITER(5fadt, "FADT", acpi_write_fadt, 0);
+#endif
 
 int acpi_write_madt(struct acpi_ctx *ctx, const struct acpi_writer *entry)
 {
@@ -301,14 +300,16 @@ int acpi_write_madt(struct acpi_ctx *ctx, const struct acpi_writer *entry)
 	if (IS_ENABLED(CONFIG_ACPI_PARKING_PROTOCOL))
 		acpi_write_park(madt);
 
-	header->checksum = table_compute_checksum((void *)madt, header->length);
+	acpi_update_checksum(header);
 	acpi_add_table(ctx, madt);
 	ctx->current = (void *)madt + madt->header.length;
 
 	return 0;
 }
 
+#ifndef CONFIG_QFW_ACPI
 ACPI_WRITER(5madt, "MADT", acpi_write_madt, 0);
+#endif
 
 void acpi_create_dbg2(struct acpi_dbg2_header *dbg2,
 		      int port_type, int port_subtype,
@@ -370,7 +371,7 @@ void acpi_create_dbg2(struct acpi_dbg2_header *dbg2,
 	/* Update structure lengths and checksum */
 	device->length = current - (uintptr_t)device;
 	header->length = current - (uintptr_t)dbg2;
-	header->checksum = table_compute_checksum(dbg2, header->length);
+	acpi_update_checksum(header);
 }
 
 int acpi_write_dbg2_pci_uart(struct acpi_ctx *ctx, struct udevice *dev,
@@ -545,7 +546,7 @@ static int acpi_write_spcr(struct acpi_ctx *ctx, const struct acpi_writer *entry
 		spcr->baud_rate = 0;
 
 	/* Fix checksum */
-	header->checksum = table_compute_checksum((void *)spcr, header->length);
+	acpi_update_checksum(header);
 
 	acpi_add_table(ctx, spcr);
 	acpi_inc(ctx, spcr->header.length);
@@ -611,6 +612,7 @@ int acpi_iort_add_named_component(struct acpi_ctx *ctx,
 	node->length += strlen(device_name) + 1;
 
 	comp = (struct acpi_iort_named_component *)node->node_data;
+	memset(comp, '\0', sizeof(struct acpi_iort_named_component));
 
 	comp->node_flags = node_flags;
 	comp->memory_properties = memory_properties;
@@ -631,6 +633,7 @@ int acpi_iort_add_rc(struct acpi_ctx *ctx,
 		     const struct acpi_iort_id_mapping *map)
 {
 	struct acpi_iort_id_mapping *mapping;
+	struct acpi_iort_node *output_node;
 	struct acpi_iort_node *node;
 	struct acpi_iort_rc *rc;
 	int offset;
@@ -642,12 +645,18 @@ int acpi_iort_add_rc(struct acpi_ctx *ctx,
 
 	node->type = ACPI_IORT_NODE_PCI_ROOT_COMPLEX;
 	node->revision = 2;
+	node->mapping_count = num_mappings;
+	if (num_mappings)
+		node->mapping_offset = sizeof(struct acpi_iort_node) +
+				       sizeof(struct acpi_iort_rc);
 
 	node->length = sizeof(struct acpi_iort_node);
 	node->length += sizeof(struct acpi_iort_rc);
 	node->length += sizeof(struct acpi_iort_id_mapping) * num_mappings;
 
 	rc = (struct acpi_iort_rc *)node->node_data;
+	memset(rc, '\0', sizeof(struct acpi_iort_rc));
+
 	rc->mem_access_properties = mem_access_properties;
 	rc->ats_attributes = ats_attributes;
 	rc->pci_segment_number = pci_segment_number;
@@ -655,6 +664,13 @@ int acpi_iort_add_rc(struct acpi_ctx *ctx,
 
 	mapping = (struct acpi_iort_id_mapping *)(rc + 1);
 	for (int i = 0; i < num_mappings; i++) {
+		/* Validate input */
+		output_node = (struct acpi_iort_node *)ctx->tab_start + map[i].output_reference;
+		/* ID mappings can use SMMUs or ITS groups as output references */
+		assert(output_node && ((output_node->type == ACPI_IORT_NODE_ITS_GROUP) ||
+				       (output_node->type == ACPI_IORT_NODE_SMMU) ||
+				       (output_node->type == ACPI_IORT_NODE_SMMU_V3)));
+
 		memcpy(mapping, &map[i], sizeof(struct acpi_iort_id_mapping));
 		mapping++;
 	}
@@ -679,6 +695,7 @@ int acpi_iort_add_smmu_v3(struct acpi_ctx *ctx,
 			  const struct acpi_iort_id_mapping *map)
 {
 	struct acpi_iort_node *node;
+	struct acpi_iort_node *output_node;
 	struct acpi_iort_smmu_v3 *smmu;
 	struct acpi_iort_id_mapping *mapping;
 	int offset;
@@ -691,13 +708,16 @@ int acpi_iort_add_smmu_v3(struct acpi_ctx *ctx,
 	node->type = ACPI_IORT_NODE_SMMU_V3;
 	node->revision = 5;
 	node->mapping_count = num_mappings;
-	node->mapping_offset = sizeof(struct acpi_iort_node) + sizeof(struct acpi_iort_smmu_v3);
+	if (num_mappings)
+		node->mapping_offset = sizeof(struct acpi_iort_node) +
+				       sizeof(struct acpi_iort_smmu_v3);
 
 	node->length = sizeof(struct acpi_iort_node);
 	node->length += sizeof(struct acpi_iort_smmu_v3);
 	node->length += sizeof(struct acpi_iort_id_mapping) * num_mappings;
 
 	smmu = (struct acpi_iort_smmu_v3 *)node->node_data;
+	memset(smmu, '\0', sizeof(struct acpi_iort_smmu_v3));
 
 	smmu->base_address = base_address;
 	smmu->flags = flags;
@@ -712,6 +732,14 @@ int acpi_iort_add_smmu_v3(struct acpi_ctx *ctx,
 
 	mapping = (struct acpi_iort_id_mapping *)(smmu + 1);
 	for (int i = 0; i < num_mappings; i++) {
+		/* Validate input */
+		output_node = (struct acpi_iort_node *)ctx->tab_start + map[i].output_reference;
+		/*
+		 * ID mappings of an SMMUv3 node can only have ITS group nodes
+		 * as output references.
+		 */
+		assert(output_node && output_node->type == ACPI_IORT_NODE_ITS_GROUP);
+
 		memcpy(mapping, &map[i], sizeof(struct acpi_iort_id_mapping));
 		mapping++;
 	}
@@ -755,7 +783,7 @@ static int acpi_write_iort(struct acpi_ctx *ctx, const struct acpi_writer *entry
 
 	/* (Re)calculate length and checksum */
 	iort->header.length = ctx->current - (void *)iort;
-	iort->header.checksum = table_compute_checksum((void *)iort, iort->header.length);
+	acpi_update_checksum(&iort->header);
 	log_debug("IORT at %p, length %x\n", iort, iort->header.length);
 
 	/* Drop the table if it is empty */

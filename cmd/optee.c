@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <tee.h>
 #include <vsprintf.h>
+#include <linux/string.h>
 
 #define TA_HELLO_WORLD_CMD_INC_VALUE 0
 /* This needs to match the UUID of the Hello World TA. */
@@ -53,7 +54,7 @@ static int do_optee_hello_world_ta(struct cmd_tbl *cmdtp, int flag, int argc,
 {
 	int ret, value = 0;
 
-	if (strcmp(argv[1], NULL))
+	if (argc > 1)
 		value = hextoul(argv[1], NULL);
 
 	ret = hello_world_ta(value);

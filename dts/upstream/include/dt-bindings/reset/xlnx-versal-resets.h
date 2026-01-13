@@ -6,6 +6,13 @@
 #ifndef _DT_BINDINGS_VERSAL_RESETS_H
 #define _DT_BINDINGS_VERSAL_RESETS_H
 
+/*
+ * These bindings are deprecated, because they do not match the actual
+ * concept of bindings but rather contain pure firmware values.
+ * Instead include the header in the DTS source directory.
+ */
+#warning "These bindings are deprecated. Instead use the header in the DTS source directory."
+
 #define VERSAL_RST_PMC_POR			(0xc30c001U)
 #define VERSAL_RST_PMC				(0xc410002U)
 #define VERSAL_RST_PS_POR			(0xc30c003U)

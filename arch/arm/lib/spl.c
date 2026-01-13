@@ -16,6 +16,9 @@
 #include <asm/global_data.h>
 #include <linux/compiler.h>
 #include <asm/mach-types.h>
+#if defined(CONFIG_ARM) && !defined(CONFIG_ARM64)
+#include <asm/armv7.h>
+#endif
 
 #ifndef CONFIG_SPL_DM
 /* Pointer to as well as the global data structure for SPL */
@@ -46,8 +49,7 @@ void __weak board_init_f(ulong dummy)
 }
 
 /*
- * This function jumps to an image with argument. Normally an FDT or ATAGS
- * image.
+ * This function jumps to an image with argument, usually an FDT.
  */
 #if CONFIG_IS_ENABLED(OS_BOOT)
 #ifdef CONFIG_ARM64
@@ -72,6 +74,13 @@ void __noreturn jump_to_image_linux(struct spl_image_info *spl_image)
 	image_entry_arg_t image_entry =
 		(image_entry_arg_t)(uintptr_t) spl_image->entry_point;
 	cleanup_before_linux();
+#if defined(CONFIG_BOOTM_OPTEE) && defined(CONFIG_ARM) && !defined(CONFIG_ARM64)
+	if (spl_image->optee_addr)
+		boot_jump_linux_via_optee((void *)(spl_image->entry_point),
+					  machid,
+					  (u32)(spl_image->arg),
+					  spl_image->optee_addr);
+#endif
 	image_entry(0, machid, spl_image->arg);
 }
 #endif	/* CONFIG_ARM64 */

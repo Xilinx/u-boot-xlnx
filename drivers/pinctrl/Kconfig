@@ -178,6 +178,14 @@ config PINCTRL_APPLE
 	  both the GPIO definitions and pin control functions for each
 	  available multiplex function.
 
+config PINCTRL_ADI
+	bool "ADI pinctrl driver"
+	depends on DM && ARCH_SC5XX
+	help
+	  This driver enables pinctrl support on SC5xx processors. This
+	  driver covers only the pin configuration functionality, and
+	  GPIO functionality is contained in the separate GPIO driver.
+
 config PINCTRL_AR933X
 	bool "QCA/Athores ar933x pin control driver"
 	depends on DM && SOC_AR933X
@@ -189,7 +197,7 @@ config PINCTRL_AR933X
 
 config PINCTRL_AT91
 	bool "AT91 pinctrl driver"
-	depends on DM
+	depends on DM && ARCH_AT91
 	help
 	  This option is to enable the AT91 pinctrl driver for AT91 PIO
 	  controller.
@@ -205,13 +213,14 @@ config PINCTRL_AT91
 
 config PINCTRL_AT91PIO4
 	bool "AT91 PIO4 pinctrl driver"
-	depends on DM
+	depends on DM && ARCH_AT91
 	help
 	  This option is to enable the AT91 pinctrl driver for AT91 PIO4
 	  controller which is available on SAMA5D2 SoC.
 
 config PINCTRL_INTEL
 	bool "Standard Intel pin-control and pin-mux driver"
+	depends on X86
 	help
 	  Recent Intel chips such as Apollo Lake (APL) use a common pin control
 	  and GPIO scheme. The settings for this come from an SoC-specific
@@ -240,7 +249,7 @@ config PINCTRL_QCA953X
 
 config PINCTRL_QE
 	bool "QE based pinctrl driver, like on mpc83xx"
-	depends on DM
+	depends on DM && MPC83xx
 	help
 	  This option is to enable the QE pinctrl driver for QE based io
 	  controller.
@@ -254,6 +263,24 @@ config PINCTRL_ROCKCHIP_RV1108
 	  The driver is controlled by a device tree node which contains
 	  both the GPIO definitions and pin control functions for each
 	  available multiplex function.
+
+config PINCTRL_SX150X
+	bool "Semtech SX150x I2C GPIO expander pinctrl driver"
+	depends on DM && PINCTRL_FULL
+	help
+	  Say yes here to provide support for Semtech SX150x-series I2C
+	  GPIO expanders as pinctrl module.
+	  Compatible models include:
+	  - 8 bits:  sx1508q, sx1502q
+	  - 16 bits: sx1509q, sx1506q
+
+config SPL_PINCTRL_SX150X
+	bool "Semtech SX150x I2C GPIO expander pinctrl driver in SPL"
+	depends on DM && SPL_PINCTRL_FULL
+	help
+	  This option is an SPL-variant of the PINCTRL_SX150X option.
+	  See the help of PINCTRL_SX150X for details.
+
 
 config PINCTRL_SANDBOX
 	bool "Sandbox pinctrl driver"
@@ -314,6 +341,14 @@ config SPL_PINCTRL_STMFX
 	help
 	  This option is an SPL-variant of the SPL_PINCTRL_STMFX option.
 	  See the help of PINCTRL_STMFX for details.
+
+config PINCTRL_TH1520
+	bool "T-Head TH1520 pinctrl driver"
+	depends on DM && PINCTRL_FULL
+	select PINCONF
+	help
+	  Support pin multiplexing and configuration control blocks on the
+	  T-Head TH1520 SoC.
 
 config ASPEED_AST2500_PINCTRL
 	bool "Aspeed AST2500 pin control driver"

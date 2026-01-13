@@ -123,6 +123,7 @@ int sc_rm_set_master_sid(sc_ipc_t ipc, sc_rsrc_t resource, sc_rm_sid_t sid);
 
 /* Timer API */
 int sc_timer_set_wdog_window(sc_ipc_t ipc, sc_timer_wdog_time_t window);
+int sc_timer_control_siemens_pmic_wdog(sc_ipc_t ipc, u8 cmd);
 
 /* SECO API */
 int sc_seco_authenticate(sc_ipc_t ipc, sc_seco_auth_cmd_t cmd,
@@ -143,6 +144,7 @@ int sc_seco_secvio_dgo_config(sc_ipc_t ipc, u8 id, u8 access, u32 *data);
 int sc_seco_secvio_config(sc_ipc_t ipc, u8 id, u8 access,
 			  u32 *data0, u32 *data1, u32 *data2, u32 *data3,
 			  u32 *data4, u8 size);
+int sc_seco_commit(sc_ipc_t ipc, u32 *info);
 #else
 /* PM API*/
 static inline int sc_pm_set_resource_power_mode(sc_ipc_t ipc, sc_rsrc_t resource,
@@ -378,6 +380,11 @@ static inline int sc_seco_secvio_dgo_config(sc_ipc_t ipc, u8 id, u8 access, u32 
 
 static inline int sc_seco_secvio_config(sc_ipc_t ipc, u8 id, u8 access, u32 *data0, u32 *data1,
 					u32 *data2, u32 *data3, u32 *data4, u8 size)
+{
+	return -EOPNOTSUPP;
+}
+
+static inline int sc_seco_commit(sc_ipc_t ipc, u32 *info)
 {
 	return -EOPNOTSUPP;
 }

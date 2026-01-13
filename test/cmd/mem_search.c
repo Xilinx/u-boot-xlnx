@@ -7,6 +7,7 @@
  */
 
 #include <console.h>
+#include <env.h>
 #include <mapmem.h>
 #include <dm/test.h>
 #include <test/ut.h>
@@ -14,7 +15,7 @@
 #define BUF_SIZE	0x100
 
 /* Declare a new mem test */
-#define MEM_TEST(_name, _flags)	UNIT_TEST(_name, _flags, mem_test)
+#define MEM_TEST(_name, _flags)	UNIT_TEST(_name, _flags, mem)
 
 /* Test 'ms' command with bytes */
 static int mem_test_ms_b(struct unit_test_state *uts)

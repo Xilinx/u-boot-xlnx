@@ -15,6 +15,10 @@
 		};
 	};
 #endif
+	imx8mm-cm4 {
+		compatible = "fsl,imx8mm-cm4";
+		syscon = <&src>;
+	};
 };
 
 #ifdef CONFIG_FSL_CAAM
@@ -164,6 +168,21 @@
 					};
 #endif
 
+					tee: tee {
+						description = "OP-TEE";
+						type = "tee";
+						arch = "arm64";
+						compression = "none";
+						os = "tee";
+						load = <CONFIG_IMX8M_OPTEE_LOAD_ADDR>;
+						entry = <CONFIG_IMX8M_OPTEE_LOAD_ADDR>;
+
+						tee-os {
+							filename = "tee.bin";
+							optional;
+						};
+					};
+
 					binman_fip: fip {
 						arch = "arm64";
 						compression = "none";
@@ -192,7 +211,7 @@
 						fdt = "fdt-SEQ";
 						firmware = "uboot";
 #ifndef CONFIG_ARMV8_PSCI
-						loadables = "atf";
+						loadables = "atf", "tee";
 #endif
 					};
 				};
@@ -216,6 +235,11 @@
 };
 
 &osc_24m {
+	bootph-all;
+	bootph-pre-ram;
+};
+
+&osc_32k {
 	bootph-all;
 	bootph-pre-ram;
 };

@@ -7,16 +7,6 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 
-/ {
-	reg_3p3v: regulator-3p3v {
-		compatible = "regulator-fixed";
-		regulator-name = "supply-3p3v";
-		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		regulator-always-on;
-	};
-};
-
 &ecspi1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_ecspi1>;
@@ -25,11 +15,16 @@
 
 	m25p80: flash@0 {
 		compatible = "jedec,spi-nor";
-		spi-max-frequency = <50000000>;
 		reg = <0>;
-		#address-cells = <1>;
-		#size-cells = <1>;
+		spi-max-frequency = <50000000>;
+		vcc-supply = <&sw4_reg>;
 		m25p,fast-read;
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
 	};
 };
 
@@ -56,20 +51,6 @@
 		fsl,pins = <
 			MX6QDL_PAD_CSI0_DAT8__GPIO5_IO26 0x4001b899
 			MX6QDL_PAD_CSI0_DAT9__GPIO5_IO27 0x4001b899
-		>;
-	};
-
-	pinctrl_i2c3: i2c3grp {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_5__I2C3_SCL 0x4001b899
-			MX6QDL_PAD_GPIO_6__I2C3_SDA 0x4001b899
-		>;
-	};
-
-	pinctrl_i2c3_recovery: i2c3recoverygrp {
-		fsl,pins = <
-			MX6QDL_PAD_GPIO_5__GPIO1_IO05 0x4001b899
-			MX6QDL_PAD_GPIO_6__GPIO1_IO06 0x4001b899
 		>;
 	};
 
@@ -133,7 +114,7 @@
 		};
 
 		sw4_reg: sw4 {
-			regulator-min-microvolt = <800000>;
+			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3300000>;
 			regulator-always-on;
 		};
@@ -197,7 +178,7 @@
 &usdhc3 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_usdhc3>;
-	vmmc-supply = <&reg_3p3v>;
+	vmmc-supply = <&sw4_reg>;
 	non-removable;
 	disable-wp;
 	no-sd;

@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0 OR MIT
+/*
+ * Copyright (C) 2022 StarFive Technology Co., Ltd.
+ */
+
+/ {
+	soc {
+		memory-controller@15700000 {
+			clock-frequency = <2133>; /* FIXME: delete property and implement CCF */
+		};
+	};
+};
+
+&syscrg {
+	assigned-clock-rates = <0>; /* FIXME: delete property and implement cpufreq */
+};
+
+#include "starfive-visionfive2-binman.dtsi"

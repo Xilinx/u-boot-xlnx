@@ -19,9 +19,8 @@ Description
 The tftpput command is used to transfer a file to a TFTP server.
 
 By default the destination port is 69 and the source port is pseudo-random.
-If CONFIG_TFTP_PORT=y, the environment variable *tftpsrcp* can be used to set
-the source port and the environment variable *tftpdstp* can be used to set
-the destination port.
+The environment variable *tftpsrcp* can be used to set the source port and the
+environment variable *tftpdstp* can be used to set the destination port.
 
 address
     memory address where the data starts
@@ -75,16 +74,8 @@ The command is only available if CONFIG_CMD_TFTPPUT=y.
 CONFIG_TFTP_BLOCKSIZE defines the size of the TFTP blocks sent. It defaults
 to 1468 matching an ethernet MTU of 1500.
 
-If CONFIG_TFTP_PORT=y, the environment variables *tftpsrcp* and *tftpdstp* can
-be used to set the source and the destination ports.
-
 CONFIG_TFTP_WINDOWSIZE can be used to set the TFTP window size of transmits
 after which an ACK response is required. The window size defaults to 1.
 
 If CONFIG_TFTP_TSIZE=y, the progress bar is limited to 50 '#' characters.
 Otherwise an '#' is written per UDP package which may decrease performance.
-
-Return value
-------------
-
-The return value $? is 0 (true) on success and 1 (false) otherwise.

@@ -14,6 +14,7 @@
 #include <asm/global_data.h>
 #include <asm/system.h>
 #include <asm/armv8/mmu.h>
+#include <linux/errno.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -55,6 +56,54 @@ static int get_effective_el(void)
 	}
 
 	return el;
+}
+
+int mem_map_from_dram_banks(unsigned int index, unsigned int len, u64 attrs)
+{
+	unsigned int i;
+
+	if (index + CONFIG_NR_DRAM_BANKS >= len) {
+		log_err("%s: Provided mem_map array has insufficient size for DRAM entries\n",
+			__func__);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
+		mem_map[index].virt = gd->bd->bi_dram[i].start;
+		mem_map[index].phys = gd->bd->bi_dram[i].start;
+		mem_map[index].size = gd->bd->bi_dram[i].size;
+		mem_map[index].attrs = attrs;
+		index++;
+	}
+
+	memset(&mem_map[index], 0, sizeof(mem_map[index]));
+
+	return 0;
+}
+
+int mmu_unmap_reserved_mem(const char *name, bool check_nomap)
+{
+	void *fdt = (void *)gd->fdt_blob;
+	char node_path[128];
+	fdt_addr_t addr;
+	fdt_size_t size;
+	int ret;
+
+	snprintf(node_path, sizeof(node_path), "/reserved-memory/%s", name);
+	ret = fdt_path_offset(fdt, node_path);
+	if (ret < 0)
+		return ret;
+
+	if (check_nomap && !fdtdec_get_bool(fdt, ret, "no-map"))
+		return -EINVAL;
+
+	addr = fdtdec_get_addr_size(fdt, ret, "reg", &size);
+	if (addr == FDT_ADDR_T_NONE)
+		return -1;
+
+	mmu_change_region_attr_nobreak(addr, size, PTE_TYPE_FAULT);
+
+	return 0;
 }
 
 u64 get_tcr(u64 *pips, u64 *pva_bits)
@@ -421,7 +470,7 @@ static int count_ranges(void)
 	return count;
 }
 
-#define ALL_ATTRS (3 << 8 | PMD_ATTRINDX_MASK)
+#define ALL_ATTRS (3 << 8 | PMD_ATTRMASK)
 #define PTE_IS_TABLE(pte, level) (pte_type(&(pte)) == PTE_TYPE_TABLE && (level) < 3)
 
 enum walker_state {
@@ -568,6 +617,24 @@ static void pretty_print_table_attrs(u64 pte)
 static void pretty_print_block_attrs(u64 pte)
 {
 	u64 attrs = pte & PMD_ATTRINDX_MASK;
+	u64 perm_attrs = pte & PMD_ATTRMASK;
+	char mem_attrs[16] = { 0 };
+	int cnt = 0;
+
+	if (perm_attrs & PTE_BLOCK_PXN)
+		cnt += snprintf(mem_attrs + cnt, sizeof(mem_attrs) - cnt, "PXN ");
+	if (perm_attrs & PTE_BLOCK_UXN) {
+		if (get_effective_el() == 1)
+			cnt += snprintf(mem_attrs + cnt, sizeof(mem_attrs) - cnt, "UXN ");
+		else
+			cnt += snprintf(mem_attrs + cnt, sizeof(mem_attrs) - cnt, "XN ");
+	}
+	if (perm_attrs & PTE_BLOCK_RO)
+		cnt += snprintf(mem_attrs + cnt, sizeof(mem_attrs) - cnt, "RO");
+	if (!mem_attrs[0])
+		snprintf(mem_attrs, sizeof(mem_attrs), "RWX ");
+
+	printf(" | %-10s", mem_attrs);
 
 	switch (attrs) {
 	case PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE):
@@ -613,6 +680,7 @@ static void print_pte(u64 pte, int level)
 {
 	if (PTE_IS_TABLE(pte, level)) {
 		printf(" %-5s", "Table");
+		printf(" %-12s", "|");
 		pretty_print_table_attrs(pte);
 	} else {
 		pretty_print_pte_type(pte);
@@ -642,9 +710,9 @@ static bool pagetable_print_entry(u64 start_attrs, u64 end, int va_bits, int lev
 
 	printf("%*s", indent * 2, "");
 	if (PTE_IS_TABLE(start_attrs, level))
-		printf("[%#011llx]%14s", _addr, "");
+		printf("[%#016llx]%19s", _addr, "");
 	else
-		printf("[%#011llx - %#011llx]", _addr, end);
+		printf("[%#016llx - %#016llx]", _addr, end);
 
 	printf("%*s | ", (3 - level) * 2, "");
 	print_pte(start_attrs, level);
@@ -810,22 +878,21 @@ void flush_dcache_range(unsigned long start, unsigned long stop)
 void dcache_enable(void)
 {
 	/* The data cache is not active unless the mmu is enabled */
-	if (!(get_sctlr() & CR_M)) {
-		invalidate_dcache_all();
-		__asm_invalidate_tlb_all();
+	if (!mmu_status())
 		mmu_setup();
-	}
 
 	/* Set up page tables only once (it is done also by mmu_setup()) */
 	if (!gd->arch.tlb_fillptr)
 		setup_all_pgtables();
 
+	invalidate_dcache_all();
+	__asm_invalidate_tlb_all();
 	set_sctlr(get_sctlr() | CR_C);
 }
 
 void dcache_disable(void)
 {
-	uint32_t sctlr;
+	unsigned long sctlr;
 
 	sctlr = get_sctlr();
 
@@ -952,6 +1019,34 @@ void mmu_set_region_dcache_behaviour(phys_addr_t start, size_t size,
 	flush_dcache_range(real_start, real_start + real_size);
 }
 
+void mmu_change_region_attr_nobreak(phys_addr_t addr, size_t siz, u64 attrs)
+{
+	int level;
+	u64 r, size, start;
+
+	/*
+	 * Loop through the address range until we find a page granule that fits
+	 * our alignment constraints and set the new permissions
+	 */
+	start = addr;
+	size = siz;
+	while (size > 0) {
+		for (level = 1; level < 4; level++) {
+			/* Set PTE to new attributes */
+			r = set_one_region(start, size, attrs, true, level);
+			if (r) {
+				/* PTE successfully updated */
+				size -= r;
+				start += r;
+				break;
+			}
+		}
+	}
+	flush_dcache_range(gd->arch.tlb_addr,
+			   gd->arch.tlb_addr + gd->arch.tlb_size);
+	__asm_invalidate_tlb_all();
+}
+
 /*
  * Modify MMU table for a region with updated PXN/UXN/Memory type/valid bits.
  * The procecess is break-before-make. The target region will be marked as
@@ -986,27 +1081,47 @@ void mmu_change_region_attr(phys_addr_t addr, size_t siz, u64 attrs)
 			   gd->arch.tlb_addr + gd->arch.tlb_size);
 	__asm_invalidate_tlb_all();
 
-	/*
-	 * Loop through the address range until we find a page granule that fits
-	 * our alignment constraints, then set it to the new cache attributes
-	 */
-	start = addr;
-	size = siz;
-	while (size > 0) {
-		for (level = 1; level < 4; level++) {
-			/* Set PTE to new attributes */
-			r = set_one_region(start, size, attrs, true, level);
-			if (r) {
-				/* PTE successfully updated */
-				size -= r;
-				start += r;
-				break;
-			}
-		}
+	mmu_change_region_attr_nobreak(addr, siz, attrs);
+}
+
+int pgprot_set_attrs(phys_addr_t addr, size_t size, enum pgprot_attrs perm)
+{
+	u64 attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_INNER_SHARE | PTE_TYPE_VALID;
+
+	switch (perm) {
+	case MMU_ATTR_RO:
+		/*
+		 * get_effective_el() will return 1 if
+		 * - Running in EL1 so we assume an EL1 translation regime
+		 *   with HCR_EL2.{NV, NV1} != {1,1}
+		 * - Running in EL2 with HCR_EL2.E2H = 1 so we assume an
+		 *   EL2&0 translation regime. Since we don't have accesses
+		 *   from EL0 we don't have to check HCR_EL2.TGE
+		 *
+		 * Both of these requires PXN to be set
+		 */
+		if (get_effective_el() == 1)
+			attrs |= PTE_BLOCK_PXN | PTE_BLOCK_UXN | PTE_BLOCK_RO;
+		else
+			attrs |= PTE_BLOCK_UXN | PTE_BLOCK_RO;
+		break;
+	case MMU_ATTR_RX:
+		attrs |= PTE_BLOCK_RO;
+		break;
+	case MMU_ATTR_RW:
+		if (get_effective_el() == 1)
+			attrs |= PTE_BLOCK_PXN | PTE_BLOCK_UXN;
+		else
+			attrs |= PTE_BLOCK_UXN;
+		break;
+	default:
+		log_err("Unknown attribute %d\n", perm);
+		return -EINVAL;
 	}
-	flush_dcache_range(gd->arch.tlb_addr,
-			   gd->arch.tlb_addr + gd->arch.tlb_size);
-	__asm_invalidate_tlb_all();
+
+	mmu_change_region_attr_nobreak(addr, size, attrs);
+
+	return 0;
 }
 
 #else	/* !CONFIG_IS_ENABLED(SYS_DCACHE_OFF) */
@@ -1066,11 +1181,6 @@ int icache_status(void)
 	return (get_sctlr() & CR_I) != 0;
 }
 
-int mmu_status(void)
-{
-	return (get_sctlr() & CR_M) != 0;
-}
-
 void invalidate_icache_all(void)
 {
 	__asm_invalidate_icache_all();
@@ -1092,16 +1202,16 @@ int icache_status(void)
 	return 0;
 }
 
-int mmu_status(void)
-{
-	return 0;
-}
-
 void invalidate_icache_all(void)
 {
 }
 
 #endif	/* !CONFIG_IS_ENABLED(SYS_ICACHE_OFF) */
+
+int mmu_status(void)
+{
+	return (get_sctlr() & CR_M) != 0;
+}
 
 /*
  * Enable dCache & iCache, whether cache is actually enabled
@@ -1111,4 +1221,9 @@ void __weak enable_caches(void)
 {
 	icache_enable();
 	dcache_enable();
+}
+
+void arch_dump_mem_attrs(void)
+{
+	dump_pagetable(gd->arch.tlb_addr, get_tcr(NULL, NULL));
 }

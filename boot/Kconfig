@@ -11,6 +11,17 @@ config ANDROID_BOOT_IMAGE
 	  This enables support for booting images which use the Android
 	  image format header.
 
+config ANDROID_BOOT_IMAGE_IGNORE_BLOB_ADDR
+	bool "Android Boot Image ignore addr"
+	default n
+	help
+	  This ignore kernel/ramdisk load addr specified in androidboot header.
+
+	  There is a concern on exposing the whole memory to image loading is
+	  dangerous. Also, since it's not always possible to change the load
+	  addr by repacking the boot.img (mainly due to AVB signature mismatch),
+	  we need a way to use kernel_addr_r and ramdisk_addr_r.
+
 config TIMESTAMP
 	bool "Show image date and time when displaying image information"
 	default y if CMD_DATE
@@ -21,6 +32,24 @@ config TIMESTAMP
 	  enabled, then U-Boot requires FITs to have a timestamp. If a FIT is
 	  loaded that does not, the message 'Wrong FIT format: no timestamp'
 	  is shown.
+
+config LIB_BOOTI
+	bool
+
+config LIB_BOOTM
+	bool
+
+config LIB_BOOTZ
+	bool
+
+config SPL_LIB_BOOTI
+	bool
+
+config SPL_LIB_BOOTM
+	bool
+
+config SPL_LIB_BOOTZ
+	bool
 
 config BUTTON_CMD
 	bool "Support for running a command if a button is held during boot"
@@ -163,6 +192,18 @@ config SPL_FIT
 	select SPL_HASH
 	select SPL_OF_LIBFDT
 
+config VPL_FIT
+	bool "Support Flattened Image Tree within VPL"
+	depends on VPL
+	select VPL_HASH
+	select VPL_OF_LIBFDT
+
+config TPL_FIT
+	bool "Support Flattened Image Tree within TPL"
+	depends on TPL
+	select TPL_HASH
+	select TPL_OF_LIBFDT
+
 config SPL_FIT_PRINT
 	bool "Support FIT printing within SPL"
 	depends on SPL_FIT
@@ -170,18 +211,18 @@ config SPL_FIT_PRINT
 	  Support printing the content of the fitImage in a verbose manner in SPL.
 
 config SPL_FIT_FULL_CHECK
-	bool "Do a full check of the FIT before using it"
+	bool "Do a full check of the FIT within SPL before using it"
 	depends on SPL_FIT
 	help
-	  Enable this do a full check of the FIT to make sure it is valid. This
-	  helps to protect against carefully crafted FITs which take advantage
-	  of bugs or omissions in the code. This includes a bad structure,
-	  multiple root nodes and the like.
+	  Enable this do a full check of the FIT within SPL to make sure it is
+	  valid. This helps to protect against carefully crafted FITs which take
+	  advantage of bugs or omissions in the code. This includes a bad
+	  structure, multiple root nodes and the like.
 
 config SPL_FIT_SIGNATURE
 	bool "Enable signature verification of FIT firmware within SPL"
 	depends on SPL_DM
-	depends on SPL_LOAD_FIT || SPL_LOAD_FIT_FULL
+	depends on SPL_LOAD_FIT
 	select FIT_SIGNATURE
 	select SPL_FIT
 	select SPL_CRYPTO
@@ -234,6 +275,9 @@ config SPL_LOAD_FIT_ADDRESS
 	hex "load address of fit image"
 	depends on SPL_LOAD_FIT
 	default 0x44000000 if ARCH_IMX8M
+	default 0x60080000 if ARCH_ROCKCHIP && SPL_TEXT_BASE = 0x60000000
+	default 0x40200000 if ARCH_ROCKCHIP && SPL_TEXT_BASE = 0x40000000
+	default 0x00200000 if ARCH_ROCKCHIP && SPL_TEXT_BASE = 0x00000000
 	default 0x0
 	help
 	  Specify the load address of the fit image that will be loaded
@@ -259,7 +303,7 @@ config SPL_LOAD_FIT_APPLY_OVERLAY_BUF_SZ
 
 config SPL_LOAD_FIT_FULL
 	bool "Enable SPL loading U-Boot as a FIT (full fitImage features)"
-	select SPL_FIT
+	depends on SPL_LOAD_FIT
 	help
 	  Normally with the SPL framework a legacy image is generated as part
 	  of the build. This contains U-Boot along with information as to
@@ -267,6 +311,28 @@ config SPL_LOAD_FIT_FULL
 	  of a FIT (Flat Image Tree) which provides more flexibility. In
 	  particular it can handle selecting from multiple device tree
 	  and passing the correct one to U-Boot.
+
+config TPL_LOAD_FIT
+	bool "Enable TPL loading U-Boot as a FIT (basic fitImage features)"
+	depends on TPL
+	select TPL_FIT
+	help
+	  Normally with the SPL framework a legacy image is generated as part
+	  of the build. This contains U-Boot along with information as to
+	  where it should be loaded. This option instead enables generation
+	  of a FIT (Flat Image Tree) which provides more flexibility. In
+	  particular it can handle selecting from multiple device tree
+	  and passing the correct one to U-Boot.
+
+	  This path has the following limitations:
+
+	  1. "loadables" images, other than FDTs, which do not have a "load"
+	     property will not be loaded. This limitation also applies to FPGA
+	     images with the correct "compatible" string.
+	  2. For FPGA images, the supported "compatible" list is in the
+	     doc/uImage.FIT/source_file_format.txt.
+	  3. FDTs are only loaded for images with an "os" property of "u-boot".
+	     "linux" images are also supported with Falcon boot mode.
 
 config SPL_FIT_IMAGE_POST_PROCESS
 	bool "Enable post-processing of FIT artifacts after loading by the SPL"
@@ -291,6 +357,22 @@ config VPL_FIT
 	default y
 	select VPL_HASH
 	select VPL_OF_LIBFDT
+
+config VPL_LOAD_FIT
+	bool "Enable VPL loading U-Boot as a FIT (basic fitImage features)"
+	select VPL_FIT
+	default y
+
+config VPL_LOAD_FIT_FULL
+	bool "Enable SPL loading U-Boot as a FIT (full fitImage features)"
+	select VPL_FIT
+	help
+	  Normally with the SPL framework a legacy image is generated as part
+	  of the build. This contains U-Boot along with information as to
+	  where it should be loaded. This option instead enables generation
+	  of a FIT (Flat Image Tree) which provides more flexibility. In
+	  particular it can handle selecting from multiple device tree
+	  and passing the correct one to U-Boot.
 
 config VPL_FIT_PRINT
 	bool "Support FIT printing within VPL"
@@ -377,8 +459,8 @@ config BOOT_DEFAULTS
 
 menuconfig BOOTSTD
 	bool "Standard boot"
-	default y
-	depends on DM && OF_CONTROL && BLK
+	default y if BLK
+	depends on DM && OF_CONTROL
 	help
 	  U-Boot supports a standard way of locating something to boot,
 	  typically an Operating System such as Linux, provided by a distro such
@@ -485,7 +567,6 @@ config BOOTMETH_ANDROID
 	bool "Bootdev support for Android"
 	depends on X86 || ARM || SANDBOX
 	depends on CMDLINE
-	select ANDROID_AB
 	select ANDROID_BOOT_IMAGE
 	select CMD_BCB
 	imply CMD_FASTBOOT
@@ -621,6 +702,15 @@ config VPL_BOOTMETH_VBE
 	  supports selection of various firmware components, selection of an OS to
 	  boot as well as updating these using fwupd.
 
+config TPL_BOOTMETH_VBE
+	bool "Bootdev support for Verified Boot for Embedded (TPL)"
+	depends on TPL
+	default y
+	help
+	  Enables support for VBE boot. This is a standard boot method which
+	  supports selection of various firmware components, seleciton of an OS to
+	  boot as well as updating these using fwupd.
+
 if BOOTMETH_VBE
 
 config BOOTMETH_VBE_REQUEST
@@ -646,10 +736,26 @@ config SPL_BOOTMETH_VBE_REQUEST
 config BOOTMETH_VBE_SIMPLE
 	bool "Bootdev support for VBE 'simple' method"
 	default y
+	imply SPL_CRC8 if SPL
+	imply VPL_CRC8 if VPL
 	help
 	  Enables support for VBE 'simple' boot. This allows updating a single
 	  firmware image in boot media such as MMC. It does not support any sort
 	  of rollback, recovery or A/B boot.
+
+config BOOTMETH_VBE_ABREC
+	bool "Bootdev support for VBE 'a/b/recovery' method"
+	imply SPL_CRC8
+	imply VPL_CRC8
+	help
+	  Enables support for VBE 'abrec' boot. This allows updating one of an
+	  A or B firmware image in boot media such as MMC. The new firmware is
+	  tried and if it boots, it is copied to the other image, so that both
+	  A and B have the same version. If neither firmware image passes the
+	  verification step, a recovery image is booted. This method will
+	  eventually provide rollback protection as well.
+
+if BOOTMETH_VBE_SIMPLE
 
 config BOOTMETH_VBE_SIMPLE_OS
 	bool "Bootdev support for VBE 'simple' method OS phase"
@@ -699,6 +805,73 @@ config VPL_BOOTMETH_VBE_SIMPLE_FW
 	  This option enabled for VPL, since it is the phase where the SPL
 	  decision is made.
 
+config TPL_BOOTMETH_VBE_SIMPLE_FW
+	bool "Bootdev support for VBE 'simple' method firmware phase (TPL)"
+	depends on VPL
+	default y
+	help
+	  Enables support for the firmware parts of VBE 'simple' boot, in TPL.
+	  TPL loads a FIT containing the VPL binary and a suitable devicetree.
+
+endif # BOOTMETH_VBE_SIMPLE
+
+if BOOTMETH_VBE_ABREC
+
+config SPL_BOOTMETH_VBE_ABREC
+	bool "Bootdev support for VBE 'abrec' method (SPL)"
+	depends on SPL
+	default y if VPL
+	help
+	  Enables support for VBE 'abrec' boot. The SPL part of this
+	  implementation simply loads U-Boot from the image selected by the
+	  VPL phase.
+
+config TPL_BOOTMETH_VBE_ABREC
+	bool "Bootdev support for VBE 'abrec' method (TPL)"
+	depends on TPL
+	select TPL_FIT
+	default y
+	help
+	  Enables support for VBE 'abrec' boot. The TPL part of this
+	  implementation simply jumps to VPL after device init is completed.
+
+config VPL_BOOTMETH_VBE_ABREC
+	bool "Bootdev support for VBE 'abrec' method (VPL)"
+	depends on VPL
+	default y
+	help
+	  Enables support for VBE 'abrec' boot. The VPL part of this
+	  implementation selects which SPL to use (A, B or recovery) and then
+	  boots into SPL.
+
+config SPL_BOOTMETH_VBE_ABREC_FW
+	bool "Bootdev support for VBE 'abrec' method firmware phase (SPL)"
+	depends on SPL
+	default y if VPL
+	help
+	  Enables support for VBE 'abrec' boot. The SPL part of this
+	  implementation simply loads U-Boot from the image selected by the
+	  VPL phase.
+
+config TPL_BOOTMETH_VBE_ABREC_FW
+	bool "Bootdev support for VBE 'abrec' method firmware phase (TPL)"
+	depends on TPL
+	default y if VPL
+	help
+	  Enables support for VBE 'abrec' boot. The TPL part of this
+	  implementation simply jumps to VPL after device init is completed.
+
+config VPL_BOOTMETH_VBE_ABREC_FW
+	bool "Bootdev support for VBE 'abrec' method firmware phase (VPL)"
+	depends on VPL
+	default y
+	help
+	  Enables support for VBE 'abrec' boot. The VPL part of this
+	  implementation selects which SPL to use (A, B or recovery) and then
+	  boots into SPL.
+
+endif # BOOTMETH_VBE_ABREC
+
 endif # BOOTMETH_VBE
 
 config EXPO
@@ -713,6 +886,55 @@ config EXPO
 
 	  The expo can be presented in graphics form using a vidconsole, or in
 	  text form on a serial console.
+
+config BOOTMETH_RAUC
+	bool "Bootdev support for RAUC A/B systems"
+	depends on CMDLINE
+	select HUSH_PARSER
+	help
+	  Enables support for booting RAUC A/B systems from MMC devices. This
+	  makes the bootdevs look for a 'boot.scr.uimg' or 'boot.scr' in the
+	  respective boot partitions, describing how to boot the distro.
+
+if BOOTMETH_RAUC
+
+config BOOTMETH_RAUC_BOOT_ORDER
+	string "RAUC boot order"
+	default "A B"
+	help
+	  Sets the default boot order. This must be list of space-separated
+	  strings naming the individual boot slots. Each entry in this string
+	  should correspond to an existing slot on the target's flash device.
+
+config BOOTMETH_RAUC_PARTITIONS
+	string "RAUC boot and root partitions indexes"
+	default "1,2 3,4"
+	help
+	  Sets the partition indexes of boot and root slots. This must be a list
+	  of comma-separated pair values, which in turn are separated by spaces.
+	  The first value in pair is for the boot partition and second for the
+	  root partition.
+
+config BOOTMETH_RAUC_DEFAULT_TRIES
+	int "RAUC slot default tries"
+	default 3
+	help
+	  Sets how many times a slot should be tried booting, before considering
+	  it to be bad.
+
+config BOOTMETH_RAUC_RESET_ALL_ZERO_TRIES
+	bool "Reset slot tries when all RAUC slots have zero tries left"
+	default y
+	help
+	  When all slots have zero tries left or no valid slot was found, reset
+	  to the default boot order set by BOOTMETH_RAUC_BOOT_ORDER and set the
+	  slot tries to their default value specified by
+	  BOOTMETH_RAUC_DEFAULT_TRIES.
+
+	  This prevents a system from remaining in an unbootable state, after
+	  all slot tries were decremented to zero.
+
+endif # BOOTMETH_RAUC
 
 config BOOTMETH_SANDBOX
 	def_bool y
@@ -852,10 +1074,10 @@ if MEASURED_BOOT
 endif # MEASURED_BOOT
 
 config SYS_BOOTM_LEN
-	hex "Maximum size of a decompresed OS image"
+	hex "Maximum size of a decompressed OS image"
 	depends on CMD_BOOTM || CMD_BOOTI || CMD_BOOTZ || \
 		LEGACY_IMAGE_FORMAT || SPL_LEGACY_IMAGE_FORMAT
-	default 0x4000000 if PPC || ARM64
+	default 0x8000000 if PPC || ARM64 || RISCV
 	default 0x1000000 if X86 || ARCH_MX6 || ARCH_MX7
 	default 0x800000
 	help
@@ -892,6 +1114,7 @@ config SYS_RAMBOOT
 
 config RAMBOOT_PBL
 	bool "Freescale PBL(pre-boot loader) image format support"
+	depends on ARCH_LS1021A || PPC
 	select SYS_RAMBOOT if PPC
 	help
 	  Some SoCs use PBL to load RCW and/or pre-initialization instructions.
@@ -961,6 +1184,7 @@ config DISTRO_DEFAULTS
 	select CMD_SYSBOOT
 	select HUSH_PARSER
 	select SYS_LONGHELP
+	select LEGACY_IMAGE_FORMAT
 	help
 	  Note: These scripts have been replaced by Standard Boot. Do not use
 	  them on new boards. See 'Migrating from distro_boot' at
@@ -1029,7 +1253,7 @@ config BOOTSTAGE_REPORT
 config BOOTSTAGE_RECORD_COUNT
 	int "Number of boot stage records to store"
 	depends on BOOTSTAGE
-	default 30
+	default 50
 	help
 	  This is the size of the bootstage record list and is the maximum
 	  number of bootstage records that can be recorded.
@@ -1293,14 +1517,6 @@ config NAND_BOOT
 	help
 	  Enabling this will make a U-Boot binary that is capable of being
 	  booted via NAND flash. This is not a must, some SoCs need this,
-	  some not.
-
-config ONENAND_BOOT
-	bool "Support for booting from ONENAND"
-	imply MTD_RAW_NAND
-	help
-	  Enabling this will make a U-Boot binary that is capable of being
-	  booted via ONENAND. This is not a must, some SoCs need this,
 	  some not.
 
 config QSPI_BOOT
@@ -1571,6 +1787,13 @@ config RESET_TO_RETRY
 	  After the countdown timed out, the board will be reset to restart
 	  again.
 
+config RETRY_BOOTCMD
+	bool "Run bootcmd on retry"
+	depends on BOOT_RETRY && HUSH_PARSER && !RESET_TO_RETRY
+	help
+	  If this option is enabled, the "bootcmd" will be run after the
+	  countdown times out.
+
 endmenu
 
 menu "Image support"
@@ -1578,7 +1801,7 @@ menu "Image support"
 config IMAGE_PRE_LOAD
 	bool "Image pre-load support"
 	help
-	  Enable an image pre-load stage in the SPL.
+	  Enable an image pre-load stage.
 	  This pre-load stage allows to do some manipulation
 	  or check (for example signature check) on an image
 	  before launching it.
@@ -1610,7 +1833,7 @@ config IMAGE_PRE_LOAD_SIG
 	  u-boot.
 
 config SPL_IMAGE_PRE_LOAD_SIG
-	bool "Image pre-load signature support witin SPL"
+	bool "Image pre-load signature support within SPL"
 	depends on SPL_IMAGE_PRE_LOAD && IMAGE_PRE_LOAD_SIG
 	select SPL_FIT_SIGNATURE
 	select SPL_RSA
@@ -1649,8 +1872,20 @@ config OF_BOARD_SETUP
 	  board-specific information in the device tree for use by the OS.
 	  The device tree is then passed to the OS.
 
+config OF_BOARD_SETUP_EXTENDED
+	bool "Set up latest board-specific details in device tree before boot"
+	depends on !COMPILE_TEST
+	imply OF_BOARD_SETUP
+	help
+	  This causes U-Boot to call ft_board_setup_ex() before booting into
+	  the Operating System. Similar function as ft_board_setup(). However,
+	  its modifications are not overwritten by other system changes and are
+	  applied to the device tree as the very last step before boot.
+	  The device tree is then passed to the OS.
+
 config OF_SYSTEM_SETUP
 	bool "Set up system-specific details in device tree before boot"
+	depends on !COMPILE_TEST
 	help
 	  This causes U-Boot to call ft_system_setup() before booting into
 	  the Operating System. This function can set up various
@@ -1695,6 +1930,10 @@ endmenu
 
 endif # OF_LIBFDT
 
+config SUPPORT_EXTENSION_SCAN
+	select OF_LIBFDT_OVERLAY
+        bool
+
 config USE_BOOTARGS
 	bool "Enable boot arguments"
 	help
@@ -1705,7 +1944,7 @@ config USE_BOOTARGS
 
 config BOOTARGS
 	string "Boot arguments"
-	depends on USE_BOOTARGS && !USE_DEFAULT_ENV_FILE
+	depends on USE_BOOTARGS && !ENV_USE_DEFAULT_ENV_TEXT_FILE
 	help
 	  This can be used to pass arguments to the bootm command. The value of
 	  CONFIG_BOOTARGS goes into the environment value "bootargs". Note that
@@ -1740,7 +1979,7 @@ config USE_BOOTCOMMAND
 
 config BOOTCOMMAND
 	string "bootcmd value"
-	depends on USE_BOOTCOMMAND && !USE_DEFAULT_ENV_FILE
+	depends on USE_BOOTCOMMAND && !ENV_USE_DEFAULT_ENV_TEXT_FILE
 	default "bootflow scan -lb" if BOOTSTD_DEFAULTS && CMD_BOOTFLOW_FULL
 	default "bootflow scan" if BOOTSTD_DEFAULTS && !CMD_BOOTFLOW_FULL
 	default "run distro_bootcmd" if !BOOTSTD_BOOTCOMMAND && DISTRO_DEFAULTS
@@ -1763,7 +2002,7 @@ config USE_PREBOOT
 
 config PREBOOT
 	string "preboot default value"
-	depends on USE_PREBOOT && !USE_DEFAULT_ENV_FILE
+	depends on USE_PREBOOT && !ENV_USE_DEFAULT_ENV_TEXT_FILE
 	default "usb start" if USB_KEYBOARD
 	default ""
 	help

@@ -6,14 +6,14 @@
  */
 
 #include <bootm.h>
+#include <env.h>
 #include <asm/global_data.h>
-#include <test/suites.h>
 #include <test/test.h>
 #include <test/ut.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define BOOTM_TEST(_name, _flags)	UNIT_TEST(_name, _flags, bootm_test)
+#define BOOTM_TEST(_name, _flags)	UNIT_TEST(_name, _flags, bootm)
 
 enum {
 	BUF_SIZE	= 1024,
@@ -28,6 +28,7 @@ static int bootm_test_nop(struct unit_test_state *uts)
 
 	/* This tests relies on GD_FLG_SILENT not being set */
 	gd->flags &= ~GD_FLG_SILENT;
+	env_set("silent_linux", NULL);
 
 	*buf = '\0';
 	ut_assertok(bootm_process_cmdline(buf, BUF_SIZE, BOOTM_CL_ALL));
@@ -183,6 +184,7 @@ static int bootm_test_subst(struct unit_test_state *uts)
 	ut_asserteq(0, bootm_process_cmdline(buf, 22, BOOTM_CL_SUBST));
 
 	/* Check multiple substitutions */
+	ut_assertok(env_set("bvar", NULL));
 	ut_assertok(env_set("var", "abc"));
 	strcpy(buf, "some${var}thing${bvar}else");
 	ut_asserteq(0, bootm_process_cmdline(buf, BUF_SIZE, BOOTM_CL_SUBST));
@@ -201,6 +203,7 @@ BOOTM_TEST(bootm_test_subst, 0);
 /* Test silent processing in the bootargs variable */
 static int bootm_test_silent_var(struct unit_test_state *uts)
 {
+	ut_assertok(env_set("var", NULL));
 	env_set("bootargs", NULL);
 	ut_assertok(bootm_process_cmdline_env(BOOTM_CL_SUBST));
 	ut_assertnull(env_get("bootargs"));
@@ -246,12 +249,3 @@ static int bootm_test_subst_both(struct unit_test_state *uts)
 	return 0;
 }
 BOOTM_TEST(bootm_test_subst_both, 0);
-
-int do_ut_bootm(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
-{
-	struct unit_test *tests = UNIT_TEST_SUITE_START(bootm_test);
-	const int n_ents = UNIT_TEST_SUITE_COUNT(bootm_test);
-
-	return cmd_ut_category("bootm", "bootm_test_", tests, n_ents,
-			       argc, argv);
-}

@@ -6,7 +6,8 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "asus"
 
-config SYS_CONFIG_NAME
-	default "transformer-t20"
+config TEGRA_BOARD_STRING
+	string "Default Tegra board name"
+	default "ASUS Transformer T20"
 
 endif

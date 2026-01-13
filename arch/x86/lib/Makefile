@@ -19,14 +19,16 @@ ifndef CONFIG_XPL_BUILD
 obj-$(CONFIG_CMD_BOOTM) += bootm.o
 endif
 obj-y	+= cmd_boot.o
-obj-$(CONFIG_$(XPL_)COREBOOT_SYSINFO)	+= coreboot/
+obj-$(CONFIG_$(PHASE_)COREBOOT_SYSINFO)	+= coreboot/
 obj-$(CONFIG_SEABIOS) += coreboot_table.o
 obj-y	+= early_cmos.o
 obj-y	+= e820.o
 obj-y	+= init_helpers.o
 obj-y	+= interrupts.o
 obj-y	+= lpc-uclass.o
+ifndef CONFIG_XPL_BUILD
 obj-y	+= mpspec.o
+endif
 obj-$(CONFIG_$(PHASE_)ACPIGEN) += acpi_nhlt.o
 obj-y	+= northbridge-uclass.o
 obj-$(CONFIG_I8259_PIC) += i8259.o
@@ -90,7 +92,7 @@ endif
 
 ifdef CONFIG_EFI_STUB
 
-ifeq ($(CONFIG_$(XPL_)X86_64),)
+ifeq ($(CONFIG_$(PHASE_)X86_64),)
 extra-y += $(EFI_CRT0) $(EFI_RELOC)
 endif
 

@@ -17,21 +17,21 @@
 		led-1 {
 			function = LED_FUNCTION_INDICATOR;
 			color = <LED_COLOR_ID_RED>;
-			pwms = <&pwm 1 50000>;
+			pwms = <&pwm 1 50000 0>;
 			max-brightness = <255>;
 		};
 
 		led-2 {
 			function = LED_FUNCTION_POWER;
 			color = <LED_COLOR_ID_GREEN>;
-			pwms = <&pwm 2 50000>;
+			pwms = <&pwm 2 50000 0>;
 			max-brightness = <255>;
 		};
 
 		led-3 {
 			function = LED_FUNCTION_INDICATOR;
 			color = <LED_COLOR_ID_BLUE>;
-			pwms = <&pwm 3 50000>;
+			pwms = <&pwm 3 50000 0>;
 			max-brightness = <255>;
 		};
 	};
@@ -55,11 +55,15 @@
 		reg = <0x50>;
 		pagesize = <32>;
 		read-only;
-		#address-cells = <1>;
-		#size-cells = <1>;
 
-		mac_address: mac-address@66 {
-			reg = <0x66 0x6>;
+		nvmem-layout {
+			compatible = "fixed-layout";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			mac_address: mac-address@66 {
+				reg = <0x66 0x6>;
+			};
 		};
 	};
 };
@@ -128,7 +132,6 @@
 
 &pwm {
 	status = "okay";
-	#pwm-cells = <2>;
 };
 
 &uart0 {

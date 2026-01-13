@@ -36,6 +36,7 @@
 #include "k3-psil-priv.h"
 
 #define K3_UDMA_MAX_RFLOWS 1024
+#define K3_UDMA_MAX_TR 2
 
 struct udma_chan;
 
@@ -74,7 +75,6 @@ struct udma_tchan {
 	struct k3_nav_ring *t_ring; /* Transmit ring */
 	struct k3_nav_ring *tc_ring; /* Transmit Completion ring */
 	int tflow_id; /* applicable only for PKTDMA */
-
 };
 
 #define udma_bchan udma_tchan
@@ -175,6 +175,7 @@ struct udma_dev {
 	struct udma_rflow *rflows;
 
 	struct udma_match_data *match_data;
+	void *bc_desc;
 
 	struct udma_chan *channels;
 	u32 psil_base;
@@ -1349,6 +1350,7 @@ static int udma_setup_resources(struct udma_dev *ud)
 	struct ti_sci_resource_desc *rm_desc;
 	struct ti_sci_resource *rm_res;
 	struct udma_tisci_rm *tisci_rm = &ud->tisci_rm;
+	size_t desc_size;
 
 	ud->tchan_map = devm_kmalloc_array(dev, BITS_TO_LONGS(ud->tchan_cnt),
 					   sizeof(unsigned long), GFP_KERNEL);
@@ -1366,9 +1368,11 @@ static int udma_setup_resources(struct udma_dev *ud)
 	ud->rflows = devm_kcalloc(dev, ud->rflow_cnt, sizeof(*ud->rflows),
 				  GFP_KERNEL);
 
+	desc_size = cppi5_trdesc_calc_size(K3_UDMA_MAX_TR, sizeof(struct cppi5_tr_type15_t));
+	ud->bc_desc = devm_kzalloc(dev, ALIGN(desc_size, ARCH_DMA_MINALIGN), GFP_KERNEL);
 	if (!ud->tchan_map || !ud->rchan_map || !ud->rflow_map ||
 	    !ud->rflow_map_reserved || !ud->tchans || !ud->rchans ||
-	    !ud->rflows)
+	    !ud->rflows || !ud->bc_desc)
 		return -ENOMEM;
 
 	/*
@@ -1444,6 +1448,7 @@ static int bcdma_setup_resources(struct udma_dev *ud)
 	struct ti_sci_resource_desc *rm_desc;
 	struct ti_sci_resource *rm_res;
 	struct udma_tisci_rm *tisci_rm = &ud->tisci_rm;
+	size_t desc_size;
 
 	ud->bchan_map = devm_kmalloc_array(dev, BITS_TO_LONGS(ud->bchan_cnt),
 					   sizeof(unsigned long), GFP_KERNEL);
@@ -1460,9 +1465,12 @@ static int bcdma_setup_resources(struct udma_dev *ud)
 	ud->rflows = devm_kcalloc(dev, ud->rchan_cnt, sizeof(*ud->rflows),
 				  GFP_KERNEL);
 
+	desc_size = cppi5_trdesc_calc_size(K3_UDMA_MAX_TR, sizeof(struct cppi5_tr_type15_t));
+	ud->bc_desc = devm_kzalloc(dev, ALIGN(desc_size, ARCH_DMA_MINALIGN), GFP_KERNEL);
+
 	if (!ud->bchan_map || !ud->tchan_map || !ud->rchan_map ||
 	    !ud->bchans || !ud->tchans || !ud->rchans ||
-	    !ud->rflows)
+	    !ud->rflows || !ud->bc_desc)
 		return -ENOMEM;
 
 	/* Get resource ranges from tisci */
@@ -1718,8 +1726,7 @@ static int *udma_prep_dma_memcpy(struct udma_chan *uc, dma_addr_t dest,
 	int num_tr;
 	size_t tr_size = sizeof(struct cppi5_tr_type15_t);
 	u16 tr0_cnt0, tr0_cnt1, tr1_cnt0;
-	unsigned long dummy;
-	void *tr_desc;
+	void *tr_desc = uc->ud->bc_desc;
 	size_t desc_size;
 
 	if (len < SZ_64K) {
@@ -1748,9 +1755,6 @@ static int *udma_prep_dma_memcpy(struct udma_chan *uc, dma_addr_t dest,
 	}
 
 	desc_size = cppi5_trdesc_calc_size(num_tr, tr_size);
-	tr_desc = dma_alloc_coherent(desc_size, &dummy);
-	if (!tr_desc)
-		return NULL;
 	memset(tr_desc, 0, desc_size);
 
 	cppi5_trdesc_init(tr_desc, num_tr, tr_size, 0, 0);
@@ -2323,7 +2327,7 @@ static int udma_send(struct dma *dma, void *src, size_t len, void *metadata)
 {
 	struct udma_dev *ud = dev_get_priv(dma->dev);
 	struct cppi5_host_desc_t *desc_tx;
-	dma_addr_t dma_src = (dma_addr_t)src;
+	dma_addr_t dma_src = (uintptr_t)src;
 	struct ti_udma_drv_packet_data packet_data = { 0 };
 	dma_addr_t paddr;
 	struct udma_chan *uc;
@@ -2422,7 +2426,7 @@ static int udma_receive(struct dma *dma, void **dst, void *metadata)
 
 	cppi5_desc_get_tags_ids(&desc_rx->hdr, &port_id, NULL);
 
-	*dst = (void *)buf_dma;
+	*dst = (void *)(uintptr_t)buf_dma;
 	uc->num_rx_bufs--;
 
 	return pkt_len;
@@ -2514,7 +2518,7 @@ int udma_prepare_rcv_buf(struct dma *dma, void *dst, size_t size)
 
 	desc_num = uc->desc_rx_cur % UDMA_RX_DESC_NUM;
 	desc_rx = uc->desc_rx + (desc_num * uc->config.hdesc_size);
-	dma_dst = (dma_addr_t)dst;
+	dma_dst = (uintptr_t)dst;
 
 	cppi5_hdesc_reset_hbdesc(desc_rx);
 

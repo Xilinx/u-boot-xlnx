@@ -1,5 +1,6 @@
 menuconfig USB
 	bool "USB support"
+	select BLK
 	---help---
 	  Universal Serial Bus (USB) is a specification for a serial bus
 	  subsystem which offers higher speeds and more features than the
@@ -77,8 +78,6 @@ source "drivers/usb/dwc3/Kconfig"
 
 source "drivers/usb/mtu3/Kconfig"
 
-source "drivers/usb/musb/Kconfig"
-
 source "drivers/usb/musb-new/Kconfig"
 
 source "drivers/usb/emul/Kconfig"
@@ -111,6 +110,7 @@ config USB_KEYBOARD
 config USB_ONBOARD_HUB
 	bool "Onboard USB hub support"
 	depends on DM_USB
+	select DEVRES
 	---help---
 	  Say Y here if you want to support discrete onboard USB hubs that
 	  don't require an additional control bus for initialization, but

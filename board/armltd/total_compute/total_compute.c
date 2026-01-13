@@ -31,30 +31,31 @@ static struct mm_region total_compute_mem_map[TC_MEM_MAP_MAX] = {
 
 struct mm_region *mem_map = total_compute_mem_map;
 
+#ifdef CONFIG_OF_HAS_PRIOR_STAGE
 /*
  * Push the variable into the .data section so that it
  * does not get cleared later.
  */
 unsigned long __section(".data") fw_dtb_pointer;
 
-void *board_fdt_blob_setup(int *err)
+int board_fdt_blob_setup(void **fdtp)
 {
-	*err = 0;
-	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC) {
-		*err = -ENXIO;
-		return NULL;
-	}
+	if (fdt_magic(fw_dtb_pointer) != FDT_MAGIC)
+		return -ENXIO;
 
-	return (void *)fw_dtb_pointer;
+	*fdtp = (void *)fw_dtb_pointer;
+	return 0;
 }
+#endif
 
 int misc_init_r(void)
 {
 	size_t base;
 
+#ifdef CONFIG_OF_HAS_PRIOR_STAGE
 	if (!env_get("fdt_addr_r"))
 		env_set_hex("fdt_addr_r", fw_dtb_pointer);
-
+#endif
 	if (!env_get("kernel_addr_r")) {
 		/*
 		 * The kernel has to be 2M aligned and the first 64K at the
@@ -66,11 +67,6 @@ int misc_init_r(void)
 		env_set_hex("kernel_addr_r", base);
 	}
 
-	return 0;
-}
-
-int board_init(void)
-{
 	return 0;
 }
 

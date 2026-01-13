@@ -6,7 +6,8 @@ config SYS_BOARD
 config SYS_VENDOR
 	default "avionic-design"
 
-config SYS_CONFIG_NAME
-	default "tec"
+config TEGRA_BOARD_STRING
+	string "Default Tegra board name"
+	default "Avionic Design Tamonten Evaluation Carrier"
 
 endif

@@ -17,8 +17,9 @@ import sys
 import threading
 
 from buildman import cfgutil
-from patman import gitutil
 from u_boot_pylib import command
+from u_boot_pylib import gitutil
+from u_boot_pylib import tools
 
 RETURN_CODE_RETRY = -1
 BASE_ELF_FILENAMES = ['u-boot', 'spl/u-boot-spl', 'tpl/u-boot-tpl']
@@ -30,12 +31,14 @@ def mkdir(dirname, parents=False):
     """Make a directory if it doesn't already exist.
 
     Args:
-        dirname (str): Directory to create
+        dirname (str): Directory to create, or None to do nothing
         parents (bool): True to also make parent directories
 
     Raises:
         OSError: File already exists
     """
+    if not dirname or os.path.exists(dirname):
+        return
     try:
         if parents:
             os.makedirs(dirname)
@@ -44,8 +47,8 @@ def mkdir(dirname, parents=False):
     except OSError as err:
         if err.errno == errno.EEXIST:
             if os.path.realpath('.') == os.path.realpath(dirname):
-                print(f"Cannot create the current working directory '{dirname}'!")
-                sys.exit(1)
+                raise ValueError(
+                    f"Cannot create the current working directory '{dirname}'!")
         else:
             raise
 
@@ -54,7 +57,7 @@ def _remove_old_outputs(out_dir):
     """Remove any old output-target files
 
     Args:
-        out_dir (str): Output directory for the build
+        out_dir (str): Output directory for the build, or None for current dir
 
     Since we use a build directory that was previously used by another
     board, it may have produced an SPL image. If we don't remove it (i.e.
@@ -62,7 +65,7 @@ def _remove_old_outputs(out_dir):
     output of this build, even if it does not produce SPL images.
     """
     for elf in BASE_ELF_FILENAMES:
-        fname = os.path.join(out_dir, elf)
+        fname = os.path.join(out_dir or '', elf)
         if os.path.exists(fname):
             os.remove(fname)
 
@@ -178,22 +181,23 @@ class BuilderThread(threading.Thread):
             cwd (str): Working directory to set, or None to leave it alone
             *args (list of str): Arguments to pass to 'make'
             **kwargs (dict): A list of keyword arguments to pass to
-                command.run_pipe()
+                command.run_one()
 
         Returns:
             CommandResult object
         """
-        return self.builder.do_make(commit, brd, stage, cwd, *args,
-                **kwargs)
+        return self.builder.do_make(commit, brd, stage, cwd, *args, **kwargs)
 
     def _build_args(self, brd, out_dir, out_rel_dir, work_dir, commit_upto):
         """Set up arguments to the args list based on the settings
 
         Args:
             brd (Board): Board to create arguments for
-            out_dir (str): Path to output directory containing the files
+            out_dir (str): Path to output directory containing the files, or
+                or None to not use a separate output directory
             out_rel_dir (str): Output directory relative to the current dir
-            work_dir (str): Directory to which the source will be checked out
+            work_dir (str): Directory to which the source will be checked out,
+                or None to use current directory
             commit_upto (int): Commit number to build (0...n-1)
 
         Returns:
@@ -204,22 +208,22 @@ class BuilderThread(threading.Thread):
         """
         args = []
         cwd = work_dir
-        src_dir = os.path.realpath(work_dir)
-        if not self.builder.in_tree:
-            if commit_upto is None:
-                # In this case we are building in the original source directory
-                # (i.e. the current directory where buildman is invoked. The
-                # output directory is set to this thread's selected work
-                # directory.
-                #
-                # Symlinks can confuse U-Boot's Makefile since we may use '..'
-                # in our path, so remove them.
+        src_dir = os.path.realpath(work_dir) if work_dir else os.getcwd()
+        if commit_upto is None:
+            # In this case we are building in the original source directory
+            # (i.e. the current directory where buildman is invoked. The
+            # output directory is set to this thread's selected work
+            # directory.
+            #
+            # Symlinks can confuse U-Boot's Makefile since we may use '..'
+            # in our path, so remove them.
+            if out_dir:
                 real_dir = os.path.realpath(out_dir)
                 args.append(f'O={real_dir}')
-                cwd = None
-                src_dir = os.getcwd()
-            else:
-                args.append(f'O={out_rel_dir}')
+            cwd = None
+            src_dir = os.getcwd()
+        elif out_rel_dir:
+            args.append(f'O={out_rel_dir}')
         if self.builder.verbose_build:
             args.append('V=1')
         else:
@@ -285,6 +289,8 @@ class BuilderThread(threading.Thread):
         """
         if config_only:
             args.append('cfg')
+        elif self.builder.build_target:
+            args.append(self.builder.build_target)
         result = self.make(commit, brd, 'build', cwd, *args, env=env)
         cmd_list.append([self.builder.gnu_make] + args)
         if (result.return_code == 2 and
@@ -395,7 +401,8 @@ class BuilderThread(threading.Thread):
             config_only (bool): Only configure the source, do not build it
             adjust_cfg (list of str): See the cfgutil module and run_commit()
             commit (Commit): Commit only being built
-            out_dir (str): Output directory for the build
+            out_dir (str): Output directory for the build, or None to use
+               current
             out_rel_dir (str): Output directory relatie to the current dir
             result (CommandResult): Previous result
 
@@ -407,7 +414,8 @@ class BuilderThread(threading.Thread):
         """
         # Set up the environment and command line
         env = self.builder.make_environment(self.toolchain)
-        mkdir(out_dir)
+        if out_dir and not os.path.exists(out_dir):
+            mkdir(out_dir)
 
         args, cwd, src_dir = self._build_args(brd, out_dir, out_rel_dir,
                                               work_dir, commit_upto)
@@ -417,7 +425,7 @@ class BuilderThread(threading.Thread):
         _remove_old_outputs(out_dir)
 
         # If we need to reconfigure, do that now
-        cfg_file = os.path.join(out_dir, '.config')
+        cfg_file = os.path.join(out_dir or '', '.config')
         cmd_list = []
         if do_config or adjust_cfg:
             result = self._reconfigure(
@@ -555,10 +563,10 @@ class BuilderThread(threading.Thread):
         if result.return_code < 0:
             return
 
+        done_file = self.builder.get_done_file(result.commit_upto,
+                result.brd.target)
         if result.toolchain:
             # Write the build result and toolchain information.
-            done_file = self.builder.get_done_file(result.commit_upto,
-                    result.brd.target)
             with open(done_file, 'w', encoding='utf-8') as outf:
                 if maybe_aborted:
                     # Special code to indicate we need to retry
@@ -587,9 +595,10 @@ class BuilderThread(threading.Thread):
             lines = []
             for fname in BASE_ELF_FILENAMES:
                 cmd = [f'{self.toolchain.cross}nm', '--size-sort', fname]
-                nm_result = command.run_pipe([cmd], capture=True,
-                        capture_stderr=True, cwd=result.out_dir,
-                        raise_on_error=False, env=env)
+                nm_result = command.run_one(*cmd, capture=True,
+                                            capture_stderr=True,
+                                            cwd=result.out_dir,
+                                            raise_on_error=False, env=env)
                 if nm_result.stdout:
                     nm_fname = self.builder.get_func_sizes_file(
                         result.commit_upto, result.brd.target, fname)
@@ -597,9 +606,10 @@ class BuilderThread(threading.Thread):
                         print(nm_result.stdout, end=' ', file=outf)
 
                 cmd = [f'{self.toolchain.cross}objdump', '-h', fname]
-                dump_result = command.run_pipe([cmd], capture=True,
-                        capture_stderr=True, cwd=result.out_dir,
-                        raise_on_error=False, env=env)
+                dump_result = command.run_one(*cmd, capture=True,
+                                              capture_stderr=True,
+                                              cwd=result.out_dir,
+                                              raise_on_error=False, env=env)
                 rodata_size = ''
                 if dump_result.stdout:
                     objdump = self.builder.get_objdump_file(result.commit_upto,
@@ -612,9 +622,10 @@ class BuilderThread(threading.Thread):
                             rodata_size = fields[2]
 
                 cmd = [f'{self.toolchain.cross}size', fname]
-                size_result = command.run_pipe([cmd], capture=True,
-                        capture_stderr=True, cwd=result.out_dir,
-                        raise_on_error=False, env=env)
+                size_result = command.run_one(*cmd, capture=True,
+                                              capture_stderr=True,
+                                              cwd=result.out_dir,
+                                              raise_on_error=False, env=env)
                 if size_result.stdout:
                     lines.append(size_result.stdout.splitlines()[1] + ' ' +
                                  rodata_size)
@@ -622,10 +633,9 @@ class BuilderThread(threading.Thread):
             # Extract the environment from U-Boot and dump it out
             cmd = [f'{self.toolchain.cross}objcopy', '-O', 'binary',
                    '-j', '.rodata.default_environment',
-                   'env/built-in.o', 'uboot.env']
-            command.run_pipe([cmd], capture=True,
-                            capture_stderr=True, cwd=result.out_dir,
-                            raise_on_error=False, env=env)
+                   'env/built-in.a', 'uboot.env']
+            command.run_one(*cmd, capture=True, capture_stderr=True,
+                            cwd=result.out_dir, raise_on_error=False, env=env)
             if not work_in_output:
                 copy_files(result.out_dir, build_dir, '', ['uboot.env'])
 
@@ -638,6 +648,9 @@ class BuilderThread(threading.Thread):
                                 result.brd.target)
                 with open(sizes, 'w', encoding='utf-8') as outf:
                     print('\n'.join(lines), file=outf)
+        else:
+            # Indicate that the build failure due to lack of toolchain
+            tools.write_file(done_file, '2\n', binary=False)
 
         if not work_in_output:
             # Write out the configuration files, with a special case for SPL

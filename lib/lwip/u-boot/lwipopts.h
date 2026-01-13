@@ -44,6 +44,7 @@
 #define DNS_DEBUG                       LWIP_DBG_ON
 #define IP6_DEBUG                       LWIP_DBG_OFF
 #define DHCP6_DEBUG                     LWIP_DBG_OFF
+#define SNTP_DEBUG                      LWIP_DBG_ON
 #endif
 
 #define LWIP_TESTMODE                   0
@@ -72,15 +73,19 @@
 
 #define IP_FORWARD                      0
 #define IP_OPTIONS_ALLOWED              1
-#define IP_REASSEMBLY                   0
-#define IP_FRAG                         0
+#define IP_REASSEMBLY                   1
+#define IP_FRAG                         1
 #define IP_REASS_MAXAGE                 3
 #define IP_REASS_MAX_PBUFS              4
 #define IP_FRAG_USES_STATIC_BUF         0
 
 #define IP_DEFAULT_TTL                  255
 
+#if defined(CONFIG_PROT_ICMP_LWIP)
+#define LWIP_ICMP                       1
+#else
 #define LWIP_ICMP                       0
+#endif
 
 #if defined(CONFIG_PROT_RAW_LWIP)
 #define LWIP_RAW                        1
@@ -160,6 +165,10 @@
 #define LWIP_ALTCP                      1
 #define LWIP_ALTCP_TLS                  1
 #define LWIP_ALTCP_TLS_MBEDTLS          1
+#endif
+
+#if defined(CONFIG_CMD_SNTP)
+#define LWIP_DHCP_GET_NTP_SRV 1
 #endif
 
 #endif /* LWIP_UBOOT_LWIPOPTS_H */

@@ -289,8 +289,7 @@ struct cadence_spi_plat {
 	u32		tsd2d_ns;
 	u32		tchsh_ns;
 	u32		tslch_ns;
-
-	bool            is_dma;
+	u32		quirks;
 };
 
 struct cadence_spi_priv {
@@ -321,7 +320,8 @@ struct cadence_spi_priv {
 	u32		tsd2d_ns;
 	u32		tchsh_ns;
 	u32		tslch_ns;
-	u8              device_id[CQSPI_READ_ID_LEN];
+	u32		quirks;
+	u8		device_id[CQSPI_READ_ID_LEN];
 	u8              edge_mode;
 	u8              dll_mode;
 	bool		extra_dummy;
@@ -335,6 +335,11 @@ struct cadence_spi_priv {
 	u8		addr_width;
 	u8		data_width;
 	bool		dtr;
+};
+
+struct cqspi_driver_platdata {
+	u32 hwcaps_mask;
+	u32 quirks;
 };
 
 /* Functions call declaration */
@@ -382,9 +387,10 @@ int cadence_qspi_flash_reset(struct udevice *dev);
 ofnode cadence_qspi_get_subnode(struct udevice *dev);
 int cadence_qspi_set_dll_mode(struct udevice *dev);
 void cadence_qspi_apb_enable_linear_mode(bool enable);
-int cadence_spi_ctrl_reset(struct cadence_spi_priv *priv);
+int cadence_device_reset(struct udevice *dev);
 int cadence_qspi_setup_opcode_ext(struct cadence_spi_priv *priv,
 				  const struct spi_mem_op *op,
 				  unsigned int shift);
-int cadence_device_reset(struct udevice *dev);
+int cadence_spi_versal_ctrl_reset(struct cadence_spi_priv *priv);
+
 #endif /* __CADENCE_QSPI_H__ */

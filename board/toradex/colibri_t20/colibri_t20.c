@@ -29,7 +29,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define PMU_SUPPLYENE_SYSINEN	(1<<5)
 #define PMU_SUPPLYENE_EXITSLREQ	(1<<1)
 
-int arch_misc_init(void)
+int misc_init_r(void)
 {
 	/* Disable PMIC sleep mode on low supply voltage */
 	struct udevice *dev;
@@ -147,7 +147,7 @@ void pin_mux_usb(void)
 }
 #endif
 
-#ifdef CONFIG_VIDEO_TEGRA20
+#ifdef CONFIG_VIDEO_TEGRA
 /*
  * Routine: pin_mux_display
  * Description: setup the pin muxes/tristate values for the LCD interface)

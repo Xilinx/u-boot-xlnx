@@ -4,12 +4,14 @@
 
 config NVME
 	bool "NVM Express device support"
+	select BLK
 	help
 	  This option enables support for NVM Express devices.
 	  It supports basic functions of NVMe (read/write).
 
 config NVME_APPLE
 	bool "Apple NVMe controller support"
+	depends on ARCH_APPLE
 	select NVME
 	help
 	  This option enables support for the NVMe storage

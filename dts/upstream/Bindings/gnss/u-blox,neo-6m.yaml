@@ -8,6 +8,7 @@ title: U-blox GNSS Receiver
 
 allOf:
   - $ref: gnss-common.yaml#
+  - $ref: /schemas/serial/serial-peripheral-props.yaml#
 
 maintainers:
   - Johan Hovold <johan@kernel.org>
@@ -17,10 +18,14 @@ description: >
 
 properties:
   compatible:
-    enum:
-      - u-blox,neo-6m
-      - u-blox,neo-8
-      - u-blox,neo-m8
+    oneOf:
+      - enum:
+          - u-blox,neo-6m
+          - u-blox,neo-8
+          - u-blox,neo-m8
+      - items:
+          - const: u-blox,neo-m9
+          - const: u-blox,neo-m8
 
   reg:
     description: >

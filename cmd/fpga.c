@@ -28,7 +28,7 @@ static long do_fpga_get_device(char *arg)
 	if (dev == FPGA_INVALID_DEVICE && arg)
 		dev = simple_strtol(arg, NULL, 16);
 
-	debug("%s: device = %ld\n", __func__, dev);
+	log_debug("device = %ld\n", dev);
 
 	return dev;
 }
@@ -40,26 +40,26 @@ static int do_fpga_check_params(long *dev, long *fpga_data, size_t *data_size,
 	size_t local_data_size;
 	long local_fpga_data;
 
-	debug("%s %d, %d\n", __func__, argc, cmdtp->maxargs);
+	log_debug("%d, %d\n", argc, cmdtp->maxargs);
 
 	if (argc != cmdtp->maxargs) {
-		debug("fpga: incorrect parameters passed\n");
-		return CMD_RET_USAGE;
+		log_err("Incorrect number of parameters passed\n");
+		return CMD_RET_FAILURE;
 	}
 
 	*dev = do_fpga_get_device(argv[0]);
 
 	local_fpga_data = simple_strtol(argv[1], NULL, 16);
 	if (!local_fpga_data) {
-		debug("fpga: zero fpga_data address\n");
-		return CMD_RET_USAGE;
+		log_err("Zero fpga_data address\n");
+		return CMD_RET_FAILURE;
 	}
 	*fpga_data = local_fpga_data;
 
 	local_data_size = hextoul(argv[2], NULL);
 	if (!local_data_size) {
-		debug("fpga: zero size\n");
-		return CMD_RET_USAGE;
+		log_err("Zero size\n");
+		return CMD_RET_FAILURE;
 	}
 	*data_size = local_data_size;
 
@@ -67,52 +67,54 @@ static int do_fpga_check_params(long *dev, long *fpga_data, size_t *data_size,
 }
 
 #if defined(CONFIG_CMD_FPGA_LOAD_SECURE)
-int do_fpga_loads(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+static int do_fpga_loads(struct cmd_tbl *cmdtp, int flag, int argc,
+			 char *const argv[])
 {
+	struct fpga_secure_info fpga_sec_info;
+	const int pos_userkey = 5;
 	size_t data_size = 0;
 	long fpga_data, dev;
 	int ret;
-	struct fpga_secure_info fpga_sec_info;
 
 	memset(&fpga_sec_info, 0, sizeof(fpga_sec_info));
 
-	if (argc < 5) {
-		debug("fpga: incorrect parameters passed\n");
-		return CMD_RET_USAGE;
+	if (argc < pos_userkey) {
+		log_err("Too few parameters passed\n");
+		return CMD_RET_FAILURE;
 	}
 
-	if (argc == 6)
+	if (argc == pos_userkey + 1)
 		fpga_sec_info.userkey_addr = (u8 *)(uintptr_t)
-					      simple_strtoull(argv[5],
+					      simple_strtoull(argv[pos_userkey],
 							      NULL, 16);
 	else
 		/*
 		 * If 6th parameter is not passed then do_fpga_check_params
 		 * will get 5 instead of expected 6 which means that function
-		 * return CMD_RET_USAGE. Increase number of params +1 to pass
+		 * return CMD_RET_FAILURE. Increase number of params +1 to pass
 		 * this.
 		 */
 		argc++;
+
+	ret = do_fpga_check_params(&dev, &fpga_data, &data_size,
+				   cmdtp, argc, argv);
+	if (ret)
+		return ret;
 
 	fpga_sec_info.encflag = (u8)hextoul(argv[4], NULL);
 	fpga_sec_info.authflag = (u8)hextoul(argv[3], NULL);
 
 	if (fpga_sec_info.authflag >= FPGA_NO_ENC_OR_NO_AUTH &&
 	    fpga_sec_info.encflag >= FPGA_NO_ENC_OR_NO_AUTH) {
-		debug("fpga: Use <fpga load> for NonSecure bitstream\n");
-		return CMD_RET_USAGE;
+		log_err("Use <fpga load> for NonSecure bitstream\n");
+		return CMD_RET_FAILURE;
 	}
 
 	if (fpga_sec_info.encflag == FPGA_ENC_USR_KEY &&
 	    !fpga_sec_info.userkey_addr) {
-		debug("fpga: User key not provided\n");
-		return CMD_RET_USAGE;
+		log_err("User key not provided\n");
+		return CMD_RET_FAILURE;
 	}
-
-	ret = do_fpga_check_params(&dev, &fpga_data, &data_size,
-				   cmdtp, argc, argv);
-	if (ret)
-		return ret;
 
 	return fpga_loads(dev, (void *)fpga_data, data_size, &fpga_sec_info);
 }
@@ -180,6 +182,7 @@ static int do_fpga_load(struct cmd_tbl *cmdtp, int flag, int argc,
 	return fpga_load(dev, (void *)fpga_data, data_size, BIT_FULL, 0);
 }
 
+#if defined(CONFIG_CMD_FPGA_LOADB)
 static int do_fpga_loadb(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
 {
@@ -194,7 +197,7 @@ static int do_fpga_loadb(struct cmd_tbl *cmdtp, int flag, int argc,
 
 	return fpga_loadbitstream(dev, (void *)fpga_data, data_size, BIT_FULL);
 }
-
+#endif
 #if defined(CONFIG_CMD_FPGA_LOADP)
 static int do_fpga_loadp(struct cmd_tbl *cmdtp, int flag, int argc,
 			 char *const argv[])
@@ -243,23 +246,23 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 	ulong dev = do_fpga_get_device(argv[0]);
 	char *datastr = env_get("fpgadata");
 
-	debug("fpga: argc %x, dev %lx, datastr %s\n", argc, dev, datastr);
+	log_debug("argc %x, dev %lx, datastr %s\n", argc, dev, datastr);
 
 	if (dev == FPGA_INVALID_DEVICE) {
-		debug("fpga: Invalid fpga device\n");
-		return CMD_RET_USAGE;
+		log_err("Invalid fpga device\n");
+		return CMD_RET_FAILURE;
 	}
 
 	if (argc == 0 && !datastr) {
-		debug("fpga: No datastr passed\n");
-		return CMD_RET_USAGE;
+		log_err("No datastr passed\n");
+		return CMD_RET_FAILURE;
 	}
 
 	if (argc == 2) {
 		datastr = argv[1];
-		debug("fpga: Full command with two args\n");
+		log_debug("Full command with two args\n");
 	} else if (argc == 1 && !datastr) {
-		debug("fpga: Dev is setup - fpgadata passed\n");
+		log_debug("Dev is setup - fpgadata passed\n");
 		datastr = argv[0];
 	}
 
@@ -267,20 +270,20 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 	if (fit_parse_subimage(datastr, (ulong)fpga_data,
 			       &fit_addr, &fit_uname)) {
 		fpga_data = (void *)fit_addr;
-		debug("*  fpga: subimage '%s' from FIT image ",
-		      fit_uname);
-		debug("at 0x%08lx\n", fit_addr);
+		log_debug("*  fpga: subimage '%s' from FIT image ",
+			  fit_uname);
+		log_debug("at 0x%08lx\n", fit_addr);
 	} else
 #endif
 	{
 		fpga_data = (void *)hextoul(datastr, NULL);
-		debug("*  fpga: cmdline image address = 0x%08lx\n",
-		      (ulong)fpga_data);
+		log_debug("*  fpga: cmdline image address = 0x%08lx\n",
+			  (ulong)fpga_data);
 	}
-	debug("%s: fpga_data = 0x%lx\n", __func__, (ulong)fpga_data);
+	log_debug("fpga_data = 0x%lx\n", (ulong)fpga_data);
 	if (!fpga_data) {
-		puts("Zero fpga_data address\n");
-		return CMD_RET_USAGE;
+		log_err("Zero fpga_data address\n");
+		return CMD_RET_FAILURE;
 	}
 
 	switch (genimg_get_format(fpga_data)) {
@@ -299,15 +302,15 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 
 			data = image_get_load(hdr);
 
-			if (gunzip((void *)data, ~0UL, (void *)image_buf,
+			if (gunzip((void *)data, ~0U, (void *)image_buf,
 				   &image_size) != 0) {
-				puts("GUNZIP: error\n");
+				log_err("Gunzip error\n");
 				return CMD_RET_FAILURE;
 			}
 			data_size = image_size;
 #else
-			puts("Gunzip image is not supported\n");
-			return 1;
+			log_err("Gunzip image is not supported\n");
+			return CMD_RET_FAILURE;
 #endif
 		} else {
 			data = (ulong)image_get_data(hdr);
@@ -325,12 +328,12 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 		const void *fit_data;
 
 		if (!fit_uname) {
-			puts("No FIT subimage unit name\n");
+			log_err("No FIT subimage unit name\n");
 			return CMD_RET_FAILURE;
 		}
 
 		if (fit_check_format(fit_hdr, IMAGE_SIZE_INVAL)) {
-			puts("Bad FIT image format\n");
+			log_err("Bad FIT image format\n");
 			return CMD_RET_FAILURE;
 		}
 
@@ -346,7 +349,7 @@ static int do_fpga_loadmk(struct cmd_tbl *cmdtp, int flag, int argc,
 	}
 #endif
 	default:
-		puts("** Unknown image type\n");
+		log_err("Unknown image type\n");
 		return CMD_RET_FAILURE;
 	}
 }
@@ -356,7 +359,9 @@ static struct cmd_tbl fpga_commands[] = {
 	U_BOOT_CMD_MKENT(info, 1, 1, do_fpga_info, "", ""),
 	U_BOOT_CMD_MKENT(dump, 3, 1, do_fpga_dump, "", ""),
 	U_BOOT_CMD_MKENT(load, 3, 1, do_fpga_load, "", ""),
+#if defined(CONFIG_CMD_FPGA_LOADB)
 	U_BOOT_CMD_MKENT(loadb, 3, 1, do_fpga_loadb, "", ""),
+#endif
 #if defined(CONFIG_CMD_FPGA_LOADP)
 	U_BOOT_CMD_MKENT(loadp, 3, 1, do_fpga_loadp, "", ""),
 #endif
@@ -386,16 +391,16 @@ static int do_fpga_wrapper(struct cmd_tbl *cmdtp, int flag, int argc,
 	fpga_cmd = find_cmd_tbl(argv[1], fpga_commands,
 				ARRAY_SIZE(fpga_commands));
 	if (!fpga_cmd) {
-		debug("fpga: non existing command\n");
-		return CMD_RET_USAGE;
+		log_err("Non existing command\n");
+		return CMD_RET_FAILURE;
 	}
 
 	argc -= 2;
 	argv += 2;
 
 	if (argc > fpga_cmd->maxargs) {
-		debug("fpga: more parameters passed\n");
-		return CMD_RET_USAGE;
+		log_err("Too many parameters passed\n");
+		return CMD_RET_FAILURE;
 	}
 
 	ret = fpga_cmd->cmd(fpga_cmd, flag, argc, argv);
@@ -408,49 +413,40 @@ U_BOOT_CMD(fpga, 9, 1, do_fpga_wrapper,
 #else
 U_BOOT_CMD(fpga, 6, 1, do_fpga_wrapper,
 #endif
-	   "loadable FPGA image support",
-	   "[operation type] [device number] [image address] [image size]\n"
-	   "fpga operations:\n"
-	   "  dump\t[dev] [address] [size]\tLoad device to memory buffer\n"
-	   "  info\t[dev]\t\t\tlist known device information\n"
-	   "  load\t[dev] [address] [size]\tLoad device from memory buffer\n"
+	 "loadable FPGA image support",
+	 "info   [dev]                  List known device information\n"
+	 "fpga dump   <dev> <address> <size> Load device to memory buffer\n"
+	 "fpga load   <dev> <address> <size> Load device from memory buffer\n"
 #if defined(CONFIG_CMD_FPGA_LOADP)
-	   "  loadp\t[dev] [address] [size]\t"
-	   "Load device from memory buffer with partial bitstream\n"
+	 "fpga loadb  <dev> <address> <size> Load device from bitstream buffer\n"
 #endif
-	   "  loadb\t[dev] [address] [size]\t"
-	   "Load device from bitstream buffer (Xilinx only)\n"
+#if defined(CONFIG_CMD_FPGA_LOADP)
+	 "fpga loadp  <dev> <address> <size> Load device from memory buffer\n"
+	 "            with partial bitstream\n"
+#endif
 #if defined(CONFIG_CMD_FPGA_LOADBP)
-	   "  loadbp\t[dev] [address] [size]\t"
-	   "Load device from bitstream buffer with partial bitstream"
-	   "(Xilinx only)\n"
+	 "fpga loadbp <dev> <address> <size> Load device from bitstream buffer\n"
+	 "             with partial bitstream\n"
 #endif
 #if defined(CONFIG_CMD_FPGA_LOADFS)
-	   "Load device from filesystem (FAT by default) (Xilinx only)\n"
-	   "  loadfs [dev] [address] [image size] [blocksize] <interface>\n"
-	   "        [<dev[:part]>] <filename>\n"
+	 "fpga loadfs <dev> <address> <size> <blocksize> <interface> [<dev[:part]>] <filename>\n"
+	 "            Load device from filesystem (FAT by default)\n"
 #endif
 #if defined(CONFIG_CMD_FPGA_LOADMK)
-	   "  loadmk [dev] [address]\tLoad device generated with mkimage"
+	 "fpga loadmk <dev> <address>        Load device generated with mkimage\n"
 #if defined(CONFIG_FIT)
-	   "\n"
-	   "\tFor loadmk operating on FIT format uImage address must include\n"
-	   "\tsubimage unit name in the form of addr:<subimg_uname>"
+	 "            NOTE: loadmk operating on FIT must include subimage unit\n"
+	 "            name in the form of addr:<subimg_uname>\n"
 #endif
 #endif
 #if defined(CONFIG_CMD_FPGA_LOAD_SECURE)
-	   "Load encrypted bitstream (Xilinx only)\n"
-	   "  loads [dev] [address] [size] [auth-OCM-0/DDR-1/noauth-2]\n"
-	   "        [enc-devkey(0)/userkey(1)/nenc(2) [Userkey address]\n"
-	   "Loads the secure bistreams(authenticated/encrypted/both\n"
-	   "authenticated and encrypted) of [size] from [address].\n"
-	   "The auth-OCM/DDR flag specifies to perform authentication\n"
-	   "in OCM or in DDR. 0 for OCM, 1 for DDR, 2 for no authentication.\n"
-	   "The enc flag specifies which key to be used for decryption\n"
-	   "0-device key, 1-user key, 2-no encryption.\n"
-	   "The optional Userkey address specifies from which address key\n"
-	   "has to be used for decryption if user key is selected.\n"
-	   "NOTE: the secure bitstream has to be created using Xilinx\n"
-	   "bootgen tool only.\n"
+	 "fpga loads  <dev> <address> <size> <authflag> <encflag> [Userkey address]\n"
+	 "            Load device from memory buffer with secure bistream\n"
+	 "            (authenticated/encrypted/both)\n"
+	 "            -authflag: 0 for OCM, 1 for DDR, 2 for no authentication\n"
+	 "            (specifies where to perform authentication)\n"
+	 "            -encflag: 0 for device key, 1 for user key, 2 for no encryption\n"
+	 "            -Userkey address: address where user key is stored\n"
+	 "            NOTE: secure bitstream has to be created using Xilinx bootgen tool\n"
 #endif
 );

@@ -72,7 +72,7 @@ console::
    Err:   lcd
    =>
 
-You can issue commands as your would normally. If the command you want is
+You can issue commands as you would normally. If the command you want is
 not supported you can add it to include/configs/sandbox.h.
 
 To exit, type 'poweroff' or press Ctrl-C.
@@ -634,7 +634,7 @@ There are at least four possible ways to address this:
 * Use the host malloc and free instead of U-Boot's custom allocator. This will
   eliminate the need to annotate dlmalloc. However, using a different allocator
   for sandbox will mean that bugs in dlmalloc will only be tested when running
-  on read (or emulated) hardware.
+  on real (or emulated) hardware.
 
 Until one of the above options are implemented, it will remain difficult
 to sift through the massive amount of spurious warnings.
@@ -658,10 +658,10 @@ that are mapped into that memory:
 ========   ========================   ===============================
 Addr       Config                     Usage
 ========   ========================   ===============================
-     100   CONFIG_SYS_FDT_LOAD_ADDR   Device tree
-    b000   CONFIG_BLOBLIST_ADDR       Blob list
-   10000   CFG_MALLOC_F_ADDR          Early memory allocation
+     100   CONFIG_BLOBLIST_ADDR       Blob list
+    1000   CONFIG_SYS_FDT_LOAD_ADDR   Device tree
    f0000   CONFIG_PRE_CON_BUF_ADDR    Pre-console buffer
+   f4000   CFG_MALLOC_F_ADDR          Early memory allocation
   100000   TCG Event log              TCG Event Log
   200000   CONFIG_TRACE_EARLY_ADDR    Early trace buffer (if enabled). Also used
   400000   CONFIG_TEXT_BASE           Load buffer for U-Boot (sandbox_spl only)

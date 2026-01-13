@@ -141,7 +141,7 @@ static void ip4_addr_string(struct printf_info *info, u8 *addr)
 
 	string(info, ip4_addr);
 }
-#endif
+#endif /* CONFIG_SPL_NET */
 
 /*
  * Show a '%p' thing.  A kernel extension is that the '%p' is followed
@@ -157,18 +157,14 @@ static void ip4_addr_string(struct printf_info *info, u8 *addr)
  *       decimal).
  */
 
-static void __maybe_unused pointer(struct printf_info *info, const char *fmt,
-				   void *ptr)
+#if defined(CONFIG_SPL_USE_TINY_PRINTF_POINTER_SUPPORT) || defined(DEBUG)
+static void pointer(struct printf_info *info, const char *fmt, void *ptr)
 {
-#ifdef DEBUG
 	unsigned long num = (uintptr_t)ptr;
 	unsigned long div;
-#endif
 
 	switch (*fmt) {
-#ifdef DEBUG
 	case 'a':
-
 		switch (fmt[1]) {
 		case 'p':
 		default:
@@ -176,7 +172,6 @@ static void __maybe_unused pointer(struct printf_info *info, const char *fmt,
 			break;
 		}
 		break;
-#endif
 #ifdef CONFIG_SPL_NET
 	case 'm':
 		return mac_address_string(info, ptr, false);
@@ -185,16 +180,22 @@ static void __maybe_unused pointer(struct printf_info *info, const char *fmt,
 	case 'I':
 		if (fmt[1] == '4')
 			return ip4_addr_string(info, ptr);
+#else
+	case 'm':
+	case 'M':
+	case 'I':
+		out(info, '?');
+		return;
 #endif
 	default:
 		break;
 	}
-#ifdef DEBUG
+
 	div = 1UL << (sizeof(long) * 8 - 4);
 	for (; div; div /= 0x10)
 		div_out(info, &num, div);
-#endif
 }
+#endif
 
 static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 {
@@ -211,6 +212,7 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 			bool lz = false;
 			int width = 0;
 			bool islong = false;
+			bool force_char = false;
 
 			ch = *(fmt++);
 			if (ch == '-')
@@ -268,22 +270,20 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 						div_out(info, &num, div);
 				}
 				break;
+#if defined(CONFIG_SPL_USE_TINY_PRINTF_POINTER_SUPPORT) || defined(DEBUG)
 			case 'p':
-				if (CONFIG_IS_ENABLED(NET) ||
-				    CONFIG_IS_ENABLED(NET_LWIP) || _DEBUG) {
-					pointer(info, fmt, va_arg(va, void *));
-					/*
-					 * Skip this because it pulls in _ctype which is
-					 * 256 bytes, and we don't generally implement
-					 * pointer anyway
-					 */
-					while (isalnum(fmt[0]))
-						fmt++;
-					break;
-				}
-				islong = true;
-				/* no break */
+				pointer(info, fmt, va_arg(va, void *));
+				/*
+				 * Skip this because it pulls in _ctype which is
+				 * 256 bytes, and we don't generally implement
+				 * pointer anyway
+				 */
+				while (isalnum(fmt[0]))
+					fmt++;
+				break;
+#endif
 			case 'x':
+			case 'X':
 				if (islong) {
 					num = va_arg(va, unsigned long);
 					div = 1UL << (sizeof(long) * 8 - 4);
@@ -300,25 +300,31 @@ static int _vprintf(struct printf_info *info, const char *fmt, va_list va)
 				break;
 			case 'c':
 				out(info, (char)(va_arg(va, int)));
+				/* For the case when it's \0 char */
+				force_char = true;
 				break;
 			case 's':
 				p = va_arg(va, char*);
 				break;
 			case '%':
 				out(info, '%');
+				break;
 			default:
+				out(info, '?');
 				break;
 			}
 
 			*info->bf = 0;
 			info->bf = p;
-			while (*info->bf++ && width > 0)
+			while (width > 0 && info->bf && *info->bf++)
 				width--;
 			while (width-- > 0)
 				info->putc(info, lz ? '0' : ' ');
 			if (p) {
-				while ((ch = *p++))
+				while ((ch = *p++) || force_char) {
 					info->putc(info, ch);
+					force_char = false;
+				}
 			}
 		}
 	}

@@ -4,14 +4,15 @@
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
 ifndef CONFIG_XPL_BUILD
-obj-$(CONFIG_DWAPB_GPIO)	+= dwapb_gpio.o
 obj-$(CONFIG_AXP_GPIO)		+= axp_gpio.o
 obj-$(CONFIG_DM_74X164)		+= 74x164_gpio.o
 endif
 obj-$(CONFIG_$(PHASE_)DM_GPIO) += gpio-uclass.o
 
-obj-$(CONFIG_$(XPL_)DM_PCA953X)	+= pca953x_gpio.o
+obj-$(CONFIG_$(PHASE_)DWAPB_GPIO)	+= dwapb_gpio.o
+obj-$(CONFIG_$(PHASE_)DM_PCA953X)	+= pca953x_gpio.o
 
+obj-$(CONFIG_ADI_GPIO)		+= gpio-adi-adsp.o
 obj-$(CONFIG_ASPEED_GPIO)	+= gpio-aspeed.o
 obj-$(CONFIG_ASPEED_G7_GPIO)	+= gpio-aspeed-g7.o
 obj-$(CONFIG_ASPEED_SGPIO)	+= gpio-aspeed-sgpio.o
@@ -48,7 +49,6 @@ obj-$(CONFIG_SH_GPIO_PFC)	+= sh_pfc.o
 obj-$(CONFIG_OMAP_GPIO)	+= omap_gpio.o
 obj-$(CONFIG_BCM2835_GPIO)	+= bcm2835_gpio.o
 obj-$(CONFIG_XILINX_GPIO)	+= xilinx_gpio.o
-obj-$(CONFIG_TCA642X)		+= tca642x.o
 obj-$(CONFIG_SUNXI_GPIO)	+= sunxi_gpio.o
 obj-$(CONFIG_LPC32XX_GPIO)	+= lpc32xx_gpio.o
 obj-$(CONFIG_STM32_GPIO)	+= stm32_gpio.o
@@ -58,13 +58,13 @@ obj-$(CONFIG_VYBRID_GPIO)	+= vybrid_gpio.o
 obj-$(CONFIG_HIKEY_GPIO)	+= hi6220_gpio.o
 obj-$(CONFIG_HSDK_CREG_GPIO)	+= hsdk-creg-gpio.o
 obj-$(CONFIG_IMX_RGPIO2P)	+= imx_rgpio2p.o
-obj-$(CONFIG_$(XPL_)PALMAS_GPIO)	+= palmas_gpio.o
+obj-$(CONFIG_$(PHASE_)PALMAS_GPIO)	+= palmas_gpio.o
 obj-$(CONFIG_PIC32_GPIO)	+= pic32_gpio.o
 obj-$(CONFIG_OCTEON_GPIO)	+= octeon_gpio.o
 obj-$(CONFIG_MVEBU_GPIO)	+= mvebu_gpio.o
 obj-$(CONFIG_MSM_GPIO)		+= msm_gpio.o
-obj-$(CONFIG_$(XPL_)PCF8575_GPIO)	+= pcf8575_gpio.o
-obj-$(CONFIG_$(PHASE_)QCOM_PMIC_GPIO)	+= qcom_pmic_gpio.o
+obj-$(CONFIG_$(PHASE_)PCF8575_GPIO)	+= pcf8575_gpio.o
+obj-$(CONFIG_$(PHASE_)QCOM_PMIC_GPIO)	+= qcom_pmic_gpio.o qcom_spmi_gpio.o
 obj-$(CONFIG_MT7620_GPIO)	+= mt7620_gpio.o
 obj-$(CONFIG_MT7621_GPIO)	+= mt7621_gpio.o
 obj-$(CONFIG_MSCC_SGPIO)	+= mscc_sgpio.o
@@ -72,10 +72,11 @@ obj-$(CONFIG_NX_GPIO)		+= nx_gpio.o
 obj-$(CONFIG_SIFIVE_GPIO)	+= sifive-gpio.o
 obj-$(CONFIG_NOMADIK_GPIO)	+= nmk_gpio.o
 obj-$(CONFIG_MAX7320_GPIO)	+= max7320_gpio.o
-obj-$(CONFIG_$(XPL_)MAX77663_GPIO)	+= max77663_gpio.o
+obj-$(CONFIG_$(PHASE_)MAX77663_GPIO)	+= max77663_gpio.o
 obj-$(CONFIG_SL28CPLD_GPIO)	+= sl28cpld-gpio.o
+obj-$(CONFIG_ADP5588_GPIO)	+= adp5588_gpio.o
 obj-$(CONFIG_ZYNQMP_GPIO_MODEPIN)	+= zynqmp_gpio_modepin.o
 obj-$(CONFIG_SLG7XL45106_I2C_GPO)	+= gpio_slg7xl45106.o
-obj-$(CONFIG_FTGPIO010)		+= ftgpio010.o
-obj-$(CONFIG_$(SPL_)ADP5585_GPIO)	+= adp5585_gpio.o
+obj-$(CONFIG_$(PHASE_)ADP5585_GPIO)	+= adp5585_gpio.o
 obj-$(CONFIG_RZG2L_GPIO)	+= rzg2l-gpio.o
+obj-$(CONFIG_MPFS_GPIO)	+= mpfs_gpio.o

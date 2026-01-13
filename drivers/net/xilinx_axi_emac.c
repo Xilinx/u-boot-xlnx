@@ -11,6 +11,7 @@
 #include <display_options.h>
 #include <dm.h>
 #include <dm/device_compat.h>
+#include <env.h>
 #include <log.h>
 #include <net.h>
 #include <malloc.h>
@@ -343,6 +344,8 @@ static int axiemac_phy_init(struct udevice *dev)
 
 static int pcs_pma_startup(struct axidma_priv *priv)
 {
+	u32 aneg_timeout = env_get_ulong("phy_aneg_timeout", 10,
+					 CONFIG_PHY_ANEG_TIMEOUT);
 	u32 rc, retry_cnt = 0;
 	u16 mii_reg;
 
@@ -361,7 +364,7 @@ static int pcs_pma_startup(struct axidma_priv *priv)
 	 * and the external PHY is not obtained.
 	 */
 	debug("axiemac: waiting for link status of the PCS/PMA PHY");
-	while (retry_cnt * 10 < CONFIG_PHY_ANEG_TIMEOUT) {
+	while (retry_cnt * 10 < aneg_timeout) {
 		rc = phyread(priv, priv->pcsaddr, MII_BMSR, &mii_reg);
 		if ((mii_reg & BMSR_LSTATUS) && mii_reg != 0xffff && !rc) {
 			debug(".Done\n");
@@ -555,7 +558,7 @@ static int axiemac_write_hwaddr(struct udevice *dev)
 /* Reset DMA engine */
 static void axi_dma_init(struct axidma_priv *priv)
 {
-	u32 timeout = 500;
+	int timeout = 500;
 
 	/* Reset the engine so the hardware starts from a known state */
 	writel(XAXIDMA_CR_RESET_MASK, &priv->dmatx->control);
@@ -568,11 +571,11 @@ static void axi_dma_init(struct axidma_priv *priv)
 		if (!((readl(&priv->dmatx->control) |
 				readl(&priv->dmarx->control))
 						& XAXIDMA_CR_RESET_MASK)) {
-			break;
+			return;
 		}
 	}
-	if (!timeout)
-		printf("%s: Timeout\n", __func__);
+
+	printf("%s: Timeout\n", __func__);
 }
 
 static int axiemac_start(struct udevice *dev)

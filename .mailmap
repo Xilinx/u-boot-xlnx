@@ -28,6 +28,7 @@ Anurag Kumar Vulisha <AnuragKumar.Vulisha@amd.com> <anurag.kumar.vulisha@xilinx.
 Appana Durga Kedareswara rao <appana.durga.kedareswara.rao@amd.com> <appana.durga.rao@xilinx.com>
 Ashok Reddy Soma <ashok.reddy.soma@amd.com> <ashok.reddy.soma@xilinx.com>
 Atish Patra <atishp@atishpatra.org> <atish.patra@wdc.com>
+Bernhard Messerklinger <bernhard.messerklinger@at.abb.com> <bernhard.messerklinger@br-automation.com>
 Bharat Kumar Gogada <bharat.kumar.gogada@amd.com> <bharat.kumar.gogada@xilinx.com>
 Bharat Kumar Gogada <bharat.kumar.gogada@amd.com> <bharatku@xilinx.com>
 Bhargava Sreekantappa Gayathri <bhargava.sreekantappa-gayathri@amd.com> <bhargava.sreekantappa-gayathri@xilinx.com>
@@ -35,15 +36,25 @@ Bhupesh Sharma <bhupesh.linux@gmail.com> <bhupesh.sharma@linaro.org>
 Bin Meng <bmeng.cn@gmail.com> <bin.meng@windriver.com>
 Boris Brezillon <bbrezillon@kernel.org> <boris.brezillon@bootlin.com>
 Boris Brezillon <bbrezillon@kernel.org> <boris.brezillon@free-electrons.com>
+Casey Connolly <casey.connolly@linaro.org> <caleb.connolly@linaro.org>
+Chen-Yu Tsai <wens@kernel.org> <wens@csie.org>
 Christian Kohn <chris.kohn@amd.com> <christian.kohn@xilinx.com>
+Christopher Obbard <christopher.obbard@linaro.org> <chris.obbard@collabora.com>
 Dirk Behme <dirk.behme@googlemail.com>
+<duje@dujemihanovic.xyz> <duje.mihanovic@skole.hr>
 Durga Challa <durga.challa@amd.com> <vnsl.durga.challa@xilinx.com>
 Eugen Hristev <eugen.hristev@linaro.org> <eugen.hristev@microchip.com>
 Eugen Hristev <eugen.hristev@linaro.org> <eugen.hristev@collabora.com>
 Fabio Estevam <fabio.estevam@nxp.com>
+Greg Malysa <malysagreg@gmail.com> <greg.malysa@timesys.com>
 Harini Katakam <harini.katakam@amd.com> <harini.katakam@xilinx.com>
 Harsha <harsha.harsha@amd.com> <harsha.harsha@xilinx.com>
 Heiko Stuebner <heiko.stuebner@cherry.de> <heiko.stuebner@theobroma-systems.com>
+Heiko Schocher <hs@nabladev.com> <hs@denx.de>
+Heiko Schocher <hs@nabladev.com> <hs@pollux.denx.de>
+Heiko Schocher <hs@nabladev.com> <heiko.schocher@invitel.hu>
+Heiko Schocher <hs@nabladev.com> <[hs@denx.de]>
+Heiko Schocher <hs@nabladev.com> <hs@pollux.(none)>
 Heinrich Schuchardt <xypron.glpk@gmx.de> <heinrich.schuchardt@canonical.com>
 Heinrich Schuchardt <xypron.glpk@gmx.de> xypron.glpk@gmx.de <xypron.glpk@gmx.de>
 Ibai Erkiaga <ibai.erkiaga-elorza@amd.com> <ibai.erkiaga-elorza@xilinx.com>
@@ -58,12 +69,14 @@ Jagan Teki <jagannadha.sutradharudu-teki@xilinx.com>
 Jakob Unterwurzacher <jakob.unterwurzacher@cherry.de> <jakob.unterwurzacher@theobroma-systems.com>
 Jay Buddhabhatti <jay.buddhabhatti@amd.com> <jay.buddhabhatti@xilinx.com>
 Jernej Skrabec <jernej.skrabec@gmail.com> <jernej.skrabec@siol.net>
+Jerome Forissier <jerome@forissier.org> <jerome.forissier@linaro.org>
 John Linn <john.linn@amd.com> <john.linn@xilinx.com>
 Jyotheeswar Reddy Mutthareddyvari <jyotheeswar.reddy.mutthareddyvari@amd.com> <jyothee@xilinx.com>
 Jyotheeswar Reddy Mutthareddyvari <jyotheeswar.reddy.mutthareddyvari@amd.com> <jyotheeswar.reddy.mutthareddyvari@xilinx.com>
 Kalyani Akula <kalyani.akula@amd.com> <kalyani.akula@xilinx.com>
 Klaus Goger <klaus.goger@cherry.de> <klaus.goger@theobroma-systems.com>
 Masahisa Kojima <kojima.masahisa@socionext.com> <masahisa.kojima@linaro.org>
+Linus Walleij <linusw@kernel.org> <linus.walleij@linaro.org>
 Love Kumar <love.kumar@amd.com> <love.kumar@xilinx.com>
 Lukasz Majewski <lukma@denx.de>
 Marek Behún <kabel@kernel.org> <marek.behun@nic.cz>
@@ -74,6 +87,7 @@ Marek Vasut <marex@denx.de> <marex at denx.de>
 Markus Klotzbuecher <mk@denx.de>
 Masahiro Yamada <masahiroy@kernel.org> <yamada.masahiro@socionext.com>
 Masahiro Yamada <masahiroy@kernel.org> <yamada.m@jp.panasonic.com>
+Mattijs Korpershoek <mkorpershoek@kernel.org> <mkorpershoek@baylibre.com>
 Michal Simek <michal.simek@amd.com> <Monstr@seznam.cz>
 Michal Simek <michal.simek@amd.com> <michal.simek@xilinx.com>
 Michal Simek <michal.simek@amd.com> <monstr@monstr.eu>
@@ -92,7 +106,8 @@ This contributor prefers not to receive mails <noreply@example.com> <pali.rohar@
 Padmarao Begari <padmarao.begari@amd.com> <padmarao.begari@microchip.com>
 Patrice Chotard <patrice.chotard@foss.st.com> <patrice.chotard@st.com>
 Patrick Delaunay <patrick.delaunay@foss.st.com> <patrick.delaunay@st.com>
-Paul Burton <paul.burton@mips.com> <paul.burton@imgtec.com>
+Paul Burton <paulburton@kernel.org> <paul.burton@imgtec.com>
+Paul Burton <paulburton@kernel.org> <paul.burton@mips.com>
 Philipp Tomsich <philipp.tomsich@vrull.eu> <philipp.tomsich@theobroma-systems.com>
 Piyush Mehta <piyush.mehta@amd.com> <piyush.mehta@xilinx.com>
 Prabhakar Kushwaha <prabhakar@freescale.com>
@@ -102,6 +117,7 @@ Radhey Shyam Pandey <radhey.shyam.pandey@amd.com> <radhey.shyam.pandey@xilinx.co
 Rajeshwari Shinde <rajeshwari.s@samsung.com>
 Raju Kumar Pothuraju <rajukumar.pothuraju@amd.com> <raju.kumar-pothuraju@xilinx.com>
 Ravi Patel <ravi.patel@amd.com> <ravi.patel@xilinx.com>
+Raymond Mao <raymondmaoca@gmail.com> <raymond.mao@linaro.org>
 Ricardo Ribalda <ricardo@ribalda.com> <ricardo.ribalda@gmail.com>
 Ricardo Ribalda <ricardo@ribalda.com> <ricardo.ribalda@uam.es>
 Rohit Visavalia <rohit.visavalia@amd.com> <rohit.visavalia@xilinx.com>
@@ -109,6 +125,8 @@ Ruchika Gupta <ruchika.gupta@nxp.com> <ruchika.gupta@freescale.com>
 Saeed Nowshadi <saeed.nowshadi@amd.com> <saeed.nowshadi@xilinx.com>
 Sai Krishna Potthuri <sai.krishna.potthuri@amd.com> <lakshmi.sai.krishna.potthuri@xilinx.com>
 Sai Pavan Boddu <sai.pavan.boddu@amd.com> <sai.pavan.boddu@xilinx.com>
+Sam Protsenko <semen.protsenko@linaro.org>
+Sam Protsenko <semen.protsenko@linaro.org> <joe.skb7@gmail.com>
 Sandeep Gundlupet Raju <sandeep.gundlupet-raju@amd.com> <sandeep.gundlupet-raju@xilinx.com>
 Sandeep Paulraj <s-paulraj@ti.com>
 Sandeep Reddy Ghanapuram <sandeep.reddy-ghanapuram@amd.com> <sandeep.reddy-ghanapuram@xilinx.com>
@@ -119,14 +137,17 @@ Siva Durga Prasad Paladugu <siva.durga.prasad.paladugu@amd.com> <siva.durga.pala
 Siva Durga Prasad Paladugu <siva.durga.prasad.paladugu@amd.com> <sivadur@xilinx.com>
 Srinivas Goud <srinivas.goud@amd.com> <srinivas.goud@xilinx.com>
 Srinivas Neeli <srinivas.neeli@amd.com> <srinivas.neeli@xilinx.com>
-Stefan Roese <sr@denx.de> <stroese>
-Stefano Babic <sbabic@denx.de>
+Stefan Roese <stefan.roese@mailbox.org> <stroese>
+Stefano Babic <sbabic@nabladev.com>
 Stefano Stabellini <stefano.stabellini@amd.com> <stefano.stabellini@xilinx.com>
+No generic patch CC mail please <noreply@example.com> <swarren@wwwdotorg.org>
+No generic patch CC mail please <noreply@example.com> <swarren@nvidia.com>
+Sumit Garg <sumit.garg@kernel.org> <sumit.garg@linaro.org>
 Tom Rini <trini@konsulko.com> <trini@ti.com>
 Tomas Thoresen <tomas.thoresen@amd.com> <tomast@xilinx.com>
 TsiChung Liew <Tsi-Chung.Liew@freescale.com>
 Varalaxmi Bingi <varalaxmi.bingi@amd.com> <varalaxmi.bingi@xilinx.com>
-Venkatesh Yadav Abbarapu <venkatesh.abbarapu@amd.com> <venkatesh.abbarapu@xilinx.com>
+Abbarapu Venkatesh Yadav <venkyada@qti.qualcomm.com>
 Vikhyat Goyal <vikhyat.goyal@amd.com> <vikhyat.goyal@xilinx.com>
 Vishal Patel <vishal.patel@amd.com> <vishal.patel@xilinx.com>
 Wolfgang Denk <wd@denx.de> <wd@atlas.denx.de>
@@ -138,6 +159,8 @@ Wolfgang Denk <wd@denx.de> <wd@pollux.(none)>
 Wolfgang Denk <wd@denx.de> <wd@pollux.denx.de>
 Wolfgang Denk <wd@denx.de> <wd@xpert.denx.de>
 Wolfgang Denk <wd@denx.de> <wdenk>
+Wolfgang Wallner <wolfgang.wallner@at.abb.com> <wolfgang.wallner@br-automation.com>
+Yao Zi <me@ziyao.cc> <ziyao@disroot.org>
 York Sun <york.sun@nxp.com>
 York Sun <yorksun@freescale.com>
 Łukasz Majewski <l.majewski@samsung.com>

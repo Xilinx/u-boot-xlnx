@@ -34,6 +34,11 @@ struct clk *dev_get_clk_ptr(struct udevice *dev)
 	return (struct clk *)dev_get_uclass_priv(dev);
 }
 
+ulong clk_get_id(const struct clk *clk)
+{
+	return (ulong)(clk->id & CLK_ID_MSK);
+}
+
 #if CONFIG_IS_ENABLED(OF_PLATDATA)
 int clk_get_by_phandle(struct udevice *dev, const struct phandle_1_arg *cells,
 		       struct clk *clk)
@@ -43,7 +48,7 @@ int clk_get_by_phandle(struct udevice *dev, const struct phandle_1_arg *cells,
 	ret = device_get_by_ofplat_idx(cells->idx, &clk->dev);
 	if (ret)
 		return ret;
-	clk->id = cells->arg[0];
+	clk->id = CLK_ID(dev, cells->arg[0]);
 
 	return 0;
 }
@@ -61,7 +66,7 @@ static int clk_of_xlate_default(struct clk *clk,
 	}
 
 	if (args->args_count)
-		clk->id = args->args[0];
+		clk->id = CLK_ID(clk->dev, args->args[0]);
 	else
 		clk->id = 0;
 
@@ -353,7 +358,7 @@ static int clk_set_default_rates(struct udevice *dev,
 
 		ret = clk_set_rate(c, rates[index]);
 
-		if (ret < 0) {
+		if (IS_ERR_VALUE(ret)) {
 			dev_warn(dev,
 				 "failed to set rate on clock index %d (%ld) (error = %d)\n",
 				 index, clk.id, ret);
@@ -418,6 +423,24 @@ int clk_get_by_name_nodev(ofnode node, const char *name, struct clk *clk)
 	}
 
 	return clk_get_by_index_nodev(node, index, clk);
+}
+
+const char *
+clk_resolve_parent_clk(struct udevice *dev, const char *name)
+{
+	struct udevice *parent;
+	struct clk clk;
+	int ret;
+
+	ret = uclass_get_device_by_name(UCLASS_CLK, name, &parent);
+	if (!ret)
+		return name;
+
+	ret = clk_get_by_name(dev, name, &clk);
+	if (!clk.dev)
+		return name;
+
+	return clk.dev->name;
 }
 
 int clk_release_all(struct clk *clk, unsigned int count)
@@ -554,6 +577,9 @@ static void clk_clean_rate_cache(struct clk *clk)
 	clk->rate = 0;
 
 	list_for_each_entry(child_dev, &clk->dev->child_head, sibling_node) {
+		if (device_get_uclass_id(child_dev) != UCLASS_CLK)
+			continue;
+
 		clkp = dev_get_clk_ptr(child_dev);
 		clk_clean_rate_cache(clkp);
 	}
@@ -568,12 +594,24 @@ ulong clk_set_rate(struct clk *clk, ulong rate)
 	if (!clk_valid(clk))
 		return 0;
 	ops = clk_dev_ops(clk->dev);
-
-	if (!ops->set_rate)
-		return -ENOSYS;
-
-	/* get private clock struct used for cache */
 	clk_get_priv(clk, &clkp);
+
+	/* Try to find parents which can set rate */
+	while (!ops->set_rate) {
+		struct clk *parent;
+
+		if (!(clkp->flags & CLK_SET_RATE_PARENT))
+			return -ENOSYS;
+
+		parent = clk_get_parent(clk);
+		if (IS_ERR_OR_NULL(parent) || !clk_valid(parent))
+			return -ENODEV;
+
+		clk = parent;
+		ops = clk_dev_ops(clk->dev);
+		clk_get_priv(clk, &clkp);
+	}
+
 	/* Clean up cached rates for us and all child clocks */
 	clk_clean_rate_cache(clkp);
 
@@ -593,14 +631,27 @@ int clk_set_parent(struct clk *clk, struct clk *parent)
 	if (!ops->set_parent)
 		return -ENOSYS;
 
-	ret = ops->set_parent(clk, parent);
-	if (ret)
+	ret = clk_enable(parent);
+	if (ret && ret != -ENOSYS) {
+		printf("Cannot enable parent %s\n", parent->dev->name);
 		return ret;
+	}
 
-	if (CONFIG_IS_ENABLED(CLK_CCF))
+	ret = ops->set_parent(clk, parent);
+	if (ret) {
+		clk_disable(parent);
+		return ret;
+	}
+
+	if (CONFIG_IS_ENABLED(CLK_CCF)) {
 		ret = device_reparent(clk->dev, parent->dev);
+		if (ret) {
+			clk_disable(parent);
+			return ret;
+		}
+	}
 
-	return ret;
+	return 0;
 }
 
 int clk_enable(struct clk *clk)

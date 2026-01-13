@@ -11,6 +11,7 @@
 
 #include <command.h>
 #include <log.h>
+#include <string.h>
 #include <test/lib.h>
 #include <test/test.h>
 #include <test/ut.h>
@@ -221,3 +222,79 @@ static int lib_memdup(struct unit_test_state *uts)
 	return 0;
 }
 LIB_TEST(lib_memdup, 0);
+
+/** lib_strnstr() - unit test for strnstr() */
+static int lib_strnstr(struct unit_test_state *uts)
+{
+	const char *s1 = "Itsy Bitsy Teenie Weenie";
+	const char *s2 = "eenie";
+	const char *s3 = "eery";
+
+	ut_asserteq_ptr(&s1[12], strnstr(s1, s2, SIZE_MAX));
+	ut_asserteq_ptr(&s1[12], strnstr(s1, s2, 17));
+	ut_assertnull(strnstr(s1, s2, 16));
+	ut_assertnull(strnstr(s1, s2, 0));
+	ut_asserteq_ptr(&s1[13], strnstr(&s1[3], &s2[1], SIZE_MAX));
+	ut_asserteq_ptr(&s1[13], strnstr(&s1[3], &s2[1], 14));
+	ut_assertnull(strnstr(&s1[3], &s2[1], 13));
+	ut_assertnull(strnstr(&s1[3], &s2[1], 0));
+	ut_assertnull(strnstr(s1, s3, SIZE_MAX));
+	ut_assertnull(strnstr(s1, s3, 0));
+
+	return 0;
+}
+LIB_TEST(lib_strnstr, 0);
+
+/** lib_strstr() - unit test for strstr() */
+static int lib_strstr(struct unit_test_state *uts)
+{
+	const char *s1 = "Itsy Bitsy Teenie Weenie";
+	const char *s2 = "eenie";
+	const char *s3 = "easy";
+
+	ut_asserteq_ptr(&s1[12], strstr(s1, s2));
+	ut_asserteq_ptr(&s1[13], strstr(&s1[3], &s2[1]));
+	ut_assertnull(strstr(s1, s3));
+	ut_asserteq_ptr(&s1[2], strstr(s1, &s3[2]));
+	ut_asserteq_ptr(&s1[8], strstr(&s1[5], &s3[2]));
+
+	return 0;
+}
+LIB_TEST(lib_strstr, 0);
+
+static int lib_strim(struct unit_test_state *uts)
+{
+	char buf[BUFLEN], *p;
+
+	strcpy(buf, "abc");
+	ut_asserteq_str("abc", strim(buf));
+
+	/* leading space */
+	strcpy(buf, " abc");
+	ut_asserteq_str("abc", strim(buf));
+
+	/* multiple leading spaces */
+	strcpy(buf, "  abc");
+	ut_asserteq_str("abc", strim(buf));
+
+	/* multiple internal spaces */
+	strcpy(buf, "  a   bc");
+	ut_asserteq_str("a   bc", strim(buf));
+
+	/* with trailing space */
+	strcpy(buf, "  a   bc ");
+	ut_asserteq_str("a   bc", strim(buf));
+
+	/* with multiple trailing spaces */
+	strcpy(buf, "  a   bc   ");
+	ut_asserteq_str("a   bc", strim(buf));
+
+	/* with only spaces */
+	strcpy(buf, "     ");
+	p = strim(buf);
+	ut_asserteq_ptr(p, buf);
+	ut_asserteq_str("", p);
+
+	return 0;
+}
+LIB_TEST(lib_strim, 0);

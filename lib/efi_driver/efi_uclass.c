@@ -17,7 +17,10 @@
  * controllers.
  */
 
+#define LOG_CATEGORY LOGC_EFI
+
 #include <dm.h>
+#include <efi_device_path.h>
 #include <efi_driver.h>
 #include <log.h>
 #include <malloc.h>
@@ -224,7 +227,7 @@ static efi_status_t EFIAPI efi_uc_stop(
 				goto out;
 		}
 		ret = EFI_SUCCESS;
-			goto out;
+		goto out;
 	}
 
 	/* Destroy all children */

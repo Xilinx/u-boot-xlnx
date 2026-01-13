@@ -8,26 +8,32 @@
 
 #include <asm/arch/hardware.h>
 #include <asm/io.h>
+#include <cpu_func.h>
 #include <dm/uclass.h>
 #include <env.h>
 #include <fdt_support.h>
 #include <spl.h>
+#include <asm/arch/k3-ddr.h>
 #include "../common/fdt_ops.h"
 
-int board_init(void)
+#if IS_ENABLED(CONFIG_SPL_BUILD)
+void spl_board_init(void)
 {
-	return 0;
+	enable_caches();
 }
+#endif
 
-int dram_init(void)
+#if defined(CONFIG_XPL_BUILD)
+void spl_perform_board_fixups(struct spl_image_info *spl_image)
 {
-	return fdtdec_setup_mem_size_base();
+	if (IS_ENABLED(CONFIG_K3_DDRSS)) {
+		if (IS_ENABLED(CONFIG_K3_INLINE_ECC))
+			fixup_ddr_driver_for_ecc(spl_image);
+	} else {
+		fixup_memory_node(spl_image);
+	}
 }
-
-int dram_init_banksize(void)
-{
-	return fdtdec_setup_memory_banksize();
-}
+#endif
 
 #if IS_ENABLED(CONFIG_BOARD_LATE_INIT)
 int board_late_init(void)

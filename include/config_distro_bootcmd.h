@@ -112,7 +112,7 @@
 #define BOOTEFI_NAME "bootarm.efi"
 #elif defined(CONFIG_X86_RUN_32BIT)
 #define BOOTEFI_NAME "bootia32.efi"
-#elif defined(CONFIG_X86_RUN_64BIT)
+#elif defined(CONFIG_X86_64)
 #define BOOTEFI_NAME "bootx64.efi"
 #elif defined(CONFIG_ARCH_RV32I)
 #define BOOTEFI_NAME "bootriscv32.efi"
@@ -192,6 +192,11 @@
 #else
 #define BOOTENV_SHARED_EFI
 #define SCAN_DEV_FOR_EFI
+#endif
+
+#ifndef SCAN_DEV_FOR_BOOT_PARTS
+#define SCAN_DEV_FOR_BOOT_PARTS \
+	"part list ${devtype} ${devnum} -bootable devplist; "
 #endif
 
 #ifdef CONFIG_SATA
@@ -538,7 +543,7 @@
 		"\0"                                                      \
 	\
 	"scan_dev_for_boot_part="                                         \
-		"part list ${devtype} ${devnum} -bootable devplist; "     \
+		SCAN_DEV_FOR_BOOT_PARTS                                   \
 		"env exists devplist || setenv devplist 1; "              \
 		"for distro_bootpart in ${devplist}; do "                 \
 			"if fstype ${devtype} "                           \

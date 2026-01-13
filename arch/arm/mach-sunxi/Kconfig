@@ -51,79 +51,149 @@ config DRAM_SUN50I_H616
 	  Select this dram controller driver for some sun50i platforms,
 	  like H616.
 
-if DRAM_SUN50I_H616
-config DRAM_SUN50I_H616_DX_ODT
-	hex "H616 DRAM DX ODT parameter"
+config DRAM_SUN50I_A133
+	bool
+	help
+	  Select this dram controller driver for some sun50i platforms,
+	  like A133.
+
+config DRAM_SUN55I_A523
+	bool
+	help
+	  Select this DRAM controller driver for A523/T527 SoCs.
+
+if DRAM_SUN50I_H616 || DRAM_SUN50I_A133 || DRAM_SUN55I_A523
+config DRAM_SUNXI_DX_ODT
+	hex "DRAM DX ODT parameter"
 	help
 	  DX ODT value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_DX_DRI
-	hex "H616 DRAM DX DRI parameter"
+config DRAM_SUNXI_DX_DRI
+	hex "DRAM DX DRI parameter"
 	help
 	  DX DRI value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_CA_DRI
-	hex "H616 DRAM CA DRI parameter"
+config DRAM_SUNXI_CA_DRI
+	hex "DRAM CA DRI parameter"
 	help
 	  CA DRI value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_ODT_EN
-	hex "H616 DRAM ODT EN parameter"
+config DRAM_SUNXI_ODT_EN
+	hex "DRAM ODT EN parameter"
 	default 0x1
 	help
 	  ODT EN value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_TPR0
-	hex "H616 DRAM TPR0 parameter"
+config DRAM_SUNXI_PARA0
+	hex "DRAM PARA0 parameter"
+	depends on DRAM_SUN50I_A133
+	help
+	  PARA0 value from vendor DRAM settings.
+
+config DRAM_SUNXI_MR11
+	hex "DRAM MR11 parameter"
+	depends on DRAM_SUN50I_A133
+	default 0x0
+	help
+	  MR11 value from vendor DRAM settings.
+
+config DRAM_SUNXI_MR12
+	hex "DRAM MR12 parameter"
+	depends on DRAM_SUN50I_A133
+	default 0x0
+	help
+	  MR12 value from vendor DRAM settings.
+
+config DRAM_SUNXI_MR13
+	hex "DRAM MR13 parameter"
+	depends on DRAM_SUN50I_A133
+	default 0x0
+	help
+	  MR13 value from vendor DRAM settings.
+
+config DRAM_SUNXI_MR14
+	hex "DRAM MR14 parameter"
+	depends on DRAM_SUN50I_A133
+	default 0x0
+	help
+	  MR14 value from vendor DRAM settings.
+
+config DRAM_SUNXI_TPR0
+	hex "DRAM TPR0 parameter"
 	default 0x0
 	help
 	  TPR0 value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_TPR2
-	hex "H616 DRAM TPR2 parameter"
+config DRAM_SUNXI_TPR1
+	hex "DRAM TPR1 parameter"
+	default 0x0
+	help
+	  TPR1 value from vendor DRAM settings.
+
+config DRAM_SUNXI_TPR2
+	hex "DRAM TPR2 parameter"
 	default 0x0
 	help
 	  TPR2 value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_TPR6
-	hex "H616 DRAM TPR6 parameter"
+config DRAM_SUNXI_TPR3
+	hex "DRAM TPR3 parameter"
+	default 0x0
+	help
+	  TPR3 value from vendor DRAM settings.
+
+config DRAM_SUNXI_TPR6
+	hex "DRAM TPR6 parameter"
 	default 0x3300c080
 	help
 	  TPR6 value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_TPR10
-	hex "H616 DRAM TPR10 parameter"
+config DRAM_SUNXI_TPR10
+	hex "DRAM TPR10 parameter"
 	help
 	  TPR10 value from vendor DRAM settings. It tells which features
 	  should be configured, like write leveling, read calibration, etc.
 
-config DRAM_SUN50I_H616_TPR11
-	hex "H616 DRAM TPR11 parameter"
+config DRAM_SUNXI_TPR11
+	hex "DRAM TPR11 parameter"
 	default 0x0
 	help
 	  TPR11 value from vendor DRAM settings.
 
-config DRAM_SUN50I_H616_TPR12
-	hex "H616 DRAM TPR12 parameter"
+config DRAM_SUNXI_TPR12
+	hex "DRAM TPR12 parameter"
 	default 0x0
 	help
 	  TPR12 value from vendor DRAM settings.
 
+config DRAM_SUNXI_TPR13
+	hex "DRAM TPR13 parameter"
+	depends on DRAM_SUN50I_A133
+	default 0x0
+	help
+	  TPR13 value from vendor DRAM settings.
+
+config DRAM_SUNXI_TPR14
+	hex "DRAM TPR14 parameter"
+	depends on DRAM_SUN50I_A133 || MACH_SUN55I_A523
+	default 0x48484848
+	help
+	  TPR14 value from vendor DRAM settings.
+
 choice
-	prompt "H616 PHY pin mapping selection"
-	default DRAM_SUN50I_H616_PHY_ADDR_MAP_0
+	prompt "DRAM PHY pin mapping selection"
+	default DRAM_SUNXI_PHY_ADDR_MAP_0
 
-config DRAM_SUN50I_H616_PHY_ADDR_MAP_0
-	bool "H313/H616/H618"
+config DRAM_SUNXI_PHY_ADDR_MAP_0
+	bool "DRAM PHY address map 0"
 	help
-	  The pin mapping selection used by the H313, H616, H618, and
-	  possibly other dies which use the H616 DRAM controller.
+	  This pin mapping selection should be used by the H313, H616, H618,
+	  and A133, R818 SoCs.
 
-config DRAM_SUN50I_H616_PHY_ADDR_MAP_1
-	bool "H700"
+config DRAM_SUNXI_PHY_ADDR_MAP_1
+	bool "DRAM PHY address map 1"
 	help
-	  The pin mapping selection used by the H700 and possibly other
-	  dies which use the H616 DRAM controller.
+	  This pin mapping selection should be used by the H700.
 endchoice
 endif
 
@@ -144,6 +214,7 @@ config AXP_PMIC_BUS
 config SUNXI_SRAM_ADDRESS
 	hex
 	default 0x10000 if MACH_SUN9I || MACH_SUN50I || MACH_SUN50I_H5
+	default 0x44000 if MACH_SUN55I_A523
 	default 0x20000 if SUN50I_GEN_H6 || SUNXI_GEN_NCAT2
 	default 0x0
 	---help---
@@ -155,6 +226,8 @@ config SUNXI_SRAM_ADDRESS
 config SUNXI_RVBAR_ADDRESS
 	hex
 	depends on ARM64
+	default 0x08100040 if MACH_SUN50I_A133
+	default 0x08000040 if MACH_SUN55I_A523
 	default 0x09010040 if SUN50I_GEN_H6
 	default 0x017000a0
 	---help---
@@ -181,8 +254,9 @@ config SUNXI_RVBAR_ALTERNATIVE
 config SUNXI_BL31_BASE
 	hex
 	default 0x00044000 if MACH_SUN50I || MACH_SUN50I_H5
-	default 0x00104000 if MACH_SUN50I_H6
 	default 0x40000000 if MACH_SUN50I_H616
+	default 0x00104000 if SUN50I_GEN_H6
+	default 0x00054000 if MACH_SUN55I_A523
 	default 0x0
 	help
 	  Address where BL31 (TF-A) is loaded, or zero if BL31 is not used.
@@ -264,7 +338,7 @@ config MACH_SUNXI_H3_H5
 # TODO: try out A80's 8GiB DRAM space
 config SUNXI_DRAM_MAX_SIZE
 	hex
-	default 0x100000000 if MACH_SUN50I_H616
+	default 0x100000000 if MACH_SUN50I_H616 || MACH_SUN50I_A133 || MACH_SUN55I_A523
 	default 0xC0000000 if MACH_SUN50I || MACH_SUN50I_H5 || MACH_SUN50I_H6
 	default 0x80000000
 
@@ -279,6 +353,7 @@ config MACH_SUNIV
 	select SUPPORT_SPL
 	select SKIP_LOWLEVEL_INIT_ONLY
 	select SPL_SKIP_LOWLEVEL_INIT_ONLY
+	imply OF_UPSTREAM
 
 config MACH_SUN4I
 	bool "sun4i (Allwinner A10)"
@@ -288,6 +363,7 @@ config MACH_SUN4I
 	select SUPPORT_SPL
 	imply SPL_SYS_I2C_LEGACY
 	imply SYS_I2C_LEGACY
+	imply OF_UPSTREAM
 
 config MACH_SUN5I
 	bool "sun5i (Allwinner A13)"
@@ -297,6 +373,7 @@ config MACH_SUN5I
 	select SUPPORT_SPL
 	imply SPL_SYS_I2C_LEGACY
 	imply SYS_I2C_LEGACY
+	imply OF_UPSTREAM
 
 config MACH_SUN6I
 	bool "sun6i (Allwinner A31)"
@@ -398,6 +475,7 @@ config MACH_SUN8I_R528
 	select MMC_SUNXI_HAS_NEW_MODE
 	select SUPPORT_SPL
 	select DRAM_SUN20I_D1
+	imply OF_UPSTREAM
 
 config MACH_SUN8I_V3S
 	bool "sun8i (Allwinner V3/V3s/S3/S3L)"
@@ -410,6 +488,7 @@ config MACH_SUN8I_V3S
 	select SUNXI_DRAM_DW_16BIT
 	select SUPPORT_SPL
 	select ARMV7_BOOT_SEC_DEFAULT if OLD_SUNXI_KERNEL_COMPAT
+	imply OF_UPSTREAM
 
 config MACH_SUN9I
 	bool "sun9i (Allwinner A80)"
@@ -420,6 +499,7 @@ config MACH_SUN9I
 	select SUN6I_PRCM
 	select SUNXI_GEN_SUN6I
 	select SUPPORT_SPL
+	imply OF_UPSTREAM
 
 config MACH_SUN50I
 	bool "sun50i (Allwinner A64)"
@@ -454,6 +534,23 @@ config MACH_SUN50I_H616
 	select ARM64
 	select DRAM_SUN50I_H616
 	select SUN50I_GEN_H6
+	imply OF_UPSTREAM
+
+config MACH_SUN50I_A133
+	bool "sun50i (Allwinner A133)"
+	select ARM64
+	select DRAM_SUN50I_A133
+	select SUN50I_GEN_H6
+	imply OF_UPSTREAM
+
+config MACH_SUN55I_A523
+	bool "sun55i (Allwinner A523/A527/T527/H728)"
+	select ARM64
+	select SUNXI_GEN_NCAT2
+	select SUNXI_NEW_PINCTRL
+	select DRAM_SUN55I_A523
+	select FIT
+	select SPL_LOAD_FIT if SPL
 	imply OF_UPSTREAM
 
 endchoice
@@ -493,7 +590,7 @@ config ARM_BOOT_HOOK_RMR
 	This allows both the SPL and the U-Boot proper to be entered in
 	either mode and switch to AArch64 if needed.
 
-if SUNXI_DRAM_DW || DRAM_SUN50I_H6 || DRAM_SUN50I_H616
+if SUNXI_DRAM_DW || DRAM_SUN50I_H6 || DRAM_SUN50I_H616 || DRAM_SUN50I_A133 || DRAM_SUN55I_A523
 config SUNXI_DRAM_DDR3
 	bool
 
@@ -506,14 +603,19 @@ config SUNXI_DRAM_LPDDR3
 config SUNXI_DRAM_LPDDR4
 	bool
 
+config SUNXI_DRAM_DDR4
+	bool
+
 choice
 	prompt "DRAM Type and Timing"
+	default SUNXI_DRAM_A523_LPDDR4 if MACH_SUN55I_A523
 	default SUNXI_DRAM_DDR3_1333 if !MACH_SUN8I_V3S
 	default SUNXI_DRAM_DDR2_V3S if MACH_SUN8I_V3S
 
 config SUNXI_DRAM_DDR3_1333
 	bool "DDR3 1333"
 	select SUNXI_DRAM_DDR3
+	depends on !DRAM_SUN50I_A133
 	---help---
 	This option is the original only supported memory type, which suits
 	many H3/H5/A64 boards available now.
@@ -521,6 +623,7 @@ config SUNXI_DRAM_DDR3_1333
 config SUNXI_DRAM_LPDDR3_STOCK
 	bool "LPDDR3 with Allwinner stock configuration"
 	select SUNXI_DRAM_LPDDR3
+	depends on !DRAM_SUN50I_A133
 	---help---
 	This option is the LPDDR3 timing used by the stock boot0 by
 	Allwinner.
@@ -544,7 +647,7 @@ config SUNXI_DRAM_H6_DDR3_1333
 config SUNXI_DRAM_H616_LPDDR3
 	bool "LPDDR3 DRAM chips on the H616 DRAM controller"
 	select SUNXI_DRAM_LPDDR3
-	depends on DRAM_SUN50I_H616
+	depends on DRAM_SUN50I_H616 || DRAM_SUN50I_A133
 	help
 	  This option is the LPDDR3 timing used by the stock boot0 by
 	  Allwinner.
@@ -552,7 +655,7 @@ config SUNXI_DRAM_H616_LPDDR3
 config SUNXI_DRAM_H616_LPDDR4
 	bool "LPDDR4 DRAM chips on the H616 DRAM controller"
 	select SUNXI_DRAM_LPDDR4
-	depends on DRAM_SUN50I_H616
+	depends on DRAM_SUN50I_H616 || DRAM_SUN50I_A133
 	help
 	  This option is the LPDDR4 timing used by the stock boot0 by
 	  Allwinner.
@@ -560,10 +663,26 @@ config SUNXI_DRAM_H616_LPDDR4
 config SUNXI_DRAM_H616_DDR3_1333
 	bool "DDR3-1333 boot0 timings on the H616 DRAM controller"
 	select SUNXI_DRAM_DDR3
-	depends on DRAM_SUN50I_H616
+	depends on DRAM_SUN50I_H616 || DRAM_SUN50I_A133
 	help
 	  This option is the DDR3 timing used by the boot0 on H616 TV boxes
 	  which use a DDR3-1333 timing.
+
+config SUNXI_DRAM_A133_DDR4
+	bool "DDR4 boot0 timings on the A133 DRAM controller"
+	select SUNXI_DRAM_DDR4
+	depends on DRAM_SUN50I_A133
+	help
+	  This option is the DDR4 timing used by the boot0 on A133 devices
+	  which use a DDR4 timing.
+
+config SUNXI_DRAM_A133_LPDDR4
+	bool "LPDDR4 boot0 timings on the A133 DRAM controller"
+	select SUNXI_DRAM_LPDDR4
+	depends on DRAM_SUN50I_A133
+	help
+	  This option is the LPDDR4 timing used by the boot0 on A133 devices
+	  which use an LPDDR4 timing.
 
 config SUNXI_DRAM_DDR2_V3S
 	bool "DDR2 found in V3s chip"
@@ -573,6 +692,21 @@ config SUNXI_DRAM_DDR2_V3S
 	This option is only for the DDR2 memory chip which is co-packaged in
 	Allwinner V3s SoC.
 
+config SUNXI_DRAM_A523_DDR3
+	bool "DDR3 DRAM chips on the A523/T527 DRAM controller"
+	select SUNXI_DRAM_DDR3
+	depends on DRAM_SUN55I_A523
+	help
+	  This option is the DDR3 timing used by the stock boot0 by
+	  Allwinner.
+
+config SUNXI_DRAM_A523_LPDDR4
+	bool "LPDDR4 DRAM chips on the A523/T527 DRAM controller"
+	select SUNXI_DRAM_LPDDR4
+	depends on DRAM_SUN55I_A523
+	help
+	  This option is the LPDDR4 timing used by the stock boot0 by
+	  Allwinner.
 endchoice
 endif
 
@@ -587,12 +721,13 @@ config DRAM_CLK
 	int "sunxi dram clock speed"
 	default 792 if MACH_SUN9I
 	default 648 if MACH_SUN8I_R40
-	default 312 if MACH_SUN6I || MACH_SUN8I
 	default 360 if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || \
 		       MACH_SUN8I_V3S
+	default 312 if MACH_SUN6I || MACH_SUN8I
 	default 672 if MACH_SUN50I
 	default 744 if MACH_SUN50I_H6
-	default 720 if MACH_SUN50I_H616
+	default 720 if MACH_SUN50I_H616 || MACH_SUN50I_A133
+	default 1200 if MACH_SUN55I_A523
 	---help---
 	Set the dram clock speed, valid range 240 - 480 (prior to sun9i),
 	must be a multiple of 24. For the sun9i (A80), the tested values
@@ -610,6 +745,8 @@ endif
 config DRAM_ZQ
 	int "sunxi dram zq value"
 	depends on !MACH_SUN50I_H616
+	depends on !MACH_SUN50I_A133
+	depends on !MACH_SUN55I_A523
 	default 123 if MACH_SUN4I || MACH_SUN5I || MACH_SUN6I || \
 		       MACH_SUN8I_A23 || MACH_SUN8I_A33 || MACH_SUN8I_A83T
 	default 127 if MACH_SUN7I
@@ -623,6 +760,7 @@ config DRAM_ZQ
 config DRAM_ODT_EN
 	bool "sunxi dram odt enable"
 	depends on !MACH_SUN50I_H616
+	depends on !MACH_SUN55I_A523
 	default y if MACH_SUN8I_A23
 	default y if MACH_SUNXI_H3_H5
 	default y if MACH_SUN8I_R40
@@ -712,16 +850,11 @@ endif
 
 config SYS_CLK_FREQ
 	default 408000000 if MACH_SUNIV
-	default 1008000000 if MACH_SUN4I
-	default 1008000000 if MACH_SUN5I
-	default 1008000000 if MACH_SUN6I
-	default 912000000 if MACH_SUN7I
+	default 792000000 if MACH_SUN55I_A523
 	default 816000000 if MACH_SUN50I || MACH_SUN50I_H5
-	default 1008000000 if MACH_SUN8I
-	default 1008000000 if MACH_SUN9I
 	default 888000000 if MACH_SUN50I_H6
-	default 1008000000 if MACH_SUN50I_H616
-	default 1008000000 if MACH_SUN8I_R528
+	default 912000000 if MACH_SUN7I
+	default 1008000000
 
 config SYS_CONFIG_NAME
 	default "suniv" if MACH_SUNIV
@@ -735,6 +868,8 @@ config SYS_CONFIG_NAME
 	default "sun50i" if MACH_SUN50I
 	default "sun50i" if MACH_SUN50I_H6
 	default "sun50i" if MACH_SUN50I_H616
+	default "sun50i" if MACH_SUN50I_A133
+	default "sun55i" if MACH_SUN55I_A523
 
 config SYS_BOARD
 	default "sunxi"
@@ -784,49 +919,6 @@ config MMC_SUNXI_SLOT_EXTRA
 	slot or emmc on mmc1 - mmc3. Setting this to 1, 2 or 3 will enable
 	support for this.
 
-config USB0_VBUS_PIN
-	string "Vbus enable pin for usb0 (otg)"
-	default ""
-	---help---
-	Set the Vbus enable pin for usb0 (otg). This takes a string in the
-	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
-
-config USB0_VBUS_DET
-	string "Vbus detect pin for usb0 (otg)"
-	default ""
-	---help---
-	Set the Vbus detect pin for usb0 (otg). This takes a string in the
-	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
-
-config USB0_ID_DET
-	string "ID detect pin for usb0 (otg)"
-	default ""
-	---help---
-	Set the ID detect pin for usb0 (otg). This takes a string in the
-	format understood by sunxi_name_to_gpio, e.g. PH1 for pin 1 of port H.
-
-config USB1_VBUS_PIN
-	string "Vbus enable pin for usb1 (ehci0)"
-	default "PH6" if MACH_SUN4I || MACH_SUN7I
-	default "PH27" if MACH_SUN6I
-	---help---
-	Set the Vbus enable pin for usb1 (ehci0, usb0 is the otg). This takes
-	a string in the format understood by sunxi_name_to_gpio, e.g.
-	PH1 for pin 1 of port H.
-
-config USB2_VBUS_PIN
-	string "Vbus enable pin for usb2 (ehci1)"
-	default "PH3" if MACH_SUN4I || MACH_SUN7I
-	default "PH24" if MACH_SUN6I
-	---help---
-	See USB1_VBUS_PIN help text.
-
-config USB3_VBUS_PIN
-	string "Vbus enable pin for usb3 (ehci2)"
-	default ""
-	---help---
-	See USB1_VBUS_PIN help text.
-
 config I2C0_ENABLE
 	bool "Enable I2C/TWI controller 0"
 	default y if MACH_SUN4I || MACH_SUN5I || MACH_SUN7I || MACH_SUN8I_R40
@@ -844,7 +936,7 @@ config I2C1_ENABLE
 	---help---
 	See I2C0_ENABLE help text.
 
-if SUNXI_GEN_SUN6I || SUN50I_GEN_H6
+if SUNXI_GEN_SUN6I || SUN50I_GEN_H6 || SUNXI_GEN_NCAT2
 config R_I2C_ENABLE
 	bool "Enable the PRCM I2C/TWI controller"
 	# This is used for the pmic on H3
@@ -881,6 +973,7 @@ config VIDEO_SUNXI
 	depends on !SUNXI_GEN_NCAT2
 	select VIDEO
 	select DISPLAY
+	imply VIDEO_DAMAGE
 	imply VIDEO_DT_SIMPLEFB
 	default y
 	---help---
@@ -1130,10 +1223,6 @@ config BLUETOOTH_DT_DEVICE_FIXUP
 	  The used address is "bdaddr" if set, and "ethaddr" with the LSB
 	  flipped elsewise.
 
-source "board/sunxi/Kconfig"
-
-endif
-
 config CHIP_DIP_SCAN
 	bool "Enable DIPs detection for CHIP board"
 	select SUPPORT_EXTENSION_SCAN
@@ -1142,3 +1231,7 @@ config CHIP_DIP_SCAN
 	select W1_EEPROM
 	select W1_EEPROM_DS24XXX
 	select CMD_EXTENSION
+
+source "board/sunxi/Kconfig"
+
+endif

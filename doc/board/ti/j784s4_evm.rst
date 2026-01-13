@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: GPL-2.0-or-later OR BSD-3-Clause
 .. sectionauthor:: Apurva Nandan <a-nandan@ti.com>
 
-J784S4 and AM69 Platforms
-=========================
+J742S2, J784S4 and AM69 Platforms
+=================================
 
 Introduction
 ------------
@@ -36,6 +36,11 @@ Platform information:
 
 * https://www.ti.com/tool/J784S4XEVM
 * https://www.ti.com/tool/SK-AM69
+
+J742S2 is derivative of J784S24 SOC, More info can be found in
+
+* TRM : https://www.ti.com/lit/ug/spruje3/spruje3.pdf
+* Platform Information : https://www.ti.com/tool/J742S2XH01EVM
 
 Boot Flow
 ---------
@@ -81,14 +86,30 @@ Set the variables corresponding to this platform:
 .. include::  k3.rst
     :start-after: .. k3_rst_include_start_common_env_vars_defn
     :end-before: .. k3_rst_include_end_common_env_vars_defn
-.. code-block:: bash
+.. prompt:: bash
 
- $ export UBOOT_CFG_CORTEXR=j784s4_evm_r5_defconfig
- $ export UBOOT_CFG_CORTEXA=j784s4_evm_a72_defconfig
- $ export TFA_BOARD=j784s4
- $ export TFA_EXTRA_ARGS="K3_USART=0x8"
- $ export OPTEE_PLATFORM=k3-j784s4
- $ export OPTEE_EXTRA_ARGS="CFG_CONSOLE_UART=0x8"
+   export UBOOT_CFG_CORTEXR=j784s4_evm_r5_defconfig
+   export UBOOT_CFG_CORTEXA=j784s4_evm_a72_defconfig
+   export TFA_BOARD=j784s4
+   export TFA_EXTRA_ARGS="K3_USART=0x8"
+   export OPTEE_PLATFORM=k3-j784s4
+   export OPTEE_EXTRA_ARGS="CFG_CONSOLE_UART=0x8"
+
+.. note::
+
+   For AM69-SK, use the following U_BOOT_CFG instead:
+
+   .. prompt:: bash
+
+      export UBOOT_CFG_CORTEXR=am69_sk_r5_defconfig
+      export UBOOT_CFG_CORTEXA=am69_sk_a72_defconfig
+
+   For J742S2-EVM, use the following U_BOOT_CFG instead:
+
+   .. prompt:: bash
+
+      export UBOOT_CFG_CORTEXR=j742s2_evm_r5_defconfig
+      export UBOOT_CFG_CORTEXA=j742s2_evm_a72_defconfig
 
 .. j784s4_evm_rst_include_start_build_steps
 
@@ -134,14 +155,21 @@ variant (GP, HS-FS, HS-SE) requires a different source for these files.
     * tiboot3-j784s4-gp-evm.bin from :ref:`step 3.1 <j784s4_evm_rst_u_boot_r5>`
     * tispl.bin_unsigned, u-boot.img_unsigned from :ref:`step 3.2 <j784s4_evm_rst_u_boot_a72>`
 
+  .. note::
+
+    For J742S2, GP variant is not available.
+
+
  - HS-FS
 
     * tiboot3-j784s4-hs-fs-evm.bin from :ref:`step 3.1 <j784s4_evm_rst_u_boot_r5>`
+    * tiboot3-j742s2-hs-fs-evm.bin from :ref:`step 3.1 <j784s4_evm_rst_u_boot_r5>`
     * tispl.bin, u-boot.img from :ref:`step 3.2 <j784s4_evm_rst_u_boot_a72>`
 
  - HS-SE
 
     * tiboot3-j784s4-hs-evm.bin from :ref:`step 3.1 <j784s4_evm_rst_u_boot_r5>`
+    * tiboot3-j742s2-hs-evm.bin from :ref:`step 3.1 <j784s4_evm_rst_u_boot_r5>`
     * tispl.bin, u-boot.img from :ref:`step 3.2 <j784s4_evm_rst_u_boot_a72>`
 
 Image formats
@@ -326,6 +354,6 @@ Debugging U-Boot on J784S4-EVM and AM69-SK
 To start OpenOCD and connect to J784S4-EVM or AM69-SK board, use the
 following.
 
-.. code-block:: bash
+.. prompt:: bash
 
   openocd -f board/ti_j784s4evm.cfg

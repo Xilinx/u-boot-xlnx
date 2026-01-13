@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2014 - 2022, Xilinx, Inc.
- * (C) Copyright 2022 - 2023, Advanced Micro Devices, Inc.
+ * (C) Copyright 2022 - 2025, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
@@ -367,17 +367,17 @@ __maybe_unused int xilinx_read_eeprom(void)
 }
 
 #if defined(CONFIG_OF_BOARD)
-void *board_fdt_blob_setup(int *err)
+int board_fdt_blob_setup(void **fdtp)
 {
 	void *fdt_blob;
-
-	*err = 0;
 
 	if (IS_ENABLED(CONFIG_TARGET_XILINX_MBV)) {
 		fdt_blob = (void *)CONFIG_XILINX_OF_BOARD_DTB_ADDR;
 
-		if (fdt_magic(fdt_blob) == FDT_MAGIC)
-			return fdt_blob;
+		if (fdt_magic(fdt_blob) == FDT_MAGIC) {
+			*fdtp = fdt_blob;
+			return 0;
+		}
 	}
 
 	if (!IS_ENABLED(CONFIG_XPL_BUILD) &&
@@ -385,8 +385,10 @@ void *board_fdt_blob_setup(int *err)
 	    !IS_ENABLED(CONFIG_ZYNQMP_NO_DDR)) {
 		fdt_blob = (void *)CONFIG_XILINX_OF_BOARD_DTB_ADDR;
 
-		if (fdt_magic(fdt_blob) == FDT_MAGIC)
-			return fdt_blob;
+		if (fdt_magic(fdt_blob) == FDT_MAGIC) {
+			*fdtp = fdt_blob;
+			return 0;
+		}
 
 		debug("DTB is not passed via %p\n", fdt_blob);
 	}
@@ -405,13 +407,15 @@ void *board_fdt_blob_setup(int *err)
 		fdt_blob = (ulong *)_end;
 	}
 
-	if (fdt_magic(fdt_blob) == FDT_MAGIC)
-		return fdt_blob;
+	if (fdt_magic(fdt_blob) == FDT_MAGIC) {
+		*fdtp = fdt_blob;
+
+		return 0;
+	}
 
 	debug("DTB is also not passed via %p\n", fdt_blob);
 
-	*err = -EINVAL;
-	return NULL;
+	return -EINVAL;
 }
 #endif
 
@@ -748,6 +752,37 @@ void fwu_plat_get_bootidx(uint *boot_idx)
 
 	debug("%s: boot_idx: %d, active_idx: %d\n",
 	      __func__, *boot_idx, active_idx);
+}
+#endif
+
+#if IS_ENABLED(CONFIG_BOARD_RNG_SEED)
+/* Use hardware rng to seed Linux random. */
+__weak int board_rng_seed(struct abuf *buf)
+{
+	struct udevice *dev;
+	ulong len = 64;
+	u64 *data;
+
+	if (uclass_get_device(UCLASS_RNG, 0, &dev) || !dev) {
+		printf("No RNG device\n");
+		return -ENODEV;
+	}
+
+	data = malloc(len);
+	if (!data) {
+		printf("Out of memory\n");
+		return -ENOMEM;
+	}
+
+	if (dm_rng_read(dev, data, len)) {
+		printf("Reading RNG failed\n");
+		free(data);
+		return -EIO;
+	}
+
+	abuf_init_set(buf, data, len);
+
+	return 0;
 }
 #endif
 

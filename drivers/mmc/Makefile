@@ -4,17 +4,17 @@
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
 obj-y += mmc.o
-obj-$(CONFIG_$(XPL_)DM_MMC) += mmc-uclass.o
+obj-$(CONFIG_$(PHASE_)DM_MMC) += mmc-uclass.o
 
 ifdef CONFIG_$(PHASE_)DM_MMC
 obj-$(CONFIG_$(PHASE_)BOOTSTD) += mmc_bootdev.o
 endif
 
 obj-$(CONFIG_$(PHASE_)MMC_WRITE) += mmc_write.o
-obj-$(CONFIG_$(XPL_)MMC_PWRSEQ) += mmc-pwrseq.o
+obj-$(CONFIG_$(PHASE_)MMC_PWRSEQ) += mmc-pwrseq.o
 obj-$(CONFIG_MMC_SDHCI_ADMA_HELPERS) += sdhci-adma.o
 
-ifndef CONFIG_$(XPL_)BLK
+ifndef CONFIG_$(PHASE_)BLK
 obj-y += mmc_legacy.o
 endif
 
@@ -41,7 +41,6 @@ obj-$(CONFIG_MMC_MESON_GX) += meson_gx_mmc.o
 obj-$(CONFIG_MMC_SPI) += mmc_spi.o
 obj-$(CONFIG_MVEBU_MMC) += mvebu_mmc.o
 obj-$(CONFIG_MMC_OMAP_HS)		+= omap_hsmmc.o
-obj-$(CONFIG_MMC_MXC)			+= mxcmmc.o
 obj-$(CONFIG_MMC_MXS)			+= mxsmmc.o
 obj-$(CONFIG_MMC_OCTEONTX)		+= octeontx_hsmmc.o
 obj-$(CONFIG_MMC_OWL)			+= owl_mmc.o
@@ -64,13 +63,14 @@ obj-$(CONFIG_MMC_SDHCI_CADENCE)		+= sdhci-cadence6.o
 obj-$(CONFIG_MMC_SDHCI_CV1800B)		+= cv1800b_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_AM654)		+= am654_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_IPROC)		+= iproc_sdhci.o
-obj-$(CONFIG_MMC_SDHCI_KONA)		+= kona_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_MSM)		+= msm_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_MV)		+= mv_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_NPCM)            += npcm_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_PIC32)		+= pic32_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_ROCKCHIP)	+= rockchip_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_ADI)		+= adi_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_S5P)		+= s5p_sdhci.o
+obj-$(CONFIG_MMC_SDHCI_SNPS)		+= snps_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_STI)		+= sti_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_TANGIER)		+= tangier_sdhci.o
 obj-$(CONFIG_MMC_SDHCI_TEGRA)		+= tegra_mmc.o

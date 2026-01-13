@@ -110,15 +110,6 @@ config USB_XHCI_RCAR
 	  Choose this option to add support for USB 3.0 driver on Renesas
 	  R-Car Gen3 SoCs.
 
-config USB_XHCI_STI
-	bool "Support for STMicroelectronics STiH407 family on-chip xHCI USB controller"
-	depends on ARCH_STI
-	default y
-	help
-	  Enables support for the on-chip xHCI controller on STMicroelectronics
-	  STiH407 family SoCs. This is a driver for the dwc3 to provide the glue logic
-	  to configure the controller.
-
 config USB_XHCI_DRA7XX_INDEX
 	int "DRA7XX xHCI USB index"
 	range 0 1
@@ -130,8 +121,9 @@ config USB_XHCI_DRA7XX_INDEX
 
 config USB_XHCI_FSL
 	bool "Support for NXP Layerscape on-chip xHCI USB controller"
-	default y if ARCH_LS1021A || FSL_LSCH3 || FSL_LSCH2
+	depends on ARCH_LS1021A || FSL_LSCH3 || FSL_LSCH2
 	depends on !SPL_NO_USB
+	default y
 	help
 	  Enables support for the on-chip xHCI controller on NXP Layerscape SoCs.
 
@@ -217,14 +209,14 @@ config USB_EHCI_MX6
 	  Enables support for the on-chip EHCI controller on i.MX6 SoCs.
 
 config USB_EHCI_MX7
-	bool "Support for i.MX7 on-chip EHCI USB controller"
-	depends on ARCH_MX7 || IMX8M || IMX93
+	bool "Support for i.MX7/i.MX8M/i.MX9 on-chip EHCI USB controller"
+	depends on ARCH_MX7 || IMX8M || IMX9
 	select EHCI_HCD_INIT_AFTER_RESET if ARCH_MX7
-	select PHY if IMX8M || IMX93
-	select NOP_PHY if IMX8M || IMX93
+	select PHY if IMX8M || IMX9
+	select NOP_PHY if IMX8M || IMX9
 	default y
 	---help---
-	  Enables support for the on-chip EHCI controller on i.MX7 SoCs.
+	  Enables support for the on-chip EHCI controller on i.MX7/i.MX8M/i.MX9 SoCs.
 
 config USB_EHCI_MXS
 	bool "Support for i.MX23/i.MX28 EHCI USB controller"
@@ -271,7 +263,7 @@ endif
 config USB_EHCI_MSM
 	bool "Support for Qualcomm on-chip EHCI USB controller"
 	depends on DM_USB
-	select USB_ULPI_VIEWPORT
+	select USB_ULPI
 	select MSM8916_USB_PHY
 	---help---
 	  Enables support for the on-chip EHCI controller on Qualcomm
@@ -279,6 +271,7 @@ config USB_EHCI_MSM
 
 config USB_EHCI_PCI
 	bool "Support for PCI-based EHCI USB controller"
+	depends on PCI
 	default y if X86
 	help
 	  Enables support for the PCI-based EHCI controller.
@@ -288,11 +281,15 @@ config USB_EHCI_TEGRA
 	depends on ARCH_TEGRA
 	select USB_EHCI_IS_TDI
 	---help---
-	  Enable support for Tegra on-chip EHCI USB controller
+	  Enable support for Tegra on-chip EHCI USB controller. If you enable
+	  ULPI and your PHY needs a different reference clock than the standard
+	  24 MHz then you have to define CFG_ULPI_REF_CLK to the appropriate
+	  value in Hz.
 
 config USB_EHCI_ZYNQ
 	bool "Support for Xilinx Zynq on-chip EHCI USB controller"
-	default y if ARCH_ZYNQ
+	depends on ARCH_ZYNQ
+	default y
 	select USB_EHCI_IS_TDI
 	---help---
 	  Enable support for Zynq on-chip EHCI USB controller
@@ -309,6 +306,7 @@ config EHCI_HCD_INIT_AFTER_RESET
 
 config USB_EHCI_FSL
 	bool  "Support for FSL on-chip EHCI USB controller"
+	depends on PPC
 	select EHCI_HCD_INIT_AFTER_RESET
 	select SYS_FSL_USB_INTERNAL_UTMI_PHY if MPC85xx && \
 		!(ARCH_B4860 || ARCH_B4420 || ARCH_P4080 || ARCH_P1020 || ARCH_P2020)
@@ -368,6 +366,7 @@ config USB_OHCI_GENERIC
 
 config USB_OHCI_DA8XX
 	bool "Support for da850 OHCI USB controller"
+	depends on ARCH_DAVINCI
 	help
 	  Enable support for the da850 USB controller.
 

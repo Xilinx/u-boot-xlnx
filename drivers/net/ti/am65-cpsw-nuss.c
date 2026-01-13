@@ -234,14 +234,11 @@ out:
 #define AM65_GMII_SEL_MODE_RGMII	2
 #define AM65_GMII_SEL_MODE_SGMII	3
 
-#define AM65_GMII_SEL_RGMII_IDMODE	BIT(4)
-
 static int am65_cpsw_gmii_sel_k3(struct am65_cpsw_priv *priv,
 				 phy_interface_t phy_mode)
 {
 	struct udevice *dev = priv->dev;
 	u32 offset, reg, phandle;
-	bool rgmii_id = false;
 	fdt_addr_t gmii_sel;
 	u32 mode = 0;
 	ofnode node;
@@ -278,12 +275,6 @@ static int am65_cpsw_gmii_sel_k3(struct am65_cpsw_priv *priv,
 		mode = AM65_GMII_SEL_MODE_RGMII;
 		break;
 
-	case PHY_INTERFACE_MODE_RGMII_ID:
-	case PHY_INTERFACE_MODE_RGMII_TXID:
-		mode = AM65_GMII_SEL_MODE_RGMII;
-		rgmii_id = true;
-		break;
-
 	case PHY_INTERFACE_MODE_SGMII:
 		mode = AM65_GMII_SEL_MODE_SGMII;
 		break;
@@ -297,9 +288,6 @@ static int am65_cpsw_gmii_sel_k3(struct am65_cpsw_priv *priv,
 		mode = AM65_GMII_SEL_MODE_MII;
 		break;
 	};
-
-	if (rgmii_id)
-		mode |= AM65_GMII_SEL_RGMII_IDMODE;
 
 	reg = mode;
 	dev_dbg(dev, "gmii_sel PHY mode: %u, new gmii_sel: %08x\n",
@@ -436,6 +424,12 @@ static int am65_cpsw_start(struct udevice *dev)
 		       port->port_sgmii_base + AM65_CPSW_SGMII_MR_ADV_ABILITY_REG);
 		writel(AM65_CPSW_SGMII_CONTROL_MR_AN_ENABLE,
 		       port->port_sgmii_base + AM65_CPSW_SGMII_CONTROL_REG);
+	}
+
+	ret = phy_config(priv->phydev);
+	if (ret < 0) {
+		dev_err(dev, "phy_config failed: %d", ret);
+		goto err_dis_rx;
 	}
 
 	ret = phy_startup(priv->phydev);
@@ -622,9 +616,9 @@ static int am65_cpsw_phy_init(struct udevice *dev)
 	struct eth_pdata *pdata = dev_get_plat(dev);
 	struct phy_device *phydev;
 	u32 supported = PHY_GBIT_FEATURES;
-	int ret;
+	int ret = 0;
 
-	phydev = dm_eth_phy_connect(dev);
+	phydev = dm_eth_phy_connect_interface(dev, pdata->phy_interface);
 	if (!phydev) {
 		dev_err(dev, "phy_connect() failed\n");
 		return -ENODEV;
@@ -639,9 +633,6 @@ static int am65_cpsw_phy_init(struct udevice *dev)
 	phydev->advertising = phydev->supported;
 
 	priv->phydev = phydev;
-	ret = phy_config(phydev);
-	if (ret < 0)
-		dev_err(dev, "phy_config() failed: %d", ret);
 
 	return ret;
 }
@@ -654,14 +645,33 @@ static int am65_cpsw_ofdata_parse_phy(struct udevice *dev)
 	dev_read_u32(dev, "reg", &priv->port_id);
 
 	pdata->phy_interface = dev_read_phy_mode(dev);
-	if (pdata->phy_interface == PHY_INTERFACE_MODE_NA) {
+
+	/* CPSW controllers supported by this driver have a fixed internal TX
+	 * delay in RGMII mode. Fix up PHY mode to account for this and warn
+	 * about Device Trees that claim to have a TX delay on the PCB.
+	 */
+	switch (pdata->phy_interface) {
+	case PHY_INTERFACE_MODE_RGMII_ID:
+		pdata->phy_interface = PHY_INTERFACE_MODE_RGMII_RXID;
+		break;
+	case PHY_INTERFACE_MODE_RGMII_TXID:
+		pdata->phy_interface = PHY_INTERFACE_MODE_RGMII;
+		break;
+	case PHY_INTERFACE_MODE_RGMII:
+	case PHY_INTERFACE_MODE_RGMII_RXID:
+		dev_warn(dev,
+			 "RGMII mode without internal TX delay unsupported; please fix your Device Tree\n");
+		break;
+	case PHY_INTERFACE_MODE_NA:
 		dev_err(dev, "Invalid PHY mode, port %u\n", priv->port_id);
 		return -EINVAL;
+	default:
+		break;
 	}
 
 	dev_read_u32(dev, "max-speed", (u32 *)&pdata->max_speed);
 	if (pdata->max_speed)
-		dev_err(dev, "Port %u speed froced to %uMbit\n",
+		dev_err(dev, "Port %u speed forced to %uMbit\n",
 			priv->port_id, pdata->max_speed);
 
 	return 0;
@@ -702,7 +712,6 @@ static int am65_cpsw_probe_nuss(struct udevice *dev)
 	struct am65_cpsw_common *cpsw_common = dev_get_priv(dev);
 	ofnode ports_np, node;
 	int ret, i;
-	struct udevice *port_dev;
 
 	cpsw_common->dev = dev;
 	cpsw_common->ss_base = dev_read_addr(dev);
@@ -729,6 +738,7 @@ static int am65_cpsw_probe_nuss(struct udevice *dev)
 	ports_np = dev_read_subnode(dev, "ethernet-ports");
 	if (!ofnode_valid(ports_np)) {
 		ret = -ENOENT;
+		dev_err(dev, "Invalid device tree node %d\n", ret);
 		goto out;
 	}
 
@@ -760,12 +770,6 @@ static int am65_cpsw_probe_nuss(struct udevice *dev)
 			continue;
 
 		cpsw_common->ports[port_id].disabled = disabled;
-		if (disabled)
-			continue;
-
-		ret = device_bind_driver_to_node(dev, "am65_cpsw_nuss_port", ofnode_get_name(node), node, &port_dev);
-		if (ret)
-			dev_err(dev, "Failed to bind to %s node\n", ofnode_get_name(node));
 	}
 
 	for (i = 0; i < AM65_CPSW_CPSWNU_MAX_PORTS; i++) {
@@ -795,6 +799,41 @@ out:
 	return ret;
 }
 
+static int am65_cpsw_nuss_bind(struct udevice *dev)
+{
+	struct uclass_driver *drv;
+	struct udevice *port_dev;
+	ofnode ports_np, node;
+	int ret;
+
+	drv = lists_uclass_lookup(UCLASS_ETH);
+	if (!drv) {
+		puts("Cannot find eth driver");
+		return -ENOENT;
+	}
+
+	ports_np = dev_read_subnode(dev, "ethernet-ports");
+	if (!ofnode_valid(ports_np))
+		return -ENOENT;
+
+	ofnode_for_each_subnode(node, ports_np) {
+		const char *node_name;
+
+		/* Ignore disabled ports */
+		if (!ofnode_is_enabled(node))
+			continue;
+
+		node_name = ofnode_get_name(node);
+
+		ret = device_bind_driver_to_node(dev, "am65_cpsw_nuss_port", node_name, node,
+						 &port_dev);
+		if (ret)
+			dev_err(dev, "Failed to bind to %s node\n", node_name);
+	}
+
+	return ret;
+}
+
 static const struct udevice_id am65_cpsw_nuss_ids[] = {
 	{ .compatible = "ti,am654-cpsw-nuss" },
 	{ .compatible = "ti,j721e-cpsw-nuss" },
@@ -806,6 +845,7 @@ U_BOOT_DRIVER(am65_cpsw_nuss) = {
 	.name	= "am65_cpsw_nuss",
 	.id	= UCLASS_MISC,
 	.of_match = am65_cpsw_nuss_ids,
+	.bind	= am65_cpsw_nuss_bind,
 	.probe	= am65_cpsw_probe_nuss,
 	.priv_auto = sizeof(struct am65_cpsw_common),
 };

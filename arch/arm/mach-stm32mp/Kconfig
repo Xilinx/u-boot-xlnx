@@ -40,18 +40,22 @@ choice
 config STM32MP13X
 	bool "Support STMicroelectronics STM32MP13x Soc"
 	select ARCH_EARLY_INIT_R
-	select ARM_SMCCC
+	select ARM_SMCCC if TFABOOT
+	select ARCH_SUPPORT_PSCI if !TFABOOT
+	select BINMAN if !TFABOOT
 	select CPU_V7A
 	select CPU_V7_HAS_NONSEC
 	select CPU_V7_HAS_VIRT
-	select OF_BOARD
+	select OF_BOARD if TFABOOT
 	select OF_BOARD_SETUP
 	select PINCTRL_STM32
 	select STM32_RCC
 	select STM32_RESET
 	select STM32_SERIAL
+	select SUPPORT_SPL if !TFABOOT
 	select SYS_ARCH_TIMER
 	imply CMD_NVEDIT_INFO
+	imply OF_UPSTREAM
 	help
 		support of STMicroelectronics SOC STM32MP13x family
 		STMicroelectronics MPU with core ARMv7
@@ -73,11 +77,38 @@ config STM32MP15X
 	select SUPPORT_SPL
 	select SYS_ARCH_TIMER
 	imply CMD_NVEDIT_INFO
+	imply OF_UPSTREAM
 	help
 		support of STMicroelectronics SOC STM32MP15x family
 		STM32MP157, STM32MP153 or STM32MP151
 		STMicroelectronics MPU with core ARMv7
 		dual core A7 for STM32MP157/3, monocore for STM32MP151
+
+config STM32MP23X
+	bool "Support STMicroelectronics STM32MP23x Soc"
+	select ARM64
+	select CLK_STM32MP25
+	select OF_BOARD
+	select PINCTRL_STM32
+	select STM32_RCC
+	select STM32_RESET
+	select STM32_SERIAL
+	select STM32MP_TAMP_NVMEM
+	select SYS_ARCH_TIMER
+	select TFABOOT
+	imply CLK_SCMI
+	imply CMD_NVEDIT_INFO
+	imply DM_REGULATOR
+	imply DM_REGULATOR_SCMI
+	imply OF_UPSTREAM
+	imply OPTEE
+	imply RESET_SCMI
+	imply SYSRESET_PSCI
+	imply TEE
+	imply VERSION_VARIABLE
+	help
+		Support of STMicroelectronics SOC STM32MP23x family
+		STMicroelectronics MPU with 2 * A53 core and 1 M33 core
 
 config STM32MP25X
 	bool "Support STMicroelectronics STM32MP25x Soc"
@@ -94,6 +125,7 @@ config STM32MP25X
 	imply CMD_NVEDIT_INFO
 	imply DM_REGULATOR
 	imply DM_REGULATOR_SCMI
+	imply OF_UPSTREAM
 	imply OPTEE
 	imply RESET_SCMI
 	imply SYSRESET_PSCI
@@ -127,14 +159,6 @@ config SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION_MMC2
 	  Partition on the second MMC to load U-Boot from when the MMC is being
 	  used in raw mode
 
-config STM32_ETZPC
-	bool "STM32 Extended TrustZone Protection"
-	depends on STM32MP15X || STM32MP13X
-	default y
-	imply BOOTP_SERVERIP
-	help
-	  Say y to enable STM32 Extended TrustZone Protection
-
 config STM32_ECDSA_VERIFY
 	bool "STM32 ECDSA verification via the ROM API"
 	depends on SPL_ECDSA_VERIFY
@@ -143,6 +167,15 @@ config STM32_ECDSA_VERIFY
 	  Say y to enable the uclass driver for ECDSA verification using the
 	  ROM API provided on STM32MP.
 	  The ROM API is only available during SPL for now.
+
+config STM32MP_TAMP_NVMEM
+	bool "STM32 TAMP backup registers via NVMEM API"
+	select NVMEM
+	default y
+	help
+	  Say y to enable the uclass driver for TAMP Backup registers using the
+	  NVMEM API. It allows to access to boot mode or others shared information
+	  between software components/execution levels.
 
 config CMD_STM32KEY
 	bool "command stm32key to fuse public key hash"
@@ -153,8 +186,15 @@ config CMD_STM32KEY
 		This command is used to evaluate the secure boot on stm32mp SOC,
 		it is deactivated by default in real products.
 
+config MFD_STM32_TIMERS
+	bool "STM32 multifonction timer support"
+	help
+	  Select this to enable support for the multifunction timer found on
+	  STM32 devices.
+
 source "arch/arm/mach-stm32mp/Kconfig.13x"
 source "arch/arm/mach-stm32mp/Kconfig.15x"
+source "arch/arm/mach-stm32mp/Kconfig.23x"
 source "arch/arm/mach-stm32mp/Kconfig.25x"
 source "arch/arm/mach-stm32mp/cmd_stm32prog/Kconfig"
 

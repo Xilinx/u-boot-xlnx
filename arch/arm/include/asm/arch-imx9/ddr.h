@@ -118,6 +118,7 @@ void ddrphy_init_set_dfi_clk(unsigned int drate);
 void ddrphy_init_read_msg_block(enum fw_type type);
 
 void get_trained_CDD(unsigned int fsp);
+u32 lpddr4_mr_read(u32 mr_rank, u32 mr_addr);
 
 ulong ddrphy_addr_remap(u32 paddr_apb_from_ctlr);
 
@@ -140,8 +141,5 @@ static inline void reg32setbit(unsigned long addr, u32 bit)
 	reg32_write(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(addr), data)
 #define dwc_ddrphy_apb_rd(addr) \
 	reg32_read(IP2APB_DDRPHY_IPS_BASE_ADDR(0) + ddrphy_addr_remap(addr))
-
-extern struct dram_cfg_param ddrphy_trained_csr[];
-extern u32 ddrphy_trained_csr_num;
 
 #endif

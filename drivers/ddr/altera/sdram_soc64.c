@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2016-2022 Intel Corporation <www.intel.com>
+ * Copyright (C) 2025 Altera Corporation <www.altera.com>
  *
  */
 
@@ -28,6 +29,10 @@
 
 #define PGTABLE_OFF	0x4000
 
+#define SINGLE_RANK_CLAMSHELL	0xc3c3
+#define DUAL_RANK_CLAMSHELL	0xa5a5
+
+#if !IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX5) && !IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX7M)
 u32 hmc_readl(struct altera_sdram_plat *plat, u32 reg)
 {
 	return readl(plat->iomhc + reg);
@@ -80,11 +85,11 @@ int emif_reset(struct altera_sdram_plat *plat)
 	debug("DDR: Triggerring emif reset\n");
 	hmc_ecc_writel(plat, DDR_HMC_CORE2SEQ_INT_REQ, RSTHANDSHAKECTRL);
 
-	/* if seq2core[3] = 0, we are good */
+	/* if seq2core[2:0] = 0b0000_0111, we are good */
 	ret = wait_for_bit_le32((const void *)(plat->hmc +
 				 RSTHANDSHAKESTAT),
-				 DDR_HMC_SEQ2CORE_INT_RESP_MASK,
-				 false, 1000, false);
+				 DDR_HMC_SEQ2CORE_INT_REQ_ACK_MASK,
+				 true, 1000, false);
 	if (ret) {
 		printf("DDR: failed to get ack from EMIF\n");
 		return ret;
@@ -99,8 +104,9 @@ int emif_reset(struct altera_sdram_plat *plat)
 	debug("DDR: %s triggered successly\n", __func__);
 	return 0;
 }
+#endif
 
-#if !IS_ENABLED(CONFIG_TARGET_SOCFPGA_N5X)
+#if !(IS_ENABLED(CONFIG_TARGET_SOCFPGA_N5X) || IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX5))
 int poll_hmc_clock_status(void)
 {
 	return wait_for_bit_le32((const void *)(socfpga_get_sysmgr_addr() +
@@ -182,35 +188,51 @@ void sdram_init_ecc_bits(struct bd_info *bd)
 void sdram_size_check(struct bd_info *bd)
 {
 	phys_size_t total_ram_check = 0;
-	phys_size_t ram_check = 0;
-	phys_addr_t start = 0;
-	phys_size_t size, remaining_size;
 	int bank;
 
 	/* Sanity check ensure correct SDRAM size specified */
 	debug("DDR: Running SDRAM size sanity check\n");
 
 	for (bank = 0; bank < CONFIG_NR_DRAM_BANKS; bank++) {
+		phys_size_t ram_check = 0;
+		phys_addr_t start = 0;
+		phys_size_t remaining_size;
+
 		start = bd->bi_dram[bank].start;
 		remaining_size = bd->bi_dram[bank].size;
-		while (ram_check < bd->bi_dram[bank].size) {
-			size = min((phys_addr_t)SZ_1G,
-				   (phys_addr_t)remaining_size);
+		debug("Checking bank %d: start=0x%llx, size=0x%llx\n",
+		      bank, start, remaining_size);
 
-			/*
-			 * Ensure the size is power of two, this is requirement
-			 * to run get_ram_size() / memory test
-			 */
-			if (size != 0 && ((size & (size - 1)) == 0)) {
-				ram_check += get_ram_size((void *)
-						(start + ram_check), size);
-				remaining_size = bd->bi_dram[bank].size -
-							ram_check;
-			} else {
-				puts("DDR: Memory test requires SDRAM size ");
-				puts("in power of two!\n");
+		while (ram_check < bd->bi_dram[bank].size) {
+			phys_size_t size, test_size, detected_size;
+
+			size = min((phys_addr_t)SZ_1G, (phys_addr_t)remaining_size);
+
+			if (size < SZ_8) {
+				puts("Invalid size: Memory size required to be multiple\n");
+				puts("of 64-Bit word!\n");
 				hang();
 			}
+
+			/* Adjust size to the nearest power of two to support get_ram_size() */
+			test_size = SZ_8;
+
+			while (test_size * 2 <= size)
+				test_size *= 2;
+
+			debug("Testing memory at 0x%llx with size 0x%llx\n",
+			      start + ram_check, test_size);
+			detected_size = get_ram_size((void *)(start + ram_check), test_size);
+
+			if (detected_size != test_size) {
+				debug("Detected size 0x%llx doesn’t match the test size 0x%llx!\n",
+				      detected_size, test_size);
+				puts("Memory testing failed!\n");
+				hang();
+			}
+
+			ram_check += detected_size;
+			remaining_size = bd->bi_dram[bank].size - ram_check;
 		}
 
 		total_ram_check += ram_check;
@@ -239,20 +261,31 @@ phys_size_t sdram_calculate_size(struct altera_sdram_plat *plat)
 {
 	u32 dramaddrw = hmc_readl(plat, DRAMADDRW);
 
+	u32 reg_ctrlcfg6_value = hmc_readl(plat, CTRLCFG6);
+	u32 cs_rank = CTRLCFG6_CFG_CS_CHIP(reg_ctrlcfg6_value);
+	u32 cs_addr_width;
+
+	if (cs_rank == SINGLE_RANK_CLAMSHELL)
+		cs_addr_width = 0;
+	else if (cs_rank == DUAL_RANK_CLAMSHELL)
+		cs_addr_width = 1;
+	else
+		cs_addr_width = DRAMADDRW_CFG_CS_ADDR_WIDTH(dramaddrw);
+
 	phys_size_t size = (phys_size_t)1 <<
-			(DRAMADDRW_CFG_CS_ADDR_WIDTH(dramaddrw) +
+			(cs_addr_width +
 			 DRAMADDRW_CFG_BANK_GRP_ADDR_WIDTH(dramaddrw) +
 			 DRAMADDRW_CFG_BANK_ADDR_WIDTH(dramaddrw) +
 			 DRAMADDRW_CFG_ROW_ADDR_WIDTH(dramaddrw) +
 			 DRAMADDRW_CFG_COL_ADDR_WIDTH(dramaddrw));
 
-	size *= (2 << (hmc_ecc_readl(plat, DDRIOCTRL) &
+	size *= ((phys_size_t)2 << (hmc_ecc_readl(plat, DDRIOCTRL) &
 			DDR_HMC_DDRIOCTRL_IOSIZE_MSK));
 
 	return size;
 }
 
-void sdram_set_firewall(struct bd_info *bd)
+static void sdram_set_firewall_non_f2sdram(struct bd_info *bd)
 {
 	u32 i;
 	phys_size_t value;
@@ -288,7 +321,7 @@ void sdram_set_firewall(struct bd_info *bd)
 				      FW_MPU_DDR_SCR_NONMPUREGION0ADDR_BASEEXT +
 				      (i * 4 * sizeof(u32)));
 
-		/* Setting non-secure MPU limit and limit extexded */
+		/* Setting non-secure MPU limit and limit extended */
 		value = bd->bi_dram[i].start + bd->bi_dram[i].size - 1;
 
 		lower = lower_32_bits(value);
@@ -301,7 +334,7 @@ void sdram_set_firewall(struct bd_info *bd)
 				      FW_MPU_DDR_SCR_MPUREGION0ADDR_LIMITEXT +
 				      (i * 4 * sizeof(u32)));
 
-		/* Setting non-secure Non-MPU limit and limit extexded */
+		/* Setting non-secure Non-MPU limit and limit extended */
 		FW_MPU_DDR_SCR_WRITEL(lower,
 				      FW_MPU_DDR_SCR_NONMPUREGION0ADDR_LIMIT +
 				      (i * 4 * sizeof(u32)));
@@ -314,15 +347,77 @@ void sdram_set_firewall(struct bd_info *bd)
 	}
 }
 
+#if IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX5)
+static void sdram_set_firewall_f2sdram(struct bd_info *bd)
+{
+	u32 i, lower, upper;
+	phys_size_t value;
+
+	for (i = 0; i < CONFIG_NR_DRAM_BANKS; i++) {
+		if (!bd->bi_dram[i].size)
+			continue;
+
+		value = bd->bi_dram[i].start;
+
+		/* Keep first 1MB of SDRAM memory region as secure region when
+		 * using ATF flow, where the ATF code is located.
+		 */
+		if (IS_ENABLED(CONFIG_SPL_ATF) && i == 0)
+			value += SZ_1M;
+
+		/* Setting base and base extended */
+		lower = lower_32_bits(value);
+		upper = upper_32_bits(value);
+		FW_F2SDRAM_DDR_SCR_WRITEL(lower,
+					  FW_F2SDRAM_DDR_SCR_REGION0ADDR_BASE +
+					  (i * 4 * sizeof(u32)));
+		FW_F2SDRAM_DDR_SCR_WRITEL(upper & 0xff,
+					  FW_F2SDRAM_DDR_SCR_REGION0ADDR_BASEEXT +
+					  (i * 4 * sizeof(u32)));
+
+		/* Setting limit and limit extended */
+		value = bd->bi_dram[i].start + bd->bi_dram[i].size - 1;
+
+		lower = lower_32_bits(value);
+		upper = upper_32_bits(value);
+
+		FW_F2SDRAM_DDR_SCR_WRITEL(lower,
+					  FW_F2SDRAM_DDR_SCR_REGION0ADDR_LIMIT +
+					  (i * 4 * sizeof(u32)));
+		FW_F2SDRAM_DDR_SCR_WRITEL(upper & 0xff,
+					  FW_F2SDRAM_DDR_SCR_REGION0ADDR_LIMITEXT +
+					  (i * 4 * sizeof(u32)));
+
+		FW_F2SDRAM_DDR_SCR_WRITEL(BIT(i), FW_F2SDRAM_DDR_SCR_EN_SET);
+	}
+}
+#endif
+
+void sdram_set_firewall(struct bd_info *bd)
+{
+	sdram_set_firewall_non_f2sdram(bd);
+
+#if IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX5)
+	sdram_set_firewall_f2sdram(bd);
+#endif
+}
+
 static int altera_sdram_of_to_plat(struct udevice *dev)
 {
+#if !IS_ENABLED(CONFIG_TARGET_SOCFPGA_N5X)
 	struct altera_sdram_plat *plat = dev_get_plat(dev);
 	fdt_addr_t addr;
+#endif
 
 	/* These regs info are part of DDR handoff in bitstream */
 #if IS_ENABLED(CONFIG_TARGET_SOCFPGA_N5X)
 	return 0;
-#endif
+#elif IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX5) || IS_ENABLED(CONFIG_TARGET_SOCFPGA_AGILEX7M)
+	addr = dev_read_addr_index(dev, 0);
+	if (addr == FDT_ADDR_T_NONE)
+		return -EINVAL;
+	plat->mpfe_base_addr = addr;
+#else
 
 	addr = dev_read_addr_index(dev, 0);
 	if (addr == FDT_ADDR_T_NONE)
@@ -338,7 +433,7 @@ static int altera_sdram_of_to_plat(struct udevice *dev)
 	if (addr == FDT_ADDR_T_NONE)
 		return -EINVAL;
 	plat->hmc = (void __iomem *)addr;
-
+#endif
 	return 0;
 }
 
@@ -385,6 +480,8 @@ static const struct udevice_id altera_sdram_ids[] = {
 	{ .compatible = "altr,sdr-ctl-s10" },
 	{ .compatible = "intel,sdr-ctl-agilex" },
 	{ .compatible = "intel,sdr-ctl-n5x" },
+	{ .compatible = "intel,sdr-ctl-agilex5" },
+	{ .compatible = "intel,sdr-ctl-agilex7m" },
 	{ /* sentinel */ }
 };
 

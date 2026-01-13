@@ -8,6 +8,14 @@
 
 #include <linux/types.h>
 
+static inline void sync(void)
+{
+}
+
+#define mb()	sync()
+#define dmb()	sync()
+#define wmb()	sync()
+
 enum sandboxio_size_t {
 	SB_SIZE_8,
 	SB_SIZE_16,
@@ -36,18 +44,28 @@ phys_addr_t map_to_sysmem(const void *ptr);
 unsigned long sandbox_read(const void *addr, enum sandboxio_size_t size);
 void sandbox_write(void *addr, unsigned int val, enum sandboxio_size_t size);
 
-#define readb(addr) sandbox_read((const void *)addr, SB_SIZE_8)
-#define readw(addr) sandbox_read((const void *)addr, SB_SIZE_16)
-#define readl(addr) sandbox_read((const void *)addr, SB_SIZE_32)
-#ifdef CONFIG_SANDBOX64
-#define readq(addr) sandbox_read((const void *)addr, SB_SIZE_64)
+#define readb(addr) ({ u8 __v = sandbox_read((const void *)addr, SB_SIZE_8); __v; })
+#define readw(addr) ({ u16 __v = sandbox_read((const void *)addr, SB_SIZE_16); __v; })
+#define readl(addr) ({ u32 __v = sandbox_read((const void *)addr, SB_SIZE_32); __v; })
+#ifdef CONFIG_64BIT
+#define readq(addr) ({ u64 __v = sandbox_read((const void *)addr, SB_SIZE_64); __v; })
 #endif
-#define writeb(v, addr) sandbox_write((void *)addr, v, SB_SIZE_8)
-#define writew(v, addr) sandbox_write((void *)addr, v, SB_SIZE_16)
-#define writel(v, addr) sandbox_write((void *)addr, v, SB_SIZE_32)
-#ifdef CONFIG_SANDBOX64
-#define writeq(v, addr) sandbox_write((void *)addr, v, SB_SIZE_64)
+#define writeb(v, addr) ({ u8 __v = v; sandbox_write((void *)addr, __v, SB_SIZE_8); __v; })
+#define writew(v, addr) ({ u16 __v = v; sandbox_write((void *)addr, __v, SB_SIZE_16); __v; })
+#define writel(v, addr) ({ u32 __v = v; sandbox_write((void *)addr, __v, SB_SIZE_32); __v; })
+#ifdef CONFIG_64BIT
+#define writeq(v, addr) ({ u64 __v = v; sandbox_write((void *)addr, __v, SB_SIZE_64); __v; })
 #endif
+
+#define readb_relaxed			readb
+#define readw_relaxed			readw
+#define readl_relaxed			readl
+#define readq_relaxed			readq
+
+#define writeb_relaxed			writeb
+#define writew_relaxed			writew
+#define writel_relaxed			writel
+#define writeq_relaxed			writeq
 
 /*
  * Clear and set bits in one shot. These macros can be used to clear and
@@ -74,7 +92,14 @@ void sandbox_write(void *addr, unsigned int val, enum sandboxio_size_t size);
 #define in_be32(a)	in_arch(l,be32,a)
 #define in_be16(a)	in_arch(w,be16,a)
 
+#define out_64(a,v)	writeq(v,a)
+#define out_32(a,v)	writel(v,a)
+#define out_16(a,v)	writew(v,a)
 #define out_8(a,v)	writeb(v,a)
+
+#define in_64(a)	readq(a)
+#define in_32(a)	readl(a)
+#define in_16(a)	readw(a)
 #define in_8(a)		readb(a)
 
 #define clrbits(type, addr, clear) \
@@ -105,6 +130,18 @@ void sandbox_write(void *addr, unsigned int val, enum sandboxio_size_t size);
 #define clrbits_8(addr, clear) clrbits(8, addr, clear)
 #define setbits_8(addr, set) setbits(8, addr, set)
 #define clrsetbits_8(addr, clear, set) clrsetbits(8, addr, clear, set)
+
+#define clrbits_16(addr, clear) clrbits(16, addr, clear)
+#define setbits_16(addr, set) setbits(16, addr, set)
+#define clrsetbits_16(addr, clear, set) clrsetbits(16, addr, clear, set)
+
+#define clrbits_32(addr, clear) clrbits(32, addr, clear)
+#define setbits_32(addr, set) setbits(32, addr, set)
+#define clrsetbits_32(addr, clear, set) clrsetbits(32, addr, clear, set)
+
+#define clrbits_64(addr, clear) clrbits(64, addr, clear)
+#define setbits_64(addr, set) setbits(64, addr, set)
+#define clrsetbits_64(addr, clear, set) clrsetbits(64, addr, clear, set)
 
 /* I/O access functions */
 int _inl(unsigned int addr);

@@ -10,7 +10,6 @@
 
 / {
 	model = "Toradex Colibri iMX6DL/S Module";
-	compatible = "toradex,colibri_imx6dl", "fsl,imx6dl";
 
 	aliases {
 		mmc0 = &usdhc3; /* eMMC */
@@ -136,18 +135,27 @@
 			"LINE_IN", "Line In Jack",
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias";
-		model = "imx6dl-colibri-sgtl5000";
+		model = "colibri-imx6";
 		mux-int-port = <1>;
 		mux-ext-port = <5>;
 		ssi-controller = <&ssi1>;
 	};
 
+	spdif_out: spdif-out {
+		compatible = "linux,spdif-dit";
+		#sound-dai-cells = <0>;
+	};
+
+	spdif_in: spdif-in {
+		compatible = "linux,spdif-dir";
+		#sound-dai-cells = <0>;
+	};
+
 	/* Optional S/PDIF in on SODIMM 88 and out on SODIMM 90, 137 or 168 */
 	sound_spdif: sound-spdif {
 		compatible = "fsl,imx-audio-spdif";
-		spdif-controller = <&spdif>;
-		spdif-in;
-		spdif-out;
+		audio-cpu = <&spdif>;
+		audio-codec = <&spdif_out>, <&spdif_in>;
 		model = "imx-spdif";
 		status = "disabled";
 	};
@@ -579,7 +587,6 @@
 			st,settling = <3>;
 			/* 5 ms touch detect interrupt delay */
 			st,touch-det-delay = <5>;
-			status = "disabled";
 		};
 
 		stmpe_adc: stmpe_adc {

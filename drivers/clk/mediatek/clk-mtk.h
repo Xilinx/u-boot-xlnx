@@ -133,8 +133,7 @@ struct mtk_parent {
  * struct mtk_composite - aggregate clock of mux, divider and gate clocks
  *
  * @id:			index of clocks
- * @parent:		index of parnet clocks
- * @parent:		index of parnet clocks
+ * @parent:		index of parent clocks
  * @parent_flags:	table of parent clocks with flags
  * @mux_reg:		hardware-specific mux register
  * @gate_reg:		hardware-specific gate register
@@ -283,6 +282,7 @@ struct mtk_cg_priv {
 };
 
 extern const struct clk_ops mtk_clk_apmixedsys_ops;
+extern const struct clk_ops mtk_clk_fixed_pll_ops;
 extern const struct clk_ops mtk_clk_topckgen_ops;
 extern const struct clk_ops mtk_clk_infrasys_ops;
 extern const struct clk_ops mtk_clk_gate_ops;

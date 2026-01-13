@@ -942,21 +942,21 @@ static int stm32_fmc2_nfc_probe(struct udevice *dev)
 		addr = dev_read_addr_index(dev, mem_region);
 		if (addr == FDT_ADDR_T_NONE) {
 			dev_err(dev, "Resource data_base not found for cs%d", chip_cs);
-			return ret;
+			return -EINVAL;
 		}
 		nfc->data_base[chip_cs] = addr;
 
 		addr = dev_read_addr_index(dev, mem_region + 1);
 		if (addr == FDT_ADDR_T_NONE) {
 			dev_err(dev, "Resource cmd_base not found for cs%d", chip_cs);
-			return ret;
+			return -EINVAL;
 		}
 		nfc->cmd_base[chip_cs] = addr;
 
 		addr = dev_read_addr_index(dev, mem_region + 2);
 		if (addr == FDT_ADDR_T_NONE) {
 			dev_err(dev, "Resource addr_base not found for cs%d", chip_cs);
-			return ret;
+			return -EINVAL;
 		}
 		nfc->addr_base[chip_cs] = addr;
 	}
@@ -1034,6 +1034,7 @@ static int stm32_fmc2_nfc_probe(struct udevice *dev)
 		ecclayout->eccpos[i] = oob_index;
 	ecclayout->oobfree->offset = oob_index;
 	ecclayout->oobfree->length = mtd->oobsize - ecclayout->oobfree->offset;
+	ecclayout->oobavail = ecclayout->oobfree->length;
 	chip->ecc.layout = ecclayout;
 
 	if (chip->options & NAND_BUSWIDTH_16)

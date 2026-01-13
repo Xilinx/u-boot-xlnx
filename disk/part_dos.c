@@ -15,7 +15,6 @@
 
 #include <blk.h>
 #include <command.h>
-#include <ide.h>
 #include <memalign.h>
 #include <vsprintf.h>
 #include <asm/unaligned.h>
@@ -422,7 +421,7 @@ int write_mbr_partitions(struct blk_desc *dev,
 
 		/* write EBR */
 		if (blk_dwrite(dev, ext_part_sect, 1, buffer) != 1) {
-			printf("%s: failed writing 'EBR' (1 blks at 0x%lx)\n",
+			printf("%s: failed writing 'EBR' (1 blks at 0x" LBAF ")\n",
 			       __func__, ext_part_sect);
 			return -1;
 		}

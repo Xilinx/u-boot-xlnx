@@ -7,9 +7,7 @@
 #define _PART_H
 
 #include <blk.h>
-#include <ide.h>
 #include <u-boot/uuid.h>
-#include <linker_lists.h>
 #include <linux/errno.h>
 #include <linux/list.h>
 
@@ -316,6 +314,20 @@ int part_get_info_by_name(struct blk_desc *desc, const char *name,
 			  struct disk_partition *info);
 
 /**
+ * part_get_info_by_uuid() - Search for a partition by uuid
+ *                           among all available registered partitions
+ *
+ * @desc:	block device descriptor
+ * @uuid:	the specified table entry uuid
+ * @info:	the disk partition info
+ *
+ * Return: the partition number on match (starting on 1), -ENOENT on no match,
+ * otherwise error
+ */
+int part_get_info_by_uuid(struct blk_desc *desc, const char *uuid,
+			  struct disk_partition *info);
+
+/**
  * part_get_info_by_dev_and_name_or_num() - Get partition info from dev number
  *					    and part name, or dev number and
  *					    part number.
@@ -381,6 +393,12 @@ static inline int blk_get_device_part_str(const char *ifname,
 { *desc = NULL; return -1; }
 
 static inline int part_get_info_by_name(struct blk_desc *desc, const char *name,
+					struct disk_partition *info)
+{
+	return -ENOENT;
+}
+
+static inline int part_get_info_by_uuid(struct blk_desc *desc, const char *uuid,
 					struct disk_partition *info)
 {
 	return -ENOENT;
@@ -628,6 +646,20 @@ int gpt_verify_partitions(struct blk_desc *desc,
  */
 int get_disk_guid(struct blk_desc *desc, char *guid);
 
+/**
+ * part_get_gpt_pte() - Get the GPT partition table entry of a partition
+ *
+ * This function reads the GPT partition table entry (PTE) for a given
+ * block device and partition number.
+ *
+ * @desc:	block device descriptor
+ * @part:	partition number for which to return the PTE
+ * @gpt_e:	GPT partition table entry
+ *
+ * Return:	0 on success, otherwise error
+ */
+int part_get_gpt_pte(struct blk_desc *desc, int part, gpt_entry *gpt_e);
+
 #endif
 
 #if CONFIG_IS_ENABLED(DOS_PARTITION)
@@ -695,6 +727,24 @@ int part_get_type_by_name(const char *name);
  */
 int part_get_bootable(struct blk_desc *desc);
 
+/**
+ * part_driver_lookup_type() - Look up the partition driver for a blk device
+ *
+ * If @desc->part_type is PART_TYPE_UNKNOWN, this checks each partition driver
+ * against the blk device to see if there is a valid partition table acceptable
+ * to that driver.
+ *
+ * If @desc->part_type is already set, it just returns the driver for that
+ * type, without testing if the driver can find a valid partition on the
+ * descriptor.
+ *
+ * On success it updates @desc->part_type if set to PART_TYPE_UNKNOWN on entry
+ *
+ * @desc: Device descriptor
+ * Return: Driver found, or NULL if none
+ */
+struct part_driver *part_driver_lookup_type(struct blk_desc *desc);
+
 #else
 static inline int part_driver_get_count(void)
 { return 0; }
@@ -704,6 +754,9 @@ static inline struct part_driver *part_driver_get_first(void)
 
 static inline bool part_get_bootable(struct blk_desc *desc)
 { return false; }
+
+static inline struct part_driver *part_driver_lookup_type(struct blk_desc *desc)
+{ return NULL; }
 
 #endif /* CONFIG_PARTITIONS */
 

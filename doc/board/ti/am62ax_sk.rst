@@ -81,16 +81,16 @@ Set the variables corresponding to this platform:
 .. include::  ../ti/k3.rst
     :start-after: .. k3_rst_include_start_common_env_vars_defn
     :end-before: .. k3_rst_include_end_common_env_vars_defn
-.. code-block:: bash
+.. prompt:: bash
 
- $ export UBOOT_CFG_CORTEXR=am62ax_evm_r5_defconfig
- $ export UBOOT_CFG_CORTEXA=am62ax_evm_a53_defconfig
- $ export TFA_BOARD=lite
- $ # we dont use any extra TFA parameters
- $ unset TFA_EXTRA_ARGS
- $ export OPTEE_PLATFORM=k3-am62ax
- $ # we dont use any extra OPTEE parameters
- $ unset OPTEE_EXTRA_ARGS
+   export UBOOT_CFG_CORTEXR=am62ax_evm_r5_defconfig
+   export UBOOT_CFG_CORTEXA=am62ax_evm_a53_defconfig
+   export TFA_BOARD=lite
+   # we dont use any extra TFA parameters
+   unset TFA_EXTRA_ARGS
+   export OPTEE_PLATFORM=k3-am62ax
+   # we dont use any extra OPTEE parameters
+   unset OPTEE_EXTRA_ARGS
 
 1. Trusted Firmware-A:
 
@@ -121,12 +121,7 @@ Set the variables corresponding to this platform:
 Target Images
 --------------
 In order to boot we need tiboot3.bin, tispl.bin and u-boot.img.  Each SoC
-variant (GP, HS-FS, HS-SE) requires a different source for these files.
-
- - GP
-
-        * tiboot3-am62ax-gp-evm.bin from step 3.1
-        * tispl.bin_unsigned, u-boot.img_unsigned from step 3.2
+variant (HS-FS, HS-SE) requires a different source for these files.
 
  - HS-FS
 
@@ -192,6 +187,37 @@ https://www.ti.com/lit/pdf/spruj16 under the `Boot Mode Pins` section.
 
 For SW2 and SW1, the switch state in the "ON" position = 1.
 
+Falcon Mode
+-----------
+
+Falcon Mode on AM62ax platforms bypasses the A53 SPL and U-Boot with the overall
+boot flow as below:
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_boot_flow
+    :end-before: .. am62x_evm_falcon_end_boot_flow
+
+Build Process
+^^^^^^^^^^^^^
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_build_process
+    :end-before: .. am62x_evm_falcon_end_build_process
+
+Usage
+^^^^^
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_usage
+    :end-before: .. am62x_evm_falcon_end_usage
+
+R5 SPL Memory Map
+^^^^^^^^^^^^^^^^^
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_r5_memory_map
+    :end-before: .. am62x_evm_falcon_end_r5_memory_map
+
 Debugging U-Boot
 ----------------
 
@@ -212,6 +238,6 @@ detailed setup information.
 
 To start OpenOCD and connect to the board
 
-.. code-block:: bash
+.. prompt:: bash
 
   openocd -f board/ti_am62a7evm.cfg

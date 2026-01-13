@@ -22,6 +22,13 @@ config USB_MUSB_GADGET
 	  Enables the MUSB USB dual-role controller in gadget mode.
 
 if USB_MUSB_HOST || USB_MUSB_GADGET
+config USB_MUSB_SC5XX
+        bool "Analog Devices MUSB support"
+        depends on (SC57X || SC58X)
+	help
+	 Say y here to enable support for the USB controller on
+	 ADI SC57X/SC58X processors.
+
 config USB_MUSB_DA8XX
 	bool "Enable DA8xx MUSB Controller"
 	depends on ARCH_DAVINCI
@@ -33,6 +40,7 @@ config USB_MUSB_DA8XX
 config USB_MUSB_TI
 	bool "Enable TI OTG USB controller"
 	depends on AM33XX
+	select MISC if OF_CONTROL
 	select USB_MUSB_DSPS
 	help
 	  Say y here to enable support for the dual role high
@@ -45,9 +53,11 @@ config USB_MUSB_OMAP2PLUS
 
 config USB_MUSB_AM35X
 	bool "AM35x"
+	depends on ARCH_OMAP2PLUS
 
 config USB_MUSB_DSPS
 	bool "TI DSPS platforms"
+	depends on ARCH_OMAP2PLUS
 
 config USB_MUSB_MT85XX
 	bool "Enable Mediatek MT85XX DRC USB controller"

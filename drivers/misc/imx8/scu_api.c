@@ -951,6 +951,26 @@ int sc_timer_set_wdog_window(sc_ipc_t ipc, sc_timer_wdog_time_t window)
 	return ret;
 }
 
+int sc_timer_control_siemens_pmic_wdog(sc_ipc_t ipc, u8 cmd)
+{
+	struct udevice *dev = gd->arch.scu_dev;
+	struct sc_rpc_msg_s msg;
+	int size = sizeof(struct sc_rpc_msg_s);
+	int ret;
+
+	RPC_VER(&msg) = SC_RPC_VERSION;
+	RPC_SVC(&msg) = (u8)SC_RPC_SVC_TIMER;
+	RPC_FUNC(&msg) = (u8)TIMER_FUNC_CTRL_SIEMENS_PMIC_WDOG;
+	RPC_U8(&msg, 0U) = (u8)cmd;
+	RPC_SIZE(&msg) = 2U;
+
+	ret = misc_call(dev, SC_FALSE, &msg, size, &msg, size);
+	if (ret)
+		printf("%s: res:%d\n", __func__, RPC_R8(&msg));
+
+	return ret;
+}
+
 int sc_seco_authenticate(sc_ipc_t ipc, sc_seco_auth_cmd_t cmd,
 			 sc_faddr_t addr)
 {
@@ -1262,8 +1282,38 @@ int sc_seco_secvio_dgo_config(sc_ipc_t ipc, u8 id, u8 access, u32 *data)
 		printf("%s, id:0x%x, access:%x, res:%d\n",
 		       __func__, id, access, RPC_R8(&msg));
 
-	if (data)
-		*data = RPC_U32(&msg, 0U);
+	*data = RPC_U32(&msg, 0U);
+
+	return ret;
+}
+
+int sc_seco_commit(sc_ipc_t ipc, u32 *info)
+{
+	struct udevice *dev = gd->arch.scu_dev;
+	struct sc_rpc_msg_s msg;
+	int size = sizeof(struct sc_rpc_msg_s);
+	int ret;
+
+	/* Fill in header */
+	RPC_VER(&msg) = SC_RPC_VERSION;
+	RPC_SIZE(&msg) = 2U;
+	RPC_SVC(&msg) = (u8)SC_RPC_SVC_SECO;
+	RPC_FUNC(&msg) = (u8)SECO_FUNC_COMMIT;
+
+	/* Fill in send message */
+	RPC_U32(&msg, 0U) = *info;
+
+	/* Call RPC */
+	ret = misc_call(dev, SC_FALSE, &msg, size, &msg, size);
+	if (ret)
+		return ret;
+
+	/* Copy out result */
+	ret = (int)RPC_R8(&msg);
+
+	/* Copy out receive message */
+	if (!ret)
+		*info = RPC_U32(&msg, 0U);
 
 	return ret;
 }

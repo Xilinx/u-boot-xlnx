@@ -1,9 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *	LiMon Monitor (LiMon) - Network.
  *
  *	Copyright 1994 - 2000 Neil Russell.
- *	(See License)
  *
  * History
  *	9/16/00	  bor  adapted to TQM823L/STK8xxL board, RARP/TFTP boot added
@@ -17,6 +16,7 @@
 #include <log.h>
 #include <time.h>
 #include <linux/if_ether.h>
+#include <linux/string.h>
 
 struct bd_info;
 struct cmd_tbl;
@@ -315,7 +315,7 @@ extern u32	net_boot_file_size;
 /* Boot file size in blocks as reported by the DHCP server */
 extern u32	net_boot_file_expected_size_in_blocks;
 
-#if defined(CONFIG_CMD_DNS)
+#if defined(CONFIG_DNS)
 extern char *net_dns_resolve;		/* The host to resolve  */
 extern char *net_dns_env_var;		/* the env var to put the ip into */
 #endif
@@ -346,9 +346,6 @@ extern int net_ntp_time_offset;			/* offset time from UTC */
 #endif
 
 int net_loop(enum proto_t);
-
-/* Load failed.	 Start again. */
-int net_start_again(void);
 
 /* Get size of the ethernet header when we send */
 int net_eth_hdr_size(void);
@@ -416,6 +413,7 @@ int net_send_ip_packet(uchar *ether, struct in_addr dest, int dport, int sport,
 /**
  * net_send_tcp_packet() - Transmit TCP packet.
  * @payload_len: length of payload
+ * @dhost: Destination host
  * @dport: Destination TCP port
  * @sport: Source TCP port
  * @action: TCP action to be performed
@@ -424,8 +422,8 @@ int net_send_ip_packet(uchar *ether, struct in_addr dest, int dport, int sport,
  *
  * Return: 0 on success, other value on failure
  */
-int net_send_tcp_packet(int payload_len, int dport, int sport, u8 action,
-			u32 tcp_seq_num, u32 tcp_ack_num);
+int net_send_tcp_packet(int payload_len, struct in_addr dhost, int dport,
+			int sport, u8 action, u32 tcp_seq_num, u32 tcp_ack_num);
 int net_send_udp_packet(uchar *ether, struct in_addr dest, int dport,
 			int sport, int payload_len);
 

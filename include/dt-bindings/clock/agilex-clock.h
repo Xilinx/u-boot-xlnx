@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2019, Intel Corporation
+ * Copyright (C) 2025 Altera Corporation <www.altera.com>
  */
 
 #ifndef __AGILEX_CLOCK_H

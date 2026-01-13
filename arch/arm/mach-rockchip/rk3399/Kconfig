@@ -5,7 +5,6 @@ choice
 
 config TARGET_CHROMEBOOK_BOB
 	bool "Asus Flip C101PA Chromebook (RK3399)"
-	select HAS_ROM
 	select ROCKCHIP_SPI_IMAGE
 	help
 	  Bob is a small RK3299-based device similar in apperance to Minnie.
@@ -16,7 +15,6 @@ config TARGET_CHROMEBOOK_BOB
 
 config TARGET_CHROMEBOOK_KEVIN
 	bool "Samsung Chromebook Plus (RK3399)"
-	select HAS_ROM
 	select ROCKCHIP_SPI_IMAGE
 	help
 	  Kevin is a RK3399-based convertible chromebook. It has two USB 3.0
@@ -143,18 +141,6 @@ config ROCKCHIP_STIMER_BASE
 config SYS_SOC
 	default "rk3399"
 
-config ROCKCHIP_COMMON_STACK_ADDR
-	default y
-
-config SYS_MALLOC_F_LEN
-	default 0x4000 if !SPL_SHARES_INIT_SP_ADDR
-
-config SPL_LIBCOMMON_SUPPORT
-	default y
-
-config SPL_LIBGENERIC_SUPPORT
-	default y
-
 config TPL_LDSCRIPT
 	default "arch/arm/mach-rockchip/u-boot-tpl-v8.lds"
 
@@ -163,9 +149,6 @@ config TPL_STACK
 
 config TPL_TEXT_BASE
         default 0xff8c2000
-
-config SPL_STACK_R_ADDR
-	default 0x04000000 if !SPL_SHARES_INIT_SP_ADDR
 
 if BOOTCOUNT_LIMIT
 

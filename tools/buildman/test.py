@@ -46,6 +46,16 @@ main: /usr/sbin
 wrapper = ccache
 '''
 
+settings_data_homedir = '''
+# Buildman settings file
+
+[toolchain]
+main = ~/mypath
+
+[toolchain-prefix]
+x86 = ~/mypath-x86-
+'''
+
 migration = '''===================== WARNING ======================
 This board does not use CONFIG_DM. CONFIG_DM will be
 compulsory starting with the v2020.01 release.
@@ -600,7 +610,7 @@ class TestBuild(unittest.TestCase):
     def testToolchainDownload(self):
         """Test that we can download toolchains"""
         if use_network:
-            with test_util.capture_sys_output() as (stdout, stderr):
+            with terminal.capture() as (stdout, stderr):
                 url = self.toolchains.LocateArchUrl('arm')
             self.assertRegex(url, 'https://www.kernel.org/pub/tools/'
                     'crosstool/files/bin/x86_64/.*/'
@@ -826,6 +836,7 @@ class TestBuild(unittest.TestCase):
         tmpdir = self.base_dir
 
         with (patch('time.time', side_effect=self.get_time),
+              patch('time.perf_counter', side_effect=self.get_time),
               patch('time.monotonic', side_effect=self.get_time),
               patch('time.sleep', side_effect=self.inc_time),
               patch('os.kill', side_effect=self.kill)):
@@ -976,7 +987,7 @@ class TestBuild(unittest.TestCase):
         diff = self.call_make_environment(tchn, full_path=True)[0]
         self.assertEqual({b'LC_ALL': b'C'}, diff)
 
-        # Test that virtualenv is handled correctly
+        # Test that Python sandbox is handled correctly
         tchn.override_toolchain = False
         sys.prefix = '/some/venv'
         env = dict(os.environb)
@@ -1029,6 +1040,46 @@ class TestBuild(unittest.TestCase):
             self.assertNotIn(b'DTC', env)
         finally:
             os.environ['PATH'] = old_path
+
+    def testHomedir(self):
+        """Test using ~ in a toolchain or toolchain-prefix section"""
+        # Add some test settings
+        bsettings.setup(None)
+        bsettings.add_file(settings_data_homedir)
+
+        # Set up the toolchains
+        home = os.path.expanduser('~')
+        toolchains = toolchain.Toolchains()
+        toolchains.GetSettings()
+        self.assertEqual([f'{home}/mypath'], toolchains.paths)
+
+        # Check scanning
+        with terminal.capture() as (stdout, _):
+            toolchains.Scan(verbose=True, raise_on_error=False)
+        lines = iter(stdout.getvalue().splitlines() + ['##done'])
+        self.assertEqual('Scanning for tool chains', next(lines))
+        self.assertEqual(f"   - scanning prefix '{home}/mypath-x86-'",
+                         next(lines))
+        self.assertEqual(
+            f"Error: No tool chain found for prefix '{home}/mypath-x86-gcc'",
+            next(lines))
+        self.assertEqual(f"   - scanning path '{home}/mypath'", next(lines))
+        self.assertEqual(f"      - looking in '{home}/mypath/.'", next(lines))
+        self.assertEqual(f"      - looking in '{home}/mypath/bin'", next(lines))
+        self.assertEqual(f"      - looking in '{home}/mypath/usr/bin'",
+                         next(lines))
+        self.assertEqual('##done', next(lines))
+
+        # Check adding a toolchain
+        with terminal.capture() as (stdout, _):
+            toolchains.Add('~/aarch64-linux-gcc', test=True, verbose=True)
+        lines = iter(stdout.getvalue().splitlines() + ['##done'])
+        self.assertEqual('Tool chain test:  BAD', next(lines))
+        self.assertEqual(f'Command: {home}/aarch64-linux-gcc --version',
+                         next(lines))
+        self.assertEqual('', next(lines))
+        self.assertEqual('', next(lines))
+        self.assertEqual('##done', next(lines))
 
 
 if __name__ == "__main__":

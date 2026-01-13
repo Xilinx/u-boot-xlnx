@@ -13,6 +13,13 @@ config HAVE_SETJMP
 	help
 	 The architecture supports setjmp() and longjmp().
 
+config HAVE_INITJMP
+	bool
+	depends on HAVE_SETJMP
+	help
+	 The architecture supports initjmp(), a non-standard companion to
+	 setjmp() and longjmp().
+
 config SUPPORT_BIG_ENDIAN
 	bool
 
@@ -38,13 +45,13 @@ config 32BIT
 config 64BIT
 	bool
 	help
-	 Indicates that U-Boot proper will be built for a 64 bit
-	 architecture.
+	  Indicates that U-Boot proper will be built for a 64 bit
+	  architecture.
 
 config SPL_64BIT
 	bool
 	help
-	 Indicates that SPL will be built for a 64 bit architecture.
+	  Indicates that SPL will be built for a 64 bit architecture.
 
 config SYS_CACHELINE_SIZE
 	int
@@ -52,8 +59,16 @@ config SYS_CACHELINE_SIZE
 	default 64 if SYS_CACHE_SHIFT_6
 	default 32 if SYS_CACHE_SHIFT_5
 	default 16 if SYS_CACHE_SHIFT_4
-	# Fall-back for MIPS
+	# Fall-back for MIPS and RISC-V
+	default 64 if RISCV
 	default 32 if MIPS
+
+config SYS_DTC_PAD_BYTES
+	int "Size in bytes to pad device tree blob"
+	default 32768 if X86 && EFI_APP
+	default 4096 if ARC || ARM64 || M68K || MICROBLAZE || NIOS2 \
+		|| RISCV || SANDBOX || X86
+	default 0
 
 config LINKER_LIST_ALIGN
 	int
@@ -87,6 +102,7 @@ config ARC
 config ARM
 	bool "ARM architecture"
 	select HAVE_SETJMP
+	select HAVE_INITJMP
 	select ARCH_SUPPORTS_LTO
 	select CREATE_ARCH_SYMLINK
 	select HAVE_PRIVATE_LIBGCC if !ARM64
@@ -144,6 +160,7 @@ config RISCV
 	bool "RISC-V architecture"
 	select CREATE_ARCH_SYMLINK
 	select HAVE_SETJMP
+	select HAVE_INITJMP
 	select SUPPORT_ACPI
 	select SUPPORT_LITTLE_ENDIAN
 	select SUPPORT_OF_CONTROL
@@ -170,6 +187,7 @@ config RISCV
 config SANDBOX
 	bool "Sandbox"
 	select HAVE_SETJMP
+	select HAVE_INITJMP
 	select ARCH_SUPPORTS_LTO
 	select BOARD_LATE_INIT
 	select BZIP2
@@ -180,13 +198,12 @@ config SANDBOX
 	select DM_GPIO
 	select DM_I2C
 	select DM_KEYBOARD
-	select DM_MMC
 	select DM_SERIAL
 	select DM_SPI
 	select DM_SPI_FLASH
 	select GZIP_COMPRESSED
-	select IO_TRACE
 	select LZO
+	select MMC
 	select MTD
 	select OF_BOARD_SETUP
 	select PCI_ENDPOINT
@@ -202,6 +219,7 @@ config SANDBOX
 	imply BITREVERSE
 	select BLOBLIST
 	imply LTO
+	imply CMD_BOOTEFI_SELFTEST
 	imply CMD_DM
 	imply CMD_EXCEPTION
 	imply CMD_GETTIME

@@ -8,6 +8,7 @@
 #include <charset.h>
 #include <command.h>
 #include <dm/device.h>
+#include <efi_device_path.h>
 #include <efi_dt_fixup.h>
 #include <efi_load_initrd.h>
 #include <efi_loader.h>
@@ -555,18 +556,19 @@ static const struct efi_mem_attrs {
 	const char *text;
 } efi_mem_attrs[] = {
 	{EFI_MEMORY_UC, "UC"},
-	{EFI_MEMORY_UC, "UC"},
 	{EFI_MEMORY_WC, "WC"},
 	{EFI_MEMORY_WT, "WT"},
 	{EFI_MEMORY_WB, "WB"},
 	{EFI_MEMORY_UCE, "UCE"},
 	{EFI_MEMORY_WP, "WP"},
 	{EFI_MEMORY_RP, "RP"},
-	{EFI_MEMORY_XP, "WP"},
+	{EFI_MEMORY_XP, "XP"},
 	{EFI_MEMORY_NV, "NV"},
 	{EFI_MEMORY_MORE_RELIABLE, "REL"},
 	{EFI_MEMORY_RO, "RO"},
 	{EFI_MEMORY_SP, "SP"},
+	{EFI_MEMORY_CPU_CRYPTO, "CRYPT"},
+	{EFI_MEMORY_HOT_PLUGGABLE, "HOTPL"},
 	{EFI_MEMORY_RUNTIME, "RT"},
 };
 
@@ -811,7 +813,7 @@ static int efi_boot_add_uri(int argc, char *const argv[], u16 *var_name16,
 	lo->label = label;
 
 	uridp_len = sizeof(struct efi_device_path) + strlen(argv[3]) + 1;
-	uridp = efi_alloc(uridp_len + sizeof(END));
+	uridp = efi_alloc(uridp_len + sizeof(EFI_DP_END));
 	if (!uridp) {
 		log_err("Out of memory\n");
 		return CMD_RET_FAILURE;
@@ -821,10 +823,10 @@ static int efi_boot_add_uri(int argc, char *const argv[], u16 *var_name16,
 	uridp->dp.length = uridp_len;
 	strcpy(uridp->uri, argv[3]);
 	pos = (char *)uridp + uridp_len;
-	memcpy(pos, &END, sizeof(END));
+	memcpy(pos, &EFI_DP_END, sizeof(EFI_DP_END));
 
 	*file_path = &uridp->dp;
-	*fp_size += uridp_len + sizeof(END);
+	*fp_size += uridp_len + sizeof(EFI_DP_END);
 
 	return CMD_RET_SUCCESS;
 }

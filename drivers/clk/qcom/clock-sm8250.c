@@ -18,13 +18,8 @@
 #define GCC_SE12_UART_RCG_REG 0x184D0
 #define GCC_SDCC2_APPS_CLK_SRC_REG 0x1400c
 
-#define APCS_GPLL0_ENA_VOTE 0x79000
 #define APCS_GPLL9_STATUS 0x1c000
 #define APCS_GPLLX_ENA_REG 0x52018
-
-#define USB30_PRIM_MASTER_CLK_CMD_RCGR 0xf020
-#define USB30_PRIM_MOCK_UTMI_CLK_CMD_RCGR 0xf038
-#define USB3_PRIM_PHY_AUX_CMD_RCGR 0xf064
 
 static const struct freq_tbl ftbl_gcc_qupv3_wrap1_s4_clk_src[] = {
 	F(7372800, CFG_CLK_SRC_GPLL0_EVEN, 1, 384, 15625),
@@ -195,9 +190,7 @@ static int sm8250_enable(struct clk *clk)
 		break;
 	}
 
-	qcom_gate_clk_en(priv, clk->id);
-
-	return 0;
+	return qcom_gate_clk_en(priv, clk->id);
 }
 
 static const struct qcom_reset_map sm8250_gcc_resets[] = {
@@ -362,7 +355,7 @@ static const char *const sm8250_rcg_names[] = {
 	"GCC_PCIE_2_AUX_CMD_RCGR",
 };
 
-static struct msm_clk_data qcs404_gcc_data = {
+static struct msm_clk_data sm8250_gcc_data = {
 	.resets = sm8250_gcc_resets,
 	.num_resets = ARRAY_SIZE(sm8250_gcc_resets),
 	.clks = sm8250_clks,
@@ -383,7 +376,7 @@ static struct msm_clk_data qcs404_gcc_data = {
 static const struct udevice_id gcc_sm8250_of_match[] = {
 	{
 		.compatible = "qcom,gcc-sm8250",
-		.data = (ulong)&qcs404_gcc_data,
+		.data = (ulong)&sm8250_gcc_data,
 	},
 	{}
 };

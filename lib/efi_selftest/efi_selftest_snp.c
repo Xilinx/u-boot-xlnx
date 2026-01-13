@@ -43,7 +43,7 @@ struct dhcp_hdr {
 	u8 chaddr[16];
 	u8 sname[64];
 	u8 file[128];
-};
+} __packed;
 
 /*
  * Message type option.
@@ -67,7 +67,6 @@ struct dhcp {
 static struct efi_boot_services *boottime;
 static struct efi_simple_network *net;
 static struct efi_event *timer;
-static const efi_guid_t efi_net_guid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 /* IP packet ID */
 static unsigned int net_ip_id;
 

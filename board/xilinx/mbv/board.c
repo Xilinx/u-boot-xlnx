@@ -7,11 +7,6 @@
 
 #include <spl.h>
 
-int board_init(void)
-{
-	return 0;
-}
-
 #ifdef CONFIG_SPL
 void board_boot_order(u32 *spl_boot_list)
 {

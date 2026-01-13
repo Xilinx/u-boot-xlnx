@@ -6,13 +6,12 @@
 #include <bloblist.h>
 #include <log.h>
 #include <mapmem.h>
-#include <test/suites.h>
 #include <test/test.h>
 #include <test/ut.h>
 
 /* Declare a new bloblist test */
 #define BLOBLIST_TEST(_name, _flags) \
-		UNIT_TEST(_name, _flags, bloblist_test)
+		UNIT_TEST(_name, _flags, bloblist)
 
 enum {
 	TEST_TAG		= BLOBLISTT_U_BOOT_SPL_HANDOFF,
@@ -606,13 +605,3 @@ static int bloblist_test_blob_maxsize(struct unit_test_state *uts)
 	return 0;
 }
 BLOBLIST_TEST(bloblist_test_blob_maxsize, UFT_BLOBLIST);
-
-int do_ut_bloblist(struct cmd_tbl *cmdtp, int flag, int argc,
-		   char *const argv[])
-{
-	struct unit_test *tests = UNIT_TEST_SUITE_START(bloblist_test);
-	const int n_ents = UNIT_TEST_SUITE_COUNT(bloblist_test);
-
-	return cmd_ut_category("bloblist", "bloblist_test_",
-			       tests, n_ents, argc, argv);
-}

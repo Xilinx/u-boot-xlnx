@@ -94,6 +94,13 @@ config RTC_DS1374
 	  Support for Dallas Semiconductor (now Maxim) DS1374 and compatible
 	  Real Time Clock devices.
 
+config RTC_DS1672
+	bool "Enable DS1672 driver"
+	depends on DM_RTC
+	help
+	  Support for Dallas Semiconductor (now Maxim) DS1672 compatible
+	  Real Time Clock devices.
+
 config RTC_DS3231
 	bool "Enable DS3231 driver"
 	help
@@ -211,7 +218,7 @@ config RTC_PL031
 
 config RTC_MV
 	bool "Enable Marvell RTC driver"
-	depends on DM_RTC
+	depends on DM_RTC && ARCH_KIRKWOOD
 	help
 	  Enable Marvell RTC driver. This driver supports the rtc that is present
 	  on some Marvell SoCs.
@@ -294,7 +301,7 @@ config RTC_DAVINCI
 
 config RTC_ZYNQMP
 	bool "Enable ZynqMP RTC driver"
-	depends on ARCH_ZYNQMP
+	depends on DM_RTC && (ARCH_ZYNQMP || ARCH_VERSAL || ARCH_VERSAL_NET || ARCH_VERSAL2)
 	help
 	  Say "yes" here to support the on chip real time clock
 	  present on Xilinx ZynqMP SoC.

@@ -7,15 +7,6 @@
 
 / {
 	aliases {
-		gpio0 = &gpio0;
-		gpio1 = &gpio1;
-		gpio2 = &gpio2;
-		gpio3 = &gpio3;
-		gpio4 = &gpio4;
-		gpio5 = &gpio5;
-		gpio6 = &gpio6;
-		gpio7 = &gpio7;
-		gpio8 = &gpio8;
 		mmc0 = &emmc;
 		mmc1 = &sdmmc;
 		mmc2 = &sdio0;
@@ -54,30 +45,6 @@
 		bootph-all;
 	};
 };
-
-#if defined(CONFIG_ROCKCHIP_SPI_IMAGE) && defined(CONFIG_HAS_ROM)
-&binman {
-	rom {
-		filename = "u-boot.rom";
-		size = <0x400000>;
-		pad-byte = <0xff>;
-
-		mkimage {
-			args = "-n rk3288 -T rkspi";
-			u-boot-spl {
-			};
-		};
-		u-boot-img {
-			offset = <0x20000>;
-		};
-		u-boot {
-			offset = <0x300000>;
-		};
-		fdtmap {
-		};
-	};
-};
-#endif
 
 &bus_intmem {
 	ddr_sram: ddr-sram@1000 {
@@ -128,11 +95,11 @@
 };
 
 &vopb {
-	bootph-all;
+	bootph-some-ram;
 };
 
 &vopl {
-	bootph-all;
+	bootph-some-ram;
 };
 
 &xin24m {

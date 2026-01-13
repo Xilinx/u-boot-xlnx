@@ -74,7 +74,7 @@ static int spl_board_load_file(struct spl_image_info *spl_image,
 	}
 
 	/*
-	 * Set up spl_image to boot from jump_to_image_no_args(). Allocate this
+	 * Set up spl_image to boot from jump_to_image(). Allocate this
 	 * outsdide the RAM buffer (i.e. don't use strdup()).
 	 */
 	spl_image->arg = os_malloc(strlen(fname) + 1);
@@ -112,7 +112,7 @@ static int load_from_image(struct spl_image_info *spl_image,
 	log_info("Reading from pos %lx size %lx\n", pos, size);
 
 	/*
-	 * Set up spl_image to boot from jump_to_image_no_args(). Allocate this
+	 * Set up spl_image to boot from jump_to_image(). Allocate this
 	 * outside the RAM buffer (i.e. don't use strdup()).
 	 */
 	fname = state->prog_fname ? state->prog_fname : state->argv[0];
@@ -147,15 +147,19 @@ void spl_board_init(void)
 	if (state->run_unittests) {
 		struct unit_test *tests = UNIT_TEST_ALL_START();
 		const int count = UNIT_TEST_ALL_COUNT();
+		struct unit_test_state uts;
 		int ret;
 
-		ret = ut_run_list("spl", NULL, tests, count,
+		ut_init_state(&uts);
+		ret = ut_run_list(&uts, "spl", NULL, tests, count,
 				  state->select_unittests, 1, false, NULL);
+		ut_report(&uts.cur, 1);
+		ut_uninit_state(&uts);
 		/* continue execution into U-Boot */
 	}
 }
 
-void __noreturn jump_to_image_no_args(struct spl_image_info *spl_image)
+void __noreturn jump_to_image(struct spl_image_info *spl_image)
 {
 	switch (spl_image->flags) {
 	case SPL_SANDBOXF_ARG_IS_FNAME: {

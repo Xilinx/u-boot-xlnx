@@ -7,6 +7,7 @@
 
 #include <blkmap.h>
 #include <bootm.h>
+#include <efi_device_path.h>
 #include <env.h>
 #include <image.h>
 #include <log.h>
@@ -199,7 +200,7 @@ efi_status_t efi_load_option_dp_join(struct efi_device_path **dp,
 		efi_free_pool(tmp_dp);
 		if (!*dp)
 			return EFI_OUT_OF_RESOURCES;
-		*dp_size += efi_dp_size(initrd_dp) + sizeof(END);
+		*dp_size += efi_dp_size(initrd_dp) + sizeof(EFI_DP_END);
 	}
 
 	if (fdt_dp) {
@@ -209,10 +210,10 @@ efi_status_t efi_load_option_dp_join(struct efi_device_path **dp,
 		efi_free_pool(tmp_dp);
 		if (!*dp)
 			return EFI_OUT_OF_RESOURCES;
-		*dp_size += efi_dp_size(fdt_dp) + sizeof(END);
+		*dp_size += efi_dp_size(fdt_dp) + sizeof(EFI_DP_END);
 	}
 
-	*dp_size += sizeof(END);
+	*dp_size += sizeof(EFI_DP_END);
 
 	return EFI_SUCCESS;
 }
@@ -485,7 +486,7 @@ static efi_status_t copy_fdt(void **fdtp)
 	 * needs to be expanded later.
 	 */
 	fdt = *fdtp;
-	fdt_pages = efi_size_in_pages(fdt_totalsize(fdt) + 0x3000);
+	fdt_pages = efi_size_in_pages(fdt_totalsize(fdt) + CONFIG_SYS_FDT_PAD);
 	fdt_size = fdt_pages << EFI_PAGE_SHIFT;
 
 	ret = efi_allocate_pages(EFI_ALLOCATE_ANY_PAGES,
@@ -620,6 +621,35 @@ efi_status_t efi_install_fdt(void *fdt)
 	}
 
 	return EFI_SUCCESS;
+}
+
+/**
+ * efi_install_initrd() - install initrd
+ *
+ * Install the initrd located at @initrd using the EFI_LOAD_FILE2
+ * protocol.
+ *
+ * @initrd:	address of initrd or NULL if none is provided
+ * @initrd_sz:	size of initrd
+ * Return:	status code
+ */
+efi_status_t efi_install_initrd(void *initrd, size_t initd_sz)
+{
+	efi_status_t ret;
+	struct efi_device_path *dp_initrd;
+
+	if (!initrd)
+		return EFI_SUCCESS;
+
+	dp_initrd = efi_dp_from_mem(EFI_LOADER_DATA, (uintptr_t)initrd, initd_sz);
+	if (!dp_initrd)
+		return EFI_OUT_OF_RESOURCES;
+
+	ret = efi_initrd_register(dp_initrd);
+	if (ret != EFI_SUCCESS)
+		efi_free_pool(dp_initrd);
+
+	return ret;
 }
 
 /**

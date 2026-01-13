@@ -83,7 +83,7 @@
 
 #define VERSAL_NET_EMMC_ICLK_PHASE_DDR52_DLY_CHAIN	39
 #define VERSAL_NET_EMMC_ICLK_PHASE_DDR52_DLL		146
-#define VERSAL_NET_PHY_CTRL_STRB90_STRB180_VAL		0X77
+#define VERSAL_NET_PHY_CTRL_STRB90_STRB180_VAL		0x77
 
 struct arasan_sdhci_clk_data {
 	int clk_phase_in[MMC_TIMING_MMC_HS400 + 1];
@@ -1129,6 +1129,28 @@ static int arasan_sdhci_probe(struct udevice *dev)
 #endif
 	if (arasan_sdhci_is_compatible(dev, SDHCI_COMPATIBLE_VERSAL_NET_EMMC))
 		priv->internal_phy_reg = true;
+
+	ret = reset_get_bulk(dev, &priv->resets);
+	if (ret == -ENOTSUPP || ret == -ENOENT) {
+		dev_warn(dev, "Reset not found\n");
+	} else if (ret) {
+		dev_err(dev, "Reset failed\n");
+		return ret;
+	}
+
+	if (!ret) {
+		ret = reset_assert_bulk(&priv->resets);
+		if (ret) {
+			dev_err(dev, "Reset assert failed\n");
+			return ret;
+		}
+
+		ret = reset_deassert_bulk(&priv->resets);
+		if (ret) {
+			dev_err(dev, "Reset release failed\n");
+			return ret;
+		}
+	}
 
 	ret = clk_get_by_index(dev, 0, &clk);
 	if (ret < 0) {

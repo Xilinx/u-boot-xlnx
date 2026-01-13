@@ -8,6 +8,7 @@ ifdef CONFIG_$(PHASE_)DM_SPI
 obj-y += spi-uclass.o
 obj-$(CONFIG_CADENCE_QSPI) += cadence_qspi.o cadence_qspi_apb.o
 obj-$(CONFIG_CADENCE_OSPI_VERSAL) += cadence_ospi_versal.o
+obj-$(CONFIG_CADENCE_XSPI) += cadence_xspi.o
 obj-$(CONFIG_SANDBOX) += spi-emul-uclass.o
 obj-$(CONFIG_SOFT_SPI) += soft_spi.o
 obj-$(CONFIG_SPI_ASPEED_SMC) += spi-aspeed-smc.o
@@ -19,6 +20,8 @@ obj-y += spi.o
 obj-$(CONFIG_SPI_MEM) += spi-mem-nodm.o
 endif
 
+obj-$(CONFIG_ADI_SPI3) += adi_spi3.o
+obj-$(CONFIG_AIROHA_SNFI_SPI) += airoha_snfi_spi.o
 obj-$(CONFIG_ALTERA_SPI) += altera_spi.o
 obj-$(CONFIG_APPLE_SPI) += apple_spi.o
 obj-$(CONFIG_ATH79_SPI) += ath79_spi.o
@@ -73,6 +76,7 @@ obj-$(CONFIG_SPI_SIFIVE) += spi-sifive.o
 obj-$(CONFIG_SPI_SN_F_OSPI) += spi-sn-f-ospi.o
 obj-$(CONFIG_SPI_SUNXI) += spi-sunxi.o
 obj-$(CONFIG_SH_QSPI) += sh_qspi.o
+obj-$(CONFIG_STM32_OSPI) += stm32_ospi.o
 obj-$(CONFIG_STM32_QSPI) += stm32_qspi.o
 obj-$(CONFIG_STM32_SPI) += stm32_spi.o
 obj-$(CONFIG_TEGRA114_SPI) += tegra114_spi.o

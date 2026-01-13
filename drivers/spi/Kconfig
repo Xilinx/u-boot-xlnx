@@ -52,6 +52,22 @@ config SPI_DIRMAP
 
 if DM_SPI
 
+config ADI_SPI3
+	bool "Enable ADI SPI Driver"
+	depends on ARCH_SC5XX
+	help
+	  Enable the ADI (Analog Devices) SPI controller driver. This
+	  driver enables the support for SC5XX spi controller.
+
+config AIROHA_SNFI_SPI
+	bool "Airoha SPI memory controller driver"
+	depends on SPI_MEM
+	help
+	  Enable the Airoha SPI memory controller driver. This driver is
+	  originally based on the Airoha SNFI IP core. It can only be
+	  used to access SPI memory devices like SPI-NOR or SPI-NAND on
+	  platforms embedding this IP core, like AN7581.
+
 config ALTERA_SPI
 	bool "Altera SPI driver"
 	help
@@ -85,7 +101,7 @@ config ATH79_SPI
 
 config ATMEL_QSPI
 	bool "Atmel Quad SPI Controller"
-	depends on ARCH_AT91
+	depends on ARCH_AT91 && SPI_MEM
 	help
 	  Enable the Atmel Quad SPI controller in master mode. This driver
 	  does not support generic SPI. The implementation supports only the
@@ -135,7 +151,7 @@ config BCMSTB_SPI
 
 config CORTINA_SFLASH
 	bool "Cortina-Access Serial Flash controller driver"
-	depends on DM_SPI && SPI_MEM
+	depends on SPI_MEM
 	help
 	  Enable the Cortina-Access Serial Flash controller driver. This driver
 	  can be used to access the SPI NOR/NAND flash on platforms embedding this
@@ -163,6 +179,21 @@ config CADENCE_OSPI_VERSAL
 	help
 	  This option is used to enable Versal OSPI DMA operations which
 	  are used for ospi flash read using cadence qspi controller.
+
+config CADENCE_XSPI
+	bool "Cadence XSPI driver (Experimental feature)"
+	help
+	  Important: this feature is experimental so far and tested only
+	  on simulated environment.
+
+	  Enable the Cadence eXpanded Serial Periheral Interface (xSPI) flash
+	  driver. This driver can be used to access the SPI NOR flash on
+	  platforms embedding this Cadence IP core up to 8 bit wide bus.
+	  xSPI flash controller IP offers three work mode, Auto Command (ACMD)
+	  work mode, Software Triggered Instruction Generator (STIG) work mode
+	  and Direct work mode. This flash controller able to coomunicate
+	  with Flash Memory Devices supporting JESD216 and JESD251 stadards
+	  by using the Auto Command work mode.
 
 config CF_SPI
         bool "ColdFire SPI driver"
@@ -335,6 +366,8 @@ config MTK_SPIM
 
 config MVEBU_A3700_SPI
 	bool "Marvell Armada 3700 SPI driver"
+	depends on ARCH_MVEBU && ARM64
+	select CLK_MVEBU
 	select CLK_ARMADA_3720
 	help
 	  Enable the Marvell Armada 3700 SPI driver. This driver can be
@@ -434,6 +467,7 @@ config ROCKCHIP_SFC
 
 config ROCKCHIP_SPI
 	bool "Rockchip SPI driver"
+	depends on ARCH_ROCKCHIP
 	help
 	  Enable the Rockchip SPI driver, used to access SPI NOR flash and
 	  other SPI peripherals (such as the Chrome OS EC) on Rockchip SoCs.
@@ -477,7 +511,7 @@ config SANDBOX_SPI_MAX_CS
 
 config SPI_ASPEED_SMC
 	bool "ASPEED SPI flash controller driver"
-	depends on DM_SPI && SPI_MEM
+	depends on DM_SPI && SPI_MEM && ARCH_ASPEED
 	help
 	  Enable ASPEED SPI flash controller driver for AST2500
 	  and AST2600 SoCs.
@@ -511,6 +545,14 @@ config SPI_SUNXI
 	  Enable the Allwinner SoC SPi controller driver.
 
 	  Same controller driver can reuse in all Allwinner SoC variants.
+
+config STM32_OSPI
+	bool "STM32MP2 OSPI driver"
+	depends on STM32MP25X && STM32_OMM
+	help
+	  Enable the STM32MP2 Octo-SPI (OSPI) driver. This driver can be
+	  used to access the SPI NOR flash chips on platforms embedding
+	  this ST IP core.
 
 config STM32_QSPI
 	bool "STM32F7 QSPI driver"
@@ -596,6 +638,7 @@ config ZYNQ_SPI
 
 config ZYNQ_QSPI
 	bool "Zynq QSPI driver"
+	depends on ARCH_VERSAL || ARCH_VERSAL_NET || ARCH_VERSAL2 || ARCH_ZYNQ || ARCH_ZYNQMP
 	imply SPI_FLASH_BAR
 	help
 	  Enable the Zynq Quad-SPI (QSPI) driver. This driver can be
@@ -605,6 +648,7 @@ config ZYNQ_QSPI
 
 config ZYNQMP_GQSPI
 	bool "Configure ZynqMP Generic QSPI"
+	depends on ARCH_VERSAL || ARCH_VERSAL_NET || ARCH_VERSAL2 || ARCH_ZYNQ || ARCH_ZYNQMP
 	help
 	  This option is used to enable ZynqMP QSPI controller driver which
 	  is used to communicate with qspi flash devices.

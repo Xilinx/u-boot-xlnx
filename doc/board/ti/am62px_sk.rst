@@ -91,15 +91,15 @@ Set the variables corresponding to this platform:
     :start-after: .. k3_rst_include_start_common_env_vars_defn
     :end-before: .. k3_rst_include_end_common_env_vars_defn
 
-.. code-block:: bash
+.. prompt:: bash
 
- $ export UBOOT_CFG_CORTEXR=am62px_evm_r5_defconfig
- $ export UBOOT_CFG_CORTEXA=am62px_evm_a53_defconfig
- $ export TFA_BOARD=lite
- $ # we dont use any extra TFA parameters
- $ unset TFA_EXTRA_ARGS
- $ export OPTEE_PLATFORM=k3-am62x
- $ export OPTEE_EXTRA_ARGS="CFG_WITH_SOFTWARE_PRNG=y"
+   export UBOOT_CFG_CORTEXR=am62px_evm_r5_defconfig
+   export UBOOT_CFG_CORTEXA=am62px_evm_a53_defconfig
+   export TFA_BOARD=lite
+   # we dont use any extra TFA parameters
+   unset TFA_EXTRA_ARGS
+   export OPTEE_PLATFORM=k3-am62x
+   export OPTEE_EXTRA_ARGS="CFG_WITH_SOFTWARE_PRNG=y"
 
 .. am62px_evm_rst_include_start_build_steps
 
@@ -290,6 +290,37 @@ https://www.ti.com/lit/pdf/spruj83 under the `Boot Mode Pins` section.
 
 For SW2 and SW1, the switch state in the "ON" position = 1.
 
+Falcon Mode
+-----------
+
+Falcon Mode on AM62px platforms bypasses the A53 SPL and U-Boot with the overall
+boot flow as below:
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_boot_flow
+    :end-before: .. am62x_evm_falcon_end_boot_flow
+
+Build Process
+^^^^^^^^^^^^^
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_build_process
+    :end-before: .. am62x_evm_falcon_end_build_process
+
+Usage
+^^^^^
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_usage
+    :end-before: .. am62x_evm_falcon_end_usage
+
+R5 SPL Memory Map
+^^^^^^^^^^^^^^^^^
+
+.. include:: am62x_sk.rst
+    :start-after: .. am62x_evm_falcon_start_r5_memory_map
+    :end-before: .. am62x_evm_falcon_end_r5_memory_map
+
 Debugging U-Boot
 ----------------
 
@@ -312,6 +343,6 @@ detailed setup information.
 
 To start OpenOCD and connect to the board
 
-.. code-block:: bash
+.. prompt:: bash
 
   openocd -f board/ti_am62pevm.cfg

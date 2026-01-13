@@ -17,7 +17,7 @@ obj-$(CONFIG_EFI_LOADER) += sctlr.o
 obj-$(CONFIG_ARMV7_NONSEC) += exception_level.o
 endif
 
-ifneq ($(CONFIG_$(XPL_)SKIP_LOWLEVEL_INIT),y)
+ifneq ($(CONFIG_$(PHASE_)SKIP_LOWLEVEL_INIT),y)
 obj-y	+= lowlevel_init.o
 endif
 
@@ -32,7 +32,6 @@ ifneq (,$(filter s5pc1xx exynos,$(SOC)))
 obj-y += s5p-common/
 endif
 
-obj-$(if $(filter bcm235xx,$(SOC)),y) += bcm235xx/
 obj-$(if $(filter bcm281xx,$(SOC)),y) += bcm281xx/
 obj-$(if $(filter bcmcygnus,$(SOC)),y) += bcmcygnus/
 obj-$(if $(filter bcmnsp,$(SOC)),y) += bcmnsp/

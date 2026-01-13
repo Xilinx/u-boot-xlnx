@@ -39,6 +39,7 @@ menuconfig USB_GADGET
 
 config SPL_USB_GADGET
 	bool "USB Gadget Support in SPL"
+	depends on SPL_FRAMEWORK
 	help
 	  Enable USB Gadget API which allows to enable USB device functions
 	  in SPL.
@@ -60,6 +61,7 @@ config USB_GADGET_VENDOR_NUM
 	default 0x0955 if ARCH_TEGRA
 	default 0x1f3a if ARCH_SUNXI
 	default 0x2207 if ARCH_ROCKCHIP
+	default 0x18d1 if ARCH_QCOM
 	default 0x0
 	help
 	  Vendor ID of the USB device emulated, reported to the host device.
@@ -85,21 +87,20 @@ config USB_GADGET_PRODUCT_NUM
 	default 0x330e if ROCKCHIP_RK3308
 	default 0x350a if ROCKCHIP_RK3568
 	default 0x350b if ROCKCHIP_RK3588
+	default 0x350c if ROCKCHIP_RK3528
+	default 0x350e if ROCKCHIP_RK3576
+	default 0x4ee0 if ARCH_QCOM
 	default 0x0
 	help
 	  Product ID of the USB device emulated, reported to the host device.
 
 config USB_GADGET_ATMEL_USBA
 	bool "Atmel USBA"
+	depends on ARCH_AT91
 	select USB_GADGET_DUALSPEED
 	help
 	  USBA is the integrated high-speed USB Device controller on
 	  the AT32AP700x, some AT91SAM9 and AT91CAP9 processors from Atmel.
-
-config USB_GADGET_BCM_UDC_OTG_PHY
-	bool "Broadcom UDC OTG PHY"
-	help
-	  Enable the Broadcom UDC OTG physical device interface.
 
 config USB_GADGET_AT91
 	bool "Atmel AT91 USB Gadget Controller"
@@ -107,6 +108,7 @@ config USB_GADGET_AT91
 
 config USB_GADGET_DWC2_OTG
 	bool "DesignWare USB2.0 HS OTG controller (gadget mode)"
+	depends on ARM
 	select USB_GADGET_DUALSPEED
 	help
 	  The Designware USB2.0 high-speed gadget controller
@@ -149,16 +151,11 @@ config USB_GADGET_OS_DESCRIPTORS
 
 config CI_UDC
 	bool "ChipIdea device controller"
+	depends on !DM_USB_GADGET
 	select USB_GADGET_DUALSPEED
 	help
 	  Say Y here to enable device controller functionality of the
 	  ChipIdea driver.
-
-config USB_GADGET_MAX3420
-	bool "MAX3420 USB Over SPI"
-	depends on DM_SPI
-	help
-	  MAX3420, from MAXIM, implements USB-over-SPI Full-Speed device controller.
 
 config USB_GADGET_VBUS_DRAW
 	int "Maximum VBUS Power usage (2-500 mA)"
@@ -200,12 +197,13 @@ config USB_FUNCTION_MASS_STORAGE
 	  the eMMC/SD card content to HOST PC so it can be mounted.
 
 config USB_FUNCTION_ROCKUSB
-        bool "Enable USB rockusb gadget"
-        help
-          Rockusb protocol is widely used by Rockchip SoC based devices. It can
-          read/write info, image to/from devices. This enables the USB part of
-          the rockusb gadget.for more detail about Rockusb protocol, please see
-          doc/README.rockusb
+	bool "Enable USB rockusb gadget"
+	depends on ARCH_ROCKCHIP
+	help
+	  Rockusb protocol is widely used by Rockchip SoC based devices. It can
+	  read/write info, image to/from devices. This enables the USB part of
+	  the rockusb gadget.for more detail about Rockusb protocol, please see
+	  doc/README.rockusb
 
 config USB_FUNCTION_SDP
 	bool "Enable USB SDP (Serial Download Protocol)"

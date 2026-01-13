@@ -1175,7 +1175,7 @@ def prefix_config(cfg):
     return oper + cfg
 
 
-RE_MK_CONFIGS = re.compile(r'CONFIG_(\$\(XPL_\)|\$\(PHASE_\))?([A-Za-z0-9_]*)')
+RE_MK_CONFIGS = re.compile(r'CONFIG_(\$\(PHASE_\))?([A-Za-z0-9_]*)')
 RE_IFDEF = re.compile(r'(ifdef|ifndef)')
 RE_C_CONFIGS = re.compile(r'CONFIG_([A-Za-z0-9_]*)')
 RE_CONFIG_IS = re.compile(r'CONFIG_IS_ENABLED\(([A-Za-z0-9_]*)\)')
@@ -1220,8 +1220,6 @@ def scan_makefiles(fnames):
 
     >>> RE_MK_CONFIGS.search('CONFIG_FRED').groups()
     (None, 'FRED')
-    >>> RE_MK_CONFIGS.search('CONFIG_$(XPL_)MARY').groups()
-    ('$(XPL_)', 'MARY')
     >>> RE_MK_CONFIGS.search('CONFIG_$(PHASE_)MARY').groups()
     ('$(PHASE_)', 'MARY')
     """
@@ -1321,8 +1319,8 @@ def do_scan_source(path, do_update):
             spl_mode (int): If MODE_SPL, look at source code which implies
                 an xPL_ option, but for which there is none;
                 for MOD_PROPER, look at source code which implies a Proper
-                option (i.e. use of CONFIG_IS_ENABLED() or $(XPL_) or
-                $(PHASE_) but for which there none;
+                option (i.e. use of CONFIG_IS_ENABLED() or $(PHASE_) but for
+                which there none;
                 if MODE_NORMAL, ignore SPL
 
         Returns:
@@ -1453,7 +1451,7 @@ def do_scan_source(path, do_update):
     print('\nCONFIG options used as Proper in Makefiles but without a non-xPL_ variant:')
     not_found = check_not_found(all_uses, MODE_PROPER)
     show_uses(not_found)
-    proper_not_found |= {not_found.keys()}
+    proper_not_found |= not_found.keys()
 
     # Scan the source code
     all_uses, _ = scan_src_files(src_list)
@@ -1471,7 +1469,7 @@ def do_scan_source(path, do_update):
     print('\nCONFIG options used as Proper in source but without a non-xPL_ variant:')
     not_found = check_not_found(all_uses, MODE_PROPER)
     show_uses(not_found)
-    proper_not_found |= {not_found.keys()}
+    proper_not_found |= not_found.keys()
 
     print('\nCONFIG options used as SPL but without an xPL_ variant:')
     for item in sorted(spl_not_found):
@@ -1617,7 +1615,7 @@ def add_commit(configs):
                 '\n   '.join(configs))
     else:
         msg = 'configs: Resync with savedefconfig'
-        msg += '\n\nRsync all defconfig files using moveconfig.py'
+        msg += '\n\nResync all defconfig files using qconfig.py'
     subprocess.call(['git', 'commit', '-s', '-m', msg])
 
 

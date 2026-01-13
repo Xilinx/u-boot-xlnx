@@ -13,11 +13,10 @@ if __name__ == "__main__":
     sys.path.append(os.path.join(our_path, '..'))
 
     # Run tests
-    from u_boot_pylib import terminal
     from u_boot_pylib import test_util
 
     result = test_util.run_test_suites(
-        'u_boot_pylib', False, False, False, None, None, None,
+        'u_boot_pylib', False, False, False, False, None, None, None,
         ['terminal'])
 
     sys.exit(0 if result.wasSuccessful() else 1)

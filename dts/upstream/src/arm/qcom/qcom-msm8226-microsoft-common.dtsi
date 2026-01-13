@@ -8,7 +8,11 @@
  * Copyright (c) 2023, Rayyan Ansari <rayyan@ansari.sh>
  */
 
-#include "qcom-msm8226.dtsi"
+/*
+ * The .dts should first include qcom-msm8226.dtsi or msm8926.dtsi depending on
+ * the SoC on the given device.
+ */
+
 #include "pm8226.dtsi"
 #include <dt-bindings/input/input.h>
 
@@ -81,6 +85,32 @@
 			reg = <0x0fa00000 0x100000>;
 			no-map;
 		};
+	};
+};
+
+&blsp1_i2c2 {
+	status = "okay";
+
+	magnetometer: magnetometer@c {
+		compatible = "asahi-kasei,ak09911";
+		reg = <0x0c>;
+
+		vdd-supply = <&pm8226_l15>;
+		vid-supply = <&pm8226_l6>;
+	};
+
+	accelerometer: accelerometer@1e {
+		compatible = "kionix,kx022-1020";
+		reg = <0x1e>;
+
+		interrupts-extended = <&tlmm 63 IRQ_TYPE_EDGE_RISING>;
+
+		vdd-supply = <&pm8226_l15>;
+		vddio-supply = <&pm8226_l6>;
+
+		mount-matrix = "1",  "0",  "0",
+			       "0", "-1",  "0",
+			       "0",  "0",  "1";
 	};
 };
 

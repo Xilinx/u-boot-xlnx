@@ -4,7 +4,7 @@
 
 import os.path
 
-from patman import gitutil
+from u_boot_pylib import gitutil
 
 def detect_project():
     """Autodetect the name of the current project.
@@ -18,7 +18,8 @@ def detect_project():
     """
     top_level = gitutil.get_top_level()
 
-    if os.path.exists(os.path.join(top_level, "include", "u-boot")):
+    if (not top_level or
+            os.path.exists(os.path.join(top_level, "include", "u-boot"))):
         return "u-boot"
     elif os.path.exists(os.path.join(top_level, "kernel")):
         return "linux"

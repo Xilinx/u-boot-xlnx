@@ -6,7 +6,11 @@ Qualcomm
 .. toctree::
    :maxdepth: 2
 
-   dragonboard410c
-   rb3gen2
    board
    debugging
+   dragonboard410c
+   dragonwing
+   rb3gen2
+   iq8
+   phones
+   rdp

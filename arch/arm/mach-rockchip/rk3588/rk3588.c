@@ -4,12 +4,20 @@
  * Copyright (c) 2022 Edgeble AI Technologies Pvt. Ltd.
  */
 
+#define LOG_CATEGORY LOGC_ARCH
+
+#include <dm.h>
+#include <misc.h>
 #include <spl.h>
 #include <asm/armv8/mmu.h>
 #include <asm/arch-rockchip/bootrom.h>
 #include <asm/arch-rockchip/grf_rk3588.h>
 #include <asm/arch-rockchip/hardware.h>
 #include <asm/arch-rockchip/ioc_rk3588.h>
+
+#define USB_GRF_BASE			0xfd5ac000
+#define USB3OTG0_CON1			0x001c
+#define USB3OTG1_CON1			0x0034
 
 #define FIREWALL_DDR_BASE		0xfe030000
 #define FW_DDR_MST5_REG			0x54
@@ -55,7 +63,20 @@ static struct mm_region rk3588_mem_map[] = {
 	{
 		.virt = 0x0UL,
 		.phys = 0x0UL,
-		.size = 0xf0000000UL,
+		.size = 0x10f000UL,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+			 PTE_BLOCK_INNER_SHARE
+	}, {
+		/* SCMI shared memory area must be mapped as non-cacheable. */
+		.virt = 0x10f000UL,
+		.phys = 0x10f000UL,
+		.size = 0x1000UL,
+		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL_NC) |
+			 PTE_BLOCK_INNER_SHARE
+	}, {
+		.virt = 0x110000UL,
+		.phys = 0x110000UL,
+		.size = 0xefef0000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
 			 PTE_BLOCK_INNER_SHARE
 	}, {
@@ -112,18 +133,25 @@ void board_debug_uart_init(void)
 }
 
 #ifdef CONFIG_XPL_BUILD
+
+#define HP_TIMER_BASE			CONFIG_ROCKCHIP_STIMER_BASE
+#define HP_CTRL_REG			0x04
+#define TIMER_EN			BIT(0)
+#define HP_LOAD_COUNT0_REG		0x14
+#define HP_LOAD_COUNT1_REG		0x18
+
 void rockchip_stimer_init(void)
 {
 	/* If Timer already enabled, don't re-init it */
-	u32 reg = readl(CONFIG_ROCKCHIP_STIMER_BASE + 0x4);
+	u32 reg = readl(HP_TIMER_BASE + HP_CTRL_REG);
 
-	if (reg & 0x1)
+	if (reg & TIMER_EN)
 		return;
 
-	asm volatile("msr CNTFRQ_EL0, %0" : : "r" (CONFIG_COUNTER_FREQUENCY));
-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + 0x14);
-	writel(0xffffffff, CONFIG_ROCKCHIP_STIMER_BASE + 0x18);
-	writel(0x1, CONFIG_ROCKCHIP_STIMER_BASE + 0x4);
+	asm volatile("msr cntfrq_el0, %0" : : "r" (CONFIG_COUNTER_FREQUENCY));
+	writel(0xffffffff, HP_TIMER_BASE + HP_LOAD_COUNT0_REG);
+	writel(0xffffffff, HP_TIMER_BASE + HP_LOAD_COUNT1_REG);
+	writel(TIMER_EN, HP_TIMER_BASE + HP_CTRL_REG);
 }
 #endif
 
@@ -173,8 +201,60 @@ int arch_cpu_init(void)
 	/* Disable JTAG exposed on SDMMC */
 	rk_clrreg(&sys_grf->soc_con[6], SYS_GRF_FORCE_JTAG);
 #endif
+
+	/* Disable USB3OTG U3 ports, later enabled by USBDP PHY driver */
+	writel(0xffff0188, USB_GRF_BASE + USB3OTG0_CON1);
+	writel(0xffff0188, USB_GRF_BASE + USB3OTG1_CON1);
 #endif
 
 	return 0;
 }
 #endif
+
+#define RK3588_OTP_CPU_CODE_OFFSET		0x02
+#define RK3588_OTP_SPECIFICATION_OFFSET		0x06
+
+int checkboard(void)
+{
+	u8 cpu_code[2], specification, package;
+	struct udevice *dev;
+	char suffix[3];
+	int ret;
+
+	if (!IS_ENABLED(CONFIG_ROCKCHIP_OTP) || !CONFIG_IS_ENABLED(MISC))
+		return 0;
+
+	ret = uclass_get_device_by_driver(UCLASS_MISC,
+					  DM_DRIVER_GET(rockchip_otp), &dev);
+	if (ret) {
+		log_debug("Could not find otp device, ret=%d\n", ret);
+		return 0;
+	}
+
+	/* cpu-code: SoC model, e.g. 0x35 0x82 or 0x35 0x88 */
+	ret = misc_read(dev, RK3588_OTP_CPU_CODE_OFFSET, cpu_code, 2);
+	if (ret < 0) {
+		log_debug("Could not read cpu-code, ret=%d\n", ret);
+		return 0;
+	}
+
+	/* specification: SoC variant, e.g. 0xA for RK3588J and 0x13 for RK3588S */
+	ret = misc_read(dev, RK3588_OTP_SPECIFICATION_OFFSET, &specification, 1);
+	if (ret < 0) {
+		log_debug("Could not read specification, ret=%d\n", ret);
+		return 0;
+	}
+	/* package: likely SoC variant revision, 0x2 for RK3588S2 */
+	package = specification >> 5;
+	specification &= 0x1f;
+
+	/* for RK3588J i.e. '@' + 0xA = 'J' */
+	suffix[0] = specification > 1 ? '@' + specification : '\0';
+	/* for RK3588S2 i.e. '0' + 0x2 = '2' */
+	suffix[1] = package > 1 ? '0' + package : '\0';
+	suffix[2] = '\0';
+
+	printf("SoC:   RK%02x%02x%s\n", cpu_code[0], cpu_code[1], suffix);
+
+	return 0;
+}

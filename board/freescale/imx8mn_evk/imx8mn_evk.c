@@ -3,14 +3,32 @@
  * Copyright 2019 NXP
  */
 
+#include <asm/arch/sys_proto.h>
+#include <asm/io.h>
+#include <config.h>
+#include <efi_loader.h>
 #include <env.h>
 #include <init.h>
-#include <asm/global_data.h>
-#include <miiphy.h>
-#include <netdev.h>
-#include <asm/io.h>
 
-DECLARE_GLOBAL_DATA_PTR;
+#if CONFIG_IS_ENABLED(EFI_HAVE_CAPSULE_SUPPORT)
+#define IMX_BOOT_IMAGE_GUID \
+	EFI_GUID(0xcbabf44d, 0x12cc, 0x45dd, 0xb0, 0xc5, \
+		 0x29, 0xc5, 0xb7, 0x42, 0x2d, 0x34)
+
+struct efi_fw_image fw_images[] = {
+	{
+		.image_type_id = IMX_BOOT_IMAGE_GUID,
+		.fw_name = u"IMX8MN-EVK-RAW",
+		.image_index = 1,
+	},
+};
+
+struct efi_capsule_update_info update_info = {
+	.dfu_string = "mmc 2=flash-bin raw 0 0x2000 mmcpart 1",
+	.num_images = ARRAY_SIZE(fw_images),
+	.images = fw_images,
+};
+#endif /* EFI_HAVE_CAPSULE_SUPPORT */
 
 int board_mmc_get_env_dev(int devno)
 {
@@ -35,6 +53,10 @@ int board_init(void)
 
 int board_late_init(void)
 {
+#if CONFIG_IS_ENABLED(ENV_IS_IN_MMC)
+	board_late_mmc_env_init();
+#endif
+
 #ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
 	env_set("board_name", "DDR4 EVK");
 	env_set("board_rev", "iMX8MN");

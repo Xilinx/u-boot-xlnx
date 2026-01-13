@@ -98,7 +98,6 @@
 	slg7xl45106: gpio@11 { /* u19 - reset logic */
 		compatible = "dlg,slg7xl45106";
 		reg = <0x11>;
-		label = "resetchip";
 		gpio-controller;
 		#gpio-cells = <2>;
 		gpio-line-names = "USB0_PHY_RESET_B", "USB1_PHY_RESET_B",
@@ -149,11 +148,13 @@
 	phy-names = "dp-phy0";
 	phys = <&psgtr 1 PHY_TYPE_DP 0 1>;
 	assigned-clock-rates = <27000000>, <25000000>, <300000000>;
-};
 
-&out_dp {
-	dpsub_dp_out: endpoint {
-		remote-endpoint = <&dpcon_in>;
+	ports {
+		out_dp: port@5 {
+			dpsub_dp_out: endpoint {
+				remote-endpoint = <&dpcon_in>;
+			};
+		};
 	};
 };
 

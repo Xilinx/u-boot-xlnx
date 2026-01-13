@@ -51,7 +51,10 @@ efi_selftest_variables_runtime.o \
 efi_selftest_watchdog.o
 
 obj-$(CONFIG_EFI_ECPT) += efi_selftest_ecpt.o
+obj-$(CONFIG_ARM64) += efi_selftest_el.o
 obj-$(CONFIG_NETDEVICES) += efi_selftest_snp.o
+obj-$(CONFIG_EFI_HTTP_PROTOCOL) += efi_selftest_http.o
+obj-$(CONFIG_EFI_HTTP_PROTOCOL) += efi_selftest_ipconfig.o
 
 obj-$(CONFIG_EFI_DEVICE_PATH_TO_TEXT) += efi_selftest_devicepath.o
 obj-$(CONFIG_EFI_UNICODE_COLLATION_PROTOCOL2) += \
@@ -74,6 +77,8 @@ obj-y += efi_selftest_block_device.o
 endif
 
 obj-$(CONFIG_EFI_ESRT) += efi_selftest_esrt.o
+
+obj-$(CONFIG_EFI_DEBUG_SUPPORT) += efi_selftest_debug_support.o
 
 targets += \
 efi_miniapp_file_image_exception.h \

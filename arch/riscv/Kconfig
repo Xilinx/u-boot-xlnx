@@ -11,8 +11,20 @@ choice
 config TARGET_ANDES_AE350
 	bool "Support Andes ae350"
 
-config TARGET_MICROCHIP_ICICLE
-	bool "Support Microchip PolarFire-SoC Icicle Board"
+config TARGET_ANDES_VOYAGER
+	bool "Support Andes Voyager Board"
+
+config TARGET_BANANAPI_F3
+	bool "Support BananaPi F3 Board"
+
+config TARGET_K230_CANMV
+	bool "Support K230 CanMV Board"
+
+config TARGET_LICHEERV_NANO
+	bool "Support LicheeRV Nano Board"
+
+config TARGET_MICROCHIP_GENERIC
+	bool "Support Microchip PolarFire-SoC Boards"
 
 config TARGET_MILKV_DUO
 	bool "Support Milk-v Duo Board"
@@ -68,6 +80,14 @@ config SYS_DCACHE_OFF
 	help
 	  Do not enable data cache in U-Boot.
 
+config SYS_CACHE_THEAD_CMO
+	bool "THEAD non-standard cache operations"
+	depends on !SYS_DCACHE_OFF
+	default n
+	help
+	  Support for non-standard cache management operations on SoCs based on
+	  T-Head C906/C910 cores.
+
 config SPL_SYS_DCACHE_OFF
 	bool "Do not enable dcache in SPL"
 	depends on SPL
@@ -84,14 +104,18 @@ config SPL_ZERO_MEM_BEFORE_USE
 
 # board-specific options below
 source "board/andestech/ae350/Kconfig"
+source "board/andestech/voyager/Kconfig"
 source "board/aspeed/ibex_ast2700/Kconfig"
+source "board/canaan/k230_canmv/Kconfig"
 source "board/emulation/qemu-riscv/Kconfig"
-source "board/microchip/mpfs_icicle/Kconfig"
+source "board/microchip/mpfs_generic/Kconfig"
 source "board/openpiton/riscv64/Kconfig"
 source "board/sifive/unleashed/Kconfig"
 source "board/sifive/unmatched/Kconfig"
 source "board/sipeed/maix/Kconfig"
 source "board/sophgo/milkv_duo/Kconfig"
+source "board/sophgo/licheerv_nano/Kconfig"
+source "board/spacemit/bananapi-f3/Kconfig"
 source "board/starfive/visionfive2/Kconfig"
 source "board/thead/th1520_lpi4a/Kconfig"
 source "board/xilinx/mbv/Kconfig"
@@ -104,6 +128,9 @@ source "arch/riscv/cpu/fu740/Kconfig"
 source "arch/riscv/cpu/ast2700/Kconfig"
 source "arch/riscv/cpu/generic/Kconfig"
 source "arch/riscv/cpu/jh7110/Kconfig"
+source "arch/riscv/cpu/k1/Kconfig"
+source "arch/riscv/cpu/k230/Kconfig"
+source "arch/riscv/cpu/th1520/Kconfig"
 
 # architecture-specific options below
 
@@ -316,9 +343,26 @@ endmenu
 
 config RISCV_ISA_A
 	bool "Standard extension for Atomic Instructions"
+	depends on RISCV_ISA_ZAAMO && RISCV_ISA_ZALRSC
 	default y
 	help
 	  Adds "A" to the ISA string passed to the compiler.
+
+config RISCV_ISA_ZAAMO
+	bool "Standard extension for Atomic Memory Operations"
+	default y
+	help
+	  Indicates the platform supports Zaamo extension for atomic memory
+	  operations. Hand-written Assembly routines won't use AMO
+	  instructions if set to n.
+
+config RISCV_ISA_ZALRSC
+	bool "Standard extension for LR/SC instructions"
+	default y
+	help
+	  Indicates the platform supports Zalrsc extension for load-reserved
+	  and store-conditional isntructions. Hand-written assembly routines
+	  won't use LR/SC instructions if set to n.
 
 config RISCV_ISA_ZICBOM
 	bool "Zicbom support"
@@ -445,6 +489,7 @@ config SPL_XIP
 
 config AVAILABLE_HARTS
 	bool "Send IPI by available harts"
+	depends on !XIP
 	default y
 	help
 	  By default, IPI sending mechanism will depend on available_harts.
@@ -572,5 +617,11 @@ config SPL_LOAD_FIT_OPENSBI_OS_BOOT
 	  Use fw_dynamic from the FIT image, and u-boot SPL will invoke it directly.
 	  This is a shortcut boot flow, from u-boot SPL -> OpenSBI -> u-boot proper
 	  -> linux to u-boot SPL -> OpenSBI -> linux.
+
+config SPL_OPTEE_LOAD_ADDR
+	hex "OP-TEE Trusted OS image load address"
+	depends on OPTEE
+	help
+	  Load address of the OP-TEE binary.
 
 endmenu

@@ -5,6 +5,7 @@
  */
 
 #include <command.h>
+#include <env.h>
 #include <fs.h>
 #include <net.h>
 #include <net6.h>
@@ -13,7 +14,6 @@
 
 #include "pxe_utils.h"
 
-#ifdef CONFIG_CMD_NET
 const char *pxe_default_paths[] = {
 #ifdef CONFIG_SYS_SOC
 #ifdef CONFIG_SYS_BOARD
@@ -27,7 +27,7 @@ const char *pxe_default_paths[] = {
 };
 
 static int do_get_tftp(struct pxe_context *ctx, const char *file_path,
-		       char *file_addr, ulong *sizep)
+		       char *file_addr, enum bootflow_img_t type, ulong *sizep)
 {
 	char *tftp_argv[] = {"tftp", NULL, NULL, NULL};
 	int ret;
@@ -65,6 +65,8 @@ static int pxe_dhcp_option_path(struct pxe_context *ctx, unsigned long pxefile_a
 	int ret = get_pxe_file(ctx, pxelinux_configfile, pxefile_addr_r);
 
 	free(pxelinux_configfile);
+	/* set to NULL to avoid double-free if DHCP is tried again */
+	pxelinux_configfile = NULL;
 
 	return ret;
 }
@@ -331,5 +333,3 @@ U_BOOT_CMD(pxe, 4, 1, do_pxe,
 	   "get [" USE_IP6_CMD_PARAM "] - try to retrieve a pxe file using tftp\n"
 	   "pxe boot [pxefile_addr_r] [-ipv6] - boot from the pxe file at pxefile_addr_r\n"
 );
-
-#endif /* CONFIG_CMD_NET */

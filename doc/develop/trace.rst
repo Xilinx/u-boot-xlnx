@@ -163,6 +163,17 @@ you will see the time taken by each function shown against its exit record.
               u-boot-1     [000]     3.116466: funcgraph_entry:        0.063 us   |        memset();
               u-boot-1     [000]     3.116539: funcgraph_exit:         0.143 us   |        }
 
+The `trace wipe` command may be used to clear the trace buffer. It leaves
+tracing in its current enable state. This command is convenient when tracing a
+single command, for example:
+
+.. code-block:: console
+
+   => trace pause; trace wipe
+   => trace resume; dhcp; trace pause
+   => trace stats
+   ...
+
 Flame graph
 -----------
 
@@ -343,7 +354,7 @@ Writing Out Trace Data
 ----------------------
 
 Once the trace data is in an output buffer in memory there are various ways
-to transmit it to the host. Notably you can use tftput to send the data
+to transmit it to the host. Notably you can use tftpput to send the data
 over a network link::
 
     fakegocmd=trace pause; usb start; set autoload n; bootp;

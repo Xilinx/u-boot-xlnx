@@ -16,20 +16,31 @@
  */
 	tst     x0, x0                  // this is "b #0x84" in ARM
 	b       reset
-	.space  0x7c
+	.space  0x78
+	.word	fel_stash - .
 
-	.word	0xe28f0070	// add     r0, pc, #112	 // @(fel_stash - .)
-	.word	0xe59f106c	// ldr     r1, [pc, #108] // fel_stash - .
+	.word	0xe24f000c	// sub     r0, pc, #12  // @(fel_stash - .)
+	.word	0xe51f1010	// ldr     r1, [pc, #-16] // fel_stash - .
 	.word	0xe0800001	// add     r0, r0, r1
 	.word	0xe580d000	// str     sp, [r0]
 	.word	0xe580e004	// str     lr, [r0, #4]
 	.word	0xe10fe000	// mrs     lr, CPSR
 	.word	0xe580e008	// str     lr, [r0, #8]
+	.word	0xe101e300	// mrs     lr, SP_irq
+	.word	0xe580e014	// str     lr, [r0, #20]
 	.word	0xee11ef10	// mrc     15, 0, lr, cr1, cr0, {0}
 	.word	0xe580e00c	// str     lr, [r0, #12]
 	.word	0xee1cef10	// mrc     15, 0, lr, cr12, cr0, {0}
 	.word	0xe580e010	// str     lr, [r0, #16]
-
+#ifdef CONFIG_MACH_SUN55I_A523
+	.word	0xee1cefbc	// mrc     15, 0, lr, cr12, cr12, {5}
+	.word	0xe31e0001	// tst     lr, #1
+	.word	0x0a000003	// beq     cc <start32+0x48>
+	.word	0xee14ef16	// mrc     15, 0, lr, cr4, cr6, {0}
+	.word	0xe580e018	// str     lr, [r0, #24]
+	.word	0xee1ceffc	// mrc     15, 0, lr, cr12, cr12, {7}
+	.word	0xe580e01c	// str     lr, [r0, #28]
+#endif
 	.word	0xe59f1034	// ldr     r1, [pc, #52] ; RVBAR_ADDRESS
 	.word	0xe59f0034	// ldr     r0, [pc, #52] ; SUNXI_SRAMC_BASE
 	.word	0xe5900024	// ldr     r0, [r0, #36] ; SRAM_VER_REG
@@ -54,7 +65,6 @@
 #else
 	.word   CONFIG_TEXT_BASE
 #endif
-	.word	fel_stash - .
 #else
 /* normal execution */
 	b	reset

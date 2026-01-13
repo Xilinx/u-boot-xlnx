@@ -17,6 +17,7 @@
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/dram.h>
+#include <asm/arch/dram_dw_helpers.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/prcm.h>
 #include <linux/bitops.h>
@@ -93,34 +94,34 @@ static void mctl_set_master_priority(void)
 
 static void mctl_sys_init(u32 clk_rate)
 {
-	struct sunxi_ccm_reg * const ccm =
-			(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	void * const ccm = (void *)SUNXI_CCM_BASE;
 	struct sunxi_mctl_com_reg * const mctl_com =
 			(struct sunxi_mctl_com_reg *)SUNXI_DRAM_COM_BASE;
 	struct sunxi_mctl_ctl_reg * const mctl_ctl =
 			(struct sunxi_mctl_ctl_reg *)SUNXI_DRAM_CTL0_BASE;
 
 	/* Put all DRAM-related blocks to reset state */
-	clrbits_le32(&ccm->mbus_cfg, MBUS_ENABLE);
-	clrbits_le32(&ccm->mbus_cfg, MBUS_RESET);
-	clrbits_le32(&ccm->dram_gate_reset, BIT(GATE_SHIFT));
+	clrbits_le32(ccm + CCU_H6_MBUS_CFG, MBUS_ENABLE);
+	clrbits_le32(ccm + CCU_H6_MBUS_CFG, MBUS_RESET);
+	clrbits_le32(ccm + CCU_H6_DRAM_GATE_RESET, BIT(GATE_SHIFT));
 	udelay(5);
-	clrbits_le32(&ccm->dram_gate_reset, BIT(RESET_SHIFT));
-	clrbits_le32(&ccm->pll5_cfg, CCM_PLL5_CTRL_EN);
-	clrbits_le32(&ccm->dram_clk_cfg, DRAM_MOD_RESET);
+	clrbits_le32(ccm + CCU_H6_DRAM_GATE_RESET, BIT(RESET_SHIFT));
+	clrbits_le32(ccm + CCU_H6_PLL5_CFG, CCM_PLL_CTRL_EN);
+	clrbits_le32(ccm + CCU_H6_DRAM_CLK_CFG, DRAM_MOD_RESET);
 
 	udelay(5);
 
 	/* Set PLL5 rate to doubled DRAM clock rate */
-	writel(CCM_PLL5_CTRL_EN | CCM_PLL5_LOCK_EN | CCM_PLL5_OUT_EN |
-	       CCM_PLL5_CTRL_N(clk_rate * 2 / 24), &ccm->pll5_cfg);
-	mctl_await_completion(&ccm->pll5_cfg, CCM_PLL5_LOCK, CCM_PLL5_LOCK);
+	writel(CCM_PLL_CTRL_EN | CCM_PLL_LOCK_EN | CCM_PLL_OUT_EN |
+	       CCM_PLL5_CTRL_N(clk_rate * 2 / 24), ccm + CCU_H6_PLL5_CFG);
+	mctl_await_completion(ccm + CCU_H6_PLL5_CFG,
+			      CCM_PLL_LOCK, CCM_PLL_LOCK);
 
 	/* Configure DRAM mod clock */
-	writel(DRAM_CLK_SRC_PLL5, &ccm->dram_clk_cfg);
-	writel(BIT(RESET_SHIFT), &ccm->dram_gate_reset);
+	writel(DRAM_CLK_SRC_PLL5, ccm + CCU_H6_DRAM_CLK_CFG);
+	writel(BIT(RESET_SHIFT), ccm + CCU_H6_DRAM_GATE_RESET);
 	udelay(5);
-	setbits_le32(&ccm->dram_gate_reset, BIT(GATE_SHIFT));
+	setbits_le32(ccm + CCU_H6_DRAM_GATE_RESET, BIT(GATE_SHIFT));
 
 	/* Disable all channels */
 	writel(0, &mctl_com->maer0);
@@ -128,12 +129,12 @@ static void mctl_sys_init(u32 clk_rate)
 	writel(0, &mctl_com->maer2);
 
 	/* Configure MBUS and enable DRAM mod reset */
-	setbits_le32(&ccm->mbus_cfg, MBUS_RESET);
-	setbits_le32(&ccm->mbus_cfg, MBUS_ENABLE);
+	setbits_le32(ccm + CCU_H6_MBUS_CFG, MBUS_RESET);
+	setbits_le32(ccm + CCU_H6_MBUS_CFG, MBUS_ENABLE);
 
 	clrbits_le32(&mctl_com->unk_0x500, BIT(25));
 
-	setbits_le32(&ccm->dram_clk_cfg, DRAM_MOD_RESET);
+	setbits_le32(ccm + CCU_H6_DRAM_CLK_CFG, DRAM_MOD_RESET);
 	udelay(5);
 
 	/* Unknown hack, which enables access of mctl_ctl regs */
@@ -226,7 +227,7 @@ static void mctl_set_addrmap(const struct dram_config *config)
 	mctl_ctl->addrmap[8] = 0x3F3F;
 }
 
-#ifdef CONFIG_DRAM_SUN50I_H616_PHY_ADDR_MAP_1
+#ifdef CONFIG_DRAM_SUNXI_PHY_ADDR_MAP_1
 static const u8 phy_init[] = {
 #ifdef CONFIG_SUNXI_DRAM_H616_DDR3_1333
 	0x08, 0x02, 0x12, 0x05, 0x15, 0x17, 0x18, 0x0b,
@@ -245,7 +246,7 @@ static const u8 phy_init[] = {
 	0x18, 0x04, 0x1a
 #endif
 };
-#else /* CONFIG_DRAM_SUN50I_H616_PHY_ADDR_MAP_0 */
+#else /* CONFIG_DRAM_SUNXI_PHY_ADDR_MAP_0 */
 static const u8 phy_init[] = {
 #ifdef CONFIG_SUNXI_DRAM_H616_DDR3_1333
 	0x07, 0x0b, 0x02, 0x16, 0x0d, 0x0e, 0x14, 0x19,
@@ -264,7 +265,7 @@ static const u8 phy_init[] = {
 	0x18, 0x03, 0x1a
 #endif
 };
-#endif /* CONFIG_DRAM_SUN50I_H616_PHY_ADDR_MAP_0 */
+#endif /* CONFIG_DRAM_SUNXI_PHY_ADDR_MAP_0 */
 #define MASK_BYTE(reg, nr) (((reg) >> ((nr) * 8)) & 0x1f)
 static void mctl_phy_configure_odt(const struct dram_para *para)
 {
@@ -1077,18 +1078,18 @@ static bool mctl_phy_init(const struct dram_para *para,
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
-		writel(mr0, &mctl_ctl->mrctrl1);
+		/* MR0 is read-only */
+		/* MR1: nWR=14, BL8 */
+		writel(0x183, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(4, &mctl_ctl->mrctrl1);
+		/* MR2: no WR leveling, WL set A, use nWR>9, nRL=14/nWL=8 */
+		writel(0x21c, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(mr2, &mctl_ctl->mrctrl1);
-		writel(0x800000f0, &mctl_ctl->mrctrl0);
-		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
-
+		/* MR3: 34.3 Ohm pull-up/pull-down resistor */
 		writel(0x301, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
@@ -1310,94 +1311,12 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 	return true;
 }
 
-static bool mctl_core_init(const struct dram_para *para,
-			   const struct dram_config *config)
+bool mctl_core_init(const struct dram_para *para,
+		    const struct dram_config *config)
 {
 	mctl_sys_init(para->clk);
 
 	return mctl_ctrl_init(para, config);
-}
-
-static void mctl_auto_detect_rank_width(const struct dram_para *para,
-					struct dram_config *config)
-{
-	/* this is minimum size that it's supported */
-	config->cols = 8;
-	config->rows = 13;
-
-	/*
-	 * Strategy here is to test most demanding combination first and least
-	 * demanding last, otherwise HW might not be fully utilized. For
-	 * example, half bus width and rank = 1 combination would also work
-	 * on HW with full bus width and rank = 2, but only 1/4 RAM would be
-	 * visible.
-	 */
-
-	debug("testing 32-bit width, rank = 2\n");
-	config->bus_full_width = 1;
-	config->ranks = 2;
-	if (mctl_core_init(para, config))
-		return;
-
-	debug("testing 32-bit width, rank = 1\n");
-	config->bus_full_width = 1;
-	config->ranks = 1;
-	if (mctl_core_init(para, config))
-		return;
-
-	debug("testing 16-bit width, rank = 2\n");
-	config->bus_full_width = 0;
-	config->ranks = 2;
-	if (mctl_core_init(para, config))
-		return;
-
-	debug("testing 16-bit width, rank = 1\n");
-	config->bus_full_width = 0;
-	config->ranks = 1;
-	if (mctl_core_init(para, config))
-		return;
-
-	panic("This DRAM setup is currently not supported.\n");
-}
-
-static void mctl_auto_detect_dram_size(const struct dram_para *para,
-				       struct dram_config *config)
-{
-	unsigned int shift;
-
-	/* max. config for columns, but not rows */
-	config->cols = 11;
-	config->rows = 13;
-	mctl_core_init(para, config);
-
-	shift = config->bus_full_width + 1;
-
-	/* detect column address bits */
-	for (config->cols = 8; config->cols < 11; config->cols++) {
-		if (mctl_mem_matches(1ULL << (config->cols + shift)))
-			break;
-	}
-	debug("detected %u columns\n", config->cols);
-
-	/* reconfigure to make sure that all active rows are accessible */
-	config->rows = 18;
-	mctl_core_init(para, config);
-
-	/* detect row address bits */
-	shift = config->bus_full_width + 4 + config->cols;
-	for (config->rows = 13; config->rows < 18; config->rows++) {
-		if (mctl_mem_matches(1ULL << (config->rows + shift)))
-			break;
-	}
-	debug("detected %u rows\n", config->rows);
-}
-
-static unsigned long mctl_calc_size(const struct dram_config *config)
-{
-	u8 width = config->bus_full_width ? 4 : 2;
-
-	/* 8 banks */
-	return (1ULL << (config->cols + config->rows + 3)) * width * config->ranks;
 }
 
 static const struct dram_para para = {
@@ -1409,27 +1328,26 @@ static const struct dram_para para = {
 #elif defined(CONFIG_SUNXI_DRAM_H616_LPDDR4)
 	.type = SUNXI_DRAM_TYPE_LPDDR4,
 #endif
-	.dx_odt = CONFIG_DRAM_SUN50I_H616_DX_ODT,
-	.dx_dri = CONFIG_DRAM_SUN50I_H616_DX_DRI,
-	.ca_dri = CONFIG_DRAM_SUN50I_H616_CA_DRI,
-	.odt_en = CONFIG_DRAM_SUN50I_H616_ODT_EN,
-	.tpr0 = CONFIG_DRAM_SUN50I_H616_TPR0,
-	.tpr2 = CONFIG_DRAM_SUN50I_H616_TPR2,
-	.tpr6 = CONFIG_DRAM_SUN50I_H616_TPR6,
-	.tpr10 = CONFIG_DRAM_SUN50I_H616_TPR10,
-	.tpr11 = CONFIG_DRAM_SUN50I_H616_TPR11,
-	.tpr12 = CONFIG_DRAM_SUN50I_H616_TPR12,
+	.dx_odt = CONFIG_DRAM_SUNXI_DX_ODT,
+	.dx_dri = CONFIG_DRAM_SUNXI_DX_DRI,
+	.ca_dri = CONFIG_DRAM_SUNXI_CA_DRI,
+	.odt_en = CONFIG_DRAM_SUNXI_ODT_EN,
+	.tpr0 = CONFIG_DRAM_SUNXI_TPR0,
+	.tpr2 = CONFIG_DRAM_SUNXI_TPR2,
+	.tpr6 = CONFIG_DRAM_SUNXI_TPR6,
+	.tpr10 = CONFIG_DRAM_SUNXI_TPR10,
+	.tpr11 = CONFIG_DRAM_SUNXI_TPR11,
+	.tpr12 = CONFIG_DRAM_SUNXI_TPR12,
 };
 
 unsigned long sunxi_dram_init(void)
 {
-	struct sunxi_prcm_reg *const prcm =
-		(struct sunxi_prcm_reg *)SUNXI_PRCM_BASE;
+	void *const prcm = (void *)SUNXI_PRCM_BASE;
 	struct dram_config config;
 	unsigned long size;
 
-	setbits_le32(&prcm->res_cal_ctrl, BIT(8));
-	clrbits_le32(&prcm->ohms240, 0x3f);
+	setbits_le32(prcm + CCU_PRCM_RES_CAL_CTRL, BIT(8));
+	clrbits_le32(prcm + CCU_PRCM_OHMS240, 0x3f);
 
 	mctl_auto_detect_rank_width(&para, &config);
 	mctl_auto_detect_dram_size(&para, &config);

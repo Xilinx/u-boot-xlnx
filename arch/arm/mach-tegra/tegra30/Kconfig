@@ -16,6 +16,10 @@ config TARGET_CARDHU
 	bool "NVIDIA Tegra30 Cardhu evaluation board"
 	select BOARD_LATE_INIT
 
+config TARGET_CHAGALL
+	bool "Pegatron Tegra30 Chagall board"
+	select BOARD_LATE_INIT
+
 config TARGET_COLIBRI_T30
 	bool "Toradex Colibri T30 board"
 	select BOARD_LATE_INIT
@@ -30,6 +34,10 @@ config TARGET_GROUPER
 
 config TARGET_IDEAPAD_YOGA_11
 	bool "Lenovo Ideapad Yoga 11 board"
+	select BOARD_LATE_INIT
+
+config TARGET_OUYA
+	bool "Ouya Game Console board"
 	select BOARD_LATE_INIT
 
 config TARGET_QC750
@@ -60,10 +68,12 @@ config SYS_SOC
 source "board/toradex/apalis_t30/Kconfig"
 source "board/nvidia/beaver/Kconfig"
 source "board/nvidia/cardhu/Kconfig"
+source "board/pegatron/chagall/Kconfig"
 source "board/toradex/colibri_t30/Kconfig"
 source "board/htc/endeavoru/Kconfig"
 source "board/asus/grouper/Kconfig"
 source "board/lenovo/ideapad-yoga-11/Kconfig"
+source "board/ouya/ouya/Kconfig"
 source "board/wexler/qc750/Kconfig"
 source "board/microsoft/surface-rt/Kconfig"
 source "board/avionic-design/tec-ng/Kconfig"

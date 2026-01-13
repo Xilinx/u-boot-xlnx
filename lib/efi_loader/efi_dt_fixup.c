@@ -5,6 +5,8 @@
  * Copyright (c) 2020 Heinrich Schuchardt
  */
 
+#define LOG_CATEGORY LOGC_EFI
+
 #include <efi_dt_fixup.h>
 #include <efi_loader.h>
 #include <efi_rng.h>
@@ -166,7 +168,7 @@ efi_dt_fixup(struct efi_dt_fixup_protocol *this, void *dtb,
 		/* Check size */
 		required_size = fdt_off_dt_strings(dtb) +
 				fdt_size_dt_strings(dtb) +
-				0x3000;
+				CONFIG_SYS_FDT_PAD;
 		total_size = fdt_totalsize(dtb);
 		if (required_size < total_size)
 			required_size = total_size;

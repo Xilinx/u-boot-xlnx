@@ -8,6 +8,7 @@
 #include <log.h>
 #include <mmc.h>
 #include <spl.h>
+#include <asm/arch-rockchip/bootrom.h>
 #include <asm/global_data.h>
 #include <dm/uclass-internal.h>
 
@@ -40,7 +41,7 @@ static int spl_node_to_boot_device(int node)
 	 * aware of the block-device layer.  Until then (and to avoid unneeded
 	 * delays in getting this feature out), it lives at the board-level.
 	 */
-	if (!uclass_get_device_by_of_offset(UCLASS_MMC, node, &parent)) {
+	if (!uclass_find_device_by_of_offset(UCLASS_MMC, node, &parent)) {
 		struct udevice *dev;
 		struct blk_desc *desc = NULL;
 
@@ -72,7 +73,7 @@ static int spl_node_to_boot_device(int node)
 	 * extended with awareness of the BLK layer (and matching OF_CONTROL)
 	 * soon.
 	 */
-	if (!uclass_get_device_by_of_offset(UCLASS_SPI_FLASH, node, &parent))
+	if (!uclass_find_device_by_of_offset(UCLASS_SPI_FLASH, node, &parent))
 		return BOOT_DEVICE_SPI;
 
 	return -1;
@@ -98,15 +99,22 @@ __weak const char *board_spl_was_booted_from(void)
 
 void board_boot_order(u32 *spl_boot_list)
 {
+	int idx = 0;
+
+	/* Add RAM boot for maskrom mode boot over USB */
+	if (BROM_BOOTSOURCE_ID_ADDR && CONFIG_IS_ENABLED(RAM_DEVICE) &&
+	    read_brom_bootsource_id() == BROM_BOOTSOURCE_USB) {
+		spl_boot_list[idx++] = BOOT_DEVICE_RAM;
+	}
+
 	/* In case of no fdt (or only plat), use spl_boot_device() */
 	if (!CONFIG_IS_ENABLED(OF_CONTROL) || CONFIG_IS_ENABLED(OF_PLATDATA)) {
-		spl_boot_list[0] = spl_boot_device();
+		spl_boot_list[idx++] = spl_boot_device();
 		return;
 	}
 
 	const void *blob = gd->fdt_blob;
 	int chosen_node = fdt_path_offset(blob, "/chosen");
-	int idx = 0;
 	int elem;
 	int boot_device;
 	int node;
@@ -115,7 +123,7 @@ void board_boot_order(u32 *spl_boot_list)
 	if (chosen_node < 0) {
 		debug("%s: /chosen not found, using spl_boot_device()\n",
 		      __func__);
-		spl_boot_list[0] = spl_boot_device();
+		spl_boot_list[idx++] = spl_boot_device();
 		return;
 	}
 
@@ -240,32 +248,40 @@ int spl_decode_boot_device(u32 boot_device, char *buf, size_t buflen)
 #endif
 }
 
-void spl_perform_fixups(struct spl_image_info *spl_image)
+void spl_perform_arch_fixups(struct spl_image_info *spl_image)
 {
+	const char *bootrom_ofpath = board_spl_was_booted_from();
 	void *blob = spl_image_fdt_addr(spl_image);
 	char boot_ofpath[512];
 	int chosen, ret;
 
-	/*
-	 * Inject the ofpath of the device the full U-Boot (or Linux in
-	 * Falcon-mode) was booted from into the FDT, if a FDT has been
-	 * loaded at the same time.
-	 */
 	if (!blob)
 		return;
-
-	ret = spl_decode_boot_device(spl_image->boot_device, boot_ofpath, sizeof(boot_ofpath));
-	if (ret) {
-		pr_err("%s: could not map boot_device to ofpath: %d\n", __func__, ret);
-		return;
-	}
 
 	chosen = fdt_find_or_add_subnode(blob, 0, "chosen");
 	if (chosen < 0) {
 		pr_err("%s: could not find/create '/chosen'\n", __func__);
 		return;
 	}
-	fdt_setprop_string(blob, chosen,
-			   "u-boot,spl-boot-device", boot_ofpath);
+
+	/*
+	 * Inject the ofpath of the device the full U-Boot (or Linux in
+	 * Falcon-mode) was booted from into the FDT.
+	 */
+	ret = spl_decode_boot_device(spl_image->boot_device, boot_ofpath, sizeof(boot_ofpath));
+	if (ret)
+		pr_err("%s: could not map boot_device to ofpath: %d\n", __func__, ret);
+	else
+		fdt_setprop_string(blob, chosen,
+				   "u-boot,spl-boot-device", boot_ofpath);
+
+	/*
+	 * Inject the ofpath of the device the BootROM loaded the very first
+	 * stage from into the FDT.
+	 */
+	if (!bootrom_ofpath)
+		pr_err("%s: could not map BootROM boot device to ofpath\n", __func__);
+	else
+		fdt_setprop_string(blob, chosen, "bootsource", bootrom_ofpath);
 }
 #endif

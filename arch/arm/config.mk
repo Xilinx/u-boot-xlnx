@@ -23,38 +23,42 @@ endif
 
 PLATFORM_RELFLAGS += -fno-common $(FIXED_REG)
 PLATFORM_RELFLAGS += $(call cc-option, -msoft-float) \
-		     $(call cc-option,-mgeneral-regs-only) \
       $(call cc-option,-mshort-load-bytes,$(call cc-option,-malignment-traps,))
 
-# LLVM support
-LLVM_RELFLAGS		:= $(call cc-option,-mllvm,) \
-			$(call cc-option,-mno-movt,)
-PLATFORM_RELFLAGS	+= $(LLVM_RELFLAGS)
+ifeq ($(CONFIG_ARM64),y)
+PLATFORM_RELFLAGS += $(call cc-option,-mgeneral-regs-only)
+endif
 
+# LLVM support
+LLVM_RELFLAGS		:= $(call cc-option,-mllvm,)
 PLATFORM_CPPFLAGS += -D__ARM__
 
 ifdef CONFIG_ARM64
 PLATFORM_ELFFLAGS += -B aarch64 -O elf64-littleaarch64
 else
 PLATFORM_ELFFLAGS += -B arm -O elf32-littlearm
+# no-movt is only available when targeting AArch32
+LLVM_RELFLAGS	+= $(call cc-option,-mno-movt,)
 endif
 
+PLATFORM_RELFLAGS	+= $(LLVM_RELFLAGS)
+
 # Choose between ARM/Thumb instruction sets
-ifeq ($(CONFIG_$(XPL_)SYS_THUMB_BUILD),y)
+ifeq ($(CONFIG_$(PHASE_)SYS_THUMB_BUILD),y)
 AFLAGS_IMPLICIT_IT	:= $(call as-option,-Wa$(comma)-mimplicit-it=always)
 PF_CPPFLAGS_ARM		:= $(AFLAGS_IMPLICIT_IT) \
 			$(call cc-option, -mthumb -mthumb-interwork,\
 			$(call cc-option,-marm,)\
 			$(call cc-option,-mno-thumb-interwork,)\
 		)
-else
+else ifneq ($(CONFIG_ARM64),y)
 PF_CPPFLAGS_ARM := $(call cc-option,-marm,) \
 		$(call cc-option,-mno-thumb-interwork,)
 endif
 
 # Only test once
-ifeq ($(CONFIG_$(XPL_)SYS_THUMB_BUILD),y)
-archprepare: checkthumb checkgcc6
+ifeq ($(CONFIG_$(PHASE_)SYS_THUMB_BUILD),y)
+archprepare: checkthumb checkgcc10
 
 checkthumb:
 	@if test "$(call cc-name)" = "gcc" -a \
@@ -65,13 +69,13 @@ checkthumb:
 		false; \
 	fi
 else
-archprepare: checkgcc6
+archprepare: checkgcc10
 endif
 
-checkgcc6:
+checkgcc10:
 	@if test "$(call cc-name)" = "gcc" -a \
-			"$(call cc-version)" -lt "0600"; then \
-		echo '*** Your GCC is older than 6.0 and is not supported'; \
+			"$(call cc-version)" -lt "1000"; then \
+		echo '*** Your GCC is older than 10.0 and is not supported'; \
 		false; \
 	fi
 
@@ -116,7 +120,7 @@ LDFLAGS_u-boot += -pie
 #
 # http://sourceware.org/bugzilla/show_bug.cgi?id=12532
 #
-ifeq ($(CONFIG_$(XPL_)SYS_THUMB_BUILD),y)
+ifeq ($(CONFIG_$(PHASE_)SYS_THUMB_BUILD),y)
 ifeq ($(GAS_BUG_12532),)
 export GAS_BUG_12532:=$(shell if [ $(call binutils-version) -lt 0222 ] ; \
 	then echo y; else echo n; fi)

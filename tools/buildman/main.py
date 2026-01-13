@@ -25,6 +25,7 @@ from buildman import cmdline
 from buildman import control
 from u_boot_pylib import test_util
 from u_boot_pylib import tools
+from u_boot_pylib import tout
 
 def run_tests(skip_net_tests, debug, verbose, args):
     """Run the buildman tests
@@ -48,9 +49,8 @@ def run_tests(skip_net_tests, debug, verbose, args):
     # Run the entry tests first ,since these need to be the first to import the
     # 'entry' module.
     result = test_util.run_test_suites(
-        'buildman', debug, verbose, False, args.threads, test_name, [],
-        [test.TestBuild, func_test.TestFunctional,
-         'buildman.toolchain', 'patman.gitutil'])
+        'buildman', debug, verbose, False, False, args.threads, test_name, [],
+        [test.TestBuild, func_test.TestFunctional, 'buildman.toolchain'])
 
     return (0 if result.wasSuccessful() else 1)
 
@@ -93,8 +93,12 @@ def run_buildman():
 
     # Build selected commits for selected boards
     else:
-        bsettings.setup(args.config_file)
-        ret_code = control.do_buildman(args)
+        try:
+            tout.init(tout.INFO if args.verbose else tout.WARNING)
+            bsettings.setup(args.config_file)
+            ret_code = control.do_buildman(args)
+        finally:
+            tout.uninit()
         return ret_code
 
 

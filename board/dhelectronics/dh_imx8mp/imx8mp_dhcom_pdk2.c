@@ -40,7 +40,7 @@ int board_phys_sdram_size(phys_size_t *size)
 	return 0;
 }
 
-static int dh_imx8_setup_ethaddr(void)
+static int dh_imx8_setup_ethaddr(struct eeprom_id_page *eip)
 {
 	unsigned char enetaddr[6];
 
@@ -53,6 +53,9 @@ static int dh_imx8_setup_ethaddr(void)
 	if (!dh_imx_get_mac_from_fuse(enetaddr))
 		goto out;
 
+	if (!dh_get_value_from_eeprom_buffer(DH_MAC0, enetaddr, sizeof(enetaddr), eip))
+		goto out;
+
 	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom0"))
 		goto out;
 
@@ -62,7 +65,7 @@ out:
 	return eth_env_set_enetaddr("ethaddr", enetaddr);
 }
 
-static int dh_imx8_setup_eth1addr(void)
+static int dh_imx8_setup_eth1addr(struct eeprom_id_page *eip)
 {
 	unsigned char enetaddr[6];
 
@@ -74,6 +77,9 @@ static int dh_imx8_setup_eth1addr(void)
 
 	if (!dh_imx_get_mac_from_fuse(enetaddr))
 		goto increment_out;
+
+	if (!dh_get_value_from_eeprom_buffer(DH_MAC1, enetaddr, sizeof(enetaddr), eip))
+		goto out;
 
 	if (!dh_get_mac_from_eeprom(enetaddr, "eeprom1"))
 		goto out;
@@ -95,33 +101,50 @@ out:
 	return eth_env_set_enetaddr("eth1addr", enetaddr);
 }
 
-int dh_setup_mac_address(void)
+int dh_setup_mac_address(struct eeprom_id_page *eip)
 {
 	int ret;
 
-	ret = dh_imx8_setup_ethaddr();
+	ret = dh_imx8_setup_ethaddr(eip);
 	if (ret)
 		printf("%s: Unable to setup ethaddr! ret = %d\n", __func__, ret);
 
-	ret = dh_imx8_setup_eth1addr();
+	ret = dh_imx8_setup_eth1addr(eip);
 	if (ret)
 		printf("%s: Unable to setup eth1addr! ret = %d\n", __func__, ret);
 
 	return ret;
 }
 
-int board_init(void)
-{
-	return 0;
-}
-
 int board_late_init(void)
 {
-	dh_setup_mac_address();
+	u8 eeprom_buffer[DH_EEPROM_ID_PAGE_MAX_SIZE] = { 0 };
+	struct eeprom_id_page *eip = (struct eeprom_id_page *)eeprom_buffer;
+	int ret;
+
+	ret = dh_read_eeprom_id_page(eeprom_buffer, "eeprom0wl");
+	if (ret) {
+		/*
+		 * The EEPROM ID page is available on SoM rev. 200 and greater.
+		 * For SoM rev. 100 the return value will be -ENODEV. Suppress
+		 * the error message for that, because the absence cannot be
+		 * treated as an error.
+		 */
+		if (ret != -ENODEV)
+			printf("%s: Cannot read valid data from EEPROM ID page! ret = %d\n",
+			       __func__, ret);
+		dh_setup_mac_address(NULL);
+	} else {
+		dh_setup_mac_address(eip);
+		dh_add_item_number_and_serial_to_env(eip);
+	}
+
 	return 0;
 }
 
 enum env_location env_get_location(enum env_operation op, int prio)
 {
-	return prio ? ENVL_UNKNOWN : ENVL_SPI_FLASH;
+	return prio ? ENVL_UNKNOWN : CONFIG_IS_ENABLED(ENV_IS_IN_SPI_FLASH,
+						       (ENVL_SPI_FLASH),
+						       (ENVL_NOWHERE));
 }

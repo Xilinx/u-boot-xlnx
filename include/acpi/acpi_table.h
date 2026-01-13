@@ -13,15 +13,29 @@
 #ifndef __ACPI_TABLE_H__
 #define __ACPI_TABLE_H__
 
+#include <version.h>
 #include <dm/acpi.h>
 
 #define RSDP_SIG		"RSD PTR "	/* RSDP pointer signature */
 #define OEM_ID			"U-BOOT"	/* U-Boot */
 #define OEM_TABLE_ID		"U-BOOTBL"	/* U-Boot Table */
-#define ASLC_ID			"INTL"		/* Intel ASL Compiler */
 
-/* TODO(sjg@chromium.org): Figure out how to get compiler revision */
-#define ASL_REVISION	0
+/**
+ * define ACPI_CREATOR_ID - ACPI creator ID
+ *
+ * This is the ACPI assigned vendor ID for the U-Boot project.
+ * It is used in the ACPI tables created by U-Boot.
+ */
+#define ACPI_CREATOR_ID		"UBOO"
+
+/**
+ * define ACPI_CREATOR_REVISION - ACPI creator ID
+ *
+ * This encodes the U-Boot version.
+ * It is used in the ACPI tables created by U-Boot.
+ */
+#define ACPI_CREATOR_REVISION \
+	(U_BOOT_VERSION_NUM << 4 | U_BOOT_VERSION_NUM_PATCH)
 
 #define ACPI_RSDP_REV_ACPI_1_0	0
 #define ACPI_RSDP_REV_ACPI_2_0	2
@@ -36,7 +50,7 @@ struct acpi_ctx;
  * RSDP (Root System Description Pointer)
  * Note: ACPI 1.0 didn't have length, xsdt_address, and ext_checksum
  */
-struct acpi_rsdp {
+struct __packed acpi_rsdp {
 	char signature[8];	/* RSDP signature */
 	u8 checksum;		/* Checksum of the first 20 bytes */
 	char oem_id[6];		/* OEM ID */
@@ -1273,6 +1287,13 @@ ulong write_acpi_tables(ulong start);
  * Return: pointer to table header, or NULL if not found
  */
 struct acpi_table_header *acpi_find_table(const char *sig);
+
+/**
+ * acpi_update_checksum() - update ACPI table checksum
+ *
+ * @header - header of an ACPI table
+ */
+void acpi_update_checksum(struct acpi_table_header *header);
 
 #endif /* !__ACPI__*/
 

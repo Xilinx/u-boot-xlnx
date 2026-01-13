@@ -5,13 +5,45 @@
 
 #include <asm/arch/clock.h>
 #include <asm/arch/sys_proto.h>
+#include <asm/arch-mx6/imx-regs.h>
 #include <asm/global_data.h>
+#include <env.h>
 #include <env_internal.h>
 #include <fdt_support.h>
 #include <phy.h>
-#include <sl-mx6ul-common.h>
+
+#include "sl-mx6ul-common.h"
+
+#include "../common/hw-uid.h"
 
 DECLARE_GLOBAL_DATA_PTR;
+
+#if IS_ENABLED(CONFIG_KONTRON_HW_UID)
+
+struct uid_otp_loc uid_otp_locations[] = {
+	{
+		.addr = (u32 *)(OCOTP_BASE_ADDR + 0x670),
+		.len = 1,
+		.format = UID_OTP_FORMAT_DEC,
+		.desc = "BOARD"
+	},
+	{
+		.addr = (u32 *)(OCOTP_BASE_ADDR + 0x660),
+		.len = 1,
+		.format = UID_OTP_FORMAT_DEC,
+		.desc = "SOM"
+	},
+#if IS_ENABLED(CONFIG_KONTRON_HW_UID_USE_SOC_FALLBACK)
+	{
+		.addr = (u32 *)(OCOTP_BASE_ADDR + 0x410),
+		.len = 2,
+		.format = UID_OTP_FORMAT_HEX,
+		.desc = "SOC"
+	}
+#endif
+};
+
+#endif /* CONFIG_KONTRON_HW_UID */
 
 int dram_init(void)
 {
@@ -86,15 +118,34 @@ int board_init(void)
 	return 0;
 }
 
+int board_late_init(void)
+{
+	if (IS_ENABLED(CONFIG_KONTRON_HW_UID))
+		get_serial_number(uid_otp_locations, ARRAY_SIZE(uid_otp_locations));
+
+	if (is_boot_from_usb()) {
+		env_set("bootdelay", "0");
+		env_set("bootcmd", "fastboot 0");
+	}
+
+	return 0;
+}
+
 enum env_location env_get_location(enum env_operation op, int prio)
 {
 	if (prio)
 		return ENVL_UNKNOWN;
+
+	if (CONFIG_IS_ENABLED(ENV_IS_NOWHERE) && is_boot_from_usb())
+		return ENVL_NOWHERE;
 
 	if (sl_mx6ul_is_spi_nor_boot() && CONFIG_IS_ENABLED(ENV_IS_IN_SPI_FLASH))
 		return ENVL_SPI_FLASH;
 	else if (CONFIG_IS_ENABLED(ENV_IS_IN_MMC))
 		return ENVL_MMC;
 
-	return ENVL_NOWHERE;
+	if (CONFIG_IS_ENABLED(ENV_IS_NOWHERE))
+		return ENVL_NOWHERE;
+
+	return ENVL_UNKNOWN;
 }

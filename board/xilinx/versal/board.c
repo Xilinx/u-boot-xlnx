@@ -8,6 +8,7 @@
 #include <cpu_func.h>
 #include <dfu.h>
 #include <env.h>
+#include <efi_loader.h>
 #include <fdtdec.h>
 #include <fwu.h>
 #include <init.h>
@@ -284,6 +285,7 @@ static int boot_targets_setup(void)
 				env_targets ? env_targets : "");
 
 		env_set("boot_targets", new_targets);
+		free(new_targets);
 	}
 
 	return 0;
@@ -292,6 +294,9 @@ static int boot_targets_setup(void)
 int board_late_init(void)
 {
 	int ret;
+
+	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT))
+		configure_capsule_updates();
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
@@ -369,8 +374,6 @@ enum env_location env_get_location(enum env_operation op, int prio)
 }
 #endif
 
-#if defined(CONFIG_SET_DFU_ALT_INFO)
-
 #define DFU_ALT_BUF_LEN		SZ_1K
 
 #if !defined(CONFIG_FWU_MULTI_BANK_UPDATE)
@@ -400,7 +403,7 @@ static void mtd_found_part(u32 *base, u32 *size)
 	}
 }
 
-void set_dfu_alt_info(char *interface, char *devstr)
+void configure_capsule_updates(void)
 {
 	int bootseq = 0, len = 0;
 	u32 multiboot = versal_multi_boot();
@@ -408,10 +411,7 @@ void set_dfu_alt_info(char *interface, char *devstr)
 
 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, DFU_ALT_BUF_LEN);
 
-	if (env_get("dfu_alt_info"))
-		return;
-
-	memset(buf, 0, sizeof(buf));
+	memset(buf, 0, DFU_ALT_BUF_LEN);
 
 	multiboot = env_get_hex("multiboot", multiboot);
 
@@ -451,8 +451,8 @@ void set_dfu_alt_info(char *interface, char *devstr)
 		return;
 	}
 
-	env_set("dfu_alt_info", buf);
-	puts("DFU alt info setting: done\n");
+	update_info.dfu_string = strdup(buf);
+	debug("Capsule DFU: %s\n", update_info.dfu_string);
 }
 #else
 
@@ -518,5 +518,4 @@ int plat_get_boot_index(void)
 
 	return FIELD_GET(BOOTINDEX_MASK, val);
 }
-#endif
 #endif

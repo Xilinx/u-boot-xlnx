@@ -26,6 +26,8 @@ obj-$(CONFIG_$(PHASE_)ENV_IS_IN_FAT) += fat.o
 obj-$(CONFIG_$(PHASE_)ENV_IS_IN_EXT4) += ext4.o
 obj-$(CONFIG_$(PHASE_)ENV_IS_IN_NAND) += nand.o
 obj-$(CONFIG_$(PHASE_)ENV_IS_IN_SPI_FLASH) += sf.o
+obj-$(CONFIG_$(PHASE_)ENV_IS_IN_MTD) += mtd.o
 obj-$(CONFIG_$(PHASE_)ENV_IS_IN_FLASH) += flash.o
+obj-$(CONFIG_$(PHASE_)ENV_IS_IN_SCSI) += scsi.o
 
 CFLAGS_embedded.o := -Wa,--no-warn -DENV_CRC=$(shell tools/envcrc 2>/dev/null)

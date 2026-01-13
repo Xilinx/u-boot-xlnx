@@ -72,7 +72,7 @@ static const char *sdm845_get_pin_name(struct udevice *dev,
 		"sdc2_data",
 	};
 
-	if (selector >= 150 && selector <= 154)
+	if (selector >= 150 && selector <= 153)
 		snprintf(pin_name, MAX_PIN_NAME_LEN, special_pins_names[selector - 150]);
 	else
 		snprintf(pin_name, MAX_PIN_NAME_LEN, "gpio%u", selector);
@@ -80,8 +80,8 @@ static const char *sdm845_get_pin_name(struct udevice *dev,
 	return pin_name;
 }
 
-static unsigned int sdm845_get_function_mux(__maybe_unused unsigned int pin,
-					    unsigned int selector)
+static int sdm845_get_function_mux(__maybe_unused unsigned int pin,
+				   unsigned int selector)
 {
 	return msm_pinctrl_functions[selector].val;
 }

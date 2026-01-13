@@ -105,7 +105,7 @@
 		device_type = "memory";
 	};
 
-	reserved-memory {
+	reserved_memory: reserved-memory {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -177,6 +177,7 @@
 &cpsw3g {
 	pinctrl-names = "default";
 	pinctrl-0 = <&rgmii1_default_pins>;
+	status = "okay";
 };
 
 &cpsw3g_mdio {
@@ -210,10 +211,7 @@
 &cpsw_port1 {
 	phy-mode = "rgmii-id";
 	phy-handle = <&ethernet_phy0>;
-};
-
-&cpsw_port2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &icssg1_mdio {

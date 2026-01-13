@@ -41,10 +41,11 @@ ENTRY(return_to_fel)
 	str	w2, [x1]
 
 	ldr	w0, =0xfa50392f		// CPU hotplug magic
-#ifdef CONFIG_MACH_SUN50I_H616
+#if defined(CONFIG_MACH_SUN50I_H616) || defined(CONFIG_MACH_SUN50I_A133) || \
+    defined(CONFIG_MACH_SUN55I_A523)
 	ldr	w2, =(SUNXI_R_CPUCFG_BASE + 0x1c0)
 	str	w0, [x2], #0x4
-#elif CONFIG_MACH_SUN50I_H6
+#elif defined(CONFIG_MACH_SUN50I_H6)
 	ldr	w2, =(SUNXI_RTC_BASE + 0x1b8)	// BOOT_CPU_HP_FLAG_REG
 	str	w0, [x2], #0x4
 #else
@@ -63,20 +64,30 @@ ENTRY(return_to_fel)
 1:	wfi
 	b	1b
 
+fel_stash_addr:			// must immediately precede back_in_32:
+	.word   0x00000000	// receives fel_stash addr, by AA64 code above
+
 /* AArch32 code to restore the state from fel_stash and return back to FEL. */
 back_in_32:
-	.word	0xe59f0028	// ldr	r0, [pc, #40]	; load fel_stash address
+	.word	0xe51f000c	// ldr	r0, [pc, #-12]  ; load fel_stash address
 	.word	0xe5901008	// ldr	r1, [r0, #8]
 	.word	0xe129f001	// msr	CPSR_fc, r1
 	.word	0xf57ff06f	// isb
 	.word	0xe590d000	// ldr	sp, [r0]
 	.word	0xe590e004	// ldr	lr, [r0, #4]
+	.word	0xe5901014	// ldr  r1, [r0, #20]
+	.word	0xe121f301	// msr  SP_irq, r1
 	.word	0xe5901010	// ldr	r1, [r0, #16]
 	.word	0xee0c1f10	// mcr	15, 0, r1, cr12, cr0, {0} ; VBAR
 	.word	0xe590100c	// ldr	r1, [r0, #12]
 	.word	0xee011f10	// mcr	15, 0, r1, cr1, cr0, {0}  ; SCTLR
 	.word	0xf57ff06f	// isb
+#ifdef CONFIG_MACH_SUN55I_A523
+	.word	0xe5901018	// ldr  r1, [r0, #24]
+	.word	0xee041f16	// mcr  15, 0, r1, cr4, cr6, {0}; ICC_PMR
+	.word	0xe590101c	// ldr  r1, [r0, #28]
+	.word	0xee0c1ffc	// mcr  15, 0, r1, cr12, cr12, {7}; ICC_IGRPEN1
+#endif
+
 	.word	0xe12fff1e	// bx	lr		; return to FEL
-fel_stash_addr:
-	.word   0x00000000	// receives fel_stash addr, by AA64 code above
 ENDPROC(return_to_fel)

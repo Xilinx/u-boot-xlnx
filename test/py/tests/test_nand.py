@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
-# (C) Copyright 2023, Advanced Micro Devices, Inc.
+# (C) Copyright 2023-2025, Advanced Micro Devices, Inc.
 
 import pytest
 import random
 import re
-import u_boot_utils
+import utils
 
 """
 Note: This test relies on boardenv_* containing configuration values to define
@@ -59,7 +59,7 @@ def nand_pre_commands(u_boot_console):
         pytest.skip('No NAND device available')
 
     count = 0
-    m = re.search('bad blocks:([\n\s\s\d\w]*)', output)
+    m = re.search(r'bad blocks:([\n\s\s\d\w]*)', output)
     if m:
         print(m.group(1))
         var = m.group(1).split()
@@ -92,7 +92,7 @@ def test_nand_read_twice(u_boot_console):
     expected_read = 'read: OK'
 
     for size in random.randint(4, page_size), random.randint(4, total_size), total_size:
-        addr = u_boot_utils.find_ram_base(u_boot_console)
+        addr = utils.find_ram_base(u_boot_console)
 
         output = u_boot_console.run_command(
             'nand read %x 0 %x' % (addr + total_size, size)
@@ -134,7 +134,7 @@ def test_nand_write_twice(u_boot_console):
         total_size,
     ):
         offset = page_size
-        addr = u_boot_utils.find_ram_base(u_boot_console)
+        addr = utils.find_ram_base(u_boot_console)
         size = size - old_size
         output = u_boot_console.run_command('crc32 %x %x' % (addr + total_size, size))
         m = re.search('==> (.+?)', output)

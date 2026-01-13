@@ -68,13 +68,12 @@ Set the variables corresponding to this platform:
     :start-after: .. k3_rst_include_start_common_env_vars_defn
     :end-before: .. k3_rst_include_end_common_env_vars_defn
 
-.. code-block:: bash
+.. prompt:: bash
 
- $ export UBOOT_CFG_CORTEXR=j722s_evm_r5_defconfig
- $ export UBOOT_CFG_CORTEXA=j722s_evm_a53_defconfig
- $ export TFA_BOARD=lite
- $ export OPTEE_PLATFORM=k3-am62x
- $ export OPTEE_EXTRA_ARGS="CFG_WITH_SOFTWARE_PRNG=y"
+   export UBOOT_CFG_CORTEXR=j722s_evm_r5_defconfig
+   export UBOOT_CFG_CORTEXA=j722s_evm_a53_defconfig
+   export TFA_BOARD=lite
+   export OPTEE_PLATFORM=k3-am62x
 
 .. j722s_evm_rst_include_start_build_steps
 
@@ -202,11 +201,6 @@ The following table shows some common boot modes used on J722S-EVM
 platform. More details can be found in the Technical Reference Manual:
 https://www.ti.com/lit/zip/sprujb3 under the `Boot Mode Pins` section.
 
-.. note::
-
-   This device is very new. Currently only UART boot is available while
-   we continue to add support for the other bootmodes.
-
 .. list-table:: Boot Modes
    :widths: 16 16 16
    :header-rows: 1
@@ -259,6 +253,6 @@ detailed setup information.
 
 To start OpenOCD and connect to the board
 
-.. code-block:: bash
+.. prompt:: bash
 
   openocd -f board/ti_j722sevm.cfg

@@ -7,6 +7,10 @@ lib-$(CONFIG_USE_PRIVATE_LIBGCC) += ashldi3.o ashrdi3.o lshrdi3.o \
 				    lib1funcs.o uldivmod.o div0.o \
 				    div64.o muldi3.o
 
+obj-$(CONFIG_$(PHASE_)LIB_BOOTI) += image.o
+obj-$(CONFIG_$(PHASE_)LIB_BOOTZ) += zimage.o
+obj-$(CONFIG_$(PHASE_)LIB_BOOTM) += bootm.o
+
 ifdef CONFIG_CPU_V7M
 obj-y	+= vectors_m.o crt0.o
 else ifdef CONFIG_ARM64
@@ -30,16 +34,13 @@ endif
 
 obj-$(CONFIG_CPU_V7M) += cmd_boot.o
 obj-$(CONFIG_OF_LIBFDT) += bootm-fdt.o
-obj-$(CONFIG_CMD_BOOTI) += bootm.o image.o
 obj-$(CONFIG_CMD_BOOTM) += bootm.o
-obj-$(CONFIG_CMD_BOOTZ) += bootm.o zimage.o
 else
 obj-$(CONFIG_$(PHASE_)FRAMEWORK) += spl.o
-ifdef CONFIG_SPL_FRAMEWORK
-obj-$(CONFIG_CMD_BOOTI) += image.o
-obj-$(CONFIG_CMD_BOOTZ) += zimage.o
-endif
 obj-$(CONFIG_OF_LIBFDT) += bootm-fdt.o
+endif
+ifndef CONFIG_ARM64
+obj-$(CONFIG_BOOTM_OPTEE) += bootm-optee.o
 endif
 ifdef CONFIG_ARM64
 obj-$(CONFIG_$(PHASE_)USE_ARCH_MEMSET) += memset-arm64.o
@@ -92,11 +93,12 @@ obj-$(CONFIG_GENERATE_ACPI_TABLE) += acpi_table.o
 # For EABI conformant tool chains, provide eabi_compat()
 ifneq (,$(findstring -mabi=aapcs-linux,$(PLATFORM_CPPFLAGS)))
 extra-y	+= eabi_compat.o
+CFLAGS_REMOVE_eabi_compat.o := $(LTO_CFLAGS)
 endif
 
 # some files can only build in ARM or THUMB2, not THUMB1
 
-ifdef CONFIG_$(XPL_)SYS_THUMB_BUILD
+ifdef CONFIG_$(PHASE_)SYS_THUMB_BUILD
 asflags-$(CONFIG_HAS_THUMB2) += -DCONFIG_THUMB2_KERNEL
 ifndef CONFIG_HAS_THUMB2
 

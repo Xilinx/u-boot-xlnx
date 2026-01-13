@@ -27,6 +27,7 @@
 #include <fdtdec.h>
 #include <version.h>
 #include <video.h>
+#include <smbios.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -322,7 +323,7 @@ int fdt_kaslrseed(void *fdt, bool overwrite)
  * board_fdt_chosen_bootargs - boards may override this function to use
  *                             alternative kernel command line arguments
  */
-__weak char *board_fdt_chosen_bootargs(void)
+__weak const char *board_fdt_chosen_bootargs(const struct fdt_property *fdt_ba)
 {
 	return env_get("bootargs");
 }
@@ -332,7 +333,8 @@ int fdt_chosen(void *fdt)
 	struct abuf buf = {};
 	int   nodeoffset;
 	int   err;
-	char  *str;		/* used to set string properties */
+	const char *str;		/* used to set string properties */
+	ulong smbiosaddr;		/* SMBIOS table address */
 
 	err = fdt_check_header(fdt);
 	if (err < 0) {
@@ -365,7 +367,8 @@ int fdt_chosen(void *fdt)
 		}
 	}
 
-	str = board_fdt_chosen_bootargs();
+	str = board_fdt_chosen_bootargs(fdt_get_property(fdt, nodeoffset,
+							 "bootargs", NULL));
 
 	if (str) {
 		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
@@ -384,6 +387,23 @@ int fdt_chosen(void *fdt)
 		printf("WARNING: could not set u-boot,version %s.\n",
 		       fdt_strerror(err));
 		return err;
+	}
+
+	if (CONFIG_IS_ENABLED(GENERATE_SMBIOS_TABLE)) {
+		/* Inject SMBIOS address when we have a valid address.
+		* This is useful for systems using booti/bootm instead of bootefi.
+		* Failure to set this property is non-fatal, we only generate a
+		* warning.
+		*/
+		smbiosaddr = gd_smbios_start();
+		if (smbiosaddr) {
+			err = fdt_setprop_u64(fdt, nodeoffset, "smbios3-entrypoint",
+					smbiosaddr);
+			if (err < 0) {
+				printf("WARNING: could not set smbios3-entrypoint %s.\n",
+				fdt_strerror(err));
+			}
+		}
 	}
 
 	return fdt_fixup_stdout(fdt, nodeoffset);

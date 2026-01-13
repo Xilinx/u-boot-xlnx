@@ -6,6 +6,7 @@
 #include <dm.h>
 #include <dm/uclass-internal.h>
 #include <efi_loader.h>
+#include <env.h>
 #include <lmb.h>
 
 #include <asm/armv8/mmu.h>
@@ -691,11 +692,12 @@ int dram_init_banksize(void)
 
 extern long fw_dtb_pointer;
 
-void *board_fdt_blob_setup(int *err)
+int board_fdt_blob_setup(void **fdtp)
 {
 	/* Return DTB pointer passed by m1n1 */
-	*err = 0;
-	return (void *)fw_dtb_pointer;
+	*fdtp = (void *)fw_dtb_pointer;
+
+	return 0;
 }
 
 void build_mem_map(void)
@@ -771,22 +773,31 @@ u64 get_page_table_size(void)
 
 #define KERNEL_COMP_SIZE	SZ_128M
 
+#define lmb_alloc(size, addr) lmb_alloc_mem(LMB_MEM_ALLOC_ANY, SZ_2M, addr, size, LMB_NONE)
+
 int board_late_init(void)
 {
 	u32 status = 0;
+	phys_addr_t addr;
 
 	/* somewhat based on the Linux Kernel boot requirements:
 	 * align by 2M and maximal FDT size 2M
 	 */
-	status |= env_set_hex("loadaddr", lmb_alloc(SZ_1G, SZ_2M));
-	status |= env_set_hex("fdt_addr_r", lmb_alloc(SZ_2M, SZ_2M));
-	status |= env_set_hex("kernel_addr_r", lmb_alloc(SZ_128M, SZ_2M));
-	status |= env_set_hex("ramdisk_addr_r", lmb_alloc(SZ_1G, SZ_2M));
-	status |= env_set_hex("kernel_comp_addr_r",
-			      lmb_alloc(KERNEL_COMP_SIZE, SZ_2M));
-	status |= env_set_hex("kernel_comp_size", KERNEL_COMP_SIZE);
-	status |= env_set_hex("scriptaddr", lmb_alloc(SZ_4M, SZ_2M));
-	status |= env_set_hex("pxefile_addr_r", lmb_alloc(SZ_4M, SZ_2M));
+	status |= !lmb_alloc(SZ_1G, &addr) ? env_set_hex("loadaddr", addr) : 1;
+	status |= !lmb_alloc(SZ_2M, &addr) ?
+		env_set_hex("fdt_addr_r", addr) : 1;
+	status |= !lmb_alloc(SZ_128M, &addr) ?
+		env_set_hex("kernel_addr_r", addr) : 1;
+	status |= !lmb_alloc(SZ_1G, &addr) ?
+		env_set_hex("ramdisk_addr_r", addr) : 1;
+	status |= !lmb_alloc(KERNEL_COMP_SIZE, &addr) ?
+		env_set_hex("kernel_comp_addr_r", addr) : 1;
+	status |= !lmb_alloc(KERNEL_COMP_SIZE, &addr) ?
+		env_set_hex("kernel_comp_size", addr) : 1;
+	status |= !lmb_alloc(SZ_4M, &addr) ?
+		env_set_hex("scriptaddr", addr) : 1;
+	status |= !lmb_alloc(SZ_4M, &addr) ?
+		env_set_hex("pxefile_addr_r", addr) : 1;
 
 	if (status)
 		log_warning("late_init: Failed to set run time variables\n");
