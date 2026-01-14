@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2021 - 2022, Xilinx, Inc.
- * Copyright (C) 2022 - 2025, Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 - 2026, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
@@ -9,6 +9,7 @@
 #include <cpu_func.h>
 #include <dfu.h>
 #include <env.h>
+#include <efi_loader.h>
 #include <fdtdec.h>
 #include <fwu.h>
 #include <init.h>
@@ -357,6 +358,9 @@ int board_late_init(void)
 	int ret;
 	u32 multiboot;
 
+	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT))
+		configure_capsule_updates();
+
 #if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
 	ret = usb_init();
 	if (!ret)
@@ -493,12 +497,10 @@ enum env_location env_get_location(enum env_operation op, int prio)
 }
 #endif
 
-#if defined(CONFIG_SET_DFU_ALT_INFO)
 
 #define DFU_ALT_BUF_LEN		SZ_1K
 
-#if !defined(CONFIG_FWU_MULTI_BANK_UPDATE)
-
+#if defined(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
 static void mtd_found_part(u32 *base, u32 *size)
 {
 	struct mtd_info *part, *mtd;
@@ -524,16 +526,13 @@ static void mtd_found_part(u32 *base, u32 *size)
 	}
 }
 
-void set_dfu_alt_info(char *interface, char *devstr)
+void configure_capsule_updates(void)
 {
 	int bootseq = 0, len = 0;
 	u32 multiboot = versal2_multi_boot();
 	u32 bootmode = versal2_get_bootmode();
 
 	ALLOC_CACHE_ALIGN_BUFFER(char, buf, DFU_ALT_BUF_LEN);
-
-	if (env_get("dfu_alt_info"))
-		return;
 
 	memset(buf, 0, DFU_ALT_BUF_LEN);
 
@@ -575,10 +574,12 @@ void set_dfu_alt_info(char *interface, char *devstr)
 		return;
 	}
 
-	env_set("dfu_alt_info", buf);
-	puts("DFU alt info setting: done\n");
+	update_info.dfu_string = strdup(buf);
+	debug("Capsule DFU: %s\n", update_info.dfu_string);
 }
-#else
+#endif
+
+#if defined(CONFIG_FWU_MULTI_BANK_UPDATE)
 
 /* Generate dfu_alt_info from partitions */
 void set_dfu_alt_info(char *interface, char *devstr)
@@ -639,5 +640,4 @@ int plat_get_boot_index(void)
 
 	return FIELD_GET(BOOTINDEX_MASK, val);
 }
-#endif
 #endif
