@@ -376,8 +376,6 @@ enum env_location env_get_location(enum env_operation op, int prio)
 
 #define DFU_ALT_BUF_LEN		SZ_1K
 
-#if !defined(CONFIG_FWU_MULTI_BANK_UPDATE)
-
 static void mtd_found_part(u32 *base, u32 *size)
 {
 	struct mtd_info *part, *mtd;
@@ -454,7 +452,8 @@ void configure_capsule_updates(void)
 	update_info.dfu_string = strdup(buf);
 	debug("Capsule DFU: %s\n", update_info.dfu_string);
 }
-#else
+
+#if defined(CONFIG_FWU_MULTI_BANK_UPDATE)
 
 /* Generate dfu_alt_info from partitions */
 void set_dfu_alt_info(char *interface, char *devstr)
