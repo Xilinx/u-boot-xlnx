@@ -100,6 +100,15 @@
 	snps,dis_u2_susphy_quirk;
 	snps,dis_u3_susphy_quirk;
 	snps,usb3_lpm_capable;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	/* 2.0 hub on port 1 */
+	hub_2_0: hub@1 {
+		compatible = "usb424,2744";
+		reg = <1>;
+		reset-gpios = <&gpio0 16 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &sdhci1 { /* PMC_MIO26-36/51 */
