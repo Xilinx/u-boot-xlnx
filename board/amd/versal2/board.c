@@ -358,7 +358,8 @@ int board_late_init(void)
 	int ret;
 	u32 multiboot;
 
-	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT))
+	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) &&
+	    !IS_ENABLED(CONFIG_FWU_MULTI_BANK_UPDATE))
 		configure_capsule_updates();
 
 #if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
@@ -500,7 +501,8 @@ enum env_location env_get_location(enum env_operation op, int prio)
 
 #define DFU_ALT_BUF_LEN		SZ_1K
 
-#if defined(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
+#if defined(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) && \
+	!defined(CONFIG_FWU_MULTI_BANK_UPDATE)
 static void mtd_found_part(u32 *base, u32 *size)
 {
 	struct mtd_info *part, *mtd;
