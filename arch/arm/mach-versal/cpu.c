@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
  * (C) Copyright 2016 - 2018 Xilinx, Inc.
+ * (C) Copyright 2026, Advanced Micro Devices, Inc.
+ *
  * Michal Simek <michal.simek@amd.com>
  */
 
@@ -16,7 +18,7 @@
 
 DECLARE_GLOBAL_DATA_PTR;
 
-#define VERSAL_MEM_MAP_USED	5
+#define VERSAL_MEM_MAP_USED	3
 
 #define DRAM_BANKS CONFIG_NR_DRAM_BANKS
 
@@ -44,23 +46,10 @@ static struct mm_region versal_mem_map[VERSAL_MEM_MAP_MAX] = {
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-	}, {
+	}, { /* FPD_AXI_PL_high */
 		.virt = 0x400000000UL,
 		.phys = 0x400000000UL,
 		.size = 0x200000000UL,
-		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
-			 PTE_BLOCK_NON_SHARE |
-			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
-	}, {
-		.virt = 0x600000000UL,
-		.phys = 0x600000000UL,
-		.size = 0x800000000UL,
-		.attrs = PTE_BLOCK_MEMTYPE(MT_NORMAL) |
-			 PTE_BLOCK_INNER_SHARE
-	}, {
-		.virt = 0xe00000000UL,
-		.phys = 0xe00000000UL,
-		.size = 0xf200000000UL,
 		.attrs = PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
 			 PTE_BLOCK_NON_SHARE |
 			 PTE_BLOCK_PXN | PTE_BLOCK_UXN
