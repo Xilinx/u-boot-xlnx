@@ -12,6 +12,7 @@
 #include <env_internal.h>
 #include <log.h>
 #include <malloc.h>
+#include <mmc.h>
 #include <spi.h>
 #include <time.h>
 #include <asm/cache.h>
@@ -110,10 +111,48 @@ int spi_get_env_dev(void)
 	return spi_get_bootseq(versal_net_get_bootmode(), NULL);
 }
 
+static int mmc_get_bootseq(u8 bootmode, const char **modename)
+{
+	struct udevice *dev;
+	const char *name;
+
+	switch (bootmode) {
+	case SD_MODE:
+		if (modename)
+			*modename = "SD_MODE\n";
+		name = "mmc@f1040000";
+		break;
+	case EMMC_MODE:
+		if (modename)
+			*modename = "EMMC_MODE\n";
+		name = "mmc@f1050000";
+		break;
+	case SD_MODE1:
+	case SD1_LSHFT_MODE:
+		if (modename)
+			*modename = "SD_MODE1\n";
+		name = "mmc@f1050000";
+		break;
+	default:
+		return -1;
+	}
+
+	if (uclass_get_device_by_name(UCLASS_MMC, name, &dev)) {
+		debug("MMC driver for %s is not present\n", name);
+		return -1;
+	}
+
+	return dev_seq(dev);
+}
+
+int mmc_get_env_dev(void)
+{
+	return mmc_get_bootseq(versal_net_get_bootmode(), NULL);
+}
+
 static int boot_targets_setup(void)
 {
 	u8 bootmode;
-	struct udevice *dev;
 	int bootseq = -1;
 	int bootseq_len = 0;
 	int env_targets_len = 0;
@@ -143,45 +182,20 @@ static int boot_targets_setup(void)
 		if (bootseq >= 0)
 			mode = "xspi";
 		break;
-	case EMMC_MODE:
-		puts("EMMC_MODE\n");
-		if (uclass_get_device_by_name(UCLASS_MMC,
-					      "mmc@f1050000", &dev)) {
-			debug("eMMC driver for eMMC device is not present\n");
-			break;
-		}
-		mode = "mmc";
-		bootseq = dev_seq(dev);
-		break;
 	case SELECTMAP_MODE:
 		puts("SELECTMAP_MODE\n");
-		break;
-	case SD_MODE:
-		puts("SD_MODE\n");
-		if (uclass_get_device_by_name(UCLASS_MMC,
-					      "mmc@f1040000", &dev)) {
-			debug("SD0 driver for SD0 device is not present\n");
-			break;
-		}
-		debug("mmc0 device found at %p, seq %d\n", dev, dev_seq(dev));
-
-		mode = "mmc";
-		bootseq = dev_seq(dev);
 		break;
 	case SD1_LSHFT_MODE:
 		puts("LVL_SHFT_");
 		fallthrough;
+	case SD_MODE:
+	case EMMC_MODE:
 	case SD_MODE1:
-		puts("SD_MODE1\n");
-		if (uclass_get_device_by_name(UCLASS_MMC,
-					      "mmc@f1050000", &dev)) {
-			debug("SD1 driver for SD1 device is not present\n");
-			break;
-		}
-		debug("mmc1 device found at %p, seq %d\n", dev, dev_seq(dev));
-
-		mode = "mmc";
-		bootseq = dev_seq(dev);
+		bootseq = mmc_get_bootseq(bootmode, &modename);
+		if (modename)
+			puts(modename);
+		if (bootseq >= 0)
+			mode = "mmc";
 		break;
 	default:
 		printf("Invalid Boot Mode:0x%x\n", bootmode);
