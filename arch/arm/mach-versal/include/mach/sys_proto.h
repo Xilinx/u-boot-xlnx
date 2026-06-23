@@ -25,5 +25,7 @@ u32 versal_multi_boot_reg(void);
 u8 versal_get_bootmode(void);
 /* Direct MMIO read of the bootmode register (EL3 / no-firmware path) */
 u32 versal_bootmode_reg(void);
+/* EL3 clock/timer register setup, called from board_early_init_r() */
+void versal_timer_setup(void);
 
 #endif /* _ASM_ARCH_SYS_PROTO_H */
