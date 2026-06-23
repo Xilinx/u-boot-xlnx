@@ -8,6 +8,7 @@
 #include <time.h>
 #include <linux/errno.h>
 #include <linux/types.h>
+#include <asm/arch/clk.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/armv8/mmu.h>
@@ -232,6 +233,27 @@ int zynqmp_mmio_read(const u32 address, u32 *value)
 #endif
 
 	return ret;
+}
+
+void zynqmp_timer_setup(void)
+{
+	u32 val;
+
+	val = readl(&crlapb_base->timestamp_ref_ctrl);
+	val &= ZYNQMP_CRL_APB_TIMESTAMP_REF_CTRL_CLKACT;
+
+	if (!val) {
+		val = readl(&crlapb_base->timestamp_ref_ctrl);
+		val |= ZYNQMP_CRL_APB_TIMESTAMP_REF_CTRL_CLKACT;
+		writel(val, &crlapb_base->timestamp_ref_ctrl);
+
+		/* Program freq register in System counter */
+		writel(zynqmp_get_system_timer_freq(),
+		       &iou_scntr_secure->base_frequency_id_register);
+		/* And enable system counter */
+		writel(ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_EN,
+		       &iou_scntr_secure->counter_control_register);
+	}
 }
 
 U_BOOT_DRVINFO(soc_xilinx_zynqmp) = {

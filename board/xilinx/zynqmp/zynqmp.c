@@ -24,7 +24,6 @@
 #include <malloc.h>
 #include <memalign.h>
 #include <wdt.h>
-#include <asm/arch/clk.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/arch/psu_init_gpl.h>
@@ -214,26 +213,11 @@ int board_init(void)
 
 int board_early_init_r(void)
 {
-	u32 val;
-
 	if (current_el() != 3)
 		return 0;
 
-	val = readl(&crlapb_base->timestamp_ref_ctrl);
-	val &= ZYNQMP_CRL_APB_TIMESTAMP_REF_CTRL_CLKACT;
+	zynqmp_timer_setup();
 
-	if (!val) {
-		val = readl(&crlapb_base->timestamp_ref_ctrl);
-		val |= ZYNQMP_CRL_APB_TIMESTAMP_REF_CTRL_CLKACT;
-		writel(val, &crlapb_base->timestamp_ref_ctrl);
-
-		/* Program freq register in System counter */
-		writel(zynqmp_get_system_timer_freq(),
-		       &iou_scntr_secure->base_frequency_id_register);
-		/* And enable system counter */
-		writel(ZYNQMP_IOU_SCNTR_COUNTER_CONTROL_REGISTER_EN,
-		       &iou_scntr_secure->counter_control_register);
-	}
 	return 0;
 }
 

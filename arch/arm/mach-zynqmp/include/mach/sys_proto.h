@@ -54,5 +54,7 @@ void mem_map_fill(void);
 #if defined(CONFIG_DEFINE_TCM_OCM_MMAP)
 void tcm_init(enum tcm_mode mode);
 #endif
+/* EL3 clock/timer register setup, called from board_early_init_r() */
+void zynqmp_timer_setup(void);
 
 #endif /* _ASM_ARCH_SYS_PROTO_H */
