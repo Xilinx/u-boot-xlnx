@@ -145,6 +145,11 @@ static int boot_targets_setup(void)
 		break;
 	case EMMC_MODE:
 		puts("EMMC_MODE\n");
+		if (uclass_get_device_by_name(UCLASS_MMC,
+					      "mmc@f1050000", &dev)) {
+			debug("eMMC driver for eMMC device is not present\n");
+			break;
+		}
 		mode = "mmc";
 		bootseq = dev_seq(dev);
 		break;
