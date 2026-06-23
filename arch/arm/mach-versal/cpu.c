@@ -130,6 +130,16 @@ int arm_reserve_mmu(void)
 }
 #endif
 
+u32 versal_multi_boot_reg(void)
+{
+	return readl(PMC_MULTI_BOOT_REG) & PMC_MULTI_BOOT_MASK;
+}
+
+u32 __weak versal_pmc_multi_boot(void)
+{
+	return versal_multi_boot_reg();
+}
+
 U_BOOT_DRVINFO(soc_xilinx_versal) = {
 	.name = "soc_xilinx_versal",
 };
