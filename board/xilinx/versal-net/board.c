@@ -71,41 +71,34 @@ int board_early_init_r(void)
 static int spi_get_bootseq(u8 bootmode)
 {
 	struct udevice *dev;
-	int bootseq = -1;
+	const char *name;
+	int bootseq;
 
 	switch (bootmode) {
 	case QSPI_MODE_24BIT:
 		puts("QSPI_MODE_24\n");
-		if (uclass_get_device_by_name(UCLASS_SPI,
-					      "spi@f1030000", &dev)) {
-			debug("QSPI driver for QSPI device is not present\n");
-			break;
-		}
-		bootseq = dev_seq(dev);
+		name = "spi@f1030000";
 		break;
 	case QSPI_MODE_32BIT:
 		puts("QSPI_MODE_32\n");
-		if (uclass_get_device_by_name(UCLASS_SPI,
-					      "spi@f1030000", &dev)) {
-			debug("QSPI driver for QSPI device is not present\n");
-			break;
-		}
-		bootseq = dev_seq(dev);
+		name = "spi@f1030000";
 		break;
 	case OSPI_MODE:
 		puts("OSPI_MODE\n");
-		if (uclass_get_device_by_name(UCLASS_SPI,
-					      "spi@f1010000", &dev)) {
-			debug("OSPI driver for OSPI device is not present\n");
-			break;
-		}
-		bootseq = dev_seq(dev);
+		name = "spi@f1010000";
 		break;
 	default:
-		break;
+		return -1;
 	}
 
+	if (uclass_get_device_by_name(UCLASS_SPI, name, &dev)) {
+		debug("SPI driver for %s is not present\n", name);
+		return -1;
+	}
+
+	bootseq = dev_seq(dev);
 	debug("bootseq %d\n", bootseq);
+
 	return bootseq;
 }
 
