@@ -19,5 +19,7 @@ u32 versal2_pmc_multi_boot(void);
 u32 versal2_multi_boot_reg(void);
 /* Weak bootmode decode (MMIO default); a firmware/SCMI build may override */
 u8 versal2_get_bootmode(void);
+/* EL3 clock/timer register setup, called from board_early_init_r() */
+void versal2_timer_setup(void);
 
 #endif /* _ASM_ARCH_SYS_PROTO_H */
