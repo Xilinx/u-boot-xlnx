@@ -136,6 +136,21 @@ void versal_net_timer_setup(void)
 	debug("timer 0x%llx\n", get_ticks());
 }
 
+u32 versal_net_bootmode_reg(void)
+{
+	return readl(&crp_base->boot_mode_usr);
+}
+
+u8 __weak versal_net_get_bootmode(void)
+{
+	u32 reg = versal_net_bootmode_reg();
+
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
+	return reg & BOOT_MODES_MASK;
+}
+
 static u32 platform_id, platform_version;
 
 char *soc_name_decode(void)
