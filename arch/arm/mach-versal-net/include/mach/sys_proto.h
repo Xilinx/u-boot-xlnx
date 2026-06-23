@@ -7,3 +7,5 @@
 #include <linux/build_bug.h>
 
 void mem_map_fill(void);
+/* EL3 clock/timer register setup, called from board_early_init_r() */
+void versal_net_timer_setup(void);
