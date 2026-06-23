@@ -488,6 +488,24 @@ u8 versal_get_bootmode(void)
 }
 #endif
 
+#if defined(CONFIG_ARCH_VERSAL_NET)
+u8 versal_net_get_bootmode(void)
+{
+	u32 reg;
+
+	/* At EL3 the SMC path to firmware is unavailable, read directly */
+	if (current_el() == 3)
+		reg = versal_net_bootmode_reg();
+	else
+		reg = zynqmp_pm_get_bootmode_reg();
+
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
+	return reg & BOOT_MODES_MASK;
+}
+#endif
+
 #if defined(CONFIG_ARCH_VERSAL2)
 u32 versal2_pmc_multi_boot(void)
 {

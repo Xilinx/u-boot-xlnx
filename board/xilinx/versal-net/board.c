@@ -21,7 +21,6 @@
 #include <asm/arch/sys_proto.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
-#include <zynqmp_firmware.h>
 #include <versalpl.h>
 #include "../common/board.h"
 
@@ -67,25 +66,6 @@ int board_early_init_r(void)
 	versal_net_timer_setup();
 
 	return 0;
-}
-
-static u8 versal_net_get_bootmode(void)
-{
-	u8 bootmode;
-	u32 reg = 0;
-
-	if (IS_ENABLED(CONFIG_ZYNQMP_FIRMWARE) && current_el() != 3) {
-		reg = zynqmp_pm_get_bootmode_reg();
-	} else {
-		reg = readl(&crp_base->boot_mode_usr);
-	}
-
-	if (reg >> BOOT_MODE_ALT_SHIFT)
-		reg >>= BOOT_MODE_ALT_SHIFT;
-
-	bootmode = reg & BOOT_MODES_MASK;
-
-	return bootmode;
 }
 
 int spi_get_env_dev(void)
