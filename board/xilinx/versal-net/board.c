@@ -68,7 +68,7 @@ int board_early_init_r(void)
 	return 0;
 }
 
-static int spi_get_bootseq(u8 bootmode)
+static int spi_get_bootseq(u8 bootmode, const char **modename)
 {
 	struct udevice *dev;
 	const char *name;
@@ -76,15 +76,18 @@ static int spi_get_bootseq(u8 bootmode)
 
 	switch (bootmode) {
 	case QSPI_MODE_24BIT:
-		puts("QSPI_MODE_24\n");
+		if (modename)
+			*modename = "QSPI_MODE_24\n";
 		name = "spi@f1030000";
 		break;
 	case QSPI_MODE_32BIT:
-		puts("QSPI_MODE_32\n");
+		if (modename)
+			*modename = "QSPI_MODE_32\n";
 		name = "spi@f1030000";
 		break;
 	case OSPI_MODE:
-		puts("OSPI_MODE\n");
+		if (modename)
+			*modename = "OSPI_MODE\n";
 		name = "spi@f1010000";
 		break;
 	default:
@@ -104,7 +107,7 @@ static int spi_get_bootseq(u8 bootmode)
 
 int spi_get_env_dev(void)
 {
-	return spi_get_bootseq(versal_net_get_bootmode());
+	return spi_get_bootseq(versal_net_get_bootmode(), NULL);
 }
 
 static int boot_targets_setup(void)
@@ -115,6 +118,7 @@ static int boot_targets_setup(void)
 	int bootseq_len = 0;
 	int env_targets_len = 0;
 	const char *mode = NULL;
+	const char *modename = NULL;
 	char *new_targets;
 	char *env_targets;
 
@@ -133,7 +137,9 @@ static int boot_targets_setup(void)
 	case QSPI_MODE_24BIT:
 	case QSPI_MODE_32BIT:
 	case OSPI_MODE:
-		bootseq = spi_get_bootseq(bootmode);
+		bootseq = spi_get_bootseq(bootmode, &modename);
+		if (modename)
+			puts(modename);
 		if (bootseq >= 0)
 			mode = "xspi";
 		break;
