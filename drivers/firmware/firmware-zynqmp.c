@@ -470,6 +470,22 @@ u32 versal_pmc_multi_boot(void)
 
 	return zynqmp_pm_get_pmc_multi_boot_reg() & PMC_MULTI_BOOT_MASK;
 }
+
+u8 versal_get_bootmode(void)
+{
+	u32 reg;
+
+	/* At EL3 the SMC path to firmware is unavailable, read directly */
+	if (current_el() == 3)
+		reg = versal_bootmode_reg();
+	else
+		reg = zynqmp_pm_get_bootmode_reg();
+
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
+	return reg & BOOT_MODES_MASK;
+}
 #endif
 
 #if defined(CONFIG_ARCH_VERSAL2)

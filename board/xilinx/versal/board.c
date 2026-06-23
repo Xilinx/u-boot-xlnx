@@ -29,7 +29,6 @@
 #include <dm/device.h>
 #include <dm/uclass.h>
 #include <versalpl.h>
-#include <zynqmp_firmware.h>
 #include "../common/board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -40,25 +39,6 @@ static xilinx_desc versalpl = {
 	FPGA_LEGACY
 };
 #endif
-
-static u8 versal_get_bootmode(void)
-{
-	u8 bootmode;
-	u32 reg = 0;
-
-	if (IS_ENABLED(CONFIG_ZYNQMP_FIRMWARE) && current_el() != 3) {
-		reg = zynqmp_pm_get_bootmode_reg();
-	} else {
-		reg = readl(&crp_base->boot_mode_usr);
-	}
-
-	if (reg >> BOOT_MODE_ALT_SHIFT)
-		reg >>= BOOT_MODE_ALT_SHIFT;
-
-	bootmode = reg & BOOT_MODES_MASK;
-
-	return bootmode;
-}
 
 static u32 versal_multi_boot(void)
 {

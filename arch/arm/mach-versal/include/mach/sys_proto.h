@@ -21,5 +21,9 @@ void mem_map_fill(void);
 u32 versal_pmc_multi_boot(void);
 /* Direct MMIO read of the multiboot register (EL3 / no-firmware path) */
 u32 versal_multi_boot_reg(void);
+/* Overridable bootmode decode: weak MMIO default, firmware override */
+u8 versal_get_bootmode(void);
+/* Direct MMIO read of the bootmode register (EL3 / no-firmware path) */
+u32 versal_bootmode_reg(void);
 
 #endif /* _ASM_ARCH_SYS_PROTO_H */
