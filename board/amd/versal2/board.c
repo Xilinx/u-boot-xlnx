@@ -176,21 +176,6 @@ int board_early_init_r(void)
 	return 0;
 }
 
-static u8 versal2_get_bootmode(void)
-{
-	u8 bootmode;
-	u32 reg = 0;
-
-	reg = readl(&crp_base->boot_mode_usr);
-
-	if (reg >> BOOT_MODE_ALT_SHIFT)
-		reg >>= BOOT_MODE_ALT_SHIFT;
-
-	bootmode = reg & BOOT_MODES_MASK;
-
-	return bootmode;
-}
-
 static u32 versal2_multi_boot(void)
 {
 	u8 bootmode = versal2_get_bootmode();
