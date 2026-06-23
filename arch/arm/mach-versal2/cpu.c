@@ -1,22 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2021 - 2022, Xilinx, Inc.
- * Copyright (C) 2022 - 2024, Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 - 2026, Advanced Micro Devices, Inc.
  *
  * Michal Simek <michal.simek@amd.com>
  */
 
 #include <init.h>
 #include <log.h>
+#include <malloc.h>
 #include <time.h>
+#include <vsprintf.h>
 #include <asm/armv8/mmu.h>
 #include <asm/cache.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
+#include <asm/system.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/sys_proto.h>
 #include <asm/cache.h>
 #include <dm/platdata.h>
+#include <linux/bitfield.h>
+#include <linux/string.h>
+#include "../../../board/xilinx/common/board.h"
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -207,6 +213,75 @@ void versal2_timer_setup(void)
 	      readl(&iou_scntr_secure->counter_control_register));
 	debug("timer 0x%llx\n", get_ticks());
 	debug("timer 0x%llx\n", get_ticks());
+}
+
+static u32 platform_id, platform_version;
+
+char *soc_name_decode(void)
+{
+	char *name, *platform_name;
+
+	switch (platform_id) {
+	case VERSAL2_SPP:
+		platform_name = "spp";
+		break;
+	case VERSAL2_EMU:
+		platform_name = "emu";
+		break;
+	case VERSAL2_SPP_MMD:
+		platform_name = "spp-mmd";
+		break;
+	case VERSAL2_EMU_MMD:
+		platform_name = "emu-mmd";
+		break;
+	case VERSAL2_QEMU:
+		platform_name = "qemu";
+		break;
+	default:
+		return NULL;
+	}
+
+	/*
+	 * --rev.-el are 9 chars
+	 * max platform name is emu-mmd which is 7 chars
+	 * platform version number are 1+1
+	 * el is 1 char
+	 * Plus 1 char for NULL byte
+	 */
+	name = calloc(1, strlen(CONFIG_SYS_BOARD) + 20);
+	if (!name)
+		return NULL;
+
+	sprintf(name, "%s-%s-rev%d.%d-el%d", CONFIG_SYS_BOARD,
+		platform_name, platform_version / 10,
+		platform_version % 10, current_el());
+
+	return name;
+}
+
+bool soc_detection(void)
+{
+	u32 version, ps_version;
+
+	version = readl(PMC_TAP_VERSION);
+	platform_id = FIELD_GET(PLATFORM_MASK, version);
+	ps_version = FIELD_GET(PS_VERSION_MASK, version);
+
+	debug("idcode %x, version %x, usercode %x\n",
+	      readl(PMC_TAP_IDCODE), version,
+	      readl(PMC_TAP_USERCODE));
+
+	debug("pmc_ver %lx, ps version %x, rtl version %lx\n",
+	      FIELD_GET(PMC_VERSION_MASK, version),
+	      ps_version,
+	      FIELD_GET(RTL_VERSION_MASK, version));
+
+	platform_version = FIELD_GET(PLATFORM_VERSION_MASK, version);
+
+	debug("Platform id: %d version: %d.%d\n", platform_id,
+	      platform_version / 10, platform_version % 10);
+
+	return true;
 }
 
 U_BOOT_DRVINFO(soc_amd_versal2) = {

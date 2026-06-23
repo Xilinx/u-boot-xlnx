@@ -31,8 +31,6 @@
 #include <versalpl.h>
 #include "../../xilinx/common/board.h"
 
-#include <linux/bitfield.h>
-#include <linux/sizes.h>
 #include <debug_uart.h>
 #include <generated/dt.h>
 #include <linux/ioport.h>
@@ -59,75 +57,6 @@ int board_init(void)
 		xilinx_read_eeprom();
 
 	return 0;
-}
-
-static u32 platform_id __section(".data");
-static u32 platform_version __section(".data");
-
-char *soc_name_decode(void)
-{
-	char *name, *platform_name;
-
-	switch (platform_id) {
-	case VERSAL2_SPP:
-		platform_name = "spp";
-		break;
-	case VERSAL2_EMU:
-		platform_name = "emu";
-		break;
-	case VERSAL2_SPP_MMD:
-		platform_name = "spp-mmd";
-		break;
-	case VERSAL2_EMU_MMD:
-		platform_name = "emu-mmd";
-		break;
-	case VERSAL2_QEMU:
-		platform_name = "qemu";
-		break;
-	default:
-		return NULL;
-	}
-
-	/*
-	 * --rev. are 6 chars
-	 * max platform name is qemu which is 4 chars
-	 * platform version number are 1+1
-	 * Plus 1 char for \n
-	 */
-	name = calloc(1, strlen(CONFIG_SYS_BOARD) + 13);
-	if (!name)
-		return NULL;
-
-	sprintf(name, "%s-%s-rev%d.%d-el%d", CONFIG_SYS_BOARD,
-		platform_name, platform_version / 10,
-		platform_version % 10, current_el());
-
-	return name;
-}
-
-bool soc_detection(void)
-{
-	u32 version, ps_version;
-
-	version = readl(PMC_TAP_VERSION);
-	platform_id = FIELD_GET(PLATFORM_MASK, version);
-	ps_version = FIELD_GET(PS_VERSION_MASK, version);
-
-	debug("idcode %x, version %x, usercode %x\n",
-	      readl(PMC_TAP_IDCODE), version,
-	      readl(PMC_TAP_USERCODE));
-
-	debug("pmc_ver %lx, ps version %x, rtl version %lx\n",
-	      FIELD_GET(PMC_VERSION_MASK, version),
-	      ps_version,
-	      FIELD_GET(RTL_VERSION_MASK, version));
-
-	platform_version = FIELD_GET(PLATFORM_VERSION_MASK, version);
-
-	debug("Platform id: %d version: %d.%d\n", platform_id,
-	      platform_version / 10, platform_version % 10);
-
-	return true;
 }
 
 int board_early_init_r(void)
