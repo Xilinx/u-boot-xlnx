@@ -151,6 +151,21 @@ u32 __weak versal2_pmc_multi_boot(void)
 	return versal2_multi_boot_reg();
 }
 
+u8 __weak versal2_get_bootmode(void)
+{
+	u8 bootmode;
+	u32 reg;
+
+	reg = readl(&crp_base->boot_mode_usr);
+
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
+	bootmode = reg & BOOT_MODES_MASK;
+
+	return bootmode;
+}
+
 U_BOOT_DRVINFO(soc_amd_versal2) = {
 	.name = "soc_amd_versal2",
 };
