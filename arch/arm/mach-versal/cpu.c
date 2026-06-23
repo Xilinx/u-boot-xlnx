@@ -140,6 +140,21 @@ u32 __weak versal_pmc_multi_boot(void)
 	return versal_multi_boot_reg();
 }
 
+u32 versal_bootmode_reg(void)
+{
+	return readl(&crp_base->boot_mode_usr);
+}
+
+u8 __weak versal_get_bootmode(void)
+{
+	u32 reg = versal_bootmode_reg();
+
+	if (reg >> BOOT_MODE_ALT_SHIFT)
+		reg >>= BOOT_MODE_ALT_SHIFT;
+
+	return reg & BOOT_MODES_MASK;
+}
+
 U_BOOT_DRVINFO(soc_xilinx_versal) = {
 	.name = "soc_xilinx_versal",
 };
