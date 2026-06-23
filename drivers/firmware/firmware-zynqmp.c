@@ -461,6 +461,17 @@ u32 zynqmp_pm_get_pmc_multi_boot_reg(void)
 }
 #endif
 
+#if defined(CONFIG_ARCH_VERSAL)
+u32 versal_pmc_multi_boot(void)
+{
+	/* At EL3 the SMC path to firmware is unavailable, read directly */
+	if (current_el() == 3)
+		return versal_multi_boot_reg();
+
+	return zynqmp_pm_get_pmc_multi_boot_reg() & PMC_MULTI_BOOT_MASK;
+}
+#endif
+
 #if defined(CONFIG_ARCH_VERSAL2)
 u32 versal2_pmc_multi_boot(void)
 {
