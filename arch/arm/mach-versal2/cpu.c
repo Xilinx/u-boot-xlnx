@@ -141,6 +141,16 @@ u64 get_page_table_size(void)
 }
 #endif
 
+u32 versal2_multi_boot_reg(void)
+{
+	return readl(PMC_MULTI_BOOT_REG) & PMC_MULTI_BOOT_MASK;
+}
+
+u32 __weak versal2_pmc_multi_boot(void)
+{
+	return versal2_multi_boot_reg();
+}
+
 U_BOOT_DRVINFO(soc_amd_versal2) = {
 	.name = "soc_amd_versal2",
 };

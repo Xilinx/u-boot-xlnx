@@ -7,6 +7,7 @@
  */
 
 #include <asm/arch/hardware.h>
+#include <asm/arch/sys_proto.h>
 #include <asm/io.h>
 #include <cpu_func.h>
 #include <dm.h>
@@ -16,6 +17,7 @@
 #include <zynqmp_firmware.h>
 #include <asm/cache.h>
 #include <asm/ptrace.h>
+#include <asm/system.h>
 #include <linux/bitfield.h>
 
 #if defined(CONFIG_ZYNQMP_IPI)
@@ -456,6 +458,17 @@ u32 zynqmp_pm_get_pmc_multi_boot_reg(void)
 	}
 
 	return ret_payload[1];
+}
+#endif
+
+#if defined(CONFIG_ARCH_VERSAL2)
+u32 versal2_pmc_multi_boot(void)
+{
+	/* At EL3 the SMC path to firmware is unavailable, read directly */
+	if (current_el() == 3)
+		return versal2_multi_boot_reg();
+
+	return zynqmp_pm_get_pmc_multi_boot_reg() & PMC_MULTI_BOOT_MASK;
 }
 #endif
 
