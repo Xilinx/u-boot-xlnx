@@ -359,11 +359,22 @@ static int spansion_read_any_reg(struct spi_nor *nor, u32 addr, u8 dummy,
 	if (spi_nor_protocol_is_dtr(nor->reg_proto))
 		op.data.nbytes = 2;
 
+	/*
+	 * In dual-parallel mode the register read is striped across both dies,
+	 * so a single-byte read would only capture one die's value. Read 2
+	 * bytes (one per die) and AND them together so a status bit is only
+	 * seen as set when it is set on both dies.
+	 */
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		op.data.nbytes = 2;
+
 	ret = spi_nor_read_write_reg(nor, &op, buf);
 	if (ret)
 		return ret;
 
 	*val = buf[0];
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		*val &= buf[1];
 
 	return 0;
 }
