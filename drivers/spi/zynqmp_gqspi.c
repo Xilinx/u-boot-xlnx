@@ -859,6 +859,7 @@ static bool zynqmp_qspi_update_stripe(const struct spi_mem_op *op)
 	case SPINOR_OP_WRSR:
 	case SPINOR_OP_WREAR:
 	case SPINOR_OP_BRWR:
+	case SPINOR_OP_WR_ANY_REG:
 		return false;
 	case SPINOR_OP_WRSR2:
 		return op->addr.nbytes != 0;
