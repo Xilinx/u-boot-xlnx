@@ -3927,10 +3927,14 @@ static struct spi_nor_fixups s25fs_s_fixups = {
 
 static int s25_s28_mdp_ready(struct spi_nor *nor)
 {
+	u32 die_size = nor->mtd.size;
 	u32 addr;
 	int ret;
 
-	for (addr = 0; addr < nor->mtd.size; addr += SZ_128M) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		die_size /= 2;
+
+	for (addr = 0; addr < die_size; addr += SZ_128M) {
 		ret = spansion_sr_ready(nor, addr, nor->rdsr_dummy);
 		if (!ret)
 			return ret;
@@ -3941,10 +3945,14 @@ static int s25_s28_mdp_ready(struct spi_nor *nor)
 
 static int s25_quad_enable(struct spi_nor *nor)
 {
+	u32 die_size = nor->mtd.size;
 	u32 addr;
 	int ret;
 
-	for (addr = 0; addr < nor->mtd.size; addr += SZ_128M) {
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		die_size /= 2;
+
+	for (addr = 0; addr < die_size; addr += SZ_128M) {
 		ret = spansion_quad_enable_volatile(nor, addr, 0);
 		if (ret)
 			return ret;
@@ -3963,8 +3971,12 @@ static int s25_s28_erase_non_uniform(struct spi_nor *nor, loff_t addr)
 static int s25_s28_setup(struct spi_nor *nor, const struct flash_info *info,
 			 const struct spi_nor_flash_parameter *params)
 {
+	u32 die_size = nor->mtd.size;
 	int ret;
 	u8 cr;
+
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		die_size /= 2;
 
 #if CONFIG_IS_ENABLED(SPI_FLASH_BAR)
 	return -ENOTSUPP; /* Bank Address Register is not supported */
@@ -4000,7 +4012,7 @@ static int s25_s28_setup(struct spi_nor *nor, const struct flash_info *info,
 	 * For the multi-die package parts, the ready() hook is needed to check
 	 * all dies' status via read any register.
 	 */
-	if (nor->mtd.size > SZ_128M)
+	if (die_size > SZ_128M)
 		nor->ready = s25_s28_mdp_ready;
 
 	return spi_nor_default_setup(nor, info, params);
