@@ -4023,6 +4023,13 @@ static void s25_late_init(struct spi_nor *nor,
 {
 	nor->setup = s25_s28_setup;
 
+	if (nor->flags & SNOR_F_HAS_PARALLEL)
+		nor->spi->flags |= SPI_NOR_ENABLE_MULTI_CS;
+
+	/* Set 4B address mode */
+	set_4byte(nor, nor->info, 1);
+	nor->addr_mode_nbytes = 4;
+
 	/*
 	 * Programming is supported only in 16-byte ECC data unit granularity.
 	 * Byte-programming, bit-walking, or multiple program operations to the
