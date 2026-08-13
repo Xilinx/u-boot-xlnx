@@ -10,7 +10,7 @@
 #include "versal2.dtsi"
 #include "versal2-clk-ccf.dtsi"
 #include "versal2-2vm3654.dtsi"
-#include "versal2~2vm3654-clk-ccf.dtsi"
+#include "versal2-2vm3654-clk-ccf.dtsi"
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/net/ti-dp83867.h>
