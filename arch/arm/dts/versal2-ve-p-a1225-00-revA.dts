@@ -8,7 +8,9 @@
  */
 
 #include "versal2.dtsi"
-#include "versal2-clk-ccf.dtsi"
+#include "versal2-scmi.dtsi"
+#include "xlnx-versal2-clk.h"
+#include "xlnx-versal2-power.h"
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/net/ti-dp83867.h>
 

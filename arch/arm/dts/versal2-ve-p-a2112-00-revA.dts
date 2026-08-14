@@ -8,7 +8,7 @@
  */
 
 #include "versal2.dtsi"
-#include "versal2-clk-ccf.dtsi"
+#include "versal2-scmi.dtsi"
 
 / {
 	compatible = "amd,versal2";
