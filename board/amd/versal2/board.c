@@ -28,7 +28,6 @@
 #include <asm/sections.h>
 #include <dm/device.h>
 #include <dm/uclass.h>
-#include <usb.h>
 #include <versalpl.h>
 #include <zynqmp_firmware.h>
 #include "../../xilinx/common/board.h"
@@ -359,12 +358,6 @@ int board_late_init(void)
 	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) &&
 	    !IS_ENABLED(CONFIG_FWU_MULTI_BANK_UPDATE))
 		configure_capsule_updates();
-
-#if IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT)
-	ret = usb_init();
-	if (!ret)
-		ret = usb_stor_scan(1);
-#endif
 
 	if (!(gd->flags & GD_FLG_ENV_DEFAULT)) {
 		debug("Saved variables - Skipping\n");
