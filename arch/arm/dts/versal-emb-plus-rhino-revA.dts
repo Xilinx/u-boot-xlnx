@@ -415,6 +415,15 @@
 	reg = <0x00 0xfcdd0000 0x00 0x1000>,
 	      <0x07 0x00000000 0x00 0x10000000>,
 	      <0x00 0xfcea0000 0x00 0x10000>;
+	resets = <&versal_reset VERSAL_RST_PCIE_CORE1>;
+	pcie@0,0 {
+		device_type = "pci";
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+		reset-gpios = <&gpio0 19 GPIO_ACTIVE_LOW>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		ranges;
+	};
 };
 
 &serial0 { /* PMC_MIO42/43 */
