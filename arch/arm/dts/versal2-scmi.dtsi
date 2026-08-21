@@ -14,9 +14,9 @@
 	#size-cells = <2>;
 
 	/* SCMI shared memory carve-out, shared with TF-A and Linux */
-	scmi_buf: scmi-shmem@7b000000 {
+	scmi_buf: scmi-shmem@20001000 {
 		compatible = "arm,scmi-shmem";
-		reg = <0x0 0x7b000000 0x0 0x1000>;
+		reg = <0x0 0x20001000 0x0 0x1000>;
 		no-map;
 	};
 
@@ -24,16 +24,16 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 
-		scmi_buffer: memory@7b000000 {
+		scmi_buffer: memory@20000000 {
 			no-map;
-			reg = <0x0 0x7b000000 0x0 0x1000>;
+			reg = <0x0 0x20000000 0x0 0x20000>;
 		};
 	};
 
 	firmware {
 		scmi: scmi { /* Should be injected by firmware */
 			compatible = "arm,scmi-smc";
-			arm,smc-id = <0xc2002000>;
+			arm,smc-id = <0xc2002001>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			shmem = <&scmi_buf>;
