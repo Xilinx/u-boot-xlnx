@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for AMD Versal XC2VP3602
+ *
+ * Copyright (C) 2026, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+/ {
+	compatible = "xlnx,versal-xc2vp3602";
+	model = "AMD Versal Gen XC2VP3602";
+};
+
+/delete-node/ &cpm5_pcie;
+/delete-node/ &cpm_pciea;
+
+&amba {
+	cpm6_pcie: pcie@fcdd0000 {
+		device_type = "pci";
+		#address-cells = <3>;
+		#interrupt-cells = <1>;
+		#size-cells = <2>;
+		compatible = "amd,versal2-cpm6-host";
+		status = "disabled";
+		interrupt-map = <0 0 0 1 &pcie_intc_0 0>,
+				<0 0 0 2 &pcie_intc_0 1>,
+				<0 0 0 3 &pcie_intc_0 2>,
+				<0 0 0 4 &pcie_intc_0 3>;
+		interrupt-map-mask = <0 0 0 7>;
+		interrupts = <0 72 4>;
+		ranges = <0x02000000 0x0 0xe0000000 0x0 0xe0000000 0x0 0x8000000>,
+			 <0x43000000 0x80 0x00000000 0x80 0x00000000 0x20 0x00000000>;
+		msi-map = <0x0 &gic_its 0x0 0x10000>;
+		reg = <0x00 0xfcdd0000 0x00 0x1000>,
+		      <0x06 0x00100000 0x00 0xff00000>,
+		      <0x06 0x00000000 0x00 0x100000>,
+		      <0x00 0xfc280000 0x00 0x4000>,
+		      <0x00 0xfc840000 0x00 0x1000>;
+		reg-names = "slcr", "config", "dbi", "atu", "intr";
+		pcie_intc_0: interrupt-controller {
+			#address-cells = <0>;
+			#interrupt-cells = <1>;
+			interrupt-controller;
+		};
+	};
+};

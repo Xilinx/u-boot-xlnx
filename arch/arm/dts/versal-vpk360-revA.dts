@@ -11,6 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include "versal.dtsi"
 #include "versal-clk.dtsi"
+#include "versal-xc2vp3602.dtsi"
 
 / {
 	model = "Xilinx Versal vpk360 Eval board revA";
@@ -140,6 +141,17 @@
 #endif
 
 /* PCIE GPIO PMC_MIO40/41 */
+&cpm6_pcie {
+	status = "okay";
+	pcie@0,0 {
+		device_type = "pci";
+		reg = <0x0 0x0 0x0 0x0 0x0>;
+		reset-gpios = <&gpio1 40 GPIO_ACTIVE_LOW>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		ranges;
+	};
+};
 
 &i2c1 { /* PMC_MIO42/43 - FMC_MUX */
 	status = "okay";
