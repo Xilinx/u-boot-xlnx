@@ -81,8 +81,6 @@
 	spi_flash: flash@0 {
 		compatible = "jedec,spi-nor";
 		reg = <0>;
-		#address-cells = <1>;
-		#size-cells = <1>;
 		cdns,read-delay = <0>;
 		cdns,tshsl-ns = <0>;
 		cdns,tsd2d-ns = <0>;
