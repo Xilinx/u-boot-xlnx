@@ -3,4 +3,4 @@ ConfigParser==7.1.0
 importlib_resources==6.5.2
 pygit2==1.14.1
 requests==2.32.4
-setuptools==78.1.1
+setuptools==83.0.0
