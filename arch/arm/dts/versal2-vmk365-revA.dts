@@ -120,6 +120,22 @@
 		cdns,read-delay = <0>;
 		reg = <0>;
 		no-wp;
+
+		partitions {
+			#size-cells = <1>;
+			#address-cells = <1>;
+			compatible = "fixed-partitions";
+
+			partition@0 {
+				reg = <0x0 0x200000>;
+				label = "ospi-flash0";
+			};
+
+			partition@1 {
+				reg = <0x200000 0xfe00000>;
+				label = "ospi-flash1";
+			};
+		};
 	};
 };
 
