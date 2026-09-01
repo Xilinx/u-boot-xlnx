@@ -909,6 +909,8 @@ source "drivers/video/tidss/Kconfig"
 
 source "drivers/video/bridge/Kconfig"
 
+source "drivers/video/dw_dp/Kconfig"
+
 source "drivers/video/tegra/Kconfig"
 
 source "drivers/video/imx/Kconfig"

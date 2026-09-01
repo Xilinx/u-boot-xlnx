@@ -75,6 +75,11 @@ M:	Pranav Sanwal <pranav.sanwal@amd.com>
 S:	Maintained
 F:	drivers/pci/pcie_amd_qdma_pl.c
 
+AMD VERSAL2 DISPLAY DRIVER
+M:	Pranav Sanwal <pranav.sanwal@amd.com>
+S:	Maintained
+F:	drivers/video/dw_dp/
+
 AMD VERSAL2 PCIE DRIVER
 M:	Pranav Sanwal <pranav.sanwal@amd.com>
 S:	Maintained
