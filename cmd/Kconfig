@@ -2635,6 +2635,22 @@ config CMD_VIDCONSOLE
 	  The name 'lcdputs' is a bit of a misnomer, but so named because the
 	  video device is often an LCD.
 
+config CMD_VIDEO_TEST
+	bool "video - test/debug commands for the active video device"
+	depends on VIDEO
+	help
+	  Enable the 'video' command's test/debug subcommands:
+
+	     vidinfo  - print generic information about the active video
+	                device: resolution, bits per pixel, frame buffer
+	                line length, and frame buffer address/size.
+	     dispbars - fill the active video framebuffer with a fixed set
+	                of vertical colour bars (white/red/green/blue/
+	                yellow/black) and sync the display. Useful for
+	                exercising a display pipeline (controller, DMA,
+	                output stage) end to end without needing to
+	                transfer a BMP file first.
+
 config CMD_SELECT_FONT
 	bool "select font size"
 	depends on VIDEO

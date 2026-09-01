@@ -1950,6 +1950,13 @@ T:	git https://source.denx.de/u-boot/custodians/u-boot-video.git
 F:	drivers/video/
 F:	include/video*.h
 
+VIDEO TEST/DEBUG COMMANDS
+M:	Pranav Sanwal <pranav.sanwal@amd.com>
+S:	Maintained
+F:	cmd/video_test.c
+F:	doc/usage/cmd/video.rst
+F:	test/cmd/video_test.c
+
 VirtIO
 M:	Bin Meng <bmeng.cn@gmail.com>
 S:	Maintained
