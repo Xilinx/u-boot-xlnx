@@ -74,6 +74,14 @@ config ADI_DMA
 	  Enable DMA support for Analog Devices SOCs, such as the SC5xx.
 	  Currently this is a minimalistic driver tested against OSPI use only.
 
+config AMD_MMI_DCDMA
+	bool "AMD MMI Display DMA (DCDMA) driver"
+	depends on DMA && DMA_CHANNELS && ARCH_VERSAL2
+	help
+	  Enable the Display DMA driver for the AMD MMI display subsystem.
+	  Streams a framebuffer from memory into the Display Controller's
+	  pixel FIFO.
+
 if APBH_DMA
 config APBH_DMA_BURST
 	bool "Enable DMA BURST"
