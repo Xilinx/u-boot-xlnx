@@ -91,6 +91,7 @@ obj-$(CONFIG_VIDEO_VESA) += vesa.o
 obj-$(CONFIG_VIDEO_SEPS525) += seps525.o
 obj-$(CONFIG_VIDEO_ZYNQMP_DPSUB) += zynqmp/
 
+obj-y += amd_mmi/
 obj-y += bridge/
 obj-y += dw_dp/
 obj-y += sunxi/

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config VIDEO_AMD_MMI_DPTX
+	bool "AMD MMI DisplayPort TX output-stage driver"
+	depends on ARCH_VERSAL2
+	select DISPLAY
+	select VIDEO_DW_DP
+	help
+	  Enable the DisplayPort TX driver for AMD MMI display subsystem.
+	  Implements HPD detection, AUX channel, link training, and video
+	  stream enable on top of the generic dw_dp core, as a UCLASS_DISPLAY
+	  device.

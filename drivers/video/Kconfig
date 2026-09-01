@@ -936,6 +936,8 @@ config VIDEO_SEPS525
 	  Enable support for the Syncoam PM-OLED display driver (RGB 160x128).
 	  Currently driver is supporting only SPI interface.
 
+source "drivers/video/amd_mmi/Kconfig"
+
 source "drivers/video/zynqmp/Kconfig"
 source "drivers/video/nexell/Kconfig"
 
