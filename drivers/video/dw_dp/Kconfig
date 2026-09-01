@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config VIDEO_DW_DP
+	bool
+	help
+	  Generic register-level engine for the Synopsys DesignWare
+	  DisplayPort TX (DPTX) IP: AUX channel, PHY power/pattern control,
+	  DP-spec CR/EQ link training, video stream (MSA) programming, and
+	  link-health/CRC monitoring.
