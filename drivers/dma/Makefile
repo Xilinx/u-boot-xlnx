@@ -5,6 +5,7 @@
 
 obj-$(CONFIG_DMA) += dma-uclass.o
 
+obj-$(CONFIG_AMD_MMI_DCDMA) += amd_mmi_dcdma.o
 obj-$(CONFIG_APBH_DMA) += apbh_dma.o
 obj-$(CONFIG_BCM6348_IUDMA) += bcm6348-iudma.o
 obj-$(CONFIG_FSL_DMA) += fsl_dma.o
