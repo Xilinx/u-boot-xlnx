@@ -226,6 +226,34 @@ int board_late_init(void)
 	int ret;
 	u32 multiboot;
 
+	if (IS_ENABLED(CONFIG_VIDEO_AMD_MMI_DC)) {
+		/*
+		 * Re-assigning stdout/stderr to their own value is a
+		 * deliberate write, done only for its side effect: it routes
+		 * through the "console" env callback, which by this point in
+		 * boot runs with GD_FLG_DEVINIT set and correctly
+		 * (re-)attaches vidconsole -- unlike console_init_r()'s
+		 * earlier attach attempt, whose failure iomux_doenv() never
+		 * surfaces as long as "serial" alone attached. If a variable
+		 * is currently unset, env_get() returns NULL and env_set()
+		 * takes its delete path instead of a no-op rewrite; harmless,
+		 * since deleting an already-absent variable is a no-op too.
+		 *
+		 * The check below can only catch iomux_doenv() failing to
+		 * attach *every* device in the list (both serial and
+		 * vidconsole); it cannot detect vidconsole alone silently
+		 * failing to attach while serial still does, since
+		 * iomux_doenv() only reports total failure. Assign both
+		 * unconditionally (not short-circuited) so a stdout failure
+		 * doesn't skip the stderr re-attach.
+		 */
+		ret = env_set("stdout", env_get("stdout"));
+		ret |= env_set("stderr", env_get("stderr"));
+		if (ret)
+			log_err("%s: failed to re-attach stdout/stderr console\n",
+				__func__);
+	}
+
 	if (IS_ENABLED(CONFIG_EFI_HAVE_CAPSULE_SUPPORT) &&
 	    !IS_ENABLED(CONFIG_FWU_MULTI_BANK_UPDATE))
 		configure_capsule_updates();

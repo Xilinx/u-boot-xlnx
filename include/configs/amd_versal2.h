@@ -170,11 +170,20 @@
 # define BOOTENV_DEV_SHARED_XSPI
 #endif /* CONFIG_DISTRO_DEFAULTS */
 
+#ifdef CONFIG_VIDEO_AMD_MMI_DC
+# define VIDCONSOLE_ENV_SETTINGS \
+	"stdout=serial,vidconsole\0" \
+	"stderr=serial,vidconsole\0"
+#else
+# define VIDCONSOLE_ENV_SETTINGS
+#endif /* CONFIG_VIDEO_AMD_MMI_DC */
+
 /* Initial environment variables */
 #ifndef CFG_EXTRA_ENV_SETTINGS
 #define CFG_EXTRA_ENV_SETTINGS \
 	ENV_MEM_LAYOUT_SETTINGS \
 	"usb_pgood_delay=2000\0" \
+	VIDCONSOLE_ENV_SETTINGS \
 	BOOTENV \
 	BOOTENV_DEV_SHARED_XSPI \
 	DFU_ALT_INFO
