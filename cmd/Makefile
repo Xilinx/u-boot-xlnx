@@ -204,6 +204,7 @@ obj-$(CONFIG_CMD_LZMADEC) += lzmadec.o
 obj-$(CONFIG_CMD_UFS) += ufs.o
 obj-$(CONFIG_CMD_USB) += usb.o disk.o
 obj-$(CONFIG_CMD_VIDCONSOLE) += video.o
+obj-$(CONFIG_CMD_VIDEO_TEST) += video_test.o
 
 obj-$(CONFIG_CMD_FASTBOOT) += fastboot.o
 obj-$(CONFIG_CMD_FS_UUID) += fs_uuid.o

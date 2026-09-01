@@ -18,6 +18,7 @@ obj-$(CONFIG_CMD_ACPI) += acpi.o
 endif
 obj-$(CONFIG_CMD_BDI) += bdinfo.o
 obj-$(CONFIG_COREBOOT_SYSINFO) += coreboot.o
+obj-$(CONFIG_CMD_VIDEO_TEST) += video_test.o
 obj-$(CONFIG_CMD_FDT) += fdt.o
 obj-$(CONFIG_CONSOLE_TRUETYPE) += font.o
 obj-$(CONFIG_CMD_HASH) += hash.o
