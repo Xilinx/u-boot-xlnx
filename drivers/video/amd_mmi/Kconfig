@@ -1,5 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0
 
+config VIDEO_AMD_MMI_DC
+	bool "AMD MMI Display Controller driver"
+	depends on VIDEO_AMD_MMI_DPTX
+	help
+	  Enable the display controller driver for AMD MMI display subsystem.
+	  Drives the DC pipeline to produce a 640x480@60Hz RGBA8888
+	  framebuffer on the DisplayPort output.
+
 config VIDEO_AMD_MMI_DPTX
 	bool "AMD MMI DisplayPort TX output-stage driver"
 	depends on ARCH_VERSAL2
