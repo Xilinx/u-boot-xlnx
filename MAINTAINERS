@@ -78,6 +78,7 @@ F:	drivers/pci/pcie_amd_qdma_pl.c
 AMD VERSAL2 DISPLAY DRIVER
 M:	Pranav Sanwal <pranav.sanwal@amd.com>
 S:	Maintained
+F:	drivers/video/amd_mmi/
 F:	drivers/video/dw_dp/
 
 AMD VERSAL2 PCIE DRIVER
