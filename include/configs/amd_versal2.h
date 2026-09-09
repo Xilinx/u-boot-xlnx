@@ -171,9 +171,15 @@
 #endif /* CONFIG_DISTRO_DEFAULTS */
 
 #ifdef CONFIG_VIDEO_AMD_MMI_DC
+/*
+ * "esc" holds a literal ESC (0x1b) byte so ANSI escape sequences can be
+ * emitted from the (old hush) shell, which has no way to produce that byte
+ * itself, e.g. "echo ${esc}[2J" to clear the screen on the vidconsole.
+ */
 # define VIDCONSOLE_ENV_SETTINGS \
 	"stdout=serial,vidconsole\0" \
-	"stderr=serial,vidconsole\0"
+	"stderr=serial,vidconsole\0" \
+	"esc=\033\0"
 #else
 # define VIDCONSOLE_ENV_SETTINGS
 #endif /* CONFIG_VIDEO_AMD_MMI_DC */
