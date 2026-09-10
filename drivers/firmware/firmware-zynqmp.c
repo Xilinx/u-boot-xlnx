@@ -20,6 +20,17 @@
 #include <asm/system.h>
 #include <linux/bitfield.h>
 #include <linux/delay.h>
+#include <linux/kernel.h>
+
+#if defined(CONFIG_ARCH_VERSAL2)
+#include "versal2-scmi-map.h"
+
+/* EEMI node ID encoding: a full node ID has a non-zero Class field */
+#define EEMI_NODEID_CLASS_FIELD_MASK	GENMASK(31, 26)
+
+/* Node ID which no device owns; the firmware rejects a call made with it */
+#define EEMI_INVALID_NODEID	U32_MAX
+#endif
 
 #if defined(CONFIG_ZYNQMP_IPI)
 #include <mailbox.h>
@@ -839,11 +850,56 @@ static int smc_call_enhanced(u32 api_id, u32 arg0, u32 arg1, u32 arg2,
 	return regs.regs[0];
 }
 
+#if defined(CONFIG_ARCH_VERSAL2)
+/**
+ * zynqmp_pm_translate_node_id() - translate a compact SCMI device ID into
+ *				   the EEMI node ID the platform management
+ *				   firmware expects
+ * @node_id: Compact SCMI device ID (e.g. from a "power-domains" phandle argument).
+ *
+ * On AMD Versal Gen 2, some device tree properties still name devices
+ * with the compact SCMI IDs used by the SCMI protocol, even where the
+ * caller (e.g. a legacy EEMI ioctl through xilinx_pm_request()) needs the
+ * real EEMI node ID instead. This translates such a compact ID via
+ * versal2_scmi_device_map[]. Values that already look like a full node ID
+ * (non-zero Class field, bits [31:26]), and every non-Versal Gen 2 platform,
+ * are returned unchanged.
+ *
+ * Return: the EEMI node ID to use, or EEMI_INVALID_NODEID if a Versal Gen 2
+ *         compact ID has no entry in the translation table.
+ */
+static u32 zynqmp_pm_translate_node_id(u32 node_id)
+{
+	/* A full node ID is already formatted, its Class field is non-zero */
+	if (node_id & EEMI_NODEID_CLASS_FIELD_MASK)
+		return node_id;
+
+	if (node_id >= ARRAY_SIZE(versal2_scmi_device_map))
+		return EEMI_INVALID_NODEID;
+
+	return versal2_scmi_device_map[node_id];
+}
+#endif /* CONFIG_ARCH_VERSAL2 */
+
 int __maybe_unused xilinx_pm_request(u32 api_id, u32 arg0, u32 arg1, u32 arg2,
 				     u32 arg3, u32 arg4, u32 arg5, u32 *ret_payload)
 {
 	debug("%s at EL%d, API ID: 0x%0x, 0x%0x, 0x%0x, 0x%0x, 0x%0x, 0x%0x, 0x%0x\n",
 	      __func__, current_el(), api_id, arg0, arg1, arg2, arg3, arg4, arg5);
+
+#ifdef CONFIG_ARCH_VERSAL2
+	/*
+	 * On Versal Gen 2, "power-domains" carries a compact SCMI device ID
+	 * rather than a raw EEMI node ID; translate it so any PM_IOCTL call
+	 * made through this function uses the node ID the platform
+	 * management firmware actually expects.
+	 */
+	if (api_id == PM_IOCTL) {
+		arg0 = zynqmp_pm_translate_node_id(arg0);
+		if (arg0 == EEMI_INVALID_NODEID)
+			return -EINVAL;
+	}
+#endif
 
 	if (IS_ENABLED(CONFIG_XPL_BUILD) || current_el() == 3) {
 #if defined(CONFIG_ZYNQMP_IPI)
