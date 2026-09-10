@@ -8,17 +8,17 @@
  */
 
 &cpu0 {
-	clocks = <&versal2_clk ACPU_0>;
+	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_0>;
 };
 
 &cpu100 {
-	clocks = <&versal2_clk ACPU_0>;
+	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_0>;
 };
 
 &cpu200 {
-	clocks = <&versal2_clk ACPU_0>;
+	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_0>;
 };
 
 &cpu300 {
-	clocks = <&versal2_clk ACPU_0>;
+	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_0>;
 };
