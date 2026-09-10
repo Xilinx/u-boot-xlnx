@@ -66,7 +66,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -96,7 +95,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x100>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -126,7 +124,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x10000>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -156,7 +153,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x10100>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -186,7 +182,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x20000>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -216,7 +211,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x20100>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -246,7 +240,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x30000>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -276,7 +269,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x30100>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -368,50 +360,6 @@
 				exit-latency-us = <600>;
 				min-residency-us = <10000>;
 			};
-		};
-	};
-
-	cpu_opp_table: opp-table {
-		compatible = "operating-points-v2";
-		opp-1316666654 {
-			opp-hz = /bits/ 64 <1316666654>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-658333327 {
-			opp-hz = /bits/ 64 <658333327>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-438888884 {
-			opp-hz = /bits/ 64 <438888884>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-329166663 {
-			opp-hz = /bits/ 64 <329166663>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-1200000000 {
-			opp-hz = /bits/ 64 <1200000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-600000000 {
-			opp-hz = /bits/ 64 <600000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-400000000 {
-			opp-hz = /bits/ 64 <400000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
-		};
-		opp-300000000 {
-			opp-hz = /bits/ 64 <300000000>;
-			opp-microvolt = <1000000>;
-			clock-latency-ns = <500000>;
 		};
 	};
 

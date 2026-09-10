@@ -38,7 +38,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -68,7 +67,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x100>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -98,7 +96,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x200>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
@@ -128,7 +125,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x300>;
-			operating-points-v2 = <&cpu_opp_table>;
 			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
