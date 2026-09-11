@@ -220,42 +220,34 @@
 
 &cpu0 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_0>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu100 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_0>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu10000 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_1>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu10100 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_1>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu20000 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_2>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu20100 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_2>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu30000 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_3>;
-	/delete-property/ operating-points-v2;
 };
 
 &cpu30100 {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_ACPU_3>;
-	/delete-property/ operating-points-v2;
 };
 
 &can0 {
