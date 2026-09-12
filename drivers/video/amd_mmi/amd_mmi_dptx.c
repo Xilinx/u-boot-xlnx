@@ -125,7 +125,7 @@ static int amd_mmi_dptx_attach(struct udevice *dev)
 
 	ret = dw_dp_core_attach(&priv->core, AMD_MMI_DPTX_LINK_RATE,
 				AMD_MMI_DPTX_LANE_COUNT);
-	if (ret)
+	if (ret && ret != -ENODEV)
 		dw_dp_core_debug_status(&priv->core);
 
 	return ret;
