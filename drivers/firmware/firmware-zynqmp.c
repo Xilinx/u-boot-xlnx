@@ -800,12 +800,23 @@ smc_call_handler_t __data smc_call_handler;
 static int smc_call_legacy(u32 api_id, u32 arg0, u32 arg1, u32 arg2,
 			   u32 arg3, u32 arg4, u32 arg5, u32 *ret_payload)
 {
+	u32 module_id = FIELD_GET(PLM_MODULE_ID_MASK, api_id);
 	struct pt_regs regs;
 
-	regs.regs[0] = PM_SIP_SVC | api_id;
-	regs.regs[1] = ((u64)arg1 << 32) | arg0;
-	regs.regs[2] = ((u64)arg3 << 32) | arg2;
-	regs.regs[3] = arg4;
+	if (module_id == XILOCP_MODULE_ID) {
+		/* XilOCP module: dispatch via TF-A PASS_THROUGH */
+		regs.regs[0] = PM_SIP_SVC | PASS_THROUGH_FW_CMD_ID;
+		regs.regs[1] = ((u64)arg0 << 32) |
+				FIELD_PREP(PLM_MODULE_ID_MASK, module_id) |
+				(api_id & API_ID_MASK);
+		regs.regs[2] = ((u64)arg2 << 32) | arg1;
+		regs.regs[3] = ((u64)arg4 << 32) | arg3;
+	} else {
+		regs.regs[0] = PM_SIP_SVC | api_id;
+		regs.regs[1] = ((u64)arg1 << 32) | arg0;
+		regs.regs[2] = ((u64)arg3 << 32) | arg2;
+		regs.regs[3] = arg4;
+	}
 
 	smc_call(&regs);
 
