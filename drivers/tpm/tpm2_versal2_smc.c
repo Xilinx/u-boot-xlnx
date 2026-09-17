@@ -23,8 +23,11 @@
  *          -> SMC (PASS_THROUGH) -> TF-A -> IPI -> PLM
  *
  * PCR mapping (U-Boot TPM PCR index -> XilOCP PLM PCR):
- *   0..7 -> HW PCR 0..7 (extend: XOCP_API_EXTEND_HWPCR,
- *                           read: XOCP_API_GET_HWPCR)
+ *   read   0..7 -> HW PCR 0..7 (XOCP_API_GET_HWPCR)
+ *   extend 2..7 -> HW PCR 2..7 (XOCP_API_EXTEND_HWPCR)
+ *
+ * HW PCR 0 and 1 are ROM/PLM-owned and cannot be extended; the PLM rejects
+ * them, so the driver fails such a request with TPM2_RC_VALUE up front.
  *
  * Both SHA-256 and SHA-384 banks map to the same 8 HW PCRs.  SHA-256 digests
  * are zero-padded to 48 bytes before passing to PLM (SHA3-384 native width).
@@ -59,6 +62,13 @@
 /* PCR count and hash size (SHA3-384) */
 #define HW_PCR_COUNT	8U
 #define PCR_HASH_SIZE	TPM2_SHA384_DIGEST_SIZE
+
+/*
+ * HW PCRs 0 and 1 are owned by ROM/PLM and are not extendable: the PLM
+ * rejects them. They remain readable via XOCP_API_GET_HWPCR, so this lower
+ * bound applies to the extend path only.
+ */
+#define HW_PCR_EXTEND_MIN	2U
 
 /* Common TPM2 response header: tag(2) + size(4) + rc(4) = 10 bytes */
 struct tpm2_resp_hdr {
@@ -489,8 +499,11 @@ static int tpm2_versal2_smc_xfer(struct udevice *dev, const u8 *sendbuf,
 			break;
 		}
 
-		if (pcr_handle >= HW_PCR_COUNT) {
-			log_debug("PCR index %u out of range\n", pcr_handle);
+		if (pcr_handle < HW_PCR_EXTEND_MIN ||
+		    pcr_handle >= HW_PCR_COUNT) {
+			log_warning("PCR %u not extendable (valid %u..%u)\n",
+				    pcr_handle, HW_PCR_EXTEND_MIN,
+				    HW_PCR_COUNT - 1);
 			resp_len = build_simple_response(recvbuf,
 							 TPM2_RC_VALUE);
 			break;

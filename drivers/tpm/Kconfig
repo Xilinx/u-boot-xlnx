@@ -216,7 +216,11 @@ config TPM2_VERSAL2_SMC
 	  the PLM XilOCP module (module ID 13) over IPI.
 
 	  PCR mapping:
-	    TPM PCR 0..7 -> HW PCR 0..7 (XOCP_API_EXTEND_HWPCR)
+	    read   TPM PCR 0..7 -> HW PCR 0..7 (XOCP_API_GET_HWPCR)
+	    extend TPM PCR 2..7 -> HW PCR 2..7 (XOCP_API_EXTEND_HWPCR)
+
+	  HW PCR 0 and 1 are ROM/PLM-owned and are not extendable; extend
+	  requests targeting them are rejected with TPM2_RC_VALUE.
 
 	  Supported TPM2 commands: STARTUP, SELF_TEST, GET_CAPABILITY,
 	  PCR_EXTEND, PCR_READ.
