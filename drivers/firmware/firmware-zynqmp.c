@@ -412,7 +412,9 @@ int zynqmp_pm_get_ufs_calibration_values(u32 *value)
 
 	return ret;
 }
+#endif /* CONFIG_ARCH_VERSAL2 */
 
+#if defined(CONFIG_ARCH_VERSAL) || defined(CONFIG_ARCH_VERSAL2)
 /**
  * zynqmp_pm_xilocp_is_feature_supported() - Query PLM XilOCP for API support.
  * @api_id: XilOCP API function ID to check (e.g. XOCP_API_EXTEND_HWPCR)
@@ -486,9 +488,7 @@ int zynqmp_pm_xilocp_get_hwpcr(u32 pcr_mask, u64 buf_addr, u32 buf_size)
 
 	return ret;
 }
-#endif /* CONFIG_ARCH_VERSAL2 */
 
-#if defined(CONFIG_ARCH_VERSAL) || defined(CONFIG_ARCH_VERSAL2)
 u32 zynqmp_pm_get_pmc_global_pggs_reg(u32 reg_addr)
 {
 	int ret;
@@ -538,7 +538,7 @@ u32 zynqmp_pm_get_pmc_global_pggs_reg(u32 reg_addr)
 
 	return ret_payload[1];
 }
-#endif
+#endif /* CONFIG_ARCH_VERSAL || CONFIG_ARCH_VERSAL2 */
 
 int zynqmp_pm_set_gem_config(u32 node, enum pm_gem_config_type config, u32 value)
 {

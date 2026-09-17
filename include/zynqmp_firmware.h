@@ -541,7 +541,7 @@ extern smc_call_handler_t __data smc_call_handler;
 
 #define PMC_GLOBAL_PGGS3_REG_NODE	0x1824C005
 
-/* XilOCP HW PCR API - Versal Gen 2 only */
+/* XilOCP HW PCR API - Versal Gen 2 and Versal Premium Gen 2 */
 #define XILOCP_MODULE_ID		13U
 
 /*
