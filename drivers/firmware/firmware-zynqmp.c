@@ -424,8 +424,10 @@ int zynqmp_pm_get_ufs_calibration_values(u32 *value)
  */
 int zynqmp_pm_xilocp_is_feature_supported(u32 api_id)
 {
+	u32 ret_payload[PAYLOAD_ARG_CNT];
+
 	return xilinx_pm_request(PLM_IPI_HDR(1, XILOCP_MODULE_ID, XOCP_API_FEATURES),
-				 api_id, 0, 0, 0, 0, 0, NULL);
+				 api_id, 0, 0, 0, 0, 0, ret_payload);
 }
 
 /**
@@ -441,13 +443,14 @@ int zynqmp_pm_xilocp_is_feature_supported(u32 api_id)
  */
 int zynqmp_pm_xilocp_extend_hwpcr(u32 pcr_num, u64 hash_addr, u32 size)
 {
+	u32 ret_payload[PAYLOAD_ARG_CNT];
 	int ret;
 
 	ret = xilinx_pm_request(PLM_IPI_HDR(4, XILOCP_MODULE_ID, XOCP_API_EXTEND_HWPCR),
 				pcr_num,
 				lower_32_bits(hash_addr),
 				upper_32_bits(hash_addr),
-				size, 0, 0, NULL);
+				size, 0, 0, ret_payload);
 	if (ret)
 		printf("%s: HW PCR %u extend failed: %d\n",
 		       __func__, pcr_num, ret);
@@ -469,13 +472,14 @@ int zynqmp_pm_xilocp_extend_hwpcr(u32 pcr_num, u64 hash_addr, u32 size)
  */
 int zynqmp_pm_xilocp_get_hwpcr(u32 pcr_mask, u64 buf_addr, u32 buf_size)
 {
+	u32 ret_payload[PAYLOAD_ARG_CNT];
 	int ret;
 
 	ret = xilinx_pm_request(PLM_IPI_HDR(4, XILOCP_MODULE_ID, XOCP_API_GET_HWPCR),
 				pcr_mask,
 				lower_32_bits(buf_addr),
 				upper_32_bits(buf_addr),
-				buf_size, 0, 0, NULL);
+				buf_size, 0, 0, ret_payload);
 	if (ret)
 		printf("%s: HW PCR mask 0x%x read failed: %d\n",
 		       __func__, pcr_mask, ret);
