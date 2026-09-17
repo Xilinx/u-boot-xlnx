@@ -550,8 +550,9 @@ extern smc_call_handler_t __data smc_call_handler;
  *   bits [15:8]  = PLM module ID
  *   bits [7:0]   = API function ID
  *
- * smc_call_enhanced() extracts module_id from bits[15:8] and fn_id from
- * bits[7:0]; the len field is not encoded in the SMC call itself.
+ * smc_call_enhanced() and smc_call_legacy() extract module_id from
+ * bits[15:8] and fn_id from bits[7:0]; the len field is not encoded in the
+ * SMC call itself, it is only consumed by the IPI path.
  */
 #define PLM_IPI_HDR(len, module_id, api_id) \
 	(((u32)(len) << 16U) | ((u32)(module_id) << 8U) | (u32)(api_id))
