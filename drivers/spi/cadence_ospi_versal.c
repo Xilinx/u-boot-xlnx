@@ -172,6 +172,8 @@ int cadence_qspi_apb_wait_for_dma_cmplt(struct cadence_spi_priv *priv)
 
 static const struct soc_attr matches[] = {
 	{ .family = "Versal", .revision = "v2" },
+	{ .family = "Versal Gen 2", .revision = "v1.0" },
+	{ .family = "Versal NET" },
 	{ }
 };
 
