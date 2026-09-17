@@ -6,12 +6,16 @@
  * Padmarao Begari <padmarao.begari@amd.com>
  *
  * Description:
- * AMD Versal Gen 2 TPM2 driver via TF-A SMC.
+ * AMD Versal Gen 2 and Versal Premium Gen 2 TPM2 driver via TF-A SMC.
+ *
+ * Versal Gen 2 is ARCH_VERSAL2; Versal Premium Gen 2 is a member of the
+ * Versal Gen 1 family and so builds under ARCH_VERSAL.
  *
  * Exposes PLM XilOCP PCR services as a U-Boot DM TPM (UCLASS_TPM) device.
  * All calls go through zynqmp_pm_xilocp_extend_hwpcr() /
  * zynqmp_pm_xilocp_get_hwpcr() (firmware-zynqmp.c) which call
- * xilinx_pm_request() -> smc_call_enhanced() -> ARM SMC (PASS_THROUGH) ->
+ * xilinx_pm_request() -> smc_call_enhanced() on Versal Gen 2 or
+ * smc_call_legacy() on Versal Premium Gen 2 -> ARM SMC (PASS_THROUGH) ->
  * TF-A -> IPI -> PLM XilOCP (module ID 13).
  *
  * Communication path:
@@ -621,7 +625,7 @@ static int tpm2_versal2_smc_close(struct udevice *dev)
 
 static int tpm2_versal2_smc_get_desc(struct udevice *dev, char *buf, int size)
 {
-	return snprintf(buf, size, "AMD Versal Gen 2 TPM2 (via TF-A SMC)");
+	return snprintf(buf, size, "AMD Versal TPM2 (via TF-A SMC)");
 }
 
 static int tpm2_versal2_smc_probe(struct udevice *dev)
