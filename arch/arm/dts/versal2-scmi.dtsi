@@ -580,7 +580,7 @@
 };
 
 &mmi_dc {
-	clocks = <&scmi_clk SCMI_CLK_VERSAL2_DC_PIXEL>;
+	clocks = <&scmi_clk SCMI_CLK_VERSAL2_MMIPLL>, <&scmi_clk SCMI_CLK_VERSAL2_DC_PIXEL>, <&scmi_clk SCMI_CLK_VERSAL2_MMI_AUX1_REF>;
 	resets = <&scmi_reset SCMI_RST_VERSAL2_DC>;
 };
 
