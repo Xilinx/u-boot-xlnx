@@ -595,7 +595,7 @@
 			      <0 0xedd0d000 0 0x1000>;
 			reg-names = "dp", "blend", "avbuf", "misc", "irq";
 			interrupts = <0 179 4>;
-			clock-names = "ps_vid_clk";
+			clock-names = "mmi_pll", "ps_vid_clk", "stc_ref_clk";
 			dma-names = "vid.0.0", "vid.0.1", "vid.0.2",
 				    "vid.1.0", "vid.1.1", "vid.1.2",
 				    "aud", "cur";
