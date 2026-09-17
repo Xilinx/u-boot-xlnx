@@ -66,7 +66,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -95,7 +94,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x100>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -124,7 +122,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x10000>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -153,7 +150,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x10100>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -182,7 +178,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x20000>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -211,7 +206,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x20100>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -240,7 +234,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x30000>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -269,7 +262,6 @@
 			device_type = "cpu";
 			enable-method = "psci";
 			reg = <0x30100>;
-			cpu-idle-states = <&CPU_RETENTION_0>;
 			d-cache-size = <0x10000>; /* 64kB */
 			d-cache-line-size = <64>;
 			/* 4 ways set associativity */
@@ -347,19 +339,6 @@
 			cache-level = <4>;
 			cache-size = <0x400000>; /* 4MB */
 			cache-unified;
-		};
-
-		idle-states {
-			entry-method = "psci";
-
-			CPU_RETENTION_0: cpu-retention-0 {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0>;
-				local-timer-stop;
-				entry-latency-us = <300>;
-				exit-latency-us = <600>;
-				min-residency-us = <10000>;
-			};
 		};
 	};
 
