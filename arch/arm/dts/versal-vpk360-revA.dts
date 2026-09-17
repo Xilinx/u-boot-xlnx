@@ -33,7 +33,6 @@
 		serial2 = &dcc;
 		i2c0 = &i2c0;
 		i2c1 = &i2c1;
-		i2c2 = &i2c2;
 		mmc0 = &sdhci1;
 		spi0 = &ospi;
 		usb0 = &usb0;
@@ -157,7 +156,7 @@
 	status = "okay";
 };
 
-&i2c2 { /* PMC_MIO44/45 - PCIe RP */
+&i2c1 { /* PMC_MIO44/45 - PCIe RP */
 	status = "okay";
 
 	tcal6408_pcie: gpio@20 { /* u622 */
