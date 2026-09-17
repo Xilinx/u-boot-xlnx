@@ -986,7 +986,7 @@ static int zynqmp_firmware_bind(struct udevice *dev)
 			ret = device_bind_driver(dev, "tpm2_versal2_smc",
 						 "tpm2_versal2_smc", &child);
 			if (ret)
-				printf("TPM2 Versal Gen 2 driver bind failed: %d\n", ret);
+				printf("TPM2 Versal driver bind failed: %d\n", ret);
 		}
 	}
 

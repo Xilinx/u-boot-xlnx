@@ -201,17 +201,19 @@ config TPM2_EVENT_LOG_SIZE
 	  configuration table that is required from the TCG2 spec
 
 config TPM2_VERSAL2_SMC
-	bool "AMD Versal Gen 2 TPM2 driver (via TF-A SMC)"
-	depends on TPM_V2 && ZYNQMP_FIRMWARE && ARCH_VERSAL2
+	bool "AMD Versal TPM2 driver (via TF-A SMC)"
+	depends on TPM_V2 && ZYNQMP_FIRMWARE && (ARCH_VERSAL2 || ARCH_VERSAL)
 	select SHA384
 	help
-	  Enable the AMD Versal Gen 2 TPM2 driver.  Exposes the PLM XilOCP
-	  PCR service as a standard TPM2 interface.
+	  Enable the AMD TPM2 driver for Versal Gen 2 (ARCH_VERSAL2) and
+	  Versal Premium Gen 2 (part of the Versal Gen 1 family, ARCH_VERSAL).
+	  Exposes the PLM XilOCP PCR service as a standard TPM2 interface.
 
 	  All PCR operations are routed through xilinx_pm_request(), which
-	  issues an ARM SMC using the Versal Gen 2 extended calling convention.
-	  TF-A passes the call through to the PLM XilOCP module (module ID 13)
-	  over IPI.
+	  issues an ARM SMC using the SMC PASS_THROUGH convention (the
+	  extended calling convention on Versal Gen 2, the legacy register
+	  layout on Versal Premium Gen 2).  TF-A passes the call through to
+	  the PLM XilOCP module (module ID 13) over IPI.
 
 	  PCR mapping:
 	    TPM PCR 0..7 -> HW PCR 0..7 (XOCP_API_EXTEND_HWPCR)
