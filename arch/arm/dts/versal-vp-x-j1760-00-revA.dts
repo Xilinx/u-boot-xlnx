@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * dts file for Xilinx Versal VP-X-J1760-00 revA
+ *
+ * (C) Copyright 2026, Advanced Micro Devices, Inc.
+ *
+ * Michal Simek <michal.simek@amd.com>
+ */
+
+#include "versal.dtsi"
+#include "versal-clk.dtsi"
+
+/ {
+	compatible = "xlnx,versal-vp-x-j1760-00-revA",
+		     "xlnx,versal-vp-x-j1760-00", "xlnx,versal";
+	model = "Xilinx Versal VP-X-J1760-00 Processor Char Board revA";
+
+	/*
+	 * DDR5 SODIMM
+	 */
+	memory: memory@0 {
+		device_type = "memory";
+		reg = <0 0 0 0x80000000>,
+		      <8 0x00000000 0 0x80000000>; /* 2GB + 2GB FIXME */
+	};
+
+	chosen {
+		bootargs = "console=ttyAMA0 earlycon=pl011,mmio32,0xFF000000,115200n8";
+		stdout-path = "serial0:115200";
+	};
+
+	aliases {
+		serial0 = &serial0;
+		serial1 = &serial1;
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+	};
+};
+
+/*
+ * Versal XC2VP3202 has only one usb controller but x-prc-07 card is
+ * referencing usb1 so export new labels for the DT overlay to apply cleanly.
+ */
+&amba {
+	usb1: usb@ff9d0000 {
+		dwc3_1: usb@fe200000 {
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&dcc {
+	status = "okay";
+};
+
+&watchdog {
+	status = "okay";
+};
+
+&rtc {
+	status = "okay";
+};
+
+&lpd_dma_chan0 {
+	status = "okay";
+};
+
+&lpd_dma_chan1 {
+	status = "okay";
+};
+
+&lpd_dma_chan2 {
+	status = "okay";
+};
+
+&lpd_dma_chan3 {
+	status = "okay";
+};
+
+&lpd_dma_chan4 {
+	status = "okay";
+};
+
+&lpd_dma_chan5 {
+	status = "okay";
+};
+
+&lpd_dma_chan6 {
+	status = "okay";
+};
+
+&lpd_dma_chan7 {
+	status = "okay";
+};
