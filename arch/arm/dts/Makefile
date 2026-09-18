@@ -477,6 +477,13 @@ dtb-$(CONFIG_ARCH_VERSAL) += \
 versal-vp-p-c3340-00-revA-x-fmc-02-revA-dtbs := versal-vp-p-c3340-00-revA.dtb x-fmc-02-revA.dtbo
 dtb-$(CONFIG_ARCH_VERSAL) += versal-vp-p-c3340-00-revA-x-fmc-02-revA.dtb
 
+versal-vp-x-j1760-00-revA-x-prc-07-revA-dtbs := versal-vp-x-j1760-00-revA.dtb x-prc-07-revA.dtbo
+dtb-$(CONFIG_ARCH_VERSAL) += versal-vp-x-j1760-00-revA-x-prc-07-revA.dtb
+versal-vp-x-j1760-00-revA-x-prc-08-revA-dtbs := versal-vp-x-j1760-00-revA.dtb x-prc-08-revA.dtbo
+dtb-$(CONFIG_ARCH_VERSAL) += versal-vp-x-j1760-00-revA-x-prc-08-revA.dtb
+versal-vp-x-j1760-00-revA-x-prc-09-revA-dtbs := versal-vp-x-j1760-00-revA.dtb x-prc-09-revA.dtbo
+dtb-$(CONFIG_ARCH_VERSAL) += versal-vp-x-j1760-00-revA-x-prc-09-revA.dtb
+
 dtb-$(CONFIG_ARCH_VERSAL2) += \
 	versal2-mini-emmc.dtb \
 	versal2-mini-ospi.dtb \
