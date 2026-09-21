@@ -182,69 +182,51 @@
 	bootph-all;
 	clock-frequency = <400000>;
 
-	i2c-arbitrator@72 { /* u161 */
-		compatible = "nxp,pca9541";
+	eeprom: eeprom@54 { /* u35 - also at address 0x5C */
+		compatible = "atmel,24c128";
 		bootph-all;
-		reg = <0x72>;
+		reg = <0x54>;
+	};
 
-		/* board_i2c1 */
-		i2c-arb {
+	tca6416_u37: gpio@21 {
+		compatible = "ti,tca6416";
+		reg = <0x21>;
+		#gpio-cells = <0x02>;
+		gpio-controller;
+	};
+
+	i2c-mux@77 { /* u253 */
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x77>;
+		i2c-mux-idle-disconnect;
+		i2c@0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			/*
-			 * WARNING: Potential Conflict!
-			 * The TCA6416 GPIO expander device is currently owned by SC as well.
-			 * This design results in two software components potentially conflicting
-			 * over control of the device. While no immediate issues are observed
-			 * due to limited interactions.
-			 * FIXME - The schematics should be revised to avoid conflicts.
-			 */
-			tca6416_u37: gpio@20 {
-				compatible = "ti,tca6416";
-				reg = <0x20>;
-				#gpio-cells = <0x02>;
-				gpio-controller;
-			};
-			eeprom: eeprom@54 { /* u35 - also at address 0x5C */
-				compatible = "atmel,24c128";
-				bootph-all;
-				reg = <0x54>;
-				/* wp via SC */
-			};
-			i2c-mux@77 { /* u253 */
-				compatible = "nxp,pca9548";
-				#address-cells = <1>;
-				#size-cells = <0>;
-				reg = <0x77>;
-				i2c-mux-idle-disconnect;
-				i2c@0 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <0>;
-					/* qsfp1 */
-				};
-				i2c@1 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <1>;
-					/* sfp */
-				};
-				i2c@2 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <2>;
-					/* usbdp */
-					/* u272 tps66993 FIXME */
-				};
-				i2c@3 {
-					#address-cells = <1>;
-					#size-cells = <0>;
-					reg = <3>;
-					/* pcie_rp */
-				};
-				/* 4 - 7 not connected */
-			};
+			reg = <0>;
+			/* qsfp1 */
 		};
+		i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+			/* sfp */
+		};
+		i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <2>;
+			/* usbdp */
+			/* u272 tps66993 FIXME */
+		};
+		i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <3>;
+			/* pcie_rp */
+		};
+		/* 4 - 7 not connected */
 	};
 };
 
@@ -293,7 +275,7 @@
 	dma-coherent;
 };
 
-&gem0 { /* MDIO PMC_MIO50/51, MIO0-11 */
+&gem1 { /* MDIO PMC_MIO50/51, MIO12-23 */
 	status = "okay";
 	phy-handle = <&phy0>;
 	phy-mode = "rgmii-id";
