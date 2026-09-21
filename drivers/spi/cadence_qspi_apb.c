@@ -38,9 +38,9 @@
 #include <malloc.h>
 #include "cadence_qspi.h"
 
-__weak void cadence_qspi_apb_enable_linear_mode(bool enable)
+__weak int cadence_qspi_apb_enable_linear_mode(bool enable)
 {
-	return;
+	return 0;
 }
 
 void cadence_qspi_apb_controller_enable(void *reg_base)
@@ -821,8 +821,11 @@ int cadence_qspi_apb_read_execute(struct cadence_spi_priv *priv,
 	u64 from = op->addr.val;
 	void *buf = op->data.buf.in;
 	size_t len = op->data.nbytes;
+	int ret;
 
-	cadence_qspi_apb_enable_linear_mode(true);
+	ret = cadence_qspi_apb_enable_linear_mode(true);
+	if (ret)
+		return ret;
 
 	if (priv->use_dac_mode && (from + len < priv->ahbsize)) {
 		if (len < 256 ||
@@ -1014,6 +1017,7 @@ int cadence_qspi_apb_write_execute(struct cadence_spi_priv *priv,
 	u32 to = op->addr.val;
 	const void *buf = op->data.buf.out;
 	size_t len = op->data.nbytes;
+	int ret;
 
 	/*
 	 * Some flashes like the Cypress Semper flash expect a dummy 4-byte
@@ -1023,7 +1027,10 @@ int cadence_qspi_apb_write_execute(struct cadence_spi_priv *priv,
 	 * mode. So, we can not use direct mode when in DTR mode for writing
 	 * data.
 	 */
-	cadence_qspi_apb_enable_linear_mode(true);
+	ret = cadence_qspi_apb_enable_linear_mode(true);
+	if (ret)
+		return ret;
+
 	if (!priv->dtr && priv->use_dac_mode && (to + len < priv->ahbsize)) {
 		memcpy_toio(priv->ahbbase + to, buf, len);
 		if (!cadence_qspi_wait_idle(priv->regbase))
