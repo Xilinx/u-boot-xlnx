@@ -579,6 +579,10 @@
 	resets = <&scmi_reset SCMI_RST_VERSAL2_UFS>, <&scmi_reset SCMI_RST_VERSAL2_UFS_PHY>;
 };
 
+&mmi_dcdma {
+	clocks = <&scmi_clk SCMI_CLK_VERSAL2_PS_AXI_DMA>;
+};
+
 &mmi_dc {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_MMIPLL>, <&scmi_clk SCMI_CLK_VERSAL2_DC_PIXEL>, <&scmi_clk SCMI_CLK_VERSAL2_MMI_AUX1_REF>;
 	resets = <&scmi_reset SCMI_RST_VERSAL2_DC>;
