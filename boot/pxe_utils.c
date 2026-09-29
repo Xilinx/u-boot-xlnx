@@ -1285,6 +1285,7 @@ static int parse_label_kernel(char **c, struct pxe_label *label)
 static int parse_label(char **c, struct pxe_menu *cfg)
 {
 	struct token t;
+	char *end;
 	int len;
 	char *s = *c;
 	struct pxe_label *label;
@@ -1326,7 +1327,8 @@ static int parse_label(char **c, struct pxe_menu *cfg)
 			if (!s)
 				break;
 			s += 7;
-			len = (int)(strchr(s, ' ') - s);
+			end = strchr(s, ' ');
+			len = end ? (int)(end - s) : (int)strlen(s);
 			label->initrd = malloc(len + 1);
 			strncpy(label->initrd, s, len);
 			label->initrd[len] = '\0';
