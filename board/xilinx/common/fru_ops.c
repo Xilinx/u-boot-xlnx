@@ -172,7 +172,8 @@ static int fru_parse_board(unsigned long addr)
 	int len;
 	u8 *data, *term, *limit, *next_addr, *eof;
 
-	memcpy(&fru_data.brd.ver, (void *)addr, 6);
+	memcpy(&fru_data.brd.ver, (void *)addr,
+	       sizeof(struct fru_board_info_header));
 
 	/*
 	 * eof marks the last data byte (without checksum). That's why checksum
@@ -180,7 +181,7 @@ static int fru_parse_board(unsigned long addr)
 	 */
 	eof = (u8 *)(fru_data.brd.len * 8 + addr - 2);
 
-	addr += 6;
+	addr += sizeof(struct fru_board_info_header);
 	data = (u8 *)&fru_data.brd.manufacturer_type_len;
 
 	/* Record max structure limit not to write data over allocated space */
