@@ -381,6 +381,11 @@
 		#size-cells = <2>;
 	};
 
+	pmu {
+		compatible = "arm,cortex-a78-pmu";
+		interrupts = <1 7 4>;
+	};
+
 	timer: timer {
 		compatible = "arm,armv8-timer";
 		interrupts = <1 13 4>, <1 14 4>, <1 11 4>, <1 10 4>;
