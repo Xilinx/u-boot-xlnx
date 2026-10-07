@@ -144,12 +144,12 @@
 	dma-coherent;
 };
 
-&usb1 { /* PMC_MIO27-39 */
+&usb0 { /* PMC500_MIO[13:25] */
 	status = "okay";
 	dma-coherent;
 };
 
-&dwc3_1 {
+&dwc3_0 {
 	status = "okay";
 	dr_mode = "host";
 	maximum-speed = "high-speed";
