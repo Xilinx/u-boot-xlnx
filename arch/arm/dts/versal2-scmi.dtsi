@@ -581,10 +581,12 @@
 
 &mmi_dcdma {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_PS_AXI_DMA>;
+	power-domains = <&scmi_devpd SCMI_PD_VERSAL2_DEV_MMI_DC>;
 };
 
 &mmi_dc {
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_MMIPLL>, <&scmi_clk SCMI_CLK_VERSAL2_DC_PIXEL>, <&scmi_clk SCMI_CLK_VERSAL2_MMI_AUX1_REF>;
+	power-domains = <&scmi_devpd SCMI_PD_VERSAL2_DEV_MMI_DC>;
 	resets = <&scmi_reset SCMI_RST_VERSAL2_DC>;
 };
 
@@ -595,4 +597,5 @@
 &mmi_dptx {
 	clock-names = "pixel_clk";
 	clocks = <&scmi_clk SCMI_CLK_VERSAL2_DC_PIXEL>;
+	power-domains = <&scmi_devpd SCMI_PD_VERSAL2_DEV_MMI_DP>;
 };
