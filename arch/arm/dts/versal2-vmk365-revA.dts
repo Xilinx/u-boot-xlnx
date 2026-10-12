@@ -44,6 +44,12 @@
 			no-map;
 			reg = <0 0 0 0x20000000>;
 		};
+
+		/* ASUFW code overlay (paging) */
+		asu: memory@7ff00000 {
+			no-map;
+			reg = <0 0x7ff00000 0 0x100000>;
+		};
 	};
 
 	pwm-fan {
