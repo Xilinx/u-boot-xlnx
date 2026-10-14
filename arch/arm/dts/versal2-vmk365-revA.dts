@@ -82,6 +82,13 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+	/* reference clock to the USB3 PHY */
+	usb3_dp_phy_ref_clk: usb3-phy-ref-clk {
+		bootph-all;
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
 };
 
 /* u272 - TPS66993BAR usb, i2c, DP */
@@ -346,4 +353,8 @@
 
 &sysmon0 {
 	status = "okay";
+};
+
+&usb3_dp_phy {
+	clocks = <&usb3_dp_phy_ref_clk>;
 };
