@@ -153,7 +153,8 @@ u8 __weak versal_net_get_bootmode(void)
 	return reg & BOOT_MODES_MASK;
 }
 
-static u32 platform_id, platform_version;
+static u32 platform_id __section(".data");
+static u32 platform_version __section(".data");
 
 char *soc_name_decode(void)
 {
