@@ -208,6 +208,15 @@
 		gpio-controller;
 	};
 
+	tca6416_u410: gpio@20 {
+		compatible = "ti,tca6416";
+		reg = <0x20>;
+		#gpio-cells = <2>;
+		gpio-controller;
+		gpio-line-names = "", "", "", "", "", "", "",
+				  "EEPROM_WC_B";
+	};
+
 	i2c-mux@77 { /* u253 */
 		compatible = "nxp,pca9548";
 		#address-cells = <1>;
