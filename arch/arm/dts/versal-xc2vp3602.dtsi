@@ -38,6 +38,8 @@
 		      <0x00 0xfc280000 0x00 0x4000>,
 		      <0x00 0xfc840000 0x00 0x1000>;
 		reg-names = "slcr", "config", "dbi", "atu", "intr";
+		resets = <&versal_reset VERSAL_RST_XAPE0>;
+		reset-names = "core";
 		pcie_intc_0: interrupt-controller {
 			#address-cells = <0>;
 			#interrupt-cells = <1>;
