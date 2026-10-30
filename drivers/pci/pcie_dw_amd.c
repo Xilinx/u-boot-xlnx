@@ -9,6 +9,7 @@
 #include <dm.h>
 #include <log.h>
 #include <pci.h>
+#include <reset.h>
 #include <wait_bit.h>
 
 #include <asm/gpio.h>
@@ -68,6 +69,7 @@
 /* PCIe spec timing requirements */
 #define PCIE_RESET_CONFIG_WAIT_MS	100
 #define PCIE_T_PERST_WAIT_MS		1
+#define PCIE_T_PVPERL_WAIT_MS		100
 
 /**
  * enum amd_dw_pcie_version - AMD DesignWare PCIe controller variant
@@ -193,6 +195,42 @@ static void amd_dw_pcie_host_init(struct amd_dw_pcie *pcie)
 	pcie_dw_setup_host(pci);
 }
 
+static bool amd_dw_pcie_is_cpm6(const struct amd_dw_pcie *pcie)
+{
+	return pcie->version == AMD_DW_PCIE_CPM6_HOST0 ||
+	       pcie->version == AMD_DW_PCIE_CPM6_HOST1;
+}
+
+static int amd_dw_pcie_ctrl_reset(struct udevice *dev)
+{
+	struct reset_ctl ctrl_rst;
+	int ret;
+
+	ret = reset_get_by_name(dev, "core", &ctrl_rst);
+	if (ret == -ENOENT || ret == -ENODATA || ret == -ENOTSUPP) {
+		dev_dbg(dev, "no controller reset\n");
+		return 0;
+	}
+	if (ret) {
+		dev_err(dev, "failed to get controller reset: %d\n", ret);
+		return ret;
+	}
+
+	ret = reset_assert(&ctrl_rst);
+	if (!ret) {
+		mdelay(PCIE_T_PVPERL_WAIT_MS);
+		ret = reset_deassert(&ctrl_rst);
+	}
+	if (ret)
+		dev_err(dev, "failed to pulse controller reset: %d\n", ret);
+	else
+		mdelay(PCIE_RESET_CONFIG_WAIT_MS);
+
+	reset_free(&ctrl_rst);
+
+	return ret;
+}
+
 static void amd_dw_pcie_request_gpio(struct udevice *dev)
 {
 	struct gpio_desc perst_gpio;
@@ -278,9 +316,16 @@ static int amd_dw_pcie_probe(struct udevice *dev)
 {
 	struct amd_dw_pcie *pcie = dev_get_priv(dev);
 	struct pcie_dw *pci = &pcie->dw;
+	int ret;
 
 	/* Set first bus number */
 	pci->first_busno = dev_seq(dev);
+
+	if (amd_dw_pcie_is_cpm6(pcie)) {
+		ret = amd_dw_pcie_ctrl_reset(dev);
+		if (ret)
+			return ret;
+	}
 
 	amd_dw_pcie_request_gpio(dev);
 	amd_dw_pcie_host_init(pcie);
